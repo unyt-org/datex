@@ -19,6 +19,11 @@ crate-type = ["cdylib", "rlib"]
 name = "mod"
 harness = false
 
+[[example]]
+name = "lsp_server"
+path = "examples/lsp_server.rs"
+required-features = ["lsp_tokio", "lsp_example"]
+
 [lints.clippy]
 std_instead_of_core = "deny"
 alloc_instead_of_core = "deny"
@@ -173,6 +178,7 @@ tokio = { version = "1.43.0", features = [
     "sync",
     "macros",
     "io-util",
+    "io-std",
     "rt",
     "time",
 ], default-features = false }
@@ -276,7 +282,7 @@ ast = []
 
 parser = ["dep:logos"]
 
-compiler = ["ast", "parser", "dep:ariadne", "dep:pretty"]
+compiler = ["ast", "parser", "dep:ariadne", "dep:pretty", "dep:syn"]
 
 decompiler = ["ast"]
 
@@ -285,9 +291,11 @@ decompiler = ["ast"]
 
 lsp = ["dep:realhydroper-lsp"]
 # lsp support
-lsp_tokio = ["lsp", "realhydroper-lsp/runtime-tokio"]
+lsp_tokio = ["lsp", "std", "compiler", "tokio_runtime", "realhydroper-lsp/runtime-tokio"]
 # enable runtime-agnostic feature for realhydroper-lsp in wasm
 lsp_wasm = ["lsp", "realhydroper-lsp/runtime-agnostic"]
+lsp_example = ["tokio/io-std"]
+io-util = []
 
 
 ### Utils for creating macros #################################################

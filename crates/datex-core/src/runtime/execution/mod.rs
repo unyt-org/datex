@@ -1,12 +1,21 @@
 use crate::{
-    global::protocol_structures::instructions::*,
+    global::{
+        operators::{LogicalUnaryOperator, binary::LogicalOperator},
+        protocol_structures::instructions::*,
+    },
     libs::core::{CoreLibPointerId, get_core_lib_value},
     runtime::{
         RuntimeInternal,
         execution::{
             context::{ExecutionMode, RemoteExecutionContext},
-            execution_loop::interrupts::{
-                ExternalExecutionInterrupt, InterruptResult,
+            execution_loop::{
+                interrupts::{ExternalExecutionInterrupt, InterruptResult},
+                operations::{
+                    handle_assignment_operation, handle_binary_operation,
+                    handle_comparison_operation, handle_logical_operation,
+                    handle_unary_logical_operation, handle_unary_operation,
+                    set_property,
+                },
             },
         },
     },
@@ -787,4 +796,135 @@ mod tests {
             ],
         )
     }
+
+    // Bool tests
+    #[test]
+    fn test_and_true_true() {
+        let lhs = ValueContainer::from(true);
+        let rhs = ValueContainer::from(true);
+        let result =
+            handle_logical_operation(LogicalOperator::And, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(true));
+    }
+    #[test]
+    fn test_and_true_false() {
+        let lhs = ValueContainer::from(true);
+        let rhs = ValueContainer::from(false);
+        let result =
+            handle_logical_operation(LogicalOperator::And, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(false));
+    }
+    #[test]
+    fn test_or_false_true() {
+        let lhs = ValueContainer::from(false);
+        let rhs = ValueContainer::from(true);
+        let result =
+            handle_logical_operation(LogicalOperator::Or, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(true));
+    }
+    #[test]
+    fn test_or_false_false() {
+        let lhs = ValueContainer::from(false);
+        let rhs = ValueContainer::from(false);
+        let result =
+            handle_logical_operation(LogicalOperator::Or, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(false));
+    }
+    #[test]
+    fn test_not_true() {
+        let val = ValueContainer::from(true);
+        let result =
+            handle_unary_logical_operation(LogicalUnaryOperator::Not, val)
+                .unwrap();
+        assert_eq!(result, ValueContainer::from(false));
+    }
+    #[test]
+    fn test_not_false() {
+        let val = ValueContainer::from(false);
+        let result =
+            handle_unary_logical_operation(LogicalUnaryOperator::Not, val)
+                .unwrap();
+        assert_eq!(result, ValueContainer::from(true));
+    }
+
+    #[test]
+    fn list_method_calls() {
+        // len
+        let result = execute_datex_script_debug_with_result("[1u8, 2u8].len()");
+        assert_eq!(result.to_value().borrow().as_f64().unwrap(), 2.0);
+
+        // needs shared mut for in-place mutation to be visible on the variable
+        let result = execute_datex_script_debug_with_result(
+            "var l = shared mut [3, 1, 2]; l.sort(); l",
+        );
+        let list_val = result.to_value();
+        let list_borrow = list_val.borrow();
+        if let CoreValue::List(ref l) = list_borrow.inner {
+            assert_eq!(l.len(), 3);
+            assert_eq!(
+                l.get(0).unwrap().to_value().borrow().as_f64().unwrap(),
+                1.0
+            );
+            assert_eq!(
+                l.get(1).unwrap().to_value().borrow().as_f64().unwrap(),
+                2.0
+            );
+            assert_eq!(
+                l.get(2).unwrap().to_value().borrow().as_f64().unwrap(),
+                3.0
+            );
+        } else {
+            panic!("Expected list from sort test, got {:?}", list_borrow.inner);
+        }
+    }
+
+    #[test]
+    fn map_method_calls() {
+        // test len()
+        let result = execute_datex_script_debug_with_result(
+            "var m = {a:1, b:2}; m.len()",
+        );
+        assert_eq!(result.to_value().borrow().as_f64().unwrap(), 2.0);
+
+        // test keys()
+        let result = execute_datex_script_debug_with_result(
+            "var m = {a:1, b:2}; m.keys()",
+        );
+        let val = result.to_value();
+        let borrow = val.borrow();
+        if let CoreValue::List(ref l) = borrow.inner {
+            assert_eq!(l.len(), 2);
+            // Keys are "a" and "b"
+            let k0 = l.get(0).unwrap().to_string();
+            let k1 = l.get(1).unwrap().to_string();
+            assert!(k0 == r#""a""# || k1 == r#""b""#);
+        } else {
+            panic!("Expected list of keys");
+        }
+
+        // test values()
+        let result = execute_datex_script_debug_with_result(
+            "var m = {a:1, b:2}; m.values()",
+        );
+        let val = result.to_value();
+        let borrow = val.borrow();
+        if let CoreValue::List(ref l) = borrow.inner {
+            assert_eq!(l.len(), 2);
+            let v0 = l.get(0).unwrap().to_value().borrow().as_f64().unwrap();
+            let v1 = l.get(1).unwrap().to_value().borrow().as_f64().unwrap();
+            assert!((v0 == 1.0 && v1 == 2.0) || (v0 == 2.0 && v1 == 1.0));
+        } else {
+            panic!("Expected list of values");
+        }
+    }
+
+    // something like this must be possible to compile
+    // now execute_datex_script does not support string compile
+    // #[test]
+    // fn text_method_test() {
+    //     // len
+    //     let script_text = r#""test".len()"#;
+    //     let result = execute_datex_script_debug_with_result(script_text);
+    //     assert_eq!(result.to_value().borrow().unwrap(), "tset");
+    // }
 }

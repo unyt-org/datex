@@ -1,5 +1,8 @@
 # Extend the DATEX syntax
 
+> _Attention: This guide is outdated due to heavy refactoring on the module
+> structure and will be updated soon!_
+
 > This guide explains how to extend the DATEX syntax by giving a step-by-step
 > approach to adding new syntax elements (such as keywords, operators or
 > expressions) and their corresponding functionality.
@@ -8,7 +11,7 @@
 
 If you want to add a new keyword or operator, you need to define it in the
 `Token` enum. This is done in the
-[`crates/datex-core/src/parser/lexer.rs`](../../crates/datex-core/src/parser/lexer.rs) file. Add a
+[`datex-core/src/compiler/lexer.rs`](../../crates/datex-core/src/compiler/lexer.rs) file. Add a
 new entry to the `Token` enum. For example, if you want to add a new operator
 called `Is`, you would add:
 
@@ -20,35 +23,20 @@ pub enum Token {
 }
 ```
 
-Then a bit lower find this Implementation and add your Token there to be able to use Token as string
-
-```rust
-impl Token {  
-    pub fn as_const_str(&self) -> Option<&str> {
-        match self {
-            // other tokens...
-            Token::Is => Some("is"), // So Token::NewTokenName => Some("KeySymbol/KeyWord"),
-            // other tokens...
-        }
-    }
-}
-```
-
-
 Make sure to add a new test for your new token in the `tests` section of the
 lexer to ensure it is recognized correctly by the lexer.
 
 ```rust
 #[test]
 fn is_operator() {
-    let mut lexer = Token::lexer("a is b"); // How it look like in DATEX
+    let mut lexer = Token::lexer("a is b");
     assert_eq!(
-        lexer.next().unwrap(), // Take next(in this case first) token of variable 'lexer'
-        Ok(Token::Identifier("a".to_string())) // Make sure that first token 'a' was read correctly
+        lexer.next().unwrap(),
+        Ok(Token::Identifier("a".to_string()))
     );
-    assert_eq!(lexer.next().unwrap(), Ok(Token::Is)); // Then we check if second token 'is' equal to Token::Is
+    assert_eq!(lexer.next().unwrap(), Ok(Token::Is));
     assert_eq!(
-        lexer.next().unwrap(), // Same as with 'a'
+        lexer.next().unwrap(),
         Ok(Token::Identifier("b".to_string()))
     );
     assert_eq!(lexer.next(), None);
@@ -60,7 +48,7 @@ fn is_operator() {
 Not all new tokens require a new instruction code, but if your new syntax
 element is a keyword and can not be represented by a set of existing instruction
 codes, you need to introduce a new instruction code in the
-[`crates/datex-core/src/global/instruction_codes.rs`](../../crates/datex-core/src/global/instruction_codes.rs)
+[`datex-core/src/global/binary_codes.rs`](../../src/global/binary_codes.rs)
 file.
 
 ```rust
@@ -73,182 +61,83 @@ pub enum InstructionCode {
 
 To allow for serialization of the new instruction and it's potential payload, it
 might be necessary to add a new entry to the `Instruction` enum in the
-[`/cratesdatex-core/src/global/protocol_structures/instructions.rs`](../../crates/datex-core/src/global/protocol_structures/instructions.rs)
-file
+[`datex-core/src/global/protocol_structures/instructions.rs`](../../src/global/protocol_structures/instructions.rs)
+file:
 
 ```rust
 pub enum Instruction {
-    // regular instruction
-    RegularInstruction(RegularInstruction),
-    // Type instruction that yields a type
-    TypeInstruction(TypeInstruction),
+    True, // implicitly true
+    Int8(Int8Data), // holds an 8-bit integer
+
+    Is, // New instruction for the `is` operator
+
+    // other instructions...
 ```
 
-There are two types of `Instruction`, if your `Data Type` or `Data Structure` produces a runtime value then its a `RegularInstruction` e.g. 
-```rust
-Int32(5)       // -> value: 5
-Add            // -> produces result, so its also some value like 2+3 = 5
-Test("hello")  // -> value: string
-List(...)      // -> value: list
-```
-
-But if it produces the `type metadata` then its a `TypeInstruction` e.g.
-```rust
-LiteralInteger(...) // -> type `Integer`
-LiteralText(...)    // -> type `String`
-```
-
-BUT, there are can be a confusing cases like `List`, lets take a look
-```rust
-List(list) // This return not a Type, but a length of list
-```
-List with length 3 will return 3 that will be used in compiler to understand which and how much data to read next e.g.
-```rust
-list([1, 5, 9]) // has length of 3 and values 1, 2 and 3 
-```
-So compiler will receive something like
-```sh
-List 3 // Mean Type=List, length = 3
-1
-5
-9 // compiler will read all values correctly, bc it knows that it must read 3 values, bc length is 3
-```
-
-_Note that also the `Display for RegularInstruction` or `Display for TypeInstruction` must be updated to include the new
+_Note that also the `Display for Instruction` must be updated to include the new
 instruction code._
-```rust
-impl Display for RegularInstruction {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            // other...
-            RegularInstruction::Is => core::write!(f, "IS"),
-            // other...
-        }
-    }
-}
-```
 
 To map `InstructionCode` to the `Instruction` holder, you need to add a new
 match arm in the `iterate_instruction` method in the
-[`crates/datex-core/src/dxb_parser/body.rs`](../../crates/datex-core/src/dxb_parser/body.rs) file:
+[`datex-core/src/parser/body.rs`](../../src/parser/body.rs) file:
 
-Here is example
 ```rust
-InstructionCode::IS => {
-    next_instructions_stack.push_next_regular(2);
-    RegularInstruction::Is
+yield match instruction_code {
+    // existing instruction codes...
+    InstructionCode::IS => Ok(Instruction::Is),
+    // other instruction codes...
 }
 ```
-If you want to understand exactly why `push_next_regular(2)` and how does it work you can either look for something that is close for your new syntax, for example you add something like `Array`, then look at `List`, or try to read each function that is used in `InstructionCode` creating to use 100% correct one
+
+## Update the Parser
+
+Next, you need to update the parser to recognize your new token. This is done in
+the [`datex-core/src/compiler/parser.rs`](../../src/compiler/ast_parser) module.
+The parser is responsible for converting the sequence of tokens recognized by
+the lexer into an Abstract Syntax Tree (AST).
 
 ### Extend the Expression Grammar
 
 We have to extend the expression grammar to include our expression or operator.
 This is done by adding a new entry or modifying an existing one in the
-`DatexExpressionData` enum.
-
-Hopefully you will do something like `NewSyntax(NewSyntax)`
+`DatexExpression` enum.
 
 ```rust
-pub enum DatexExpressionData {
+pub enum DatexExpression {
     /// Only keywords holding no value, e.g. `null`, `if`, `else`, `while`
     Null,
     /// Custom data type holding a Rust value
     Text(String),
+    
+    /// Custom data type holding a vector of expressions
+    Array(Vec<DatexExpression>),
 
-    /// Decimal, e.g 123.456789123456
-    Decimal(Decimal),
-        
-    /// List, e.g  `[1, 2, 3, "text"]`
-    List(List),
+    /// Custom syntax to represent variable declarations (e.g. `val x = 5`)
+    ///                 val           x       DatexExpression<5>
+    VariableDeclaration(VariableType, String, Box<DatexExpression>),
 
-    /// Variable declaration, e.g. const x = 1, const mut x = 1, or var y = 2. VariableId is always set to 0 by the ast parser.
-    VariableDeclaration(VariableDeclaration),
-
-    /// Binary operation, e.g. x + y
-    BinaryOperation(BinaryOperation),
+    /// Binary operation OP LHS RHS
+    BinaryOperation(BinaryOperator, Box<DatexExpression>, Box<DatexExpression>),
 
     // other existing expressions...
 }
 ```
 
-The go a bit lower in same file and find where all structures for each Syntax is e.g. for `List`
-```rust
+We have to declare an entry here that can hold all parts of our expression if it
+is more complex than a simple value. In our case it's more easy, as we just want
+to add a new operator `is`, which can be represented as a binary operation, and
+the holder is already present in the `DatexExpression` enum as
+`BinaryOperation(BinaryOperator, Box<DatexExpression>, Box<DatexExpression>)`.
+So here we extend the `BinaryOperator` enum to include our new operator:
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct List {
-    pub items: Vec<DatexExpression>, // We store a vector of 
-}
-
-impl List {
-    pub fn new(items: Vec<DatexExpression>) -> Self {
-        List { items }
-    }
-}
-```
-
-Then i bit higher in this file you need to find `impl TryFrom<&DatexExpressionData> for ValueContainer {`
-
-and add there instruction how your Syntax must be converted in `ValueContainer`
-
-Again here is `List` example
-```rust
-DatexExpressionData::List(list) => {
-    let entries = list
-        .items
-        .iter()
-        .map(|e| ValueContainer::try_from(&e.data))
-        .collect::<Result<Vec<ValueContainer>, ()>>()?; // This `iter`, map and etc. you have to implement in your Rust logic to be able to convert your syntax to `ValueContainer`
-    ValueContainer::from(core_values::list::List::from(entries)) // Return ValueContainer
-}
-```
-
-
-
-But there are a catch, List is not assign anywhere, it can be "alone", but if I want to add something like `Add` that is `BinaryOperation`, we must go other way, here is how it can be done.
-
-### Find the correct structure for your syntax, there are multiple of them like `BinaryOperation` for `+`, `-`, etc., or `ComparisonOperation` for `==`, `>`, etc.
-
-We will use `Add` as example that align to `BinaryOperation`
-Lets break down what does this structure mean 
-```rust
-#[derive(Clone, Debug, PartialEq)]
-pub struct BinaryOperation { // Name of structure ( Already in DatexExpressionData )
-    pub operator: BinaryOperator, // Operator it self like `+` or `-`
-    pub left: Box<DatexExpression>, // left or lhs means "Left hand side" e.g. 1 + x. "1" is some "DatexExpression" on left side of `+`, so "1" will be treated as `lhs` in most cases overall
-    pub right: Box<DatexExpression>, // same as `left`, but just right, so will be treated as `rhs` (right hand side)
-    pub ty: Option<Type>, // Optional Type 
-}
-```
-
-Then jump to `BinaryOperator` in [crates/datex-core/src/global/operators/binary.rs](../../crates/datex-core/src/global/operators/binary.rs) and choose type that you need 
 ```rust
 pub enum BinaryOperator {
-    Arithmetic(ArithmeticOperator), // Math Operations e.g. `+`, `-`
-    Logical(LogicalOperator),       // Logical e.g. `And`, `Or`
-    Bitwise(BitwiseOperator),       // Same as Logical, but with symbols, e.g. `&`, `|`
-    Range(RangeOperator),           // Range, e.g. `..` or `..=`
+    // existing operators...
+    Is, // New operator
 }
 ```
 
-When you choice what you need, extend the enum
-Here is `ArithmeticOperator` example
-```rust
-pub enum ArithmeticOperator {
-    // Other Operators
-    Add,      // +
-}
-```
-
-Than add it in all implementations like `Display`, `From<&ArithmeticOperator> for InstructionCode` and etc.
 ### Extend the Parser Logic
-
-Now comes the last step, you have to extent Parser, first you have to look at [`crates/datex-core/src/compiler/mod.rs`](../../crates/datex-core/src/compiler/mod.rs)
-There are no really one correct advice how to do this, just look how its done for others in `fn compile_expression` and create your new one
-
-After this long road, you can add a test at the bottom of [`crates/datex-core/src/compiler/mod.rs`](../../crates/datex-core/src/compiler/mod.rs)
-
-# Everything under it is outdated
 
 When extending the parser with new operators (e.g. `is`), **it's essential to
 add them at the correct precedence level**. Operator precedence determines **the

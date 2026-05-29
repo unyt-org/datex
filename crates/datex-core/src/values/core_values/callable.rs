@@ -46,6 +46,7 @@ pub struct Callable {
     pub name: Option<String>,
     pub signature: CallableSignature,
     pub body: CallableBody,
+    pub bound_this: Option<Box<ValueContainer>>,
 }
 
 impl Callable {
@@ -53,12 +54,53 @@ impl Callable {
         &self,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ExecutionError> {
+        let actual_args = if let Some(this) = &self.bound_this {
+            let mut new_args = alloc::vec::Vec::with_capacity(args.len() + 1);
+            new_args.push(*this.clone());
+            new_args.extend_from_slice(args);
+            new_args
+        } else {
+            args.to_vec()
+        };
+
         match &self.body {
-            CallableBody::Native(func) => func(args),
+            CallableBody::Native(func) => func(&actual_args),
             CallableBody::DatexBytecode => {
                 todo!("#606 Calling Datex bytecode is not yet implemented")
             }
         }
+    }
+
+    /// Create method without return type
+    pub fn method(
+        name: &'static str,
+        kind: CallableKind,
+        func: NativeCallable,
+    ) -> Self {
+        Callable {
+            name: Some(name.to_string()),
+            signature: CallableSignature {
+                kind,
+                parameter_types: vec![],
+                rest_parameter_type: None,
+                return_type: None,
+                yeet_type: None,
+            },
+            body: CallableBody::Native(func),
+            bound_this: None,
+        }
+    }
+
+    /// Create a method with return type, I highly recommend this over `fn method`
+    pub fn method_with_return(
+        name: &'static str,
+        kind: CallableKind,
+        func: NativeCallable,
+        return_type: Type,
+    ) -> Self {
+        let mut method = Self::method(name, kind, func);
+        method.signature.return_type = Some(Box::new(return_type));
+        method
     }
 }
 

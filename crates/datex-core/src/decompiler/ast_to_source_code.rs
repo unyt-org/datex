@@ -3,7 +3,7 @@ use crate::ast::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
         Conditional, DatexExpression, DatexExpressionData, List, Map,
         PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
-        SlotAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
+        Set, SlotAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
     type_expressions::{
@@ -27,6 +27,7 @@ pub enum BraceStyle {
     Curly,
     Square,
     Paren,
+    Set,
     #[default]
     None,
 }
@@ -37,6 +38,7 @@ impl BraceStyle {
             BraceStyle::Curly => "{",
             BraceStyle::Square => "[",
             BraceStyle::Paren => "(",
+            BraceStyle::Set => "<|",
             BraceStyle::None => "",
         }
     }
@@ -46,6 +48,7 @@ impl BraceStyle {
             BraceStyle::Curly => "}",
             BraceStyle::Square => "]",
             BraceStyle::Paren => ")",
+            BraceStyle::Set => "|>",
             BraceStyle::None => "",
         }
     }
@@ -190,6 +193,16 @@ impl AstToSourceCodeConverter {
             }
             _ => format!("({})", self.type_expression_to_source_code(key)),
         }
+    }
+
+    fn wrap_set_elements(&self, elements: Vec<String>) -> String {
+        self.wrap_elements(elements, BraceStyle::Set, Some(","))
+    }
+
+    fn set_to_source_code(&self, set: &Set) -> String {
+        let elements: Vec<String> =
+            set.items.iter().map(|v| self.format(v)).collect();
+        self.wrap_set_elements(elements)
     }
 
     /// Convert a TypeExpression to source code
@@ -529,6 +542,7 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Identifier(l) => l.to_string(),
             DatexExpressionData::Map(map) => self.map_to_source_code(map),
             DatexExpressionData::List(list) => self.list_to_source_code(list),
+            DatexExpressionData::Set(set) => self.set_to_source_code(set),
             DatexExpressionData::CreateRef(create_ref) => {
                 match &create_ref.mutability {
                     LocalReferenceMutability::Mutable => {
@@ -840,7 +854,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                Apply, DatexExpression, DatexExpressionData, List, Map,
+                Apply, DatexExpression, DatexExpressionData, List, Map, Set,
                 PropertyAccess, RangeDeclaration, Unbox, UnboxAssignment,
                 VariableAccess, VariableDeclaration, VariableKind,
             },
@@ -850,7 +864,7 @@ mod tests {
         decompiler::options::FormattingOptions,
         global::operators::assignment::AssignmentOperator,
         parser::Parser,
-        values::core_values::decimal::Decimal,
+        values::core_values::{decimal::Decimal},
     };
 
     fn compact() -> AstToSourceCodeConverter {
@@ -1024,6 +1038,48 @@ mod tests {
 			     \"More long strings to increase length\",
 			     \"Final long string in the list\"
 			 ]"}
+        );
+    }
+
+    #[test]
+    fn test_set() {
+        // Test short set in compact mode
+        let set_ast = DatexExpressionData::Set(Set::new(vec![
+            DatexExpressionData::Integer(1.into()).with_default_span(),
+            DatexExpressionData::Integer(2.into()).with_default_span(),
+            DatexExpressionData::Integer(3.into()).with_default_span(),
+        ]));
+        assert_eq!(compact().format(&set_ast.with_default_span()), "<|1,2,3|>");
+
+        // Long set should be multi-line in pretty mode
+        let long_set_ast = DatexExpressionData::Set(Set::new(vec![
+            DatexExpressionData::Text(
+                "First long string for the set".to_string(),
+            )
+            .with_default_span(),
+            DatexExpressionData::Text(
+                "Second long string for the set".to_string(),
+            )
+            .with_default_span(),
+            DatexExpressionData::Text(
+                "Third long string for the set".to_string(),
+            )
+            .with_default_span(),
+            DatexExpressionData::Text(
+                "Fourth long string for the set".to_string(),
+            )
+            .with_default_span(),
+        ]));
+
+        assert_eq!(
+            pretty().format(&long_set_ast.with_default_span()),
+            indoc! {
+            "<|
+			     \"First long string for the set\",
+			     \"Second long string for the set\",
+			     \"Third long string for the set\",
+			     \"Fourth long string for the set\"
+			 |>"}
         );
     }
 

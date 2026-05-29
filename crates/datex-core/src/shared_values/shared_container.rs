@@ -670,10 +670,23 @@ impl SharedContainer {
         &self,
         key: impl Into<ValueKey<'a>>,
     ) -> Result<ValueContainer, AccessError> {
-        self.with_value(|value| value.try_get_property(key))
+        let res = self
+            .with_value(|value| value.try_get_property(key))
             .unwrap_or(Err(AccessError::InvalidOperation(
                 "Cannot get property on invalid reference".to_string(),
-            )))
+            )))?;
+
+        // If the result is a callable and it was bound to a local value, rebind it to this shared container so that mutations work.
+        if let ValueContainer::Local(mut val) = res.clone()
+            && let CoreValue::Callable(ref mut callable) = val.inner
+            && callable.bound_this.is_some()
+        {
+            callable.bound_this =
+                Some(Box::new(ValueContainer::Shared(self.clone())));
+            return Ok(ValueContainer::Local(val));
+        }
+
+        Ok(res)
     }
 }
 

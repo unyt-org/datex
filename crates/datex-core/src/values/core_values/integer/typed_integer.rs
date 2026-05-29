@@ -1,8 +1,28 @@
+//! Typed integer is used for strict int definition. the difference between [`Integer`]
+//! and [`TypedInteger`] is strict definition, here is example
+//!
+//! # Example
+//! ```dx
+//! var test_num1 = 44u8 # same as rust unsigned 8 `u8` with value 44
+//! var test_num2 = -12i32 # same as rust signed 32 `i32` with value 12
+//! ```
+//!
+//! Any `uX` accept only positive non-floating dot numbers
+//!
+//! Any `iX` accept positive and negative numbers, but not with floating dot
+//!
+//! ## Available types
+//! ```dx
+//!    u8, u16, u32, u64, u128,
+//!    i8, i16, i32, i64, i128, IBig
+//! ```
+//! Work the same as in Rust with same limits like u8 has 0-255 limits and etc.
+
 use crate::values::{
     core_values::{
         error::NumberParseError,
         integer::{
-            Integer,
+            BigInt, Integer,
             utils::{smallest_fitting_signed, smallest_fitting_unsigned},
         },
     },
@@ -17,16 +37,17 @@ use crate::{
 use core::{
     fmt::Display,
     hash::Hash,
-    ops::{Add, AddAssign, Neg, Sub},
+    ops::{Add, AddAssign, Div, Mul, Neg, Rem, Sub},
     result::Result,
     unreachable,
 };
+use num_bigint::ToBigInt;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 
-/// The integer type variants to be used as a inline
+/// The integer type variants to be used as an inline
 /// definition in DATEX (such as 42u32 or -42i64).
 /// Note that changing the enum variants will change
 /// the way integers are parsed in DATEX scripts.
@@ -540,292 +561,59 @@ impl PartialEq for TypedInteger {
 }
 
 impl Add for TypedInteger {
-    type Output = Option<TypedInteger>;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Some(match self {
+        match self {
             TypedInteger::IBig(v1) => {
-                TypedInteger::IBig(v1 + Integer::from(rhs))
+                Ok(TypedInteger::IBig(v1 + Integer::from(rhs)))
             }
-            TypedInteger::I8(v1) => TypedInteger::I8(match rhs {
-                TypedInteger::I8(v2) => v1.checked_add(v2)?,
-                TypedInteger::I16(v2) => {
-                    i8::try_from((v1 as i16).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    i8::try_from((v1 as i32).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    i8::try_from((v1 as i64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    i8::try_from((v1 as i128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => {
-                    i8::try_from((v1 as i16).checked_add(v2 as i16)?).ok()?
-                }
-                TypedInteger::U16(v2) => {
-                    i8::try_from((v1 as i32).checked_add(v2 as i32)?).ok()?
-                }
-                TypedInteger::U32(v2) => {
-                    i8::try_from((v1 as i64).checked_add(v2 as i64)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    i8::try_from((v1 as i128).checked_add(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    i8::try_from((v1 as i128).checked_add(v2.try_into().ok()?)?)
-                        .ok()?
-                }
-                TypedInteger::IBig(v2) => (v1).checked_add(v2.as_i8()?)?,
-            }),
-            TypedInteger::I16(v1) => TypedInteger::I16(match rhs {
-                TypedInteger::I8(v2) => v1.checked_add(v2 as i16)?,
-                TypedInteger::I16(v2) => v1.checked_add(v2)?,
-                TypedInteger::I32(v2) => {
-                    i16::try_from((v1 as i32).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    i16::try_from((v1 as i64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    i16::try_from((v1 as i128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_add(v2 as i16)?,
-                TypedInteger::U16(v2) => {
-                    i16::try_from((v1 as i32).checked_add(v2 as i32)?).ok()?
-                }
-                TypedInteger::U32(v2) => {
-                    i16::try_from((v1 as i64).checked_add(v2 as i64)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    i16::try_from((v1 as i128).checked_add(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => i16::try_from(
-                    (v1 as i128).checked_add(v2.try_into().ok()?)?,
-                )
-                .ok()?,
-                TypedInteger::IBig(v2) => v1.checked_add(v2.as_i16()?)?,
-            }),
-            TypedInteger::I32(v1) => TypedInteger::I32(match rhs {
-                TypedInteger::I8(v2) => v1.checked_add(v2 as i32)?,
-                TypedInteger::I16(v2) => v1.checked_add(v2 as i32)?,
-                TypedInteger::I32(v2) => v1.checked_add(v2)?,
-                TypedInteger::I64(v2) => {
-                    i32::try_from((v1 as i64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    i32::try_from((v1 as i128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_add(v2 as i32)?,
-                TypedInteger::U16(v2) => v1.checked_add(v2 as i32)?,
-                TypedInteger::U32(v2) => {
-                    i32::try_from((v1 as i64).checked_add(v2 as i64)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    i32::try_from((v1 as i128).checked_add(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => i32::try_from(
-                    (v1 as i128).checked_add(v2.try_into().ok()?)?,
-                )
-                .ok()?,
-                TypedInteger::IBig(v2) => v1.checked_add(v2.as_i32()?)?,
-            }),
-            TypedInteger::I64(v1) => TypedInteger::I64(match rhs {
-                TypedInteger::I8(v2) => v1.checked_add(v2 as i64)?,
-                TypedInteger::I16(v2) => v1.checked_add(v2 as i64)?,
-                TypedInteger::I32(v2) => v1.checked_add(v2 as i64)?,
-                TypedInteger::I64(v2) => v1.checked_add(v2)?,
-                TypedInteger::I128(v2) => {
-                    i64::try_from((v1 as i128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => {
-                    i64::from((v1 as i16).checked_add(v2 as i16)?)
-                }
-                TypedInteger::U16(v2) => {
-                    i64::from((v1 as i32).checked_add(v2 as i32)?)
-                }
-                TypedInteger::U32(v2) => v1.checked_add(v2 as i64)?,
-                TypedInteger::U64(v2) => {
-                    i64::try_from((v1 as i128).checked_add(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => i64::try_from(
-                    (v1 as i128).checked_add(v2.try_into().ok()?)?,
-                )
-                .ok()?,
-                TypedInteger::IBig(v2) => v1.checked_add(v2.as_i64()?)?,
-            }),
-            TypedInteger::I128(v1) => TypedInteger::I128(match rhs {
-                TypedInteger::I8(v2) => v1.checked_add(v2 as i128)?,
-                TypedInteger::I16(v2) => v1.checked_add(v2 as i128)?,
-                TypedInteger::I32(v2) => v1.checked_add(v2 as i128)?,
-                TypedInteger::I64(v2) => v1.checked_add(v2 as i128)?,
-                TypedInteger::I128(v2) => v1.checked_add(v2)?,
-                TypedInteger::U8(v2) => v1.checked_add(v2 as i128)?,
-                TypedInteger::U16(v2) => v1.checked_add(v2 as i128)?,
-                TypedInteger::U32(v2) => v1.checked_add(v2 as i128)?,
-                TypedInteger::U64(v2) => v1.checked_add(v2 as i128)?,
-                TypedInteger::U128(v2) => {
-                    v1.checked_add(v2.try_into().ok()?)?
-                }
-                TypedInteger::IBig(v2) => v1.checked_add(v2.as_i128()?)?,
-            }),
-            TypedInteger::U8(v1) => TypedInteger::U8(match rhs {
-                TypedInteger::I8(v2) => {
-                    u8::try_from((v1 as i8).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u8::try_from((v1 as i16).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u8::try_from((v1 as i32).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u8::try_from((v1 as i64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u8::try_from((v1 as i128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_add(v2)?,
-                TypedInteger::U16(v2) => {
-                    u8::try_from((v1 as u16).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U32(v2) => {
-                    u8::try_from((v1 as u32).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    u8::try_from((v1 as u64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    u8::try_from((v1 as u128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u8::try_from((v1 as u16).checked_add(v2.as_u16()?)?).ok()?
-                }
-            }),
-            TypedInteger::U16(v1) => TypedInteger::U16(match rhs {
-                TypedInteger::I8(v2) => {
-                    u16::try_from((v1 as i8).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u16::try_from((v1 as i16).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u16::try_from((v1 as i32).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u16::try_from((v1 as i64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u16::try_from((v1 as i128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_add(v2 as u16)?,
-                TypedInteger::U16(v2) => v1.checked_add(v2)?,
-                TypedInteger::U32(v2) => {
-                    u16::try_from((v1 as u32).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    u16::try_from((v1 as u64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    u16::try_from((v1 as u128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u16::try_from((v1 as u32).checked_add(v2.as_u32()?)?)
-                        .ok()?
-                }
-            }),
-
-            TypedInteger::U32(v1) => TypedInteger::U32(match rhs {
-                TypedInteger::I8(v2) => {
-                    u32::try_from((v1 as i8).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u32::try_from((v1 as i16).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u32::try_from((v1 as i32).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u32::try_from((v1 as i64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u32::try_from((v1 as i128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_add(v2 as u32)?,
-                TypedInteger::U16(v2) => v1.checked_add(v2 as u32)?,
-                TypedInteger::U32(v2) => v1.checked_add(v2)?,
-                TypedInteger::U64(v2) => {
-                    u32::try_from((v1 as u64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    u32::try_from((v1 as u128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u32::try_from((v1 as u64).checked_add(v2.as_u64()?)?)
-                        .ok()?
-                }
-            }),
-            TypedInteger::U64(v1) => TypedInteger::U64(match rhs {
-                TypedInteger::I8(v2) => {
-                    u64::try_from((v1 as i8).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u64::try_from((v1 as i16).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u64::try_from((v1 as i32).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u64::try_from((v1 as i64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u64::try_from((v1 as i128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_add(v2 as u64)?,
-                TypedInteger::U16(v2) => v1.checked_add(v2 as u64)?,
-                TypedInteger::U32(v2) => v1.checked_add(v2 as u64)?,
-                TypedInteger::U64(v2) => v1.checked_add(v2)?,
-                TypedInteger::U128(v2) => {
-                    u64::try_from((v1 as u128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u64::try_from((v1 as u128).checked_add(v2.as_u128()?)?)
-                        .ok()?
-                }
-            }),
-            TypedInteger::U128(v1) => TypedInteger::U128(match rhs {
-                TypedInteger::I8(v2) => {
-                    u128::try_from((v1 as i8).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u128::try_from((v1 as i16).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u128::try_from((v1 as i32).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u128::try_from((v1 as i64).checked_add(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u128::try_from((v1 as i128).checked_add(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_add(v2 as u128)?,
-                TypedInteger::U16(v2) => v1.checked_add(v2 as u128)?,
-                TypedInteger::U32(v2) => v1.checked_add(v2 as u128)?,
-                TypedInteger::U64(v2) => v1.checked_add(v2 as u128)?,
-                TypedInteger::U128(v2) => v1.checked_add(v2)?,
-                TypedInteger::IBig(v2) => {
-                    u128::try_from((v1 as i128).checked_add(v2.as_i128()?)?)
-                        .ok()?
-                }
-            }),
-        })
+            TypedInteger::I8(v1) => Ok(TypedInteger::I8(match rhs {
+                TypedInteger::I8(v2) => v1.wrapping_add(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I16(v1) => Ok(TypedInteger::I16(match rhs {
+                TypedInteger::I16(v2) => v1.wrapping_add(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I32(v1) => Ok(TypedInteger::I32(match rhs {
+                TypedInteger::I32(v2) => v1.wrapping_add(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I64(v1) => Ok(TypedInteger::I64(match rhs {
+                TypedInteger::I64(v2) => v1.wrapping_add(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I128(v1) => Ok(TypedInteger::I128(match rhs {
+                TypedInteger::I128(v2) => v1.wrapping_add(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U8(v1) => Ok(TypedInteger::U8(match rhs {
+                TypedInteger::U8(v2) => v1.wrapping_add(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U16(v1) => Ok(TypedInteger::U16(match rhs {
+                TypedInteger::U16(v2) => v1.wrapping_add(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U32(v1) => Ok(TypedInteger::U32(match rhs {
+                TypedInteger::U32(v2) => v1.wrapping_add(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U64(v1) => Ok(TypedInteger::U64(match rhs {
+                TypedInteger::U64(v2) => v1.wrapping_add(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U128(v1) => Ok(TypedInteger::U128(match rhs {
+                TypedInteger::U128(v2) => v1.wrapping_add(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+        }
     }
 }
 
 impl Add for &TypedInteger {
-    type Output = Option<TypedInteger>;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn add(self, rhs: Self) -> Self::Output {
         // FIXME #344 optimize to avoid cloning
@@ -833,38 +621,192 @@ impl Add for &TypedInteger {
     }
 }
 
+impl Mul for TypedInteger {
+    type Output = Result<TypedInteger, ValueError>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match self {
+            TypedInteger::IBig(v1) => {
+                Ok(TypedInteger::IBig(v1 * Integer::from(rhs)))
+            }
+            TypedInteger::I8(v1) => Ok(TypedInteger::I8(match rhs {
+                TypedInteger::I8(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I16(v1) => Ok(TypedInteger::I16(match rhs {
+                TypedInteger::I16(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I32(v1) => Ok(TypedInteger::I32(match rhs {
+                TypedInteger::I32(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I64(v1) => Ok(TypedInteger::I64(match rhs {
+                TypedInteger::I64(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I128(v1) => Ok(TypedInteger::I128(match rhs {
+                TypedInteger::I128(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U8(v1) => Ok(TypedInteger::U8(match rhs {
+                TypedInteger::U8(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U16(v1) => Ok(TypedInteger::U16(match rhs {
+                TypedInteger::U16(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U32(v1) => Ok(TypedInteger::U32(match rhs {
+                TypedInteger::U32(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U64(v1) => Ok(TypedInteger::U64(match rhs {
+                TypedInteger::U64(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U128(v1) => Ok(TypedInteger::U128(match rhs {
+                TypedInteger::U128(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+        }
+    }
+}
+
+impl Mul for &TypedInteger {
+    type Output = Result<TypedInteger, ValueError>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        // FIXME #344 optimize to avoid cloning
+        TypedInteger::mul(self.clone(), rhs.clone())
+    }
+}
+
+impl Div for TypedInteger {
+    type Output = Result<TypedInteger, ValueError>;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        match self {
+            TypedInteger::IBig(v1) => {
+                Ok(TypedInteger::IBig(v1 / Integer::from(rhs)))
+            }
+            TypedInteger::I8(v1) => Ok(TypedInteger::I8(match rhs {
+                TypedInteger::I8(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I16(v1) => Ok(TypedInteger::I16(match rhs {
+                TypedInteger::I16(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I32(v1) => Ok(TypedInteger::I32(match rhs {
+                TypedInteger::I32(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I64(v1) => Ok(TypedInteger::I64(match rhs {
+                TypedInteger::I64(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I128(v1) => Ok(TypedInteger::I128(match rhs {
+                TypedInteger::I128(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U8(v1) => Ok(TypedInteger::U8(match rhs {
+                TypedInteger::U8(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U16(v1) => Ok(TypedInteger::U16(match rhs {
+                TypedInteger::U16(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U32(v1) => Ok(TypedInteger::U32(match rhs {
+                TypedInteger::U32(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U64(v1) => Ok(TypedInteger::U64(match rhs {
+                TypedInteger::U64(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U128(v1) => Ok(TypedInteger::U128(match rhs {
+                TypedInteger::U128(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+        }
+    }
+}
+
+impl Div for &TypedInteger {
+    type Output = Result<TypedInteger, ValueError>;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        // FIXME #344 optimize to avoid cloning
+        TypedInteger::div(self.clone(), rhs.clone())
+    }
+}
+
 impl AddAssign for TypedInteger {
-    // FIXME #345 error handling / wrapping if out of bounds
     fn add_assign(&mut self, rhs: Self) {
-        *self = TypedInteger::add(self.clone(), rhs).expect("Failed to add");
+        let original = self.clone();
+        *self = match TypedInteger::add(self.clone(), rhs) {
+            Ok(v) => v,
+            Err(_) => original,
+        };
     }
 }
 
 impl Sub for TypedInteger {
-    type Output = Option<TypedInteger>;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        let neg_rhs = match rhs {
-            TypedInteger::I8(v) => TypedInteger::I8(v.neg()),
-            TypedInteger::I16(v) => TypedInteger::I16(v.neg()),
-            TypedInteger::I32(v) => TypedInteger::I32(v.neg()),
-            TypedInteger::I64(v) => TypedInteger::I64(v.neg()),
-            TypedInteger::I128(v) => TypedInteger::I128(v.neg()),
-            TypedInteger::U8(v) => TypedInteger::I16((v as i16).neg()),
-            TypedInteger::U16(v) => TypedInteger::I32((v as i32).neg()),
-            TypedInteger::U32(v) => TypedInteger::I64((v as i64).neg()),
-            TypedInteger::U64(v) => TypedInteger::I128((v as i128).neg()),
-            TypedInteger::U128(v) => {
-                TypedInteger::I128((i128::try_from(v).ok()?).neg())
+        match self {
+            TypedInteger::IBig(v1) => {
+                Ok(TypedInteger::IBig(v1 + Integer::from(rhs)))
             }
-            TypedInteger::IBig(v) => TypedInteger::IBig(v.neg()),
-        };
-        self.add(neg_rhs)
+            TypedInteger::I8(v1) => Ok(TypedInteger::I8(match rhs {
+                TypedInteger::I8(v2) => v1.wrapping_sub(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I16(v1) => Ok(TypedInteger::I16(match rhs {
+                TypedInteger::I16(v2) => v1.wrapping_sub(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I32(v1) => Ok(TypedInteger::I32(match rhs {
+                TypedInteger::I32(v2) => v1.wrapping_sub(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I64(v1) => Ok(TypedInteger::I64(match rhs {
+                TypedInteger::I64(v2) => v1.wrapping_sub(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I128(v1) => Ok(TypedInteger::I128(match rhs {
+                TypedInteger::I128(v2) => v1.wrapping_sub(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U8(v1) => Ok(TypedInteger::U8(match rhs {
+                TypedInteger::U8(v2) => v1.wrapping_sub(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U16(v1) => Ok(TypedInteger::U16(match rhs {
+                TypedInteger::U16(v2) => v1.wrapping_sub(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U32(v1) => Ok(TypedInteger::U32(match rhs {
+                TypedInteger::U32(v2) => v1.wrapping_sub(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U64(v1) => Ok(TypedInteger::U64(match rhs {
+                TypedInteger::U64(v2) => v1.wrapping_sub(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U128(v1) => Ok(TypedInteger::U128(match rhs {
+                TypedInteger::U128(v2) => v1.wrapping_sub(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+        }
     }
 }
 
 impl Sub for &TypedInteger {
-    type Output = Option<TypedInteger>;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn sub(self, rhs: Self) -> Self::Output {
         // Fixme #346 optimize to avoid cloning
@@ -958,6 +900,77 @@ impl Neg for TypedInteger {
     }
 }
 
+impl TypedInteger {
+    pub fn checked_rem(self, rhs: Self) -> Option<TypedInteger> {
+        use TypedInteger::*;
+
+        if matches!(self, IBig(_)) || matches!(rhs, IBig(_)) {
+            let v1 = Integer::from(self);
+            let v2 = Integer::from(rhs);
+            if v2 == Integer::from(0) {
+                return None;
+            }
+            return Some(TypedInteger::IBig(v1 % v2));
+        }
+
+        let lhs_val = self.as_i128()?;
+        let rhs_val = rhs.as_i128()?;
+
+        if rhs_val == 0 {
+            return None;
+        }
+        let res = lhs_val.checked_rem(rhs_val)?;
+
+        match self {
+            I8(_) => Some(I8(res as i8)),
+            I16(_) => Some(I16(res as i16)),
+            I32(_) => Some(I32(res as i32)),
+            I64(_) => Some(I64(res as i64)),
+            I128(_) => Some(I128(res)),
+            U8(_) => Some(U8(res as u8)),
+            U16(_) => Some(U16(res as u16)),
+            U32(_) => Some(U32(res as u32)),
+            U64(_) => Some(U64(res as u64)),
+            U128(_) => {
+                let v1 = self.as_u128()?;
+                let v2 = rhs.as_u128()?;
+                v1.checked_rem(v2).map(U128)
+            }
+            IBig(_) => unreachable!(),
+        }
+    }
+}
+
+impl Rem<TypedInteger> for TypedInteger {
+    type Output = TypedInteger;
+    fn rem(self, rhs: TypedInteger) -> TypedInteger {
+        self.checked_rem(rhs).expect("Remainder by zero")
+    }
+}
+
+impl Rem<&TypedInteger> for TypedInteger {
+    type Output = TypedInteger;
+    fn rem(self, rhs: &TypedInteger) -> TypedInteger {
+        self.checked_rem(rhs.clone()).expect("Remainder by zero")
+    }
+}
+
+impl Rem<TypedInteger> for &TypedInteger {
+    type Output = TypedInteger;
+    fn rem(self, rhs: TypedInteger) -> TypedInteger {
+        self.clone().checked_rem(rhs).expect("Remainder by zero")
+    }
+}
+
+impl Rem<&TypedInteger> for &TypedInteger {
+    type Output = TypedInteger;
+    fn rem(self, rhs: &TypedInteger) -> TypedInteger {
+        self.clone()
+            .checked_rem(rhs.clone())
+            .expect("Remainder by zero")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -967,60 +980,50 @@ mod tests {
         let a = TypedInteger::I8(10);
         let b = TypedInteger::I8(20);
 
-        let result = a.clone() + b;
-        assert_eq!(result, Some(TypedInteger::I8(30)));
-
-        let c = TypedInteger::U8(10);
-        let result = a.clone() + c.clone();
-        assert_eq!(result, Some(TypedInteger::I8(20)));
-
-        let result = c + a;
-        assert_eq!(result, Some(TypedInteger::U8(20)));
+        let result = (a.clone() + b).unwrap();
+        assert_eq!(result, TypedInteger::I8(30));
 
         // out of bounds
         let d = TypedInteger::I8(100);
         let e = TypedInteger::I8(50);
-        let result = d + e;
-        assert_eq!(result, None);
+        let result = (d + e).unwrap();
+        assert_eq!(result, TypedInteger::I8(i8::MIN + 22));
     }
 
     #[test]
     fn typed_integer_subtraction() {
         let a = TypedInteger::I8(30);
         let b = TypedInteger::I8(20);
-        let result = a - b;
-        assert_eq!(result, Some(TypedInteger::I8(10)));
+        let result = (a - b).unwrap();
+        assert_eq!(result, TypedInteger::I8(10));
 
         // negative result
         let c = TypedInteger::I8(20);
         let d = TypedInteger::I8(30);
-        let result = c - d;
-        assert_eq!(result, Some(TypedInteger::I8(-10)));
+        let result = (c - d).unwrap();
+        assert_eq!(result, TypedInteger::I8(-10));
 
         // out of bounds
         let e = TypedInteger::I8(-100);
         let f = TypedInteger::I8(50);
-        let result = e - f;
-        assert_eq!(result, None);
-
-        let g = TypedInteger::U8(30);
-        let h = TypedInteger::I8(30);
-        let result = g - h;
-        assert_eq!(result, Some(TypedInteger::U8(0)));
-
-        let h = TypedInteger::U8(30);
-        let i = TypedInteger::I8(31);
-
-        let result = h - i;
-        assert_eq!(result, None);
+        let result = (e - f).unwrap();
+        assert_eq!(result, TypedInteger::I8(106));
     }
 
     #[test]
     fn integer_addition() {
         let a = TypedInteger::from(10_i8);
         let b = TypedInteger::from(20_i8);
-        let result = a + b;
-        assert_eq!(result, Some(TypedInteger::I8(30_i8)));
+        let result = (a + b).unwrap();
+        assert_eq!(result, TypedInteger::I8(30_i8));
+    }
+
+    #[test]
+    fn integer_rem() {
+        let a = TypedInteger::from(12_i8);
+        let b = TypedInteger::from(5_i8);
+        let result = a % b;
+        assert_eq!(result, TypedInteger::I8(2_i8));
     }
 
     #[test]

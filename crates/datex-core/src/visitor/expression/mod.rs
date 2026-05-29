@@ -22,6 +22,7 @@ use crate::{
     },
 };
 use core::ops::Range;
+use crate::ast::expressions::Set;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -103,6 +104,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::List(list) => {
                 self.visit_list(list, &expr.span)
             }
+            DatexExpressionData::Set(set) => self.visit_set(set, &expr.span),
             DatexExpressionData::Map(map) => self.visit_map(map, &expr.span),
             DatexExpressionData::GetSharedRef(get_shared_ref) => {
                 self.visit_get_shared_reference(get_shared_ref, &expr.span)
@@ -504,6 +506,12 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         Ok(VisitAction::VisitChildren)
     }
 
+    fn visit_set(&mut self, set: &mut Set, span: &Range<usize>) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = set;
+        Ok(VisitAction::VisitChildren)
+    }
+    
     /// Visit map expression
     fn visit_map(
         &mut self,
@@ -514,7 +522,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         let _ = span;
         Ok(VisitAction::VisitChildren)
     }
-
+    
     /// Visit integer literal
     fn visit_integer(
         &mut self,

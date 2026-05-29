@@ -28,6 +28,7 @@ impl Parser {
         Ok(match self.peek()?.token.clone() {
             Token::LeftCurly => self.parse_map()?,
             Token::LeftBracket => self.parse_list()?,
+            Token::SetOpen => self.parse_set()?,
             Token::TypeExpressionStart => {
                 self.parse_wrapped_type_expression()?
             }

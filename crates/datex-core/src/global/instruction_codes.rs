@@ -107,7 +107,7 @@ pub enum InstructionCode {
     LESS,                 // <
     GREATER_EQUAL,        // >=
     LESS_EQUAL,           // <=
-    IS,                   // is
+    IS,                   // Checks if two references are identity equal
 
     // logical + algebraic operators 0x90  - 0x9f
     AND,       // &
@@ -239,6 +239,10 @@ pub enum InstructionCode {
     SHORT_LIST, // (1,2,3) - optimized short list with up to 255 elements
     MAP,        // (a:1, b:2)
     SHORT_MAP,  // {a:1, b:2} - optimized short map with up to 255 elements
+
+    // Set
+    SET,
+    SHORT_SET,
 
     KEY_VALUE_SHORT_TEXT,
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key

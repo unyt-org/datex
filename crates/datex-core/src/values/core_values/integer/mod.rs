@@ -1,3 +1,30 @@
+//! [`Integer`] is precise number that can be used for very fast and cheep Math operations that doesnt need
+//! floating point(float type)
+//! this is very similar to Rust 'iX' and 'uX'
+//!
+//! [`Integer`] support every size of `unsigned` and `signed` integer type from Rust
+//!
+//! Also it can be converted to `float` if needed
+//!
+//!
+//! Currently [`Integer`] support this Arithmetical operations
+//! | Operation | Purpose | Example |
+//! |-----------|---------|---------|
+//! | [`Add`] | Add numbers | 3+2=5 |
+//! | [`Sub`] | Subtract numbers | 5-4=1 |
+//! | [`Neg`] | Change number symbol | Neg(5)=(-5) |
+//! | [`Mul`] | Multiply numbers | 4*6=24 |
+//! | [`Div`] | Divide numbers | 25 / 5 = 5 |
+//! | [`Rem`] | Rest from division | 12 % 5 = 2 |
+//!
+//! # Example of usage
+//! ```
+//! use datex_core::values::core_value::CoreValue::Integer;
+//! let a = Integer(42.into());
+//! let b = Integer(58.into());
+//! let sum = a + b; // Integer(100.into())
+//! ```
+
 use core::result::Result;
 pub mod typed_integer;
 pub mod utils;
@@ -16,7 +43,7 @@ use binrw::{
 use core::{
     fmt::Display,
     hash::Hash,
-    ops::{Add, Neg, Sub},
+    ops::{Add, Div, Mul, Neg, Rem, Sub},
     str::FromStr,
 };
 use num::{BigInt, Num};
@@ -322,6 +349,55 @@ impl Sub for &Integer {
     }
 }
 
+impl Mul for Integer {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Integer(self.0 * rhs.0)
+    }
+}
+impl Mul for &Integer {
+    type Output = Integer;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        // FIXME #348: Optimize to avoid cloning if possible
+        Integer::mul(self.clone(), rhs.clone())
+    }
+}
+
+impl Div for Integer {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        Integer(self.0 / rhs.0)
+    }
+}
+impl Div for &Integer {
+    type Output = Integer;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        // FIXME #348: Optimize to avoid cloning if possible
+        Integer::div(self.clone(), rhs.clone())
+    }
+}
+
+// I dont add this as an issue, bc I will comeback later and make it on my own
+impl Rem for Integer {
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        Integer(self.0 % rhs.0)
+    }
+}
+
+impl Rem for &Integer {
+    type Output = Integer;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        Integer::rem(self.clone(), rhs.clone())
+    }
+}
+
 impl Display for Integer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(f, "{}", self.0)
@@ -485,5 +561,13 @@ mod tests {
         let int5 =
             Integer::from_string("-123456789012345678901234567890").unwrap();
         assert_eq!(int5.to_string(), "-123456789012345678901234567890");
+    }
+
+    #[test]
+    fn doc_test() {
+        let a = Integer(42.into());
+        let b = Integer(58.into());
+        let sum = a + b; // Integer(100.into())
+        assert_eq!(sum, Integer(100.into()));
     }
 }

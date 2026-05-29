@@ -12,11 +12,11 @@ use crate::{
             Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
             ListData, MapData, RawInternalPointerAddress,
             RawLocalPointerAddress, RawRemotePointerAddress,
-            RegularInstruction, ShortListData, ShortMapData,
-            ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress,
-            StatementsData, TextData, TextDataRaw, TypeInstruction,
-            TypeReferenceData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
-            UInt128Data, UnboundedStatementsData,
+            RegularInstruction, SetData, ShortListData, ShortMapData,
+            ShortSetData, ShortStatementsData, ShortTextData, ShortTextDataRaw,
+            SlotAddress, StatementsData, TextData, TextDataRaw,
+            TypeInstruction, TypeReferenceData, UInt8Data, UInt16Data,
+            UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
         },
         type_instruction_codes::TypeInstructionCode,
     },
@@ -283,6 +283,23 @@ pub fn iterate_instructions(
                                 element_count: list_data.element_count as u32,
                             })
                         }
+                        InstructionCode::SET => {
+                            let set_data =
+                                yield_unwrap!(SetData::read(&mut reader));
+                            next_instructions_stack
+                                .push_next_regular(set_data.element_count);
+                            RegularInstruction::Set(set_data)
+                        }
+                        InstructionCode::SHORT_SET => {
+                            let set_data =
+                                yield_unwrap!(ShortSetData::read(&mut reader));
+                            next_instructions_stack.push_next_regular(
+                                set_data.element_count as u32,
+                            );
+                            RegularInstruction::Set(SetData {
+                                element_count: set_data.element_count as u32,
+                            })
+                        }
                         InstructionCode::MAP => {
                             let map_data =
                                 yield_unwrap!(MapData::read(&mut reader));
@@ -470,6 +487,20 @@ pub fn iterate_instructions(
                         InstructionCode::DIVIDE => {
                             next_instructions_stack.push_next_regular(2);
                             RegularInstruction::Divide
+                        }
+
+                        // logical
+                        InstructionCode::AND => {
+                            next_instructions_stack.push_next_regular(2);
+                            RegularInstruction::And
+                        }
+                        InstructionCode::OR => {
+                            next_instructions_stack.push_next_regular(2);
+                            RegularInstruction::Or
+                        }
+                        InstructionCode::NOT => {
+                            next_instructions_stack.push_next_regular(1);
+                            RegularInstruction::Not
                         }
 
                         InstructionCode::UNARY_MINUS => {

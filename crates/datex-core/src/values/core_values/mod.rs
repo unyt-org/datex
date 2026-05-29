@@ -7,5 +7,7 @@ pub mod integer;
 pub mod list;
 pub mod map;
 pub mod range;
+pub mod set;
 pub mod text;
 pub mod r#type;
+pub mod methods;

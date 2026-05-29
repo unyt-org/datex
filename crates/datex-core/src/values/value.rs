@@ -10,6 +10,7 @@ use crate::{
         core_values::{
             callable::{Callable, CallableBody, CallableSignature},
             integer::typed_integer::TypedInteger,
+            methods,
         },
         value_container::{ValueContainer, ValueError, ValueKey},
     },
@@ -17,7 +18,7 @@ use crate::{
 
 use core::{
     fmt::{Display, Formatter},
-    ops::{Add, AddAssign, Deref, Neg, Not, Sub},
+    ops::{Add, AddAssign, Deref, Div, Mul, Neg, Not, Sub},
     result::Result,
 };
 use log::error;
@@ -100,9 +101,15 @@ impl Value {
                 name,
                 signature: signature.clone(),
                 body,
+                bound_this: None,
             }),
             actual_type: Box::new(TypeDefinition::callable(signature)),
         }
+    }
+
+    /// Convert Value to f64
+    pub fn as_f64(&self) -> Option<f64> {
+        self.inner.as_f64()
     }
 
     pub fn is_type(&self) -> bool {
@@ -164,12 +171,41 @@ impl Value {
     ) -> Result<ValueContainer, AccessError> {
         match self.inner {
             CoreValue::Map(ref map) => {
-                // If the value is a map, get the property
-                Ok(map.get(key)?.clone())
+                let key = key.into();
+                // try normal map property access
+                if let Ok(val) = map.get(key.clone()) {
+                    return Ok(val.clone());
+                }
+
+                if let Some(method_name) = key.try_as_text() {
+                    if let Some(mut method) =
+                        methods::get_method(&self.inner, method_name)
+                    {
+                        method.bound_this =
+                            Some(Box::new(ValueContainer::from(self.clone())));
+                        return Ok(ValueContainer::from(method));
+                    }
+                }
+
+                Err(AccessError::KeyNotFound(
+                    crate::shared_values::shared_container::KeyNotFoundError {
+                        key: ValueContainer::from(key),
+                    },
+                ))
             }
             CoreValue::List(ref list) => {
-                if let Some(index) = key.into().try_as_index() {
+                let key = key.into();
+                if let Some(index) = key.try_as_index() {
                     Ok(list.get(index)?.clone())
+                } else if let Some(method_name) = key.try_as_text() {
+                    if let Some(mut method) =
+                        methods::get_method(&self.inner, method_name)
+                    {
+                        method.bound_this =
+                            Some(Box::new(ValueContainer::from(self.clone())));
+                        return Ok(ValueContainer::from(method));
+                    }
+                    Err(AccessError::KeyNotFound(crate::shared_values::shared_container::KeyNotFoundError { key: ValueContainer::from(key) }))
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
@@ -185,13 +221,13 @@ impl Value {
             _ => {
                 // If the value is not an map, we cannot get a property
                 Err(AccessError::InvalidOperation(
-                    "Cannot get property".to_string(),
+                    "Cannot get property on this type".to_string(),
                 ))
             }
         }
     }
 
-    /// Sets a property on the value if applicable (e.g. for maps)
+    /// Sets a property on the value if applicable e.g. for maps
     pub fn try_set_property<'a>(
         &mut self,
         key: impl Into<ValueKey<'a>>,
@@ -272,9 +308,36 @@ impl Sub for &Value {
     }
 }
 
+impl Mul for Value {
+    type Output = Result<Value, ValueError>;
+    fn mul(self, rhs: Value) -> Self::Output {
+        Ok((&self.inner * &rhs.inner)?.into())
+    }
+}
+
+impl Mul for &Value {
+    type Output = Result<Value, ValueError>;
+    fn mul(self, rhs: &Value) -> Self::Output {
+        Value::mul(self.clone(), rhs.clone())
+    }
+}
+
+impl Div for Value {
+    type Output = Result<Value, ValueError>;
+    fn div(self, rhs: Value) -> Self::Output {
+        Ok((&self.inner / &rhs.inner)?.into())
+    }
+}
+
+impl Div for &Value {
+    type Output = Result<Value, ValueError>;
+    fn div(self, rhs: &Value) -> Self::Output {
+        Value::div(self.clone(), rhs.clone())
+    }
+}
+
 impl Neg for Value {
     type Output = Result<Value, ValueError>;
-
     fn neg(self) -> Self::Output {
         (-self.inner).map(Value::from)
     }
@@ -336,6 +399,7 @@ mod tests {
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
             list::List,
+            set::Set,
         },
     };
     use core::str::FromStr;
@@ -386,6 +450,51 @@ mod tests {
         assert_eq!(c[0], 1.into());
         assert_eq!(c[1], "test".into());
         assert_eq!(c[2], 3.into());
+    }
+
+    #[test]
+    fn list_methods() {
+        let list_val = Value::from(datex_list![2, 4, 1]);
+
+        // Test len()
+        let len_method = list_val.try_get_property("len").unwrap();
+        let len_res = len_method
+            .apply(&[])
+            .expect("len() failed")
+            .expect("len() returned None");
+        assert_eq!(len_res.to_value().borrow().as_f64().unwrap(), 3.0);
+
+        // Test sort() on shared list
+        let list_shared = ValueContainer::Shared(
+            crate::shared_values::shared_container::SharedContainer::boxed_mut(
+                datex_list![2, 4, 1].into(),
+                crate::shared_values::pointer::Pointer::NULL,
+            )
+            .unwrap(),
+        );
+        let sort_method = list_shared.try_get_property("sort").unwrap();
+        sort_method.apply(&[]).expect("sort() failed");
+
+        let val = list_shared.to_value();
+        let val_borrow = val.borrow();
+        if let CoreValue::List(ref l) = val_borrow.inner {
+            assert_eq!(l.len(), 3);
+            // 1, 2, 4
+            assert_eq!(
+                l.get(0).unwrap().to_value().borrow().as_f64().unwrap(),
+                1.0
+            );
+            assert_eq!(
+                l.get(1).unwrap().to_value().borrow().as_f64().unwrap(),
+                2.0
+            );
+            assert_eq!(
+                l.get(2).unwrap().to_value().borrow().as_f64().unwrap(),
+                4.0
+            );
+        } else {
+            panic!("Not a list: {:?}", val_borrow.inner);
+        }
     }
 
     #[test]
@@ -447,6 +556,116 @@ mod tests {
         let a_plus_b = (a.clone() + b.clone()).unwrap();
         assert_eq!(a_plus_b, Value::from(69i8));
         info!("{} + {} = {}", a.clone(), b.clone(), a_plus_b);
+    }
+
+    #[test]
+    fn divide_basic() {
+        let cases =
+            vec![(24, 6, 4.0), (-24, 6, -4.0), (24, -6, -4.0), (-24, -6, 4.0)];
+
+        for (a, b, expected) in cases {
+            let result = (Value::from(a) / Value::from(b)).unwrap();
+            // Compare numerically
+            assert_eq!(result.as_f64().unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn divide_decimal() {
+        let cases = vec![
+            (25.0, 4.0, 6.25),
+            (1.0, 3.0, 1.0 / 3.0),
+            (10.0, 3.0, 10.0 / 3.0),
+        ];
+
+        for (a, b, expected) in cases {
+            let a = Value::from(a);
+            let b = Value::from(b);
+
+            let result = (a.clone() / b.clone()).unwrap();
+
+            assert!(result.value_eq(&Value::from(expected)));
+            info!("{} / {} = {}", a, b, result);
+        }
+    }
+
+    #[test]
+    fn divide_mixed_types() {
+        let cases = vec![
+            (Value::from(10i32), Value::from(3.0f64), 10.0 / 3.0),
+            (Value::from(10.0f64), Value::from(3i32), 10.0 / 3.0),
+            (Value::from(100i64), Value::from(3.0f32), 100.0 / 3.0),
+        ];
+
+        for (a, b, expected) in cases {
+            let result = (a.clone() / b.clone()).expect("Division failed");
+
+            // 1. Extract the actual result as a float
+            let actual_f =
+                result.as_f64().expect("Result should be a numerical type");
+
+            // 2. Use epsilon comparison instead of value_eq
+            // This handles both the Enum variant mismatch and float precision issues
+            let diff = (actual_f - expected).abs();
+            assert!(
+                diff < 1e-10,
+                "{} / {} = {} (expected: {}, diff: {})",
+                a,
+                b,
+                actual_f,
+                expected,
+                diff
+            );
+
+            info!("{} / {} = {} ✓", a, b, actual_f);
+        }
+    }
+
+    #[test]
+    fn integer_division_should_produce_decimal_results() {
+        let test_cases = vec![(1, 2, 0.5), (1, 3, 1.0 / 3.0), (2, 5, 0.4)];
+
+        for (a, b, expected) in test_cases {
+            let result = (Value::from(a) / Value::from(b)).unwrap();
+
+            // Use epsilon comparison for floats
+            let actual_f = result.as_f64().unwrap();
+            assert!(
+                (actual_f - expected).abs() < f64::EPSILON,
+                "{} / {} produced {}, expected {}",
+                a,
+                b,
+                actual_f,
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn divide_by_zero() {
+        let cases = vec![(42, 0), (-42, 0)];
+
+        for (a, b) in cases {
+            let a = Value::from(a);
+            let b = Value::from(b);
+
+            let result = a.clone() / b.clone();
+
+            assert!(result.is_err());
+            assert!(matches!(result, Err(ValueError::DivisionByZero)));
+
+            info!("{} / {} = DivisionByZero", a, b);
+        }
+    }
+
+    #[test]
+    fn multiplicate() {
+        let a = Value::from(12i8);
+        let b = Value::from(6i8);
+
+        let a_mul_b = (a.clone() * b.clone()).unwrap();
+        assert!(a_mul_b.value_eq(&Value::from(72i8)));
+        info!("{} * {} = {}", a.clone(), b.clone(), a_mul_b);
     }
 
     #[test]
