@@ -1,6 +1,6 @@
 use crate::{
     libs::core::{
-        core_lib_id::CoreLibId,
+        core_lib_id::{CoreLibId, CoreLibIdIndex},
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
     },
     prelude::*,
@@ -10,8 +10,7 @@ use crate::{
         integer::typed_integer::TypedInteger,
     },
 };
-use serde::{Serialize, Serializer, ser::SerializeMap};
-
+use serde::{Serialize, Serializer, de::SeqAccess, ser::SerializeSeq};
 impl Serialize for LiteralTypeDefinition {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -26,57 +25,37 @@ impl Serialize for LiteralTypeDefinition {
                 serializer.serialize_str(value)
             }
 
-            LiteralTypeDefinition::Integer(value) => {
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry(
-                    CoreLibBaseTypeId::Integer.to_string().as_str(),
-                    value,
-                )?;
-                map.end()
-            }
+            other => {
+                let mut seq = serializer.serialize_seq(Some(2))?;
+                let id = self.core_lib_type_id();
+                seq.serialize_element(&id.index().0)?;
+                match other {
+                    LiteralTypeDefinition::Integer(value) => {
+                        seq.serialize_element(value)?;
+                    }
 
-            LiteralTypeDefinition::Decimal(value) => {
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry(
-                    CoreLibBaseTypeId::Decimal.to_string().as_str(),
-                    value,
-                )?;
-                map.end()
-            }
+                    LiteralTypeDefinition::Decimal(value) => {
+                        seq.serialize_element(value)?;
+                    }
 
-            LiteralTypeDefinition::TypedInteger(value) => {
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry(
-                    &CoreLibId::Type(CoreLibTypeId::Variant(
-                        CoreLibVariantTypeId::Integer(value.variant()),
-                    ))
-                    .to_string(),
-                    value,
-                )?;
-                map.end()
-            }
+                    LiteralTypeDefinition::TypedInteger(value) => {
+                        seq.serialize_element(value)?;
+                    }
 
-            LiteralTypeDefinition::TypedDecimal(value) => {
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry(
-                    &CoreLibId::Type(CoreLibTypeId::Variant(
-                        CoreLibVariantTypeId::Decimal(value.variant()),
-                    ))
-                    .to_string(),
-                    value,
-                )?;
-                map.end()
-            }
+                    LiteralTypeDefinition::TypedDecimal(value) => {
+                        seq.serialize_element(value)?;
+                    }
 
-            LiteralTypeDefinition::Endpoint(value) => {
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry("endpoint", value)?;
-                map.end()
+                    LiteralTypeDefinition::Endpoint(value) => {
+                        seq.serialize_element(value)?;
+                    }
+                    _ => unreachable!(),
+                }
+                seq.end()
             }
         }
     }
 }
-
 use core::fmt;
 use serde::{
     Deserialize,
@@ -122,63 +101,53 @@ impl<'de> Visitor<'de> for LiteralTypeDefinitionVisitor {
         Ok(LiteralTypeDefinition::Text(value))
     }
 
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
-        A: MapAccess<'de>,
+        A: SeqAccess<'de>,
     {
-        let key: String = map
-            .next_key()?
-            .ok_or_else(|| de::Error::custom("expected literal type object"))?;
+        let index: u16 = seq
+            .next_element()?
+            .ok_or_else(|| de::Error::custom("expected literal type id"))?;
+        let type_id =
+            CoreLibTypeId::try_from(CoreLibIdIndex(index)).map_err(|err| {
+                de::Error::custom(format!(
+                    "invalid literal type id: {:?}, error: {:?}",
+                    index, err
+                ))
+            })?;
 
-        let result = match key.as_str() {
-            "endpoint" => {
-                let value = map.next_value()?;
-                LiteralTypeDefinition::Endpoint(value)
-            }
-
-            _ => {
-                let type_id =
-                    CoreLibTypeId::try_from_str(&key).ok_or_else(|| {
-                        de::Error::custom(format!(
-                            "invalid LiteralTypeDefinition type key `{}`",
-                            key,
-                        ))
-                    })?;
-
-                deserialize_literal_for_type_id(type_id, &mut map)?
-            }
-        };
-
-        if map.next_key::<de::IgnoredAny>()?.is_some() {
-            return Err(de::Error::custom(
-                "expected LiteralTypeDefinition object with exactly one key",
-            ));
-        }
-
-        Ok(result)
+        deserialize_literal_for_type_id(type_id, &mut seq)
     }
 }
 
 fn deserialize_literal_for_type_id<'de, A>(
     type_id: CoreLibTypeId,
-    map: &mut A,
+    seq: &mut A,
 ) -> Result<LiteralTypeDefinition, A::Error>
 where
-    A: MapAccess<'de>,
+    A: SeqAccess<'de>,
 {
     match type_id {
         CoreLibTypeId::Base(CoreLibBaseTypeId::Integer) => {
-            let value = map.next_value()?;
+            let value = seq.next_element()?.ok_or_else(|| {
+                de::Error::custom("expected integer literal value")
+            })?;
+
             Ok(LiteralTypeDefinition::Integer(value))
         }
 
         CoreLibTypeId::Base(CoreLibBaseTypeId::Decimal) => {
-            let value = map.next_value()?;
+            let value = seq.next_element()?.ok_or_else(|| {
+                de::Error::custom("expected decimal literal value")
+            })?;
+
             Ok(LiteralTypeDefinition::Decimal(value))
         }
 
         CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(variant)) => {
-            let value: String = map.next_value()?;
+            let value: String = seq.next_element()?.ok_or_else(|| {
+                de::Error::custom("expected typed integer literal value")
+            })?;
 
             let value = TypedInteger::try_from_string_and_variant(
                 &value, variant,
@@ -194,7 +163,9 @@ where
         }
 
         CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(variant)) => {
-            let value: String = map.next_value()?;
+            let value: String = seq.next_element()?.ok_or_else(|| {
+                de::Error::custom("expected typed decimal literal value")
+            })?;
 
             let value = TypedDecimal::try_from_string_and_variant(
                 &value, variant,
@@ -210,7 +181,7 @@ where
         }
 
         other => Err(de::Error::custom(format!(
-            "invalid LiteralTypeDefinition type key: {:?}",
+            "invalid LiteralTypeDefinition type id: {:?}",
             other
         ))),
     }
@@ -239,15 +210,15 @@ mod tests {
     #[test_case(LiteralTypeDefinition::Boolean(true), json!(true); "boolean_true")]
     #[test_case(LiteralTypeDefinition::Boolean(false), json!(false); "boolean_false")]
     #[test_case(LiteralTypeDefinition::Text("hello".to_string()), json!("hello"); "text")]
-    #[test_case(LiteralTypeDefinition::Integer(123.into()), json!({
-        CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).to_string(): "123"
-    }); "integer_positive")]
-    #[test_case(LiteralTypeDefinition::Integer((-123).into()), json!({
-        CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).to_string(): "-123"
-    }); "integer_negative")]
-    #[test_case(LiteralTypeDefinition::Integer(0.into()), json!({
-        CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).to_string(): "0"
-    }); "integer_zero")]
+    #[test_case(LiteralTypeDefinition::Integer(123.into()), json!([
+        CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).index().0, "123"
+    ]); "integer_positive")]
+    #[test_case(LiteralTypeDefinition::Integer((-123).into()), json!([
+        CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).index().0, "-123"
+    ]); "integer_negative")]
+    #[test_case(LiteralTypeDefinition::Integer(0.into()), json!([
+        CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).index().0, "0"
+    ]); "integer_zero")]
     // FIXME implement serialize for decimals correct
     // #[test_case(LiteralTypeDefinition::Decimal(123.0.into()), json!({
     //     CoreLibTypeId::Base(CoreLibBaseTypeId::Decimal).to_string(): "123.0"

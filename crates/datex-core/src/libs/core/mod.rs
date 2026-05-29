@@ -242,13 +242,13 @@ mod tests {
 
         for base_id in CoreLibBaseTypeId::iter() {
             println!(
-                "    {}: \"{}\",",
+                "    {}: {},",
                 base_id,
                 CoreLibIdIndex::from(CoreLibId::Type(base_id.into())).0
             );
             for variant_id in CoreLibVariantTypeId::variant_ids(&base_id) {
                 println!(
-                    "    {}_{}: \"{}\",",
+                    "    {}_{}: {},",
                     base_id,
                     variant_id.variant_name(),
                     CoreLibIdIndex::from(CoreLibId::Type(base_id.into())).0

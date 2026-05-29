@@ -218,6 +218,12 @@ impl CoreLibTypeId {
                     .ok()
             })
     }
+    pub fn index(&self) -> CoreLibIdIndex {
+        match self {
+            CoreLibTypeId::Base(base_id) => (*base_id).into(),
+            CoreLibTypeId::Variant(variant_id) => (*variant_id).into(),
+        }
+    }
 }
 
 impl From<CoreLibVariantTypeId> for CoreLibBaseTypeId {

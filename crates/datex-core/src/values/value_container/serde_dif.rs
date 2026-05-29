@@ -231,6 +231,23 @@ mod tests {
     };
 
     #[test]
+    fn local_value() {
+        let mut cache = DIFSharedContainerCache::default();
+        let value = ValueContainer::Local(Value::from(List::from(vec![
+            ValueContainer::Local(Value::from(1)),
+            ValueContainer::Local(Value::from(2)),
+            ValueContainer::Local(Value::from(3)),
+        ])));
+        let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
+            .serialize_to_json(&value);
+        assert_eq!(serialized, r#"[1,2,3]"#);
+        let deserialized = SerdeContext::<ValueContainer>::new(&mut cache)
+            .try_deserialize_from_json(&serialized)
+            .unwrap();
+        assert_eq!(value, deserialized);
+    }
+
+    #[test]
     fn pointer_address() {
         let mut provider = SelfOwnedPointerAddressProvider::default();
         let mut cache = DIFSharedContainerCache::default();
