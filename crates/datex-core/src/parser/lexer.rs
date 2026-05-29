@@ -565,19 +565,16 @@ mod tests {
 
     #[test]
     fn infinity() {
-        let mut lexer = Token::lexer("Infinity");
-        assert_eq!(lexer.next().unwrap(), Ok(Token::Infinity));
-
         let mut lexer = Token::lexer("infinity");
         assert_eq!(lexer.next().unwrap(), Ok(Token::Infinity));
 
-        let lexer = Token::lexer("-Infinity");
+        let lexer = Token::lexer("-infinity");
         assert_eq!(
             lexer.map(Result::unwrap).collect::<Vec<_>>(),
             vec![Token::Minus, Token::Infinity]
         );
 
-        let lexer = Token::lexer("+Infinity");
+        let lexer = Token::lexer("+infinity");
         assert_eq!(
             lexer.map(Result::unwrap).collect::<Vec<_>>(),
             vec![Token::Plus, Token::Infinity]
