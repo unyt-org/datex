@@ -39,6 +39,17 @@ pub enum MapAccessError {
     Immutable,
 }
 
+#[derive(Debug, Clone)]
+pub struct UnexpectedPropertyError {
+    pub key: String,
+}
+
+impl core::fmt::Display for UnexpectedPropertyError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Unexpected property: {:?}", self.key)
+    }
+}
+
 impl Display for MapAccessError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -63,6 +74,12 @@ impl Map {
         entries: IndexMap<ValueContainer, ValueContainer, RandomState>,
     ) -> Self {
         Map::Dynamic(entries)
+    }
+
+    pub fn new_structural_with_string_keys(
+        entries: Vec<(String, ValueContainer)>,
+    ) -> Self {
+        Map::StructuralWithStringKeys(entries)
     }
 
     pub fn is_structural(&self) -> bool {
@@ -126,6 +143,61 @@ impl Map {
                 }
             }
         }
+    }
+
+    /// Ensures that the map only contains the given allowed keys, returning an error if any unexpected keys are found.
+    /// This should only be called on structural maps, as it relies on the assumption that the map will not be modified after construction.
+    pub fn ensure_only_properties(
+        &self,
+        allowed: &[&str],
+    ) -> Result<(), UnexpectedPropertyError> {
+        match self {
+            Map::Structural(_) => {
+                for (key, _) in self.iter() {
+                    if let BorrowedMapKey::Text(text) = key {
+                        if !allowed.contains(&text) {
+                            return Err(UnexpectedPropertyError {
+                                key: text.to_string(),
+                            });
+                        }
+                    } else {
+                        return Err(UnexpectedPropertyError {
+                            key: format!("{key}"),
+                        });
+                    }
+                }
+            }
+            Map::Dynamic(entries) => {
+                for (key, _) in entries {
+                    if let ValueContainer::Local(Value {
+                        inner: CoreValue::Text(text),
+                        ..
+                    }) = key
+                    {
+                        if !allowed.contains(&text.0.as_str()) {
+                            return Err(UnexpectedPropertyError {
+                                key: text.0.clone(),
+                            });
+                        }
+                    } else {
+                        return Err(UnexpectedPropertyError {
+                            key: format!("{key}"),
+                        });
+                    }
+                }
+            }
+            Map::StructuralWithStringKeys(vec) => {
+                for (key, _) in vec {
+                    if !allowed.contains(&key.as_str()) {
+                        return Err(UnexpectedPropertyError {
+                            key: key.clone(),
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Removes a key from the map, returning the value if it existed.

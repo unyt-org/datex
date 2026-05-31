@@ -6,11 +6,7 @@ use crate::{
     },
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
-use serde::{
-    Serializer,
-    de::{DeserializeSeed, Visitor},
-    ser::SerializeSeq,
-};
+use serde::{Serializer, ser::SerializeSeq};
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinitionWithMetadata> {
     type Value = TypeDefinitionWithMetadata;

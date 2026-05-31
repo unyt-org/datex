@@ -137,9 +137,9 @@ impl ValueContainer {
 
     /// For local values, returns the actual type of the value container
     /// For shared values, returns the allowed type of the value container
-    pub fn allowed_or_actual_type(&self) -> Type {
+    pub fn allowed_or_actual_type(&self) -> TypeDefinition {
         match self {
-            ValueContainer::Local(value) => Type::from(value.actual_type()),
+            ValueContainer::Local(value) => value.actual_type(),
             ValueContainer::Shared(shared) => shared.allowed_type().clone(),
         }
     }

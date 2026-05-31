@@ -242,6 +242,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         into_datex_fields,
         from_datex_fields,
         datex_type,
+        field_names,
     } = derive_fields(&data_struct.fields);
 
     let into_datex_fields_inner = match fields_type {
@@ -277,6 +278,10 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
     let from_datex_fields_inner = match fields_type {
         FieldsType::Named => quote! {{
             let mut map: Map = value.try_into()?;
+            map.ensure_only_properties(&[
+                #(#field_names),*
+            ])
+            .map_err(|err| TryFromDatexValueError(err.to_string()))?;
 
             #ident {
                 #(#from_datex_fields),*
@@ -349,6 +354,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             into_datex_fields,
             from_datex_fields,
             datex_type,
+            field_names,
         } = derive_fields(&variant.fields);
 
         // if any variant is fallible, mark as fallible
@@ -427,6 +433,10 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             FieldsType::Named => quote! {
                 #variant_name => {
                     let mut map: Map = value.try_into()?;
+                    map.ensure_only_properties(&[
+                        #(#field_names),*
+                    ])
+                    .map_err(|err| TryFromDatexValueError(err.to_string()))?;
 
                     #helper_struct_ident {
                         #(#from_datex_fields),*
@@ -529,6 +539,7 @@ struct FieldDeriveData {
     into_datex_fields: Vec<TokenStream>,
     from_datex_fields: Vec<TokenStream>,
     datex_type: Option<TokenStream>,
+    field_names: Vec<String>,
 }
 
 fn generate_enum_helper_structs(
@@ -637,6 +648,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
     let mut into_datex_fields: Vec<TokenStream> = vec![];
     let mut from_datex_fields: Vec<TokenStream> = vec![];
     let mut field_types: Vec<TokenStream> = vec![];
+    let mut field_names: Vec<String> = vec![];
 
     let is_single_type = fields.len() == 1;
 
@@ -680,14 +692,43 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                         #field_into
                     )
                 });
+                if (field_names.contains(&field_name)) {
+                    // This can happen, if the user makes invalid use of #[datex(rename = "whatever")]
+                    panic!(
+                        "Duplicate field name after renaming: {}",
+                        field_name
+                    );
+                }
+
+                field_names.push(field_name.clone());
+
+                let field_from = match field_attributes.serde_mode {
+                    SerdeMode::None => {
+                        quote! {
+                            DatexValueContainerProxyDeserialize::try_from_map_property(
+                                unsafe {
+                                    map.try_delete_unsafe(#field_name)
+                                }
+                            )?
+                        }
+                    }
+
+                    SerdeMode::Fallible | SerdeMode::Infallible => {
+                        quote! {
+                            try_serde_from_value_container(
+                                unsafe {
+                                    map.try_delete_unsafe(#field_name)
+                                        .map_err(|err| {
+                                            TryFromDatexValueError(err.to_string())
+                                        })?
+                                }
+                            )?
+                        }
+                    }
+                };
 
                 from_datex_fields.push(quote! {
-                    #field_ident: #from_value_container_function(
-                            unsafe {
-                                map.try_delete_unsafe(#field_name)
-                                    .map_err(|err| TryFromDatexValueError(err.to_string()))?
-                            }
-                        )?
+                    #field_ident: #field_from
                 });
 
                 field_types.push(generate_named_field_type_code(
@@ -755,6 +796,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
         into_datex_fields,
         from_datex_fields,
         datex_type,
+        field_names,
     }
 }
 

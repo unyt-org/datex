@@ -1,12 +1,25 @@
 mod serde_dif;
 
+use strum::AsRefStr;
+
 use crate::{
     prelude::*,
     shared_values::base_shared_value_container::observers::TransceiverId,
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
+mod append_entry;
+mod delete_entry;
+mod list_splice;
+mod replace;
+mod set_entry;
 
-#[derive(Clone, Debug, PartialEq)]
+pub use append_entry::*;
+pub use delete_entry::*;
+pub use list_splice::*;
+pub use replace::*;
+pub use set_entry::*;
+
+#[derive(Clone, Debug, PartialEq, AsRefStr)]
 pub enum UpdateData {
     /// Represents a replacement operation for a value.
     Replace(ReplaceUpdateData),
@@ -37,35 +50,6 @@ impl UpdateData {
         }
     }
 }
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ReplaceUpdateData {
-    pub value: ValueContainer,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct SetEntryUpdateData {
-    pub key: ValueKey,
-    pub value: ValueContainer,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct DeleteEntryUpdateData {
-    pub key: ValueKey,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct AppendEntryUpdateData {
-    pub value: ValueContainer,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ListSpliceUpdateData {
-    pub start: u32,
-    pub delete_count: u32,
-    pub items: Vec<ValueContainer>,
-}
-
 /// Represents an update to a value from a source [TransceiverId]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Update {
@@ -77,30 +61,5 @@ impl Update {
     /// Creates a new [Update]
     pub fn new(source_id: TransceiverId, data: UpdateData) -> Self {
         Update { source_id, data }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum UpdateReturn {
-    None,
-    SingleValue(ValueContainer),
-    MultipleValues(Vec<ValueContainer>),
-}
-
-impl From<()> for UpdateReturn {
-    fn from(_: ()) -> Self {
-        UpdateReturn::None
-    }
-}
-
-impl From<ValueContainer> for UpdateReturn {
-    fn from(value: ValueContainer) -> Self {
-        UpdateReturn::SingleValue(value)
-    }
-}
-
-impl From<Vec<ValueContainer>> for UpdateReturn {
-    fn from(items: Vec<ValueContainer>) -> Self {
-        UpdateReturn::MultipleValues(items)
     }
 }

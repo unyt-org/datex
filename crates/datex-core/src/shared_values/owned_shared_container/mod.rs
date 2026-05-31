@@ -18,7 +18,7 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    types::r#type::Type,
+    types::{r#type::Type, type_definition::TypeDefinition},
     values::{value::Value, value_container::ValueContainer},
 };
 use alloc::rc::Rc;
@@ -56,13 +56,13 @@ impl OwnedSharedContainer {
     }
 
     /// Tries to create a new [OwnedSharedContainer] with an initial [ValueContainer],
-    /// an allowed [Type], a [SharedContainerMutability] and an [SelfOwnedPointerAddress].
+    /// an allowed [TypeDefinition], a [SharedContainerMutability] and an [SelfOwnedPointerAddress].
     ///
     /// If the allowed type is not a superset of the [ValueContainer]'s allowed type,
     /// an error is returned
     pub fn try_new(
         value_container: ValueContainer,
-        allowed_type: Type,
+        allowed_type: TypeDefinition,
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
     ) -> Result<Self, SharedValueCreationError> {
@@ -155,7 +155,7 @@ impl OwnedSharedContainer {
     }
 
     /// Gets a [Ref] to the currently assigned allowed [Type] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<'_, Type> {
+    pub fn allowed_type(&self) -> Ref<'_, TypeDefinition> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
             base_shared_container.allowed_type()
         })

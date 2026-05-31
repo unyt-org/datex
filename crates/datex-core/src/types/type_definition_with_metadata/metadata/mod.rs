@@ -1,31 +1,72 @@
 use crate::shared_values::ReferenceMutability;
 use core::fmt::Display;
+use serde_repr::*;
 
 use crate::shared_values::{
     SharedContainerMutability, SharedContainerOwnership,
 };
 use serde::{Deserialize, Serialize};
 pub mod type_match;
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Serialize_repr, Deserialize_repr, Copy,
+)]
+#[repr(u8)]
 pub enum LocalReferenceMutability {
-    Mutable,
-    Immutable,
+    Immutable = 0,
+    Mutable = 1,
+}
+impl Display for LocalReferenceMutability {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            LocalReferenceMutability::Immutable => write!(f, "&"),
+            LocalReferenceMutability::Mutable => write!(f, "&mut"),
+        }
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Serialize_repr, Deserialize_repr, Copy,
+)]
+#[repr(u8)]
 pub enum LocalMutability {
-    Mutable,
-    Immutable,
+    Immutable = 0,
+    Mutable = 1,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+impl Display for LocalMutability {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            LocalMutability::Immutable => write!(f, ""),
+            LocalMutability::Mutable => write!(f, "mut"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Copy)]
+#[serde(untagged)]
+pub enum LocalOwnership {
+    Owned,
+    Referenced(LocalReferenceMutability),
+}
+impl Display for LocalOwnership {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            LocalOwnership::Owned => write!(f, ""),
+            LocalOwnership::Referenced(reference_mutability) => {
+                write!(f, "{}", reference_mutability)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Copy)]
 /// Combination of &/&mut, '/'mut shared and mut prefixes
 #[serde(tag = "kind")]
 pub enum TypeMetadata {
     /// Local types can be mut or not, and can optionally be a reference type with an additional reference mutability (e.g. &mut User)
     Local {
         mutability: LocalMutability,
-        reference_mutability: Option<LocalReferenceMutability>,
+        ownership: LocalOwnership,
     },
     /// Shared types are always (shared or shared mut) and can optionally be a non-owned, reference type
     /// with an additional reference mutability (e.g. 'mut shared mut User)
@@ -40,18 +81,16 @@ impl Display for TypeMetadata {
         match self {
             TypeMetadata::Local {
                 mutability,
-                reference_mutability,
+                ownership,
             } => {
-                let mutability_str = match mutability {
-                    LocalMutability::Mutable => "mut ",
-                    LocalMutability::Immutable => "",
+                write!(f, "{}", ownership)?;
+                if let LocalOwnership::Referenced(
+                    LocalReferenceMutability::Mutable,
+                ) = ownership
+                {
+                    write!(f, " ")?
                 };
-                let reference_str = match reference_mutability {
-                    Some(LocalReferenceMutability::Mutable) => "&mut ",
-                    Some(LocalReferenceMutability::Immutable) => "&",
-                    None => "",
-                };
-                write!(f, "{}{}", reference_str, mutability_str)
+                write!(f, "{}", mutability)
             }
             TypeMetadata::Shared {
                 mutability,
@@ -85,20 +124,7 @@ impl TypeMetadata {
     pub fn shared_mutability(&self) -> Option<SharedContainerMutability> {
         match self {
             TypeMetadata::Local { .. } => None,
-            TypeMetadata::Shared { mutability, .. } => Some(mutability.clone()),
-        }
-    }
-
-    /// Mutability for a reference to a local type (e.g. &mut X), if applicable
-    pub fn local_reference_mutability(
-        &self,
-    ) -> Option<LocalReferenceMutability> {
-        match self {
-            TypeMetadata::Local {
-                reference_mutability: local_reference_mutability,
-                ..
-            } => local_reference_mutability.clone(),
-            TypeMetadata::Shared { .. } => None,
+            TypeMetadata::Shared { mutability, .. } => Some(*mutability),
         }
     }
 
@@ -115,7 +141,21 @@ impl const Default for TypeMetadata {
     fn default() -> Self {
         TypeMetadata::Local {
             mutability: LocalMutability::Immutable,
-            reference_mutability: None,
+            ownership: LocalOwnership::Owned,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_case::test_case;
+    #[test_case(LocalMutability::Mutable; "mutable")]
+    #[test_case(LocalMutability::Immutable; "immutable")]
+    fn mutability(muty: LocalMutability) {
+        let serialized = serde_json::to_value(&muty).unwrap();
+        let deserialized: LocalMutability =
+            serde_json::from_value(serialized).unwrap();
+        assert_eq!(muty, deserialized);
     }
 }

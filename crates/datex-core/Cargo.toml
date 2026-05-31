@@ -152,6 +152,7 @@ datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.2", optional =
 
 # webrtc features (optional)
 webrtc = { version = "0.13.0", optional = true }
+serde_repr = "0.1.20"
 
 
 ### dev dependencies (for benchmarks and tests)

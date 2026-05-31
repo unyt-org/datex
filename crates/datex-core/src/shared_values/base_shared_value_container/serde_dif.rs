@@ -3,13 +3,16 @@ use core::fmt;
 use crate::{
     dif::serde_context::SerdeContext,
     shared_values::base_shared_value_container::BaseSharedValueContainer,
+    types::{r#type::Type, type_definition::TypeDefinition},
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::value_container::ValueContainer,
 };
-use serde::{Serializer, de::DeserializeSeed, ser::SerializeStruct, Deserializer};
-use serde::de::{MapAccess, SeqAccess, Visitor};
-use serde::ser::SerializeSeq;
-use crate::types::r#type::Type;
+use core::fmt;
+use serde::{
+    Deserializer, Serializer,
+    de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeSeq, SerializeStruct},
+};
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, BaseSharedValueContainer> {
     type Value = BaseSharedValueContainer;
@@ -20,23 +23,18 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, BaseSharedValueContainer> {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         // serialize as struct
-        let mut state =
-            serializer.serialize_seq(Some(3))?;
-        
-        state.serialize_element(
-            &ValueWithSeed::new(
-                &value.value_container,
-                self.cast::<ValueContainer>(),
-            ),
-        )?;
+        let mut state = serializer.serialize_seq(Some(3))?;
+
+        state.serialize_element(&ValueWithSeed::new(
+            &value.value_container,
+            self.cast::<ValueContainer>(),
+        ))?;
 
         state.serialize_element(&value.mutability)?;
-        state.serialize_element(
-            &ValueWithSeed::new(
-                &value.allowed_type,
-                self.cast::<Type>(),
-            ),
-        )?;
+        state.serialize_element(&ValueWithSeed::new(
+            &value.allowed_type,
+            self.cast::<TypeDefinition>(),
+        ))?;
         state.end()
     }
 }
@@ -54,7 +52,6 @@ impl<'de, 'ctx> DeserializeSeed<'de>
     }
 }
 
-
 impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, BaseSharedValueContainer> {
     type Value = BaseSharedValueContainer;
 
@@ -66,31 +63,33 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, BaseSharedValueContainer> {
     where
         A: SeqAccess<'de>,
     {
-        let value_container = seq.next_element_seed(self.cast::<ValueContainer>())?.ok_or_else(|| {
-            serde::de::Error::invalid_length(0, &self)
-        })?;
+        let value_container = seq
+            .next_element_seed(self.cast::<ValueContainer>())?
+            .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
 
-        let mutability = seq.next_element()?.ok_or_else(|| {
-            serde::de::Error::invalid_length(0, &self)
-        })?;
+        let mutability = seq
+            .next_element()?
+            .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
 
+        let allowed_type =
+            seq.next_element_seed(self.cast::<TypeDefinition>())?;
 
-        let allowed_type = seq.next_element_seed(self.cast::<Type>())?;
-
-        Ok(
-            if let Some(allowed_type) = allowed_type {
-                BaseSharedValueContainer::try_new(
-                    value_container,
-                    allowed_type,
-                    mutability,
-                ).map_err(|err| serde::de::Error::custom(format!("invalid BaseSharedValueContainer: {err}")))?
-            }
-            else {
-                BaseSharedValueContainer::new_with_inferred_allowed_type(
-                    value_container,
-                    mutability,
-                )
-            }
-        )
+        Ok(if let Some(allowed_type) = allowed_type {
+            BaseSharedValueContainer::try_new(
+                value_container,
+                allowed_type,
+                mutability,
+            )
+            .map_err(|err| {
+                serde::de::Error::custom(format!(
+                    "invalid BaseSharedValueContainer: {err}"
+                ))
+            })?
+        } else {
+            BaseSharedValueContainer::new_with_inferred_allowed_type(
+                value_container,
+                mutability,
+            )
+        })
     }
 }

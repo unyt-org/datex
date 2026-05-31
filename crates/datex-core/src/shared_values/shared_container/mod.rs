@@ -167,8 +167,8 @@ impl SharedContainer {
         }
     }
 
-    /// Gets a [Ref] to the currently assigned allowed [Type] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<'_, Type> {
+    /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
+    pub fn allowed_type(&self) -> Ref<'_, TypeDefinition> {
         match self {
             SharedContainer::Owned(owned) => owned.allowed_type(),
             SharedContainer::Referenced(referenced) => {

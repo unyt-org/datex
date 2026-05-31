@@ -238,20 +238,16 @@ mod tests {
     ///
     /// `cargo test create_core_type_ts_mapping -- --show-output --ignored`
     fn create_core_type_ts_mapping() {
-        println!("export const CoreTypeAddress = {{");
+        println!("export const CoreLibTypeId = {{");
 
         for base_id in CoreLibBaseTypeId::iter() {
-            println!(
-                "    {}: {},",
-                base_id,
-                CoreLibIdIndex::from(CoreLibId::Type(base_id.into())).0
-            );
+            println!("    {}: {},", base_id, CoreLibIdIndex::from(base_id).0);
             for variant_id in CoreLibVariantTypeId::variant_ids(&base_id) {
                 println!(
                     "    {}_{}: {},",
                     base_id,
                     variant_id.variant_name(),
-                    CoreLibIdIndex::from(CoreLibId::Type(base_id.into())).0
+                    CoreLibIdIndex::from(variant_id).0
                 );
             }
         }

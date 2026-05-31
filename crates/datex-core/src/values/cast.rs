@@ -2,6 +2,7 @@ use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     prelude::*,
+    shared_values::errors::KeyNotFoundError,
     types::{nominal_type_definition::NominalTypeDefinition, r#type::Type},
     values::{
         core_value::CoreValue,
@@ -297,6 +298,14 @@ impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
             Ok(None)
         } else {
             Ok(Some(T::try_from_value(value)?))
+        }
+    }
+    fn try_from_map_property(
+        value: Result<Value, KeyNotFoundError>,
+    ) -> Result<Self, TryFromDatexValueError> {
+        match value {
+            Ok(value) => Self::try_from_value(value),
+            Err(_) => Ok(None),
         }
     }
 }

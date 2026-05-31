@@ -11,11 +11,11 @@ impl TypeSuperset<TypeMetadata> for TypeMetadata {
             (
                 TypeMetadata::Local {
                     mutability: mutability1,
-                    reference_mutability: reference_mutability1,
+                    ownership: reference_mutability1,
                 },
                 TypeMetadata::Local {
                     mutability: mutability2,
-                    reference_mutability: reference_mutability2,
+                    ownership: reference_mutability2,
                 },
             ) => {
                 mutability1 == mutability2

@@ -1,6 +1,9 @@
 use crate::{
     shared_values::SharedContainerMutability,
-    types::type_definition::TypeDefinition,
+    types::{
+        type_definition::TypeDefinition,
+        type_definition_with_metadata::LocalOwnership,
+    },
 };
 
 use crate::{
@@ -74,7 +77,7 @@ impl From<&TypeDefinition> for TypeInstructionCode {
 pub enum TypeOwnershipCode {
     MutableReference,   // &mut / 'mut
     ImmutableReference, // & / '
-    Value,              // default
+    Owned,              // default
 }
 
 impl From<&TypeOwnershipCode> for SharedContainerOwnership {
@@ -90,7 +93,7 @@ impl From<&TypeOwnershipCode> for SharedContainerOwnership {
                     ReferenceMutability::Immutable,
                 )
             }
-            TypeOwnershipCode::Value => SharedContainerOwnership::Owned,
+            TypeOwnershipCode::Owned => SharedContainerOwnership::Owned,
         }
     }
 }
@@ -111,30 +114,30 @@ impl From<&SharedContainerOwnership> for TypeOwnershipCode {
     }
 }
 
-impl From<&Option<LocalReferenceMutability>> for TypeOwnershipCode {
-    fn from(value: &Option<LocalReferenceMutability>) -> Self {
+impl From<&LocalOwnership> for TypeOwnershipCode {
+    fn from(value: &LocalOwnership) -> Self {
         match value {
-            Some(LocalReferenceMutability::Mutable) => {
+            LocalOwnership::Owned => TypeOwnershipCode::Owned,
+            LocalOwnership::Referenced(LocalReferenceMutability::Mutable) => {
                 TypeOwnershipCode::MutableReference
             }
-            Some(LocalReferenceMutability::Immutable) => {
+            LocalOwnership::Referenced(LocalReferenceMutability::Immutable) => {
                 TypeOwnershipCode::ImmutableReference
             }
-            None => TypeOwnershipCode::Value,
         }
     }
 }
 
-impl From<&TypeOwnershipCode> for Option<LocalReferenceMutability> {
+impl From<&TypeOwnershipCode> for LocalOwnership {
     fn from(value: &TypeOwnershipCode) -> Self {
         match value {
+            TypeOwnershipCode::Owned => LocalOwnership::Owned,
             TypeOwnershipCode::MutableReference => {
-                Some(LocalReferenceMutability::Mutable)
+                LocalOwnership::Referenced(LocalReferenceMutability::Mutable)
             }
             TypeOwnershipCode::ImmutableReference => {
-                Some(LocalReferenceMutability::Immutable)
+                LocalOwnership::Referenced(LocalReferenceMutability::Immutable)
             }
-            TypeOwnershipCode::Value => None,
         }
     }
 }

@@ -12,6 +12,7 @@ use crate::{
         execution::{ExecutionError, context::ScriptExecutionError},
         memory::Memory,
     },
+    shared_values::errors::KeyNotFoundError,
     types::r#type::Type,
     values::{value::Value, value_container::ValueContainer},
 };
@@ -95,6 +96,15 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
         value: ValueContainer,
     ) -> Result<Self, TryFromDatexValueError>;
 
+    fn try_from_map_property(
+        value: Result<ValueContainer, KeyNotFoundError>,
+    ) -> Result<Self, TryFromDatexValueError> {
+        let value =
+            value.map_err(|err| TryFromDatexValueError(err.to_string()))?;
+
+        Self::try_from_value_container(value)
+    }
+
     /// Deserialize a value of type T from a byte slice containing DXB data
     fn try_from_bytes(
         input: &[u8],
@@ -156,6 +166,15 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
 /// Conversion from a [Value] to a rust value
 pub trait DatexValueProxyDeserialize: Sized {
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError>;
+
+    fn try_from_map_property(
+        value: Result<Value, KeyNotFoundError>,
+    ) -> Result<Self, TryFromDatexValueError> {
+        let value =
+            value.map_err(|err| TryFromDatexValueError(err.to_string()))?;
+
+        Self::try_from_value(value)
+    }
 }
 
 /// Conversion from a rust value to a [ValueContainer]. Might fail if serde values are serialized.
@@ -190,6 +209,21 @@ impl<T: DatexValueProxyDeserialize> DatexValueContainerProxyDeserialize for T {
         match value {
             ValueContainer::Local(val) => DatexValueProxyDeserialize::try_from_value(val),
             _ => Err(TryFromDatexValueError("Cannot cast from ValueContainer::Shared, expected ValueContainer::Local".to_string())),
+        }
+    }
+    fn try_from_map_property(
+        value: Result<ValueContainer, KeyNotFoundError>,
+    ) -> Result<Self, TryFromDatexValueError> {
+        match value {
+            Ok(ValueContainer::Local(value)) => {
+                DatexValueProxyDeserialize::try_from_map_property(Ok(value))
+            }
+
+            Ok(_) => Err(TryFromDatexValueError("Cannot cast from ValueContainer::Shared, expected ValueContainer::Local".to_string())),
+
+            Err(err) => {
+                DatexValueProxyDeserialize::try_from_map_property(Err(err))
+            }
         }
     }
 }
