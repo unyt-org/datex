@@ -28,7 +28,7 @@ pub struct NextInstructionsStack(Vec<NextScopeInstruction>);
 
 impl Default for NextInstructionsStack {
     fn default() -> Self {
-        NextInstructionsStack(vec![NextScopeInstruction::Regular(1)])
+        NextInstructionsStack(Vec::new())
     }
 }
 
@@ -130,7 +130,7 @@ impl NextInstructionsStack {
                 }
             }
         } else {
-            NextInstructionType::End
+            NextInstructionType::Regular
         }
     }
 

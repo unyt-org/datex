@@ -12,10 +12,7 @@ use crate::{
         execution::{
             ExecutionError,
             execution_input::ExecutionCallerMetadata,
-            execution_loop::{
-                ExternalExecutionInterrupt, execution_loop,
-                interrupts::InterruptProvider,
-            },
+            execution_loop::interrupts::InterruptProvider,
         },
     },
     shared_values::base_shared_value_container::observers::TransceiverId,
@@ -24,11 +21,11 @@ use crate::{
 use core::{cell::RefCell, fmt::Debug};
 
 pub struct ExecutionLoopState {
-    pub iterator: Box<
-        dyn Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>>,
-    >,
     pub dxb_body: Rc<RefCell<Vec<u8>>>,
     pub(crate) interrupt_provider: InterruptProvider,
+    pub stack: RuntimeExecutionStack,
+    pub pc: usize,
+    pub call_stack: Vec<usize>,
 }
 impl ExecutionLoopState {
     pub fn new(
@@ -37,23 +34,14 @@ impl ExecutionLoopState {
         stack: RuntimeExecutionStack,
         caller_metadata: ExecutionCallerMetadata,
     ) -> Self {
-        let state = RuntimeExecutionState {
-            runtime: runtime.clone(),
-            source_id: TransceiverId(0), // TODO #640: set proper source ID
-            stack,
-            caller_metadata,
-        };
-        // TODO #641: optimize, don't clone the whole DXB body every time here
         let dxb_rc = Rc::new(RefCell::new(dxb_body.to_vec()));
         let interrupt_provider = InterruptProvider::new();
         ExecutionLoopState {
             dxb_body: dxb_rc.clone(),
-            iterator: Box::new(execution_loop(
-                state,
-                dxb_rc,
-                interrupt_provider.clone(),
-            )),
             interrupt_provider,
+            stack: stack.clone(),
+            pc: 0,
+            call_stack: Vec::new(),
         }
     }
 }
@@ -62,6 +50,8 @@ impl Debug for ExecutionLoopState {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("ExecutionIterator")
             .field("dxb_body_length", &self.dxb_body.borrow().len())
+            .field("pc", &self.pc)
+            .field("call_stack_depth", &self.call_stack.len())
             .finish()
     }
 }
@@ -75,7 +65,7 @@ pub struct RuntimeExecutionState {
     pub caller_metadata: ExecutionCallerMetadata,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct RuntimeExecutionStack {
     pub values: Vec<Option<ValueContainer>>,
 }

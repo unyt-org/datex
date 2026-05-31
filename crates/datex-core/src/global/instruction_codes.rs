@@ -155,6 +155,13 @@ pub enum InstructionCode {
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key
 
     REMOTE_EXECUTION, // ::
+
+    // control flow extension
+    JUMP,
+    JUMP_IF_FALSE,
+    CALL,
+    RET,
+    CALLABLE,
 }
 
 #[cfg(test)]

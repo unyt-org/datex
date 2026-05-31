@@ -36,6 +36,7 @@ impl Parser {
             }
             Token::LeftParen => self.parse_parenthesized_statements()?,
             Token::If => self.parse_if_else()?,
+            Token::While => self.parse_while_loop()?,
             Token::Function | Token::Procedure => {
                 self.parse_callable_definition()?
             }
@@ -208,10 +209,8 @@ impl Parser {
 
         let span = self.advance()?.span.clone();
         let res = match variant {
-            Some(var) => {
-                TypedDecimal::try_from_string_and_variant(&value, var)
-                    .map(DatexExpressionData::TypedDecimal)
-            }
+            Some(var) => TypedDecimal::try_from_string_and_variant(&value, var)
+                .map(DatexExpressionData::TypedDecimal),
             None => Decimal::try_from_string(&value)
                 .map(DatexExpressionData::Decimal),
         };

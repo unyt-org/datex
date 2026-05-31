@@ -371,6 +371,11 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::SetStackValue(_)
                         | RegularInstruction::ModifyStackValue(_)
                         | RegularInstruction::SetSharedContainerValue(_)
+                        | RegularInstruction::Jump(_)
+                        | RegularInstruction::JumpIfFalse(_)
+                        | RegularInstruction::Call(_)
+                        | RegularInstruction::Callable(_)
+                        | RegularInstruction::Ret
                         | RegularInstruction::Unbox
                         | RegularInstruction::TypedValue
                         | RegularInstruction::RemoteExecution(_)

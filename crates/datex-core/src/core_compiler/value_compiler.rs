@@ -21,8 +21,8 @@ use crate::{
     },
     global::protocol_structures::{
         instruction_data::{
-            Float32Data, Float64Data, Int8Data, Int16Data, Int32Data,
-            Int64Data, Int128Data, IntegerData, ListData, MapData,
+            CallableData, Float32Data, Float64Data, Int8Data, Int16Data,
+            Int32Data, Int64Data, Int128Data, IntegerData, ListData, MapData,
             RawPointerAddress, ShortTextData, TaggedValue, UInt8Data,
             UInt16Data, UInt32Data, UInt64Data, UInt128Data,
         },
@@ -205,10 +205,29 @@ pub fn append_value(
                 ),
             }
         }
-        CoreValue::Callable(_callable) => {
-            core::todo!(
-                "#632 Callable value not supported in CompilationContext"
-            );
+        CoreValue::Callable(callable) => {
+            match &callable.body {
+                crate::values::core_values::callable::CallableBody::Native(_) => {
+                    core::todo!(
+                        "Serializing native callable values is not supported"
+                    );
+                }
+                crate::values::core_values::callable::CallableBody::DatexBytecode(body) => {
+                    append_regular_instruction(
+                        context.cursor_mut(),
+                        RegularInstruction::Callable(
+                            crate::global::protocol_structures::instruction_data::CallableData {
+                                name: ShortTextData(
+                                    callable.name.clone().unwrap_or_default(),
+                                ),
+                                parameter_count: callable.signature.parameter_types.len() as u32,
+                                body_length: body.len() as u32,
+                                body: body.clone(),
+                            },
+                        ),
+                    );
+                }
+            }
         }
         CoreValue::Integer(integer) => {
             // NOTE: we might optimize this later, but using INT with big integer encoding
@@ -696,6 +715,44 @@ mod tests {
             [RegularInstruction::GetCoreLibValue(
                 CoreLibBaseTypeId::Integer.into()
             )]
+        );
+    }
+
+    #[test]
+    fn compile_callable_value() {
+        use crate::types::type_definition::callable::{
+            CallableKind, CallableTypeDefinition,
+        };
+        use crate::values::core_values::callable::{Callable, CallableBody};
+
+        let signature = CallableTypeDefinition {
+            kind: CallableKind::Function,
+            parameter_types: vec![],
+            rest_parameter_type: None,
+            return_type: None,
+            yeet_type: None,
+        };
+        let value = Value {
+            inner: CoreValue::Callable(Callable {
+                name: Some("test".to_string()),
+                signature,
+                body: CallableBody::DatexBytecode(vec![
+                    InstructionCode::UINT_8.into(),
+                    42,
+                ]),
+            }),
+            custom_type: None,
+        };
+
+        let compiled = compile_value(value).unwrap();
+        assert_regular_instructions_equal!(
+            &compiled,
+            [RegularInstruction::Callable(CallableData {
+                name: ShortTextData("test".to_string()),
+                parameter_count: 0,
+                body_length: 2,
+                body: vec![InstructionCode::UINT_8.into(), 42],
+            })]
         );
     }
 }

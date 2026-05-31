@@ -1,5 +1,15 @@
 use crate::{
     prelude::*,
+    runtime::{
+        Runtime,
+        execution::{
+            execute_dxb_sync,
+            execution_input::{
+                ExecutionCallerMetadata, ExecutionInput, ExecutionOptions,
+            },
+            execution_loop::state::RuntimeExecutionStack,
+        },
+    },
     types::type_definition::callable::CallableTypeDefinition,
     values::{
         core_values::callable::error::CallableError,
@@ -16,7 +26,7 @@ pub type NativeCallable =
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CallableBody {
     Native(NativeCallable),
-    DatexBytecode,
+    DatexBytecode(Vec<u8>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -33,8 +43,19 @@ impl Callable {
     ) -> Result<Option<ValueContainer>, CallableError> {
         match &self.body {
             CallableBody::Native(func) => func(args),
-            CallableBody::DatexBytecode => {
-                todo!("#606 Calling Datex bytecode is not yet implemented")
+            CallableBody::DatexBytecode(body) => {
+                let runtime = Runtime::stub();
+                let stack = RuntimeExecutionStack {
+                    values: args.iter().cloned().map(Some).collect(),
+                };
+                let result = execute_dxb_sync(ExecutionInput::new_with_stack(
+                    body,
+                    ExecutionCallerMetadata::local_default(),
+                    ExecutionOptions::default(),
+                    runtime,
+                    stack,
+                ))?;
+                Ok(result)
             }
         }
     }

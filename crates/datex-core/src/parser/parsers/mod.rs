@@ -13,3 +13,4 @@ pub mod tagged_value;
 pub mod type_declaration;
 pub mod type_expressions;
 pub mod variable_declaration;
+pub mod while_loop;

@@ -27,6 +27,11 @@ pub enum InvalidProgramError {
     ExpectedRegularInstruction,
     ExpectedTypeInstruction,
     InvalidCoreLibId(CoreLibIdIndex),
+    InvalidJumpTarget {
+        current_position: usize,
+        offset: i32,
+        len: usize,
+    },
 }
 
 impl Display for InvalidProgramError {
@@ -58,6 +63,16 @@ impl Display for InvalidProgramError {
             }
             InvalidProgramError::InvalidCoreLibId(core_lib_id) => {
                 core::write!(f, "Invalid core library id: {core_lib_id}")
+            }
+            InvalidProgramError::InvalidJumpTarget {
+                current_position,
+                offset,
+                len,
+            } => {
+                core::write!(
+                    f,
+                    "Invalid jump target: position {current_position}, offset {offset}, buffer length {len}"
+                )
             }
         }
     }

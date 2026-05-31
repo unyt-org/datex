@@ -366,6 +366,21 @@ impl<T> InstructionCollector<T> {
         self.root_result.take()
     }
 
+    /// Takes the most recently produced value in the active collector context.
+    /// This prefers the current statement collector when one is active, and
+    /// falls back to the root result otherwise.
+    pub fn take_current_result(&mut self) -> Option<T> {
+        match self.result_collectors.last_mut() {
+            Some(ResultCollector::Last(collector)) => {
+                collector.last_result.take()
+            }
+            Some(ResultCollector::LastUnbounded(collector)) => {
+                collector.last_result.take()
+            }
+            _ => self.root_result.take(),
+        }
+    }
+
     /// Processes a regular instruction with default behavior for recursive instructions that need to
     /// collect more results.
     /// Returns Some(regular_instruction) if the instruction was not handled and should be processed by the caller.

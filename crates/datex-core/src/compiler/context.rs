@@ -13,6 +13,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use binrw::io::Cursor;
+use core::mem;
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext {
@@ -83,6 +84,35 @@ impl CompilationContext {
         let buf = self.cursor().get_mut();
         buf[index..index + CompilationContext::INT_32_BYTES as usize]
             .copy_from_slice(&u32.to_le_bytes());
+    }
+
+    pub fn set_i32_at_index(&mut self, value: i32, index: usize) {
+        let buf = self.cursor().get_mut();
+        buf[index..index + CompilationContext::INT_32_BYTES as usize]
+            .copy_from_slice(&value.to_le_bytes());
+    }
+
+    pub fn append_i32(&mut self, value: i32) {
+        let cursor = self.cursor();
+        cursor.get_mut().extend_from_slice(&value.to_le_bytes());
+        cursor.set_position(cursor.position() + mem::size_of::<i32>() as u64);
+    }
+
+    pub fn append_relative_jump_placeholder(&mut self) -> usize {
+        let index = self.buffer_index() as usize;
+        self.append_i32(0);
+        index
+    }
+
+    pub fn patch_relative_jump(
+        &mut self,
+        placeholder_index: usize,
+        target_index: usize,
+    ) {
+        let offset = target_index as i64
+            - (placeholder_index as i64
+                + CompilationContext::INT_32_BYTES as i64);
+        self.set_i32_at_index(offset as i32, placeholder_index);
     }
 
     pub fn mark_has_non_static_value(&mut self) {

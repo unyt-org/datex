@@ -4,7 +4,10 @@
 use crate::{
     collections::HashSet,
     type_inference::infer_expression_type_detailed_errors,
-    types::shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+    types::{
+        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+        type_definition::callable::CallableKind,
+    },
     values::core_value::CoreValue,
 };
 
@@ -29,11 +32,14 @@ use crate::{
         spanned::Spanned,
         type_expressions::{TypeExpressionData, TypeVariantAccess},
     },
-    compiler::error::{
-        CompilerError, DetailedCompilerErrors,
-        DetailedCompilerErrorsWithRichAst,
-        SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
-        SpannedCompilerError,
+    compiler::{
+        DatexExpressionData::CallableDeclaration,
+        error::{
+            CompilerError, DetailedCompilerErrors,
+            DetailedCompilerErrorsWithRichAst,
+            SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
+            SpannedCompilerError,
+        },
     },
     global::operators::{BinaryOperator, binary::ArithmeticOperator},
     libs::core::{core_lib_id::CoreLibId, type_id::CoreLibBaseTypeId},
@@ -65,6 +71,7 @@ pub struct Precompiler<'a> {
     scope_stack: &'a mut PrecompilerScopeStack,
     collected_errors: Option<DetailedCompilerErrors>,
     is_first_level_expression: bool,
+    in_condition_context: bool,
     runtime: Runtime,
 }
 
@@ -145,6 +152,7 @@ impl<'a> Precompiler<'a> {
             scope_stack,
             collected_errors: None,
             is_first_level_expression: true,
+            in_condition_context: false,
             runtime,
         }
     }
@@ -280,6 +288,7 @@ impl<'a> Precompiler<'a> {
     ) -> NewScopeType {
         match &expr.data {
             DatexExpressionData::RemoteExecution(_) => NewScopeType::None,
+            DatexExpressionData::CallableDeclaration(_) => NewScopeType::None,
             _ => NewScopeType::NewScope,
         }
     }
@@ -692,6 +701,92 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         Ok(VisitAction::VisitChildren)
     }
 
+    fn visit_conditional(
+        &mut self,
+        conditional: &mut crate::ast::expressions::Conditional,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        let _ = span;
+        let previous_condition_context = self.in_condition_context;
+        self.in_condition_context = true;
+        let condition_result =
+            self.visit_datex_expression(&mut conditional.condition);
+        self.in_condition_context = previous_condition_context;
+        condition_result?;
+        self.visit_datex_expression(&mut conditional.then_branch)?;
+        if let Some(else_branch) = &mut conditional.else_branch {
+            self.visit_datex_expression(else_branch)?;
+        }
+        Ok(VisitAction::SkipChildren)
+    }
+
+    fn visit_while_loop(
+        &mut self,
+        while_loop: &mut crate::ast::expressions::WhileLoop,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        let _ = span;
+        let previous_condition_context = self.in_condition_context;
+        self.in_condition_context = true;
+        let condition_result =
+            self.visit_datex_expression(&mut while_loop.condition);
+        self.in_condition_context = previous_condition_context;
+        condition_result?;
+        self.visit_datex_expression(&mut while_loop.body)?;
+        Ok(VisitAction::SkipChildren)
+    }
+
+    fn visit_callable_declaration(
+        &mut self,
+        callable_declaration: &mut crate::ast::expressions::CallableDeclaration,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        let declared_name = callable_declaration.name.clone();
+
+        if let Some(return_type) = &mut callable_declaration.return_type {
+            self.visit_type_expression(return_type)?;
+        }
+        for (_, param_type) in &mut callable_declaration.parameters {
+            self.visit_type_expression(param_type)?;
+        }
+
+        self.scope_stack.push_scope();
+        for (parameter_name, _parameter_type) in
+            &callable_declaration.parameters
+        {
+            self.add_new_variable(
+                parameter_name.clone(),
+                VariableShape::Value(VariableKind::Const),
+            );
+        }
+
+        let body_result =
+            self.visit_datex_expression(&mut callable_declaration.body);
+        self.scope_stack.pop_scope();
+        body_result?;
+
+        if let Some(name) = declared_name {
+            if self
+                .scope_stack
+                .get_active_scope()
+                .variable_ids_by_name
+                .contains_key(&name)
+            {
+                return Err(SpannedCompilerError::new_with_span(
+                    CompilerError::InvalidRedeclaration(name),
+                    callable_declaration.body.span.clone(),
+                ));
+            }
+
+            self.add_new_variable(
+                name,
+                VariableShape::Value(VariableKind::Const),
+            );
+        }
+
+        Ok(VisitAction::SkipChildren)
+    }
+
     fn visit_variable_assignment(
         &mut self,
         variable_assignment: &mut VariableAssignment,
@@ -849,11 +944,20 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         identifier: &mut String,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
-        self.visit_identifier_with_access_type(
-            identifier,
-            span,
-            ValueAccessType::MoveOrCopy,
-        )
+        // let is_callable = self
+        //     .scope_stack
+        //     .variable_kind(identifier, &self.ast_metadata.borrow())
+        //     == Some(VariableShape::Callable);
+        let access_type = if self.in_condition_context {
+            ValueAccessType::Borrow
+        // } else if self.in_assignment_rhs {
+        //     ValueAccessType::Borrow
+        // } else if is_callable {
+        //     ValueAccessType::Borrow
+        } else {
+            ValueAccessType::MoveOrCopy
+        };
+        self.visit_identifier_with_access_type(identifier, span, access_type)
     }
 }
 

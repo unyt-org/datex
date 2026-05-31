@@ -9,26 +9,27 @@ pub mod state;
 use crate::{
     core_compiler::injected_values::compile_injected_values,
     dxb_parser::{
-        body::{DXBParserError, iterate_instructions},
+        body::DXBParserError,
         instruction_collector::{
             CollectedResults, CollectionResultsPopper, FullOrPartialResult,
             InstructionCollector, LastUnboundedResultCollector,
             ResultCollector, StatementResultCollectionStrategy,
         },
+        next_instructions_stack::{NextInstructionType, NextInstructionsStack},
     },
     global::{
         operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-        protocol_structures::{
-            instruction_data::{
-                ApplyData, DecimalData, Float32Data, Float64Data,
-                FloatAsInt16Data, FloatAsInt32Data, IntegerData,
-                ModifyStackValue, RawPointerAddress, ShortTextData,
-                TaggedValue, TextData, UnboundedStatementsData,
+            protocol_structures::{
+                instruction_data::{
+                    ApplyData, CallableData, DecimalData, Float32Data, Float64Data,
+                    FloatAsInt16Data, FloatAsInt32Data, IntegerData, JumpOffsetData,
+                    ModifyStackValue, RawPointerAddress, ShortTextData,
+                    TaggedValue, TextData, UnboundedStatementsData,
+                },
+                instructions::Instruction,
+                regular_instructions::RegularInstruction,
+                type_instructions::TypeInstruction,
             },
-            instructions::{Instruction, NestedInstructionResolutionStrategy},
-            regular_instructions::RegularInstruction,
-            type_instructions::TypeInstruction,
-        },
     },
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
@@ -90,6 +91,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use binrw::{BinRead, io::Cursor};
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -212,6 +214,24 @@ impl CollectedResults<CollectedExecutionResult> {
     }
 }
 
+fn apply_relative_jump(
+    current_position: usize,
+    offset: i32,
+    len: usize,
+) -> Result<usize, ExecutionError> {
+    let target = current_position as i64 + offset as i64;
+    if target < 0 || target > len as i64 {
+        return Err(ExecutionError::InvalidProgram(
+            InvalidProgramError::InvalidJumpTarget {
+                current_position,
+                offset,
+                len,
+            },
+        ));
+    }
+    Ok(target as usize)
+}
+
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
 pub fn execution_loop(
@@ -267,23 +287,58 @@ pub fn inner_execution_loop(
     gen move {
         let mut collector =
             InstructionCollector::<CollectedExecutionResult>::default();
+        let mut call_stack: Vec<usize> = Vec::new();
+        let mut pending_return_value: Option<CollectedExecutionResult> = None;
 
-        for instruction_result in iterate_instructions(
-            dxb_body,
-            NestedInstructionResolutionStrategy::None,
-        ) {
-            let instruction = match instruction_result {
-                Ok(instruction) => instruction,
-                Err(DXBParserError::ExpectingMoreInstructions) => {
+        let mut next_instructions_stack = NextInstructionsStack::default();
+        let mut dxb_cursor = Cursor::new(dxb_body.borrow().clone());
+
+        loop {
+            let len = dxb_cursor.get_ref().len();
+            if dxb_cursor.position() as usize >= len {
+                if !next_instructions_stack.is_end() {
                     yield Err(DXBParserError::ExpectingMoreInstructions.into());
-                    // assume that when continuing after this yield, more instructions will have been loaded
-                    // so we run the loop again to try to get the next instruction
+                    dxb_cursor = Cursor::new(dxb_body.borrow().clone());
                     continue;
                 }
-                Err(err) => {
-                    return yield Err(err.into());
+                break;
+            }
+
+            let next_instruction_type = next_instructions_stack.pop();
+            let instruction: Instruction = match next_instruction_type {
+                NextInstructionType::Regular => {
+                    yield_unwrap!(
+                        RegularInstruction::read(&mut dxb_cursor)
+                            .map_err(DXBParserError::from)
+                    )
+                    .into()
+                }
+                NextInstructionType::Type => {
+                    yield_unwrap!(
+                        TypeInstruction::read(&mut dxb_cursor)
+                            .map_err(DXBParserError::from)
+                    )
+                    .into()
+                }
+                NextInstructionType::End => {
+                    if dxb_cursor.position() as usize >= len {
+                        break;
+                    } else {
+                        return yield Err(DXBParserError::UnexpectedBytesAfterEndOfInstructions.into());
+                    }
                 }
             };
+
+            yield_unwrap!(
+                next_instructions_stack
+                    .handle_next_expected_instructions(
+                        instruction.get_next_expected_instructions(),
+                    )
+                    .map_err(DXBParserError::from)
+            );
+
+            let mut pending_seek: Option<usize> = None;
+            let mut stop_execution = false;
 
             let result = match instruction {
                 // handle regular instructions
@@ -516,6 +571,104 @@ pub fn inner_execution_loop(
                                         ty: Some(Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()).into())),
                                     }))
                                 })))
+                            }
+
+                            RegularInstruction::Jump(JumpOffsetData(offset)) => {
+                                let target = yield_unwrap!(apply_relative_jump(
+                                    dxb_cursor.position() as usize,
+                                    offset,
+                                    dxb_cursor.get_ref().len(),
+                                ));
+                                pending_seek = Some(target);
+                                None
+                            }
+
+                            RegularInstruction::JumpIfFalse(JumpOffsetData(offset)) => {
+                                let condition = match yield_unwrap!(
+                                    collector.take_current_result().ok_or(
+                                        ExecutionError::InvalidProgram(
+                                            InvalidProgramError::ExpectedValue,
+                                        ),
+                                    )
+                                ) {
+                                    CollectedExecutionResult::Value(
+                                        Some(runtime_value),
+                                    ) => yield_unwrap!(
+                                        runtime_value.into_cloned_value_container(
+                                            &state,
+                                        )
+                                    ),
+                                    CollectedExecutionResult::Value(None) => {
+                                        return yield Err(
+                                            ExecutionError::InvalidProgram(
+                                                InvalidProgramError::ExpectedValue,
+                                            ),
+                                        );
+                                    }
+                                    _ => {
+                                        return yield Err(
+                                            ExecutionError::InvalidProgram(
+                                                InvalidProgramError::ExpectedValue,
+                                            ),
+                                        );
+                                    }
+                                };
+                                let should_jump = condition
+                                    .with_collapsed_value(|value| value.inner.cast_to_bool())
+                                    .map(|b| !b.0)
+                                    .unwrap_or(true);
+                                if should_jump {
+                                    let target = yield_unwrap!(apply_relative_jump(
+                                        dxb_cursor.position() as usize,
+                                        offset,
+                                        dxb_cursor.get_ref().len(),
+                                    ));
+                                    pending_seek = Some(target);
+                                }
+                                None
+                            }
+
+                            RegularInstruction::Call(JumpOffsetData(offset)) => {
+                                let return_pc = dxb_cursor.position() as usize;
+                                let target = yield_unwrap!(apply_relative_jump(
+                                    return_pc,
+                                    offset,
+                                    dxb_cursor.get_ref().len(),
+                                ));
+                                call_stack.push(return_pc);
+                                pending_seek = Some(target);
+                                None
+                            }
+
+                            RegularInstruction::Ret => {
+                                pending_return_value =
+                                    collector.take_current_result();
+                                if let Some(return_pc) = call_stack.pop() {
+                                    pending_seek = Some(return_pc);
+                                } else {
+                                    stop_execution = true;
+                                }
+                                None
+                            }
+
+                            RegularInstruction::Callable(CallableData { name, parameter_count, body_length: _, body }) => {
+                                let signature = crate::types::type_definition::callable::CallableTypeDefinition {
+                                    kind: crate::types::type_definition::callable::CallableKind::Function,
+                                    parameter_types: (0..parameter_count).map(|index| {
+                                        (
+                                            Some(format!("arg{}", index)),
+                                            Type::core(crate::libs::core::type_id::CoreLibBaseTypeId::Unknown),
+                                        )
+                                    }).collect(),
+                                    rest_parameter_type: None,
+                                    return_type: None,
+                                    yeet_type: None,
+                                };
+                                Some(RuntimeValue::ValueContainer(ValueContainer::from(Value::callable(
+                                    if name.0.is_empty() { None } else { Some(name.0) },
+                                    signature,
+                                    crate::values::core_values::callable::CallableBody::DatexBytecode(body),
+                                ))))
                             }
 
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
@@ -1422,6 +1575,18 @@ pub fn inner_execution_loop(
                 collector.push_result(expr);
             }
 
+            if let Some(target) = pending_seek {
+                dxb_cursor.set_position(target as u64);
+            }
+
+            if let Some(return_value) = pending_return_value.take() {
+                collector.push_result(return_value);
+            }
+
+            if stop_execution {
+                break;
+            }
+
             // if in unbounded statements, propagate active value via interrupt
             if let Some(ResultCollector::LastUnbounded(
                 LastUnboundedResultCollector {
@@ -1445,7 +1610,7 @@ pub fn inner_execution_loop(
             }
         }
 
-        if let Some(result) = collector.take_root_result() {
+        if let Some(result) = collector.take_current_result() {
             yield Ok(ExecutionInterrupt::External(
                 ExternalExecutionInterrupt::Result(match result {
                     CollectedExecutionResult::Value(value) => {

@@ -646,10 +646,40 @@ impl AstToSourceCodeConverter {
                 )
             }
             DatexExpressionData::Conditional(Conditional {
-                condition: _,
-                then_branch: _,
-                else_branch: _,
-            }) => core::todo!("#476 Undescribed by author."),
+                condition,
+                then_branch,
+                else_branch,
+            }) => {
+                let mut code = String::from("if (");
+                code.push_str(&self.format(condition));
+                code.push_str(") (");
+                code.push_str(&self.format(then_branch));
+                code.push(')');
+                if let Some(else_branch) = else_branch.as_ref() {
+                    code.push_str(" else (");
+                    code.push_str(&self.format(else_branch));
+                    code.push(')');
+                }
+                code
+            }
+            DatexExpressionData::WhileLoop(WhileLoop { condition, body }) => {
+                let mut code = String::from("while (");
+                if let Some(condition) = condition.as_ref() {
+                    code.push_str(&self.format(condition));
+                } else {
+                    code.push_str("true");
+                }
+                code.push_str(") (");
+                code.push_str(&self.format(body));
+                code.push(')');
+                code
+            }
+            // DatexExpressionData::Return(Return { expression }) => {
+            //     let mut code = String::from("return (");
+            //     code.push_str(&self.format(expression));
+            //     code.push_str(")");
+            //     code
+            // }
             DatexExpressionData::VariableDeclaration(VariableDeclaration {
                 id: _,
                 kind,

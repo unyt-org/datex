@@ -233,6 +233,7 @@ pub enum Token {
     #[token("procedure")] Procedure,
     #[token("if")] If,
     #[token("else")] Else,
+    #[token("while")] While,
     #[token("compile")] Compile,
 
     #[token("type")] TypeDeclaration,
@@ -374,6 +375,7 @@ impl Token {
             Token::Caret => Some("^"),
             Token::Matches => Some("matches"),
             Token::If => Some("if"),
+            Token::While => Some("while"),
             Token::Else => Some("else"),
             _ => None,
         }
@@ -856,4 +858,113 @@ mod tests {
         );
         assert_eq!(lexer.next(), None);
     }
+
+    #[test]
+    fn if_elseif_else() {
+        let mut lexer = Token::lexer(
+            "
+                if (true) (
+                    1u8
+                )
+                else if (false) (
+                    2u8
+                )
+                else (
+                    3u8
+                )
+                ",
+        );
+
+        let expected_tokens = vec![
+            Token::If,
+            Token::LeftParen,
+            Token::True,
+            Token::RightParen,
+            Token::LeftParen,
+            Token::IntegerLiteral("1u8".to_string()),
+            Token::RightParen,
+            Token::Else,
+            Token::If,
+            Token::LeftParen,
+            Token::False,
+            Token::RightParen,
+            Token::LeftParen,
+            Token::IntegerLiteral("2u8".to_string()),
+            Token::RightParen,
+            Token::Else,
+            Token::LeftParen,
+            Token::IntegerLiteral("3u8".to_string()),
+            Token::RightParen,
+        ];
+
+        check_tokens(&mut lexer, expected_tokens);
+    }
+
+    #[test]
+    fn while_loop() {
+        let mut lexer = Token::lexer(
+            "
+            var a = 0;
+            while (a!=10) (
+                a = a + 1;
+            )
+            ",
+        );
+
+        let expected_tokens = vec![
+            Token::Variable,
+            Token::Identifier("a".to_string()),
+            Token::Assign,
+            Token::IntegerLiteral("0".to_string()),
+            Token::Semicolon,
+            Token::While,
+            Token::LeftParen,
+            Token::Identifier("a".to_string()),
+            Token::NotStructuralEqual,
+            Token::IntegerLiteral("10".to_string()),
+            Token::RightParen,
+            Token::LeftParen,
+            Token::Identifier("a".to_string()),
+            Token::Assign,
+            Token::Identifier("a".to_string()),
+            Token::Plus,
+            Token::IntegerLiteral("1".to_string()),
+            Token::Semicolon,
+            Token::RightParen,
+        ];
+
+        check_tokens(&mut lexer, expected_tokens);
+    }
+}
+
+/// See example of usage above
+fn check_tokens(
+    lexer: &mut impl Iterator<Item = Result<Token, impl std::fmt::Debug>>,
+    expected_tokens: Vec<Token>,
+) {
+    for (i, expected) in expected_tokens.into_iter().enumerate() {
+        match lexer.next() {
+            Some(Ok(actual)) => {
+                assert_eq!(
+                    actual, expected,
+                    "Token mismatch at position {}: expected {:?}, got {:?}",
+                    i, expected, actual
+                );
+            }
+            Some(Err(e)) => {
+                panic!("Unexpected error at position {}: {:?}", i, e);
+            }
+            None => {
+                panic!(
+                    "Lexer ended early at position {}, expected {:?}",
+                    i, expected
+                );
+            }
+        }
+    }
+
+    assert!(
+        lexer.next().is_none(),
+        "Lexer has unexpected remaining tokens"
+    );
 }

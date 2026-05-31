@@ -2,11 +2,11 @@
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, ComparisonOperation, DatexExpression,
-            DatexExpressionData, RemoteExecution, RootPropertyAccess,
-            Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
-            ValueAccessType, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariableKind,
+            BinaryOperation, CallableDeclaration, ComparisonOperation,
+            Conditional, DatexExpression, DatexExpressionData, RemoteExecution,
+            RootPropertyAccess, Statements, UnaryOperation, UnboundedStatement,
+            UnboxAssignment, ValueAccessType, VariableAccess,
+            VariableAssignment, VariableDeclaration, VariableKind, WhileLoop,
         },
         resolved_variable::VariableId,
     },
@@ -41,9 +41,9 @@ use crate::{
                 SharedInjectedValueType,
             },
             instruction_data::{
-                InstructionBlockData, ModifyStackValue,
-                SetSharedContainerValue, ShortTextData, StackIndex,
-                TaggedValue,
+                CallableData, InstructionBlockData, JumpOffsetData,
+                ModifyStackValue, SetSharedContainerValue, ShortTextData,
+                StackIndex, TaggedValue,
             },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
@@ -57,8 +57,17 @@ use crate::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
     time::Instant,
+    types::r#type::Type,
     utils::buffers::{append_u8, append_u16, append_u32},
-    values::{core_values::decimal::Decimal, value_container::ValueContainer},
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            callable::{Callable, CallableBody},
+            decimal::Decimal,
+        },
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
 use binrw::io::Write;
 use core::{cell::RefCell, str::FromStr};
@@ -809,6 +818,93 @@ fn compile_expression(
             }
         }
 
+        DatexExpressionData::WhileLoop(WhileLoop { condition, body }) => {
+            compilation_context.mark_has_non_static_value();
+
+            let start_index = compilation_context.buffer_index() as usize;
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(*condition, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+
+            compilation_context
+                .append_instruction_code(InstructionCode::JUMP_IF_FALSE);
+            let jump_to_loop_end_placeholder =
+                compilation_context.append_relative_jump_placeholder();
+
+            let while_loop_scope = scope.clone().push();
+            let _while_loop_scope = compile_expression(
+                compilation_context,
+                RichAst::new(*body, &metadata),
+                CompileMetadata::default(),
+                while_loop_scope,
+            )?;
+
+            compilation_context.append_instruction_code(InstructionCode::JUMP);
+            let jump_to_loop_start_placeholder =
+                compilation_context.append_relative_jump_placeholder();
+            compilation_context.patch_relative_jump(
+                jump_to_loop_start_placeholder,
+                start_index,
+            );
+            let end_index = compilation_context.buffer_index() as usize;
+            compilation_context
+                .patch_relative_jump(jump_to_loop_end_placeholder, end_index);
+        }
+
+        DatexExpressionData::Conditional(Conditional {
+            condition,
+            then_branch,
+            else_branch,
+        }) => {
+            compilation_context.mark_has_non_static_value();
+
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(*condition, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+
+            compilation_context
+                .append_instruction_code(InstructionCode::JUMP_IF_FALSE);
+            let jump_to_else_placeholder =
+                compilation_context.append_relative_jump_placeholder();
+
+            let then_end_jump_placeholder = {
+                let then_scope = scope.clone().push();
+                let _then_scope = compile_expression(
+                    compilation_context,
+                    RichAst::new(*then_branch, &metadata),
+                    CompileMetadata::default(),
+                    then_scope,
+                )?;
+                compilation_context
+                    .append_instruction_code(InstructionCode::JUMP);
+                compilation_context.append_relative_jump_placeholder()
+            };
+
+            let else_start = compilation_context.buffer_index() as usize;
+            compilation_context
+                .patch_relative_jump(jump_to_else_placeholder, else_start);
+
+            if let Some(else_branch) = else_branch {
+                let else_scope = scope.clone().push();
+                let _else_scope = compile_expression(
+                    compilation_context,
+                    RichAst::new(*else_branch, &metadata),
+                    CompileMetadata::default(),
+                    else_scope,
+                )?;
+            }
+
+            let end_index = compilation_context.buffer_index() as usize;
+            compilation_context
+                .patch_relative_jump(then_end_jump_placeholder, end_index);
+        }
+
         // unary operations (negation, not, etc.)
         DatexExpressionData::UnaryOperation(UnaryOperation {
             operator,
@@ -1192,6 +1288,12 @@ fn compile_expression(
                 }
             };
 
+            // get variable slot address
+            let (stack_index, kind) = scope
+                .resolve_variable_name_with_slot_type(&name, slot_type)
+                .ok_or_else(|| {
+                    CompilerError::UndeclaredVariable(name.clone())
+                })?;
             let slot_access = match access_type {
                 ValueAccessType::SharedRefMut => {
                     InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT
@@ -1200,18 +1302,15 @@ fn compile_expression(
                     InstructionCode::GET_STACK_VALUE_SHARED_REF
                 }
                 ValueAccessType::MoveOrCopy => {
-                    InstructionCode::TAKE_STACK_VALUE
+                    if kind == VariableKind::Const {
+                        InstructionCode::CLONE_STACK_VALUE
+                    } else {
+                        InstructionCode::TAKE_STACK_VALUE
+                    }
                 }
                 ValueAccessType::Clone => InstructionCode::CLONE_STACK_VALUE,
                 ValueAccessType::Borrow => InstructionCode::BORROW_STACK_VALUE,
             };
-
-            // get variable slot address
-            let (stack_index, ..) = scope
-                .resolve_variable_name_with_slot_type(&name, slot_type)
-                .ok_or_else(|| {
-                    CompilerError::UndeclaredVariable(name.clone())
-                })?;
             // append binary code to load variable
             compilation_context.append_instruction_code(slot_access);
             compilation_context.insert_stack_index(stack_index);
@@ -1410,6 +1509,104 @@ fn compile_expression(
                 compilation_context.cursor(),
                 RegularInstruction::GetCoreLibValue(core_lib_id.into()),
             );
+        }
+
+        DatexExpressionData::CallableDeclaration(callable_decl) => {
+            compilation_context.mark_has_non_static_value();
+
+            let CallableDeclaration {
+                name,
+                kind,
+                parameters,
+                rest_parameter: _,
+                return_type,
+                yeet_type,
+                body,
+                injected_variable_count: _,
+            } = *callable_decl;
+
+            let callable_name = name.clone();
+            let callable_stack_index = callable_name.as_ref().map(|_| {
+                let stack_index = scope.get_next_stack_index();
+                compilation_context
+                    .append_instruction_code(InstructionCode::PUSH_TO_STACK);
+                stack_index
+            });
+            let mut callable_context = CompilationContext::new(
+                Vec::with_capacity(256),
+                vec![],
+                ExecutionMode::Static,
+            );
+            let mut callable_scope =
+                CompilationScope::new(ExecutionMode::Static);
+
+            for (index, (parameter_name, _parameter_type)) in
+                parameters.iter().enumerate()
+            {
+                callable_scope.register_variable_slot(Variable::new_const(
+                    parameter_name.clone(),
+                    StackIndex(index as u32),
+                ));
+            }
+
+            let _ = compile_expression(
+                &mut callable_context,
+                RichAst::new(*body, &metadata),
+                CompileMetadata::default(),
+                callable_scope,
+            )?;
+
+            callable_context.append_instruction_code(InstructionCode::RET);
+
+            let parameter_types = parameters
+                .into_iter()
+                .map(|(name, _ty)| {
+                    (
+                        Some(name),
+                        Type::core(crate::libs::core::type_id::CoreLibBaseTypeId::Unknown),
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            let return_type = return_type.map(|_ty| {
+                Box::new(Type::core(
+                    crate::libs::core::type_id::CoreLibBaseTypeId::Unknown,
+                ))
+            });
+
+            let callable_signature = crate::types::type_definition::callable::CallableTypeDefinition {
+                kind,
+                parameter_types,
+                rest_parameter_type: None,
+                return_type,
+                yeet_type: yeet_type.map(|_ty| {
+                    Box::new(Type::core(
+                        crate::libs::core::type_id::CoreLibBaseTypeId::Unknown,
+                    ))
+                }),
+            };
+
+            let callable_value = Value {
+                inner: CoreValue::Callable(Callable {
+                    name,
+                    signature: callable_signature,
+                    body: CallableBody::DatexBytecode(
+                        callable_context.into_buffer(),
+                    ),
+                }),
+                custom_type: None,
+            };
+            append_value(compilation_context.core_context(), callable_value)
+                .unwrap();
+
+            if let (Some(callable_name), Some(stack_index)) =
+                (callable_name, callable_stack_index)
+            {
+                scope.register_variable_slot(Variable::new_const(
+                    callable_name,
+                    stack_index,
+                ));
+            }
         }
 
         data => {
@@ -3638,6 +3835,172 @@ pub mod tests {
             0,
             0,
             0,
+        ];
+        assert_eq!(result, expected);
+    }
+
+    // #[test]
+    // fn conditional_if_else() {
+    //     let result = compile_and_log("if (true) (1u8) else (2u8)");
+    //     assert_eq!(
+    //         result,
+    //         vec![
+    //             InstructionCode::TRUE.into(),
+    //             InstructionCode::JUMP_IF_FALSE.into(),
+    //             7,
+    //             0,
+    //             0,
+    //             0,
+    //             InstructionCode::UINT_8.into(),
+    //             1,
+    //             InstructionCode::JUMP.into(),
+    //             2,
+    //             0,
+    //             0,
+    //             0,
+    //             InstructionCode::UINT_8.into(),
+    //             2,
+    //         ]
+    //     );
+    // }
+
+    // #[test]
+    // fn conditional_if_elseif_else() {
+    //     let result = compile_and_log(
+    //         "if (false) (1u8) else if (false) (2u8) else (3u8)",
+    //     );
+    //     assert_eq!(
+    //         result,
+    //         vec![
+    //             InstructionCode::FALSE.into(),
+    //             InstructionCode::JUMP_IF_FALSE.into(),
+    //             8,
+    //             0,
+    //             0,
+    //             0,
+    //             InstructionCode::UINT_8.into(),
+    //             1,
+    //             InstructionCode::FALSE.into(),
+    //             InstructionCode::JUMP_IF_FALSE.into(),
+    //             7,
+    //             0,
+    //             0,
+    //             0,
+    //             InstructionCode::UINT_8.into(),
+    //             2,
+    //             InstructionCode::JUMP.into(),
+    //             2,
+    //             0,
+    //             0,
+    //             0,
+    //             InstructionCode::UINT_8.into(),
+    //             3,
+    //         ]
+    //     );
+    // }
+
+    // #[test]
+    // fn function_add() {
+    //     let result =
+    //         compile_and_log("function add(a: integer/u8, b: integer/u8) (a+b)");
+    //     assert_eq!(
+    //         result,
+    //         vec![
+    //             InstructionCode::FALSE.into(),
+    //             InstructionCode::JUMP_IF_FALSE.into(),
+    //             8,
+    //             0,
+    //             0,
+    //             0,
+    //             InstructionCode::UINT_8.into(),
+    //             1,
+    //             InstructionCode::FALSE.into(),
+    //             InstructionCode::JUMP_IF_FALSE.into(),
+    //             7,
+    //             0,
+    //             0,
+    //             0,
+    //             InstructionCode::UINT_8.into(),
+    //             2,
+    //             InstructionCode::JUMP.into(),
+    //             2,
+    //             0,
+    //             0,
+    //             0,
+    //             InstructionCode::UINT_8.into(),
+    //             3,
+    //         ]
+    //     );
+    // }
+
+    #[test]
+    fn function_scope() {
+        let result = compile_and_log(
+            "
+            function scope(a: integer/u8) (var b = 5u8; b);
+            scope(2u8)
+            ",
+        );
+        assert_eq!(
+            result,
+            vec![
+                InstructionCode::SHORT_STATEMENTS.into(),
+                2,
+                0,
+                InstructionCode::PUSH_TO_STACK.into(),
+                InstructionCode::CALLABLE.into(),
+                5,
+                115,
+                99,
+                111,
+                112,
+                101,
+                1,
+                0,
+                0,
+                0,
+                12,
+                0,
+                0,
+                0,
+                1,
+                2,
+                0,
+                42,
+                71,
+                5,
+                44,
+                0,
+                0,
+                0,
+                0,
+                98,
+                5,
+                71,
+                2,
+                36,
+                0,
+                0,
+                0,
+                0
+            ]
+        );
+    }
+
+    #[test]
+    fn while_test() {
+        let datex_script = "
+            var a = 0u8;
+            while (a!=10) (
+                a = a + 1;
+            );
+            a
+            ";
+        let result = compile_and_log(datex_script);
+        let expected = vec![
+            1, 3, 0, 42, 71, 0, 18, 37, 0, 0, 0, 0, 69, 2, 1, 0, 0, 0, 10, 96,
+            26, 0, 0, 0, 1, 1, 1, 40, 0, 0, 0, 0, 22, 44, 0, 0, 0, 0, 69, 2, 1,
+            0, 0, 0, 1, 95, 212, 255, 255, 255, 44, 0, 0, 0, 0,
         ];
         assert_eq!(result, expected);
     }

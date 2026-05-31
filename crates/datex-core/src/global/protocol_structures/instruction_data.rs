@@ -258,6 +258,20 @@ pub struct UnboundedStatementsData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
+pub struct JumpOffsetData(pub i32);
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct CallableData {
+    pub name: ShortTextData,
+    pub parameter_count: u32,
+    pub body_length: u32,
+    #[br(count = body_length)]
+    pub body: Vec<u8>,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
 pub struct ShortStatementsData {
     pub statements_count: u8,
     #[br(map = |x: u8| x != 0)]

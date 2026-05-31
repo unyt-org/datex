@@ -242,8 +242,20 @@ mod tests {
     use crate::{
         assert_structural_eq, assert_value_eq,
         collections::HashMap,
-        compiler::{CompileOptions, compile_script, scope::CompilationScope},
+        compiler::{
+            CompileOptions, compile_script,
+            error::{CompilerError, SpannedCompilerError},
+            scope::CompilationScope,
+        },
+        core_compiler::{
+            core_compilation_context::CoreCompilationContext,
+            value_compiler::append_regular_instruction,
+        },
         datex_list,
+        global::protocol_structures::{
+            instruction_data::JumpOffsetData,
+            regular_instructions::RegularInstruction,
+        },
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
         runtime::{
@@ -390,6 +402,17 @@ mod tests {
         execute_dxb_sync(context)
     }
 
+    fn patch_relative_jump(
+        buffer: &mut [u8],
+        placeholder_index: usize,
+        target_index: usize,
+    ) {
+        let offset = target_index as i64
+            - (placeholder_index as i64 + core::mem::size_of::<i32>() as i64);
+        buffer[placeholder_index..placeholder_index + 4]
+            .copy_from_slice(&(offset as i32).to_le_bytes());
+    }
+
     async fn execute_datex_script_with_runtime(
         config: RuntimeConfig,
         datex_script: &str,
@@ -434,6 +457,94 @@ mod tests {
     #[test]
     fn single_value_semicolon() {
         assert_eq!(execute_datex_script_debug("42;"), None)
+    }
+
+    #[test]
+    fn raw_jump_skips_instruction() {
+        let mut context = CoreCompilationContext::new(Vec::with_capacity(128));
+
+        append_regular_instruction(
+            context.cursor_mut(),
+            RegularInstruction::Jump(JumpOffsetData(0)),
+        );
+        let jump_placeholder_index =
+            context.cursor().position() as usize - core::mem::size_of::<i32>();
+
+        append_regular_instruction(
+            context.cursor_mut(),
+            RegularInstruction::False,
+        );
+        let target_index = context.cursor().position() as usize;
+        patch_relative_jump(
+            context.cursor_mut().get_mut(),
+            jump_placeholder_index,
+            target_index,
+        );
+
+        append_regular_instruction(
+            context.cursor_mut(),
+            RegularInstruction::True,
+        );
+
+        let result = execute_dxb_debug(&context.into_buffer()).unwrap();
+        assert_eq!(result, Some(ValueContainer::from(true)));
+    }
+
+    #[test]
+    fn call_and_ret_support_backwards_seeking() {
+        let mut context = CoreCompilationContext::new(Vec::with_capacity(128));
+
+        let callable_start = context.cursor().position() as usize;
+        append_regular_instruction(
+            context.cursor_mut(),
+            RegularInstruction::True,
+        );
+        append_regular_instruction(
+            context.cursor_mut(),
+            RegularInstruction::Ret,
+        );
+
+        let call_site_index = context.cursor().position() as usize;
+        append_regular_instruction(
+            context.cursor_mut(),
+            RegularInstruction::Call(JumpOffsetData(0)),
+        );
+        let call_placeholder_index =
+            context.cursor().position() as usize - core::mem::size_of::<i32>();
+        patch_relative_jump(
+            context.cursor_mut().get_mut(),
+            call_placeholder_index,
+            callable_start,
+        );
+        assert_eq!(context.cursor().position() as usize, call_site_index + 5);
+
+        let result = execute_dxb_debug(&context.into_buffer()).unwrap();
+        assert_eq!(result, Some(ValueContainer::from(true)));
+    }
+
+    #[test]
+    fn invalid_jump_target_returns_error() {
+        let mut context = CoreCompilationContext::new(Vec::with_capacity(128));
+
+        append_regular_instruction(
+            context.cursor_mut(),
+            RegularInstruction::Jump(JumpOffsetData(0)),
+        );
+        let jump_placeholder_index =
+            context.cursor().position() as usize - core::mem::size_of::<i32>();
+        patch_relative_jump(
+            context.cursor_mut().get_mut(),
+            jump_placeholder_index,
+            10_000,
+        );
+
+        let result = execute_dxb_debug(&context.into_buffer());
+        assert!(matches!(
+            result,
+            Err(ExecutionError::InvalidProgram(
+                InvalidProgramError::InvalidJumpTarget { .. }
+            ))
+        ));
     }
 
     #[test]
@@ -945,5 +1056,165 @@ mod tests {
             ],
             runtime,
         )
+    }
+
+    #[test]
+    fn condition_double_scope() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            var a = 0u8
+            var b = 1u8
+            if (false) (
+                a=1u8;
+                b=2u8;
+            ) else (
+                a=2u8;
+                b=3u8;
+            );
+            a
+            ",
+        );
+        assert_value_eq!(result, ValueContainer::from(TypedInteger::from(2u8)));
+    }
+
+    #[test]
+    fn condition_empty_body() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            var a = 0u8
+            if (true) (
+            ) else (
+            );
+            a
+            ",
+        );
+        assert_value_eq!(result, ValueContainer::from(TypedInteger::from(0u8)));
+    }
+
+    #[test]
+    fn condition_resolve_scope() {
+        let result = compile_script(
+            "
+              if (false) (
+                  var a = 1u8;
+              );
+              a
+              ",
+            CompileOptions::default(),
+            Runtime::stub(),
+        );
+        dbg!(&result);
+        assert_matches!(
+            result,
+            Err(SpannedCompilerError {
+                error: CompilerError::UndeclaredVariable(name),
+                ..
+            }) if name == "a"
+        );
+    }
+
+    #[test]
+    fn condition_test() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            var a = 0u8
+            if (false) (
+                a=1u8
+            ) else if (true) (
+                a=2u8
+            ) else (
+                a=3u8
+            );
+            a
+            ",
+        );
+        // dbg!(&result);
+        assert_value_eq!(result, ValueContainer::from(TypedInteger::from(2u8)));
+    }
+
+    #[test]
+    fn condition_scope_test_single() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            var a = 0u8;
+            if (true) (
+                a=1u8
+            ) else (
+                a=2u8
+            );
+            a
+            ",
+        );
+        assert_value_eq!(result, ValueContainer::from(TypedInteger::from(1u8)));
+    }
+
+    #[test]
+    fn condition_scope_test() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            var a = 5u8;
+            var b = 3u8;
+            if (1==1) (
+                b=2u8;
+                a=3u8
+            ) else (
+                a=2u8
+            );
+            b
+            ",
+        );
+        assert_value_eq!(result, ValueContainer::from(TypedInteger::from(2u8)));
+    }
+
+    #[test]
+    fn while_test() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            var a = 0u8;
+            while (a!=10) (
+                a = a + 1u8
+            );
+            a
+            ",
+        );
+        assert_value_eq!(
+            result,
+            ValueContainer::from(TypedInteger::from(10u8))
+        );
+    }
+
+    #[test]
+    fn while_empty_body() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            var a = 0u8;
+            while (a!=0) (
+            );
+            a
+            ",
+        );
+        assert_value_eq!(result, ValueContainer::from(TypedInteger::from(0u8)));
+    }
+
+    #[test]
+    fn function_test() {
+        let result = execute_datex_script_debug_with_result(
+            "
+                function triple(a: integer/u8) (a+a+a);
+                triple(2u8)
+                ",
+        );
+        assert_value_eq!(result, ValueContainer::from(TypedInteger::from(6u8)));
+    }
+
+    #[test]
+    fn function_scope() {
+        let result = execute_datex_script_debug_with_result(
+            "
+                function scope(a: integer/u8) (var b = 5u8; b);
+                scope(2u8)
+                ",
+        );
+        assert_value_eq!(result, ValueContainer::from(TypedInteger::from(5u8)));
     }
 }

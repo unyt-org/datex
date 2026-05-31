@@ -16,6 +16,7 @@ use crate::{
                 ShortStatementsData, ShortTextData, StackIndex, StatementsData,
                 TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
                 UInt64Data, UInt128Data, UnboundedStatementsData,
+                JumpOffsetData, CallableData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -89,6 +90,11 @@ pub enum RegularInstruction {
     ShortStatements(StatementsData),
     UnboundedStatements,
     UnboundedStatementsEnd(UnboundedStatementsData),
+    Jump(JumpOffsetData),
+    JumpIfFalse(JumpOffsetData),
+    Call(JumpOffsetData),
+    Ret,
+    Callable(CallableData),
     List(ListData),
     ShortList(ListData),
     Map(MapData),
@@ -221,6 +227,13 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::UnboundedStatementsEnd(_) => {
                 InstructionCode::UNBOUNDED_STATEMENTS_END
             }
+            RegularInstruction::Jump(_) => InstructionCode::JUMP,
+            RegularInstruction::JumpIfFalse(_) => {
+                InstructionCode::JUMP_IF_FALSE
+            }
+            RegularInstruction::Call(_) => InstructionCode::CALL,
+            RegularInstruction::Ret => InstructionCode::RET,
+            RegularInstruction::Callable(_) => InstructionCode::CALLABLE,
             RegularInstruction::List(_) => InstructionCode::LIST,
             RegularInstruction::ShortList(_) => InstructionCode::SHORT_LIST,
             RegularInstruction::Map(_) => InstructionCode::MAP,
@@ -385,6 +398,14 @@ impl RegularInstruction {
 
             RegularInstruction::UnboundedStatementsEnd(_) => {
                 NextExpectedInstructions::UnboundedEnd
+            }
+
+            RegularInstruction::Jump(_)
+            | RegularInstruction::JumpIfFalse(_)
+            | RegularInstruction::Call(_)
+            | RegularInstruction::Ret
+            | RegularInstruction::Callable(_) => {
+                NextExpectedInstructions::None
             }
 
             RegularInstruction::Apply(apply_data) => {
@@ -610,6 +631,25 @@ impl RegularInstruction {
             InstructionCode::UNBOUNDED_STATEMENTS_END => {
                 UnboundedStatementsData::read(reader)
                     .map(RegularInstruction::UnboundedStatementsEnd)
+            }
+
+            InstructionCode::JUMP => {
+                JumpOffsetData::read(reader).map(RegularInstruction::Jump)
+            }
+
+            InstructionCode::JUMP_IF_FALSE => {
+                JumpOffsetData::read(reader)
+                    .map(RegularInstruction::JumpIfFalse)
+            }
+
+            InstructionCode::CALL => {
+                JumpOffsetData::read(reader).map(RegularInstruction::Call)
+            }
+
+            InstructionCode::RET => Ok(RegularInstruction::Ret),
+
+            InstructionCode::CALLABLE => {
+                CallableData::read(reader).map(RegularInstruction::Callable)
             }
 
             InstructionCode::TAGGED_VALUE => {
@@ -995,6 +1035,27 @@ impl RegularInstruction {
                     "[length: {}, injected_variables: {:?}]",
                     data.length,
                     data.injected_values
+                )
+            }
+            RegularInstruction::Jump(data) => {
+                write!(string, "[offset: {}]", data.0)
+            }
+            RegularInstruction::JumpIfFalse(data) => {
+                write!(string, "[offset: {}]", data.0)
+            }
+            RegularInstruction::Call(data) => {
+                write!(string, "[offset: {}]", data.0)
+            }
+            RegularInstruction::Ret => {
+                write!(string, "return")
+            }
+            RegularInstruction::Callable(data) => {
+                write!(
+                    string,
+                    "[name: {}, params: {}, body: {} bytes]",
+                    data.name.0,
+                    data.parameter_count,
+                    data.body_length
                 )
             }
             #[cfg(feature = "disassembler")]

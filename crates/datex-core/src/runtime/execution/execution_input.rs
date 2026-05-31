@@ -3,13 +3,15 @@ use crate::runtime::{
     execution::{
         ExecutionError,
         execution_loop::{
+            execution_loop,
             interrupts::{ExternalExecutionInterrupt, InterruptProvider},
-            state::{ExecutionLoopState, RuntimeExecutionStack},
+            state::{ExecutionLoopState, RuntimeExecutionStack, RuntimeExecutionState},
         },
     },
 };
 
 use crate::values::core_values::endpoint::Endpoint;
+use crate::shared_values::base_shared_value_container::observers::TransceiverId;
 
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionOptions {
@@ -89,35 +91,33 @@ impl<'a> ExecutionInput<'a> {
         InterruptProvider,
         impl Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>>,
     ) {
-        // use execution iterator if one already exists from previous execution
-        let mut loop_state = if let Some(existing_loop_state) =
-            self.loop_state.take()
-        {
-            // update dxb so that instruction iterator can continue with next instructions
-            *existing_loop_state.dxb_body.borrow_mut() = self.dxb_body.to_vec();
-            existing_loop_state
-        }
-        // otherwise start a new execution loop
-        else {
+        let loop_state = self.loop_state.take().unwrap_or_else(|| {
             ExecutionLoopState::new(
                 self.dxb_body.to_vec(),
                 self.runtime.clone(),
                 Default::default(),
                 self.caller_metadata.clone(),
             )
-        };
+        });
+        *loop_state.dxb_body.borrow_mut() = self.dxb_body.to_vec();
         let interrupt_provider = loop_state.interrupt_provider.clone();
+        let interrupt_provider_for_iterator = interrupt_provider.clone();
 
         // proxy the iterator, storing it back into state if interrupted to await more instructions
         let iterator = gen move {
-            loop {
-                let item = loop_state.iterator.next();
-                if item.is_none() {
-                    break;
-                }
-                let item = item.unwrap();
-
+            let inner = execution_loop(
+                RuntimeExecutionState {
+                    runtime: self.runtime.clone(),
+                    source_id: TransceiverId(0),
+                    stack: loop_state.stack.clone(),
+                    caller_metadata: self.caller_metadata.clone(),
+                },
+                loop_state.dxb_body.clone(),
+                interrupt_provider_for_iterator.clone(),
+            );
+            for item in inner {
                 match item {
+                    Ok(value) => yield Ok(value),
                     Err(ExecutionError::IntermediateResultWithState(
                         intermediate_result,
                         _,
@@ -128,7 +128,7 @@ impl<'a> ExecutionInput<'a> {
                         ));
                         break;
                     }
-                    _ => yield item,
+                    Err(err) => yield Err(err),
                 }
             }
         };

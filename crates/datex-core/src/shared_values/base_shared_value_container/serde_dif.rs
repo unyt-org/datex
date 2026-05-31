@@ -1,3 +1,4 @@
+use alloc::format;
 use core::fmt;
 use crate::{
     dif::serde_context::SerdeContext,
