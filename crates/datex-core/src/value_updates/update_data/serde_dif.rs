@@ -26,8 +26,8 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Update> {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(None)?;
-        seq.serialize_element(&&value.data.as_ref().to_string())?;
         seq.serialize_element(&value.source_id.0)?;
+        seq.serialize_element(&&value.data.as_ref().to_string())?;
         match &value.data {
             UpdateData::SetEntry(data) => self
                 .cast::<SetEntryUpdateData>()
@@ -72,12 +72,12 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Update> {
         mut self,
         mut seq: A,
     ) -> Result<Self::Value, A::Error> {
-        let kind: String = seq
-            .next_element()?
-            .ok_or_else(|| de::Error::invalid_length(0, &self))?;
         let transceiver_id: u32 = seq
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+        let kind: String = seq
+            .next_element()?
+            .ok_or_else(|| de::Error::invalid_length(0, &self))?;
 
         let value = match kind.as_str() {
             "replace" => UpdateData::Replace(
