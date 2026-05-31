@@ -59,7 +59,7 @@ impl RuntimeConfigInterface {
 
 #[derive(Datex, Debug, Default, Clone)]
 pub struct RuntimeConfig {
-    pub endpoint: Option<Endpoint>,
+    pub endpoint: Endpoint,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
     pub env: Option<HashMap<String, String>>,
 }
@@ -67,7 +67,7 @@ pub struct RuntimeConfig {
 impl RuntimeConfig {
     pub fn new_with_endpoint(endpoint: Endpoint) -> Self {
         RuntimeConfig {
-            endpoint: Some(endpoint),
+            endpoint,
             interfaces: None,
             env: None,
         }
@@ -185,6 +185,6 @@ pub mod tests {
         let value_container = config.to_value_container();
         let parsed_config: RuntimeConfig =
             RuntimeConfig::try_from_value_container(value_container).unwrap();
-        assert_eq!(parsed_config.endpoint, Some(Endpoint::new("@test")));
+        assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));
     }
 }

@@ -30,7 +30,7 @@ impl RuntimeRunner {
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
     pub fn new(config: RuntimeConfig) -> RuntimeRunner {
-        let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);
+        let endpoint = config.endpoint.clone();
 
         let (task_manager, runtime_task_future) = TaskManager::create();
 
