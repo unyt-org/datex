@@ -6,7 +6,6 @@ use crate::{
     value_updates::update_data::{
         AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
         ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData,
-        UpdateReturn,
     },
     values::value_container::{ValueContainer, value_key::ValueKey},
 };

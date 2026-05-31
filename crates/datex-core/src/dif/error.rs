@@ -2,7 +2,7 @@ use crate::{
     dif::cache::CacheValueRetrievalError,
     runtime::execution::ExecutionError,
     shared_values::base_shared_value_container::observers::ObserverError,
-    value_updates::{errors::UpdateError, update_data::UpdateReturn},
+    value_updates::{UpdateReturn, errors::UpdateError},
 };
 use core::{fmt::Display, result::Result};
 use strum_macros::Display;
