@@ -2,7 +2,7 @@ use crate::{
     shared_values::SharedContainer,
     values::{value::Value, value_container::ValueContainer},
 };
-use serde::Serializer;
+use serde::{Serializer, de::SeqAccess, ser::SerializeSeq};
 
 use crate::{
     dif::serde_context::SerdeContext, prelude::*,
@@ -212,6 +212,57 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueContainer> {
                 self.cast::<Value>().serialize(local, serializer)
             }
         }
+    }
+}
+
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, Vec<ValueContainer>> {
+    type Value = Vec<ValueContainer>;
+
+    fn serialize<S>(
+        &mut self,
+        value: &Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(value.len()))?;
+        for item in value {
+            seq.serialize_element(&item)?;
+        }
+        seq.end()
+    }
+}
+impl<'de, 'ctx> DeserializeSeed<'de>
+    for SerdeContext<'ctx, Vec<ValueContainer>>
+{
+    type Value = Vec<ValueContainer>;
+
+    fn deserialize<D: Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<Self::Value, D::Error> {
+        deserializer.deserialize_seq(self)
+    }
+}
+impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Vec<ValueContainer>> {
+    type Value = Vec<ValueContainer>;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("a sequence of value containers")
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(
+        mut self,
+        mut seq: A,
+    ) -> Result<Self::Value, A::Error> {
+        let mut items = Vec::new();
+        while let Some(item) =
+            seq.next_element_seed(self.cast::<ValueContainer>())?
+        {
+            items.push(item);
+        }
+        Ok(items)
     }
 }
 

@@ -12,8 +12,8 @@ use crate::{
 };
 use core::fmt;
 use serde::{
-    Deserializer, Serializer, de,
-    de::{DeserializeSeed, MapAccess, Visitor},
+    Deserializer, Serializer,
+    de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor},
     ser::{SerializeSeq, SerializeStruct},
 };
 
@@ -25,14 +25,28 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Update> {
         value: &Self::Value,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        // serialize as map with {source: <TransceiverId>, data: <UpdateData>}
-        let mut state = serializer.serialize_struct("Update", 2)?;
-        state.serialize_field("source", &value.source_id)?;
-        state.serialize_field(
-            "data",
-            &ValueWithSeed::new(&value.data, self.cast::<UpdateData>()),
-        )?;
-        state.end()
+        let mut seq = serializer.serialize_seq(None)?;
+        seq.serialize_element(&&value.data.as_ref().to_string())?;
+        seq.serialize_element(&value.source_id.0)?;
+        match &value.data {
+            UpdateData::SetEntry(data) => self
+                .cast::<SetEntryUpdateData>()
+                .serialize_fields(data, &mut seq)?,
+            UpdateData::Replace(data) => self
+                .cast::<ReplaceUpdateData>()
+                .serialize_fields(data, &mut seq)?,
+            UpdateData::DeleteEntry(data) => self
+                .cast::<DeleteEntryUpdateData>()
+                .serialize_fields(data, &mut seq)?,
+            UpdateData::Clear => {}
+            UpdateData::AppendEntry(data) => self
+                .cast::<AppendEntryUpdateData>()
+                .serialize_fields(data, &mut seq)?,
+            UpdateData::ListSplice(data) => self
+                .cast::<ListSpliceUpdateData>()
+                .serialize_fields(data, &mut seq)?,
+        };
+        seq.end()
     }
 }
 
@@ -43,286 +57,75 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Update> {
         self,
         deserializer: D,
     ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_struct(
-            "Update",
-            &["source", "data"],
-            UpdateVisitor { ctx: self },
-        )
+        deserializer.deserialize_seq(self)
     }
 }
 
-struct UpdateVisitor<'ctx> {
-    ctx: SerdeContext<'ctx, Update>,
-}
-
-impl<'de, 'ctx> Visitor<'de> for UpdateVisitor<'ctx> {
+impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Update> {
     type Value = Update;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a map with `source` and `data` fields")
+        write!(f, "an update-data sequence starting with a variant hint")
     }
 
-    fn visit_map<A: MapAccess<'de>>(
+    fn visit_seq<A: SeqAccess<'de>>(
         mut self,
-        mut map: A,
+        mut seq: A,
     ) -> Result<Self::Value, A::Error> {
-        let mut source_id: Option<TransceiverId> = None;
-        let mut data: Option<UpdateData> = None;
+        let kind: String = seq
+            .next_element()?
+            .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+        let transceiver_id: u32 = seq
+            .next_element()?
+            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
 
-        while let Some(key) = map.next_key::<&str>()? {
-            match key {
-                "source" => {
-                    source_id = Some(map.next_value()?);
-                }
-                "data" => {
-                    // Use next_value_seed to thread your context through
-                    data = Some(
-                        map.next_value_seed(self.ctx.cast::<UpdateData>())?,
-                    );
-                }
-                other => {
-                    return Err(de::Error::unknown_field(
-                        other,
-                        &["source", "data"],
-                    ));
-                }
+        let value = match kind.as_str() {
+            "replace" => UpdateData::Replace(
+                self.cast::<ReplaceUpdateData>().visit_seq(&mut seq)?,
+            ),
+
+            "set_entry" => UpdateData::SetEntry(
+                self.cast::<SetEntryUpdateData>().visit_seq(&mut seq)?,
+            ),
+
+            "delete_entry" => UpdateData::DeleteEntry(
+                self.cast::<DeleteEntryUpdateData>().visit_seq(&mut seq)?,
+            ),
+
+            "clear" => UpdateData::Clear,
+
+            "append_entry" => UpdateData::AppendEntry(
+                self.cast::<AppendEntryUpdateData>().visit_seq(&mut seq)?,
+            ),
+
+            "list_splice" => UpdateData::ListSplice(
+                self.cast::<ListSpliceUpdateData>().visit_seq(&mut seq)?,
+            ),
+
+            other => {
+                return Err(de::Error::unknown_variant(
+                    other,
+                    &[
+                        "replace",
+                        "set_entry",
+                        "delete_entry",
+                        "clear",
+                        "append_entry",
+                        "list_splice",
+                    ],
+                ));
             }
+        };
+
+        if seq.next_element::<de::IgnoredAny>()?.is_some() {
+            return Err(de::Error::custom(format!(
+                "unexpected trailing value after `{kind}` update payload"
+            )));
         }
 
         Ok(Update {
-            source_id: source_id
-                .ok_or_else(|| de::Error::missing_field("source"))?,
-            data: data.ok_or_else(|| de::Error::missing_field("data"))?,
+            data: value,
+            source_id: TransceiverId(transceiver_id),
         })
-    }
-}
-
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, UpdateData> {
-    type Value = UpdateData;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        match value {
-            UpdateData::Replace(replace_data) => self
-                .cast::<ReplaceUpdateData>()
-                .serialize(replace_data, serializer),
-            UpdateData::SetEntry(set_entry_data) => self
-                .cast::<SetEntryUpdateData>()
-                .serialize(set_entry_data, serializer),
-            UpdateData::DeleteEntry(delete_entry_data) => self
-                .cast::<DeleteEntryUpdateData>()
-                .serialize(delete_entry_data, serializer),
-            UpdateData::Clear => {
-                let mut state = serializer.serialize_struct("Clear", 1)?;
-                state.serialize_field("kind", "clear")?;
-                state.end()
-            }
-            UpdateData::AppendEntry(append_entry_data) => self
-                .cast::<AppendEntryUpdateData>()
-                .serialize(append_entry_data, serializer),
-            UpdateData::ListSplice(list_splice_data) => self
-                .cast::<ListSpliceUpdateData>()
-                .serialize(list_splice_data, serializer),
-        }
-    }
-}
-
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, UpdateReturn> {
-    type Value = UpdateReturn;
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        match value {
-            UpdateReturn::SingleValue(value) => {
-                let mut state =
-                    serializer.serialize_struct("SingleValue", 1)?;
-                state.serialize_field(
-                    "value",
-                    &ValueWithSeed::new(value, self.cast::<ValueContainer>()),
-                )?;
-                state.end()
-            }
-            UpdateReturn::MultipleValues(values) => {
-                let mut seq = serializer.serialize_seq(Some(values.len()))?;
-                for value in values {
-                    seq.serialize_element(&ValueWithSeed::new(
-                        value,
-                        self.cast::<ValueContainer>(),
-                    ))?;
-                }
-                seq.end()
-            }
-            UpdateReturn::None => serializer.serialize_struct("None", 0)?.end(),
-        }
-    }
-}
-
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ReplaceUpdateData> {
-    type Value = ReplaceUpdateData;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_struct("ReplaceUpdateData", 2)?;
-        state.serialize_field("kind", "replace")?;
-        state.serialize_field(
-            "value",
-            &ValueWithSeed::new(&value.value, self.cast::<ValueContainer>()),
-        )?;
-        state.end()
-    }
-}
-
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, SetEntryUpdateData> {
-    type Value = SetEntryUpdateData;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_struct("SetEntryUpdateData", 3)?;
-        state.serialize_field("kind", "set_entry")?;
-        state.serialize_field(
-            "key",
-            &ValueWithSeed::new(&value.key, self.cast::<ValueKey>()),
-        )?;
-        state.serialize_field(
-            "value",
-            &ValueWithSeed::new(&value.value, self.cast::<ValueContainer>()),
-        )?;
-        state.end()
-    }
-}
-
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, DeleteEntryUpdateData> {
-    type Value = DeleteEntryUpdateData;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let mut state =
-            serializer.serialize_struct("DeleteEntryUpdateData", 2)?;
-        state.serialize_field("kind", "delete_entry")?;
-        state.serialize_field(
-            "key",
-            &ValueWithSeed::new(&value.key, self.cast::<ValueKey>()),
-        )?;
-        state.end()
-    }
-}
-
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, AppendEntryUpdateData> {
-    type Value = AppendEntryUpdateData;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let mut state =
-            serializer.serialize_struct("AppendEntryUpdateData", 2)?;
-        state.serialize_field("kind", "append_entry")?;
-        state.serialize_field(
-            "value",
-            &ValueWithSeed::new(&value.value, self.cast::<ValueContainer>()),
-        )?;
-        state.end()
-    }
-}
-
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ListSpliceUpdateData> {
-    type Value = ListSpliceUpdateData;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let mut state =
-            serializer.serialize_struct("ListSpliceUpdateData", 4)?;
-        state.serialize_field("kind", "list_splice")?;
-        state.serialize_field("start", &value.start)?;
-        state.serialize_field("delete_count", &value.delete_count)?;
-        state.serialize_field(
-            "items",
-            &ValueWithSeed::new(
-                &value.items,
-                self.cast::<Vec<ValueContainer>>(),
-            ),
-        )?;
-        state.end()
-    }
-}
-
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Vec<ValueContainer>> {
-    type Value = Vec<ValueContainer>;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(value.len()))?;
-        for item in value {
-            seq.serialize_element(&ValueWithSeed::new(
-                item,
-                self.cast::<ValueContainer>(),
-            ))?;
-        }
-        seq.end()
-    }
-}
-
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, UpdateData> {
-    type Value = UpdateData;
-
-    fn deserialize<D: Deserializer<'de>>(
-        self,
-        deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_map(UpdateDataVisitor { ctx: self })
-    }
-}
-
-struct UpdateDataVisitor<'ctx> {
-    ctx: SerdeContext<'ctx, UpdateData>,
-}
-
-impl<'de, 'ctx> Visitor<'de> for UpdateDataVisitor<'ctx> {
-    type Value = UpdateData;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "UpdateData map with a `type` field")
-    }
-
-    fn visit_map<A: MapAccess<'de>>(
-        self,
-        mut map: A,
-    ) -> Result<Self::Value, A::Error> {
-        // Expect `type` as the first key
-        match map.next_key::<&str>()? {
-            Some("type") => {}
-            Some(other) => {
-                return Err(de::Error::custom(format!(
-                    "expected `type` field first, got `{}`",
-                    other
-                )));
-            }
-            None => return Err(de::Error::missing_field("type")),
-        }
-
-        let _kind = map.next_value::<String>()?;
-
-        todo!()
     }
 }

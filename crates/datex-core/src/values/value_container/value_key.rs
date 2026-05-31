@@ -1,6 +1,6 @@
 use core::fmt::Display;
 
-use serde::Serialize;
+use serde::{Serialize, de::DeserializeSeed, ser::SerializeMap};
 
 use crate::{
     dif::serde_context::SerdeContext,
@@ -29,9 +29,65 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
         match value {
             ValueKey::Text(text) => text.serialize(serializer),
             ValueKey::Index(index) => index.serialize(serializer),
-            ValueKey::Value(value_container) => self
-                .cast::<ValueContainer>()
-                .serialize(value_container, serializer),
+            ValueKey::Value(value_container) => {
+                let mut map_serializer = serializer.serialize_map(Some(1))?;
+                map_serializer.serialize_entry("value", value_container)?;
+                map_serializer.end()
+            }
+        }
+    }
+}
+
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueKey> {
+    type Value = ValueKey;
+
+    fn deserialize<D: serde::Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<Self::Value, D::Error> {
+        deserializer.deserialize_any(self)
+    }
+}
+impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, ValueKey> {
+    type Value = ValueKey;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(
+            f,
+            "a value key, which can be a string, an integer index, or a value container"
+        )
+    }
+
+    fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        Ok(ValueKey::Text(v.to_string()))
+    }
+
+    fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Self::Value, E> {
+        Ok(ValueKey::Index(v))
+    }
+
+    fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+        Ok(ValueKey::Index(v as i64))
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(
+        self,
+        mut map_access: A,
+    ) -> Result<Self::Value, A::Error> {
+        let entry = map_access.next_entry::<String, ValueContainer>()?;
+        if let Some((key, value)) = entry {
+            if key == "value" {
+                Ok(ValueKey::Value(value))
+            } else {
+                Err(serde::de::Error::custom(format!(
+                    "Unexpected key in map when deserializing ValueKey: expected 'value', found '{}'",
+                    key
+                )))
+            }
+        } else {
+            Err(serde::de::Error::custom(
+                "Expected a map with a single entry when deserializing ValueKey, but found an empty map",
+            ))
         }
     }
 }

@@ -1,12 +1,25 @@
 mod serde_dif;
 
+use strum::AsRefStr;
+
 use crate::{
     prelude::*,
     shared_values::base_shared_value_container::observers::TransceiverId,
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
+mod append_entry;
+mod delete_entry;
+mod list_splice;
+mod replace;
+mod set_entry;
 
-#[derive(Clone, Debug, PartialEq)]
+pub use append_entry::*;
+pub use delete_entry::*;
+pub use list_splice::*;
+pub use replace::*;
+pub use set_entry::*;
+
+#[derive(Clone, Debug, PartialEq, AsRefStr)]
 pub enum UpdateData {
     /// Represents a replacement operation for a value.
     Replace(ReplaceUpdateData),
@@ -37,35 +50,6 @@ impl UpdateData {
         }
     }
 }
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ReplaceUpdateData {
-    pub value: ValueContainer,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct SetEntryUpdateData {
-    pub key: ValueKey,
-    pub value: ValueContainer,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct DeleteEntryUpdateData {
-    pub key: ValueKey,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct AppendEntryUpdateData {
-    pub value: ValueContainer,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ListSpliceUpdateData {
-    pub start: u32,
-    pub delete_count: u32,
-    pub items: Vec<ValueContainer>,
-}
-
 /// Represents an update to a value from a source [TransceiverId]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Update {
