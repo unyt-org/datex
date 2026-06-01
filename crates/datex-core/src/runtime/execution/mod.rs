@@ -1196,6 +1196,17 @@ mod tests {
         assert_value_eq!(result, ValueContainer::from(TypedInteger::from(0u8)));
     }
 
+    // #[test]
+    // fn double_add_problem() {
+    //     let result = execute_datex_script_debug_with_result(
+    //         "
+    //         var a = 1u8;
+    //         a = a + a
+    //         ",
+    //     );
+    //     assert_value_eq!(result, ValueContainer::from(TypedInteger::from(2u8)));
+    // }
+
     #[test]
     fn function_test() {
         let result = execute_datex_script_debug_with_result(

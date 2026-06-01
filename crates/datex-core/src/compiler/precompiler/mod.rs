@@ -965,10 +965,8 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 mod tests {
     use super::*;
     use crate::{
+        ast,
         ast::{
-            expressions::{
-                CreateShared, GetRef, GetSharedRef, RequestSharedRef, Unbox,
-            },
             resolved_variable::ResolvedVariable,
             type_expressions::{StructuralMap, TypeExpressionData},
         },

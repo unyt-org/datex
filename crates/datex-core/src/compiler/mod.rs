@@ -905,6 +905,104 @@ fn compile_expression(
                 .patch_relative_jump(then_end_jump_placeholder, end_index);
         }
 
+        DatexExpressionData::CallableDeclaration(callable_decl) => {
+            compilation_context.mark_has_non_static_value();
+
+            let CallableDeclaration {
+                name,
+                kind,
+                parameters,
+                rest_parameter: _,
+                return_type,
+                yeet_type,
+                body,
+                injected_variable_count: _,
+            } = *callable_decl;
+
+            let callable_name = name.clone();
+            let callable_stack_index = callable_name.as_ref().map(|_| {
+                let stack_index = scope.get_next_stack_index();
+                compilation_context
+                    .append_instruction_code(InstructionCode::PUSH_TO_STACK);
+                stack_index
+            });
+            let mut callable_context = CompilationContext::new(
+                Vec::with_capacity(256),
+                vec![],
+                ExecutionMode::Static,
+            );
+            let mut callable_scope =
+                CompilationScope::new(ExecutionMode::Static);
+
+            for (index, (parameter_name, _parameter_type)) in
+                parameters.iter().enumerate()
+            {
+                callable_scope.register_variable_slot(Variable::new_const(
+                    parameter_name.clone(),
+                    StackIndex(index as u32),
+                ));
+            }
+
+            let _ = compile_expression(
+                &mut callable_context,
+                RichAst::new(*body, &metadata),
+                CompileMetadata::default(),
+                callable_scope,
+            )?;
+
+            callable_context.append_instruction_code(InstructionCode::RET);
+
+            let parameter_types = parameters
+                .into_iter()
+                .map(|(name, _ty)| {
+                    (
+                        Some(name),
+                        Type::core(crate::libs::core::type_id::CoreLibBaseTypeId::Unknown),
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            let return_type = return_type.map(|_ty| {
+                Box::new(Type::core(
+                    crate::libs::core::type_id::CoreLibBaseTypeId::Unknown,
+                ))
+            });
+
+            let callable_signature = crate::types::type_definition::callable::CallableTypeDefinition {
+                kind,
+                parameter_types,
+                rest_parameter_type: None,
+                return_type,
+                yeet_type: yeet_type.map(|_ty| {
+                    Box::new(Type::core(
+                        crate::libs::core::type_id::CoreLibBaseTypeId::Unknown,
+                    ))
+                }),
+            };
+
+            let callable_value = Value {
+                inner: CoreValue::Callable(Callable {
+                    name,
+                    signature: callable_signature,
+                    body: CallableBody::DatexBytecode(
+                        callable_context.into_buffer(),
+                    ),
+                }),
+                custom_type: None,
+            };
+            append_value(compilation_context.core_context(), callable_value)
+                .unwrap();
+
+            if let (Some(callable_name), Some(stack_index)) =
+                (callable_name, callable_stack_index)
+            {
+                scope.register_variable_slot(Variable::new_const(
+                    callable_name,
+                    stack_index,
+                ));
+            }
+        }
+
         // unary operations (negation, not, etc.)
         DatexExpressionData::UnaryOperation(UnaryOperation {
             operator,
@@ -1509,104 +1607,6 @@ fn compile_expression(
                 compilation_context.cursor(),
                 RegularInstruction::GetCoreLibValue(core_lib_id.into()),
             );
-        }
-
-        DatexExpressionData::CallableDeclaration(callable_decl) => {
-            compilation_context.mark_has_non_static_value();
-
-            let CallableDeclaration {
-                name,
-                kind,
-                parameters,
-                rest_parameter: _,
-                return_type,
-                yeet_type,
-                body,
-                injected_variable_count: _,
-            } = *callable_decl;
-
-            let callable_name = name.clone();
-            let callable_stack_index = callable_name.as_ref().map(|_| {
-                let stack_index = scope.get_next_stack_index();
-                compilation_context
-                    .append_instruction_code(InstructionCode::PUSH_TO_STACK);
-                stack_index
-            });
-            let mut callable_context = CompilationContext::new(
-                Vec::with_capacity(256),
-                vec![],
-                ExecutionMode::Static,
-            );
-            let mut callable_scope =
-                CompilationScope::new(ExecutionMode::Static);
-
-            for (index, (parameter_name, _parameter_type)) in
-                parameters.iter().enumerate()
-            {
-                callable_scope.register_variable_slot(Variable::new_const(
-                    parameter_name.clone(),
-                    StackIndex(index as u32),
-                ));
-            }
-
-            let _ = compile_expression(
-                &mut callable_context,
-                RichAst::new(*body, &metadata),
-                CompileMetadata::default(),
-                callable_scope,
-            )?;
-
-            callable_context.append_instruction_code(InstructionCode::RET);
-
-            let parameter_types = parameters
-                .into_iter()
-                .map(|(name, _ty)| {
-                    (
-                        Some(name),
-                        Type::core(crate::libs::core::type_id::CoreLibBaseTypeId::Unknown),
-                    )
-                })
-                .collect::<Vec<_>>();
-
-            let return_type = return_type.map(|_ty| {
-                Box::new(Type::core(
-                    crate::libs::core::type_id::CoreLibBaseTypeId::Unknown,
-                ))
-            });
-
-            let callable_signature = crate::types::type_definition::callable::CallableTypeDefinition {
-                kind,
-                parameter_types,
-                rest_parameter_type: None,
-                return_type,
-                yeet_type: yeet_type.map(|_ty| {
-                    Box::new(Type::core(
-                        crate::libs::core::type_id::CoreLibBaseTypeId::Unknown,
-                    ))
-                }),
-            };
-
-            let callable_value = Value {
-                inner: CoreValue::Callable(Callable {
-                    name,
-                    signature: callable_signature,
-                    body: CallableBody::DatexBytecode(
-                        callable_context.into_buffer(),
-                    ),
-                }),
-                custom_type: None,
-            };
-            append_value(compilation_context.core_context(), callable_value)
-                .unwrap();
-
-            if let (Some(callable_name), Some(stack_index)) =
-                (callable_name, callable_stack_index)
-            {
-                scope.register_variable_slot(Variable::new_const(
-                    callable_name,
-                    stack_index,
-                ));
-            }
         }
 
         data => {
