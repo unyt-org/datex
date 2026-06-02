@@ -56,10 +56,23 @@ impl Display for DIFObserveError {
     }
 }
 
-#[derive(Debug, Display)]
+#[derive(Debug)]
 pub enum DIFUpdateError {
     UpdateError(UpdateError),
     CacheValueRetrievalError(CacheValueRetrievalError),
+}
+
+impl Display for DIFUpdateError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            DIFUpdateError::UpdateError(e) => {
+                core::write!(f, "Update error: {}", e)
+            }
+            DIFUpdateError::CacheValueRetrievalError(e) => {
+                core::write!(f, "Cache value retrieval error: {}", e)
+            }
+        }
+    }
 }
 
 impl From<UpdateError> for DIFUpdateError {
