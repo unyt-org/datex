@@ -26,12 +26,18 @@ pub const DECIMAL_NEG_INFINITY: &str = "-infinity";
 
 #[derive(Debug, Clone, Eq, Serialize, Deserialize)]
 pub enum Decimal {
-    Finite(Rational),
+    #[serde(rename = "nan")]
     Nan,
+    #[serde(rename = "0.0")]
     Zero,
+    #[serde(rename = "-0.0")]
     NegZero,
+    #[serde(rename = "infinity")]
     Infinity,
+    #[serde(rename = "-infinity")]
     NegInfinity,
+    #[serde(untagged)]
+    Finite(Rational),
 }
 
 impl Hash for Decimal {
