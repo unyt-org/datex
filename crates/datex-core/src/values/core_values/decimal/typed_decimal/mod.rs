@@ -9,6 +9,7 @@ use crate::{
 };
 
 use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
+use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, hash::Hash, num::ParseFloatError, result::Result};
 use num::ToPrimitive;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -46,10 +47,22 @@ pub enum DecimalTypeVariant {
     DBig,
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, BinRead, BinWrite)]
+#[brw(little)]
 pub enum TypedDecimal {
-    F32(OrderedFloat<f32>),
-    F64(OrderedFloat<f64>),
+    #[brw(magic = 1u8)]
+    F32(
+        #[br(map = |x: f32| OrderedFloat(x))]
+        #[bw(map = |x: &OrderedFloat<f32>| x.into_inner())]
+        OrderedFloat<f32>,
+    ),
+    #[brw(magic = 2u8)]
+    F64(
+        #[br(map = |x: f64| OrderedFloat(x))]
+        #[bw(map = |x: &OrderedFloat<f64>| x.into_inner())]
+        OrderedFloat<f64>,
+    ),
+    #[brw(magic = 3u8)]
     Decimal(Decimal),
 }
 

@@ -158,7 +158,7 @@ pub fn append_value(
                 ty:
                     Some(box Type::Alias(TypeDefinitionWithMetadata {
                         definition:
-                            TypeDefinition::Core(CoreLibTypeId::Base(
+                            TypeDefinition::CoreType(CoreLibTypeId::Base(
                                 CoreLibBaseTypeId::Unit,
                             )),
                         ..
@@ -192,18 +192,11 @@ pub fn append_value(
     }
     let _: () = match value.inner {
         CoreValue::Type(ty) => {
-            match ty.try_as_core_lib_type() {
-                // special core types -> map directly to core pointer addresses
-                Some(core_lib_type_id) => {
-                    append_get_core_lib_value(
-                        context.cursor_mut(),
-                        core_lib_type_id.into(),
-                    );
-                }
-                None => todo!(
-                    "Non-core type definitions not yet supported in CompilationContext"
-                ),
-            }
+            append_regular_instruction(
+                context.cursor_mut(),
+                RegularInstruction::TypeExpression,
+            );
+            append_type(context, &ty);
         }
         CoreValue::Callable(_callable) => {
             core::todo!(
@@ -633,7 +626,7 @@ mod tests {
             custom_type: Some(TypeDefinition::TaggedType(
                 TaggedTypeDefinition {
                     ty: Some(Box::new(Type::Alias(
-                        TypeDefinition::Core(CoreLibTypeId::Base(
+                        TypeDefinition::CoreType(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Unit,
                         ))
                         .into(),
@@ -682,7 +675,7 @@ mod tests {
     fn compile_core_type_value_integer() {
         let value = Value {
             inner: CoreValue::Type(
-                TypeDefinition::Core(CoreLibTypeId::Base(
+                TypeDefinition::CoreType(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Integer,
                 ))
                 .into(),

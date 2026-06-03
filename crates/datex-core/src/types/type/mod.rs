@@ -193,7 +193,7 @@ impl Type {
     pub fn try_as_core_lib_type(&self) -> Option<CoreLibTypeId> {
         match self {
             Type::Alias(TypeDefinitionWithMetadata {
-                definition: TypeDefinition::Core(core_lib_type_id),
+                definition: TypeDefinition::CoreType(core_lib_type_id),
                 metadata,
             }) if metadata == &TypeMetadata::default() => {
                 Some(*core_lib_type_id)

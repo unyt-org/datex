@@ -207,7 +207,7 @@ fn type_cast_expression(
             ty:
                 Some(box Type::Alias(TypeDefinitionWithMetadata {
                     definition:
-                        TypeDefinition::Core(CoreLibTypeId::Base(
+                        TypeDefinition::CoreType(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Unit,
                         )),
                     ..
@@ -303,7 +303,7 @@ fn structural_type_definition_to_type_expression(
         TypeDefinition::Shared(_type_reference) => {
             todo!("#651 Handle type references in decompiler");
         }
-        TypeDefinition::Core(core_type) => {
+        TypeDefinition::CoreType(core_type) => {
             TypeExpressionData::Identifier(core_type.to_string())
                 .with_default_span()
         }

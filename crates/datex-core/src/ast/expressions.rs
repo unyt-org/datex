@@ -22,11 +22,13 @@ use crate::{
     },
     values::{
         core_value::CoreValue,
-        core_values,
         core_values::{
+            self,
+            boolean::Boolean,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
+            text::Text,
         },
         value::Value,
         value_container::ValueContainer,
@@ -89,9 +91,9 @@ pub enum DatexExpressionData {
     /// null
     Null,
     /// Boolean (true or false)
-    Boolean(bool),
+    Boolean(Boolean),
     /// Text, e.g "Hello, world!"
-    Text(String),
+    Text(Text),
     /// Decimal, e.g 123.456789123456
     Decimal(Decimal),
 
@@ -263,7 +265,7 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                 }
             }
             DatexExpressionData::Null => ValueContainer::Local(Value::null()),
-            DatexExpressionData::Boolean(b) => ValueContainer::from(*b),
+            DatexExpressionData::Boolean(b) => ValueContainer::from(b.clone()),
             DatexExpressionData::Text(s) => ValueContainer::from(s.clone()),
             DatexExpressionData::Decimal(d) => ValueContainer::from(d.clone()),
             DatexExpressionData::Integer(i) => ValueContainer::from(i.clone()),

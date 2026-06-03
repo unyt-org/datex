@@ -7,9 +7,11 @@ use crate::{
     },
     prelude::*,
     values::core_values::{
+        boolean::Boolean,
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
         integer::{Integer, typed_integer::TypedInteger},
+        text::Text,
     },
 };
 
@@ -43,8 +45,8 @@ pub enum TypeExpressionData {
     TypedInteger(TypedInteger),
     Decimal(Decimal),
     TypedDecimal(TypedDecimal),
-    Boolean(bool),
-    Text(String),
+    Boolean(Boolean),
+    Text(Text),
     Endpoint(Endpoint),
 
     // [integer, text, endpoint]

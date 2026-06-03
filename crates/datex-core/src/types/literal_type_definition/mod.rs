@@ -1,4 +1,6 @@
 //! This module contains the implementation of the [LiteralTypeDefinition], which represents a type definition for a literal value, such as an integer, decimal, text, boolean, or endpoint.
+use binrw::{BinRead, BinWrite};
+
 use crate::{
     libs::core::type_id::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
@@ -6,6 +8,7 @@ use crate::{
     prelude::*,
     types::type_definition::TypeDefinition,
     values::core_values::{
+        boolean::Boolean,
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
         integer::{Integer, typed_integer::TypedInteger},
@@ -17,14 +20,21 @@ pub mod equality;
 pub mod serde_dif;
 pub mod type_match;
 
-#[derive(Debug, Clone, PartialEq, Hash, Eq)]
+#[derive(Debug, Clone, PartialEq, Hash, Eq, BinRead, BinWrite)]
 pub enum LiteralTypeDefinition {
+    #[brw(magic = 0u8)]
     Integer(Integer),
+    #[brw(magic = 1u8)]
     TypedInteger(TypedInteger),
+    #[brw(magic = 2u8)]
     Decimal(Decimal),
+    #[brw(magic = 3u8)]
     TypedDecimal(TypedDecimal),
-    Text(String), // TODO: use Text or String?
-    Boolean(bool),
+    #[brw(magic = 4u8)]
+    Text(Text),
+    #[brw(magic = 5u8)]
+    Boolean(Boolean),
+    #[brw(magic = 6u8)]
     Endpoint(Endpoint),
 }
 
@@ -43,12 +53,12 @@ impl_from_typed_int!(u8, u16, u32, u64, i8, i16, i32, i64);
 
 impl From<String> for LiteralTypeDefinition {
     fn from(value: String) -> Self {
-        LiteralTypeDefinition::Text(value)
+        LiteralTypeDefinition::Text(value.into())
     }
 }
 impl From<&str> for LiteralTypeDefinition {
     fn from(value: &str) -> Self {
-        LiteralTypeDefinition::Text(value.to_string())
+        LiteralTypeDefinition::Text(value.into())
     }
 }
 
@@ -77,12 +87,12 @@ impl From<Decimal> for LiteralTypeDefinition {
 
 impl From<Text> for LiteralTypeDefinition {
     fn from(value: Text) -> Self {
-        LiteralTypeDefinition::Text(value.0)
+        LiteralTypeDefinition::Text(value)
     }
 }
 impl From<bool> for LiteralTypeDefinition {
     fn from(value: bool) -> Self {
-        LiteralTypeDefinition::Boolean(value)
+        LiteralTypeDefinition::Boolean(value.into())
     }
 }
 
@@ -181,23 +191,23 @@ mod tests {
         let int_type = LiteralTypeDefinition::Integer(Integer::from(42));
         assert_eq!(int_type.to_string(), "42");
 
-        let text_type = LiteralTypeDefinition::Text("Hello".to_string());
+        let text_type = LiteralTypeDefinition::Text("Hello".into());
         assert_eq!(text_type.to_string(), r#""Hello""#);
 
         let list_type = TypeDefinition::list(vec![
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1))),
-            Type::from(LiteralTypeDefinition::Text("World".to_string())),
+            Type::from(LiteralTypeDefinition::Text("World".into())),
         ]);
         assert_eq!(list_type.to_string(), r#"[1, "World"]"#);
 
         let struct_type = TypeDefinition::Map(
             vec![
                 (
-                    LiteralTypeDefinition::Text("id".to_string()).into(),
+                    LiteralTypeDefinition::Text("id".into()).into(),
                     int_type.into(),
                 ),
                 (
-                    LiteralTypeDefinition::Text("name".to_string()).into(),
+                    LiteralTypeDefinition::Text("name".into()).into(),
                     text_type.into(),
                 ),
             ]
@@ -214,7 +224,7 @@ mod tests {
             ValueContainer::from(CoreValue::Integer(Integer::from(42)));
         assert!(int_type.satisfies_value_container(&int_value));
 
-        let text_type = LiteralTypeDefinition::Text("Hello".to_string());
+        let text_type = LiteralTypeDefinition::Text("Hello".into());
         let text_value =
             ValueContainer::from(CoreValue::Text(Text::from("Hello")));
         assert!(text_type.satisfies_value_container(&text_value));

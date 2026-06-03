@@ -10,6 +10,7 @@ use crate::{
         },
         type_definition_with_metadata::LocalOwnership,
     },
+    values::core_values::{boolean::Boolean, text::Text},
 };
 
 use crate::{
@@ -364,14 +365,14 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     }
     fn visit_boolean_type(
         &mut self,
-        boolean: &mut bool,
+        boolean: &mut Boolean,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_literal_type(LiteralTypeDefinition::Boolean(*boolean))
+        mark_literal_type(LiteralTypeDefinition::Boolean(boolean.clone()))
     }
     fn visit_text_type(
         &mut self,
-        text: &mut String,
+        text: &mut Text,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         mark_literal_type(LiteralTypeDefinition::Text(text.clone()))
@@ -592,7 +593,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         core_lib_type_id: &mut CoreLibTypeId,
         _span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_type(TypeDefinition::Core(*core_lib_type_id).into())
+        mark_type(TypeDefinition::CoreType(*core_lib_type_id).into())
     }
 }
 
@@ -793,14 +794,14 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     }
     fn visit_boolean(
         &mut self,
-        boolean: &mut bool,
+        boolean: &mut Boolean,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_literal_type(LiteralTypeDefinition::Boolean(*boolean))
+        mark_literal_type(LiteralTypeDefinition::Boolean(boolean.clone()))
     }
     fn visit_text(
         &mut self,
-        text: &mut String,
+        text: &mut Text,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         mark_literal_type(LiteralTypeDefinition::Text(text.clone()))
@@ -1340,7 +1341,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                     Type::Nominal(reference) => variant_type_id_from_pointer_address(&reference.pointer_address(), variant_access, span),
                     Type::Alias(alias) => {
                         match &alias.definition {
-                            TypeDefinition::Core(core_lib_id) => {
+                            TypeDefinition::CoreType(core_lib_id) => {
                                 variant_type_id(CoreLibId::Type(*core_lib_id), variant_access, span)
                             }
                             _ => Err(SpannedTypeError {
@@ -1369,7 +1370,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         match core_lib_id {
-            CoreLibId::Type(type_id) => mark_type(TypeDefinition::Core(
+            CoreLibId::Type(type_id) => mark_type(TypeDefinition::CoreType(
                 *type_id
             )
             .into()),
@@ -1843,14 +1844,14 @@ mod tests {
             infer_from_expression(
                 &mut DatexExpressionData::Boolean(true).with_default_span()
             ),
-            Type::from(LiteralTypeDefinition::Boolean(true),)
+            Type::from(LiteralTypeDefinition::Boolean(true.into()),)
         );
 
         assert_eq!(
             infer_from_expression(
                 &mut DatexExpressionData::Boolean(false).with_default_span()
             ),
-            Type::from(LiteralTypeDefinition::Boolean(false),)
+            Type::from(LiteralTypeDefinition::Boolean(false.into()),)
         );
 
         assert_eq!(
@@ -1914,7 +1915,7 @@ mod tests {
                 TypeDefinition::Map(
                     vec![(
                         Type::Alias(
-                            LiteralTypeDefinition::Text("a".to_string()).into()
+                            LiteralTypeDefinition::Text("a".into()).into()
                         ),
                         Type::Alias(
                             LiteralTypeDefinition::Integer(Integer::from(1))
@@ -1970,7 +1971,7 @@ mod tests {
         assert_matches!(
             var_type,
             Type::Alias(TypeDefinitionWithMetadata {
-                definition: TypeDefinition::Core(CoreLibTypeId::Base(
+                definition: TypeDefinition::CoreType(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Integer
                 )),
                 ..
@@ -2419,7 +2420,7 @@ mod tests {
             has_nominal_type_definition(
                 &inferred_type,
                 NominalTypeDefinition::new_base(
-                    Type::from(LiteralTypeDefinition::Boolean(true),),
+                    Type::from(LiteralTypeDefinition::Boolean(true.into()),),
                     "X".to_string()
                 )
             ),
@@ -2433,7 +2434,7 @@ mod tests {
             has_nominal_type_definition(
                 &inferred_type,
                 NominalTypeDefinition::new_base(
-                    Type::from(LiteralTypeDefinition::Boolean(false)),
+                    Type::from(LiteralTypeDefinition::Boolean(false.into())),
                     "X".to_string(),
                 ),
             ),
@@ -2525,26 +2526,28 @@ mod tests {
         assert!(has_nominal_type_definition(
             &inferred_type,
             NominalTypeDefinition::new_base(
-                Type::from(TypeDefinition::Map(
-                    vec![
-                        (
-                            Type::from(LiteralTypeDefinition::Text(
-                                "a".to_string()
-                            ),),
-                            Type::core(CoreLibVariantTypeId::Integer(
-                                IntegerTypeVariant::U8
-                            )),
-                        ),
-                        (
-                            Type::from(LiteralTypeDefinition::Text(
-                                "b".to_string()
-                            ),),
-                            Type::core(CoreLibBaseTypeId::Decimal)
-                        )
-                    ]
-                    .into_iter()
-                    .collect()
-                )),
+                Type::from(
+                    TypeDefinition::Map(
+                        vec![
+                            (
+                                Type::from(LiteralTypeDefinition::Text(
+                                    "a".into()
+                                ),),
+                                Type::core(CoreLibVariantTypeId::Integer(
+                                    IntegerTypeVariant::U8
+                                )),
+                            ),
+                            (
+                                Type::from(LiteralTypeDefinition::Text(
+                                    "b".into()
+                                ),),
+                                Type::core(CoreLibBaseTypeId::Decimal)
+                            )
+                        ]
+                        .into_iter()
+                        .collect()
+                    )
+                ),
                 "X".to_string()
             )
         ));

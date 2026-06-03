@@ -1,4 +1,5 @@
 use crate::shared_values::ReferenceMutability;
+use binrw::{BinRead, BinWrite};
 use core::fmt::Display;
 use serde_repr::*;
 
@@ -25,8 +26,18 @@ impl Display for LocalReferenceMutability {
 }
 
 #[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize_repr, Deserialize_repr, Copy,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize_repr,
+    Deserialize_repr,
+    Copy,
+    BinRead,
+    BinWrite,
 )]
+#[brw(little, repr = u8)]
 #[repr(u8)]
 pub enum LocalMutability {
     Immutable = 0,
@@ -42,10 +53,23 @@ impl Display for LocalMutability {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Copy)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Copy,
+    BinRead,
+    BinWrite,
+)]
 #[serde(untagged)]
+#[brw(little, repr = u8)]
 pub enum LocalOwnership {
     Owned,
+    #[bw(map = |x| x.)]
     Referenced(LocalReferenceMutability),
 }
 impl Display for LocalOwnership {
@@ -59,17 +83,31 @@ impl Display for LocalOwnership {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Copy)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Copy,
+    BinRead,
+    BinWrite,
+)]
 /// Combination of &/&mut, '/'mut shared and mut prefixes
 #[serde(tag = "kind")]
+#[brw(little)]
 pub enum TypeMetadata {
     /// Local types can be mut or not, and can optionally be a reference type with an additional reference mutability (e.g. &mut User)
+    #[brw(magic = 0x0u8)]
     Local {
         mutability: LocalMutability,
         ownership: LocalOwnership,
     },
     /// Shared types are always (shared or shared mut) and can optionally be a non-owned, reference type
     /// with an additional reference mutability (e.g. 'mut shared mut User)
+    #[brw(magic = 0x1u8)]
     Shared {
         mutability: SharedContainerMutability,
         ownership: SharedContainerOwnership,

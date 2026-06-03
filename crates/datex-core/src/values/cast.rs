@@ -136,7 +136,7 @@ macro_rules! derive_try_from_chain {
 
         impl DatexProxyTypes for $type {
             fn datex_type(_memory: &mut Memory) -> Type {
-                Type::Alias(TypeDefinition::Core($dx_type.into()).into())
+                Type::Alias(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
     };
@@ -166,7 +166,7 @@ macro_rules! impl_datex_direct_via_value_container {
 
         impl DatexProxyTypes for $type {
             fn datex_type(_memory: &mut Memory) -> Type {
-                Type::Alias(TypeDefinition::Core($dx_type.into()).into())
+                Type::Alias(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
     };
@@ -316,7 +316,8 @@ impl<T: DatexValueContainerProxy> DatexProxyTypes for Option<T> {
         Type::Alias(
             TypeDefinition::Union(UnionTypeDefinition(vec![
                 Type::Alias(
-                    TypeDefinition::Core(CoreLibBaseTypeId::Null.into()).into(),
+                    TypeDefinition::CoreType(CoreLibBaseTypeId::Null.into())
+                        .into(),
                 ),
                 T::datex_type(memory),
             ]))
@@ -364,7 +365,9 @@ impl<T: DatexValueContainerProxyInfallibleSerialize>
 
 impl<T: DatexValueContainerProxy> DatexProxyTypes for Vec<T> {
     fn datex_type(_memory: &mut Memory) -> Type {
-        Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::List.into()).into())
+        Type::Alias(
+            TypeDefinition::CoreType(CoreLibBaseTypeId::List.into()).into(),
+        )
     }
 }
 
@@ -431,6 +434,8 @@ impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
     DatexProxyTypes for HashMap<K, V>
 {
     fn datex_type(_memory: &mut Memory) -> Type {
-        Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Map.into()).into())
+        Type::Alias(
+            TypeDefinition::CoreType(CoreLibBaseTypeId::Map.into()).into(),
+        )
     }
 }

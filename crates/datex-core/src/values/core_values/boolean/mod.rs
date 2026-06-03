@@ -3,13 +3,21 @@ use crate::{
     values::value_container::{ValueContainer, error::ValueError},
 };
 
+use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 pub mod equality;
 pub mod ops;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Boolean(pub bool);
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,
+)]
+#[brw(little)]
+pub struct Boolean(
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub bool,
+);
 
 impl Boolean {
     pub fn new(value: bool) -> Self {

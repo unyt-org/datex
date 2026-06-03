@@ -2,8 +2,9 @@
 //! A [TypeDefinition] can hold e.g. a [LiteralTypeDefinition], or a [CollectionTypeDefinition], or a [SharedContainerContainingType] wand impl types.
 //! The [TypeDefinition] is used as the underlying structure for type definitions in the type space and is wrapped by [TypeDefinitionWithMetadata] which holds additional metadata for type checking and inference.
 
-use strum::AsRefStr;
-
+use ::binrw::{BinRead, BinWrite};
+use strum::{AsRefStr, EnumDiscriminants, EnumIter, FromRepr};
+pub mod binrw;
 use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
@@ -44,7 +45,9 @@ pub enum TypeDefinition {
     Literal(LiteralTypeDefinition),
 
     List(ListTypeDefinition), // e.g. [&mut integer, text, boolean]
+
     Map(MapTypeDefinition),
+
     Range(RangeTypeDefinition),
 
     // TODO #371: Rename to generic?
@@ -86,7 +89,7 @@ pub enum TypeDefinition {
     Type,
 
     // core types ("nominal")
-    Core(CoreLibTypeId), // -> $123
+    CoreType(CoreLibTypeId), // -> $123
 }
 
 impl Hash for TypeDefinition {
@@ -147,7 +150,7 @@ impl Hash for TypeDefinition {
                 // TODO: can we do this?
                 0.hash(state);
             }
-            TypeDefinition::Core(core) => {
+            TypeDefinition::CoreType(core) => {
                 core.hash(state);
             }
             TypeDefinition::TaggedType(tagged_type) => {
@@ -245,7 +248,7 @@ impl Display for TypeDefinition {
             TypeDefinition::Type => {
                 write!(f, "Type")
             }
-            TypeDefinition::Core(core) => {
+            TypeDefinition::CoreType(core) => {
                 write!(f, "{}", core)
             }
             TypeDefinition::TaggedType(tagged_type) => {
@@ -262,7 +265,7 @@ pub mod union;
 
 impl TypeDefinition {
     pub const UNIT: TypeDefinition =
-        TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit));
+        TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit));
 
     /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
     pub fn with_collapsed<R>(&self, f: impl FnOnce(&TypeDefinition) -> R) -> R {
@@ -281,7 +284,7 @@ impl TypeDefinition {
 
     /// Creates a new core type definition.
     pub fn core(id: impl Into<CoreLibTypeId>) -> TypeDefinition {
-        TypeDefinition::Core(id.into())
+        TypeDefinition::CoreType(id.into())
     }
 
     /// Creates a new literal type.

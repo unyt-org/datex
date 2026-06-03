@@ -512,7 +512,7 @@ mod tests {
                 &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "Example".to_string(),
                     ty: Some(Box::new(Type::Alias(
-                        TypeDefinition::Core(CoreLibBaseTypeId::Unit.into())
+                        TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into())
                             .into()
                     ))),
                 }))

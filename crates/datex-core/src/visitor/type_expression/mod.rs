@@ -1,5 +1,9 @@
 //! This module contains the implementation of the visitor pattern for traversing and transforming the AST of [TypeExpression]s.
-use crate::{ast::type_expressions::RangeTypeExpr, prelude::*};
+use crate::{
+    ast::type_expressions::RangeTypeExpr,
+    prelude::*,
+    values::core_values::{boolean::Boolean, text::Text},
+};
 use core::ops::Range;
 
 use crate::{
@@ -368,7 +372,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     /// Visit text literal
     fn visit_text_type(
         &mut self,
-        text: &mut String,
+        text: &mut Text,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
@@ -401,7 +405,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     /// Visit boolean literal
     fn visit_boolean_type(
         &mut self,
-        boolean: &mut bool,
+        boolean: &mut Boolean,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;

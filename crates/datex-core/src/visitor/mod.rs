@@ -39,6 +39,7 @@ mod tests {
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::Parser,
         prelude::*,
+        values::core_values::boolean::Boolean,
         visitor::{
             VisitAction,
             expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
@@ -122,7 +123,7 @@ mod tests {
 
         fn visit_boolean(
             &mut self,
-            boolean: &mut bool,
+            boolean: &mut Boolean,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Err(MyAstExpressionError::new("Booleans are not allowed"))

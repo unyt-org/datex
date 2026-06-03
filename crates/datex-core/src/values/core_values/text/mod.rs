@@ -1,10 +1,20 @@
 //! This module contains the implementation of the [Text] struct, which represents a string value in the type system.
-use crate::{prelude::*, shared_values::errors::IndexOutOfBoundsError};
+use crate::{
+    global::protocol_structures::instruction_data::TextData, prelude::*,
+    shared_values::errors::IndexOutOfBoundsError,
+};
+use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 pub mod equality;
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Text(pub String);
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,
+)]
+pub struct Text(
+    #[bw(map=|x| TextData(x.clone()))]
+    #[br(map=|x: TextData| x.0)]
+    pub String,
+);
 pub mod ops;
 impl Display for Text {
     // TODO #319: escape string content
@@ -14,7 +24,7 @@ impl Display for Text {
 }
 
 impl Text {
-    pub fn length(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.0.len()
     }
     pub fn to_uppercase(&self) -> Text {

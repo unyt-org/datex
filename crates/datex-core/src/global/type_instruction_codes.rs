@@ -16,62 +16,6 @@ use modular_bitfield::Specifier;
 use num_enum::TryFromPrimitive;
 use strum::Display;
 
-#[allow(non_camel_case_types)]
-#[derive(
-    Debug,
-    Eq,
-    PartialEq,
-    TryFromPrimitive,
-    Copy,
-    Clone,
-    Display,
-    num_enum::IntoPrimitive,
-)]
-#[repr(u8)]
-pub enum TypeInstructionCode {
-    SHARED_TYPE_REFERENCE,
-    TYPE_WITH_IMPLS,
-    TAGGED_TYPE,
-
-    TYPE_LIST,
-    TYPE_RANGE,
-
-    TYPE_LITERAL_INTEGER,
-    TYPE_LITERAL_TEXT,
-    TYPE_LITERAL_SHORT_TEXT,
-}
-
-impl From<&TypeDefinition> for TypeInstructionCode {
-    fn from(value: &TypeDefinition) -> Self {
-        match value {
-            TypeDefinition::ImplType(_) => TypeInstructionCode::TYPE_WITH_IMPLS,
-            TypeDefinition::Shared(_) => {
-                TypeInstructionCode::SHARED_TYPE_REFERENCE
-            }
-            TypeDefinition::Literal(_) => {
-                todo!()
-            }
-            TypeDefinition::Intersection(_) => {
-                todo!()
-            }
-            TypeDefinition::Union(_) => todo!(),
-            TypeDefinition::Callable { .. } => {
-                todo!()
-            }
-            TypeDefinition::Collection(_) => {
-                todo!()
-            }
-            TypeDefinition::List(_) => todo!(),
-            TypeDefinition::Map(_) => todo!(),
-            TypeDefinition::Range(_) => todo!(),
-            TypeDefinition::Nested(_) => todo!(),
-            TypeDefinition::Type => todo!(),
-            TypeDefinition::Core(_) => todo!(),
-            TypeDefinition::TaggedType(_) => TypeInstructionCode::TAGGED_TYPE,
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Display, Specifier)]
 #[bits = 2]
 pub enum TypeOwnershipCode {

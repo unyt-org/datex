@@ -9,6 +9,10 @@ use crate::{
         integer::typed_integer::IntegerTypeVariant,
     },
 };
+use binrw::{
+    BinRead, BinWrite, Endian,
+    meta::{EndianKind, ReadEndian},
+};
 use core::{fmt::Display, mem::variant_count, str::FromStr};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use strum::{EnumIter, IntoEnumIterator};
@@ -193,6 +197,42 @@ impl CoreLibIdTrait for CoreLibVariantTypeId {
 pub enum CoreLibTypeId {
     Base(CoreLibBaseTypeId),
     Variant(CoreLibVariantTypeId),
+}
+use binrw::io::{Read, Seek, Write};
+impl BinWrite for CoreLibTypeId {
+    type Args<'a> = ();
+
+    fn write_options<W: Write + Seek>(
+        &self,
+        writer: &mut W,
+        endian: binrw::Endian,
+        args: Self::Args<'_>,
+    ) -> binrw::prelude::BinResult<()> {
+        let id_index: CoreLibIdIndex = (*self).into();
+        println!("Writing CoreLibTypeId index: {}", id_index.0);
+        id_index.write_options(writer, endian, args)
+    }
+}
+impl BinRead for CoreLibTypeId {
+    type Args<'a> = ();
+
+    fn read_options<R: Read + Seek>(
+        reader: &mut R,
+        endian: binrw::Endian,
+        args: Self::Args<'_>,
+    ) -> binrw::prelude::BinResult<Self> {
+        let id_index = CoreLibIdIndex::read_options(reader, endian, args)?;
+        println!("Read CoreLibTypeId index: {}", id_index.0);
+        CoreLibTypeId::try_from(id_index).map_err(|_| {
+            binrw::Error::AssertFail {
+                pos: reader.stream_position().unwrap_or(0),
+                message: "Invalid CoreLibTypeId index".to_string(),
+            }
+        })
+    }
+}
+impl ReadEndian for CoreLibTypeId {
+    const ENDIAN: EndianKind = EndianKind::Endian(Endian::Little);
 }
 
 impl From<CoreLibBaseTypeId> for CoreLibTypeId {

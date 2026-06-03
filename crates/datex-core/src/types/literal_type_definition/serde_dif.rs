@@ -18,11 +18,11 @@ impl Serialize for LiteralTypeDefinition {
     {
         match self {
             LiteralTypeDefinition::Boolean(value) => {
-                serializer.serialize_bool(*value)
+                serializer.serialize_bool(value.0)
             }
 
             LiteralTypeDefinition::Text(value) => {
-                serializer.serialize_str(value)
+                serializer.serialize_str(&value.0)
             }
 
             other => {
@@ -84,21 +84,21 @@ impl<'de> Visitor<'de> for LiteralTypeDefinitionVisitor {
     where
         E: de::Error,
     {
-        Ok(LiteralTypeDefinition::Boolean(value))
+        Ok(LiteralTypeDefinition::Boolean(value.into()))
     }
 
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        Ok(LiteralTypeDefinition::Text(value.to_owned()))
+        Ok(LiteralTypeDefinition::Text(value.into()))
     }
 
     fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        Ok(LiteralTypeDefinition::Text(value))
+        Ok(LiteralTypeDefinition::Text(value.into()))
     }
 
     fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
@@ -207,9 +207,9 @@ mod tests {
         assert_eq!(deserialized, value);
     }
 
-    #[test_case(LiteralTypeDefinition::Boolean(true), json!(true); "boolean_true")]
-    #[test_case(LiteralTypeDefinition::Boolean(false), json!(false); "boolean_false")]
-    #[test_case(LiteralTypeDefinition::Text("hello".to_string()), json!("hello"); "text")]
+    #[test_case(LiteralTypeDefinition::Boolean(true.into()), json!(true); "boolean_true")]
+    #[test_case(LiteralTypeDefinition::Boolean(false.into()), json!(false); "boolean_false")]
+    #[test_case(LiteralTypeDefinition::Text("hello".into()), json!("hello"); "text")]
     #[test_case(LiteralTypeDefinition::Integer(123.into()), json!([
         CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).index().0, "123"
     ]); "integer_positive")]

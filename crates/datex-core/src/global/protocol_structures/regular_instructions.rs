@@ -6,16 +6,16 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                ApplyData, DecimalData, Float32Data, Float64Data,
-                FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData,
-                Int8Data, Int16Data, Int32Data, Int64Data, Int128Data,
-                IntegerData, ListData, MapData, ModifyStackValue, Move,
-                PerformMove, PushToStackMultiple, RawRemotePointerAddress,
-                RawSelfOwnedPointerAddress, SetSharedContainerValue, SharedRef,
-                SharedRefWithValue, ShortListData, ShortMapData,
-                ShortStatementsData, ShortTextData, StackIndex, StatementsData,
-                TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
-                UInt64Data, UInt128Data, UnboundedStatementsData,
+                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
+                FloatAsInt32Data, InstructionBlockData, Int8Data, Int16Data,
+                Int32Data, Int64Data, Int128Data, ListData, MapData,
+                ModifyStackValue, Move, PerformMove, PushToStackMultiple,
+                RawRemotePointerAddress, RawSelfOwnedPointerAddress,
+                SetSharedContainerValue, SharedRef, SharedRefWithValue,
+                ShortListData, ShortMapData, ShortStatementsData,
+                ShortTextData, StackIndex, StatementsData, TaggedValue,
+                TextData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
+                UInt128Data, UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -25,7 +25,9 @@ use crate::{
     prelude::*,
     shared_values::PointerAddress,
     values::core_values::{
-        decimal::typed_decimal::TypedDecimal, endpoint::Endpoint,
+        decimal::{Decimal, typed_decimal::TypedDecimal},
+        endpoint::Endpoint,
+        integer::Integer,
     },
 };
 use binrw::{
@@ -54,10 +56,10 @@ pub enum RegularInstruction {
     UInt128(UInt128Data),
 
     // big integers
-    BigInteger(IntegerData),
+    BigInteger(Integer),
 
     // default integer
-    Integer(IntegerData),
+    Integer(Integer),
     Range,
 
     Endpoint(Endpoint),
@@ -66,9 +68,9 @@ pub enum RegularInstruction {
     DecimalF64(Float64Data),
     DecimalAsInt16(FloatAsInt16Data),
     DecimalAsInt32(FloatAsInt32Data),
-    BigDecimal(DecimalData),
+    BigDecimal(Decimal),
     // default decimal
-    Decimal(DecimalData),
+    Decimal(Decimal),
 
     RemoteExecution(InstructionBlockData),
     /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
@@ -82,6 +84,7 @@ pub enum RegularInstruction {
 
     ShortText(ShortTextData),
     Text(TextData),
+
     True,
     False,
     Null,
@@ -531,10 +534,10 @@ impl RegularInstruction {
                 Int128Data::read(reader).map(RegularInstruction::Int128)
             }
             InstructionCode::INT_BIG => {
-                IntegerData::read(reader).map(RegularInstruction::BigInteger)
+                Integer::read(reader).map(RegularInstruction::BigInteger)
             }
             InstructionCode::INT => {
-                IntegerData::read(reader).map(RegularInstruction::Integer)
+                Integer::read(reader).map(RegularInstruction::Integer)
             }
             InstructionCode::DECIMAL_F32 => {
                 Float32Data::read(reader).map(RegularInstruction::DecimalF32)
@@ -543,7 +546,7 @@ impl RegularInstruction {
                 Float64Data::read(reader).map(RegularInstruction::DecimalF64)
             }
             InstructionCode::DECIMAL_BIG => {
-                DecimalData::read(reader).map(RegularInstruction::BigDecimal)
+                Decimal::read(reader).map(RegularInstruction::BigDecimal)
             }
             InstructionCode::DECIMAL_AS_INT_16 => {
                 FloatAsInt16Data::read(reader)
@@ -554,7 +557,7 @@ impl RegularInstruction {
                     .map(RegularInstruction::DecimalAsInt32)
             }
             InstructionCode::DECIMAL => {
-                DecimalData::read(reader).map(RegularInstruction::Decimal)
+                Decimal::read(reader).map(RegularInstruction::Decimal)
             }
             InstructionCode::REMOTE_EXECUTION => {
                 InstructionBlockData::read(reader)
@@ -869,10 +872,10 @@ impl RegularInstruction {
                 )
             }
             RegularInstruction::BigDecimal(data) => {
-                write!(string, "{}", data.0)
+                write!(string, "{}", data)
             }
             RegularInstruction::Decimal(data) => {
-                write!(string, "{}", data.0)
+                write!(string, "{}", data)
             }
             RegularInstruction::ShortText(data) => {
                 write!(string, "{}", data.0)

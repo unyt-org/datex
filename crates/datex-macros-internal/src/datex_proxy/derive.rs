@@ -312,7 +312,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
 
     let type_definition = datex_type.unwrap_or_else(|| {
         quote! {
-            Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()))
+            Type::Alias(TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into()))
         }
     });
 
@@ -942,7 +942,7 @@ fn generate_named_field_type_code(
             quote! {
                 (
                     Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.to_string())).into()),
-                    Type::Alias(TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
+                    Type::Alias(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
                 )
             }
         }
@@ -963,7 +963,7 @@ fn generate_unnamed_field_type_code(
         // Cannot infer type
         SerdeMode::Fallible | SerdeMode::Infallible => {
             quote! {
-               Type::Alias(TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
+               Type::Alias(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
             }
         }
     }

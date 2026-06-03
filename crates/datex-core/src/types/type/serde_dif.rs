@@ -32,7 +32,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
     {
         match value {
             Type::Alias(type_definition) => match type_definition.definition {
-                TypeDefinition::Core(core)
+                TypeDefinition::CoreType(core)
                     if type_definition.metadata == TypeMetadata::default() =>
                 {
                     self.cast::<TypeDefinition>()

@@ -91,14 +91,6 @@ pub struct FloatAsInt32Data(pub i32);
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct DecimalData(pub Decimal);
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
-pub struct IntegerData(pub Integer);
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
 pub struct ShortTextDataRaw {
     pub length: u8,
     #[br(count = length)]
@@ -179,6 +171,17 @@ pub struct TextDataRaw {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextData(pub String);
+
+impl From<String> for TextData {
+    fn from(value: String) -> Self {
+        TextData(value)
+    }
+}
+impl From<&str> for TextData {
+    fn from(value: &str) -> Self {
+        TextData(value.to_string())
+    }
+}
 
 impl From<&TextData> for TextDataRaw {
     fn from(value: &TextData) -> Self {

@@ -20,10 +20,9 @@ use crate::{
         operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
         protocol_structures::{
             instruction_data::{
-                ApplyData, DecimalData, Float32Data, Float64Data,
-                FloatAsInt16Data, FloatAsInt32Data, IntegerData,
-                ModifyStackValue, RawPointerAddress, ShortTextData,
-                TaggedValue, TextData, UnboundedStatementsData,
+                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
+                FloatAsInt32Data, ModifyStackValue, RawPointerAddress,
+                ShortTextData, TaggedValue, TextData, UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
@@ -339,13 +338,13 @@ pub fn inner_execution_loop(
                             }
 
                             // big integers
-                            RegularInstruction::BigInteger(IntegerData(integer)) => {
+                            RegularInstruction::BigInteger(integer) => {
                                 Some(ValueContainer::from(TypedInteger::IBig(integer)).into())
                             }
 
                             // default integer
-                            RegularInstruction::Integer(IntegerData(i8)) => {
-                                Some(ValueContainer::from(i8).into())
+                            RegularInstruction::Integer(integer) => {
+                                Some(ValueContainer::from(integer).into())
                             }
 
                             // specific floats
@@ -356,7 +355,7 @@ pub fn inner_execution_loop(
                                 Some(ValueContainer::from(TypedDecimal::from(f64)).into())
                             }
                             // big decimal
-                            RegularInstruction::BigDecimal(DecimalData(big_decimal)) => {
+                            RegularInstruction::BigDecimal(big_decimal) => {
                                 Some(ValueContainer::from(TypedDecimal::Decimal(big_decimal)).into())
                             }
 
@@ -367,7 +366,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::DecimalAsInt32(FloatAsInt32Data(i32)) => {
                                 Some(ValueContainer::from(Decimal::from(i32 as f32)).into())
                             }
-                            RegularInstruction::Decimal(DecimalData(big_decimal)) => {
+                            RegularInstruction::Decimal(big_decimal) => {
                                 Some(ValueContainer::from(big_decimal).into())
                             }
 
@@ -513,7 +512,7 @@ pub fn inner_execution_loop(
                                     inner: CoreValue::Null,
                                     custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                         tag,
-                                        ty: Some(Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()).into())),
+                                        ty: Some(Box::new(TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into()).into())),
                                     }))
                                 })))
                             }
@@ -586,20 +585,14 @@ pub fn inner_execution_loop(
                     ) = type_instruction
                     {
                         Some(match type_instruction {
-                            TypeInstruction::LiteralInteger(integer) => {
-                                Type::Alias(
-                                    LiteralTypeDefinition::Integer(integer.0)
-                                        .into(),
-                                )
+                            TypeInstruction::TypeDefinitionCoreType(core_lib_type_id) => {
+                                Type::Alias(TypeDefinition::CoreType(core_lib_type_id).into())
                             }
-                            TypeInstruction::LiteralText(text_data) => {
-                                Type::Alias(
-                                    LiteralTypeDefinition::Text(text_data.0)
-                                        .into(),
-                                )
+                            TypeInstruction::TypeDefinitionLiteral(literal) => {
+                                Type::Alias(literal.into())
                             }
 
-                            TypeInstruction::SharedTypeReference(type_ref) => {
+                            TypeInstruction::TypeDefinitionSharedTypeReference(type_ref) => {
                                 let _metadata =
                                     TypeMetadata::from(&type_ref.metadata);
                                 let val = interrupt_with_maybe_value!(
@@ -650,9 +643,11 @@ pub fn inner_execution_loop(
                             }
 
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                            TypeInstruction::List(_)
-                            | TypeInstruction::Range
-                            | TypeInstruction::ImplType(_) => unreachable!(),
+                            TypeInstruction::TypeDefinitionList(_)
+                            | TypeInstruction::TypeDefinitionRange
+                            | TypeInstruction::TypeDefinitionImplType(_) => {
+                                unreachable!()
+                            }
                         })
                     } else {
                         None
@@ -1318,7 +1313,7 @@ pub fn inner_execution_loop(
                                     let referenced_container = yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external_from_base_container(
                                         yield_unwrap!(BaseSharedValueContainer::try_new(
                                             value,
-                                            TypeDefinition::Core(CoreLibBaseTypeId::Unknown.into()),
+                                            TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()),
                                             shared_ref.container_mutability,
                                         )),
                                         pointer_address,
@@ -1339,7 +1334,7 @@ pub fn inner_execution_loop(
 
                             Instruction::Type(type_instruction) => {
                                 match type_instruction {
-                                    TypeInstruction::ImplType(
+                                    TypeInstruction::TypeDefinitionImplType(
                                         impl_type_data,
                                     ) => {
                                         let metadata = TypeMetadata::from(
@@ -1360,7 +1355,7 @@ pub fn inner_execution_loop(
                                         })
                                         .into()
                                     }
-                                    TypeInstruction::Range => {
+                                    TypeInstruction::TypeDefinitionRange => {
                                         // TODO: add metadata everywhere
                                         let type_start =
                                             collected_results.pop_type_result();

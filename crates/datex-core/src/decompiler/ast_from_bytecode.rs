@@ -19,6 +19,7 @@ use crate::{
         operators::{BinaryOperator, UnaryOperator},
         protocol_structures::instructions::Instruction,
     },
+    libs::core::core_lib_id::CoreLibIdTrait,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         integer::{Integer, typed_integer::TypedInteger},
@@ -393,22 +394,25 @@ pub fn ast_from_bytecode(
                 let type_expression: Option<TypeExpression> = type_instruction
                     .map(|type_instruction| {
                         match type_instruction {
-                            TypeInstruction::LiteralInteger(integer_data) => {
+                            TypeInstruction::TypeDefinitionCoreType(core_lib_id) => {
+                                TypeExpressionData::Identifier(core_lib_id.to_string())
+                            }
+                            TypeInstruction::TypeDefinitionInteger(integer_data) => {
                                 TypeExpressionData::Integer(integer_data.0)
                             }
-                            TypeInstruction::LiteralText(text_data) => {
+                            TypeInstruction::TypeDefinitionText(text_data) => {
                                 TypeExpressionData::Text(text_data.0)
                             }
-                            TypeInstruction::SharedTypeReference(reference) => {
+                            TypeInstruction::TypeDefinitionSharedTypeReference(reference) => {
                                 // TODO #769: handle metadata
                                 TypeExpressionData::GetReference(
                                     PointerAddress::from(reference.address),
                                 )
                             }
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                            TypeInstruction::List(_)
-                            | TypeInstruction::Range
-                            | TypeInstruction::ImplType(_) => {
+                            TypeInstruction::TypeDefinitionList(_)
+                            | TypeInstruction::TypeDefinitionRange
+                            | TypeInstruction::TypeDefinitionImplType(_) => {
                                 unreachable!()
                             }
                         }
