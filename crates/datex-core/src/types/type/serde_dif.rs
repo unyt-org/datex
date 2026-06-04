@@ -18,6 +18,7 @@ use serde::{
     Serializer,
     de::{DeserializeSeed, IntoDeserializer, Visitor},
 };
+use crate::prelude::*;
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
     type Value = Type;

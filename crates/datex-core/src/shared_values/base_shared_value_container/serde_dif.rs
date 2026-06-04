@@ -1,7 +1,7 @@
 use crate::{
     dif::serde_context::SerdeContext,
     shared_values::base_shared_value_container::BaseSharedValueContainer,
-    types::{r#type::Type, type_definition::TypeDefinition},
+    types::{type_definition::TypeDefinition},
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::value_container::ValueContainer,
 };
@@ -11,6 +11,7 @@ use serde::{
     de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
     ser::{SerializeSeq, SerializeStruct},
 };
+use crate::prelude::*;
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, BaseSharedValueContainer> {
     type Value = BaseSharedValueContainer;

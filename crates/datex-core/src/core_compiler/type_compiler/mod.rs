@@ -1,16 +1,10 @@
-use std::io::Cursor;
-
 use crate::{
     core_compiler::{
         core_compilation_context::{ByteCursor, CoreCompilationContext},
-        shared_value_tracking::SharedValueTracking,
         to_instructions::ToInstructions,
-        value_compiler::append_get_shared_ref,
     },
     global::{
-        instruction_codes::InstructionCode,
         protocol_structures::{
-            instruction_data::TypeMetadataBin,
             type_instructions::TypeInstruction,
         },
     },
@@ -19,8 +13,6 @@ use crate::{
     shared_values::ReferenceMutability,
     types::{
         r#type::Type,
-        type_definition::{TypeDefinition, impl_type::ImplTypeDefinition},
-        type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
     utils::buffers::append_u8,
 };
@@ -104,6 +96,7 @@ mod tests {
         types::{r#type::Type, type_definition::TypeDefinition},
         values::{core_value::CoreValue, value::Value},
     };
+    use crate::prelude::*;
 
     fn assert_type_instructions(
         ty: Type,
@@ -120,9 +113,7 @@ mod tests {
             inner: CoreValue::Type(ty),
         })
         .expect("Failed to compile type");
-
-        println!("Compiled instructions: {:#?}", compiled);
-
+        
         assert_instructions_equal!(&compiled, vec)
     }
 

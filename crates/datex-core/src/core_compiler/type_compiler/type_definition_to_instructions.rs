@@ -28,6 +28,7 @@ use crate::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
+use crate::prelude::*;
 
 impl ToInstructions for TypeDefinitionWithMetadata {
     type InstructionType = TypeInstruction;

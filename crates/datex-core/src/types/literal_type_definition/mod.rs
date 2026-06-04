@@ -151,7 +151,7 @@ impl Display for LiteralTypeDefinition {
                 core::write!(f, "{}", typed_decimal)
             }
             LiteralTypeDefinition::Text(text) => {
-                core::write!(f, "{}", Text::from(text.to_string()))
+                core::write!(f, "{}", text)
             }
             LiteralTypeDefinition::Boolean(boolean) => {
                 core::write!(f, "{}", boolean)

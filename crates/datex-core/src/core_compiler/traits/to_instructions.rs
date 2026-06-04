@@ -1,4 +1,5 @@
 use crate::core_compiler::shared_value_tracking::SharedValueTracking;
+use crate::prelude::*;
 
 pub trait ToInstructions {
     type InstructionType: Sized;

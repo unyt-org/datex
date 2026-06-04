@@ -17,6 +17,7 @@ use core::{fmt::Display, mem::variant_count, str::FromStr};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use strum::{EnumIter, IntoEnumIterator};
 use strum_macros::{Display, EnumString};
+use crate::prelude::*;
 
 #[derive(
     Debug,
@@ -209,7 +210,6 @@ impl BinWrite for CoreLibTypeId {
         args: Self::Args<'_>,
     ) -> binrw::prelude::BinResult<()> {
         let id_index: CoreLibIdIndex = (*self).into();
-        println!("Writing CoreLibTypeId index: {}", id_index.0);
         id_index.write_options(writer, endian, args)
     }
 }
@@ -222,7 +222,6 @@ impl BinRead for CoreLibTypeId {
         args: Self::Args<'_>,
     ) -> binrw::prelude::BinResult<Self> {
         let id_index = CoreLibIdIndex::read_options(reader, endian, args)?;
-        println!("Read CoreLibTypeId index: {}", id_index.0);
         CoreLibTypeId::try_from(id_index).map_err(|_| {
             binrw::Error::AssertFail {
                 pos: reader.stream_position().unwrap_or(0),

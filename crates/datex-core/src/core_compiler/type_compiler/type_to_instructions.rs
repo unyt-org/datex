@@ -6,7 +6,7 @@ use crate::{
     global::protocol_structures::type_instructions::TypeInstruction,
     types::r#type::Type,
 };
-
+use crate::prelude::*;
 impl ToInstructions for Type {
     type InstructionType = TypeInstruction;
 

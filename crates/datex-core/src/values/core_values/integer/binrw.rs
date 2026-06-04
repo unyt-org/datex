@@ -4,7 +4,7 @@ use binrw::{
     meta::{EndianKind, ReadEndian},
 };
 use num::BigInt;
-
+use crate::prelude::*;
 use crate::values::core_values::integer::Integer;
 
 impl BinWrite for Integer {

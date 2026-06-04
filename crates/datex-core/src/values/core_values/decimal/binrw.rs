@@ -8,6 +8,7 @@ use num::BigInt;
 use crate::values::core_values::decimal::{
     BigDecimalType, Decimal, rational::Rational,
 };
+use crate::prelude::*;
 
 impl BinRead for Decimal {
     type Args<'a> = ();
