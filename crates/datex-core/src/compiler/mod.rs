@@ -1353,7 +1353,9 @@ fn compile_expression(
         DatexExpressionData::TypeExpression(type_expression) => {
             compilation_context
                 .append_instruction_code(InstructionCode::TYPE_EXPRESSION);
-            for instruction in type_expression.to_instructions(shared_value_tracking) {
+            let instructions = type_expression
+                .to_instructions(&mut compilation_context.core_context.shared_value_tracking).collect::<Vec<_>>();
+            for instruction in instructions {
                 append_type_instruction(
                     compilation_context.cursor(),
                     instruction,

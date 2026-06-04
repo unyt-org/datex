@@ -40,7 +40,7 @@ pub enum TypeInstruction {
     #[brw(magic = 0x5u8)]
     TypeDefinitionRange,
     #[brw(magic = 0x6u8)]
-    TypeInstructionWithMetadata(TypeMetadata),
+    TypeDefinitionWithMetadata(TypeMetadata),
 
     #[brw(magic = 0x8u8)]
     TypeDefinitionMap(MapData),

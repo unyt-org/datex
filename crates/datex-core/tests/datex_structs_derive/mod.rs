@@ -498,12 +498,12 @@ fn get_datex_type_from_struct() {
                 (
                     Type::Alias(
                         TypeDefinition::Literal(LiteralTypeDefinition::Text(
-                            "a".to_string()
+                            "a".into()
                         ))
                         .into()
                     ),
                     Type::Alias(
-                        TypeDefinition::Core(
+                        TypeDefinition::CoreType(
                             CoreLibVariantTypeId::Integer(
                                 IntegerTypeVariant::U8
                             )
@@ -515,24 +515,24 @@ fn get_datex_type_from_struct() {
                 (
                     Type::Alias(
                         TypeDefinition::Literal(LiteralTypeDefinition::Text(
-                            "b".to_string()
+                            "b".into()
                         ))
                         .into()
                     ),
                     Type::Alias(
-                        TypeDefinition::Core(CoreLibBaseTypeId::Text.into())
+                        TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into())
                             .into()
                     )
                 ),
                 (
                     Type::Alias(
                         TypeDefinition::Literal(LiteralTypeDefinition::Text(
-                            "c".to_string()
+                            "c".into()
                         ))
                         .into()
                     ),
                     Type::Alias(
-                        TypeDefinition::Core(
+                        TypeDefinition::CoreType(
                             CoreLibBaseTypeId::Endpoint.into()
                         )
                         .into()
@@ -563,7 +563,7 @@ fn get_datex_type_from_enum() {
                     ty: Some(Box::new(
                         TypeDefinition::List(ListTypeDefinition(vec![
                             Type::Alias(
-                                TypeDefinition::Core(
+                                TypeDefinition::CoreType(
                                     CoreLibVariantTypeId::Integer(
                                         IntegerTypeVariant::U8
                                     )
@@ -572,7 +572,7 @@ fn get_datex_type_from_enum() {
                                 .into()
                             ),
                             Type::Alias(
-                                TypeDefinition::Core(
+                                TypeDefinition::CoreType(
                                     CoreLibVariantTypeId::Integer(
                                         IntegerTypeVariant::U8
                                     )
@@ -593,13 +593,13 @@ fn get_datex_type_from_enum() {
                                 Type::Alias(
                                     TypeDefinition::Literal(
                                         LiteralTypeDefinition::Text(
-                                            "x".to_string()
+                                            "x".into()
                                         )
                                     )
                                     .into()
                                 ),
                                 Type::Alias(
-                                    TypeDefinition::Core(
+                                    TypeDefinition::CoreType(
                                         CoreLibVariantTypeId::Integer(
                                             IntegerTypeVariant::U8
                                         )
@@ -612,13 +612,13 @@ fn get_datex_type_from_enum() {
                                 Type::Alias(
                                     TypeDefinition::Literal(
                                         LiteralTypeDefinition::Text(
-                                            "y".to_string()
+                                            "y".into()
                                         )
                                     )
                                     .into()
                                 ),
                                 Type::Alias(
-                                    TypeDefinition::Core(
+                                    TypeDefinition::CoreType(
                                         CoreLibBaseTypeId::Text.into()
                                     )
                                     .into()
@@ -632,7 +632,7 @@ fn get_datex_type_from_enum() {
                 TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "VariantD".to_string(),
                     ty: Some(Box::new(
-                        TypeDefinition::Core(
+                        TypeDefinition::CoreType(
                             CoreLibVariantTypeId::Integer(
                                 IntegerTypeVariant::U8
                             )

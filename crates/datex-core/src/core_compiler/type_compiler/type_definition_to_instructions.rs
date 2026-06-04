@@ -37,7 +37,7 @@ impl ToInstructions for TypeDefinitionWithMetadata {
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<dyn Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            yield TypeInstruction::TypeInstructionWithMetadata(
+            yield TypeInstruction::TypeDefinitionWithMetadata(
                 self.metadata.clone(),
             );
             for instruction in

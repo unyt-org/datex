@@ -116,6 +116,13 @@ impl From<Type> for CollectedExecutionResult {
         CollectedExecutionResult::Type(value)
     }
 }
+
+impl From<TypeDefinition> for CollectedExecutionResult {
+    fn from(value: TypeDefinition) -> Self {
+        CollectedExecutionResult::TypeDefinition(value)
+    }
+}
+
 impl From<(MapKey, ValueContainer)> for CollectedExecutionResult {
     fn from(value: (MapKey, ValueContainer)) -> Self {
         CollectedExecutionResult::KeyValuePair(value)
@@ -590,16 +597,16 @@ pub fn inner_execution_loop(
                     let type_instruction = collector
                         .default_type_instruction_collection(type_instruction);
 
-                    let type_expression: Option<Type> = if let Some(
+                    if let Some(
                         type_instruction,
                     ) = type_instruction
                     {
                         Some(match type_instruction {
                             TypeInstruction::TypeDefinitionCoreType(core_lib_type_id) => {
-                                Type::Alias(TypeDefinition::CoreType(core_lib_type_id).into())
+                                CollectedExecutionResult::TypeDefinition(TypeDefinition::CoreType(core_lib_type_id))
                             }
                             TypeInstruction::TypeDefinitionLiteral(literal) => {
-                                Type::Alias(literal.into())
+                                CollectedExecutionResult::TypeDefinition(literal.into())
                             }
 
                             TypeInstruction::TypeDefinitionSharedTypeReference(type_ref) => {
@@ -631,7 +638,7 @@ pub fn inner_execution_loop(
                                     Some(ValueContainer::Local(Value {
                                         inner: CoreValue::Type(ty),
                                         ..
-                                    })) => ty,
+                                    })) => todo!(),
                                     // FIXME:
                                     // // Type Reference
                                     // Some(ValueContainer::Shared(SharedContainer {
@@ -652,7 +659,8 @@ pub fn inner_execution_loop(
 
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             TypeInstruction::TypeDefinitionList(_)
-                            | TypeInstruction::TypeInstructionWithMetadata(_)
+                            | TypeInstruction::TypeDefinitionMap(_)
+                            | TypeInstruction::TypeDefinitionWithMetadata(_)
                             | TypeInstruction::TypeDefinitionRange
                             | TypeInstruction::TypeDefinitionImplType(_) => {
                                 unreachable!()
@@ -660,9 +668,7 @@ pub fn inner_execution_loop(
                         })
                     } else {
                         None
-                    };
-
-                    type_expression.map(CollectedExecutionResult::from)
+                    }
                 }
             };
 
@@ -1347,19 +1353,16 @@ pub fn inner_execution_loop(
                                         impl_type_data,
                                     ) => {
                                         let def =
-                                            collected_results.pop_type_definition_result();
-                                        Type::Alias(TypeDefinitionWithMetadata {
-                                            definition: TypeDefinition::ImplType(ImplTypeDefinition::new(
-                                                base_type,
-                                                impl_type_data
-                                                    .impls
-                                                    .into_iter()
-                                                    .map(PointerAddress::from)
-                                                    .collect(),
-                                            )),
-                                            metadata,
-                                        })
-                                        .into()
+                                            collected_results.pop_type_result();
+
+                                        TypeDefinition::ImplType(ImplTypeDefinition::new(
+                                            def,
+                                            impl_type_data
+                                                .impls
+                                                .into_iter()
+                                                .map(PointerAddress::from)
+                                                .collect(),
+                                        )).into()
                                     }
                                     TypeInstruction::TypeDefinitionRange => {
                                         // TODO: add metadata everywhere
@@ -1375,17 +1378,12 @@ pub fn inner_execution_loop(
                                         );
                                         x.into()
                                     }
-                                    TypeInstruction::TypeInstructionWithMetadata(metadata) => {
-                                        let mut ty = collected_results.pop_type_result();
-                                        match &mut ty {
-                                            Type::Alias(def) => {
-                                                def.metadata = TypeMetadata::from(metadata);
-                                            }
-                                            _ => return yield Err(
-                                                ExecutionError::InvalidProgram(InvalidProgramError::ExpectedAliasType),
-                                            )
-                                        };
-                                        ty.into()
+                                    TypeInstruction::TypeDefinitionWithMetadata(metadata) => {
+                                        let mut definition = collected_results.pop_type_definition_result();
+                                        Type::Alias(TypeDefinitionWithMetadata {
+                                            metadata,
+                                            definition
+                                        }).into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),
                                 }

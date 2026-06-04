@@ -4,12 +4,14 @@ use crate::{
     global::protocol_structures::type_instructions::TypeInstruction,
     types::literal_type_definition::LiteralTypeDefinition,
 };
+use crate::core_compiler::shared_value_tracking::SharedValueTracking;
 
-impl<'a> ToInstructions<'a> for TypeExpression {
+impl ToInstructions for TypeExpression {
     type InstructionType = TypeInstruction;
     fn to_instructions<'a>(
-        &self,
-    ) -> Box<dyn Iterator<Item = TypeInstruction> + '_> {
+        &'a self,
+        shared_value_tracking: &'a mut SharedValueTracking,
+    ) -> Box<dyn Iterator<Item = TypeInstruction> + 'a> {
         Box::new(gen {
             match &self.data {
                 TypeExpressionData::Integer(integer) => {
@@ -28,15 +30,11 @@ impl<'a> ToInstructions<'a> for TypeExpression {
                     )
                 }
                 TypeExpressionData::Range(range) => {
-                    let end_instructions =
-                        range.end.to_instructions(shared_value_tracking);
-                    let start_instructions =
-                        range.start.to_instructions(shared_value_tracking);
                     yield TypeInstruction::TypeDefinitionRange;
-                    for instr in end_instructions {
+                    for instr in range.start.to_instructions(shared_value_tracking) {
                         yield instr;
                     }
-                    for instr in start_instructions {
+                    for instr in range.end.to_instructions(shared_value_tracking) {
                         yield instr;
                     }
                 }

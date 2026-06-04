@@ -33,7 +33,7 @@ pub enum InvalidProgramError {
 impl Display for InvalidProgramError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            IllegalTypeError::ExpectedAliasType => {
+            InvalidProgramError::ExpectedAliasType => {
                 core::write!(f, "Expected an alias type definition")
             }
             InvalidProgramError::UnterminatedSequence => {

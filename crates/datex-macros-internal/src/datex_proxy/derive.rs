@@ -932,7 +932,7 @@ fn generate_named_field_type_code(
         SerdeMode::None => {
             quote! {
                 (
-                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.to_string())).into()),
+                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
                     <#field_type as DatexProxyTypes>::datex_type(memory)
                 )
             }
@@ -941,7 +941,7 @@ fn generate_named_field_type_code(
         SerdeMode::Fallible | SerdeMode::Infallible => {
             quote! {
                 (
-                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.to_string())).into()),
+                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
                     Type::Alias(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
                 )
             }

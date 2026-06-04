@@ -68,8 +68,16 @@ impl
         DatexExpression,
         DatexExpression,
         TypeExpression,
+        TypeExpression,
     > for CollectedResults<CollectedAstResult>
 {
+    fn try_extract_type_definition_result(result: CollectedAstResult) -> Option<TypeExpression> {
+        match result {
+            CollectedAstResult::TypeExpression(expr) => Some(expr),
+            _ => None,
+        }
+    }
+
     /// Pops a DatexExpression from the collected results.
     fn try_extract_value_result(
         result: CollectedAstResult,
@@ -430,7 +438,7 @@ pub fn ast_from_bytecode(
                             | TypeInstruction::TypeDefinitionRange
                             | TypeInstruction::TypeDefinitionImplType(_) | 
                             TypeInstruction::TypeDefinitionMap(_) |
-                            TypeInstruction::TypeInstructionWithMetadata(_)=> {
+                            TypeInstruction::TypeDefinitionWithMetadata(_)=> {
                                 unreachable!()
                             }
                         }
