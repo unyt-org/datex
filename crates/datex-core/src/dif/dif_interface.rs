@@ -1,12 +1,16 @@
 use crate::{
     dif::{
-        cache::{DIFSharedContainerCache, ValueNotFoundInCacheError},
-        error::{DIFObserveError, DIFUpdateResult, into_update_result},
+        cache::{
+            CacheValueRetrievalError, DIFSharedContainerCache,
+            ValueNotFoundInCacheError,
+        },
+        error::{DIFObserveError, DIFUpdateError},
     },
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
-        OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
-        SelfOwnedSharedContainer, SharedContainer, SharedContainerOwnership,
+        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
+        SelfOwnedPointerAddress, SelfOwnedSharedContainer, SharedContainer,
+        SharedContainerOwnership,
         base_shared_value_container::{
             BaseSharedValueContainer,
             observers::{ObserveOptions, Observer, ObserverId, TransceiverId},
@@ -14,6 +18,7 @@ use crate::{
     },
     traits::apply::{Apply, ApplyError},
     value_updates::{
+        UpdateReturn,
         update_data::{Update, UpdateData},
         update_handler::UpdateHandler,
     },
@@ -21,6 +26,8 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
+
+pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
 pub struct DIFInterface {
     pub cache: DIFSharedContainerCache,
@@ -41,37 +48,14 @@ impl DIFInterface {
     }
 }
 impl DIFInterface {
-    /// Applies a DIF update to the value at the given pointer address.
-    pub fn update(
+    /// Gets the [ReferencedSharedContainer] at the given pointer address.
+    /// This can be used to apply updates to the shared container using the [UpdateHandler] trait.
+    pub fn try_get_shared_container_mutable_reference(
         &self,
-        address: PointerAddress,
-        update: Update,
-    ) -> DIFUpdateResult {
-        let container = self
-            .cache
-            .try_get_shared_container_mutable_reference(&address)?;
-        let mut base_container = container.base_shared_container_mut();
-
-        match update.data {
-            UpdateData::AppendEntry(data) => into_update_result(
-                base_container.try_append_entry(data, self.transceiver_id),
-            ),
-            UpdateData::Clear => into_update_result(
-                base_container.try_clear(self.transceiver_id),
-            ),
-            UpdateData::Replace(data) => into_update_result(
-                base_container.try_replace(data, self.transceiver_id),
-            ),
-            UpdateData::SetEntry(data) => into_update_result(
-                base_container.try_set_entry(data, self.transceiver_id),
-            ),
-            UpdateData::DeleteEntry(data) => into_update_result(
-                base_container.try_delete_entry(data, self.transceiver_id),
-            ),
-            UpdateData::ListSplice(data) => into_update_result(
-                base_container.try_list_splice(data, self.transceiver_id),
-            ),
-        }
+        address: &PointerAddress,
+    ) -> Result<ReferencedSharedContainer, CacheValueRetrievalError> {
+        self.cache
+            .try_get_shared_container_mutable_reference(&address)
     }
 
     /// Executes an apply operation, applying the `value` to the `callee`.

@@ -6,6 +6,8 @@ use crate::{
     value_updates::update_data::Update,
 };
 use core::{fmt::Display, result::Result};
+use core::fmt::Debug;
+use log::info;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };
@@ -84,6 +86,15 @@ pub struct Observer {
     pub transceiver_id: TransceiverId,
     pub options: ObserveOptions,
     pub callback: ObserverCallback,
+}
+
+impl Debug for Observer {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Observer")
+            .field("transceiver_id", &self.transceiver_id)
+            .field("options", &self.options)
+            .finish()
+    }
 }
 
 impl Observer {
@@ -173,9 +184,9 @@ impl BaseSharedValueContainer {
         let observer_callbacks: Vec<ObserverCallback> = self
             .observers
             .iter()
-            .filter(|(_, f)| {
+            .filter(|(_, observer)| {
                 // Filter out bounced back transceiver updates if relay_own_updates not enabled
-                f.options.relay_own_updates || f.transceiver_id != dif.source_id
+                observer.options.relay_own_updates || observer.transceiver_id != dif.source_id
             })
             .map(|(_, f)| f.callback.clone())
             .collect();
