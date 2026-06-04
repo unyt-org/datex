@@ -967,10 +967,10 @@ fn compile_expression(
             match &property_assignment.property.data {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
-                    compile_text_property_assignment(
-                        compilation_context,
-                        &key.0,
-                    )
+                    append_regular_instruction(
+                        compilation_context.cursor(),
+                        RegularInstruction::SetPropertyText(ShortTextData(key.0.clone())),
+                    );
                 }
                 // index access if integer fits in u32
                 DatexExpressionData::Integer(index)
@@ -1469,18 +1469,6 @@ fn compile_text_property_access(
 ) {
     compilation_context
         .append_instruction_code(InstructionCode::GET_PROPERTY_TEXT);
-    // append key length as u8
-    append_u8(compilation_context.cursor(), key.len() as u8);
-    // append key bytes
-    compilation_context.cursor().write_all(key.as_bytes());
-}
-
-fn compile_text_property_assignment(
-    compilation_context: &mut CompilationContext,
-    key: &str,
-) {
-    compilation_context
-        .append_instruction_code(InstructionCode::SET_PROPERTY_TEXT);
     // append key length as u8
     append_u8(compilation_context.cursor(), key.len() as u8);
     // append key bytes

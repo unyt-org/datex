@@ -946,4 +946,22 @@ mod tests {
             runtime,
         )
     }
+
+    #[test]
+    fn property_text_access() {
+        let result = execute_datex_script_debug_with_result("var x = {a: 42}; x.a");
+        assert_eq!(result, Integer::from(42).into());
+    }
+
+    #[test]
+    fn property_index_access() {
+        let result = execute_datex_script_debug_with_result("var x = [1,2,3]; x.1");
+        assert_eq!(result, Integer::from(2).into());
+    }
+
+    #[test]
+    fn property_text_update() {
+        let result = execute_datex_script_debug_with_result("var x = {a: 42}; x.a = 100; x.a");
+        assert_eq!(result, Integer::from(100).into());
+    }
 }

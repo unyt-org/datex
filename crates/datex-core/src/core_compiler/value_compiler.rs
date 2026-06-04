@@ -551,6 +551,7 @@ pub fn append_key_string(cursor: &mut ByteCursor, key_string: &str) {
     }
 }
 
+#[inline]
 pub fn append_regular_instruction(
     cursor: &mut ByteCursor,
     instruction: RegularInstruction,

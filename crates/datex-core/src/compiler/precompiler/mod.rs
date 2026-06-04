@@ -59,6 +59,8 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
+use crate::ast::expressions::PropertyAssignment;
+use crate::visitor::expression::visitable::VisitableExpression;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -533,6 +535,20 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         Ok(VisitAction::SkipChildren)
     }
 
+    fn visit_property_assignment(&mut self, property_assignment: &mut PropertyAssignment, span: &Range<usize>) -> ExpressionVisitResult<SpannedCompilerError> {
+        // visit children first to resolve variable accesses in property value
+        property_assignment.walk_children(self)?;
+
+        // if base is a variable access, change access type to Borrow
+        match &mut property_assignment.base.data {
+            DatexExpressionData::VariableAccess(variable_access) => {
+                variable_access.access_type = ValueAccessType::Borrow;
+            }
+            _ => {}
+        }
+        Ok(VisitAction::SkipChildren)
+    }
+
     fn visit_statements(
         &mut self,
         statements: &mut Statements,
@@ -881,6 +897,7 @@ mod tests {
         },
     };
     use core::{assert_matches, str::FromStr};
+    use crate::ast::expressions::{Map, PropertyAccess, PropertyAssignment};
 
     fn precompile(
         ast: DatexExpression,
@@ -909,15 +926,6 @@ mod tests {
         let options = PrecompilerOptions::default();
         let ast =
             Parser::parse_with_default_options("var x = {a: 1}; x.a").unwrap();
-        precompile(ast, options).expect("Should precompile without errors");
-    }
-
-    #[test]
-    fn property_access_assignment() {
-        let options = PrecompilerOptions::default();
-        let ast =
-            Parser::parse_with_default_options("var x = {a: 1}; x.a = 2;")
-                .unwrap();
         precompile(ast, options).expect("Should precompile without errors");
     }
 
@@ -2020,5 +2028,53 @@ mod tests {
                 }).with_default_span(),
             ]))
         )
+    }
+
+    #[test]
+    fn property_assignment() {
+        // Note: variable should only be borrowed in property assignment
+        let result = parse_and_precompile(
+            "var x = {a: 42}; x.a = 43;",
+        );
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Map(Map {
+                            entries: vec![(
+                                DatexExpressionData::Text("a".into()).with_default_span(),
+                                DatexExpressionData::Integer(Integer::from(42))
+                                    .with_default_span()
+                            )],
+                        }).with_default_span()),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::PropertyAssignment(PropertyAssignment {
+                    operator: None,
+                    base: Box::new(
+                        DatexExpressionData::VariableAccess(VariableAccess {
+                            id: 0,
+                            name: "x".to_string(),
+                            access_type: ValueAccessType::Borrow,
+                        }).with_default_span()
+                    ),
+                    property: Box::new(
+                        DatexExpressionData::Text("a".into()).with_default_span()
+                    ),
+                    assigned_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(43))
+                            .with_default_span()
+                    ),
+                }).with_default_span(),
+            ]))
+        );
     }
 }
