@@ -59,7 +59,7 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
-use crate::ast::expressions::PropertyAssignment;
+use crate::ast::expressions::{GetRef, PropertyAssignment};
 use crate::visitor::expression::visitable::VisitableExpression;
 
 pub struct Precompiler<'a> {
@@ -549,6 +549,25 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         Ok(VisitAction::SkipChildren)
     }
 
+    fn visit_get_ref(&mut self, create_ref: &mut GetRef, span: &Range<usize>) -> ExpressionVisitResult<SpannedCompilerError> {
+        create_ref.walk_children(self)?;
+
+        // for &(x.y), access to x should be a borrow access
+        match &mut create_ref.expression.data {
+            DatexExpressionData::PropertyAccess(property_access) => {
+                match &mut property_access.base.data {
+                    DatexExpressionData::VariableAccess(variable_access) => {
+                        variable_access.access_type = ValueAccessType::Borrow;
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+        
+        Ok(VisitAction::SkipChildren)
+    }
+
     fn visit_statements(
         &mut self,
         statements: &mut Statements,
@@ -918,14 +937,6 @@ mod tests {
             "var x: integer = 34; var y = 10; x + y",
         )
         .unwrap();
-        precompile(ast, options).expect("Should precompile without errors");
-    }
-
-    #[test]
-    fn property_access() {
-        let options = PrecompilerOptions::default();
-        let ast =
-            Parser::parse_with_default_options("var x = {a: 1}; x.a").unwrap();
         precompile(ast, options).expect("Should precompile without errors");
     }
 
@@ -2028,6 +2039,53 @@ mod tests {
                 }).with_default_span(),
             ]))
         )
+    }
+
+    #[test]
+    fn property_access_borrow() {
+        // Note: variable should only be borrowed in property access
+        let result = parse_and_precompile(
+            "var x = {a: 42}; &x.a",
+        );
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_unterminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Map(Map {
+                            entries: vec![(
+                                DatexExpressionData::Text("a".into()).with_default_span(),
+                                DatexExpressionData::Integer(Integer::from(42))
+                                    .with_default_span()
+                            )],
+                        }).with_default_span()),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::GetRef(GetRef {
+                    mutability: LocalReferenceMutability::Immutable,
+                    expression: Box::new(
+                        DatexExpressionData::PropertyAccess(PropertyAccess {
+                            base: Box::new(
+                                DatexExpressionData::VariableAccess(VariableAccess {
+                                    id: 0,
+                                    name: "x".to_string(),
+                                    access_type: ValueAccessType::Borrow,
+                                }).with_default_span()
+                            ),
+                            property: Box::new(
+                                DatexExpressionData::Text("a".into()).with_default_span()
+                            ),
+                        }).with_default_span()
+                    )
+                }).with_default_span(),
+            ]))
+        );
     }
 
     #[test]
