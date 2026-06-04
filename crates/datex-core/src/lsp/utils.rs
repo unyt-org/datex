@@ -26,6 +26,8 @@ use realhydroper_lsp::lsp_types::{
     MessageType, Position, Range, TextDocumentPositionParams,
 };
 use url::Url;
+use crate::values::core_values::boolean::Boolean;
+use crate::values::core_values::text::Text;
 
 impl LanguageServerBackend {
     pub async fn update_file_contents(&self, url: Url, content: String) {
@@ -450,7 +452,7 @@ impl ExpressionVisitor<()> for ExpressionFinder {
 
     fn visit_text(
         &mut self,
-        value: &mut String,
+        value: &mut Text,
         span: &core::ops::Range<usize>,
     ) -> Result<VisitAction<DatexExpression>, ()> {
         self.match_span(span, DatexExpressionData::Text(value.clone()))
@@ -458,10 +460,10 @@ impl ExpressionVisitor<()> for ExpressionFinder {
 
     fn visit_boolean(
         &mut self,
-        value: &mut bool,
+        value: &mut Boolean,
         span: &core::ops::Range<usize>,
     ) -> Result<VisitAction<DatexExpression>, ()> {
-        self.match_span(span, DatexExpressionData::Boolean(*value))
+        self.match_span(span, DatexExpressionData::Boolean(value.clone()))
     }
 
     fn visit_endpoint(
