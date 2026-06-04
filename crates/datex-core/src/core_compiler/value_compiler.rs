@@ -671,15 +671,12 @@ mod tests {
 
     #[test]
     fn compile_core_type_value_integer() {
-        let value = Value {
-            inner: CoreValue::Type(
-                TypeDefinition::CoreType(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Integer,
-                ))
+        let value = Value::from(CoreValue::Type(
+            TypeDefinition::CoreType(CoreLibTypeId::Base(
+                CoreLibBaseTypeId::Integer,
+            ))
                 .into(),
-            ),
-            custom_type: None,
-        };
+        ));
 
         let compiled = compile_value(value).unwrap();
         assert_regular_instructions_equal!(

@@ -218,7 +218,7 @@ impl BinRead for CoreLibTypeId {
 
     fn read_options<R: Read + Seek>(
         reader: &mut R,
-        endian: binrw::Endian,
+        endian: Endian,
         args: Self::Args<'_>,
     ) -> binrw::prelude::BinResult<Self> {
         let id_index = CoreLibIdIndex::read_options(reader, endian, args)?;

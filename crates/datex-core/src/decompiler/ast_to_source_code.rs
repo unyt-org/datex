@@ -163,7 +163,7 @@ impl AstToSourceCodeConverter {
         if !self.options.json_compat
             && is_alphanumeric_identifier(key.0.as_str())
         {
-            key.to_string()
+            key.0.to_string()
         } else {
             self.text_to_source_code(key)
         }
