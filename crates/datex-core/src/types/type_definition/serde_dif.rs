@@ -103,7 +103,6 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinition> {
                             tagged_type,
                             self.cast::<TaggedTypeDefinition>(),
                         ))?,
-                    TypeDefinition::Type => outer.serialize_value("")?,
                     TypeDefinition::CoreType(_) => unreachable!(), // already handled above
                 }
                 outer.end()
@@ -226,11 +225,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
                 TypeDefinition::TaggedType(tagged)
             }
 
-            "type" => {
-                let _: String = map.next_value()?;
-                TypeDefinition::Type
-            }
-
             other => {
                 return Err(de::Error::unknown_variant(
                     other,
@@ -246,7 +240,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
                         "intersection",
                         "union",
                         "tagged_type",
-                        "type",
                     ],
                 ));
             }

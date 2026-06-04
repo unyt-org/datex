@@ -5,6 +5,7 @@ use crate::{
     },
     values::{
         core_values::{
+            boolean::Boolean,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
@@ -36,10 +37,10 @@ impl TypeSatisfiesValueContainer for LiteralTypeDefinition {
                 value.try_as().map(|v: TypedDecimal| v == *expected)
             }
             LiteralTypeDefinition::Text(expected) => {
-                value.try_as().map(|v: Text| v.0 == *expected)
+                value.try_as().map(|v: Text| v == *expected)
             }
             LiteralTypeDefinition::Boolean(expected) => {
-                value.try_as().map(|v: bool| v == *expected)
+                value.try_as().map(|v: Boolean| v == *expected)
             }
             LiteralTypeDefinition::Endpoint(expected) => {
                 value.try_as().map(|v: Endpoint| v == *expected)

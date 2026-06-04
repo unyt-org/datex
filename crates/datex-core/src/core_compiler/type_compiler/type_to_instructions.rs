@@ -1,5 +1,8 @@
 use crate::{
-    core_compiler::to_instructions::ToInstructions,
+    core_compiler::{
+        shared_value_tracking::{self, SharedValueTracking},
+        to_instructions::ToInstructions,
+    },
     global::protocol_structures::type_instructions::TypeInstruction,
     types::r#type::Type,
 };
@@ -7,17 +10,17 @@ use crate::{
 impl ToInstructions for Type {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-    ) -> Box<dyn Iterator<Item = Self::InstructionType> + '_> {
+    fn to_instructions<'a>(
+        &'a self,
+        shared_value_tracking: &'a mut SharedValueTracking,
+    ) -> Box<dyn Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
             match self {
                 Type::Nominal(_) => unreachable!(),
                 Type::Alias(def) => {
-                    yield TypeInstruction::TypeInstructionWithMetadata(
-                        def.metadata.clone(),
-                    );
-                    for instruction in def.to_instructions() {
+                    for instruction in
+                        def.to_instructions(shared_value_tracking)
+                    {
                         yield instruction;
                     }
                 }

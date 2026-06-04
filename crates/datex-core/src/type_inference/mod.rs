@@ -1842,14 +1842,16 @@ mod tests {
     fn infer_literal_types() {
         assert_eq!(
             infer_from_expression(
-                &mut DatexExpressionData::Boolean(true).with_default_span()
+                &mut DatexExpressionData::Boolean(true.into())
+                    .with_default_span()
             ),
             Type::from(LiteralTypeDefinition::Boolean(true.into()),)
         );
 
         assert_eq!(
             infer_from_expression(
-                &mut DatexExpressionData::Boolean(false).with_default_span()
+                &mut DatexExpressionData::Boolean(false.into())
+                    .with_default_span()
             ),
             Type::from(LiteralTypeDefinition::Boolean(false.into()),)
         );
@@ -1904,8 +1906,7 @@ mod tests {
         assert_eq!(
             infer_from_expression(
                 &mut DatexExpressionData::Map(Map::new(vec![(
-                    DatexExpressionData::Text("a".to_string())
-                        .with_default_span(),
+                    DatexExpressionData::Text("a".into()).with_default_span(),
                     DatexExpressionData::Integer(Integer::from(1))
                         .with_default_span()
                 )]))

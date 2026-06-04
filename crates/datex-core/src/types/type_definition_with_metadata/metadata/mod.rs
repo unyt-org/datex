@@ -9,8 +9,18 @@ use crate::shared_values::{
 use serde::{Deserialize, Serialize};
 pub mod type_match;
 #[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize_repr, Deserialize_repr, Copy,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize_repr,
+    Deserialize_repr,
+    Copy,
+    BinRead,
+    BinWrite,
 )]
+#[brw(little, repr = u8)]
 #[repr(u8)]
 pub enum LocalReferenceMutability {
     Immutable = 0,
@@ -66,10 +76,11 @@ impl Display for LocalMutability {
     BinWrite,
 )]
 #[serde(untagged)]
-#[brw(little, repr = u8)]
+#[brw(little)]
 pub enum LocalOwnership {
+    #[brw(magic = 0x0u8)]
     Owned,
-    #[bw(map = |x| x.)]
+    #[brw(magic = 0x1u8)]
     Referenced(LocalReferenceMutability),
 }
 impl Display for LocalOwnership {

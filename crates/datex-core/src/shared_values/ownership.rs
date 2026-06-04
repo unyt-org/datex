@@ -86,10 +86,23 @@ impl Ord for ReferenceMutability {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    BinRead,
+    BinWrite,
+)]
 #[serde(untagged)]
 pub enum SharedContainerOwnership {
+    #[brw(magic = 0x0u8)]
     Owned,
+    #[brw(magic = 0x1u8)]
     Referenced(ReferenceMutability),
 }
 

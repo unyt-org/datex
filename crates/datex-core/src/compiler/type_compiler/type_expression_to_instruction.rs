@@ -5,9 +5,9 @@ use crate::{
     types::literal_type_definition::LiteralTypeDefinition,
 };
 
-impl ToInstructions for TypeExpression {
+impl<'a> ToInstructions<'a> for TypeExpression {
     type InstructionType = TypeInstruction;
-    fn to_instructions(
+    fn to_instructions<'a>(
         &self,
     ) -> Box<dyn Iterator<Item = TypeInstruction> + '_> {
         Box::new(gen {
@@ -28,8 +28,10 @@ impl ToInstructions for TypeExpression {
                     )
                 }
                 TypeExpressionData::Range(range) => {
-                    let end_instructions = range.end.to_instructions();
-                    let start_instructions = range.start.to_instructions();
+                    let end_instructions =
+                        range.end.to_instructions(shared_value_tracking);
+                    let start_instructions =
+                        range.start.to_instructions(shared_value_tracking);
                     yield TypeInstruction::TypeDefinitionRange;
                     for instr in end_instructions {
                         yield instr;

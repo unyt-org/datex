@@ -208,10 +208,8 @@ impl Parser {
 
         let span = self.advance()?.span.clone();
         let res = match variant {
-            Some(var) => {
-                TypedDecimal::try_from_string_and_variant(&value, var)
-                    .map(DatexExpressionData::TypedDecimal)
-            }
+            Some(var) => TypedDecimal::try_from_string_and_variant(&value, var)
+                .map(DatexExpressionData::TypedDecimal),
             None => Decimal::try_from_string(&value)
                 .map(DatexExpressionData::Decimal),
         };
@@ -236,13 +234,15 @@ impl Parser {
     pub(crate) fn parse_true(
         &mut self,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Boolean(true).with_span(self.advance()?.span))
+        Ok(DatexExpressionData::Boolean(true.into())
+            .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_false(
         &mut self,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Boolean(false).with_span(self.advance()?.span))
+        Ok(DatexExpressionData::Boolean(false.into())
+            .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_null(
@@ -317,10 +317,8 @@ impl Parser {
         value: String,
     ) -> Result<DatexExpression, SpannedParserError> {
         let unescaped = unescape_text(&value);
-        Ok(
-            DatexExpressionData::Text(unescaped)
-                .with_span(self.advance()?.span),
-        )
+        Ok(DatexExpressionData::Text(unescaped.into())
+            .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_fraction_literal(
@@ -376,13 +374,13 @@ mod tests {
     #[test]
     fn parse_boolean_true() {
         let expr = parse("true");
-        assert_eq!(expr.data, DatexExpressionData::Boolean(true));
+        assert_eq!(expr.data, DatexExpressionData::Boolean(true.into()));
     }
 
     #[test]
     fn parse_boolean_false() {
         let expr = parse("false");
-        assert_eq!(expr.data, DatexExpressionData::Boolean(false));
+        assert_eq!(expr.data, DatexExpressionData::Boolean(false.into()));
     }
 
     #[test]
@@ -405,7 +403,7 @@ mod tests {
         let expr = parse("\"Hello, World!\"");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Text("Hello, World!".to_string())
+            DatexExpressionData::Text("Hello, World!".into())
         );
     }
 
@@ -455,7 +453,8 @@ mod tests {
             DatexExpressionData::Statements(Statements {
                 statements: vec![
                     DatexExpressionData::Recover.with_default_span(),
-                    DatexExpressionData::Boolean(true).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
                 ],
                 is_terminated: false,
                 unbounded: None,

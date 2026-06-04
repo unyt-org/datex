@@ -96,6 +96,7 @@ enum CollectedExecutionResult {
     Value(Option<RuntimeValue>),
     /// contains a [Type] that is intercepted by a consumer of a type value
     Type(Type),
+    TypeDefinition(TypeDefinition),
     /// contains a key-value pair that is intercepted by a map construction operation
     KeyValuePair((MapKey, ValueContainer)),
 }
@@ -128,8 +129,17 @@ impl
         MapKey,
         ValueContainer,
         Type,
+        TypeDefinition,
     > for CollectedResults<CollectedExecutionResult>
 {
+    fn try_extract_type_definition_result(
+        result: CollectedExecutionResult,
+    ) -> Option<TypeDefinition> {
+        match result {
+            CollectedExecutionResult::TypeDefinition(ty) => Some(ty),
+            _ => None,
+        }
+    }
     fn try_extract_value_result(
         result: CollectedExecutionResult,
     ) -> Option<Option<RuntimeValue>> {
@@ -593,8 +603,6 @@ pub fn inner_execution_loop(
                             }
 
                             TypeInstruction::TypeDefinitionSharedTypeReference(type_ref) => {
-                                let _metadata =
-                                    TypeMetadata::from(&type_ref.metadata);
                                 let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
                                     match type_ref.address {
@@ -644,6 +652,7 @@ pub fn inner_execution_loop(
 
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             TypeInstruction::TypeDefinitionList(_)
+                            | TypeInstruction::TypeInstructionWithMetadata(_)
                             | TypeInstruction::TypeDefinitionRange
                             | TypeInstruction::TypeDefinitionImplType(_) => {
                                 unreachable!()
@@ -1337,11 +1346,8 @@ pub fn inner_execution_loop(
                                     TypeInstruction::TypeDefinitionImplType(
                                         impl_type_data,
                                     ) => {
-                                        let metadata = TypeMetadata::from(
-                                            &impl_type_data.metadata,
-                                        );
-                                        let base_type =
-                                            collected_results.pop_type_result();
+                                        let def =
+                                            collected_results.pop_type_definition_result();
                                         Type::Alias(TypeDefinitionWithMetadata {
                                             definition: TypeDefinition::ImplType(ImplTypeDefinition::new(
                                                 base_type,
@@ -1368,6 +1374,18 @@ pub fn inner_execution_loop(
                                             }).into(),
                                         );
                                         x.into()
+                                    }
+                                    TypeInstruction::TypeInstructionWithMetadata(metadata) => {
+                                        let mut ty = collected_results.pop_type_result();
+                                        match &mut ty {
+                                            Type::Alias(def) => {
+                                                def.metadata = TypeMetadata::from(metadata);
+                                            }
+                                            _ => return yield Err(
+                                                ExecutionError::InvalidProgram(InvalidProgramError::ExpectedAliasType),
+                                            )
+                                        };
+                                        ty.into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),
                                 }

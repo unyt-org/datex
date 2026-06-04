@@ -89,7 +89,8 @@ mod tests {
                 name: "myVar".to_string(),
                 type_annotation: None,
                 init_expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );
@@ -106,7 +107,8 @@ mod tests {
                 name: "myConst".to_string(),
                 type_annotation: None,
                 init_expression: Box::new(
-                    DatexExpressionData::Boolean(false).with_default_span()
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
             })
         );
@@ -126,7 +128,8 @@ mod tests {
                         .with_default_span()
                 ),
                 init_expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );
@@ -151,7 +154,8 @@ mod tests {
                     .with_default_span()
                 ),
                 init_expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );

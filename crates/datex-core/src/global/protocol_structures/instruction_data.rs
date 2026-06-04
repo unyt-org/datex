@@ -575,7 +575,6 @@ pub struct ApplyData {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct ImplTypeData {
-    pub metadata: TypeMetadataBin,
     pub impl_count: u8,
     #[br(count = impl_count)]
     pub impls: Vec<RawPointerAddress>,
@@ -584,7 +583,6 @@ pub struct ImplTypeData {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct TypeReferenceData {
-    pub metadata: TypeMetadataBin,
     pub address: RawPointerAddress,
 }
 

@@ -85,9 +85,6 @@ pub enum TypeDefinition {
     /// #Tagged(null) is equivalent to #Tagged
     TaggedType(TaggedTypeDefinition),
 
-    /// meta type for a type
-    Type,
-
     // core types ("nominal")
     CoreType(CoreLibTypeId), // -> $123
 }
@@ -144,11 +141,6 @@ impl Hash for TypeDefinition {
             }
             TypeDefinition::Nested(ty) => {
                 ty.hash(state);
-            }
-            TypeDefinition::Type => {
-                // no fields to hash
-                // TODO: can we do this?
-                0.hash(state);
             }
             TypeDefinition::CoreType(core) => {
                 core.hash(state);
@@ -244,9 +236,6 @@ impl Display for TypeDefinition {
             }
             TypeDefinition::Nested(ty) => {
                 write!(f, "{}", ty)
-            }
-            TypeDefinition::Type => {
-                write!(f, "Type")
             }
             TypeDefinition::CoreType(core) => {
                 write!(f, "{}", core)
@@ -347,9 +336,6 @@ impl TypeDefinition {
             }
             TypeDefinition::Callable(_) => {
                 Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Callable))
-            }
-            TypeDefinition::Type => {
-                Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Type))
             }
             _ => None,
         }

@@ -2,7 +2,8 @@ use crate::{
     dxb_parser::body::DXBParserError,
     global::protocol_structures::{
         instruction_data::{
-            ImplTypeData, ListData, ShortTextData, TextData, TypeReferenceData,
+            ImplTypeData, ListData, MapData, ShortTextData, TextData,
+            TypeReferenceData,
         },
         instructions::NextExpectedInstructions,
     },
@@ -40,6 +41,9 @@ pub enum TypeInstruction {
     TypeDefinitionRange,
     #[brw(magic = 0x6u8)]
     TypeInstructionWithMetadata(TypeMetadata),
+
+    #[brw(magic = 0x8u8)]
+    TypeDefinitionMap(MapData),
 }
 
 /// Serializes TypeInstruction to tuple (instruction code as string, optional metadata as string)
@@ -97,8 +101,7 @@ impl TypeInstruction {
             ) => {
                 write!(
                     string,
-                    "(mutability: {:?}, address: {})",
-                    TypeMetadata::from(&reference_data.metadata),
+                    "(address: {})",
                     PointerAddress::from(reference_data.address.clone())
                 )
             }

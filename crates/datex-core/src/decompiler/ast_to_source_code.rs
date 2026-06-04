@@ -1,15 +1,19 @@
-use crate::ast::{
-    expressions::{
-        Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, DatexExpression, DatexExpressionData, List, Map,
-        PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
-        StackAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
-        VariableAssignment, VariableDeclaration, VariantAccess,
+use crate::{
+    ast::{
+        expressions::{
+            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+            Conditional, DatexExpression, DatexExpressionData, List, Map,
+            PropertyAccess, PropertyAssignment, RangeDeclaration,
+            RemoteExecution, StackAssignment, TypeDeclaration, UnboxAssignment,
+            VariableAccess, VariableAssignment, VariableDeclaration,
+            VariantAccess,
+        },
+        type_expressions::{
+            CallableTypeExpression, TypeExpression, TypeExpressionData,
+            TypeVariantAccess,
+        },
     },
-    type_expressions::{
-        CallableTypeExpression, TypeExpression, TypeExpressionData,
-        TypeVariantAccess,
-    },
+    values::core_values::text::Text,
 };
 
 use crate::prelude::*;
@@ -138,8 +142,9 @@ impl AstToSourceCodeConverter {
     }
 
     /// Escape text to be a valid source code string literal
-    fn text_to_source_code(&self, text: &str) -> String {
+    fn text_to_source_code(&self, text: &Text) -> String {
         let text = text
+            .0
             .replace('\\', r#"\\"#)
             .replace('"', r#"\""#)
             .replace('\u{0008}', r#"\b"#)
@@ -153,9 +158,11 @@ impl AstToSourceCodeConverter {
     }
 
     /// Convert a key (string) to source code, adding quotes if necessary
-    fn key_to_string(&self, key: &str) -> String {
+    fn key_to_string(&self, key: &Text) -> String {
         // if text does not just contain a-z, A-Z, 0-9, _, and starts with a-z, A-Z,  _, add quotes
-        if !self.options.json_compat && is_alphanumeric_identifier(key) {
+        if !self.options.json_compat
+            && is_alphanumeric_identifier(key.0.as_str())
+        {
             key.to_string()
         } else {
             self.text_to_source_code(key)
@@ -182,7 +189,7 @@ impl AstToSourceCodeConverter {
         key: &TypeExpression,
     ) -> String {
         match &key.data {
-            TypeExpressionData::Text(t) => self.key_to_string(t),
+            TypeExpressionData::Text(t) => self.key_to_string(&t),
             TypeExpressionData::Integer(i) => i.to_string(),
             TypeExpressionData::TypedInteger(ti) => {
                 if self.add_variant_suffix() {
@@ -1045,10 +1052,10 @@ mod tests {
             "2.71f32"
         );
 
-        let bool_ast = DatexExpressionData::Boolean(true);
+        let bool_ast = DatexExpressionData::Boolean(true.into());
         assert_eq!(compact().format(&bool_ast.with_default_span()), "true");
 
-        let text_ast = DatexExpressionData::Text("Hello".to_string());
+        let text_ast = DatexExpressionData::Text("Hello".into());
         assert_eq!(
             compact().format(&text_ast.with_default_span()),
             "\"Hello\""
@@ -1080,20 +1087,18 @@ mod tests {
 
         // long list should be multi-line
         let long_list_ast = DatexExpressionData::List(List::new(vec![
-            DatexExpressionData::Text("This is a long string".to_string())
+            DatexExpressionData::Text("This is a long string".into())
                 .with_default_span(),
-            DatexExpressionData::Text("Another long string".to_string())
+            DatexExpressionData::Text("Another long string".into())
                 .with_default_span(),
-            DatexExpressionData::Text("Yet another long string".to_string())
+            DatexExpressionData::Text("Yet another long string".into())
                 .with_default_span(),
             DatexExpressionData::Text(
-                "More long strings to increase length".to_string(),
+                "More long strings to increase length".into(),
             )
             .with_default_span(),
-            DatexExpressionData::Text(
-                "Final long string in the list".to_string(),
-            )
-            .with_default_span(),
+            DatexExpressionData::Text("Final long string in the list".into())
+                .with_default_span(),
         ]));
 
         assert_eq!(
@@ -1113,22 +1118,19 @@ mod tests {
     fn map() {
         let map_ast = DatexExpressionData::Map(Map::new(vec![
             (
-                DatexExpressionData::Text("key1".to_string())
-                    .with_default_span(),
+                DatexExpressionData::Text("key1".into()).with_default_span(),
                 DatexExpressionData::Integer(1.into()).with_default_span(),
             ),
             (
-                DatexExpressionData::Text("key2".to_string())
-                    .with_default_span(),
-                DatexExpressionData::Text("two".to_string())
-                    .with_default_span(),
+                DatexExpressionData::Text("key2".into()).with_default_span(),
+                DatexExpressionData::Text("two".into()).with_default_span(),
             ),
             (
                 DatexExpressionData::Integer(42.into()).with_default_span(),
-                DatexExpressionData::Boolean(true).with_default_span(),
+                DatexExpressionData::Boolean(true.into()).with_default_span(),
             ),
             (
-                DatexExpressionData::Text("x".repeat(30).to_string())
+                DatexExpressionData::Text("x".repeat(30).into())
                     .with_default_span(),
                 DatexExpressionData::Integer(42.into()).with_default_span(),
             ),
@@ -1245,7 +1247,7 @@ mod tests {
                     .with_default_span(),
                 ),
                 property: Box::new(
-                    DatexExpressionData::Text("myProp".to_string())
+                    DatexExpressionData::Text("myProp".into())
                         .with_default_span(),
                 ),
             })
@@ -1267,7 +1269,8 @@ mod tests {
                     .with_default_span(),
                 ),
                 property: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
                 ),
             })
             .with_default_span();
@@ -1329,8 +1332,7 @@ mod tests {
             ),
             arguments: vec![
                 DatexExpressionData::Integer(10.into()).with_default_span(),
-                DatexExpressionData::Text("arg".to_string())
-                    .with_default_span(),
+                DatexExpressionData::Text("arg".into()).with_default_span(),
             ],
         })
         .with_default_span();

@@ -1,4 +1,5 @@
 use crate::{
+    core_compiler::type_compiler::{append_type, append_type_instruction},
     global::instruction_codes::InstructionCode,
     utils::buffers::{append_i16, append_i32, append_u8, append_u32},
     values::{
@@ -15,16 +16,15 @@ use crate::{
 use binrw::{BinWrite, io::Write};
 
 use crate::{
-    core_compiler::{
-        core_compilation_context::{ByteCursor, CoreCompilationContext},
-        type_compiler::{append_type, append_type_instruction},
+    core_compiler::core_compilation_context::{
+        ByteCursor, CoreCompilationContext,
     },
     global::protocol_structures::{
         instruction_data::{
             Float32Data, Float64Data, Int8Data, Int16Data, Int32Data,
-            Int64Data, Int128Data, IntegerData, ListData, MapData,
-            RawPointerAddress, ShortTextData, TaggedValue, UInt8Data,
-            UInt16Data, UInt32Data, UInt64Data, UInt128Data,
+            Int64Data, Int128Data, ListData, MapData, RawPointerAddress,
+            ShortTextData, TaggedValue, UInt8Data, UInt16Data, UInt32Data,
+            UInt64Data, UInt128Data,
         },
         instructions::Instruction,
         regular_instructions::RegularInstruction,
@@ -368,7 +368,7 @@ pub fn append_typed_integer(
 pub fn append_integer(cursor: &mut ByteCursor, integer: &Integer) {
     append_regular_instruction(
         cursor,
-        RegularInstruction::Integer(IntegerData(integer.clone())), // FIXME: no clone
+        RegularInstruction::Integer(integer.clone()), // FIXME: no clone
     );
 }
 
@@ -387,9 +387,7 @@ pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) {
         TypedInteger::U128(val) => {
             RegularInstruction::UInt128(UInt128Data(*val))
         }
-        TypedInteger::IBig(val) => {
-            RegularInstruction::BigInteger(IntegerData(val.clone()))
-        } // FIXME: no clone
+        TypedInteger::IBig(val) => RegularInstruction::BigInteger(val.clone()), // FIXME: no clone
     };
 
     append_regular_instruction(cursor, instruction);

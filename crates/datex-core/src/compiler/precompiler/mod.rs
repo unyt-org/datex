@@ -1005,7 +1005,7 @@ mod tests {
                         name: "User".to_string(),
                         definition: TypeExpressionData::StructuralMap(
                             StructuralMap(vec![(
-                                TypeExpressionData::Text("a".to_string())
+                                TypeExpressionData::Text("a".into())
                                     .with_default_span(),
                                 TypeExpressionData::GetCoreLibType(
                                     CoreLibTypeId::Base(

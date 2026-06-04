@@ -63,7 +63,8 @@ mod tests {
             expr.data,
             DatexExpressionData::Conditional(Conditional {
                 condition: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 then_branch: Box::new(
                     DatexExpressionData::Integer(42.into()).with_default_span()
@@ -80,7 +81,8 @@ mod tests {
             expr.data,
             DatexExpressionData::Conditional(Conditional {
                 condition: Box::new(
-                    DatexExpressionData::Boolean(false).with_default_span()
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
                 then_branch: Box::new(
                     DatexExpressionData::Integer(0.into()).with_default_span()
@@ -99,7 +101,8 @@ mod tests {
             expr.data,
             DatexExpressionData::Conditional(Conditional {
                 condition: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 then_branch: Box::new(
                     DatexExpressionData::Integer(1.into()).with_default_span()
@@ -107,7 +110,7 @@ mod tests {
                 else_branch: Some(Box::new(
                     DatexExpressionData::Conditional(Conditional {
                         condition: Box::new(
-                            DatexExpressionData::Boolean(false)
+                            DatexExpressionData::Boolean(false.into())
                                 .with_default_span()
                         ),
                         then_branch: Box::new(

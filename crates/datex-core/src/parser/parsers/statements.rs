@@ -141,8 +141,10 @@ mod tests {
             expr.data,
             DatexExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true).with_default_span(),
-                    DatexExpressionData::Boolean(false).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span(),
                     DatexExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: true,
@@ -158,8 +160,10 @@ mod tests {
             expr.data,
             DatexExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true).with_default_span(),
-                    DatexExpressionData::Boolean(false).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span(),
                     DatexExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: false,
@@ -187,8 +191,10 @@ mod tests {
             expr.data,
             DatexExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true).with_default_span(),
-                    DatexExpressionData::Boolean(false).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span(),
                     DatexExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: true,
@@ -213,8 +219,10 @@ mod tests {
             expr.data,
             DatexExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true).with_default_span(),
-                    DatexExpressionData::Boolean(false).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span(),
                     DatexExpressionData::Null.with_default_span(),
                 ],
                 is_terminated: true,
@@ -226,7 +234,7 @@ mod tests {
     #[test]
     fn top_level_single_statement_unterminated() {
         let expr = parse("true");
-        assert_eq!(expr.data, DatexExpressionData::Boolean(true));
+        assert_eq!(expr.data, DatexExpressionData::Boolean(true.into()));
     }
 
     #[test]
@@ -236,7 +244,8 @@ mod tests {
             expr.data,
             DatexExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
                 ],
                 is_terminated: true,
                 unbounded: None,
@@ -251,8 +260,10 @@ mod tests {
             expr.data,
             DatexExpressionData::Statements(Statements {
                 statements: vec![
-                    DatexExpressionData::Boolean(true).with_default_span(),
-                    DatexExpressionData::Boolean(false).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span(),
                 ],
                 is_terminated: true,
                 unbounded: None,

@@ -97,8 +97,10 @@ fn core_value_to_datex_expression(
         CoreValue::TypedDecimal(typed_decimal) => {
             DatexExpressionData::TypedDecimal(typed_decimal.clone())
         }
-        CoreValue::Boolean(boolean) => DatexExpressionData::Boolean(boolean.0),
-        CoreValue::Text(text) => DatexExpressionData::Text(text.0.clone()),
+        CoreValue::Boolean(boolean) => {
+            DatexExpressionData::Boolean(boolean.clone())
+        }
+        CoreValue::Text(text) => DatexExpressionData::Text(text.clone()),
 
         CoreValue::Range(range) => {
             DatexExpressionData::Range(RangeDeclaration {
@@ -239,7 +241,7 @@ fn type_definition_to_type_expression(
         &type_def_with_metadata.definition,
     )
 }
-
+// FIXME can we make this consuming?
 fn structural_type_definition_to_type_expression(
     type_definition: &TypeDefinition,
 ) -> TypeExpression {
@@ -252,7 +254,7 @@ fn structural_type_definition_to_type_expression(
                 TypeExpressionData::Text(text.clone()).with_default_span()
             }
             LiteralTypeDefinition::Boolean(boolean) => {
-                TypeExpressionData::Boolean(*boolean).with_default_span()
+                TypeExpressionData::Boolean(boolean.clone()).with_default_span()
             }
             LiteralTypeDefinition::Decimal(decimal) => {
                 TypeExpressionData::Decimal(decimal.clone()).with_default_span()
@@ -269,10 +271,9 @@ fn structural_type_definition_to_type_expression(
                 TypeExpressionData::Endpoint(endpoint.clone())
                     .with_default_span()
             }
-            _ => TypeExpressionData::Text(format!(
-                "[[STRUCTURAL TYPE {:?}]]",
-                struct_type
-            ))
+            _ => TypeExpressionData::Text(
+                format!("[[STRUCTURAL TYPE {:?}]]", struct_type).into(),
+            )
             .with_default_span(),
         },
         TypeDefinition::Range(RangeTypeDefinition { start, end }) => {
@@ -307,10 +308,10 @@ fn structural_type_definition_to_type_expression(
             TypeExpressionData::Identifier(core_type.to_string())
                 .with_default_span()
         }
-        _ => {
-            TypeExpressionData::Text(format!("[[TYPE {:?}]]", type_definition))
-                .with_default_span()
-        }
+        _ => TypeExpressionData::Text(
+            format!("[[TYPE {:?}]]", type_definition).into(),
+        )
+        .with_default_span(),
     }
 }
 
@@ -372,14 +373,14 @@ mod tests {
     fn boolean_to_ast() {
         let value = ValueContainer::from(true);
         let ast = DatexExpressionData::from(&value);
-        assert_eq!(ast, DatexExpressionData::Boolean(true));
+        assert_eq!(ast, DatexExpressionData::Boolean(true.into()));
     }
 
     #[test]
     fn text_to_ast() {
         let value = ValueContainer::from("Hello, World!".to_string());
         let ast = DatexExpressionData::from(&value);
-        assert_eq!(ast, DatexExpressionData::Text("Hello, World!".to_string()));
+        assert_eq!(ast, DatexExpressionData::Text("Hello, World!".into()));
     }
 
     #[test]

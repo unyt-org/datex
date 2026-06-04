@@ -407,7 +407,7 @@ impl TryFrom<&DatexExpressionData> for LiteralTypeDefinition {
     fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
         Ok(match expr {
             DatexExpressionData::Boolean(b) => {
-                LiteralTypeDefinition::Boolean(*b)
+                LiteralTypeDefinition::Boolean(b.clone())
             }
             DatexExpressionData::Text(s) => {
                 LiteralTypeDefinition::Text(s.clone())

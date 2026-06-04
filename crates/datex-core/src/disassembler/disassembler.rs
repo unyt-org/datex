@@ -10,7 +10,6 @@ use crate::{
             },
             regular_instructions::RegularInstruction,
         },
-        type_instruction_codes::TypeInstructionCode,
     },
     prelude::*,
     utils::ansi_colors::{AnsiColor, AnsiWrite},
@@ -193,8 +192,7 @@ fn write_instruction(
         match instruction {
             Instruction::Regular(instr) =>
                 InstructionCode::from(instr).to_string(),
-            Instruction::Type(instr) =>
-                TypeInstructionCode::from(instr).to_string(),
+            Instruction::Type(instr) => instr.as_ref().to_string(),
         }
     )
     .unwrap();

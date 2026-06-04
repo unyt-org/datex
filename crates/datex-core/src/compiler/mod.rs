@@ -21,6 +21,7 @@ use crate::{
         scope::CompilationScope,
     },
     core_compiler::{
+        to_instructions::ToInstructions,
         type_compiler::append_type_instruction,
         value_compiler::{
             append_boolean, append_decimal, append_encoded_integer,
@@ -1352,7 +1353,7 @@ fn compile_expression(
         DatexExpressionData::TypeExpression(type_expression) => {
             compilation_context
                 .append_instruction_code(InstructionCode::TYPE_EXPRESSION);
-            for instruction in type_expression.to_type_instructions() {
+            for instruction in type_expression.to_instructions(shared_value_tracking) {
                 append_type_instruction(
                     compilation_context.cursor(),
                     instruction,
