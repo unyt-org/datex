@@ -7,13 +7,13 @@ use crate::{
     types::r#type::Type,
 };
 use crate::prelude::*;
-impl ToInstructions for Type {
+impl<'a> ToInstructions<'a> for Type {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
-    ) -> Box<dyn Iterator<Item = Self::InstructionType> + 'a> {
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
             match self {
                 Type::Nominal(_) => unreachable!(),

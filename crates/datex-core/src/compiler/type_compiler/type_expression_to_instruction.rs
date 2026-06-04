@@ -6,12 +6,12 @@ use crate::{
 };
 use crate::core_compiler::shared_value_tracking::SharedValueTracking;
 
-impl ToInstructions for TypeExpression {
+impl<'a> ToInstructions<'a> for TypeExpression {
     type InstructionType = TypeInstruction;
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
-    ) -> Box<dyn Iterator<Item = TypeInstruction> + 'a> {
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
             match &self.data {
                 TypeExpressionData::Integer(integer) => {
