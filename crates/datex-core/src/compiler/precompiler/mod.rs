@@ -552,8 +552,8 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     fn visit_get_ref(&mut self, create_ref: &mut GetRef, span: &Range<usize>) -> ExpressionVisitResult<SpannedCompilerError> {
         create_ref.walk_children(self)?;
 
-        // for &(x.y), access to x should be a borrow access
         match &mut create_ref.expression.data {
+            // for &(x.y), access to x should be a borrow access
             DatexExpressionData::PropertyAccess(property_access) => {
                 match &mut property_access.base.data {
                     DatexExpressionData::VariableAccess(variable_access) => {
@@ -562,9 +562,13 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     _ => {}
                 }
             }
+            // for &x, access to x should be a borrow access
+            DatexExpressionData::VariableAccess(variable_access) => {
+                variable_access.access_type = ValueAccessType::Borrow;
+            }
             _ => {}
         }
-        
+
         Ok(VisitAction::SkipChildren)
     }
 
@@ -2039,6 +2043,41 @@ mod tests {
                 }).with_default_span(),
             ]))
         )
+    }
+
+    #[test]
+    fn variable_access_borrow() {
+        // Note: access type of variable should be borrow
+        let result = parse_and_precompile("var x = 42; &x");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_unterminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(42))
+                            .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::GetRef(GetRef {
+                    mutability: LocalReferenceMutability::Immutable,
+                    expression: Box::new(
+                        DatexExpressionData::VariableAccess(VariableAccess {
+                            id: 0,
+                            name: "x".to_string(),
+                            access_type: ValueAccessType::Borrow,
+                        })
+                        .with_default_span()
+                    )
+                }).with_default_span(),
+            ]))
+        );
     }
 
     #[test]
