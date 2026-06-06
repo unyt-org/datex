@@ -68,11 +68,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ImplTypeDefinition> {
             return Err(de::Error::custom("expected exactly 2 elements"));
         }
 
-        info!(
-            "Deserialized ImplTypeDefinition with inner type: {} and impl markers: {:?}",
-            inner_type, impl_markers
-        );
-
         Ok(ImplTypeDefinition {
             inner_type: Box::new(inner_type),
             impl_markers,

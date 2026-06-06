@@ -658,7 +658,6 @@ pub fn inner_execution_loop(
                             | TypeInstruction::TypeDefinitionWithMetadata(_)
                             | TypeInstruction::TypeDefinitionRange
                             | TypeInstruction::TypeDefinitionImplType(_) => {
-                                info!("Encountered unhandled type instruction in execution loop: {:?}", type_instruction);
                                 unreachable!()
                             }
                         })
