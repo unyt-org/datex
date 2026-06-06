@@ -10,10 +10,8 @@ use crate::{
             intersection::IntersectionTypeDefinition, list::ListTypeDefinition,
             map::MapTypeDefinition, union::UnionTypeDefinition,
         },
-        type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
-pub mod ts;
 pub fn fold_type<F>(folder: &mut F, ty: &Type) -> Result<F::Output, F::Error>
 where
     F: TypeFolder,
