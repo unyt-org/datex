@@ -8,7 +8,8 @@ use crate::{
         type_definition::{
             TypeDefinition, callable::CallableTypeDefinition,
             intersection::IntersectionTypeDefinition, list::ListTypeDefinition,
-            map::MapTypeDefinition, union::UnionTypeDefinition,
+            map::MapTypeDefinition, tagged_type::TaggedTypeDefinition,
+            union::UnionTypeDefinition,
         },
     },
 };
@@ -146,7 +147,13 @@ where
         }
 
         TypeDefinition::TaggedType(tagged) => {
-            todo!("Add fold_tagged_type()")
+            let payload = tagged
+                .ty
+                .as_deref()
+                .map(|ty| fold_type(folder, ty))
+                .transpose()?;
+
+            folder.fold_tagged_type(tagged, payload)
         }
     }
 }
@@ -225,5 +232,11 @@ pub trait TypeFolder {
     fn fold_core_type(
         &mut self,
         core_type: CoreLibTypeId,
+    ) -> Result<Self::Output, Self::Error>;
+
+    fn fold_tagged_type(
+        &mut self,
+        source: &TaggedTypeDefinition,
+        payload: Option<Self::Output>,
     ) -> Result<Self::Output, Self::Error>;
 }
