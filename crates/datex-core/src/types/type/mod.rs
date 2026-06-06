@@ -40,7 +40,26 @@ impl Type {
     pub const UNIT: Type = Type::Alias(TypeDefinitionWithMetadata {
         definition: TypeDefinition::UNIT,
         metadata: TypeMetadata::default(),
+        reference_name: None,
     });
+
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        match &mut self {
+            Type::Alias(alias) => {
+                alias.reference_name = Some(name.into());
+            }
+            _ => unimplemented!(
+                "Naming is only supported for alias types for now"
+            ),
+        }
+        self
+    }
+    pub fn name(&self) -> Option<&str> {
+        match self {
+            Type::Alias(alias) => alias.reference_name.as_deref(),
+            Type::Nominal(_) => None,
+        }
+    }
 
     pub fn nominal(
         definition: NominalTypeDefinition,
@@ -103,14 +122,17 @@ impl Type {
                         mutability: LocalMutability::Immutable,
                     },
                 definition,
+                reference_name: None,
             }) => Type::Alias(TypeDefinitionWithMetadata {
                 metadata,
                 definition,
+                reference_name: None,
             }),
             // box otherwise
             _ => Type::Alias(TypeDefinitionWithMetadata {
                 metadata,
                 definition: TypeDefinition::Nested(Box::new(self)),
+                reference_name: None,
             }),
         }
     }
@@ -131,6 +153,7 @@ impl Type {
                         mutability,
                     },
                 definition,
+                reference_name: None,
             }) => {
                 // max mutability that is allowed for the reference is determined by ownership and mutability of the shared container
                 let max_mutability = match &ownership {
@@ -156,6 +179,7 @@ impl Type {
                             mutability,
                         },
                         definition,
+                        reference_name: None,
                     }))
                 } else {
                     Err(())
@@ -172,6 +196,7 @@ impl Type {
         if let Type::Alias(TypeDefinitionWithMetadata {
             metadata,
             definition: _,
+            ..
         }) = &self
             && metadata == &TypeMetadata::default()
         {
@@ -179,6 +204,7 @@ impl Type {
                 Type::Alias(TypeDefinitionWithMetadata {
                     metadata: _,
                     definition,
+                    ..
                 }) => definition,
                 _ => unreachable!(),
             }
@@ -195,6 +221,7 @@ impl Type {
             Type::Alias(TypeDefinitionWithMetadata {
                 definition: TypeDefinition::CoreType(core_lib_type_id),
                 metadata,
+                ..
             }) if metadata == &TypeMetadata::default() => {
                 Some(*core_lib_type_id)
             }

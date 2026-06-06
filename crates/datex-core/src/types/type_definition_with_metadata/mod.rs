@@ -9,6 +9,8 @@ pub mod type_match;
 pub struct TypeDefinitionWithMetadata {
     pub definition: TypeDefinition,
     pub metadata: TypeMetadata,
+
+    pub reference_name: Option<String>,
 }
 
 impl Display for TypeDefinitionWithMetadata {

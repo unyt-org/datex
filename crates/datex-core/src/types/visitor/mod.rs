@@ -20,13 +20,14 @@ where
 {
     match ty {
         Type::Alias(alias) => {
-            if folder.begin_alias(alias)? {
+            let Some(name) = alias.reference_name.as_deref() else {
+                return fold_definition(folder, &alias.definition);
+            };
+            if folder.begin_named_alias(name)? {
                 let definition = fold_definition(folder, &alias.definition)?;
-
-                folder.end_alias(alias, definition)?;
+                folder.end_named_alias(name, definition)?;
             }
-
-            folder.fold_alias_reference(alias)
+            folder.fold_named_alias_reference(name)
         }
 
         Type::Nominal(nominal) => folder.fold_nominal_reference(nominal),
@@ -156,20 +157,17 @@ pub trait TypeFolder {
     type Output;
     type Error;
 
-    fn begin_alias(
-        &mut self,
-        alias: &TypeDefinitionWithMetadata,
-    ) -> Result<bool, Self::Error>;
+    fn begin_named_alias(&mut self, name: &str) -> Result<bool, Self::Error>;
 
-    fn end_alias(
+    fn end_named_alias(
         &mut self,
-        alias: &TypeDefinitionWithMetadata,
+        name: &str,
         definition: Self::Output,
     ) -> Result<(), Self::Error>;
 
-    fn fold_alias_reference(
+    fn fold_named_alias_reference(
         &mut self,
-        alias: &TypeDefinitionWithMetadata,
+        name: &str,
     ) -> Result<Self::Output, Self::Error>;
 
     fn fold_literal(

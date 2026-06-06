@@ -59,6 +59,7 @@ impl<T: DatexValueContainerProxy> DatexProxyTypes for Shared<T> {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Owned,
             },
+            reference_name: None,
         })
     }
 }

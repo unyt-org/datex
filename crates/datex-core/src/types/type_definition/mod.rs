@@ -368,6 +368,7 @@ impl From<TypeDefinition> for TypeDefinitionWithMetadata {
         TypeDefinitionWithMetadata {
             definition: structural_definition,
             metadata: TypeMetadata::default(),
+            reference_name: None,
         }
     }
 }
@@ -377,6 +378,7 @@ impl From<LiteralTypeDefinition> for TypeDefinitionWithMetadata {
         TypeDefinitionWithMetadata {
             definition: literal_definition.into(),
             metadata: TypeMetadata::default(),
+            reference_name: None,
         }
     }
 }

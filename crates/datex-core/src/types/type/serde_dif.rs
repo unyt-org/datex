@@ -89,6 +89,8 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
         Ok(Type::Alias(TypeDefinitionWithMetadata {
             metadata,
             definition,
+
+            reference_name: None,
         }))
     }
 

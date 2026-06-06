@@ -1136,6 +1136,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                         def => Type::Alias(TypeDefinitionWithMetadata {
                             metadata: TypeMetadata::default(),
                             definition: def,
+                            reference_name: None,
                         }),
                     }
                 }
@@ -2106,7 +2107,9 @@ mod tests {
                 metadata: TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Immutable,
                     ownership: SharedContainerOwnership::Owned
-                }
+                },
+
+                reference_name: None,
             })
         );
 
@@ -2118,7 +2121,9 @@ mod tests {
                 metadata: TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Mutable,
                     ownership: SharedContainerOwnership::Owned
-                }
+                },
+
+                reference_name: None,
             })
         );
     }
@@ -2135,7 +2140,9 @@ mod tests {
                     ownership: SharedContainerOwnership::Referenced(
                         ReferenceMutability::Immutable
                     )
-                }
+                },
+
+                reference_name: None,
             })
         );
 
@@ -2149,7 +2156,9 @@ mod tests {
                     ownership: SharedContainerOwnership::Referenced(
                         ReferenceMutability::Immutable
                     )
-                }
+                },
+
+                reference_name: None,
             })
         );
 
@@ -2164,7 +2173,9 @@ mod tests {
                     ownership: SharedContainerOwnership::Referenced(
                         ReferenceMutability::Mutable
                     )
-                }
+                },
+
+                reference_name: None,
             })
         );
     }
@@ -2196,7 +2207,9 @@ mod tests {
                 metadata: TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Immutable,
                     ownership: SharedContainerOwnership::Owned
-                }
+                },
+
+                reference_name: None,
             })
         );
     }

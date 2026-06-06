@@ -1377,7 +1377,8 @@ pub fn inner_execution_loop(
                                         let definition = collected_results.pop_type_definition_result();
                                         Type::Alias(TypeDefinitionWithMetadata {
                                             metadata,
-                                            definition
+                                            definition,
+            reference_name: None,
                                         }).into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),

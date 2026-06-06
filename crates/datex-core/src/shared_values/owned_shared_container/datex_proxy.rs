@@ -57,6 +57,8 @@ impl DatexProxyTypes for OwnedSharedContainer {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Owned,
             },
+
+            reference_name: None,
         })
     }
 }

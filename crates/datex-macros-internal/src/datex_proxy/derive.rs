@@ -227,7 +227,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             #[automatically_derived]
             impl DatexProxyTypes for #ident {
                 fn datex_type(memory: &mut Memory) -> Type {
-                    #datex_type
+                    (#datex_type).with_name(stringify!(#ident))
                 }
             }
         };
