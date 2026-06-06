@@ -42,7 +42,7 @@ pub mod equality;
 #[strum(serialize_all = "lowercase")]
 #[repr(u8)]
 pub enum DecimalTypeVariant {
-    F32 = 1, // rationale: We need to start with 1 here, as the core lib pointer id for the base type is using OFFSET_X + variant as index
+    F32,
     F64,
     DBig,
 }

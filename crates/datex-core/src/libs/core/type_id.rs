@@ -14,10 +14,10 @@ use binrw::{
     meta::{EndianKind, ReadEndian},
 };
 use core::{fmt::Display, mem::variant_count, str::FromStr};
+use log::info;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use strum::{EnumIter, IntoEnumIterator};
 use strum_macros::{Display, EnumString};
-use crate::prelude::*;
 
 #[derive(
     Debug,
@@ -127,6 +127,11 @@ impl TryFrom<CoreLibIdIndex> for CoreLibVariantTypeId {
                 IntegerTypeVariant::try_from(id as u8).unwrap(),
             ))
         } else if id < (INTEGER_VARIANT_COUNT + DECIMAL_VARIANT_COUNT) {
+            info!(
+                "ID {} corresponds to Decimal variant with adjusted id {}",
+                id + TYPE_VARIANT_SPACE_BASE,
+                id - INTEGER_VARIANT_COUNT
+            );
             Ok(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::try_from(
                     (id - INTEGER_VARIANT_COUNT) as u8,

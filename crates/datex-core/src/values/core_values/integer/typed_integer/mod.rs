@@ -43,7 +43,7 @@ use strum_macros::{AsRefStr, EnumIter, EnumString};
 #[repr(u8)]
 #[strum(serialize_all = "lowercase")]
 pub enum IntegerTypeVariant {
-    U8 = 1, // rationale: We need to start with 1 here, as the core lib pointer id for the base type is using OFFSET_X + variant as index
+    U8,
     U16,
     U32,
     U64,
