@@ -234,7 +234,7 @@ mod tests {
         let (incoming_sections_sender, _incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
         let (com_hub, task_future) =
-            ComHub::create(Endpoint::default(), incoming_sections_sender, None);
+            ComHub::create(Endpoint::default(), incoming_sections_sender);
 
         // add interface
         com_hub
@@ -326,7 +326,7 @@ mod tests {
         let (incoming_sections_sender, _incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
         let (com_hub, _task_future) =
-            ComHub::create(Endpoint::default(), incoming_sections_sender, None);
+            ComHub::create(Endpoint::default(), incoming_sections_sender);
 
         let result = com_hub.remove_interface(ComInterfaceUUID::new()).await;
         assert!(result.is_err());

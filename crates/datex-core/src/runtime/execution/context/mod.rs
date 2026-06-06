@@ -151,12 +151,10 @@ impl ExecutionContext {
                     dxb_body: dxb,
                 };
 
-                /*
                 // show DXB and decompiled code if verbose is enabled
                 if *verbose {
                     self.print_dxb_debug(dxb)?;
                 }
-                */
 
                 Ok(input)
             }

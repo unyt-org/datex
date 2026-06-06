@@ -66,12 +66,12 @@ pub async fn get_coupled_com_hubs() -> (
     let (incoming_sections_sender_a, incoming_sections_receiver_a) =
         create_unbounded_channel::<IncomingSection>();
     let (com_hub_a, task_future_a) =
-        ComHub::create(TEST_ENDPOINT_A.clone(), incoming_sections_sender_a, None);
+        ComHub::create(TEST_ENDPOINT_A.clone(), incoming_sections_sender_a);
 
     let (incoming_sections_sender_b, incoming_sections_receiver_b) =
         create_unbounded_channel::<IncomingSection>();
     let (com_hub_b, task_future_b) =
-        ComHub::create(TEST_ENDPOINT_B.clone(), incoming_sections_sender_b, None);
+        ComHub::create(TEST_ENDPOINT_B.clone(), incoming_sections_sender_b);
 
     let res = couple_com_hubs_internal(com_hub_a.clone(), com_hub_b.clone());
 
