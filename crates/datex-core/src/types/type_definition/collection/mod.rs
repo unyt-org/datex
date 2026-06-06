@@ -12,6 +12,7 @@ use core::fmt::Display;
 pub mod serde_dif;
 // TODO #377: Rename to Generic type definition?
 #[derive(Debug, Clone, PartialEq, Hash, Eq, AsRefStr)]
+#[strum(serialize_all = "snake_case")]
 pub enum CollectionTypeDefinition {
     // e.g. [integer]
     List(ListCollectionTypeDefinition),

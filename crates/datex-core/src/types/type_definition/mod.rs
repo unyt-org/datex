@@ -40,6 +40,7 @@ pub mod type_match;
 /// This is normally the base for types at runtime, in contrast to [Type], which is the base for types
 /// at compile time.
 #[derive(Debug, Clone, PartialEq, Eq, AsRefStr)]
+#[strum(serialize_all = "snake_case")]
 pub enum TypeDefinition {
     /// e.g. 1, "example"
     Literal(LiteralTypeDefinition),

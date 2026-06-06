@@ -25,6 +25,7 @@ use serde::{Serialize, Serializer, ser::SerializeTuple};
 use strum::AsRefStr;
 
 #[derive(Clone, Debug, PartialEq, BinWrite, BinRead, AsRefStr)]
+#[strum(serialize_all = "snake_case")]
 #[brw(little)]
 pub enum TypeInstruction {
     #[brw(magic = 0x0u8)]
@@ -77,6 +78,10 @@ impl TypeInstruction {
             TypeInstruction::TypeDefinitionImplType(_) => {
                 NextExpectedInstructions::Type(1)
             } // impl type
+
+            TypeInstruction::TypeDefinitionWithMetadata(_) => {
+                NextExpectedInstructions::Type(1)
+            } // metadata type instruction
 
             TypeInstruction::TypeDefinitionRange => {
                 NextExpectedInstructions::Type(2)

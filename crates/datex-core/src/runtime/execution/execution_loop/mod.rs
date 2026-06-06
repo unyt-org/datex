@@ -61,15 +61,12 @@ use crate::{
         },
     },
     types::{
-        literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
         type_definition::{
             TypeDefinition, impl_type::ImplTypeDefinition,
             range::RangeTypeDefinition, tagged_type::TaggedTypeDefinition,
         },
-        type_definition_with_metadata::{
-            TypeDefinitionWithMetadata, TypeMetadata,
-        },
+        type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
     value_updates::{
         update_data::{DeleteEntryUpdateData, ReplaceUpdateData},
@@ -89,6 +86,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use log::info;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -597,10 +595,7 @@ pub fn inner_execution_loop(
                     let type_instruction = collector
                         .default_type_instruction_collection(type_instruction);
 
-                    if let Some(
-                        type_instruction,
-                    ) = type_instruction
-                    {
+                    if let Some(type_instruction) = type_instruction {
                         Some(match type_instruction {
                             TypeInstruction::TypeDefinitionCoreType(core_lib_type_id) => {
                                 CollectedExecutionResult::TypeDefinition(TypeDefinition::CoreType(core_lib_type_id))
@@ -663,6 +658,7 @@ pub fn inner_execution_loop(
                             | TypeInstruction::TypeDefinitionWithMetadata(_)
                             | TypeInstruction::TypeDefinitionRange
                             | TypeInstruction::TypeDefinitionImplType(_) => {
+                                info!("Encountered unhandled type instruction in execution loop: {:?}", type_instruction);
                                 unreachable!()
                             }
                         })
@@ -1379,7 +1375,7 @@ pub fn inner_execution_loop(
                                         x.into()
                                     }
                                     TypeInstruction::TypeDefinitionWithMetadata(metadata) => {
-                                        let mut definition = collected_results.pop_type_definition_result();
+                                        let definition = collected_results.pop_type_definition_result();
                                         Type::Alias(TypeDefinitionWithMetadata {
                                             metadata,
                                             definition
