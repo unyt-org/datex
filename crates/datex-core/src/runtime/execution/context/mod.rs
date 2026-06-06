@@ -6,8 +6,8 @@ use crate::compiler::{
 };
 use crate::{
     runtime::execution::{
-        ExecutionError, ExecutionInput, MemoryDump, RuntimeInternal,
-        execute_dxb, execute_dxb_sync,
+        ExecutionError, ExecutionInput, MemoryDump, execute_dxb,
+        execute_dxb_sync,
     },
     values::value_container::ValueContainer,
 };
