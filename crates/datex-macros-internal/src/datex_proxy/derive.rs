@@ -230,6 +230,10 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     (#datex_type).with_name(stringify!(#ident))
                 }
             }
+
+            #datex_core_crate_name::inventory::submit! {
+                #datex_core_crate_name::datex_registry::DatexRegistration::new::<#ident>()
+            }
         };
     }
 }
