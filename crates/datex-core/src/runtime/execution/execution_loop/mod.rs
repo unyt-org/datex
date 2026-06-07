@@ -1378,7 +1378,7 @@ pub fn inner_execution_loop(
                                         Type::Alias(TypeDefinitionWithMetadata {
                                             metadata,
                                             definition,
-            reference_name: None,
+                                            reference_name: None,
                                         }).into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),
