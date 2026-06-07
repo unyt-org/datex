@@ -59,6 +59,15 @@ pub struct TopLevelAttributes {
     /// Internally used attribute to indicate that the macro should use the `datex_core` namespace
     /// instead of inferring it. This is required for doctests to work.
     force_datex_core_namespace: bool,
+
+    /// Optional override for the exported nameme of the type. Defaults to the Rust struct or enum name.
+    datex_name: Option<String>,
+
+    /// If the decorated struct or enum should be exported to the Datex registry.
+    /// `#[datex(export)]`
+    export: bool,
+    export_ts: Option<String>,
+    docs: Option<String>,
 }
 
 pub struct DeriveData {
@@ -93,6 +102,56 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     };
 
     let ident = input.ident;
+    let datex_name = top_level_attributes
+        .datex_name
+        .clone()
+        .unwrap_or_else(|| ident.to_string());
+
+    let docs = match &top_level_attributes.docs {
+        Some(docs) => quote! {
+            Some(#docs)
+        },
+        None => quote! {
+            None
+        },
+    };
+
+    let export = top_level_attributes.export;
+
+    let export_ts = match &top_level_attributes.export_ts {
+        Some(path) => quote! {
+            Some(#path)
+        },
+        None => quote! {
+            None
+        },
+    };
+
+    let registration = if top_level_attributes.export {
+        quote! {
+            #datex_core_crate_name::inventory::submit! {
+                #datex_core_crate_name::datex_registry::DatexRegistration::new::<#ident>(
+                    #datex_core_crate_name::datex_registry::DatexMetadata {
+                        name: #datex_name,
+                        rust_type_name: stringify!(#ident),
+                        rust_crate_name: env!("CARGO_CRATE_NAME"),
+                        rust_package_name: env!("CARGO_PKG_NAME"),
+                        rust_module_path: module_path!(),
+                        rust_path: concat!(
+                            module_path!(),
+                            "::",
+                            stringify!(#ident)
+                        ),
+                        docs: #docs,
+                        export: true,
+                        export_ts: #export_ts,
+                    }
+                )
+            }
+        }
+    } else {
+        quote! {}
+    };
 
     let serialize = match is_fallible_serialization {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
@@ -227,13 +286,11 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             #[automatically_derived]
             impl DatexProxyTypes for #ident {
                 fn datex_type(memory: &mut Memory) -> Type {
-                    (#datex_type).with_name(stringify!(#ident))
+                    (#datex_type).with_name(#datex_name)
                 }
             }
 
-            #datex_core_crate_name::inventory::submit! {
-                #datex_core_crate_name::datex_registry::DatexRegistration::new::<#ident>()
-            }
+            #registration
         };
     }
 }
@@ -869,31 +926,110 @@ fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
     }
 }
 
+fn parse_string_attribute(
+    name_value: &syn::MetaNameValue,
+    attribute_name: &str,
+) -> String {
+    match &name_value.value {
+        syn::Expr::Lit(expr_lit) => match &expr_lit.lit {
+            syn::Lit::Str(lit_str) => lit_str.value(),
+            _ => {
+                panic!("datex({attribute_name} = ...) must be a string literal")
+            }
+        },
+        _ => panic!("datex({attribute_name} = ...) must be a string literal"),
+    }
+}
+
+fn parse_doc_comments(attrs: &[Attribute]) -> Option<String> {
+    let docs = attrs
+        .iter()
+        .filter_map(|attr| {
+            if !attr.path().is_ident("doc") {
+                return None;
+            }
+            let Meta::NameValue(name_value) = &attr.meta else {
+                return None;
+            };
+            let syn::Expr::Lit(expr_lit) = &name_value.value else {
+                return None;
+            };
+            let syn::Lit::Str(lit_str) = &expr_lit.lit else {
+                return None;
+            };
+            Some(lit_str.value().trim_start().to_string())
+        })
+        .collect::<Vec<_>>();
+    if docs.is_empty() {
+        None
+    } else {
+        Some(docs.join("\n"))
+    }
+}
+
 fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
     let mut force_datex_core_namespace = false;
+    let mut datex_name = None;
+    let mut export = false;
+    let mut export_ts = None;
 
     for attr in attrs {
-        if attr.path().is_ident("datex")
-            && let Meta::List(meta_list) = &attr.meta
-        {
-            let nested = meta_list.parse_args_with(
-                Punctuated::<Meta, Token![,]>::parse_terminated,
-            );
+        if !attr.path().is_ident("datex") {
+            continue;
+        }
+        let Meta::List(meta_list) = &attr.meta else {
+            continue;
+        };
+        let nested = meta_list
+            .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+            .unwrap_or_else(|error| {
+                panic!("Invalid #[datex(...)] attribute: {error}")
+            });
 
-            if let Ok(nested) = nested {
-                for meta in nested {
-                    if let Meta::Path(path) = meta
-                        && path.is_ident("_force_datex_core_namespace")
-                    {
-                        force_datex_core_namespace = true;
-                    }
+        for meta in nested {
+            match meta {
+                Meta::Path(path)
+                    if path.is_ident("_force_datex_core_namespace") =>
+                {
+                    force_datex_core_namespace = true;
                 }
+                Meta::Path(path) if path.is_ident("export") => {
+                    export = true;
+                }
+
+                Meta::NameValue(name_value)
+                    if name_value.path.is_ident("name") =>
+                {
+                    if datex_name.is_some() {
+                        panic!("datex(name = ...) must only be specified once");
+                    }
+                    datex_name =
+                        Some(parse_string_attribute(&name_value, "name"));
+                }
+
+                Meta::NameValue(name_value)
+                    if name_value.path.is_ident("export_ts") =>
+                {
+                    if export_ts.is_some() {
+                        panic!(
+                            "datex(export_ts = ...) must only be specified once"
+                        );
+                    }
+                    export_ts =
+                        Some(parse_string_attribute(&name_value, "export_ts"));
+                    export = true;
+                }
+                _ => {}
             }
         }
     }
 
     TopLevelAttributes {
         force_datex_core_namespace,
+        datex_name,
+        export,
+        export_ts,
+        docs: parse_doc_comments(attrs),
     }
 }
 

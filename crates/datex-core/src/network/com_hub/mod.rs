@@ -137,7 +137,8 @@ impl Debug for ComHub {
     Serialize,
     Deserialize,
 )]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[datex(export_ts = "./network/config.d.ts")]
+/// The priority of an interface, which determines the order in which interfaces are used for routing fallback logic.
 pub enum InterfacePriority {
     /// The interface will not be used for fallback routing if no other interface is available
     /// This is useful for interfaces which cannot communicate with the outside world or are not
