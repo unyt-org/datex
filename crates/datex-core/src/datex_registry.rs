@@ -10,11 +10,6 @@ pub struct DatexMetadata {
     /// Defaults to the Rust struct or enum name. Can be overridden using:
     /// `#[datex(name = "...")]`
     pub name: &'static str,
-    pub rust_type_name: &'static str,
-    pub rust_crate_name: &'static str,
-    pub rust_package_name: &'static str,
-    pub rust_module_path: &'static str,
-    pub rust_path: &'static str,
 
     /// Doc comments from the struct or enum if available.
     pub docs: Option<&'static str>,
@@ -22,13 +17,14 @@ pub struct DatexMetadata {
     /// Set to true if this type should be exported to the registry.
     pub export: bool,
 
-    /// Optional TS export path.
+    /// The original identifier of the struct or enum used in Rust.
+    pub rust_ident: &'static str,
+
+    /// The namespace path. Default is set to the Rust call site, of where the struct or enum is decorated at.
     ///
     /// Set using:
-    /// `#[datex(export_ts = "./network/config.d.ts")]`
-    /// FIXME: Shall we rename to namespace and use something like network::iterface::config and let the export logic decide how to map
-    /// the namespace to a file path based on the language / project structure?
-    pub export_ts: Option<&'static str>,
+    /// `#[datex(namespace = "./network/config.d.ts")]`
+    pub namespace: &'static str,
 }
 
 pub struct DatexRegistration {

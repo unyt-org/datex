@@ -6,6 +6,8 @@ use syn::{
     punctuated::Punctuated,
 };
 
+use crate::utils::get_project_relative_file_path;
+
 #[derive(Debug, PartialEq)]
 enum SerdeMode {
     /// Serde serializable/deserializable fields are not allowed inside the datex proxy value.
@@ -66,7 +68,7 @@ pub struct TopLevelAttributes {
     /// If the decorated struct or enum should be exported to the Datex registry.
     /// `#[datex(export)]`
     export: bool,
-    export_ts: Option<String>,
+    namespace: Option<String>,
     docs: Option<String>,
 }
 
@@ -116,35 +118,24 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         },
     };
 
-    let export = top_level_attributes.export;
+    let export = true; // FIXME shall we opt-in or opt-out from top_level_attributes.export;
+    let namespace = &top_level_attributes.namespace.unwrap_or_else(|| {
+        get_project_relative_file_path()
+            .to_str()
+            .expect("Failed to convert file path to string")
+            .to_string()
+    });
 
-    let export_ts = match &top_level_attributes.export_ts {
-        Some(path) => quote! {
-            Some(#path)
-        },
-        None => quote! {
-            None
-        },
-    };
-
-    let registration = if top_level_attributes.export {
+    let registration = if export {
         quote! {
             #datex_core_crate_name::inventory::submit! {
                 #datex_core_crate_name::datex_registry::DatexRegistration::new::<#ident>(
                     #datex_core_crate_name::datex_registry::DatexMetadata {
                         name: #datex_name,
-                        rust_type_name: stringify!(#ident),
-                        rust_crate_name: env!("CARGO_CRATE_NAME"),
-                        rust_package_name: env!("CARGO_PKG_NAME"),
-                        rust_module_path: module_path!(),
-                        rust_path: concat!(
-                            module_path!(),
-                            "::",
-                            stringify!(#ident)
-                        ),
+                        rust_ident: stringify!(#ident),
                         docs: #docs,
-                        export: true,
-                        export_ts: #export_ts,
+                        export: #export,
+                        namespace: #namespace,
                     }
                 )
             }
@@ -971,7 +962,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
     let mut force_datex_core_namespace = false;
     let mut datex_name = None;
     let mut export = false;
-    let mut export_ts = None;
+    let mut namespace = None;
 
     for attr in attrs {
         if !attr.path().is_ident("datex") {
@@ -1008,15 +999,15 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
                 }
 
                 Meta::NameValue(name_value)
-                    if name_value.path.is_ident("export_ts") =>
+                    if name_value.path.is_ident("namespace") =>
                 {
-                    if export_ts.is_some() {
+                    if namespace.is_some() {
                         panic!(
-                            "datex(export_ts = ...) must only be specified once"
+                            "datex(namespace = ...) must only be specified once"
                         );
                     }
-                    export_ts =
-                        Some(parse_string_attribute(&name_value, "export_ts"));
+                    namespace =
+                        Some(parse_string_attribute(&name_value, "namespace"));
                     export = true;
                 }
                 _ => {}
@@ -1028,7 +1019,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
         force_datex_core_namespace,
         datex_name,
         export,
-        export_ts,
+        namespace,
         docs: parse_doc_comments(attrs),
     }
 }

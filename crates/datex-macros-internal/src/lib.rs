@@ -4,6 +4,7 @@ use syn::parse_macro_input;
 mod bitfield_macros;
 mod core_lib;
 mod datex_proxy;
+mod utils;
 mod value_macros;
 
 #[proc_macro_derive(FromCoreValue)]
