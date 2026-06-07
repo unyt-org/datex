@@ -421,8 +421,6 @@ impl ComHub {
         cleanup_callback: Option<CloseAsyncCallback>,
         hello_sent_sender: Option<Sender<Result<(), ()>>>,
     ) {
-        info!("start handle socket task");
-
         // send hello block in background task
         self.task_manager
             .register_task(self.clone().send_socket_hello(

@@ -75,6 +75,7 @@ impl UpdateHandler for List {
         data: ListSpliceUpdateData,
         _source_id: TransceiverId,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
-        Ok(self.splice(data.start..data.delete_count, data.items))
+        Ok(self
+            .splice(data.start..(data.start + data.delete_count), data.items))
     }
 }

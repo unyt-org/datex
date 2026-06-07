@@ -8,6 +8,7 @@ use crate::{
     },
 };
 use core::fmt;
+use indexmap::IndexMap;
 use serde::{
     Deserializer, Serializer,
     de::{self, DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor},
@@ -266,6 +267,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Map> {
             entries.push(entry);
         }
 
-        Ok(Map::Structural(entries))
+        Ok(Map::Dynamic(IndexMap::from_iter(entries)))
     }
 }
