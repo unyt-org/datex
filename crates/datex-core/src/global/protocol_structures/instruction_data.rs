@@ -459,8 +459,8 @@ pub struct SharedRefWithValue {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct SetSharedContainerValue {
-    pub operator: Option<AssignmentOperator>,
+pub struct ModifySharedContainerValue {
+    pub operator: AssignmentOperator,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

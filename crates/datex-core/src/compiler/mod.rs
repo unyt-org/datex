@@ -45,7 +45,7 @@ use crate::{
             },
             instruction_data::{
                 InstructionBlockData, ModifyStackValue,
-                SetSharedContainerValue, ShortTextData, StackIndex,
+                ModifySharedContainerValue, ShortTextData, StackIndex,
                 TaggedValue,
             },
             regular_instructions::RegularInstruction,
@@ -1147,10 +1147,17 @@ fn compile_expression(
 
             append_regular_instruction(
                 compilation_context.cursor(),
-                RegularInstruction::SetSharedContainerValue(
-                    SetSharedContainerValue { operator },
-                ),
+                match operator {
+                    Some(operator) => {
+                        RegularInstruction::ModifySharedContainerValue(
+                            ModifySharedContainerValue { operator },
+                        )
+                    }
+                    None => RegularInstruction::SetSharedContainerValue,
+                }
             );
+
+
 
             // compile unbox expression
             scope = compile_expression(

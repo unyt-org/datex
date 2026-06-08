@@ -576,7 +576,8 @@ pub fn inner_execution_loop(
                             RegularInstruction::PushToStackMultiple(_) |
                             RegularInstruction::SetStackValue(_) |
                             RegularInstruction::ModifyStackValue(_) |
-                            RegularInstruction::SetSharedContainerValue(_) |
+                            RegularInstruction::ModifySharedContainerValue(_) |
+                            RegularInstruction::SetSharedContainerValue |
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
                             RegularInstruction::RemoteExecution(_) |
@@ -975,7 +976,37 @@ pub fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::SetSharedContainerValue(
+                                RegularInstruction::SetSharedContainerValue => {
+                                    let value_container = yield_unwrap!(
+                                        collected_results
+                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                    );
+                                    let mut ref_runtime_value = yield_unwrap!(
+                                        collected_results
+                                            .pop_runtime_value_result_assert_existing()
+                                    );
+
+                                    let res = ref_runtime_value.with_mut_value_container(
+                                        &mut state.stack,
+                                        |ref_value_container| {
+                                            // assignment value must be a reference
+                                            if let Some(reference) = ref_value_container.maybe_shared() {
+                                                let update_data = ReplaceUpdateData {value: value_container};
+                                                // TODO: pass TransceiverId
+                                                reference.base_shared_container_mut().try_replace(update_data, TransceiverId(0)).map_err(ExecutionError::UpdateError)?;
+                                                Ok(())
+                                            } else {
+                                                Err(
+                                                    ExecutionError::ExpectedSharedValue,
+                                                )
+                                            }
+                                        },
+                                    ).flatten();
+                                    yield_unwrap!(res);
+                                    None.into()
+                                },
+
+                                RegularInstruction::ModifySharedContainerValue(
                                     set_shared_container_value,
                                 ) => {
 
@@ -995,14 +1026,11 @@ pub fn inner_execution_loop(
                                             if let Some(reference) = ref_value_container.maybe_shared() {
                                                 let update_data = {
                                                     let lhs = reference.value_container();
-                                                    let val = match set_shared_container_value.operator {
-                                                        Some(operator) => handle_assignment_operation(
-                                                            operator,
-                                                            &lhs,
-                                                            value_container,
-                                                        )?,
-                                                        None => todo!()
-                                                    };
+                                                    let val = handle_assignment_operation(
+                                                        set_shared_container_value.operator,
+                                                        &lhs,
+                                                        value_container,
+                                                    )?;
                                                     ReplaceUpdateData {value: val}
                                                 };
                                                 // TODO: pass TransceiverId

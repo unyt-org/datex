@@ -11,7 +11,7 @@ use crate::{
                 Int32Data, Int64Data, Int128Data, ListData, MapData,
                 ModifyStackValue, Move, PerformMove, PushToStackMultiple,
                 RawRemotePointerAddress, RawSelfOwnedPointerAddress,
-                SetSharedContainerValue, SharedRef, SharedRefWithValue,
+                ModifySharedContainerValue, SharedRef, SharedRefWithValue,
                 ShortListData, ShortMapData, ShortStatementsData,
                 ShortTextData, StackIndex, StatementsData, TaggedValue,
                 TextData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
@@ -171,7 +171,8 @@ pub enum RegularInstruction {
 
     GetRootProperty(RootProperty),
 
-    SetSharedContainerValue(SetSharedContainerValue),
+    SetSharedContainerValue,
+    ModifySharedContainerValue(ModifySharedContainerValue),
     Unbox,
 
     TypedValue,
@@ -335,7 +336,10 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::GetRootProperty(_) => {
                 InstructionCode::GET_ROOT_PROPERTY
             }
-            RegularInstruction::SetSharedContainerValue(_) => {
+            RegularInstruction::ModifySharedContainerValue(_) => {
+                InstructionCode::MODIFY_SHARED_CONTAINER_VALUE
+            }
+            RegularInstruction::SetSharedContainerValue => {
                 InstructionCode::SET_SHARED_CONTAINER_VALUE
             }
             RegularInstruction::Unbox => InstructionCode::UNBOX,
@@ -419,7 +423,11 @@ impl RegularInstruction {
 
             RegularInstruction::Unbox => NextExpectedInstructions::Regular(1), // value to unbox
 
-            RegularInstruction::SetSharedContainerValue(_) => {
+            RegularInstruction::ModifySharedContainerValue(_) => {
+                NextExpectedInstructions::Regular(2)
+            } // container to set value on + new value
+
+            RegularInstruction::SetSharedContainerValue=> {
                 NextExpectedInstructions::Regular(2)
             } // container to set value on + new value
 
@@ -661,9 +669,13 @@ impl RegularInstruction {
             }
 
             InstructionCode::UNBOX => Ok(RegularInstruction::Unbox),
+            InstructionCode::MODIFY_SHARED_CONTAINER_VALUE => {
+                ModifySharedContainerValue::read(reader)
+                    .map(RegularInstruction::ModifySharedContainerValue)
+            }
+
             InstructionCode::SET_SHARED_CONTAINER_VALUE => {
-                SetSharedContainerValue::read(reader)
-                    .map(RegularInstruction::SetSharedContainerValue)
+                Ok(RegularInstruction::SetSharedContainerValue)
             }
 
             InstructionCode::KEY_VALUE_SHORT_TEXT => {
@@ -929,8 +941,8 @@ impl RegularInstruction {
             RegularInstruction::SetStackValue(address) => {
                 write!(string, "{}", address.0)
             }
-            RegularInstruction::SetSharedContainerValue(set_shared_container_value) => {
-                write!(string, "{}", &set_shared_container_value.operator.map(|o|o.to_string()).unwrap_or("".to_string()))
+            RegularInstruction::ModifySharedContainerValue(set_shared_container_value) => {
+                write!(string, "{}", set_shared_container_value.operator.to_string())
             }
             RegularInstruction::RequestRemoteSharedRef(address) => {
                 write!(
