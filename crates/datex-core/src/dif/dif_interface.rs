@@ -26,6 +26,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
+use crate::shared_values::base_shared_value_container::observers::ObserverCallback;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
@@ -48,14 +49,34 @@ impl DIFInterface {
     }
 }
 impl DIFInterface {
-    /// Gets the [ReferencedSharedContainer] at the given pointer address.
-    /// This can be used to apply updates to the shared container using the [UpdateHandler] trait.
-    pub fn try_get_shared_container_mutable_reference(
+
+    /// Updates the shared container for the given address and returns an update result
+    pub fn update(
         &self,
         address: &PointerAddress,
-    ) -> Result<ReferencedSharedContainer, CacheValueRetrievalError> {
-        self.cache
-            .try_get_shared_container_mutable_reference(&address)
+        update: Update
+    ) -> Result<UpdateReturn, DIFUpdateError> {
+        let shared_container = self
+            .cache
+            .try_get_shared_container_mutable_reference(address)?;
+        let mut base_container = shared_container.base_shared_container_mut();
+
+        base_container
+            .update(update)
+            .map_err(DIFUpdateError::UpdateError)
+    }
+
+    /// Returns a list of all [ObserverCallback]s that are currently active for the pointer
+    pub fn get_current_observers(
+        &self,
+        address: &PointerAddress,
+        source_id: TransceiverId
+    ) -> Result<Vec<ObserverCallback>, ValueNotFoundInCacheError> {
+        let shared_container = self
+            .cache
+            .try_get_shared_container_immutable_reference(address)?;
+        let base_container = shared_container.base_shared_container();
+        Ok(base_container.get_current_observers(source_id))
     }
 
     /// Executes an apply operation, applying the `value` to the `callee`.

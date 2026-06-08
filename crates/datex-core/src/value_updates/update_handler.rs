@@ -57,29 +57,41 @@ pub trait UpdateHandler {
         &mut self,
         data: ReplaceUpdateData,
         source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError>;
+    ) -> Result<ValueContainer, UpdateError> {
+        unimplemented!()
+    }
     fn try_set_entry(
         &mut self,
         data: SetEntryUpdateData,
         source_id: TransceiverId,
-    ) -> Result<(), UpdateError>;
+    ) -> Result<(), UpdateError> {
+        unimplemented!()
+    }
     fn try_delete_entry(
         &mut self,
         data: DeleteEntryUpdateData,
         source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError>;
+    ) -> Result<ValueContainer, UpdateError> {
+        unimplemented!()
+    }
     fn try_append_entry(
         &mut self,
         data: AppendEntryUpdateData,
         source_id: TransceiverId,
-    ) -> Result<(), UpdateError>;
+    ) -> Result<(), UpdateError> {
+        unimplemented!()
+    }
     fn try_clear(
         &mut self,
         source_id: TransceiverId,
-    ) -> Result<(), UpdateError>;
+    ) -> Result<(), UpdateError> {
+        unimplemented!()
+    }
     fn try_list_splice(
         &mut self,
         data: ListSpliceUpdateData,
         source_id: TransceiverId,
-    ) -> Result<Vec<ValueContainer>, UpdateError>;
+    ) -> Result<Vec<ValueContainer>, UpdateError> {
+        unimplemented!()
+    }
 }

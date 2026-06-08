@@ -413,14 +413,20 @@ pub fn inner_execution_loop(
                                 ).into()),
 
                             RegularInstruction::GetLocalSharedRef(address) => {
-                                Some(interrupt_with_value!(
+                                let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
                                         ExternalExecutionInterrupt::GetReferenceToLocalPointer(
                                             address
                                         )
                                     )
-                                ).into())
+                                );
+                                if let Some(val) = val {
+                                    Some(val.into())
+                                }
+                                else {
+                                    return yield Err(ExecutionError::ReferenceNotFound);
+                                }
                             }
 
 
