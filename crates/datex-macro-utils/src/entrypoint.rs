@@ -8,13 +8,13 @@ use datex_core::{
     },
     runtime::{Runtime, RuntimeConfig},
 };
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{TokenStream};
 use quote::quote;
-use std::{env, str::FromStr};
 use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
+use crate::get_absolute_file_path;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
