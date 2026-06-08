@@ -1,16 +1,30 @@
 use crate::{prelude::*, types::type_definition::TypeDefinition};
 use core::fmt::Display;
+use core::hash::Hash;
 
 mod metadata;
 pub mod serde_dif;
 pub use metadata::*;
 pub mod type_match;
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, Eq, Clone)]
 pub struct TypeDefinitionWithMetadata {
     pub definition: TypeDefinition,
     pub metadata: TypeMetadata,
 
     pub reference_name: Option<String>,
+}
+
+impl PartialEq for TypeDefinitionWithMetadata {
+    fn eq(&self, other: &Self) -> bool {
+        self.definition == other.definition && self.metadata == other.metadata
+    }
+}
+
+impl Hash for TypeDefinitionWithMetadata {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.definition.hash(state);
+        self.metadata.hash(state);
+    }
 }
 
 impl Display for TypeDefinitionWithMetadata {
