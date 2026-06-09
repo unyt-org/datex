@@ -19,7 +19,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
-
+pub mod primitive;
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).
 /// Note that changing the enum variants will change

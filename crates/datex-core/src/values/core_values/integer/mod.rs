@@ -11,12 +11,13 @@ use crate::values::core_values::{
 pub mod equality;
 pub mod ops;
 pub mod serde_dif;
+use num::{BigInt, Num, ToPrimitive};
+
 use core::{fmt::Display, hash::Hash, str::FromStr};
-use num::{BigInt, Num};
 use num_integer::Integer as NumInteger;
-use num_traits::ToPrimitive;
 use serde::Deserialize;
 pub mod binrw;
+pub mod primitive;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]
 pub struct Integer(pub BigInt);

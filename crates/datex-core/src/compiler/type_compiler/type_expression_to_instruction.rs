@@ -1,11 +1,13 @@
 use crate::{
     ast::type_expressions::{TypeExpression, TypeExpressionData},
-    core_compiler::to_instructions::ToInstructions,
+    core_compiler::{
+        shared_value_tracking::SharedValueTracking,
+        to_instructions::ToInstructions,
+    },
     global::protocol_structures::type_instructions::TypeInstruction,
+    prelude::*,
     types::literal_type_definition::LiteralTypeDefinition,
 };
-use crate::core_compiler::shared_value_tracking::SharedValueTracking;
-
 impl<'a> ToInstructions<'a> for TypeExpression {
     type InstructionType = TypeInstruction;
     fn to_instructions(
@@ -31,10 +33,14 @@ impl<'a> ToInstructions<'a> for TypeExpression {
                 }
                 TypeExpressionData::Range(range) => {
                     yield TypeInstruction::TypeDefinitionRange;
-                    for instr in range.start.to_instructions(shared_value_tracking) {
+                    for instr in
+                        range.start.to_instructions(shared_value_tracking)
+                    {
                         yield instr;
                     }
-                    for instr in range.end.to_instructions(shared_value_tracking) {
+                    for instr in
+                        range.end.to_instructions(shared_value_tracking)
+                    {
                         yield instr;
                     }
                 }

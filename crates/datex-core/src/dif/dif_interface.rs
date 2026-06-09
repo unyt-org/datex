@@ -6,6 +6,7 @@ use crate::{
         },
         error::{DIFObserveError, DIFUpdateError},
     },
+    prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
         OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
@@ -13,7 +14,10 @@ use crate::{
         SharedContainerOwnership,
         base_shared_value_container::{
             BaseSharedValueContainer,
-            observers::{ObserveOptions, Observer, ObserverId, TransceiverId},
+            observers::{
+                ObserveOptions, Observer, ObserverCallback, ObserverId,
+                TransceiverId,
+            },
         },
     },
     traits::apply::{Apply, ApplyError},
@@ -26,7 +30,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
-use crate::shared_values::base_shared_value_container::observers::ObserverCallback;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
@@ -49,12 +52,11 @@ impl DIFInterface {
     }
 }
 impl DIFInterface {
-
     /// Updates the shared container for the given address and returns an update result
     pub fn update(
         &self,
         address: &PointerAddress,
-        update: Update
+        update: Update,
     ) -> Result<UpdateReturn, DIFUpdateError> {
         let shared_container = self
             .cache
@@ -70,7 +72,7 @@ impl DIFInterface {
     pub fn get_current_observers(
         &self,
         address: &PointerAddress,
-        source_id: TransceiverId
+        source_id: TransceiverId,
     ) -> Result<Vec<ObserverCallback>, ValueNotFoundInCacheError> {
         let shared_container = self
             .cache
