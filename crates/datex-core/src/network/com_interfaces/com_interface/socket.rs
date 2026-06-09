@@ -4,8 +4,6 @@ use serde::Serialize;
 use crate::utils::uuid::UUID;
 use core::fmt::Display;
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
-#[cfg_attr(feature = "wasm_runtime", tsify(type = "string"))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComInterfaceSocketUUID(UUID);
 #[allow(clippy::new_without_default)]

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DecompileOptions {
     #[serde(default)]
@@ -55,7 +55,7 @@ impl DecompileOptions {
     }
 }
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
 pub enum IndentType {
     #[default]
@@ -63,7 +63,7 @@ pub enum IndentType {
     Tabs,
 }
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum FormattingMode {
@@ -98,7 +98,7 @@ impl FormattingMode {
     }
 }
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct FormattingOptions {
     #[serde(default)]

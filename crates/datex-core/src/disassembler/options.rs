@@ -2,7 +2,7 @@ use crate::global::protocol_structures::instructions::NestedInstructionResolutio
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 pub struct DisassemblerOptions {
     #[serde(default)]
     pub tree: bool,

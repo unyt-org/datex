@@ -33,7 +33,7 @@ pub struct EndpointIterateOptions<'a> {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 pub struct DynamicEndpointProperties {
     pub known_since: u64,
     pub distance: i8,

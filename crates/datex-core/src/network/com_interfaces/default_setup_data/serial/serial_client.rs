@@ -6,7 +6,7 @@ use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 pub struct SerialClientInterfaceSetupData {
     pub port_name: Option<String>,
     pub baud_rate: u32,

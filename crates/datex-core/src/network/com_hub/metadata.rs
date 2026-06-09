@@ -27,7 +27,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 pub struct ComHubMetadataInterfaceSocket {
     pub uuid: String,
     pub direction: InterfaceDirection,
@@ -36,7 +36,7 @@ pub struct ComHubMetadataInterfaceSocket {
 }
 
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
     pub uuid: String,
     pub direction: InterfaceDirection,

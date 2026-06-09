@@ -26,14 +26,13 @@ pub type NewSocketsIterator = Pin<
 >;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 pub struct SocketProperties {
     pub direction: InterfaceDirection,
     pub channel_factor: u32,
     pub direct_endpoint: Option<Endpoint>,
     pub connection_timestamp: u64,
     // should not be provided from JS side
-    #[cfg_attr(feature = "wasm_runtime", tsify(optional))]
     uuid: ComInterfaceSocketUUID,
 }
 
@@ -83,25 +82,17 @@ impl SocketProperties {
 pub type SocketDataIterator =
     Pin<Box<dyn AsyncIterator<Item = Result<Vec<u8>, ()>>>>;
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct SocketConfiguration {
     pub properties: SocketProperties,
-    #[cfg_attr(
-        feature = "wasm_runtime",
-        tsify(type = "ReadableStream<ArrayBuffer>")
-    )]
+
     /// An asynchronous iterator that yields incoming data from the socket as Vec<u8>
     /// It is driven by the com hub to receive data from the socket
     pub iterator: Option<SocketDataIterator>,
-    #[cfg_attr(
-        feature = "wasm_runtime",
-        tsify(type = "(data: ArrayBuffer) => void")
-    )]
+
     /// A callback that is called by the com hub to send data through the socket
     /// This can be either a synchronous or asynchronous callback depending on the interface implementation
     pub send_callback: Option<SendCallback>,
     /// An optional asynchronous callback that is called by the com hub when the socket is closed
-    #[cfg_attr(feature = "wasm_runtime", tsify(optional, type = "never"))]
     pub close_async_callback: Option<CloseAsyncCallback>,
 }
 
@@ -305,10 +296,8 @@ impl SendCallback {
     }
 }
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComInterfaceConfiguration {
     // should not be provided from JS side
-    #[cfg_attr(feature = "wasm_runtime", tsify(optional, type = "never"))]
     uuid: ComInterfaceUUID,
     /// The properties of the interface instance
     pub properties: Rc<ComInterfaceProperties>,
@@ -317,13 +306,8 @@ pub struct ComInterfaceConfiguration {
     /// When set to true, the first socket connection is awaited on interface creation.
     pub has_single_socket: bool,
     // TODO #725: docs
-    #[cfg_attr(
-        feature = "wasm_runtime",
-        tsify(type = "ReadableStream<SocketConfiguration>")
-    )]
     pub new_sockets_iterator: NewSocketsIterator,
     /// An optional asynchronous callback that is called by the com hub when the interface is closed
-    #[cfg_attr(feature = "wasm_runtime", tsify(optional, type = "never"))]
     pub close_async_callback: Option<CloseAsyncCallback>,
 }
 

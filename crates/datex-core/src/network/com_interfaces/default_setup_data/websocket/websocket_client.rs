@@ -6,7 +6,7 @@ use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Datex, Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 pub struct WebSocketClientInterfaceSetupData {
     /// A websocket URL (ws:// or wss://).
     pub url: String,
