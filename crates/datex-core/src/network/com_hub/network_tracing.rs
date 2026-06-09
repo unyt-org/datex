@@ -89,13 +89,14 @@ pub struct NetworkTraceHop {
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Datex, Debug, Clone, Deserialize, Serialize)]
 
 pub struct NetworkTraceResult {
     pub sender: Endpoint,
     pub receiver: Endpoint,
     pub hops: Vec<NetworkTraceHop>,
     #[serde_as(as = "DurationMilliSeconds")]
+    #[datex(serde_infallible)]
     pub round_trip_time: Duration,
 }
 
