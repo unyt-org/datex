@@ -34,7 +34,6 @@ impl InterfaceDirection {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq, Eq)]
-#[datex(export_ts = "./props.ts")]
 /// The properties of a communication interface, which are used to describe the capabilities and characteristics of the interface.
 pub struct ComInterfaceProperties {
     /// the type of the interface, by which it is identified

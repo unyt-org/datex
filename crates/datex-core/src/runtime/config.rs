@@ -14,7 +14,6 @@ pub fn is_priority_none(v: &InterfacePriority) -> bool {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq, Eq)]
-#[datex(export_ts = "./network/config.d.ts")]
 /// A generic interface configuration to setup a runtime interface.
 pub struct RuntimeConfigInterface {
     #[datex(rename = "type")]

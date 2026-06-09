@@ -43,7 +43,6 @@ pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
 }
 
 #[derive(Debug, Datex)]
-#[datex(export_ts = "./props.ts")]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
     pub properties: ComInterfaceProperties,

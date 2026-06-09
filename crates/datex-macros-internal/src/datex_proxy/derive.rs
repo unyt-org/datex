@@ -120,8 +120,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
     let export = true; // FIXME shall we opt-in or opt-out from top_level_attributes.export;
     let namespace = &top_level_attributes.namespace.unwrap_or_else(|| {
-        get_project_relative_file_path()
-            .to_str()
+        let mut ns = get_project_relative_file_path();
+        ns.set_extension("");
+        ns.to_str()
             .expect("Failed to convert file path to string")
             .to_string()
     });

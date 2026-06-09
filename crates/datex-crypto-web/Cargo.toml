@@ -15,10 +15,10 @@ crate-type = ["rlib"]
 
 [dependencies]
 datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.2" }
-wasm-bindgen = { version = "=0.2.112", features = [] }
+wasm-bindgen = { version = "=0.2.123", features = [] }
 wasm-bindgen-futures = "0.4.61"
 [dependencies.web-sys]
-version = "0.3.82"
+version = "0.3.100"
 features = [
     "Window",
     "AesCtrParams",
