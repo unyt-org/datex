@@ -7,6 +7,7 @@ use num_integer::Integer;
 use num_traits::{Signed, ToPrimitive, Zero};
 use serde::{Deserialize, Serialize};
 pub mod ops;
+pub mod primitive;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rational {

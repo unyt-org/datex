@@ -21,13 +21,6 @@ use crate::{
 use core::result::Result;
 
 impl UpdateHandler for List {
-    fn try_replace(
-        &mut self,
-        _data: ReplaceUpdateData,
-        _source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
-        todo!()
-    }
 
     fn try_set_entry(
         &mut self,
@@ -75,6 +68,7 @@ impl UpdateHandler for List {
         data: ListSpliceUpdateData,
         _source_id: TransceiverId,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
-        Ok(self.splice(data.start..data.delete_count, data.items))
+        Ok(self
+            .splice(data.start..(data.start + data.delete_count), data.items))
     }
 }

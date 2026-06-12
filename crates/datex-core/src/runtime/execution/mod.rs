@@ -623,8 +623,10 @@ mod tests {
                 &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "Example".to_string(),
                     ty: Some(Box::new(Type::Alias(
-                        TypeDefinition::Core(CoreLibBaseTypeId::Unit.into())
-                            .into()
+                        TypeDefinition::CoreType(
+                            CoreLibBaseTypeId::Unit.into()
+                        )
+                        .into()
                     ))),
                 }))
             )
@@ -863,7 +865,7 @@ mod tests {
     }
 
     #[test]
-    fn shared_assignment_mut_ref_to_mut() {
+    fn shared_creation_mut_ref_to_mut() {
         let result = execute_datex_script_debug_with_result(
             "const x = 'mut shared mut 42; x",
         );
@@ -875,7 +877,7 @@ mod tests {
     }
 
     #[test]
-    fn shared_assignment_immut_ref_to_mut() {
+    fn shared_creation_immut_ref_to_mut() {
         let result = execute_datex_script_debug_with_result(
             "const x = 'shared mut 42; x",
         );
@@ -888,7 +890,7 @@ mod tests {
     }
 
     #[test]
-    fn shared_assignment_immut_ref() {
+    fn shared_creation_immut_ref() {
         let result =
             execute_datex_script_debug_with_result("const x = 'shared 42; x");
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
@@ -900,7 +902,7 @@ mod tests {
     }
 
     #[test]
-    fn shared_assignment_immut() {
+    fn shared_creation_immut() {
         let result =
             execute_datex_script_debug_with_result("const x = shared 42; x");
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(ref container)) if
@@ -911,7 +913,7 @@ mod tests {
     }
 
     #[test]
-    fn shared_assignment_mut() {
+    fn shared_creation_mut() {
         let result = execute_datex_script_debug_with_result(
             "const x = shared mut 42; x",
         );
@@ -922,7 +924,7 @@ mod tests {
     }
 
     #[test]
-    fn shared_assignment_mut_ref_to_immut() {
+    fn shared_creation_mut_ref_to_immut() {
         let result = execute_datex_script_debug_with_error(
             "const x = 'mut shared 42; x",
         );
@@ -955,14 +957,19 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'mut shared mut 42; *x -= 1; x",
         );
-        assert_value_eq!(result, ValueContainer::from(Integer::from(41)));
-
-        let result = execute_datex_script_debug_with_result(
-            "const x = 'mut shared mut 42; *x -= 1; x",
-        );
 
         assert_matches!(result, ValueContainer::Shared(..));
         assert_value_eq!(result, ValueContainer::from(Integer::from(41)));
+    }
+
+    #[test]
+    fn shared_value_assignment() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = 'mut shared mut 42; *x = 100; x",
+        );
+
+        assert_matches!(result, ValueContainer::Shared(..));
+        assert_value_eq!(result, ValueContainer::from(Integer::from(100)));
     }
 
     #[tokio::test]
@@ -1227,5 +1234,25 @@ mod tests {
                 ",
         );
         assert_value_eq!(result, ValueContainer::from(TypedInteger::from(5u8)));
+    }
+    fn property_text_access() {
+        let result =
+            execute_datex_script_debug_with_result("var x = {a: 42}; x.a");
+        assert_eq!(result, Integer::from(42).into());
+    }
+
+    #[test]
+    fn property_index_access() {
+        let result =
+            execute_datex_script_debug_with_result("var x = [1,2,3]; x.1");
+        assert_eq!(result, Integer::from(2).into());
+    }
+
+    #[test]
+    fn property_text_update() {
+        let result = execute_datex_script_debug_with_result(
+            "var x = {a: 42}; x.a = 100; x.a",
+        );
+        assert_eq!(result, Integer::from(100).into());
     }
 }

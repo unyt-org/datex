@@ -178,7 +178,7 @@ impl Serialize for PointerAddress {
     where
         S: serde::Serializer,
     {
-        let addr_str = self.to_string();
+        let addr_str = self.to_address_string();
         serializer.serialize_str(&addr_str)
     }
 }

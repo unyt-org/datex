@@ -118,6 +118,7 @@ impl ValueContainer {
             ValueContainer::Local(value) => TypeDefinitionWithMetadata {
                 definition: value.actual_type(),
                 metadata: TypeMetadata::default(),
+                reference_name: None,
             },
             ValueContainer::Shared(shared) => {
                 let inner_type =
@@ -130,6 +131,7 @@ impl ValueContainer {
                         mutability: shared.container_mutability(),
                         ownership: shared.ownership(),
                     },
+                    reference_name: None,
                 }
             }
         }

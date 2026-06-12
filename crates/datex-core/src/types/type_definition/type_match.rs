@@ -36,8 +36,8 @@ impl TypeSuperset<TypeDefinition> for TypeDefinition {
 
             // core supersets, e.g. integer >= integer/u8
             (
-                TypeDefinition::Core(self_core),
-                TypeDefinition::Core(other_core),
+                TypeDefinition::CoreType(self_core),
+                TypeDefinition::CoreType(other_core),
             ) => self_core.is_superset_of(other_core),
 
             // union superset with any TypeDefinition, e.g. 1|2 >= 1
@@ -46,12 +46,12 @@ impl TypeSuperset<TypeDefinition> for TypeDefinition {
             }
 
             // core superset with any TypeDefinition, e.g. integer >= 1
-            (TypeDefinition::Core(self_core), other) => {
+            (TypeDefinition::CoreType(self_core), other) => {
                 self_core.is_superset_of(other)
             }
 
             // core is not a superset of literal, e.g. integer >= 10 --> false
-            (TypeDefinition::Literal(_), TypeDefinition::Core(_)) => false,
+            (TypeDefinition::Literal(_), TypeDefinition::CoreType(_)) => false,
 
             (self_, TypeDefinition::Union(other_union)) => other_union
                 .iter()

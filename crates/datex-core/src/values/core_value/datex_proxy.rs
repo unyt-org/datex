@@ -29,7 +29,7 @@ impl DatexValueProxyDeserialize for CoreValue {
 impl DatexProxyTypes for CoreValue {
     fn datex_type(_memory: &mut Memory) -> Type {
         Type::Alias(
-            TypeDefinition::Core(CoreLibBaseTypeId::Unknown.into()).into(),
+            TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()).into(),
         )
     }
 }

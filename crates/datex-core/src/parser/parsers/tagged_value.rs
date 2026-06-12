@@ -107,7 +107,7 @@ mod tests {
                 expression: Some(Box::new(
                     DatexExpressionData::Map(Map {
                         entries: vec![(
-                            DatexExpressionData::Text("a".to_string())
+                            DatexExpressionData::Text("a".into())
                                 .with_default_span(),
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::U8(42)
@@ -131,9 +131,9 @@ mod tests {
                 expression: Some(Box::new(
                     DatexExpressionData::List(List {
                         items: vec![
-                            DatexExpressionData::Boolean(true)
+                            DatexExpressionData::Boolean(true.into())
                                 .with_default_span(),
-                            DatexExpressionData::Boolean(false)
+                            DatexExpressionData::Boolean(false.into())
                                 .with_default_span(),
                         ]
                     })
@@ -171,7 +171,7 @@ mod tests {
                         expression: Some(Box::new(
                             DatexExpressionData::Map(Map {
                                 entries: vec![(
-                                    DatexExpressionData::Text("a".to_string())
+                                    DatexExpressionData::Text("a".into())
                                         .with_default_span(),
                                     DatexExpressionData::TypedInteger(
                                         TypedInteger::U8(1)

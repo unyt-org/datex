@@ -1,19 +1,28 @@
 use crate::{
     dif::{
-        cache::{DIFSharedContainerCache, ValueNotFoundInCacheError},
-        error::{DIFObserveError, DIFUpdateResult, into_update_result},
+        cache::{
+            CacheValueRetrievalError, DIFSharedContainerCache,
+            ValueNotFoundInCacheError,
+        },
+        error::{DIFObserveError, DIFUpdateError},
     },
+    prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
-        OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
-        SelfOwnedSharedContainer, SharedContainer, SharedContainerOwnership,
+        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
+        SelfOwnedPointerAddress, SelfOwnedSharedContainer, SharedContainer,
+        SharedContainerOwnership,
         base_shared_value_container::{
             BaseSharedValueContainer,
-            observers::{ObserveOptions, Observer, ObserverId, TransceiverId},
+            observers::{
+                ObserveOptions, Observer, ObserverCallback, ObserverId,
+                TransceiverId,
+            },
         },
     },
     traits::apply::{Apply, ApplyError},
     value_updates::{
+        UpdateReturn,
         update_data::{Update, UpdateData},
         update_handler::UpdateHandler,
     },
@@ -21,6 +30,8 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
+
+pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
 pub struct DIFInterface {
     pub cache: DIFSharedContainerCache,
@@ -41,37 +52,33 @@ impl DIFInterface {
     }
 }
 impl DIFInterface {
-    /// Applies a DIF update to the value at the given pointer address.
+    /// Updates the shared container for the given address and returns an update result
     pub fn update(
         &self,
-        address: PointerAddress,
+        address: &PointerAddress,
         update: Update,
-    ) -> DIFUpdateResult {
-        let container = self
+    ) -> Result<UpdateReturn, DIFUpdateError> {
+        let shared_container = self
             .cache
-            .try_get_shared_container_mutable_reference(&address)?;
-        let mut base_container = container.base_shared_container_mut();
+            .try_get_shared_container_mutable_reference(address)?;
+        let mut base_container = shared_container.base_shared_container_mut();
 
-        match update.data {
-            UpdateData::AppendEntry(data) => into_update_result(
-                base_container.try_append_entry(data, self.transceiver_id),
-            ),
-            UpdateData::Clear => into_update_result(
-                base_container.try_clear(self.transceiver_id),
-            ),
-            UpdateData::Replace(data) => into_update_result(
-                base_container.try_replace(data, self.transceiver_id),
-            ),
-            UpdateData::SetEntry(data) => into_update_result(
-                base_container.try_set_entry(data, self.transceiver_id),
-            ),
-            UpdateData::DeleteEntry(data) => into_update_result(
-                base_container.try_delete_entry(data, self.transceiver_id),
-            ),
-            UpdateData::ListSplice(data) => into_update_result(
-                base_container.try_list_splice(data, self.transceiver_id),
-            ),
-        }
+        base_container
+            .update(update)
+            .map_err(DIFUpdateError::UpdateError)
+    }
+
+    /// Returns a list of all [ObserverCallback]s that are currently active for the pointer
+    pub fn get_current_observers(
+        &self,
+        address: &PointerAddress,
+        source_id: TransceiverId,
+    ) -> Result<Vec<ObserverCallback>, ValueNotFoundInCacheError> {
+        let shared_container = self
+            .cache
+            .try_get_shared_container_immutable_reference(address)?;
+        let base_container = shared_container.base_shared_container();
+        Ok(base_container.get_current_observers(source_id))
     }
 
     /// Executes an apply operation, applying the `value` to the `callee`.

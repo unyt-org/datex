@@ -691,11 +691,13 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
                 right: Box::new(
-                    DatexExpressionData::Boolean(false).with_default_span()
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
                 ty: None,
             })
@@ -709,13 +711,14 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
                 right: Box::new(
                     DatexExpressionData::BinaryOperation(BinaryOperation {
                         left: Box::new(
-                            DatexExpressionData::Boolean(false)
+                            DatexExpressionData::Boolean(false.into())
                                 .with_default_span()
                         ),
                         operator: BinaryOperator::Arithmetic(
@@ -743,7 +746,8 @@ mod tests {
                     ArithmeticUnaryOperator::Minus
                 ),
                 expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );
@@ -760,7 +764,7 @@ mod tests {
                         .with_default_span()
                 ),
                 property: Box::new(
-                    DatexExpressionData::Text("myProperty".to_string())
+                    DatexExpressionData::Text("myProperty".into())
                         .with_default_span()
                 ),
             })
@@ -778,8 +782,7 @@ mod tests {
                         .with_default_span()
                 ),
                 property: Box::new(
-                    DatexExpressionData::Text("if".to_string())
-                        .with_default_span()
+                    DatexExpressionData::Text("if".into()).with_default_span()
                 ),
             })
         );
@@ -800,16 +803,14 @@ mod tests {
                             .with_default_span()
                         ),
                         property: Box::new(
-                            DatexExpressionData::Text(
-                                "innerObject".to_string()
-                            )
-                            .with_default_span()
+                            DatexExpressionData::Text("innerObject".into())
+                                .with_default_span()
                         ),
                     })
                     .with_default_span()
                 ),
                 property: Box::new(
-                    DatexExpressionData::Text("myProperty".to_string())
+                    DatexExpressionData::Text("myProperty".into())
                         .with_default_span()
                 ),
             })
@@ -838,7 +839,7 @@ mod tests {
                                     ),
                                     property: Box::new(
                                         DatexExpressionData::Text(
-                                            "value1".to_string()
+                                            "value1".into()
                                         )
                                         .with_default_span()
                                     ),
@@ -863,7 +864,7 @@ mod tests {
                                     ),
                                     property: Box::new(
                                         DatexExpressionData::Text(
-                                            "value2".to_string()
+                                            "value2".into()
                                         )
                                         .with_default_span()
                                     ),
@@ -875,7 +876,7 @@ mod tests {
                             ArithmeticOperator::Multiply
                         ),
                         right: Box::new(
-                            DatexExpressionData::Boolean(true)
+                            DatexExpressionData::Boolean(true.into())
                                 .with_default_span()
                         ),
                         ty: None,
@@ -955,14 +956,14 @@ mod tests {
                             .with_default_span()
                         ),
                         property: Box::new(
-                            DatexExpressionData::Text("myFunction".to_string())
+                            DatexExpressionData::Text("myFunction".into())
                                 .with_default_span()
                         ),
                     })
                     .with_default_span()
                 ),
                 arguments: vec![
-                    DatexExpressionData::Identifier("arg1".to_string())
+                    DatexExpressionData::Identifier("arg1".into())
                         .with_default_span(),
                 ],
             })
@@ -979,19 +980,19 @@ mod tests {
                     DatexExpressionData::Apply(Apply {
                         base: Box::new(
                             DatexExpressionData::Identifier(
-                                "myFunction".to_string()
+                                "myFunction".into()
                             )
                             .with_default_span()
                         ),
                         arguments: vec![
-                            DatexExpressionData::Identifier("arg1".to_string())
+                            DatexExpressionData::Identifier("arg1".into())
                                 .with_default_span(),
                         ],
                     })
                     .with_default_span()
                 ),
                 arguments: vec![
-                    DatexExpressionData::Identifier("arg2".to_string())
+                    DatexExpressionData::Identifier("arg2".into())
                         .with_default_span(),
                 ],
             })
@@ -1086,11 +1087,13 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 operator: BinaryOperator::Logical(LogicalOperator::And),
                 right: Box::new(
-                    DatexExpressionData::Boolean(false).with_default_span()
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
                 ty: None,
             })
@@ -1104,11 +1107,13 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 operator: BinaryOperator::Logical(LogicalOperator::Or),
                 right: Box::new(
-                    DatexExpressionData::Boolean(false).with_default_span()
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
                 ty: None,
             })
@@ -1158,18 +1163,19 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 operator: BinaryOperator::Logical(LogicalOperator::Or),
                 right: Box::new(
                     DatexExpressionData::BinaryOperation(BinaryOperation {
                         left: Box::new(
-                            DatexExpressionData::Boolean(false)
+                            DatexExpressionData::Boolean(false.into())
                                 .with_default_span()
                         ),
                         operator: BinaryOperator::Logical(LogicalOperator::And),
                         right: Box::new(
-                            DatexExpressionData::Boolean(true)
+                            DatexExpressionData::Boolean(true.into())
                                 .with_default_span()
                         ),
                         ty: None,
@@ -1301,7 +1307,7 @@ mod tests {
                             .with_default_span()
                         ),
                         property: Box::new(
-                            DatexExpressionData::Text("myProperty".to_string())
+                            DatexExpressionData::Text("myProperty".into())
                                 .with_default_span()
                         ),
                     })
@@ -1327,7 +1333,7 @@ mod tests {
                             .with_default_span()
                         ),
                         property: Box::new(
-                            DatexExpressionData::Text("myProperty".to_string())
+                            DatexExpressionData::Text("myProperty".into())
                                 .with_default_span()
                         ),
                     })
@@ -1506,7 +1512,8 @@ mod tests {
                 name: "x".to_string(),
                 operator: None,
                 expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );
@@ -1544,11 +1551,12 @@ mod tests {
                         .with_default_span()
                 ),
                 property: Box::new(
-                    DatexExpressionData::Text("prop".to_string())
+                    DatexExpressionData::Text("prop".into())
                         .with_default_span()
                 ),
                 assigned_expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );
@@ -1911,7 +1919,8 @@ mod tests {
             DatexExpressionData::UnaryOperation(UnaryOperation {
                 operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
                 expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );

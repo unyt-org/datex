@@ -9,15 +9,17 @@ use crate::values::core_values::{
     },
 };
 pub mod equality;
-use crate::prelude::*;
-
-use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
+use crate::{
+    libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId},
+    prelude::*,
+};
+use ::binrw::{BinRead, BinWrite};
 use core::{fmt::Display, hash::Hash, result::Result, unreachable};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
-
+pub mod primitive;
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).
 /// Note that changing the enum variants will change
@@ -41,7 +43,7 @@ use strum_macros::{AsRefStr, EnumIter, EnumString};
 #[repr(u8)]
 #[strum(serialize_all = "lowercase")]
 pub enum IntegerTypeVariant {
-    U8 = 1, // rationale: We need to start with 1 here, as the core lib pointer id for the base type is using OFFSET_X + variant as index
+    U8,
     U16,
     U32,
     U64,
@@ -55,18 +57,29 @@ pub enum IntegerTypeVariant {
     // TODO #610: ubig?
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, BinRead, BinWrite)]
 pub enum TypedInteger {
+    #[brw(magic = 0u8)]
     IBig(Integer),
+    #[brw(magic = 1u8)]
     I8(i8),
+    #[brw(magic = 2u8)]
     I16(i16),
+    #[brw(magic = 3u8)]
     I32(i32),
+    #[brw(magic = 4u8)]
     I64(i64),
+    #[brw(magic = 5u8)]
     I128(i128),
+    #[brw(magic = 6u8)]
     U8(u8),
+    #[brw(magic = 7u8)]
     U16(u16),
+    #[brw(magic = 8u8)]
     U32(u32),
+    #[brw(magic = 9u8)]
     U64(u64),
+    #[brw(magic = 10u8)]
     U128(u128),
 }
 

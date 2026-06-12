@@ -2,7 +2,11 @@ use alloc::{format, string::String};
 use core::ops::Deref;
 use crate::{
     dif::serde_context::SerdeContext,
-    libs::core::type_id::CoreLibBaseTypeId,
+    libs::core::{
+        core_lib_id::CoreLibIdIndex,
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    },
+    prelude::*,
     shared_values::SharedContainer,
     types::{
         shared_container_containing_nominal_type::SharedContainerContainingNominalType,
@@ -34,7 +38,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
     {
         match value {
             Type::Alias(type_definition) => match type_definition.definition {
-                TypeDefinition::Core(core)
+                TypeDefinition::CoreType(core)
                     if type_definition.metadata == TypeMetadata::default() =>
                 {
                     self.cast::<TypeDefinition>()
@@ -87,6 +91,8 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
         Ok(Type::Alias(TypeDefinitionWithMetadata {
             metadata,
             definition,
+
+            reference_name: None,
         }))
     }
 
@@ -113,13 +119,13 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
         E: serde::de::Error,
     {
         Ok(Type::Alias(
-            TypeDefinition::core(CoreLibBaseTypeId::try_from(v).map_err(
-                |_| {
+            TypeDefinition::core(
+                CoreLibTypeId::try_from(CoreLibIdIndex(v)).map_err(|_| {
                     serde::de::Error::custom(format!(
                         "invalid core type id: {v}"
                     ))
-                },
-            )?)
+                })?,
+            )
             .into(),
         ))
     }

@@ -16,9 +16,11 @@ use crate::{
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
     values::core_values::{
+        boolean::Boolean,
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
         integer::{Integer, typed_integer::TypedInteger},
+        text::Text,
     },
     visitor::{
         VisitAction,
@@ -674,7 +676,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit text literal
     fn visit_text(
         &mut self,
-        text: &mut String,
+        text: &mut Text,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
@@ -696,7 +698,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit boolean literal
     fn visit_boolean(
         &mut self,
-        boolean: &mut bool,
+        boolean: &mut Boolean,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;

@@ -83,13 +83,15 @@ impl Parser {
     pub(crate) fn parse_type_true(
         &mut self,
     ) -> Result<TypeExpression, SpannedParserError> {
-        Ok(TypeExpressionData::Boolean(true).with_span(self.advance()?.span))
+        Ok(TypeExpressionData::Boolean(true.into())
+            .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_type_false(
         &mut self,
     ) -> Result<TypeExpression, SpannedParserError> {
-        Ok(TypeExpressionData::Boolean(false).with_span(self.advance()?.span))
+        Ok(TypeExpressionData::Boolean(false.into())
+            .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_type_null(
@@ -112,7 +114,7 @@ impl Parser {
         &mut self,
         value: String,
     ) -> Result<TypeExpression, SpannedParserError> {
-        Ok(TypeExpressionData::Text(unescape_text(&value))
+        Ok(TypeExpressionData::Text(unescape_text(&value).into())
             .with_span(self.advance()?.span))
     }
 
@@ -273,13 +275,13 @@ mod tests {
     #[test]
     fn parse_boolean_true() {
         let expr = parse_type_expression("true");
-        assert_eq!(expr.data, TypeExpressionData::Boolean(true));
+        assert_eq!(expr.data, TypeExpressionData::Boolean(true.into()));
     }
 
     #[test]
     fn parse_boolean_false() {
         let expr = parse_type_expression("false");
-        assert_eq!(expr.data, TypeExpressionData::Boolean(false));
+        assert_eq!(expr.data, TypeExpressionData::Boolean(false.into()));
     }
 
     #[test]
@@ -300,10 +302,7 @@ mod tests {
     #[test]
     fn parse_string_literal() {
         let expr = parse_type_expression("\"Hello, World!\"");
-        assert_eq!(
-            expr.data,
-            TypeExpressionData::Text("Hello, World!".to_string())
-        );
+        assert_eq!(expr.data, TypeExpressionData::Text("Hello, World!".into()));
     }
 
     #[test]

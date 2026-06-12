@@ -14,19 +14,6 @@ use crate::{
 use core::result::Result;
 
 impl UpdateHandler for ValueContainer {
-    fn try_replace(
-        &mut self,
-        data: ReplaceUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
-        match self {
-            ValueContainer::Local(value) => value.try_replace(data, source_id),
-            ValueContainer::Shared(reference) => reference
-                .base_shared_container_mut()
-                .try_replace(data, source_id),
-        }
-    }
-
     fn try_set_entry(
         &mut self,
         data: SetEntryUpdateData,

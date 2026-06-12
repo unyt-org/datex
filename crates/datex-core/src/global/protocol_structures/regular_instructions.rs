@@ -6,17 +6,16 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                ApplyData, DecimalData, Float32Data, Float64Data,
+                ApplyData, CallableData, Float32Data, Float64Data,
                 FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData,
                 Int8Data, Int16Data, Int32Data, Int64Data, Int128Data,
-                IntegerData, ListData, MapData, ModifyStackValue, Move,
-                PerformMove, PushToStackMultiple, RawRemotePointerAddress,
-                RawSelfOwnedPointerAddress, SetSharedContainerValue, SharedRef,
+                JumpOffsetData, ListData, MapData, ModifySharedContainerValue,
+                ModifyStackValue, Move, PerformMove, PushToStackMultiple,
+                RawRemotePointerAddress, RawSelfOwnedPointerAddress, SharedRef,
                 SharedRefWithValue, ShortListData, ShortMapData,
                 ShortStatementsData, ShortTextData, StackIndex, StatementsData,
                 TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
                 UInt64Data, UInt128Data, UnboundedStatementsData,
-                JumpOffsetData, CallableData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -26,7 +25,9 @@ use crate::{
     prelude::*,
     shared_values::PointerAddress,
     values::core_values::{
-        decimal::typed_decimal::TypedDecimal, endpoint::Endpoint,
+        decimal::{Decimal, typed_decimal::TypedDecimal},
+        endpoint::Endpoint,
+        integer::Integer,
     },
 };
 use binrw::{
@@ -55,10 +56,10 @@ pub enum RegularInstruction {
     UInt128(UInt128Data),
 
     // big integers
-    BigInteger(IntegerData),
+    BigInteger(Integer),
 
     // default integer
-    Integer(IntegerData),
+    Integer(Integer),
     Range,
 
     Endpoint(Endpoint),
@@ -67,9 +68,9 @@ pub enum RegularInstruction {
     DecimalF64(Float64Data),
     DecimalAsInt16(FloatAsInt16Data),
     DecimalAsInt32(FloatAsInt32Data),
-    BigDecimal(DecimalData),
+    BigDecimal(Decimal),
     // default decimal
-    Decimal(DecimalData),
+    Decimal(Decimal),
 
     RemoteExecution(InstructionBlockData),
     /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
@@ -83,6 +84,7 @@ pub enum RegularInstruction {
 
     ShortText(ShortTextData),
     Text(TextData),
+
     True,
     False,
     Null,
@@ -174,7 +176,8 @@ pub enum RegularInstruction {
 
     GetRootProperty(RootProperty),
 
-    SetSharedContainerValue(SetSharedContainerValue),
+    SetSharedContainerValue,
+    ModifySharedContainerValue(ModifySharedContainerValue),
     Unbox,
 
     TypedValue,
@@ -345,7 +348,10 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::GetRootProperty(_) => {
                 InstructionCode::GET_ROOT_PROPERTY
             }
-            RegularInstruction::SetSharedContainerValue(_) => {
+            RegularInstruction::ModifySharedContainerValue(_) => {
+                InstructionCode::MODIFY_SHARED_CONTAINER_VALUE
+            }
+            RegularInstruction::SetSharedContainerValue => {
                 InstructionCode::SET_SHARED_CONTAINER_VALUE
             }
             RegularInstruction::Unbox => InstructionCode::UNBOX,
@@ -404,9 +410,7 @@ impl RegularInstruction {
             | RegularInstruction::JumpIfFalse(_)
             | RegularInstruction::Call(_)
             | RegularInstruction::Ret
-            | RegularInstruction::Callable(_) => {
-                NextExpectedInstructions::None
-            }
+            | RegularInstruction::Callable(_) => NextExpectedInstructions::None,
 
             RegularInstruction::Apply(apply_data) => {
                 NextExpectedInstructions::Regular(
@@ -437,7 +441,11 @@ impl RegularInstruction {
 
             RegularInstruction::Unbox => NextExpectedInstructions::Regular(1), // value to unbox
 
-            RegularInstruction::SetSharedContainerValue(_) => {
+            RegularInstruction::ModifySharedContainerValue(_) => {
+                NextExpectedInstructions::Regular(2)
+            } // container to set value on + new value
+
+            RegularInstruction::SetSharedContainerValue => {
                 NextExpectedInstructions::Regular(2)
             } // container to set value on + new value
 
@@ -552,10 +560,10 @@ impl RegularInstruction {
                 Int128Data::read(reader).map(RegularInstruction::Int128)
             }
             InstructionCode::INT_BIG => {
-                IntegerData::read(reader).map(RegularInstruction::BigInteger)
+                Integer::read(reader).map(RegularInstruction::BigInteger)
             }
             InstructionCode::INT => {
-                IntegerData::read(reader).map(RegularInstruction::Integer)
+                Integer::read(reader).map(RegularInstruction::Integer)
             }
             InstructionCode::DECIMAL_F32 => {
                 Float32Data::read(reader).map(RegularInstruction::DecimalF32)
@@ -564,7 +572,7 @@ impl RegularInstruction {
                 Float64Data::read(reader).map(RegularInstruction::DecimalF64)
             }
             InstructionCode::DECIMAL_BIG => {
-                DecimalData::read(reader).map(RegularInstruction::BigDecimal)
+                Decimal::read(reader).map(RegularInstruction::BigDecimal)
             }
             InstructionCode::DECIMAL_AS_INT_16 => {
                 FloatAsInt16Data::read(reader)
@@ -575,7 +583,7 @@ impl RegularInstruction {
                     .map(RegularInstruction::DecimalAsInt32)
             }
             InstructionCode::DECIMAL => {
-                DecimalData::read(reader).map(RegularInstruction::Decimal)
+                Decimal::read(reader).map(RegularInstruction::Decimal)
             }
             InstructionCode::REMOTE_EXECUTION => {
                 InstructionBlockData::read(reader)
@@ -637,10 +645,8 @@ impl RegularInstruction {
                 JumpOffsetData::read(reader).map(RegularInstruction::Jump)
             }
 
-            InstructionCode::JUMP_IF_FALSE => {
-                JumpOffsetData::read(reader)
-                    .map(RegularInstruction::JumpIfFalse)
-            }
+            InstructionCode::JUMP_IF_FALSE => JumpOffsetData::read(reader)
+                .map(RegularInstruction::JumpIfFalse),
 
             InstructionCode::CALL => {
                 JumpOffsetData::read(reader).map(RegularInstruction::Call)
@@ -698,9 +704,13 @@ impl RegularInstruction {
             }
 
             InstructionCode::UNBOX => Ok(RegularInstruction::Unbox),
+            InstructionCode::MODIFY_SHARED_CONTAINER_VALUE => {
+                ModifySharedContainerValue::read(reader)
+                    .map(RegularInstruction::ModifySharedContainerValue)
+            }
+
             InstructionCode::SET_SHARED_CONTAINER_VALUE => {
-                SetSharedContainerValue::read(reader)
-                    .map(RegularInstruction::SetSharedContainerValue)
+                Ok(RegularInstruction::SetSharedContainerValue)
             }
 
             InstructionCode::KEY_VALUE_SHORT_TEXT => {
@@ -909,10 +919,10 @@ impl RegularInstruction {
                 )
             }
             RegularInstruction::BigDecimal(data) => {
-                write!(string, "{}", data.0)
+                write!(string, "{}", data)
             }
             RegularInstruction::Decimal(data) => {
-                write!(string, "{}", data.0)
+                write!(string, "{}", data)
             }
             RegularInstruction::ShortText(data) => {
                 write!(string, "{}", data.0)
@@ -966,8 +976,8 @@ impl RegularInstruction {
             RegularInstruction::SetStackValue(address) => {
                 write!(string, "{}", address.0)
             }
-            RegularInstruction::SetSharedContainerValue(set_shared_container_value) => {
-                write!(string, "{}", &set_shared_container_value.operator.map(|o|o.to_string()).unwrap_or("".to_string()))
+            RegularInstruction::ModifySharedContainerValue(set_shared_container_value) => {
+                write!(string, "{}", set_shared_container_value.operator.to_string())
             }
             RegularInstruction::RequestRemoteSharedRef(address) => {
                 write!(

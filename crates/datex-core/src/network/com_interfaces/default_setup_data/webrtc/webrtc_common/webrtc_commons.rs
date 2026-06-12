@@ -49,9 +49,8 @@ impl WebRTCCommon {
 }
 
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 pub struct WebRTCInterfaceSetupData {
-    #[cfg_attr(feature = "wasm_runtime", tsify(type = "string"))]
     pub peer_endpoint: Endpoint,
     pub ice_servers: Option<Vec<RTCIceServer>>,
 }

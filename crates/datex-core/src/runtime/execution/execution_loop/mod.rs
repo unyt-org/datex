@@ -19,17 +19,17 @@ use crate::{
     },
     global::{
         operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-            protocol_structures::{
-                instruction_data::{
-                    ApplyData, CallableData, DecimalData, Float32Data, Float64Data,
-                    FloatAsInt16Data, FloatAsInt32Data, IntegerData, JumpOffsetData,
-                    ModifyStackValue, RawPointerAddress, ShortTextData,
-                    TaggedValue, TextData, UnboundedStatementsData,
-                },
-                instructions::Instruction,
-                regular_instructions::RegularInstruction,
-                type_instructions::TypeInstruction,
+        protocol_structures::{
+            instruction_data::{
+                ApplyData, CallableData, Float32Data, Float64Data,
+                FloatAsInt16Data, FloatAsInt32Data, JumpOffsetData,
+                ModifyStackValue, RawPointerAddress, ShortTextData,
+                TaggedValue, TextData, UnboundedStatementsData,
             },
+            instructions::Instruction,
+            regular_instructions::RegularInstruction,
+            type_instructions::TypeInstruction,
+        },
     },
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
@@ -63,15 +63,12 @@ use crate::{
         },
     },
     types::{
-        literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
         type_definition::{
             TypeDefinition, impl_type::ImplTypeDefinition,
             range::RangeTypeDefinition, tagged_type::TaggedTypeDefinition,
         },
-        type_definition_with_metadata::{
-            TypeDefinitionWithMetadata, TypeMetadata,
-        },
+        type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
     value_updates::{
         update_data::{DeleteEntryUpdateData, ReplaceUpdateData},
@@ -90,8 +87,9 @@ use crate::{
     },
 };
 use alloc::rc::Rc;
-use core::cell::RefCell;
 use binrw::{BinRead, io::Cursor};
+use core::cell::RefCell;
+use log::info;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -99,6 +97,7 @@ enum CollectedExecutionResult {
     Value(Option<RuntimeValue>),
     /// contains a [Type] that is intercepted by a consumer of a type value
     Type(Type),
+    TypeDefinition(TypeDefinition),
     /// contains a key-value pair that is intercepted by a map construction operation
     KeyValuePair((MapKey, ValueContainer)),
 }
@@ -118,6 +117,13 @@ impl From<Type> for CollectedExecutionResult {
         CollectedExecutionResult::Type(value)
     }
 }
+
+impl From<TypeDefinition> for CollectedExecutionResult {
+    fn from(value: TypeDefinition) -> Self {
+        CollectedExecutionResult::TypeDefinition(value)
+    }
+}
+
 impl From<(MapKey, ValueContainer)> for CollectedExecutionResult {
     fn from(value: (MapKey, ValueContainer)) -> Self {
         CollectedExecutionResult::KeyValuePair(value)
@@ -131,8 +137,17 @@ impl
         MapKey,
         ValueContainer,
         Type,
+        TypeDefinition,
     > for CollectedResults<CollectedExecutionResult>
 {
+    fn try_extract_type_definition_result(
+        result: CollectedExecutionResult,
+    ) -> Option<TypeDefinition> {
+        match result {
+            CollectedExecutionResult::TypeDefinition(ty) => Some(ty),
+            _ => None,
+        }
+    }
     fn try_extract_value_result(
         result: CollectedExecutionResult,
     ) -> Option<Option<RuntimeValue>> {
@@ -306,20 +321,16 @@ pub fn inner_execution_loop(
 
             let next_instruction_type = next_instructions_stack.pop();
             let instruction: Instruction = match next_instruction_type {
-                NextInstructionType::Regular => {
-                    yield_unwrap!(
-                        RegularInstruction::read(&mut dxb_cursor)
-                            .map_err(DXBParserError::from)
-                    )
-                    .into()
-                }
-                NextInstructionType::Type => {
-                    yield_unwrap!(
-                        TypeInstruction::read(&mut dxb_cursor)
-                            .map_err(DXBParserError::from)
-                    )
-                    .into()
-                }
+                NextInstructionType::Regular => yield_unwrap!(
+                    RegularInstruction::read(&mut dxb_cursor)
+                        .map_err(DXBParserError::from)
+                )
+                .into(),
+                NextInstructionType::Type => yield_unwrap!(
+                    TypeInstruction::read(&mut dxb_cursor)
+                        .map_err(DXBParserError::from)
+                )
+                .into(),
                 NextInstructionType::End => {
                     if dxb_cursor.position() as usize >= len {
                         break;
@@ -394,13 +405,13 @@ pub fn inner_execution_loop(
                             }
 
                             // big integers
-                            RegularInstruction::BigInteger(IntegerData(integer)) => {
+                            RegularInstruction::BigInteger(integer) => {
                                 Some(ValueContainer::from(TypedInteger::IBig(integer)).into())
                             }
 
                             // default integer
-                            RegularInstruction::Integer(IntegerData(i8)) => {
-                                Some(ValueContainer::from(i8).into())
+                            RegularInstruction::Integer(integer) => {
+                                Some(ValueContainer::from(integer).into())
                             }
 
                             // specific floats
@@ -411,7 +422,7 @@ pub fn inner_execution_loop(
                                 Some(ValueContainer::from(TypedDecimal::from(f64)).into())
                             }
                             // big decimal
-                            RegularInstruction::BigDecimal(DecimalData(big_decimal)) => {
+                            RegularInstruction::BigDecimal(big_decimal) => {
                                 Some(ValueContainer::from(TypedDecimal::Decimal(big_decimal)).into())
                             }
 
@@ -422,7 +433,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::DecimalAsInt32(FloatAsInt32Data(i32)) => {
                                 Some(ValueContainer::from(Decimal::from(i32 as f32)).into())
                             }
-                            RegularInstruction::Decimal(DecimalData(big_decimal)) => {
+                            RegularInstruction::Decimal(big_decimal) => {
                                 Some(ValueContainer::from(big_decimal).into())
                             }
 
@@ -454,14 +465,20 @@ pub fn inner_execution_loop(
                                 ).into()),
 
                             RegularInstruction::GetLocalSharedRef(address) => {
-                                Some(interrupt_with_value!(
+                                let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
                                         ExternalExecutionInterrupt::GetReferenceToLocalPointer(
                                             address
                                         )
                                     )
-                                ).into())
+                                );
+                                if let Some(val) = val {
+                                    Some(val.into())
+                                }
+                                else {
+                                    return yield Err(ExecutionError::ReferenceNotFound);
+                                }
                             }
 
 
@@ -568,7 +585,7 @@ pub fn inner_execution_loop(
                                     inner: CoreValue::Null,
                                     custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                         tag,
-                                        ty: Some(Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()).into())),
+                                        ty: Some(Box::new(TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into()).into())),
                                     }))
                                 })))
                             }
@@ -715,7 +732,8 @@ pub fn inner_execution_loop(
                             RegularInstruction::PushToStackMultiple(_) |
                             RegularInstruction::SetStackValue(_) |
                             RegularInstruction::ModifyStackValue(_) |
-                            RegularInstruction::SetSharedContainerValue(_) |
+                            RegularInstruction::ModifySharedContainerValue(_) |
+                            RegularInstruction::SetSharedContainerValue |
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
                             RegularInstruction::RemoteExecution(_) |
@@ -734,27 +752,16 @@ pub fn inner_execution_loop(
                     let type_instruction = collector
                         .default_type_instruction_collection(type_instruction);
 
-                    let type_expression: Option<Type> = if let Some(
-                        type_instruction,
-                    ) = type_instruction
-                    {
+                    if let Some(type_instruction) = type_instruction {
                         Some(match type_instruction {
-                            TypeInstruction::LiteralInteger(integer) => {
-                                Type::Alias(
-                                    LiteralTypeDefinition::Integer(integer.0)
-                                        .into(),
-                                )
+                            TypeInstruction::TypeDefinitionCoreType(core_lib_type_id) => {
+                                CollectedExecutionResult::TypeDefinition(TypeDefinition::CoreType(core_lib_type_id))
                             }
-                            TypeInstruction::LiteralText(text_data) => {
-                                Type::Alias(
-                                    LiteralTypeDefinition::Text(text_data.0)
-                                        .into(),
-                                )
+                            TypeInstruction::TypeDefinitionLiteral(literal) => {
+                                CollectedExecutionResult::TypeDefinition(literal.into())
                             }
 
-                            TypeInstruction::SharedTypeReference(type_ref) => {
-                                let _metadata =
-                                    TypeMetadata::from(&type_ref.metadata);
+                            TypeInstruction::TypeDefinitionSharedTypeReference(type_ref) => {
                                 let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
                                     match type_ref.address {
@@ -783,7 +790,7 @@ pub fn inner_execution_loop(
                                     Some(ValueContainer::Local(Value {
                                         inner: CoreValue::Type(ty),
                                         ..
-                                    })) => ty,
+                                    })) => todo!(),
                                     // FIXME:
                                     // // Type Reference
                                     // Some(ValueContainer::Shared(SharedContainer {
@@ -803,15 +810,17 @@ pub fn inner_execution_loop(
                             }
 
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                            TypeInstruction::List(_)
-                            | TypeInstruction::Range
-                            | TypeInstruction::ImplType(_) => unreachable!(),
+                            TypeInstruction::TypeDefinitionList(_)
+                            | TypeInstruction::TypeDefinitionMap(_)
+                            | TypeInstruction::TypeDefinitionWithMetadata(_)
+                            | TypeInstruction::TypeDefinitionRange
+                            | TypeInstruction::TypeDefinitionImplType(_) => {
+                                unreachable!()
+                            }
                         })
                     } else {
                         None
-                    };
-
-                    type_expression.map(CollectedExecutionResult::from)
+                    }
                 }
             };
 
@@ -1123,7 +1132,37 @@ pub fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::SetSharedContainerValue(
+                                RegularInstruction::SetSharedContainerValue => {
+                                    let value_container = yield_unwrap!(
+                                        collected_results
+                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                    );
+                                    let mut ref_runtime_value = yield_unwrap!(
+                                        collected_results
+                                            .pop_runtime_value_result_assert_existing()
+                                    );
+
+                                    let res = ref_runtime_value.with_mut_value_container(
+                                        &mut state.stack,
+                                        |ref_value_container| {
+                                            // assignment value must be a reference
+                                            if let Some(reference) = ref_value_container.maybe_shared() {
+                                                let update_data = ReplaceUpdateData {value: value_container};
+                                                // TODO: pass TransceiverId
+                                                reference.base_shared_container_mut().try_replace(update_data, TransceiverId(0)).map_err(ExecutionError::UpdateError)?;
+                                                Ok(())
+                                            } else {
+                                                Err(
+                                                    ExecutionError::ExpectedSharedValue,
+                                                )
+                                            }
+                                        },
+                                    ).flatten();
+                                    yield_unwrap!(res);
+                                    None.into()
+                                },
+
+                                RegularInstruction::ModifySharedContainerValue(
                                     set_shared_container_value,
                                 ) => {
 
@@ -1143,14 +1182,11 @@ pub fn inner_execution_loop(
                                             if let Some(reference) = ref_value_container.maybe_shared() {
                                                 let update_data = {
                                                     let lhs = reference.value_container();
-                                                    let val = match set_shared_container_value.operator {
-                                                        Some(operator) => handle_assignment_operation(
-                                                            operator,
-                                                            &lhs,
-                                                            value_container,
-                                                        )?,
-                                                        None => todo!()
-                                                    };
+                                                    let val = handle_assignment_operation(
+                                                        set_shared_container_value.operator,
+                                                        &lhs,
+                                                        value_container,
+                                                    )?;
                                                     ReplaceUpdateData {value: val}
                                                 };
                                                 // TODO: pass TransceiverId
@@ -1471,7 +1507,7 @@ pub fn inner_execution_loop(
                                     let referenced_container = yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external_from_base_container(
                                         yield_unwrap!(BaseSharedValueContainer::try_new(
                                             value,
-                                            TypeDefinition::Core(CoreLibBaseTypeId::Unknown.into()),
+                                            TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()),
                                             shared_ref.container_mutability,
                                         )),
                                         pointer_address,
@@ -1492,28 +1528,22 @@ pub fn inner_execution_loop(
 
                             Instruction::Type(type_instruction) => {
                                 match type_instruction {
-                                    TypeInstruction::ImplType(
+                                    TypeInstruction::TypeDefinitionImplType(
                                         impl_type_data,
                                     ) => {
-                                        let metadata = TypeMetadata::from(
-                                            &impl_type_data.metadata,
-                                        );
-                                        let base_type =
+                                        let def =
                                             collected_results.pop_type_result();
-                                        Type::Alias(TypeDefinitionWithMetadata {
-                                            definition: TypeDefinition::ImplType(ImplTypeDefinition::new(
-                                                base_type,
-                                                impl_type_data
-                                                    .impls
-                                                    .into_iter()
-                                                    .map(PointerAddress::from)
-                                                    .collect(),
-                                            )),
-                                            metadata,
-                                        })
-                                        .into()
+
+                                        TypeDefinition::ImplType(ImplTypeDefinition::new(
+                                            def,
+                                            impl_type_data
+                                                .impls
+                                                .into_iter()
+                                                .map(PointerAddress::from)
+                                                .collect(),
+                                        )).into()
                                     }
-                                    TypeInstruction::Range => {
+                                    TypeInstruction::TypeDefinitionRange => {
                                         // TODO: add metadata everywhere
                                         let type_start =
                                             collected_results.pop_type_result();
@@ -1526,6 +1556,14 @@ pub fn inner_execution_loop(
                                             }).into(),
                                         );
                                         x.into()
+                                    }
+                                    TypeInstruction::TypeDefinitionWithMetadata(metadata) => {
+                                        let definition = collected_results.pop_type_definition_result();
+                                        Type::Alias(TypeDefinitionWithMetadata {
+                                            metadata,
+                                            definition,
+                                            reference_name: None,
+                                        }).into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),
                                 }

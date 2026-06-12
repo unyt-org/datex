@@ -1,4 +1,5 @@
 use crate::{
+    core_compiler::type_compiler::{append_type, append_type_instruction},
     global::instruction_codes::InstructionCode,
     utils::buffers::{append_i16, append_i32, append_u8, append_u32},
     values::{
@@ -15,14 +16,13 @@ use crate::{
 use binrw::{BinWrite, io::Write};
 
 use crate::{
-    core_compiler::{
-        core_compilation_context::{ByteCursor, CoreCompilationContext},
-        type_compiler::{append_type, append_type_instruction},
+    core_compiler::core_compilation_context::{
+        ByteCursor, CoreCompilationContext,
     },
     global::protocol_structures::{
         instruction_data::{
             CallableData, Float32Data, Float64Data, Int8Data, Int16Data,
-            Int32Data, Int64Data, Int128Data, IntegerData, ListData, MapData,
+            Int32Data, Int64Data, Int128Data, ListData, MapData,
             RawPointerAddress, ShortTextData, TaggedValue, UInt8Data,
             UInt16Data, UInt32Data, UInt64Data, UInt128Data,
         },
@@ -158,7 +158,7 @@ pub fn append_value(
                 ty:
                     Some(box Type::Alias(TypeDefinitionWithMetadata {
                         definition:
-                            TypeDefinition::Core(CoreLibTypeId::Base(
+                            TypeDefinition::CoreType(CoreLibTypeId::Base(
                                 CoreLibBaseTypeId::Unit,
                             )),
                         ..
@@ -192,18 +192,11 @@ pub fn append_value(
     }
     let _: () = match value.inner {
         CoreValue::Type(ty) => {
-            match ty.try_as_core_lib_type() {
-                // special core types -> map directly to core pointer addresses
-                Some(core_lib_type_id) => {
-                    append_get_core_lib_value(
-                        context.cursor_mut(),
-                        core_lib_type_id.into(),
-                    );
-                }
-                None => todo!(
-                    "Non-core type definitions not yet supported in CompilationContext"
-                ),
-            }
+            append_regular_instruction(
+                context.cursor_mut(),
+                RegularInstruction::TypeExpression,
+            );
+            append_type(context, &ty);
         }
         CoreValue::Callable(callable) => {
             match &callable.body {
@@ -394,7 +387,7 @@ pub fn append_typed_integer(
 pub fn append_integer(cursor: &mut ByteCursor, integer: &Integer) {
     append_regular_instruction(
         cursor,
-        RegularInstruction::Integer(IntegerData(integer.clone())), // FIXME: no clone
+        RegularInstruction::Integer(integer.clone()), // FIXME: no clone
     );
 }
 
@@ -413,9 +406,7 @@ pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) {
         TypedInteger::U128(val) => {
             RegularInstruction::UInt128(UInt128Data(*val))
         }
-        TypedInteger::IBig(val) => {
-            RegularInstruction::BigInteger(IntegerData(val.clone()))
-        } // FIXME: no clone
+        TypedInteger::IBig(val) => RegularInstruction::BigInteger(val.clone()), // FIXME: no clone
     };
 
     append_regular_instruction(cursor, instruction);
@@ -579,6 +570,7 @@ pub fn append_key_string(cursor: &mut ByteCursor, key_string: &str) {
     }
 }
 
+#[inline]
 pub fn append_regular_instruction(
     cursor: &mut ByteCursor,
     instruction: RegularInstruction,
@@ -652,7 +644,7 @@ mod tests {
             custom_type: Some(TypeDefinition::TaggedType(
                 TaggedTypeDefinition {
                     ty: Some(Box::new(Type::Alias(
-                        TypeDefinition::Core(CoreLibTypeId::Base(
+                        TypeDefinition::CoreType(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Unit,
                         ))
                         .into(),
@@ -699,15 +691,12 @@ mod tests {
 
     #[test]
     fn compile_core_type_value_integer() {
-        let value = Value {
-            inner: CoreValue::Type(
-                TypeDefinition::Core(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Integer,
-                ))
-                .into(),
-            ),
-            custom_type: None,
-        };
+        let value = Value::from(CoreValue::Type(
+            TypeDefinition::CoreType(CoreLibTypeId::Base(
+                CoreLibBaseTypeId::Integer,
+            ))
+            .into(),
+        ));
 
         let compiled = compile_value(value).unwrap();
         assert_regular_instructions_equal!(
@@ -720,10 +709,12 @@ mod tests {
 
     #[test]
     fn compile_callable_value() {
-        use crate::types::type_definition::callable::{
-            CallableKind, CallableTypeDefinition,
+        use crate::{
+            types::type_definition::callable::{
+                CallableKind, CallableTypeDefinition,
+            },
+            values::core_values::callable::{Callable, CallableBody},
         };
-        use crate::values::core_values::callable::{Callable, CallableBody};
 
         let signature = CallableTypeDefinition {
             kind: CallableKind::Function,

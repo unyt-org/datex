@@ -226,10 +226,8 @@ mod tests {
                     body: Box::new(
                         DatexExpressionData::BinaryOperation(BinaryOperation {
                             left: Box::new(
-                                DatexExpressionData::Text(
-                                    "Hello, ".to_string()
-                                )
-                                .with_default_span()
+                                DatexExpressionData::Text("Hello, ".into())
+                                    .with_default_span()
                             ),
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add

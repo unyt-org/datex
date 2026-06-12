@@ -19,15 +19,18 @@ use crate::{
         },
         metadata::CompileMetadata,
         scope::CompilationScope,
-        type_compiler::compile_type_expression,
     },
-    core_compiler::value_compiler::{
-        append_boolean, append_decimal, append_encoded_integer,
-        append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_shared_ref, append_inline_shared_container, append_integer,
-        append_key_string, append_regular_instruction,
-        append_statements_preamble, append_text, append_typed_decimal,
-        append_value,
+    core_compiler::{
+        to_instructions::ToInstructions,
+        type_compiler::append_type_instruction,
+        value_compiler::{
+            append_boolean, append_decimal, append_encoded_integer,
+            append_endpoint, append_float_as_i16, append_float_as_i32,
+            append_get_shared_ref, append_inline_shared_container,
+            append_integer, append_key_string, append_regular_instruction,
+            append_statements_preamble, append_text, append_typed_decimal,
+            append_value,
+        },
     },
     global::{
         dxb_block::DXBBlock,
@@ -42,8 +45,7 @@ use crate::{
             },
             instruction_data::{
                 CallableData, InstructionBlockData, JumpOffsetData,
-                ModifyStackValue, SetSharedContainerValue, ShortTextData,
-                StackIndex, TaggedValue,
+                ModifyStackValue, ShortTextData, StackIndex, TaggedValue,
             },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
@@ -81,10 +83,9 @@ use precompiler::{
 pub mod context;
 pub mod error;
 pub mod metadata;
+pub mod precompiler;
 pub mod scope;
 pub mod type_compiler;
-
-pub mod precompiler;
 #[cfg(feature = "std")]
 pub mod workspace;
 
@@ -566,10 +567,10 @@ fn compile_expression(
             );
         }
         DatexExpressionData::Text(text) => {
-            append_text(compilation_context.cursor(), &text);
+            append_text(compilation_context.cursor(), &text.0);
         }
         DatexExpressionData::Boolean(boolean) => {
-            append_boolean(compilation_context.cursor(), boolean);
+            append_boolean(compilation_context.cursor(), boolean.0);
         }
         DatexExpressionData::Endpoint(endpoint) => {
             append_endpoint(compilation_context.cursor(), &endpoint);
@@ -1120,8 +1121,8 @@ fn compile_expression(
             // depending on the key, handle different property accesses
             match &property_access.property.data {
                 // simple text key if length fits in u8
-                DatexExpressionData::Text(key) if key.len() <= 255 => {
-                    compile_text_property_access(compilation_context, key)
+                DatexExpressionData::Text(key) if key.0.len() <= 255 => {
+                    compile_text_property_access(compilation_context, &key.0)
                 }
                 // index access if integer fits in u32
                 DatexExpressionData::Integer(index)
@@ -1159,7 +1160,12 @@ fn compile_expression(
             match &property_assignment.property.data {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
-                    compile_text_property_assignment(compilation_context, key)
+                    append_regular_instruction(
+                        compilation_context.cursor(),
+                        RegularInstruction::SetPropertyText(ShortTextData(
+                            key.0.clone(),
+                        )),
+                    );
                 }
                 // index access if integer fits in u32
                 DatexExpressionData::Integer(index)
@@ -1336,9 +1342,14 @@ fn compile_expression(
 
             append_regular_instruction(
                 compilation_context.cursor(),
-                RegularInstruction::SetSharedContainerValue(
-                    SetSharedContainerValue { operator },
-                ),
+                match operator {
+                    Some(operator) => {
+                        RegularInstruction::ModifySharedContainerValue(
+                            ModifySharedContainerValue { operator },
+                        )
+                    }
+                    None => RegularInstruction::SetSharedContainerValue,
+                },
             );
 
             // compile unbox expression
@@ -1545,12 +1556,17 @@ fn compile_expression(
         DatexExpressionData::TypeExpression(type_expression) => {
             compilation_context
                 .append_instruction_code(InstructionCode::TYPE_EXPRESSION);
-            scope = compile_type_expression(
-                compilation_context,
-                &type_expression,
-                &metadata,
-                scope,
-            )?;
+            let instructions = type_expression
+                .to_instructions(
+                    &mut compilation_context.core_context.shared_value_tracking,
+                )
+                .collect::<Vec<_>>();
+            for instruction in instructions {
+                append_type_instruction(
+                    compilation_context.cursor(),
+                    instruction,
+                );
+            }
         }
         DatexExpressionData::Range(range_dec) => {
             compilation_context.append_instruction_code(InstructionCode::RANGE);
@@ -1629,7 +1645,7 @@ fn compile_key_value_entry(
     match key.data {
         // text -> insert key string
         DatexExpressionData::Text(text) => {
-            append_key_string(compilation_context.cursor(), &text);
+            append_key_string(compilation_context.cursor(), &text.0);
         }
         // other -> insert key as dynamic
         _ => {
@@ -1659,18 +1675,6 @@ fn compile_text_property_access(
 ) {
     compilation_context
         .append_instruction_code(InstructionCode::GET_PROPERTY_TEXT);
-    // append key length as u8
-    append_u8(compilation_context.cursor(), key.len() as u8);
-    // append key bytes
-    compilation_context.cursor().write_all(key.as_bytes());
-}
-
-fn compile_text_property_assignment(
-    compilation_context: &mut CompilationContext,
-    key: &str,
-) {
-    compilation_context
-        .append_instruction_code(InstructionCode::SET_PROPERTY_TEXT);
     // append key length as u8
     append_u8(compilation_context.cursor(), key.len() as u8);
     // append key bytes
@@ -1745,9 +1749,10 @@ pub mod tests {
         compiler::scope::CompilationScope,
         global::{
             instruction_codes::InstructionCode,
-            type_instruction_codes::TypeInstructionCode,
+            protocol_structures::type_instructions::TypeInstruction,
         },
         runtime::execution::context::ExecutionMode,
+        types::literal_type_definition::LiteralTypeDefinition,
     };
 
     #[cfg(feature = "disassembler")]
@@ -1765,8 +1770,8 @@ pub mod tests {
                     SharedInjectedValueType,
                 },
                 instruction_data::{
-                    InstructionBlockData, IntegerData, MapData, ShortTextData,
-                    StackIndex, StatementsData, TaggedValue, UInt8Data,
+                    InstructionBlockData, MapData, ShortTextData, StackIndex,
+                    StatementsData, TaggedValue, UInt8Data,
                 },
                 instructions::Instruction,
                 regular_instructions::RegularInstruction,
@@ -2185,12 +2190,12 @@ pub mod tests {
             &result,
             [
                 Instruction::Regular(RegularInstruction::Range),
-                Instruction::Regular(RegularInstruction::Integer(IntegerData(
+                Instruction::Regular(RegularInstruction::Integer(
                     Integer::new(start)
-                ))),
-                Instruction::Regular(RegularInstruction::Integer(IntegerData(
+                )),
+                Instruction::Regular(RegularInstruction::Integer(
                     Integer::new(end)
-                )))
+                ))
             ]
         )
     }
@@ -3468,18 +3473,14 @@ pub mod tests {
         let (res, _) =
             compile_script(script, CompileOptions::default(), Runtime::stub())
                 .unwrap();
-        assert_eq!(
-            res,
-            vec![
-                InstructionCode::TYPE_EXPRESSION.into(),
-                TypeInstructionCode::TYPE_LITERAL_INTEGER.into(),
-                // slot index as u32
-                2,
-                1,
-                0,
-                0,
-                0,
-                1
+
+        assert_instructions_equal!(
+            &res,
+            [
+                Instruction::Regular(RegularInstruction::TypeExpression),
+                Instruction::Type(TypeInstruction::TypeDefinitionLiteral(
+                    LiteralTypeDefinition::Integer(1.into())
+                ))
             ]
         );
     }

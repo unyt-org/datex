@@ -8,3 +8,4 @@ pub mod r#type;
 pub mod type_definition;
 pub mod type_definition_with_metadata;
 pub mod type_match;
+pub mod visitor;

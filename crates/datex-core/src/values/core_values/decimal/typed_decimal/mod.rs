@@ -9,6 +9,7 @@ use crate::{
 };
 
 use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
+use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, hash::Hash, num::ParseFloatError, result::Result};
 use num::ToPrimitive;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -18,6 +19,8 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 pub mod equality;
+pub mod primitive;
+
 /// The decimal type variants to be used as a inline
 /// definition in DATEX (such as 42.4f32 or -42.4f32).
 /// Note that changing the enum variants will change
@@ -41,15 +44,27 @@ pub mod equality;
 #[strum(serialize_all = "lowercase")]
 #[repr(u8)]
 pub enum DecimalTypeVariant {
-    F32 = 1, // rationale: We need to start with 1 here, as the core lib pointer id for the base type is using OFFSET_X + variant as index
+    F32,
     F64,
     DBig,
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, BinRead, BinWrite)]
+#[brw(little)]
 pub enum TypedDecimal {
-    F32(OrderedFloat<f32>),
-    F64(OrderedFloat<f64>),
+    #[brw(magic = 1u8)]
+    F32(
+        #[br(map = |x: f32| OrderedFloat(x))]
+        #[bw(map = |x: &OrderedFloat<f32>| x.into_inner())]
+        OrderedFloat<f32>,
+    ),
+    #[brw(magic = 2u8)]
+    F64(
+        #[br(map = |x: f64| OrderedFloat(x))]
+        #[bw(map = |x: &OrderedFloat<f64>| x.into_inner())]
+        OrderedFloat<f64>,
+    ),
+    #[brw(magic = 3u8)]
     Decimal(Decimal),
 }
 

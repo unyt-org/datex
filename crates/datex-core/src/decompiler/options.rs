@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DecompileOptions {
     #[serde(default)]
@@ -26,6 +26,26 @@ impl DecompileOptions {
         }
     }
 
+    /// Formats the output with indentation and newlines
+    pub fn pretty() -> Self {
+        DecompileOptions {
+            formatting_options: FormattingOptions::pretty(),
+            ..DecompileOptions::default()
+        }
+    }
+
+    /// Formats and colorizes the output with indentation and newlines
+    pub fn colorized_pretty() -> Self {
+        DecompileOptions {
+            formatting_options: FormattingOptions {
+                colorized: true,
+                mode: FormattingMode::pretty(),
+                ..FormattingOptions::default()
+            },
+            ..DecompileOptions::default()
+        }
+    }
+
     /// No extra spaces or newlines, no colorization
     pub fn compact() -> Self {
         DecompileOptions {
@@ -35,7 +55,7 @@ impl DecompileOptions {
     }
 }
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
 pub enum IndentType {
     #[default]
@@ -43,7 +63,7 @@ pub enum IndentType {
     Tabs,
 }
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum FormattingMode {
@@ -78,7 +98,7 @@ impl FormattingMode {
     }
 }
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct FormattingOptions {
     #[serde(default)]

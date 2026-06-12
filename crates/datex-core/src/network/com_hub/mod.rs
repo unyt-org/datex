@@ -137,7 +137,7 @@ impl Debug for ComHub {
     Serialize,
     Deserialize,
 )]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+/// The priority of an interface, which determines the order in which interfaces are used for routing fallback logic.
 pub enum InterfacePriority {
     /// The interface will not be used for fallback routing if no other interface is available
     /// This is useful for interfaces which cannot communicate with the outside world or are not
@@ -420,8 +420,6 @@ impl ComHub {
         cleanup_callback: Option<CloseAsyncCallback>,
         hello_sent_sender: Option<Sender<Result<(), ()>>>,
     ) {
-        info!("start handle socket task");
-
         // send hello block in background task
         self.task_manager
             .register_task(self.clone().send_socket_hello(

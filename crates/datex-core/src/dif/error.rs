@@ -2,22 +2,9 @@ use crate::{
     dif::cache::CacheValueRetrievalError,
     runtime::execution::ExecutionError,
     shared_values::base_shared_value_container::observers::ObserverError,
-    value_updates::{UpdateReturn, errors::UpdateError},
+    value_updates::{errors::UpdateError},
 };
-use core::{fmt::Display, result::Result};
-use strum_macros::Display;
-
-pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
-
-/// Converts a Result with any types that can be converted into UpdateReturn and UpdateError into an UpdateResult.
-pub fn into_update_result<T: Into<UpdateReturn>, E: Into<DIFUpdateError>>(
-    result: Result<T, E>,
-) -> DIFUpdateResult {
-    match result {
-        Ok(value) => Ok(value.into()),
-        Err(err) => Err(err.into()),
-    }
-}
+use core::{fmt::Display};
 
 #[derive(Debug)]
 pub enum DIFResolveReferenceError {
@@ -56,10 +43,23 @@ impl Display for DIFObserveError {
     }
 }
 
-#[derive(Debug, Display)]
+#[derive(Debug)]
 pub enum DIFUpdateError {
     UpdateError(UpdateError),
     CacheValueRetrievalError(CacheValueRetrievalError),
+}
+
+impl Display for DIFUpdateError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            DIFUpdateError::UpdateError(e) => {
+                core::write!(f, "Update error: {}", e)
+            }
+            DIFUpdateError::CacheValueRetrievalError(e) => {
+                core::write!(f, "Cache value retrieval error: {}", e)
+            }
+        }
+    }
 }
 
 impl From<UpdateError> for DIFUpdateError {

@@ -97,7 +97,7 @@ mod tests {
                 id: None,
                 kind: TypeDeclarationKind::Nominal,
                 name: "myType".to_string(),
-                definition: TypeExpressionData::Boolean(true)
+                definition: TypeExpressionData::Boolean(true.into())
                     .with_default_span(),
                 hoisted: false,
             })
@@ -113,7 +113,7 @@ mod tests {
                 id: None,
                 kind: TypeDeclarationKind::Alias,
                 name: "myAlias".to_string(),
-                definition: TypeExpressionData::Boolean(false)
+                definition: TypeExpressionData::Boolean(false.into())
                     .with_default_span(),
                 hoisted: false,
             })
@@ -145,7 +145,7 @@ mod tests {
                 id: None,
                 kind: TypeDeclarationKind::Nominal,
                 name: "myType".to_string(),
-                definition: TypeExpressionData::Boolean(true)
+                definition: TypeExpressionData::Boolean(true.into())
                     .with_default_span(),
                 hoisted: false,
             })
@@ -161,7 +161,7 @@ mod tests {
                 id: None,
                 kind: TypeDeclarationKind::Nominal,
                 name: "myType/variantA".to_string(),
-                definition: TypeExpressionData::Boolean(false)
+                definition: TypeExpressionData::Boolean(false.into())
                     .with_default_span(),
                 hoisted: false,
             })

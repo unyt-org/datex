@@ -20,6 +20,7 @@ pub use replace::*;
 pub use set_entry::*;
 
 #[derive(Clone, Debug, PartialEq, AsRefStr)]
+#[strum(serialize_all = "snake_case")]
 pub enum UpdateData {
     /// Represents a replacement operation for a value.
     Replace(ReplaceUpdateData),

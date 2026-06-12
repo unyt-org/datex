@@ -39,7 +39,7 @@ impl StructuralEq for TypeDefinition {
             (TypeDefinition::Callable(a), TypeDefinition::Callable(b)) => {
                 a.structural_eq(b)
             }
-            (TypeDefinition::Core(c), TypeDefinition::Core(d)) => c == d,
+            (TypeDefinition::CoreType(c), TypeDefinition::CoreType(d)) => c == d,
             (TypeDefinition::Map(a), TypeDefinition::Map(b)) => {
                 a.structural_eq(b)
             }

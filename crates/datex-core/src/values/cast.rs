@@ -1,3 +1,5 @@
+use num::ToPrimitive;
+
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
@@ -136,7 +138,7 @@ macro_rules! derive_try_from_chain {
 
         impl DatexProxyTypes for $type {
             fn datex_type(_memory: &mut Memory) -> Type {
-                Type::Alias(TypeDefinition::Core($dx_type.into()).into())
+                Type::Alias(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
     };
@@ -166,7 +168,7 @@ macro_rules! impl_datex_direct_via_value_container {
 
         impl DatexProxyTypes for $type {
             fn datex_type(_memory: &mut Memory) -> Type {
-                Type::Alias(TypeDefinition::Core($dx_type.into()).into())
+                Type::Alias(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
     };
@@ -195,70 +197,90 @@ derive_try_from_chain!(
     u8,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8),
     {
-       CoreValue::TypedInteger(TypedInteger::U8(value)) => Ok(value),
+        CoreValue::TypedInteger(TypedInteger::U8(value)) => Ok(value),
+        CoreValue::TypedInteger(value) => value.to_u8().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u8, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_u8().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u8, value is not an integer", value))),
     }
 );
 derive_try_from_chain!(
     u16,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16),
     {
-       CoreValue::TypedInteger(TypedInteger::U16(value)) => Ok(value),
+        CoreValue::TypedInteger(TypedInteger::U16(value)) => Ok(value),
+        CoreValue::TypedInteger(value) => value.to_u16().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u16, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_u16().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u16, value is not an integer", value))),
     }
 );
 derive_try_from_chain!(
     u32,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U32),
     {
-       CoreValue::TypedInteger(TypedInteger::U32(value)) => Ok(value),
+        CoreValue::TypedInteger(TypedInteger::U32(value)) => Ok(value),
+        CoreValue::TypedInteger(value) => value.to_u32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u32, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_u32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u32, value is not an integer", value))),
     }
 );
 derive_try_from_chain!(
     u64,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U64),
     {
-       CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value),
+        CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value),
+        CoreValue::TypedInteger(value) => value.to_u64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u64, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_u64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u64, value is not an integer", value))),
     }
 );
 derive_try_from_chain!(
     i8,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I8),
     {
-       CoreValue::TypedInteger(TypedInteger::I8(value)) => Ok(value),
+        CoreValue::TypedInteger(TypedInteger::I8(value)) => Ok(value),
+        CoreValue::TypedInteger(value) => value.to_i8().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i8, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_i8().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i8, value is not an integer", value))),
     }
 );
 derive_try_from_chain!(
     i16,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I16),
     {
-       CoreValue::TypedInteger(TypedInteger::I16(value)) => Ok(value),
+        CoreValue::TypedInteger(TypedInteger::I16(value)) => Ok(value),
+        CoreValue::TypedInteger(value) => value.to_i16().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i16, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_i16().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i16, value is not an integer", value))),
     }
 );
 derive_try_from_chain!(
     i32,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I32),
     {
-       CoreValue::TypedInteger(TypedInteger::I32(value)) => Ok(value),
+        CoreValue::TypedInteger(TypedInteger::I32(value)) => Ok(value),
+        CoreValue::TypedInteger(value) => value.to_i32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i32, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_i32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i32, value is not an integer", value))),
     }
 );
 derive_try_from_chain!(
     i64,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I64),
     {
-       CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value),
+        CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value),
+        CoreValue::TypedInteger(value) => value.to_i64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i64, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_i64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i64, value is not an integer", value))),
     }
 );
 derive_try_from_chain!(
     f32,
     CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F32),
     {
-       CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(value.into()),
+        CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(value.into()),
+        CoreValue::TypedInteger(value) => value.to_f32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to f32, value is not a decimal", value))),
+        CoreValue::TypedDecimal(value) => value.to_f32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to f32, value is not a decimal", value))),
     }
 );
 derive_try_from_chain!(
     f64,
     CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F64),
     {
-       CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(value.into()),
+        CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(value.into()),
+        CoreValue::TypedInteger(value) => value.to_f64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to f64, value is not a decimal", value))),
+        CoreValue::TypedDecimal(value) => value.to_f64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to f64, value is not a decimal", value))),
     }
 );
 derive_try_from_chain!(
@@ -316,7 +338,8 @@ impl<T: DatexValueContainerProxy> DatexProxyTypes for Option<T> {
         Type::Alias(
             TypeDefinition::Union(UnionTypeDefinition(vec![
                 Type::Alias(
-                    TypeDefinition::Core(CoreLibBaseTypeId::Null.into()).into(),
+                    TypeDefinition::CoreType(CoreLibBaseTypeId::Null.into())
+                        .into(),
                 ),
                 T::datex_type(memory),
             ]))
@@ -364,7 +387,9 @@ impl<T: DatexValueContainerProxyInfallibleSerialize>
 
 impl<T: DatexValueContainerProxy> DatexProxyTypes for Vec<T> {
     fn datex_type(_memory: &mut Memory) -> Type {
-        Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::List.into()).into())
+        Type::Alias(
+            TypeDefinition::CoreType(CoreLibBaseTypeId::List.into()).into(),
+        )
     }
 }
 
@@ -431,6 +456,8 @@ impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
     DatexProxyTypes for HashMap<K, V>
 {
     fn datex_type(_memory: &mut Memory) -> Type {
-        Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Map.into()).into())
+        Type::Alias(
+            TypeDefinition::CoreType(CoreLibBaseTypeId::Map.into()).into(),
+        )
     }
 }

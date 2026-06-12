@@ -7,9 +7,18 @@ use crate::{
     prelude::*,
 };
 
-pub trait CollectionResultsPopper<Result, Val, Key, KeyVal, Type>:
-    GetResults<Result> + Sized
+pub trait CollectionResultsPopper<
+    Result,
+    Val,
+    Key,
+    KeyVal,
+    Type,
+    TypeDefinition,
+>: GetResults<Result> + Sized
 {
+    fn try_extract_type_definition_result(
+        result: Result,
+    ) -> Option<TypeDefinition>;
     fn try_extract_value_result(result: Result) -> Option<Val>;
     fn try_extract_type_result(result: Result) -> Option<Type>;
     fn try_extract_key_value_pair_result(
@@ -27,6 +36,15 @@ pub trait CollectionResultsPopper<Result, Val, Key, KeyVal, Type>:
     fn try_pop_key_value_pair_result(&mut self) -> Option<(Key, KeyVal)> {
         let result = self.pop()?;
         Self::try_extract_key_value_pair_result(result)
+    }
+
+    fn pop_type_definition_result(&mut self) -> TypeDefinition {
+        self.try_pop_type_definition_result()
+            .expect("Expected type definition result")
+    }
+    fn try_pop_type_definition_result(&mut self) -> Option<TypeDefinition> {
+        let result = self.pop()?;
+        Self::try_extract_type_definition_result(result)
     }
 
     fn pop_value_result(&mut self) -> Val {

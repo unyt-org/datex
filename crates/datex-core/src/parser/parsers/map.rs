@@ -57,14 +57,16 @@ mod tests {
             DatexExpressionData::Map(Map {
                 entries: vec![
                     (
-                        DatexExpressionData::Text("key1".to_string())
+                        DatexExpressionData::Text("key1".into())
                             .with_default_span(),
-                        DatexExpressionData::Boolean(true).with_default_span()
+                        DatexExpressionData::Boolean(true.into())
+                            .with_default_span()
                     ),
                     (
-                        DatexExpressionData::Text("key2".to_string())
+                        DatexExpressionData::Text("key2".into())
                             .with_default_span(),
-                        DatexExpressionData::Boolean(false).with_default_span()
+                        DatexExpressionData::Boolean(false.into())
+                            .with_default_span()
                     ),
                 ]
             })
@@ -79,14 +81,16 @@ mod tests {
             DatexExpressionData::Map(Map {
                 entries: vec![
                     (
-                        DatexExpressionData::Text("key1".to_string())
+                        DatexExpressionData::Text("key1".into())
                             .with_default_span(),
-                        DatexExpressionData::Boolean(true).with_default_span()
+                        DatexExpressionData::Boolean(true.into())
+                            .with_default_span()
                     ),
                     (
-                        DatexExpressionData::Text("key2".to_string())
+                        DatexExpressionData::Text("key2".into())
                             .with_default_span(),
-                        DatexExpressionData::Boolean(false).with_default_span()
+                        DatexExpressionData::Boolean(false.into())
+                            .with_default_span()
                     ),
                 ]
             })
@@ -101,14 +105,16 @@ mod tests {
             DatexExpressionData::Map(Map {
                 entries: vec![
                     (
-                        DatexExpressionData::Text("if".to_string())
+                        DatexExpressionData::Text("if".into())
                             .with_default_span(),
-                        DatexExpressionData::Boolean(true).with_default_span()
+                        DatexExpressionData::Boolean(true.into())
+                            .with_default_span()
                     ),
                     (
-                        DatexExpressionData::Text("type".to_string())
+                        DatexExpressionData::Text("type".into())
                             .with_default_span(),
-                        DatexExpressionData::Boolean(false).with_default_span()
+                        DatexExpressionData::Boolean(false.into())
+                            .with_default_span()
                     ),
                 ]
             })
@@ -125,7 +131,8 @@ mod tests {
                     (
                         DatexExpressionData::Identifier("x".to_string())
                             .with_default_span(),
-                        DatexExpressionData::Boolean(true).with_default_span()
+                        DatexExpressionData::Boolean(true.into())
+                            .with_default_span()
                     ),
                     (
                         DatexExpressionData::BinaryOperation(BinaryOperation {
@@ -139,13 +146,14 @@ mod tests {
                                 ArithmeticOperator::Add
                             ),
                             right: Box::new(
-                                DatexExpressionData::Boolean(true)
+                                DatexExpressionData::Boolean(true.into())
                                     .with_default_span()
                             ),
                             ty: None,
                         })
                         .with_default_span(),
-                        DatexExpressionData::Boolean(false).with_default_span()
+                        DatexExpressionData::Boolean(false.into())
+                            .with_default_span()
                     ),
                 ]
             })

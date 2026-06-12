@@ -91,14 +91,6 @@ pub struct FloatAsInt32Data(pub i32);
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct DecimalData(pub Decimal);
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
-pub struct IntegerData(pub Integer);
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
 pub struct ShortTextDataRaw {
     pub length: u8,
     #[br(count = length)]
@@ -179,6 +171,17 @@ pub struct TextDataRaw {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextData(pub String);
+
+impl From<String> for TextData {
+    fn from(value: String) -> Self {
+        TextData(value)
+    }
+}
+impl From<&str> for TextData {
+    fn from(value: &str) -> Self {
+        TextData(value.to_string())
+    }
+}
 
 impl From<&TextData> for TextDataRaw {
     fn from(value: &TextData) -> Self {
@@ -470,8 +473,8 @@ pub struct SharedRefWithValue {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct SetSharedContainerValue {
-    pub operator: Option<AssignmentOperator>,
+pub struct ModifySharedContainerValue {
+    pub operator: AssignmentOperator,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -586,7 +589,6 @@ pub struct ApplyData {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct ImplTypeData {
-    pub metadata: TypeMetadataBin,
     pub impl_count: u8,
     #[br(count = impl_count)]
     pub impls: Vec<RawPointerAddress>,
@@ -595,7 +597,6 @@ pub struct ImplTypeData {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct TypeReferenceData {
-    pub metadata: TypeMetadataBin,
     pub address: RawPointerAddress,
 }
 

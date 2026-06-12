@@ -14,11 +14,11 @@ pub fn is_priority_none(v: &InterfacePriority) -> bool {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq, Eq)]
+/// A generic interface configuration to setup a runtime interface.
 pub struct RuntimeConfigInterface {
     #[datex(rename = "type")]
     pub interface_type: String,
     pub config: Value,
-
     pub priority: InterfacePriority,
 }
 
@@ -30,18 +30,12 @@ impl RuntimeConfigInterface {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            config: setup_data
-                .try_to_value()
-                .map_err(|e| {
-                    format!(
-                        "Failed to convert setup_data to ValueContainer: {:?}",
-                        e
-                    )
-                })?
-                .try_into()
-                .map_err(|e| {
-                    format!("Failed to convert ValueContainer to Map: {:?}", e)
-                })?,
+            config: setup_data.try_to_value().map_err(|e| {
+                format!(
+                    "Failed to convert setup_data to ValueContainer: {:?}",
+                    e
+                )
+            })?,
         })
     }
 

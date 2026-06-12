@@ -20,14 +20,6 @@ use crate::{
 use core::result::Result;
 
 impl UpdateHandler for Map {
-    fn try_replace(
-        &mut self,
-        _data: ReplaceUpdateData,
-        _source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
-        todo!()
-    }
-
     fn try_set_entry(
         &mut self,
         data: SetEntryUpdateData,

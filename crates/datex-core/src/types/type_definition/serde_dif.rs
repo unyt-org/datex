@@ -35,7 +35,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinition> {
         S: Serializer,
     {
         match value {
-            TypeDefinition::Core(core) => serializer
+            TypeDefinition::CoreType(core) => serializer
                 .serialize_u16(CoreLibIdIndex::from(CoreLibId::Type(*core)).0),
             _ => {
                 let mut outer = serializer.serialize_map(Some(1))?;
@@ -103,8 +103,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinition> {
                             tagged_type,
                             self.cast::<TaggedTypeDefinition>(),
                         ))?,
-                    TypeDefinition::Type => outer.serialize_value("")?,
-                    TypeDefinition::Core(_) => unreachable!(), // already handled above
+                    TypeDefinition::CoreType(_) => unreachable!(), // already handled above
                 }
                 outer.end()
             }
@@ -136,7 +135,7 @@ impl<'ctx> SerdeContext<'ctx, TypeDefinition> {
 
         match CoreLibId::try_from(CoreLibIdIndex(index)) {
             Ok(CoreLibId::Type(core_type_id)) => {
-                Ok(TypeDefinition::Core(core_type_id))
+                Ok(TypeDefinition::CoreType(core_type_id))
             }
             _ => Err(format!(
                 "Invalid CoreLibId for TypeDefinition: {:?}",
@@ -226,11 +225,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
                 TypeDefinition::TaggedType(tagged)
             }
 
-            "type" => {
-                let _: String = map.next_value()?;
-                TypeDefinition::Type
-            }
-
             other => {
                 return Err(de::Error::unknown_variant(
                     other,
@@ -246,7 +240,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
                         "intersection",
                         "union",
                         "tagged_type",
-                        "type",
                     ],
                 ));
             }
@@ -315,7 +308,7 @@ mod tests {
     #[test_case(CoreLibTypeId::Base(CoreLibBaseTypeId::Text) ; "Text")]
     #[test_case(CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)) ; "integer/u8")]
     fn core_library_type_definition(id: CoreLibTypeId) {
-        let type_def = TypeDefinition::Core(id);
+        let type_def = TypeDefinition::CoreType(id);
         // Serialize the TypeDefinition to JSON
         let serialized = to_json(&type_def);
 

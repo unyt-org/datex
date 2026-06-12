@@ -6,6 +6,7 @@ use crate::{
     value_updates::update_data::Update,
 };
 use core::{fmt::Display, result::Result};
+use core::fmt::Debug;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };
@@ -84,6 +85,15 @@ pub struct Observer {
     pub transceiver_id: TransceiverId,
     pub options: ObserveOptions,
     pub callback: ObserverCallback,
+}
+
+impl Debug for Observer {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Observer")
+            .field("transceiver_id", &self.transceiver_id)
+            .field("options", &self.options)
+            .finish()
+    }
 }
 
 impl Observer {
@@ -169,21 +179,16 @@ impl BaseSharedValueContainer {
     }
 
     /// Notifies all observers of a change represented by the given [Update].
-    pub fn notify_observers(&self, dif: &Update) {
-        let observer_callbacks: Vec<ObserverCallback> = self
+    pub fn get_current_observers(&self, source_id: TransceiverId) -> Vec<ObserverCallback> {
+        self
             .observers
             .iter()
-            .filter(|(_, f)| {
+            .filter(|(_, observer)| {
                 // Filter out bounced back transceiver updates if relay_own_updates not enabled
-                f.options.relay_own_updates || f.transceiver_id != dif.source_id
+                observer.options.relay_own_updates || observer.transceiver_id != source_id
             })
             .map(|(_, f)| f.callback.clone())
-            .collect();
-
-        // Call each observer synchronously
-        for callback in observer_callbacks {
-            callback(dif);
-        }
+            .collect()
     }
 
     /// Check if there are any observers registered
@@ -296,135 +301,5 @@ mod tests {
         assert_eq!(id3, ObserverId(0));
         let id4 = r.observe(Observer::new(|_| {})).unwrap();
         assert_eq!(id4, ObserverId(2));
-    }
-
-    #[test]
-    fn observe_replace() {
-        let mut int_ref =
-            BaseSharedValueContainer::new_with_inferred_allowed_type(
-                42,
-                SharedContainerMutability::Mutable,
-            );
-        let observed_updates = record_dif_updates(
-            &mut int_ref,
-            TransceiverId(0),
-            ObserveOptions::default(),
-        );
-
-        let replace_data = ReplaceUpdateData {
-            value: ValueContainer::from(43),
-        };
-
-        // Update the value of the reference
-        int_ref
-            .try_replace(replace_data.clone(), TransceiverId(1))
-            .expect("Failed to set value");
-
-        // Verify the observed update matches the expected change
-        let update = Update {
-            source_id: TransceiverId(1),
-            data: UpdateData::Replace(replace_data),
-        };
-
-        assert_eq!(*observed_updates.borrow(), vec![update]);
-    }
-
-    #[test]
-    fn observe_replace_same_transceiver() {
-        let mut int_ref =
-            BaseSharedValueContainer::new_with_inferred_allowed_type(
-                42,
-                SharedContainerMutability::Mutable,
-            );
-        let observed_update = record_dif_updates(
-            &mut int_ref,
-            TransceiverId(0),
-            ObserveOptions::default(),
-        );
-
-        // Update the value of the reference
-        int_ref
-            .try_replace(
-                ReplaceUpdateData {
-                    value: ValueContainer::from(43),
-                },
-                TransceiverId(0),
-            )
-            .expect("Failed to set value");
-
-        // No update triggered, same transceiver id
-        assert_eq!(*observed_update.borrow(), vec![]);
-    }
-
-    #[test]
-    fn observe_replace_same_transceiver_relay_own_updates() {
-        let mut int_ref =
-            BaseSharedValueContainer::new_with_inferred_allowed_type(
-                42,
-                SharedContainerMutability::Mutable,
-            );
-        let observed_update = record_dif_updates(
-            &mut int_ref,
-            TransceiverId(0),
-            ObserveOptions {
-                relay_own_updates: true,
-            },
-        );
-
-        // Update the value of the reference
-        int_ref
-            .try_replace(
-                ReplaceUpdateData {
-                    value: ValueContainer::from(43),
-                },
-                TransceiverId(0),
-            )
-            .expect("Failed to set value");
-
-        // update triggered, same transceiver id but relay_own_updates enabled
-        let expected_update = Update {
-            source_id: TransceiverId(0),
-            data: UpdateData::Replace(ReplaceUpdateData {
-                value: ValueContainer::from(43),
-            }),
-        };
-
-        assert_eq!(*observed_update.borrow(), vec![expected_update]);
-    }
-
-    #[test]
-    fn observe_update_property() {
-        let mut reference =
-            BaseSharedValueContainer::new_with_inferred_allowed_type(
-                Map::from(vec![
-                    ("a".to_string(), ValueContainer::from(1)),
-                    ("b".to_string(), ValueContainer::from(2)),
-                ]),
-                SharedContainerMutability::Mutable,
-            );
-        let observed_updates = record_dif_updates(
-            &mut reference,
-            TransceiverId(0),
-            ObserveOptions::default(),
-        );
-        // Update a property
-        reference
-            .try_set_entry(
-                SetEntryUpdateData {
-                    key: "a".into(),
-                    value: ValueContainer::from("val"),
-                },
-                TransceiverId(1),
-            )
-            .expect("Failed to set property");
-        // Verify the observed update matches the expected change
-        let expected_update = Update {
-            source_id: TransceiverId(1),
-            data: UpdateData::SetEntry(SetEntryUpdateData {
-                key: ValueKey::Text("a".to_string()),
-                value: ValueContainer::from("val"),
-            }),
-        };
-        assert_eq!(*observed_updates.borrow(), vec![expected_update]);
     }
 }

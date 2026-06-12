@@ -17,6 +17,9 @@ use crate::{
     values::{value::Value, value_container::ValueContainer},
 };
 
+#[cfg(feature = "decompiler")]
+use crate::decompiler::{decompile_value, DecompileOptions};
+
 #[derive(Debug, Clone)]
 pub struct TryFromDatexValueError(pub String);
 
@@ -182,6 +185,13 @@ pub trait DatexValueContainerProxySerialize {
     fn try_to_value_container(
         self,
     ) -> Result<ValueContainer, TryToDatexValueError>;
+
+    #[cfg(feature = "decompiler")]
+    fn try_to_datex_string(self, decompile_options: DecompileOptions) -> Result<String, TryToDatexValueError> where Self: Sized {
+        Ok(
+            decompile_value(&self.try_to_value_container()?, decompile_options)
+        )
+    }
 }
 
 /// Conversion from a rust value to a [Value]. Might fail if serde values are serialized.
@@ -193,6 +203,11 @@ pub trait DatexValueProxySerialize {
 /// Only works if no serde values are serialized.
 pub trait DatexValueContainerProxyInfallibleSerialize {
     fn to_value_container(self) -> ValueContainer;
+
+    #[cfg(feature = "decompiler")]
+    fn to_datex_string(self, decompile_options: DecompileOptions) -> String where Self: Sized {
+        decompile_value(&self.to_value_container(), decompile_options)
+    }
 }
 
 /// Infallible conversion from a rust value to a [Value].

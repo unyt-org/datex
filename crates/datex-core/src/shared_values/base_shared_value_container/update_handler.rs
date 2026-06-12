@@ -27,7 +27,6 @@ impl UpdateHandler for BaseSharedValueContainer {
             UpdateData::Replace(data.clone()).with_source(source_id);
         let prev = core::mem::replace(&mut self.value_container, data.value);
 
-        self.notify_observers(&update_data);
         Ok(prev)
     }
 
@@ -37,12 +36,8 @@ impl UpdateHandler for BaseSharedValueContainer {
         source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
         self.assert_can_mutate()?;
-
-        let update_data =
-            UpdateData::SetEntry(data.clone()).with_source(source_id);
         self.value_container.try_set_entry(data, source_id)?;
 
-        self.notify_observers(&update_data);
         Ok(())
     }
 
@@ -52,13 +47,9 @@ impl UpdateHandler for BaseSharedValueContainer {
         source_id: TransceiverId,
     ) -> Result<ValueContainer, UpdateError> {
         self.assert_can_mutate()?;
-        let update_data =
-            UpdateData::DeleteEntry(data.clone()).with_source(source_id);
         let previous =
             self.value_container.try_delete_entry(data, source_id)?;
-
-        self.notify_observers(&update_data);
-
+        
         Ok(previous)
     }
 
@@ -68,11 +59,8 @@ impl UpdateHandler for BaseSharedValueContainer {
         source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
         self.assert_can_mutate()?;
-        let update_data =
-            UpdateData::AppendEntry(data.clone()).with_source(source_id);
         self.value_container.try_append_entry(data, source_id)?;
 
-        self.notify_observers(&update_data);
         Ok(())
     }
 
@@ -83,7 +71,6 @@ impl UpdateHandler for BaseSharedValueContainer {
         self.assert_can_mutate()?;
         self.value_container.try_clear(source_id)?;
 
-        self.notify_observers(&UpdateData::Clear.with_source(source_id));
         Ok(())
     }
 
@@ -93,12 +80,8 @@ impl UpdateHandler for BaseSharedValueContainer {
         source_id: TransceiverId,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         self.assert_can_mutate()?;
-
-        let update_data =
-            UpdateData::ListSplice(data.clone()).with_source(source_id);
         let removed = self.value_container.try_list_splice(data, source_id)?;
 
-        self.notify_observers(&update_data);
         Ok(removed)
     }
 }

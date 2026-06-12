@@ -8,35 +8,24 @@ use datex_core::{
     },
     runtime::{Runtime, RuntimeConfig},
 };
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{TokenStream};
 use quote::quote;
-use std::{env, str::FromStr};
 use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
+use crate::get_absolute_file_path;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
     pub config: Option<PathBuf>,
 }
 
-fn get_file_path() -> PathBuf {
-    let root_path = PathBuf::from_str(
-        &env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into()),
-    )
-    .unwrap();
-    root_path
-        .join(Span::call_site().file())
-        .canonicalize()
-        .unwrap()
-}
-
 impl Parse for ParsedAttributes {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut config = None;
 
-        let source_file = get_file_path();
+        let source_file = get_absolute_file_path();
 
         // first try if directly a path string
         if let Ok(config_path) = get_config_path(&input, &source_file) {

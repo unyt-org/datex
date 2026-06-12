@@ -103,7 +103,7 @@ impl Value {
     pub fn has_default_type(&self) -> bool {
         match &self.custom_type {
             None => true,
-            Some(TypeDefinition::Core(core_type)) => {
+            Some(TypeDefinition::CoreType(core_type)) => {
                 core_type == &self.default_core_type()
             }
             Some(_) => false,
@@ -114,7 +114,7 @@ impl Value {
     pub fn actual_type(&self) -> TypeDefinition {
         match &self.custom_type {
             Some(actual_type) => actual_type.clone(),
-            None => TypeDefinition::Core(self.default_core_type()),
+            None => TypeDefinition::CoreType(self.default_core_type()),
         }
     }
 
@@ -465,7 +465,7 @@ mod tests {
 
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(TypeDefinition::Core(
+            custom_type: Some(TypeDefinition::CoreType(
                 CoreLibBaseTypeId::Integer.into(),
             )),
         };

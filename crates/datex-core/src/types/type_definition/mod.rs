@@ -2,8 +2,9 @@
 //! A [TypeDefinition] can hold e.g. a [LiteralTypeDefinition], or a [CollectionTypeDefinition], or a [SharedContainerContainingType] wand impl types.
 //! The [TypeDefinition] is used as the underlying structure for type definitions in the type space and is wrapped by [TypeDefinitionWithMetadata] which holds additional metadata for type checking and inference.
 
-use strum::AsRefStr;
-
+use ::binrw::{BinRead, BinWrite};
+use strum::{AsRefStr, EnumDiscriminants, EnumIter, FromRepr};
+pub mod binrw;
 use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
@@ -39,12 +40,15 @@ pub mod type_match;
 /// This is normally the base for types at runtime, in contrast to [Type], which is the base for types
 /// at compile time.
 #[derive(Debug, Clone, PartialEq, Eq, AsRefStr)]
+#[strum(serialize_all = "snake_case")]
 pub enum TypeDefinition {
     /// e.g. 1, "example"
     Literal(LiteralTypeDefinition),
 
     List(ListTypeDefinition), // e.g. [&mut integer, text, boolean]
+
     Map(MapTypeDefinition),
+
     Range(RangeTypeDefinition),
 
     // TODO #371: Rename to generic?
@@ -82,11 +86,8 @@ pub enum TypeDefinition {
     /// #Tagged(null) is equivalent to #Tagged
     TaggedType(TaggedTypeDefinition),
 
-    /// meta type for a type
-    Type,
-
     // core types ("nominal")
-    Core(CoreLibTypeId), // -> $123
+    CoreType(CoreLibTypeId), // -> $123
 }
 
 impl Hash for TypeDefinition {
@@ -142,12 +143,7 @@ impl Hash for TypeDefinition {
             TypeDefinition::Nested(ty) => {
                 ty.hash(state);
             }
-            TypeDefinition::Type => {
-                // no fields to hash
-                // TODO: can we do this?
-                0.hash(state);
-            }
-            TypeDefinition::Core(core) => {
+            TypeDefinition::CoreType(core) => {
                 core.hash(state);
             }
             TypeDefinition::TaggedType(tagged_type) => {
@@ -242,10 +238,7 @@ impl Display for TypeDefinition {
             TypeDefinition::Nested(ty) => {
                 write!(f, "{}", ty)
             }
-            TypeDefinition::Type => {
-                write!(f, "Type")
-            }
-            TypeDefinition::Core(core) => {
+            TypeDefinition::CoreType(core) => {
                 write!(f, "{}", core)
             }
             TypeDefinition::TaggedType(tagged_type) => {
@@ -262,7 +255,7 @@ pub mod union;
 
 impl TypeDefinition {
     pub const UNIT: TypeDefinition =
-        TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit));
+        TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit));
 
     /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
     pub fn with_collapsed<R>(&self, f: impl FnOnce(&TypeDefinition) -> R) -> R {
@@ -281,7 +274,7 @@ impl TypeDefinition {
 
     /// Creates a new core type definition.
     pub fn core(id: impl Into<CoreLibTypeId>) -> TypeDefinition {
-        TypeDefinition::Core(id.into())
+        TypeDefinition::CoreType(id.into())
     }
 
     /// Creates a new literal type.
@@ -345,9 +338,6 @@ impl TypeDefinition {
             TypeDefinition::Callable(_) => {
                 Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Callable))
             }
-            TypeDefinition::Type => {
-                Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Type))
-            }
             _ => None,
         }
     }
@@ -378,6 +368,7 @@ impl From<TypeDefinition> for TypeDefinitionWithMetadata {
         TypeDefinitionWithMetadata {
             definition: structural_definition,
             metadata: TypeMetadata::default(),
+            reference_name: None,
         }
     }
 }
@@ -387,6 +378,7 @@ impl From<LiteralTypeDefinition> for TypeDefinitionWithMetadata {
         TypeDefinitionWithMetadata {
             definition: literal_definition.into(),
             metadata: TypeMetadata::default(),
+            reference_name: None,
         }
     }
 }

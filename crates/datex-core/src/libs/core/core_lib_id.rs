@@ -36,7 +36,7 @@ pub trait CoreLibIdTrait:
     fn name(&self) -> String;
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum CoreLibId {
     CoreMap,
     Type(CoreLibTypeId),
@@ -86,6 +86,7 @@ impl From<CoreLibId> for CoreLibIdIndex {
         }
     }
 }
+
 impl TryFrom<CoreLibIdIndex> for CoreLibId {
     type Error = ();
 
