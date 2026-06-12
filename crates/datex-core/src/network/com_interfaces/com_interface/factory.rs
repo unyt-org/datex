@@ -19,20 +19,18 @@ use crate::{
 use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
-use serde::{Deserialize, Serialize};
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
 >;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 
 pub struct SocketProperties {
     pub direction: InterfaceDirection,
     pub channel_factor: u32,
     pub direct_endpoint: Option<Endpoint>,
     pub connection_timestamp: u64,
-    // should not be provided from JS side
     uuid: ComInterfaceSocketUUID,
 }
 
