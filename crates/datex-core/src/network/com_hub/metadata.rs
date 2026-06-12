@@ -26,7 +26,7 @@ use datex_macros_internal::Datex;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Datex, Debug)]
 
 pub struct ComHubMetadataInterfaceSocket {
     pub uuid: String,
@@ -46,7 +46,6 @@ pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
 pub struct ComHubMetadataInterface {
     pub uuid: String,
     pub properties: ComInterfaceProperties,
-    #[datex(serde_infallible)]
     pub sockets: Vec<ComHubMetadataInterfaceSocket>,
     pub is_waiting_for_socket_connections: bool,
 }
