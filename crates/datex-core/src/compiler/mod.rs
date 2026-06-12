@@ -45,7 +45,8 @@ use crate::{
             },
             instruction_data::{
                 CallableData, InstructionBlockData, JumpOffsetData,
-                ModifyStackValue, ShortTextData, StackIndex, TaggedValue,
+                ModifySharedContainerValue, ModifyStackValue, ShortTextData,
+                StackIndex, TaggedValue,
             },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,

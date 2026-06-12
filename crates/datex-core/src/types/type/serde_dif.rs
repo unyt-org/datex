@@ -1,5 +1,3 @@
-use alloc::{format, string::String};
-use core::ops::Deref;
 use crate::{
     dif::serde_context::SerdeContext,
     libs::core::{
@@ -18,6 +16,7 @@ use crate::{
     },
     utils::serde_serialize_seed::SerializeSeed,
 };
+use alloc::{format, string::String};
 use core::ops::Deref;
 use num::ToPrimitive;
 use serde::{
