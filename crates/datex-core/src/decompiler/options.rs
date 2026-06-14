@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
+use datex_macros_internal::Datex;
 
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Datex, Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DecompileOptions {
     #[serde(default)]
     pub formatting_options: FormattingOptions,
@@ -56,7 +56,7 @@ impl DecompileOptions {
 }
 
 
-#[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
+#[derive(Datex, Clone, Debug, Copy, Default, Serialize, Deserialize)]
 pub enum IndentType {
     #[default]
     Spaces,
@@ -99,9 +99,10 @@ impl FormattingMode {
 }
 
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Datex, Debug, Clone, Default, Serialize, Deserialize)]
 pub struct FormattingOptions {
     #[serde(default)]
+    #[datex(serde_infallible)]
     pub mode: FormattingMode,
     #[serde(default)]
     pub json_compat: bool,

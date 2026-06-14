@@ -229,6 +229,29 @@ derive_try_from_chain!(
         CoreValue::TypedDecimal(value) => value.to_u64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u64, value is not an integer", value))),
     }
 );
+
+// usize depending on platform
+#[cfg(target_pointer_width = "32")]
+derive_try_from_chain!(
+    usize,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U32),
+    {
+        CoreValue::TypedInteger(TypedInteger::U32(value)) => Ok(value as usize),
+        CoreValue::TypedInteger(value) => value.to_u32().map(|v| v as usize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to usize, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_u32().map(|v| v as usize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to usize, value is not an integer", value))),
+    }
+);
+#[cfg(target_pointer_width = "64")]
+derive_try_from_chain!(
+    usize,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U64),
+    {
+        CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value as usize),
+        CoreValue::TypedInteger(value) => value.to_u64().map(|v| v as usize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to usize, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_u64().map(|v| v as usize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to usize, value is not an integer", value))),
+    }
+);
+
 derive_try_from_chain!(
     i8,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I8),
@@ -265,6 +288,29 @@ derive_try_from_chain!(
         CoreValue::TypedDecimal(value) => value.to_i64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i64, value is not an integer", value))),
     }
 );
+
+// isize depending on platform
+#[cfg(target_pointer_width = "32")]
+derive_try_from_chain!(
+    isize,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::I32),
+    {
+        CoreValue::TypedInteger(TypedInteger::I32(value)) => Ok(value as isize),
+        CoreValue::TypedInteger(value) => value.to_i32().map(|v| v as isize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to isize, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_i32().map(|v| v as isize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to isize, value is not an integer", value))),
+    }
+);
+#[cfg(target_pointer_width = "64")]
+derive_try_from_chain!(
+    isize,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::I64),
+    {
+        CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value as isize),
+        CoreValue::TypedInteger(value) => value.to_i64().map(|v| v as isize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to isize, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_i64().map(|v| v as isize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to isize, value is not an integer", value))),
+    }
+);
+
 derive_try_from_chain!(
     f32,
     CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F32),
