@@ -615,6 +615,7 @@ pub fn append_statements_preamble(
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use crate::{
         assert_regular_instructions_equal,
@@ -625,6 +626,7 @@ mod tests {
             OwnedSharedContainer, SelfOwnedPointerAddress,
             SharedContainerMutability,
         },
+        values::{core_values::list::List, value::Value},
     };
     use core::assert_matches;
 
@@ -795,6 +797,59 @@ mod tests {
         assert_regular_instructions_equal!(
             &context.into_buffer(),
             [RegularInstruction::GetStackValueSharedRef(StackIndex(0))]
+        );
+    }
+
+    #[test]
+    fn local_nested() {
+        let mut provider = SelfOwnedPointerAddressProvider::default();
+        let a_shared = SharedContainer::new_owned_with_inferred_allowed_type(
+            1,
+            SharedContainerMutability::Immutable,
+            &mut provider,
+        );
+        let a_pointer_address = a_shared.pointer_address();
+        let b_shared = SharedContainer::new_owned_with_inferred_allowed_type(
+            2,
+            SharedContainerMutability::Immutable,
+            &mut provider,
+        );
+        let b_pointer_address = b_shared.pointer_address();
+        let local = ValueContainer::Local(
+            List::new(vec![
+                ValueContainer::Shared(a_shared),
+                ValueContainer::Shared(b_shared),
+            ])
+            .into(),
+        );
+        let mut context = CoreCompilationContext::new(Vec::new());
+
+        append_value_container(&mut context, local).unwrap();
+
+        assert_matches!(
+            context
+                .shared_value_tracking
+                .shared_values
+                .remove(&a_pointer_address)
+                .unwrap(),
+            (SharedContainer::Owned(_), StackIndex(0))
+        );
+        assert_matches!(
+            context
+                .shared_value_tracking
+                .shared_values
+                .remove(&b_pointer_address)
+                .unwrap(),
+            (SharedContainer::Owned(_), StackIndex(1))
+        );
+
+        assert_regular_instructions_equal!(
+            &context.into_buffer(),
+            [
+                RegularInstruction::ShortList(ListData { element_count: 2 }),
+                RegularInstruction::TakeStackValue(StackIndex(0)),
+                RegularInstruction::TakeStackValue(StackIndex(1)),
+            ]
         );
     }
 }
