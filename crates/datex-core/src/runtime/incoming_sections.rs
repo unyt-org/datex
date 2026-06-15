@@ -1,9 +1,15 @@
 use crate::{
+    core_compiler::injected_values::compile_injected_values_with_context,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
             block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
             encrypted_header::EncryptedHeader,
+            injected_values::{
+                InjectedValueDeclaration, InjectedValueType,
+                LocalInjectedValueType,
+            },
+            instruction_data::{InstructionBlockData, StackIndex},
             routing_header::RoutingHeader,
         },
     },
@@ -118,13 +124,45 @@ impl RuntimeInternal {
             "send response, context_id: {context_id:?}, receiver: {receiver_endpoint}"
         );
 
+        // @example  --> @remote
+        // @example :: (x) REQUEST_MOVE
+        // @example :: (x;)
+
+        /**
+         * @example :: (x;)
+         * --> PERFORM_MOVE $x
+         *
+         * @remote
+         * <!-- MOVE $x
+         *
+         */
         if let Ok(value) = result {
             let dxb = if let Some(value) = value {
                 let mut compilation_context =
                     CoreCompilationContext::new(vec![]);
+
+                // todo!()
+
+                // compile_injected_values_with_context
                 append_value_container(&mut compilation_context, value)
                     .expect("Failed to compile response value container");
-                todo!()
+
+                let data = vec![InjectedValueDeclaration {
+                    index: StackIndex(0),
+                    ty: InjectedValueType::Local(LocalInjectedValueType::Move),
+                }];
+
+                // compile_injected_values_with_context(
+                //     &mut compilation_context,
+                //     data,
+                //     vec![value],
+                // );
+
+                todo!(); // FIXME
+
+                // @example :: MOVE_REF $00000 (value btw: {x:1,})
+
+                compilation_context.into_buffer()
             } else {
                 vec![]
             };

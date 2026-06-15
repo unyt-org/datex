@@ -80,7 +80,7 @@ pub struct RuntimeInternal {
     execution_contexts:
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
 
-    /// list of currently owned shared values that are in the approved for moving to another endpoint
+    /// list of currently owned shared values that were approved to be transfered to another endpoint
     moving_pointers: RefCell<
         HashMap<
             Endpoint,

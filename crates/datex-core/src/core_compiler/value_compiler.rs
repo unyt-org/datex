@@ -616,7 +616,17 @@ pub fn append_statements_preamble(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_regular_instructions_equal;
+    use crate::{
+        assert_regular_instructions_equal,
+        dif::pointer_address,
+        global::protocol_structures::instruction_data::StackIndex,
+        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+        shared_values::{
+            OwnedSharedContainer, SelfOwnedPointerAddress,
+            SharedContainerMutability,
+        },
+    };
+    use core::assert_matches;
 
     #[test]
     fn compile_tagged_empty_value() {
@@ -676,7 +686,7 @@ mod tests {
             TypeDefinition::CoreType(CoreLibTypeId::Base(
                 CoreLibBaseTypeId::Integer,
             ))
-                .into(),
+            .into(),
         ));
 
         let compiled = compile_value(value).unwrap();
@@ -685,6 +695,106 @@ mod tests {
             [RegularInstruction::GetCoreLibValue(
                 CoreLibBaseTypeId::Integer.into()
             )]
+        );
+    }
+
+    #[test]
+    fn shared_value_compilation() {
+        let mut provider = SelfOwnedPointerAddressProvider::default();
+        let owned_shared =
+            SharedContainer::new_owned_with_inferred_allowed_type(
+                5,
+                SharedContainerMutability::Immutable,
+                &mut provider,
+            );
+        let pointer_address = owned_shared.pointer_address();
+        let shared_container = ValueContainer::Shared(owned_shared);
+        let mut context = CoreCompilationContext::new(Vec::new());
+
+        append_value_container(&mut context, shared_container).unwrap();
+
+        // The address should now be registered in the shared value tracking
+        assert_matches!(
+            context
+                .shared_value_tracking
+                .shared_values
+                .remove(&pointer_address)
+                .unwrap(),
+            (SharedContainer::Owned(_), StackIndex(0))
+        );
+
+        assert_regular_instructions_equal!(
+            &context.into_buffer(),
+            [RegularInstruction::TakeStackValue(StackIndex(0))]
+        );
+    }
+
+    #[test]
+    fn shared_value_nested() {
+        let mut provider = SelfOwnedPointerAddressProvider::default();
+        let inner_shared =
+            SharedContainer::new_owned_with_inferred_allowed_type(
+                5,
+                SharedContainerMutability::Mutable,
+                &mut provider,
+            );
+        let outer_shared =
+            SharedContainer::new_owned_with_inferred_allowed_type(
+                ValueContainer::Shared(SharedContainer::Referenced(
+                    inner_shared.try_derive_mutable_reference().unwrap(),
+                )),
+                SharedContainerMutability::Immutable,
+                &mut provider,
+            );
+        let outer_pointer_address = outer_shared.pointer_address();
+        let shared_container = ValueContainer::Shared(outer_shared);
+        let mut context = CoreCompilationContext::new(Vec::new());
+
+        append_value_container(&mut context, shared_container).unwrap();
+
+        assert_matches!(
+            context
+                .shared_value_tracking
+                .shared_values
+                .remove(&outer_pointer_address)
+                .unwrap(),
+            (SharedContainer::Owned(_), StackIndex(0))
+        );
+
+        assert_regular_instructions_equal!(
+            &context.into_buffer(),
+            [RegularInstruction::TakeStackValue(StackIndex(0)),]
+        );
+    }
+
+    #[test]
+    fn shared_ref() {
+        let mut provider = SelfOwnedPointerAddressProvider::default();
+        let reference = SharedContainer::new_owned_with_inferred_allowed_type(
+            5,
+            SharedContainerMutability::Immutable,
+            &mut provider,
+        )
+        .derive_immutable_reference();
+        let pointer_address = reference.pointer_address();
+        let shared_container =
+            ValueContainer::Shared(SharedContainer::Referenced(reference));
+        let mut context = CoreCompilationContext::new(Vec::new());
+
+        append_value_container(&mut context, shared_container).unwrap();
+
+        assert_matches!(
+            context
+                .shared_value_tracking
+                .shared_values
+                .remove(&pointer_address)
+                .unwrap(),
+            (SharedContainer::Referenced(_), StackIndex(0))
+        );
+
+        assert_regular_instructions_equal!(
+            &context.into_buffer(),
+            [RegularInstruction::GetStackValueSharedRef(StackIndex(0))]
         );
     }
 }
