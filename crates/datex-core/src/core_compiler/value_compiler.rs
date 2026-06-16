@@ -192,11 +192,18 @@ pub fn append_value(
     }
     let _: () = match value.inner {
         CoreValue::Type(ty) => {
-            append_regular_instruction(
-                context.cursor_mut(),
-                RegularInstruction::TypeExpression,
-            );
-            append_type(context, &ty);
+            if let Some(core_id) = ty.try_as_core_lib_type() {
+                append_get_core_lib_value(
+                    context.cursor_mut(),
+                    CoreLibId::Type(core_id),
+                );
+            } else {
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::TypeExpression,
+                );
+                append_type(context, &ty);
+            }
         }
         CoreValue::Callable(_callable) => {
             core::todo!(
