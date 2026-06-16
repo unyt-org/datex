@@ -1,6 +1,5 @@
 use crate::{prelude::*, types::type_definition::TypeDefinition};
-use core::fmt::Display;
-use core::hash::Hash;
+use core::{fmt::Display, hash::Hash};
 
 mod metadata;
 pub mod serde_dif;
@@ -12,6 +11,16 @@ pub struct TypeDefinitionWithMetadata {
     pub metadata: TypeMetadata,
 
     pub reference_name: Option<String>,
+}
+
+impl TypeDefinitionWithMetadata {
+    pub fn new(definition: TypeDefinition, metadata: TypeMetadata) -> Self {
+        Self {
+            definition,
+            metadata,
+            reference_name: None,
+        }
+    }
 }
 
 impl PartialEq for TypeDefinitionWithMetadata {
