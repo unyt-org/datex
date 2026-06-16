@@ -5,7 +5,17 @@ use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     prelude::*,
     shared_values::errors::KeyNotFoundError,
-    types::{nominal_type_definition::NominalTypeDefinition, r#type::Type},
+    types::{
+        nominal_type_definition::NominalTypeDefinition,
+        r#type::Type,
+        type_definition::{
+            collection::{
+                CollectionTypeDefinition,
+                type_definition::list::ListCollectionTypeDefinition,
+            },
+            list::ListTypeDefinition,
+        },
+    },
     values::{
         core_value::CoreValue,
         core_values::{
@@ -431,10 +441,24 @@ impl<T: DatexValueContainerProxyInfallibleSerialize>
     }
 }
 
-impl<T: DatexValueContainerProxy> DatexProxyTypes for Vec<T> {
-    fn datex_type(_memory: &mut Memory) -> Type {
+// impl<T: DatexValueContainerProxy> DatexProxyTypes for Vec<T> {
+//     fn datex_type(_memory: &mut Memory) -> Type {
+//         Type::Alias(
+//             TypeDefinition::CoreType(CoreLibBaseTypeId::List.into()).into(),
+//         )
+//     }
+// }
+
+impl<T> DatexProxyTypes for Vec<T>
+where
+    T: DatexValueContainerProxy + DatexProxyTypes,
+{
+    fn datex_type(memory: &mut Memory) -> Type {
         Type::Alias(
-            TypeDefinition::CoreType(CoreLibBaseTypeId::List.into()).into(),
+            TypeDefinition::Collection(CollectionTypeDefinition::List(
+                ListCollectionTypeDefinition(Box::new(T::datex_type(memory))),
+            ))
+            .into(),
         )
     }
 }

@@ -7,9 +7,16 @@ use crate::{
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition::{
-            TypeDefinition, callable::CallableTypeDefinition,
-            intersection::IntersectionTypeDefinition, list::ListTypeDefinition,
-            map::MapTypeDefinition, tagged_type::TaggedTypeDefinition,
+            TypeDefinition,
+            callable::CallableTypeDefinition,
+            collection::{
+                CollectionTypeDefinition,
+                type_definition::list::ListCollectionTypeDefinition,
+            },
+            intersection::IntersectionTypeDefinition,
+            list::ListTypeDefinition,
+            map::MapTypeDefinition,
+            tagged_type::TaggedTypeDefinition,
             union::UnionTypeDefinition,
         },
     },
@@ -45,6 +52,12 @@ where
         TypeDefinition::Literal(literal) => folder.fold_literal(literal),
 
         TypeDefinition::List(list) => {
+            println!("Folding list type with {} elements", list.len());
+            println!(
+                "List elements: {:?}",
+                list.iter().map(|ty| ty.to_string()).collect::<Vec<_>>()
+            );
+            panic!("xx");
             let elements = list
                 .iter()
                 .map(|element| fold_type(folder, element))
@@ -139,9 +152,13 @@ where
             todo!("Add fold_range()")
         }
 
-        TypeDefinition::Collection(collection) => {
-            todo!("Add fold_collection()")
-        }
+        TypeDefinition::Collection(collection) => match collection {
+            CollectionTypeDefinition::List(list) => {
+                let item = fold_type(folder, list.0.as_ref())?;
+                folder.fold_list_collection(list, item)
+            }
+            _ => todo!("Add fold_collection() for other collection types"),
+        },
 
         TypeDefinition::ImplType(impl_type) => {
             todo!("Add fold_impl_type()")
@@ -239,5 +256,11 @@ pub trait TypeFolder {
         &mut self,
         source: &TaggedTypeDefinition,
         payload: Option<Self::Output>,
+    ) -> Result<Self::Output, Self::Error>;
+
+    fn fold_list_collection(
+        &mut self,
+        source: &ListCollectionTypeDefinition,
+        item: Self::Output,
     ) -> Result<Self::Output, Self::Error>;
 }
