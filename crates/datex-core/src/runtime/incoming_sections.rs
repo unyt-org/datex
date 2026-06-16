@@ -144,24 +144,24 @@ impl RuntimeInternal {
                 // todo!()
 
                 // compile_injected_values_with_context
-                append_value_container(&mut compilation_context, value)
-                    .expect("Failed to compile response value container");
+                // append_value_container(&mut compilation_context, value)
+                //     .expect("Failed to compile response value container");
 
-                let data = vec![InjectedValueDeclaration {
-                    index: StackIndex(0),
-                    ty: InjectedValueType::Local(LocalInjectedValueType::Move),
-                }];
+                let injected_value_declarations =
+                    vec![InjectedValueDeclaration {
+                        index: StackIndex(0),
+                        ty: InjectedValueType::Local(
+                            LocalInjectedValueType::Move,
+                        ),
+                    }];
 
-                // compile_injected_values_with_context(
-                //     &mut compilation_context,
-                //     data,
-                //     vec![value],
-                // );
-
-                todo!(); // FIXME
+                compile_injected_values_with_context(
+                    &mut compilation_context,
+                    injected_value_declarations,
+                    vec![value],
+                );
 
                 // @example :: MOVE_REF $00000 (value btw: {x:1,})
-
                 compilation_context.into_buffer()
             } else {
                 vec![]

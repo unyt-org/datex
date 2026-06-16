@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn core_type() {
-        // We shortcut, the type compilation for aliased core types, that don't have any metadata or a custom type
+        // We shortcut the type compilation for aliased core types, that don't have any metadata or a custom type
         // to just directly return the core lib value instruction, since the execution will treat them as the same type anyway
         let ty = Type::Alias(
             TypeDefinition::CoreType(CoreLibTypeId::Base(

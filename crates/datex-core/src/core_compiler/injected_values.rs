@@ -44,18 +44,15 @@ pub fn compile_injected_values(
 
 /// Prepends injected values to an instruction block
 /// This is used for remote execution blocks and function bodies.
-///
+/// ```
 /// #stack ..= (
 ///    #0 = MOVE (1,2,34);
-///
 ///    -----
 ///    #parent = SHARED_REF 1;
 ///    #child = {p: #parent}
 ///    #parent.c = #child;
 ///    #3 = #0[1]
 ///    -----
-///
-///
 ///    [
 ///      #stack[1],
 ///       parent {
@@ -67,8 +64,8 @@ pub fn compile_injected_values(
 ///         x: 1,
 ///       }
 ///    ]
-///
 /// )
+/// ```
 pub fn compile_injected_values_with_context(
     compilation_context: &mut CoreCompilationContext,
     injected_value_declarations: Vec<InjectedValueDeclaration>,
