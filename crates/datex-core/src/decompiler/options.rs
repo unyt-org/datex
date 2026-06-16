@@ -1,12 +1,9 @@
-use serde::{Deserialize, Serialize};
 use datex_macros_internal::Datex;
 
-#[derive(Datex, Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Datex, Debug, Clone, Default)]
 pub struct DecompileOptions {
-    #[serde(default)]
     pub formatting_options: FormattingOptions,
     /// display slots with generated variable names
-    #[serde(default)]
     pub resolve_slots: bool,
 }
 
@@ -55,17 +52,14 @@ impl DecompileOptions {
     }
 }
 
-
-#[derive(Datex, Clone, Debug, Copy, Default, Serialize, Deserialize)]
+#[derive(Datex, Clone, Debug, Copy, Default)]
 pub enum IndentType {
     #[default]
     Spaces,
     Tabs,
 }
 
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[derive(Debug, Clone, Default, Datex)]
 pub enum FormattingMode {
     /// compact formatting, no unnecessary spaces or newlines
     #[default]
@@ -73,7 +67,6 @@ pub enum FormattingMode {
     /// pretty formatting with indentation and newlines
     Pretty {
         indent: usize,
-        #[serde(default)]
         indent_type: IndentType,
     },
 }
@@ -98,17 +91,11 @@ impl FormattingMode {
     }
 }
 
-
-#[derive(Datex, Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Datex, Debug, Clone, Default)]
 pub struct FormattingOptions {
-    #[serde(default)]
-    #[datex(serde_infallible)]
     pub mode: FormattingMode,
-    #[serde(default)]
     pub json_compat: bool,
-    #[serde(default)]
     pub colorized: bool,
-    #[serde(default)]
     pub add_variant_suffix: bool,
 }
 
