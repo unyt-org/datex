@@ -52,12 +52,6 @@ where
         TypeDefinition::Literal(literal) => folder.fold_literal(literal),
 
         TypeDefinition::List(list) => {
-            println!("Folding list type with {} elements", list.len());
-            println!(
-                "List elements: {:?}",
-                list.iter().map(|ty| ty.to_string()).collect::<Vec<_>>()
-            );
-            panic!("xx");
             let elements = list
                 .iter()
                 .map(|element| fold_type(folder, element))
