@@ -731,11 +731,14 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 span.clone(),
             ));
         }
+
+        variable_declaration.walk_children(self)?;
+
         variable_declaration.id = Some(self.add_new_variable(
             variable_declaration.name.clone(),
             VariableShape::Value(variable_declaration.kind),
         ));
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::SkipChildren)
     }
 
     fn visit_variable_assignment(

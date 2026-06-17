@@ -305,6 +305,7 @@ pub fn inner_execution_loop(
                         .default_regular_instruction_collection(
                             regular_instruction,
                             StatementResultCollectionStrategy::Last,
+                            state.stack.current_index()
                         );
 
                     let expr: Option<Option<RuntimeValue>> = if let Some(
@@ -680,10 +681,10 @@ pub fn inner_execution_loop(
             // handle collecting nested expressions
             while let Some(result) = collector.try_pop_collected() {
                 let expr: CollectedExecutionResult = match result {
-                    FullOrPartialResult::Full(
+                    FullOrPartialResult::Full {
                         instruction,
-                        mut collected_results,
-                    ) => {
+                        results: mut collected_results,
+                    } => {
                         match instruction {
                             Instruction::Regular(
                                 regular_instruction,
@@ -696,7 +697,7 @@ pub fn inner_execution_loop(
                                             elements,
                                         )),
                                     )
-                                    .into()
+                                        .into()
                                 }
                                 RegularInstruction::Map(_)
                                 | RegularInstruction::ShortMap(_) => {
@@ -706,7 +707,7 @@ pub fn inner_execution_loop(
                                             entries,
                                         )),
                                     )
-                                    .into()
+                                        .into()
                                 }
 
                                 RegularInstruction::KeyValueDynamic => {
@@ -736,9 +737,9 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::TaggedValue(TaggedValue {
-                                    tag: ShortTextData(tag),
-                                    is_empty
-                                }) => {
+                                                                    tag: ShortTextData(tag),
+                                                                    is_empty
+                                                                }) => {
                                     assert!(!is_empty);
 
                                     let value_container = yield_unwrap!(
@@ -748,7 +749,7 @@ pub fn inner_execution_loop(
                                     match value_container {
                                         ValueContainer::Local(mut value) => {
                                             // add tag type to the value
-                                            value.custom_type = Some(TypeDefinition::TaggedType(TaggedTypeDefinition{
+                                            value.custom_type = Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                                 tag,
                                                 ty: value.custom_type.map(Type::from).map(Box::new),
                                             }));
@@ -761,7 +762,6 @@ pub fn inner_execution_loop(
                                             );
                                         }
                                     }
-
                                 }
 
                                 RegularInstruction::Add
@@ -788,7 +788,7 @@ pub fn inner_execution_loop(
                                     RuntimeValue::ValueContainer(yield_unwrap!(
                                         res
                                     ))
-                                    .into()
+                                        .into()
                                 }
 
                                 RegularInstruction::Is
@@ -815,7 +815,7 @@ pub fn inner_execution_loop(
                                     RuntimeValue::ValueContainer(yield_unwrap!(
                                         res
                                     ))
-                                    .into()
+                                        .into()
                                 }
 
                                 RegularInstruction::Matches => {
@@ -830,8 +830,8 @@ pub fn inner_execution_loop(
                                 }
 
                                 instruction @ (
-                                    RegularInstruction::CreateShared |
-                                    RegularInstruction::CreateSharedMut
+                                RegularInstruction::CreateShared |
+                                RegularInstruction::CreateSharedMut
                                 ) => {
                                     let value = yield_unwrap!(
                                         collected_results
@@ -916,7 +916,7 @@ pub fn inner_execution_loop(
                                     RuntimeValue::ValueContainer(yield_unwrap!(
                                         yield_unwrap!(res)
                                     ))
-                                    .into()
+                                        .into()
                                 }
 
                                 RegularInstruction::TypedValue => {
@@ -938,7 +938,7 @@ pub fn inner_execution_loop(
                                     RuntimeValue::ValueContainer(
                                         value_container,
                                     )
-                                    .into()
+                                        .into()
                                 }
 
                                 // type(...)
@@ -951,13 +951,13 @@ pub fn inner_execution_loop(
                                             custom_type: None, // TODO #648: type for type
                                         }),
                                     )
-                                    .into()
+                                        .into()
                                 }
 
                                 RegularInstruction::ModifyStackValue(ModifyStackValue {
-                                    index,
-                                    operator
-                                }) => {
+                                                                         index,
+                                                                         operator
+                                                                     }) => {
                                     let slot_value = yield_unwrap!(
                                         get_stack_value(&state, index)
                                     );
@@ -996,7 +996,7 @@ pub fn inner_execution_loop(
                                         |ref_value_container| {
                                             // assignment value must be a reference
                                             if let Some(reference) = ref_value_container.maybe_shared() {
-                                                let update_data = ReplaceUpdateData {value: value_container};
+                                                let update_data = ReplaceUpdateData { value: value_container };
                                                 // TODO: pass TransceiverId
                                                 reference.base_shared_container_mut().try_replace(update_data, TransceiverId(0)).map_err(ExecutionError::UpdateError)?;
                                                 Ok(())
@@ -1014,7 +1014,6 @@ pub fn inner_execution_loop(
                                 RegularInstruction::ModifySharedContainerValue(
                                     set_shared_container_value,
                                 ) => {
-
                                     let value_container = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
@@ -1036,7 +1035,7 @@ pub fn inner_execution_loop(
                                                         &lhs,
                                                         value_container,
                                                     )?;
-                                                    ReplaceUpdateData {value: val}
+                                                    ReplaceUpdateData { value: val }
                                                 };
                                                 // TODO: pass TransceiverId
                                                 reference.base_shared_container_mut().try_replace(update_data, TransceiverId(0)).map_err(ExecutionError::UpdateError)?;
@@ -1097,7 +1096,7 @@ pub fn inner_execution_loop(
                                     RuntimeValue::ValueContainer(yield_unwrap!(
                                         yield_unwrap!(res)
                                     ))
-                                    .into()
+                                        .into()
                                 }
 
                                 RegularInstruction::GetPropertyIndex(
@@ -1120,7 +1119,7 @@ pub fn inner_execution_loop(
                                     RuntimeValue::ValueContainer(yield_unwrap!(
                                         yield_unwrap!(res)
                                     ))
-                                    .into()
+                                        .into()
                                 }
 
                                 RegularInstruction::GetPropertyDynamic => {
@@ -1140,9 +1139,8 @@ pub fn inner_execution_loop(
                                     RuntimeValue::ValueContainer(yield_unwrap!(
                                         yield_unwrap!(res)
                                     ))
-                                    .into()
+                                        .into()
                                 }
-
 
                                 RegularInstruction::TakePropertyIndex(
                                     property_data,
@@ -1157,7 +1155,7 @@ pub fn inner_execution_loop(
                                         &mut state.stack,
                                         |target| {
                                             target.try_delete_entry(
-                                                DeleteEntryUpdateData {key: ValueKey::Index(property_index as i64)},
+                                                DeleteEntryUpdateData { key: ValueKey::Index(property_index as i64) },
                                                 TransceiverId(0), // TODO
                                             )
                                         },
@@ -1167,7 +1165,6 @@ pub fn inner_execution_loop(
                                     ))
                                         .into()
                                 }
-
 
                                 RegularInstruction::SetPropertyText(
                                     property_data,
@@ -1272,13 +1269,11 @@ pub fn inner_execution_loop(
                                     if !moving_containers.is_empty() {
                                         // ensure receiver is single endpoint
                                         let maybe_single_receiver = receivers.with_collapsed_value(|v| {
-                                            if let CoreValue::Endpoint(single_receiver) = &v.inner { Some(single_receiver.clone() )}
-                                            else { None }
+                                            if let CoreValue::Endpoint(single_receiver) = &v.inner { Some(single_receiver.clone()) } else { None }
                                         });
                                         if let Some(single_receiver) = maybe_single_receiver {
                                             state.runtime.internal.add_moving_pointers(single_receiver, moving_containers);
-                                        }
-                                        else {
+                                        } else {
                                             return yield Err(ExecutionError::MoveToMultipleEndpoints)
                                         }
                                     }
@@ -1296,8 +1291,8 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::Apply(ApplyData {
-                                    ..
-                                }) => {
+                                                              ..
+                                                          }) => {
                                     let mut args = yield_unwrap!(collected_results.collect_value_container_results_assert_existing(&state));
                                     // last argument is the callee
                                     let callee = args.remove(args.len() - 1);
@@ -1309,21 +1304,25 @@ pub fn inner_execution_loop(
                                             )
                                         )
                                     )
-                                    .map(|val| {
-                                        RuntimeValue::ValueContainer(val)
-                                    })
-                                    .into()
+                                        .map(|val| {
+                                            RuntimeValue::ValueContainer(val)
+                                        })
+                                        .into()
                                 }
 
                                 RegularInstruction::UnboundedStatementsEnd(
-                                    UnboundedStatementsData {terminated},
+                                    UnboundedStatementsData { terminated },
                                 ) => {
                                     let result = yield_unwrap!(collector.try_pop_unbounded().ok_or(DXBParserError::NotInUnboundedRegularScopeError));
-                                    if let FullOrPartialResult::Partial(
-                                        _,
-                                        collected_result,
-                                    ) = result
+                                    if let FullOrPartialResult::Partial {
+                                        result: collected_result,
+                                        previous_stack_index,
+                                        ..
+                                    } = result
                                     {
+                                        // reset stack index
+                                        state.stack.truncate(previous_stack_index);
+                                        
                                         if terminated {
                                             CollectedExecutionResult::Value(
                                                 None,
@@ -1419,42 +1418,48 @@ pub fn inner_execution_loop(
                             }
                         }
                     }
-                    FullOrPartialResult::Partial(
+                    FullOrPartialResult::Partial {
                         instruction,
-                        collected_result,
-                    ) => match instruction {
-                        Instruction::Regular(regular_instruction) => {
-                            match regular_instruction {
-                                RegularInstruction::ShortStatements(
-                                    statements_data,
-                                )
-                                | RegularInstruction::Statements(
-                                    statements_data,
-                                ) => {
-                                    if statements_data.terminated {
-                                        CollectedExecutionResult::Value(None)
-                                    } else {
-                                        match collected_result {
-                                            Some(
-                                                CollectedExecutionResult::Value(
-                                                    val,
-                                                ),
-                                            ) => val.into(),
-                                            None => {
-                                                CollectedExecutionResult::Value(
-                                                    None,
-                                                )
+                        result: collected_result,
+                        previous_stack_index,
+                    } => {
+                        // reset stack index
+                        state.stack.truncate(previous_stack_index);
+                        
+                        match instruction {
+                            Instruction::Regular(regular_instruction) => {
+                                match regular_instruction {
+                                    RegularInstruction::ShortStatements(
+                                        statements_data,
+                                    )
+                                    | RegularInstruction::Statements(
+                                        statements_data,
+                                    ) => {
+                                        if statements_data.terminated {
+                                            CollectedExecutionResult::Value(None)
+                                        } else {
+                                            match collected_result {
+                                                Some(
+                                                    CollectedExecutionResult::Value(
+                                                        val,
+                                                    ),
+                                                ) => val.into(),
+                                                None => {
+                                                    CollectedExecutionResult::Value(
+                                                        None,
+                                                    )
+                                                }
+                                                _ => unreachable!(), // statements always resolve to values
                                             }
-                                            _ => unreachable!(), // statements always resolve to values
                                         }
                                     }
+                                    _ => unreachable!(),
                                 }
-                                _ => unreachable!(),
                             }
-                        }
 
-                        Instruction::Type(_data) => unreachable!(),
-                    },
+                            Instruction::Type(_data) => unreachable!(),
+                        }
+                    }
                 };
 
                 // info!("{} | {} >>> {:#?}", state.runtime_internal.endpoint,instruction_copy, expr);

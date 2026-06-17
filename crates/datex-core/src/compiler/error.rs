@@ -1,7 +1,7 @@
 use crate::{
     ast::expressions::DatexExpression,
     compiler::precompiler::precompiled_ast::RichAst,
-    core_compiler::value_compiler::SharedValueCompilationError,
+    core_compiler::value_compiler::InjectedValueValidationError,
     parser::errors::{ParserError, SpannedParserError},
     type_inference::error::{DetailedTypeErrors, SpannedTypeError},
 };
@@ -44,16 +44,16 @@ pub enum CompilerError {
     InvalidConversionFromRefToOwnedValue,
 }
 
-impl From<SharedValueCompilationError> for CompilerError {
-    fn from(error: SharedValueCompilationError) -> CompilerError {
+impl From<InjectedValueValidationError> for CompilerError {
+    fn from(error: InjectedValueValidationError) -> CompilerError {
         match error {
-            SharedValueCompilationError::ExpectedOwnedSharedValue => {
+            InjectedValueValidationError::ExpectedOwnedSharedValue => {
                 CompilerError::ExpectedOwnedSharedValue
             }
-            SharedValueCompilationError::ExpectedSharedValue => {
+            InjectedValueValidationError::ExpectedSharedValue => {
                 CompilerError::ExpectedReferencedSharedValue
             }
-            SharedValueCompilationError::ExpectedLocalValue => {
+            InjectedValueValidationError::ExpectedLocalValue => {
                 CompilerError::ExpectedLocalValue
             }
         }

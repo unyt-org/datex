@@ -47,22 +47,22 @@ use crate::{
 };
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SharedValueCompilationError {
+pub enum InjectedValueValidationError {
     ExpectedOwnedSharedValue,
     ExpectedSharedValue,
     ExpectedLocalValue,
 }
 
-impl From<SharedValueCompilationError> for ExecutionError {
-    fn from(error: SharedValueCompilationError) -> ExecutionError {
+impl From<InjectedValueValidationError> for ExecutionError {
+    fn from(error: InjectedValueValidationError) -> ExecutionError {
         match error {
-            SharedValueCompilationError::ExpectedOwnedSharedValue => {
+            InjectedValueValidationError::ExpectedOwnedSharedValue => {
                 ExecutionError::ExpectedOwnedSharedValue
             }
-            SharedValueCompilationError::ExpectedSharedValue => {
+            InjectedValueValidationError::ExpectedSharedValue => {
                 ExecutionError::ExpectedSharedValue
             }
-            SharedValueCompilationError::ExpectedLocalValue => {
+            InjectedValueValidationError::ExpectedLocalValue => {
                 ExecutionError::ExpectedLocalValue
             }
         }
@@ -74,7 +74,7 @@ impl From<SharedValueCompilationError> for ExecutionError {
 /// For shared values, a reference with maximum mutability is serialized (no move)
 pub fn compile_value_container(
     value_container: ValueContainer,
-) -> Result<Vec<u8>, SharedValueCompilationError> {
+) -> Result<Vec<u8>, InjectedValueValidationError> {
     let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
     append_value_container(&mut context, value_container)?;
 
@@ -83,7 +83,7 @@ pub fn compile_value_container(
 
 pub fn compile_value(
     value_container: Value,
-) -> Result<Vec<u8>, SharedValueCompilationError> {
+) -> Result<Vec<u8>, InjectedValueValidationError> {
     let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
     append_value(&mut context, value_container)?;
 
@@ -96,7 +96,7 @@ pub fn compile_value(
 pub fn append_value_container(
     context: &mut CoreCompilationContext,
     value_container: ValueContainer,
-) -> Result<(), SharedValueCompilationError> {
+) -> Result<(), InjectedValueValidationError> {
     match value_container {
         ValueContainer::Local(value) => append_value(context, value),
         ValueContainer::Shared(reference) => {
@@ -148,7 +148,7 @@ pub fn append_local_pointer_address(
 pub fn append_value(
     context: &mut CoreCompilationContext,
     value: Value,
-) -> Result<(), SharedValueCompilationError> {
+) -> Result<(), InjectedValueValidationError> {
     // append non-default type information
     if let Some(custom_type) = &value.custom_type {
         // special case: tagged value with default type, no type cast needed
@@ -313,7 +313,7 @@ pub fn append_core_type_cast(
 pub fn append_type_cast(
     context: &mut CoreCompilationContext,
     ty: &TypeDefinition,
-) -> Result<(), SharedValueCompilationError> {
+) -> Result<(), InjectedValueValidationError> {
     append_regular_instruction(
         context.cursor_mut(),
         RegularInstruction::TypedValue,
@@ -519,7 +519,7 @@ pub fn append_key_value_pair(
     context: &mut CoreCompilationContext,
     key: ValueContainer,
     value: ValueContainer,
-) -> Result<(), SharedValueCompilationError> {
+) -> Result<(), InjectedValueValidationError> {
     // insert key
     match key {
         // if text, append_key_string, else dynamic
@@ -729,12 +729,12 @@ mod tests {
                 .shared_values
                 .remove(&pointer_address)
                 .unwrap(),
-            (SharedContainer::Owned(_), StackIndex(0))
+            (SharedContainer::Owned(_), StackIndex(1))
         );
 
         assert_regular_instructions_equal!(
             &context.into_buffer(),
-            [RegularInstruction::TakeStackValue(StackIndex(0))]
+            [RegularInstruction::TakeStackValue(StackIndex(1))]
         );
     }
 
@@ -767,12 +767,12 @@ mod tests {
                 .shared_values
                 .remove(&outer_pointer_address)
                 .unwrap(),
-            (SharedContainer::Owned(_), StackIndex(0))
+            (SharedContainer::Owned(_), StackIndex(1))
         );
 
         assert_regular_instructions_equal!(
             &context.into_buffer(),
-            [RegularInstruction::TakeStackValue(StackIndex(0)),]
+            [RegularInstruction::TakeStackValue(StackIndex(1)),]
         );
     }
 
@@ -798,12 +798,12 @@ mod tests {
                 .shared_values
                 .remove(&pointer_address)
                 .unwrap(),
-            (SharedContainer::Referenced(_), StackIndex(0))
+            (SharedContainer::Referenced(_), StackIndex(1))
         );
 
         assert_regular_instructions_equal!(
             &context.into_buffer(),
-            [RegularInstruction::GetStackValueSharedRef(StackIndex(0))]
+            [RegularInstruction::GetStackValueSharedRef(StackIndex(1))]
         );
     }
 
@@ -839,7 +839,7 @@ mod tests {
                 .shared_values
                 .remove(&a_pointer_address)
                 .unwrap(),
-            (SharedContainer::Owned(_), StackIndex(0))
+            (SharedContainer::Owned(_), StackIndex(1))
         );
         assert_matches!(
             context
@@ -847,15 +847,15 @@ mod tests {
                 .shared_values
                 .remove(&b_pointer_address)
                 .unwrap(),
-            (SharedContainer::Owned(_), StackIndex(1))
+            (SharedContainer::Owned(_), StackIndex(2))
         );
 
         assert_regular_instructions_equal!(
             &context.into_buffer(),
             [
                 RegularInstruction::ShortList(ListData { element_count: 2 }),
-                RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
+                RegularInstruction::TakeStackValue(StackIndex(2)),
             ]
         );
     }

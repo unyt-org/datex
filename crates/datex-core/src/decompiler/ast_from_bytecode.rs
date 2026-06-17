@@ -136,6 +136,7 @@ pub fn ast_from_bytecode(
                     .default_regular_instruction_collection(
                         regular_instruction,
                         StatementResultCollectionStrategy::Full,
+                        StackIndex(0), // stack index not needed since there is no stack to keep track of
                     );
 
                 let expr = regular_instruction.map(|regular_instruction|
@@ -463,10 +464,10 @@ pub fn ast_from_bytecode(
         // handle collecting nested expressions
         while let Some(result) = collector.try_pop_collected() {
             match result {
-                FullOrPartialResult::Full(
+                FullOrPartialResult::Full {
                     instruction,
-                    mut collected_results,
-                ) => {
+                    results: mut collected_results,
+                } => {
                     let expr: CollectedAstResult = match instruction {
                         Instruction::Regular(
                             regular_instruction,
@@ -618,7 +619,7 @@ pub fn ast_from_bytecode(
                                 UnboundedStatementsData {terminated},
                             ) => {
                                 let result = collector.try_pop_unbounded().ok_or(DXBParserError::NotInUnboundedRegularScopeError)?;
-                                if let FullOrPartialResult::Full(_, results) =
+                                if let FullOrPartialResult::Full {results, ..} =
                                     result
                                 {
                                     DatexExpressionData::Statements(

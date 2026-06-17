@@ -6,6 +6,7 @@ use crate::{
     },
     prelude::*,
 };
+use crate::global::protocol_structures::instruction_data::StackIndex;
 
 pub trait CollectionResultsPopper<
     Result,
@@ -149,8 +150,17 @@ pub enum ResultCollector<T> {
 }
 
 pub enum FullOrPartialResult<T> {
-    Full(Instruction, CollectedResults<T>),
-    Partial(Instruction, Option<T>),
+    Full {
+        instruction: Instruction,
+        results: CollectedResults<T>
+    },
+    Partial {
+        instruction: Instruction,
+        result: Option<T>,
+        /// The stack index (size) before entering the instruction (normally Statements instruction) that
+        /// produced this result. This is used to correctly clean up the stack at the end of a statements block.
+        previous_stack_index: StackIndex,
+    },
 }
 
 #[derive(Debug)]
@@ -166,6 +176,10 @@ pub struct LastResultCollector<T> {
     expected_count: u32,
     collected_count: u32,
     last_result: Option<T>,
+    /// The stack index (size) before entering the instruction (normally Statements instruction) that
+    /// produced this result. This is used to correctly clean up the stack at the end of a statements block.
+    previous_stack_index: StackIndex,
+
 }
 
 #[derive(Debug)]
@@ -178,6 +192,9 @@ pub struct FullUnboundedResultCollector<T> {
 pub struct LastUnboundedResultCollector<T> {
     instruction: Option<Instruction>,
     pub(crate) last_result: Option<T>,
+    /// The stack index (size) before entering the instruction (normally Statements instruction) that
+    /// produced this result. This is used to correctly clean up the stack at the end of a statements block.
+    previous_stack_index: StackIndex,
 }
 
 impl<T> ResultCollector<T> {
@@ -223,10 +240,10 @@ impl<T> ResultCollector<T> {
                 if collector.collected_results.get_results().len() as u32
                     == collector.expected_count
                 {
-                    Some(FullOrPartialResult::Full(
-                        collector.instruction.take().unwrap(),
-                        core::mem::take(&mut collector.collected_results),
-                    ))
+                    Some(FullOrPartialResult::Full {
+                        instruction: collector.instruction.take().unwrap(),
+                        results: core::mem::take( & mut collector.collected_results)
+                    })
                 } else if collector.collected_results.get_results().len() as u32
                     > collector.expected_count
                 {
@@ -239,10 +256,11 @@ impl<T> ResultCollector<T> {
             }
             ResultCollector::Last(collector) => {
                 if collector.collected_count == collector.expected_count {
-                    Some(FullOrPartialResult::Partial(
-                        collector.instruction.take().unwrap(),
-                        collector.last_result.take(),
-                    ))
+                    Some(FullOrPartialResult::Partial {
+                        instruction: collector.instruction.take().unwrap(),
+                        result: collector.last_result.take(),
+                        previous_stack_index: collector.previous_stack_index,
+                    })
                 } else if collector.collected_count > collector.expected_count {
                     panic!(
                         "Collected more results than expected for the last instruction"
@@ -260,16 +278,17 @@ impl<T> ResultCollector<T> {
     pub fn try_pop_unbounded(&mut self) -> Option<FullOrPartialResult<T>> {
         match self {
             ResultCollector::LastUnbounded(collector) => {
-                Some(FullOrPartialResult::Partial(
-                    collector.instruction.take().unwrap(),
-                    collector.last_result.take(),
-                ))
+                Some(FullOrPartialResult::Partial {
+                    instruction: collector.instruction.take().unwrap(),
+                    result: collector.last_result.take(),
+                    previous_stack_index: collector.previous_stack_index,
+                })
             }
             ResultCollector::FullUnbounded(collector) => {
-                Some(FullOrPartialResult::Full(
-                    collector.instruction.take().unwrap(),
-                    core::mem::take(&mut collector.collected_results),
-                ))
+                Some(FullOrPartialResult::Full {
+                    instruction: collector.instruction.take().unwrap(),
+                    results: core::mem::take( & mut collector.collected_results),
+                })
             }
             _ => None,
         }
@@ -316,6 +335,7 @@ impl<T> InstructionCollector<T> {
         &mut self,
         instruction: Instruction,
         expected_count: u32,
+        current_stack_index: StackIndex,
     ) {
         self.result_collectors.push(ResultCollector::Last(
             LastResultCollector {
@@ -323,6 +343,7 @@ impl<T> InstructionCollector<T> {
                 expected_count,
                 collected_count: 0,
                 last_result: None,
+                previous_stack_index: current_stack_index,
             },
         ));
     }
@@ -336,11 +357,16 @@ impl<T> InstructionCollector<T> {
         ));
     }
 
-    pub fn collect_last_unbounded(&mut self, instruction: Instruction) {
+    pub fn collect_last_unbounded(
+        &mut self, 
+        instruction: Instruction,
+        current_stack_index: StackIndex,
+    ) {
         self.result_collectors.push(ResultCollector::LastUnbounded(
             LastUnboundedResultCollector {
                 instruction: Some(instruction),
                 last_result: None,
+                previous_stack_index: current_stack_index,
             },
         ));
     }
@@ -391,6 +417,7 @@ impl<T> InstructionCollector<T> {
         &mut self,
         regular_instruction: RegularInstruction,
         statement_result_collection_strategy: StatementResultCollectionStrategy,
+        current_stack_index: StackIndex,
     ) -> Option<RegularInstruction> {
         let next_expected_instructions =
             regular_instruction.get_next_expected_instructions();
@@ -409,6 +436,7 @@ impl<T> InstructionCollector<T> {
                     self.collect_last(
                         Instruction::Regular(regular_instruction),
                         regular_count,
+                        current_stack_index,
                     );
                 }
                 // normal collect
@@ -445,9 +473,10 @@ impl<T> InstructionCollector<T> {
                         ));
                     }
                     StatementResultCollectionStrategy::Last => {
-                        self.collect_last_unbounded(Instruction::Regular(
-                            regular_instruction,
-                        ));
+                        self.collect_last_unbounded(
+                            Instruction::Regular(regular_instruction), 
+                            current_stack_index
+                        );
                     }
                 }
                 None

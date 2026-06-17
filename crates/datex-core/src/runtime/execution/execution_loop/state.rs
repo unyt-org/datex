@@ -91,6 +91,24 @@ impl RuntimeExecutionStack {
         self.values.extend(values.into_iter().map(Some));
     }
 
+    /// Returns the current index for the next value to be pushed to the stack, which is the length of the current stack values.
+    pub(crate) fn current_index(&self) -> StackIndex {
+        StackIndex(self.values.len() as u32)
+    }
+
+    /// Frees the stack to the given index, removing all values above that index. If the index is out of bounds, it panics.
+    pub(crate) fn truncate(&mut self, index: StackIndex) {
+        if index.0 as usize > self.values.len() {
+            panic!(
+                "Cannot free stack to index {:?} as it is out of bounds (current stack size: {})",
+                index,
+                self.values.len()
+            );
+        }
+        self.values.truncate(index.0 as usize);
+    }
+
+
     /// Takes a stack value by its index and returns its value.
     /// If the stack value is not allocated or the index is out of bounds, it returns an error.
     pub(crate) fn take_stack_value(

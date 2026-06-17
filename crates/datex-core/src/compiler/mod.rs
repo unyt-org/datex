@@ -1023,7 +1023,6 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
 
             // push to stack
-            let stack_index = scope.get_next_stack_index();
             compilation_context
                 .append_instruction_code(InstructionCode::PUSH_TO_STACK);
             // compile expression
@@ -1033,6 +1032,8 @@ fn compile_expression(
                 CompileMetadata::default(),
                 scope,
             )?;
+
+            let stack_index = scope.get_next_stack_index();
 
             let variable_model =
                 VariableModel::infer_from_ast_metadata_and_type(
@@ -1593,6 +1594,7 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+    use crate::global::protocol_structures::instruction_data::ListData;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
@@ -3641,5 +3643,66 @@ pub mod tests {
             0,
         ];
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn variable_shadowing() {
+        let datex_script = "var x = 42u8; (var x = 43u8;); (var y = 43u8; y); x";
+        let result = compile_and_log(datex_script);
+        assert_regular_instructions_equal!(
+            &result,
+            [
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 4,
+                    terminated: false
+                }),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(42)),
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 1,
+                    terminated: true
+                }),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(43)),
+                 RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 2,
+                    terminated: false
+                }),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(43)),
+                RegularInstruction::TakeStackValue(StackIndex(1)),
+                RegularInstruction::TakeStackValue(StackIndex(0))
+            ]
+        );
+    }
+
+    #[test]
+    fn variable_shadowing_2() {
+        let datex_script = "var x = 1u8; var y = (var x = 2u8; x); [x, y]";
+        let result = compile_and_log(datex_script);
+        assert_regular_instructions_equal!(
+            &result,
+            [
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 3,
+                    terminated: false
+                }),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(1)),
+                RegularInstruction::PushToStack,
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 2,
+                    terminated: false
+                }),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(2)),
+                RegularInstruction::TakeStackValue(StackIndex(1)),
+                RegularInstruction::ShortList(ListData {
+                    element_count: 2,
+                }),
+                RegularInstruction::TakeStackValue(StackIndex(0)),
+                RegularInstruction::TakeStackValue(StackIndex(1)),
+            ]
+        )
     }
 }

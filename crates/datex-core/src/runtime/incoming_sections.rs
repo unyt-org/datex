@@ -1,5 +1,4 @@
 use crate::{
-    core_compiler::injected_values::compile_injected_values_with_context,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -24,6 +23,8 @@ use crate::{
 };
 use core::result::Result;
 use log::info;
+use crate::compiler::compile_block;
+use crate::core_compiler::value_compiler::compile_value_container;
 
 impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
@@ -143,19 +144,23 @@ impl RuntimeInternal {
                 // append_value_container(&mut compilation_context, value)
                 //     .expect("Failed to compile response value container");
 
-                let injected_value_declarations =
-                    vec![InjectedValueDeclaration {
-                        index: StackIndex(0),
-                        ty: InjectedValueType::Local(
-                            LocalInjectedValueType::Move,
-                        ),
-                    }];
+                // let injected_value_declarations =
+                //     vec![InjectedValueDeclaration {
+                //         index: StackIndex(0),
+                //         ty: InjectedValueType::Local(
+                //             LocalInjectedValueType::Move,
+                //         ),
+                //     }];
+                //
+                // compile_injected_values_with_context(
+                //     &mut compilation_context,
+                //     injected_value_declarations,
+                //     vec![value],
+                // );
+                //
+                // // datex("?", ValueContainer())
 
-                compile_injected_values_with_context(
-                    &mut compilation_context,
-                    injected_value_declarations,
-                    vec![value],
-                );
+                // TODO: compile_value_conatiner()
 
                 // @example :: MOVE_REF $00000 (value btw: {x:1,})
                 compilation_context.into_buffer()
