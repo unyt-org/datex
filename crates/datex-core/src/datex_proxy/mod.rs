@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[cfg(feature = "decompiler")]
-use crate::decompiler::{decompile_value, DecompileOptions};
+use crate::decompiler::{DecompileOptions, decompile_value};
 
 #[derive(Debug, Clone)]
 pub struct TryFromDatexValueError(pub String);
@@ -187,10 +187,17 @@ pub trait DatexValueContainerProxySerialize {
     ) -> Result<ValueContainer, TryToDatexValueError>;
 
     #[cfg(feature = "decompiler")]
-    fn try_to_datex_string(self, decompile_options: DecompileOptions) -> Result<String, TryToDatexValueError> where Self: Sized {
-        Ok(
-            decompile_value(&self.try_to_value_container()?, decompile_options)
-        )
+    fn try_to_datex_string(
+        self,
+        decompile_options: DecompileOptions,
+    ) -> Result<String, TryToDatexValueError>
+    where
+        Self: Sized,
+    {
+        Ok(decompile_value(
+            &self.try_to_value_container()?,
+            decompile_options,
+        ))
     }
 }
 
@@ -205,7 +212,10 @@ pub trait DatexValueContainerProxyInfallibleSerialize {
     fn to_value_container(self) -> ValueContainer;
 
     #[cfg(feature = "decompiler")]
-    fn to_datex_string(self, decompile_options: DecompileOptions) -> String where Self: Sized {
+    fn to_datex_string(self, decompile_options: DecompileOptions) -> String
+    where
+        Self: Sized,
+    {
         decompile_value(&self.to_value_container(), decompile_options)
     }
 }

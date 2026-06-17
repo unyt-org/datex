@@ -10,7 +10,7 @@ use alloc::format;
 use core::fmt;
 use serde::{
     Deserializer, Serializer,
-    de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
+    de::{DeserializeSeed, SeqAccess, Visitor},
     ser::{SerializeSeq, SerializeStruct},
 };
 

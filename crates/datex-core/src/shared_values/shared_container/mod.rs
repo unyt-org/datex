@@ -17,7 +17,6 @@ use crate::{
         apply::Apply, identity::Identity, structural_eq::StructuralEq,
         value_eq::ValueEq,
     },
-    types::r#type::Type,
     values::{
         value::Value,
         value_container::{ValueContainer, value_key::BorrowedValueKey},

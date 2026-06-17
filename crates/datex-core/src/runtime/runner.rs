@@ -9,7 +9,6 @@ use crate::{
     },
     time::now_ms,
     utils::task_manager::TaskManager,
-    values::core_values::endpoint::Endpoint,
 };
 use async_select::select;
 use core::{cell::RefCell, pin::Pin};

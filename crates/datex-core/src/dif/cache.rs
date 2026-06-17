@@ -180,6 +180,6 @@ impl DIFSharedContainerCache {
     ) -> bool {
         self.values
             .get(pointer_address)
-            .map_or(false, |container| container.ownership() >= ownership)
+            .is_some_and(|container| container.ownership() >= ownership)
     }
 }

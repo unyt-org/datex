@@ -1,9 +1,6 @@
 use crate::{
     shared_values::SharedContainerMutability,
-    types::{
-        type_definition::TypeDefinition,
-        type_definition_with_metadata::LocalOwnership,
-    },
+    types::type_definition_with_metadata::LocalOwnership,
 };
 
 use crate::{
@@ -13,7 +10,6 @@ use crate::{
     },
 };
 use modular_bitfield::Specifier;
-use num_enum::TryFromPrimitive;
 use strum::Display;
 
 #[derive(Clone, Debug, PartialEq, Display, Specifier)]

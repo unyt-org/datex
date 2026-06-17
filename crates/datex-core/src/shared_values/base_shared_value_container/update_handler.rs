@@ -23,7 +23,7 @@ impl UpdateHandler for BaseSharedValueContainer {
         self.assert_can_mutate()?;
         // set new value container
         // TODO: type check?
-        let update_data =
+        let _update_data =
             UpdateData::Replace(data.clone()).with_source(source_id);
         let prev = core::mem::replace(&mut self.value_container, data.value);
 
@@ -49,7 +49,7 @@ impl UpdateHandler for BaseSharedValueContainer {
         self.assert_can_mutate()?;
         let previous =
             self.value_container.try_delete_entry(data, source_id)?;
-        
+
         Ok(previous)
     }
 

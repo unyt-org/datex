@@ -78,6 +78,11 @@ impl Type {
         Type::Alias(TypeDefinition::core(id).into())
     }
 
+    /// Checks if the type is a simple alias to a core library type with default local metadata
+    pub fn is_core_lib_type(&self) -> bool {
+        self.try_as_core_lib_type().is_some()
+    }
+
     /// Collapses nominal type definitions to their underlying type definitions with metadata
     pub fn with_collapsed_definition_with_metadata<R>(
         &self,

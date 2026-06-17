@@ -300,7 +300,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
 
     let into_datex_fields_inner = match fields_type {
         FieldsType::Named => quote! {
-            Value::from(Map::from(vec![
+            Value::from(Map::StructuralWithStringKeys(vec![
                 #(#into_datex_fields),*
             ]))
         },
@@ -419,7 +419,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             FieldsType::Named => quote! {
                 #ident::#variant_ident {..} => {
                     let value: #helper_struct_ident = value.into();
-                    let map = Map::from(vec![
+                    let map = Map::StructuralWithStringKeys(vec![
                         #(#into_datex_fields),*
                     ]);
                     Value {
@@ -745,7 +745,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                         #field_into
                     )
                 });
-                if (field_names.contains(&field_name)) {
+                if field_names.contains(&field_name) {
                     // This can happen, if the user makes invalid use of #[datex(rename = "whatever")]
                     panic!(
                         "Duplicate field name after renaming: {}",

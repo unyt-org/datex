@@ -3,18 +3,9 @@ use crate::{
         core_compilation_context::{ByteCursor, CoreCompilationContext},
         to_instructions::ToInstructions,
     },
-    global::{
-        protocol_structures::{
-            type_instructions::TypeInstruction,
-        },
-    },
-    libs::core::core_lib_id::CoreLibIdIndex,
+    global::protocol_structures::type_instructions::TypeInstruction,
     prelude::*,
-    shared_values::ReferenceMutability,
-    types::{
-        r#type::Type,
-    },
-    utils::buffers::append_u8,
+    types::r#type::Type,
 };
 use binrw::{BinWrite, io::Write};
 pub mod type_to_instructions;
@@ -31,7 +22,6 @@ pub fn append_type_instruction(
 pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
     let instructions = ty
         .to_instructions(&mut context.shared_value_tracking)
-        .into_iter()
         .collect::<Vec<_>>();
     for instruction in instructions {
         append_type_instruction(&mut context.cursor, instruction);
@@ -84,19 +74,32 @@ pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
 
 #[cfg(test)]
 mod tests {
+    use binrw::BinRead;
+
     use crate::{
         assert_instructions_equal,
-        core_compiler::value_compiler::compile_value,
+        core_compiler::{
+            core_compilation_context::ByteCursor,
+            shared_value_tracking::SharedValueTracking,
+            to_instructions::ToInstructions, value_compiler::compile_value,
+        },
         global::protocol_structures::{
             instructions::Instruction,
             regular_instructions::RegularInstruction,
             type_instructions::TypeInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-        types::{r#type::Type, type_definition::TypeDefinition},
+        prelude::*,
+        types::{
+            r#type::Type,
+            type_definition::TypeDefinition,
+            type_definition_with_metadata::{
+                LocalMutability, LocalOwnership, TypeDefinitionWithMetadata,
+                TypeMetadata,
+            },
+        },
         values::{core_value::CoreValue, value::Value},
     };
-    use crate::prelude::*;
 
     fn assert_type_instructions(
         ty: Type,
@@ -113,22 +116,66 @@ mod tests {
             inner: CoreValue::Type(ty),
         })
         .expect("Failed to compile type");
-        
+
         assert_instructions_equal!(&compiled, vec)
     }
 
+    fn assert_regular_instructions_equal(
+        val: Value,
+        expected_instructions: Vec<RegularInstruction>,
+    ) {
+        let compiled = compile_value(val).expect("Failed to compile value");
+        let mut cursor = ByteCursor::new(compiled.to_vec());
+        for expected in expected_instructions {
+            let instruction = RegularInstruction::read(&mut cursor).unwrap();
+            assert_eq!(instruction, expected);
+        }
+    }
+
     #[test]
-    fn type_definition_core() {
+    fn type_definition_with_metadata() {
+        let ty = Type::Alias(TypeDefinitionWithMetadata::new(
+            TypeDefinition::CoreType(CoreLibTypeId::Base(
+                CoreLibBaseTypeId::Boolean,
+            )),
+            TypeMetadata::Local {
+                mutability: LocalMutability::Mutable,
+                ownership: LocalOwnership::Owned,
+            },
+        ));
+        assert_type_instructions(
+            ty,
+            vec![
+                TypeInstruction::TypeDefinitionWithMetadata(
+                    TypeMetadata::Local {
+                        mutability: LocalMutability::Mutable,
+                        ownership: LocalOwnership::Owned,
+                    },
+                ),
+                TypeInstruction::TypeDefinitionCoreType(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Boolean,
+                )),
+            ],
+        );
+    }
+
+    #[test]
+    fn core_type() {
+        // We shortcut the type compilation for aliased core types, that don't have any metadata or a custom type
+        // to just directly return the core lib value instruction, since the execution will treat them as the same type anyway
         let ty = Type::Alias(
             TypeDefinition::CoreType(CoreLibTypeId::Base(
                 CoreLibBaseTypeId::Boolean,
             ))
             .into(),
         );
-        assert_type_instructions(
-            ty,
-            vec![TypeInstruction::TypeDefinitionCoreType(
-                CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean),
+        assert_regular_instructions_equal(
+            Value {
+                custom_type: None,
+                inner: CoreValue::Type(ty),
+            },
+            vec![RegularInstruction::GetCoreLibValue(
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean).into(),
             )],
         );
     }

@@ -13,9 +13,11 @@ use crate::{
     },
     types::r#type::Type,
     values::core_values::{
+        boolean::Boolean,
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
         integer::{Integer, typed_integer::TypedInteger},
+        text::Text,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
@@ -26,8 +28,6 @@ use realhydroper_lsp::lsp_types::{
     MessageType, Position, Range, TextDocumentPositionParams,
 };
 use url::Url;
-use crate::values::core_values::boolean::Boolean;
-use crate::values::core_values::text::Text;
 
 impl LanguageServerBackend {
     pub async fn update_file_contents(&self, url: Url, content: String) {

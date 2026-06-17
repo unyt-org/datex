@@ -554,11 +554,10 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         property_assignment.walk_children(self)?;
 
         // if base is a variable access, change access type to Borrow
-        match &mut property_assignment.base.data {
-            DatexExpressionData::VariableAccess(variable_access) => {
-                variable_access.access_type = ValueAccessType::Borrow;
-            }
-            _ => {}
+        if let DatexExpressionData::VariableAccess(variable_access) =
+            &mut property_assignment.base.data
+        {
+            variable_access.access_type = ValueAccessType::Borrow;
         }
         Ok(VisitAction::SkipChildren)
     }
@@ -573,11 +572,10 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         match &mut create_ref.expression.data {
             // for &(x.y), access to x should be a borrow access
             DatexExpressionData::PropertyAccess(property_access) => {
-                match &mut property_access.base.data {
-                    DatexExpressionData::VariableAccess(variable_access) => {
-                        variable_access.access_type = ValueAccessType::Borrow;
-                    }
-                    _ => {}
+                if let DatexExpressionData::VariableAccess(variable_access) =
+                    &mut property_access.base.data
+                {
+                    variable_access.access_type = ValueAccessType::Borrow;
                 }
             }
             // for &x, access to x should be a borrow access
@@ -1035,7 +1033,8 @@ mod tests {
         ast::{
             self,
             expressions::{
-                CreateShared, Map, PropertyAccess, PropertyAssignment,
+                CreateShared, GetRef, GetSharedRef, Map, PropertyAccess,
+                PropertyAssignment, RequestSharedRef, Unbox,
             },
             resolved_variable::ResolvedVariable,
             type_expressions::{StructuralMap, TypeExpressionData},

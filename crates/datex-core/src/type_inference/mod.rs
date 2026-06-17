@@ -647,7 +647,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             self.infer_expression(&mut create_shared.expression)?;
 
         mark_type(inner_type.box_with_metadata(TypeMetadata::Shared {
-            mutability: create_shared.mutability.clone(),
+            mutability: create_shared.mutability,
             ownership: SharedContainerOwnership::Owned,
         }))
     }
@@ -1360,7 +1360,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 variant_type_id_from_pointer_address(addr, variant_access, span)
             }
             ResolvedVariable::CoreLibId(core_lib_id) => {
-                variant_type_id(core_lib_id.clone(), variant_access, span)
+                variant_type_id(*core_lib_id, variant_access, span)
             }
         }
     }

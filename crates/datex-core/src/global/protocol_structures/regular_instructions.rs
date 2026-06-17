@@ -988,7 +988,7 @@ impl RegularInstruction {
                 write!(string, "{}", address.0)
             }
             RegularInstruction::ModifySharedContainerValue(set_shared_container_value) => {
-                write!(string, "{}", set_shared_container_value.operator.to_string())
+                write!(string, "{}", set_shared_container_value.operator)
             }
             RegularInstruction::RequestRemoteSharedRef(address) => {
                 write!(

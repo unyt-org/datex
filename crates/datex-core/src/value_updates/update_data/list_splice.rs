@@ -1,7 +1,7 @@
 use core::fmt;
 
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::serde_context::SerdeContext, prelude::*,
     utils::serde_serialize_seed::ValueWithSeed,
     values::value_container::ValueContainer,
 };
@@ -9,7 +9,6 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
-use crate::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ListSpliceUpdateData {

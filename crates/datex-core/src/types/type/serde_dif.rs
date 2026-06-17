@@ -1,9 +1,6 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    libs::core::{
-        core_lib_id::CoreLibIdIndex,
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-    },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
     prelude::*,
     shared_values::SharedContainer,
     types::{

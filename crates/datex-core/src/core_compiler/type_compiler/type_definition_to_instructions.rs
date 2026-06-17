@@ -5,10 +5,11 @@ use crate::{
     },
     global::protocol_structures::{
         instruction_data::{
-            ImplTypeData, ListData, MapData, RawPointerAddress, TypeMetadataBin,
+            ImplTypeData, ListData, MapData, RawPointerAddress,
         },
         type_instructions::TypeInstruction,
     },
+    prelude::*,
     types::{
         type_definition::{
             TypeDefinition,
@@ -28,7 +29,6 @@ use crate::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
-use crate::prelude::*;
 
 impl<'a> ToInstructions<'a> for TypeDefinitionWithMetadata {
     type InstructionType = TypeInstruction;
@@ -38,9 +38,7 @@ impl<'a> ToInstructions<'a> for TypeDefinitionWithMetadata {
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            yield TypeInstruction::TypeDefinitionWithMetadata(
-                self.metadata.clone(),
-            );
+            yield TypeInstruction::TypeDefinitionWithMetadata(self.metadata);
             for instruction in
                 self.definition.to_instructions(shared_value_tracking)
             {
@@ -99,7 +97,7 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
                         yield instruction;
                     }
                 }
-                TypeDefinition::Shared(shared_container_containing_type) => {
+                TypeDefinition::Shared(_shared_container_containing_type) => {
                     todo!()
                     // for instruction in
                     //     shared_container_containing_type.to_instructions(shared_value_tracking)
@@ -114,7 +112,7 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
                         yield instruction;
                     }
                 }
-                TypeDefinition::Callable(callable_type_definition) => {
+                TypeDefinition::Callable(_callable_type_definition) => {
                     todo!()
                     // for instruction in
                     //     callable_type_definition.to_instructions(shared_value_tracking)
@@ -122,7 +120,7 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
                     //     yield instruction;
                     // }
                 }
-                TypeDefinition::Intersection(intersection_type_definition) => {
+                TypeDefinition::Intersection(_intersection_type_definition) => {
                     todo!()
                     // for instruction in
                     //     intersection_type_definition.to_instructions(shared_value_tracking)
@@ -130,13 +128,13 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
                     //     yield instruction;
                     // }
                 }
-                TypeDefinition::Union(union_type_definition) => {
+                TypeDefinition::Union(_union_type_definition) => {
                     todo!()
                     // for instruction in union_type_definition.to_instructions(shared_value_tracking) {
                     //     yield instruction;
                     // }
                 }
-                TypeDefinition::TaggedType(tagged_type_definition) => {
+                TypeDefinition::TaggedType(_tagged_type_definition) => {
                     todo!()
                     // for instruction in tagged_type_definition.to_instructions(shared_value_tracking)
                     // {
@@ -145,7 +143,7 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
                 }
                 TypeDefinition::CoreType(core_lib_type_id) => {
                     yield TypeInstruction::TypeDefinitionCoreType(
-                        core_lib_type_id.clone(),
+                        *core_lib_type_id,
                     )
                 }
             }
@@ -327,10 +325,8 @@ impl<'a> ToInstructions<'a> for ListSliceCollectionTypeDefinition {
 
     fn to_instructions(
         &'a self,
-        shared_value_tracking: &'a mut SharedValueTracking,
+        _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
-            todo!()
-        })
+        Box::new(gen { todo!() })
     }
 }

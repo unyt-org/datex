@@ -1,22 +1,13 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    shared_values::base_shared_value_container::observers::TransceiverId,
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
-    value_updates::{
-        UpdateReturn,
-        update_data::{
-            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData,
-        },
-    },
-    values::value_container::{ValueContainer, value_key::ValueKey},
+    value_updates::UpdateReturn,
+    values::value_container::ValueContainer,
 };
 
-use core::fmt;
 use serde::{
-    Deserializer, Serializer,
-    de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor},
+    Serializer,
     ser::{SerializeSeq, SerializeStruct},
 };
 

@@ -1,17 +1,13 @@
 use crate::{
     dif::{
-        cache::{
-            CacheValueRetrievalError, DIFSharedContainerCache,
-            ValueNotFoundInCacheError,
-        },
+        cache::{DIFSharedContainerCache, ValueNotFoundInCacheError},
         error::{DIFObserveError, DIFUpdateError},
     },
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
-        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
-        SelfOwnedPointerAddress, SelfOwnedSharedContainer, SharedContainer,
-        SharedContainerOwnership,
+        OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
+        SelfOwnedSharedContainer, SharedContainer, SharedContainerOwnership,
         base_shared_value_container::{
             BaseSharedValueContainer,
             observers::{
@@ -22,9 +18,7 @@ use crate::{
     },
     traits::apply::{Apply, ApplyError},
     value_updates::{
-        UpdateReturn,
-        update_data::{Update, UpdateData},
-        update_handler::UpdateHandler,
+        UpdateReturn, update_data::Update, update_handler::UpdateHandler,
     },
     values::value_container::ValueContainer,
 };

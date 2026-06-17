@@ -1,7 +1,8 @@
 use crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
+use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Datex, Debug, Serialize, Deserialize)]
 
 pub struct DisassemblerOptions {
     #[serde(default)]

@@ -5,8 +5,10 @@ use crate::{
     utils::{freemap::NextKey, serde_serialize_seed::SerializeSeed},
     value_updates::update_data::Update,
 };
-use core::{fmt::Display, result::Result};
-use core::fmt::Debug;
+use core::{
+    fmt::{Debug, Display},
+    result::Result,
+};
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };
@@ -179,13 +181,16 @@ impl BaseSharedValueContainer {
     }
 
     /// Notifies all observers of a change represented by the given [Update].
-    pub fn get_current_observers(&self, source_id: TransceiverId) -> Vec<ObserverCallback> {
-        self
-            .observers
+    pub fn get_current_observers(
+        &self,
+        source_id: TransceiverId,
+    ) -> Vec<ObserverCallback> {
+        self.observers
             .iter()
             .filter(|(_, observer)| {
                 // Filter out bounced back transceiver updates if relay_own_updates not enabled
-                observer.options.relay_own_updates || observer.transceiver_id != source_id
+                observer.options.relay_own_updates
+                    || observer.transceiver_id != source_id
             })
             .map(|(_, f)| f.callback.clone())
             .collect()

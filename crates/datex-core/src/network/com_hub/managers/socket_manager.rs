@@ -8,11 +8,11 @@ use crate::{
     },
 };
 use core::cell::{Ref, RefCell, RefMut};
+use datex_macros_internal::Datex;
 use futures::channel::oneshot;
 use futures_util::{FutureExt, future::join_all};
 use itertools::Itertools;
 use log::{debug, error, info};
-use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
@@ -32,7 +32,7 @@ pub struct EndpointIterateOptions<'a> {
     pub exclude_sockets: &'a [ComInterfaceSocketUUID],
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Datex)]
 
 pub struct DynamicEndpointProperties {
     pub known_since: u64,

@@ -1,11 +1,10 @@
+use crate::{prelude::*, values::core_values::integer::Integer};
 use binrw::{
     BinRead, BinReaderExt, BinResult, BinWrite, Endian,
     io::{Read, Seek, Write},
     meta::{EndianKind, ReadEndian},
 };
 use num::BigInt;
-use crate::prelude::*;
-use crate::values::core_values::integer::Integer;
 
 impl BinWrite for Integer {
     type Args<'a> = ();

@@ -22,15 +22,26 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TaggedTypeDefinition> {
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
         seq.serialize_element(&value.tag)?;
-        seq.serialize_element(&ValueWithSeed::new(
-            &value.ty,
-            self.cast::<Option<Box<Type>>>(),
-        ))?;
+        match &value.ty {
+            Some(ty) => {
+                seq.serialize_element(&ValueWithSeed::new(
+                    ty.as_ref(),
+                    self.cast::<Type>(),
+                ))?;
+            }
+            None => seq.serialize_element(&ValueWithSeed::new(
+                &TypeDefinition::CoreType(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Unit,
+                ))
+                .into(),
+                self.cast::<Type>(),
+            ))?,
+        }
         seq.end()
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Option<Box<Type>>> {
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, Box<Type>> {
     type Value = Option<Box<Type>>;
 
     fn serialize<S: Serializer>(
@@ -88,7 +99,11 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TaggedTypeDefinition> {
     }
 }
 
-use crate::{prelude::*, types::r#type::Type};
+use crate::{
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    prelude::*,
+    types::{r#type::Type, type_definition::TypeDefinition},
+};
 
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Option<Box<Type>>> {
     type Value = Option<Box<Type>>;

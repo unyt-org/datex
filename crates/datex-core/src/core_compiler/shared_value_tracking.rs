@@ -26,7 +26,7 @@ impl SharedValueTracking {
     pub fn new() -> SharedValueTracking {
         SharedValueTracking {
             shared_values: HashMap::new(),
-            current_stack_index: StackIndex(1),
+            current_stack_index: StackIndex(0),
         }
     }
 

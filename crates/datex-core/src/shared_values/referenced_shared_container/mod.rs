@@ -12,7 +12,7 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    types::{r#type::Type, type_definition::TypeDefinition},
+    types::type_definition::TypeDefinition,
     values::{value::Value, value_container::ValueContainer},
 };
 use alloc::rc::Rc;
@@ -203,7 +203,7 @@ impl ReferencedSharedContainer {
 
     /// Get the [SharedContainerMutability] of the inner [SelfOwnedSharedContainer].
     pub fn container_mutability(&self) -> SharedContainerMutability {
-        self.inner().base_shared_container().mutability().clone()
+        *self.inner().base_shared_container().mutability()
     }
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as self.

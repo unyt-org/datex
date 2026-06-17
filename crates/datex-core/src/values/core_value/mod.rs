@@ -155,6 +155,32 @@ impl From<f64> for CoreValue {
     }
 }
 
+impl From<usize> for CoreValue {
+    fn from(value: usize) -> Self {
+        #[cfg(target_pointer_width = "64")]
+        {
+            CoreValue::TypedInteger((value as u64).into())
+        }
+        #[cfg(target_pointer_width = "32")]
+        {
+            CoreValue::TypedInteger((value as u32).into())
+        }
+    }
+}
+
+impl From<isize> for CoreValue {
+    fn from(value: isize) -> Self {
+        #[cfg(target_pointer_width = "64")]
+        {
+            CoreValue::TypedInteger((value as i64).into())
+        }
+        #[cfg(target_pointer_width = "32")]
+        {
+            CoreValue::TypedInteger((value as i32).into())
+        }
+    }
+}
+
 impl From<&CoreValue> for CoreLibTypeId {
     fn from(value: &CoreValue) -> Self {
         match value {
