@@ -441,11 +441,11 @@ pub fn ast_from_bytecode(
                                 )
                             }
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                            TypeInstruction::TypeDefinitionList(_)
-                            | TypeInstruction::TypeDefinitionRange
-                            | TypeInstruction::TypeDefinitionImplType(_)
-                            | TypeInstruction::TypeDefinitionMap(_) 
-                            | TypeInstruction::TypeDefinitionWithMetadata(_)=> {
+                            TypeInstruction::TypeDefinitionList(_) |
+                            TypeInstruction::TypeDefinitionRange |
+                            TypeInstruction::TypeDefinitionImplType(_) |
+                            TypeInstruction::TypeDefinitionMap(_) |
+                            TypeInstruction::TypeDefinitionWithMetadata(_) => {
                                 unreachable!()
                             }
                         }
