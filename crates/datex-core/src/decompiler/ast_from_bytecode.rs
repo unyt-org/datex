@@ -380,6 +380,7 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::JumpIfFalse(_)
                         | RegularInstruction::Call(_)
                         | RegularInstruction::Callable(_)
+                        | RegularInstruction::InlineCallable(_)
                         | RegularInstruction::Ret
                         | RegularInstruction::ModifySharedContainerValue(_)
                         | RegularInstruction::SetSharedContainerValue

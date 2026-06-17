@@ -7,15 +7,16 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, CallableData, Float32Data, Float64Data,
-                FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData,
-                Int8Data, Int16Data, Int32Data, Int64Data, Int128Data,
-                JumpOffsetData, ListData, MapData, ModifySharedContainerValue,
-                ModifyStackValue, Move, PerformMove, PushToStackMultiple,
-                RawRemotePointerAddress, RawSelfOwnedPointerAddress, SharedRef,
-                SharedRefWithValue, ShortListData, ShortMapData,
-                ShortStatementsData, ShortTextData, StackIndex, StatementsData,
-                TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
-                UInt64Data, UInt128Data, UnboundedStatementsData,
+                FloatAsInt16Data, FloatAsInt32Data, InlineCallableData,
+                InstructionBlockData, Int8Data, Int16Data, Int32Data, Int64Data,
+                Int128Data, JumpOffsetData, ListData, MapData,
+                ModifySharedContainerValue, ModifyStackValue, Move, PerformMove,
+                PushToStackMultiple, RawRemotePointerAddress,
+                RawSelfOwnedPointerAddress, SharedRef, SharedRefWithValue,
+                ShortListData, ShortMapData, ShortStatementsData, ShortTextData,
+                StackIndex, StatementsData, TaggedValue, TextData, UInt8Data,
+                UInt16Data, UInt32Data, UInt64Data, UInt128Data,
+                UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -97,6 +98,7 @@ pub enum RegularInstruction {
     Call(JumpOffsetData),
     Ret,
     Callable(CallableData),
+    InlineCallable(InlineCallableData),
     List(ListData),
     ShortList(ListData),
     Map(MapData),
@@ -237,6 +239,9 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::Call(_) => InstructionCode::CALL,
             RegularInstruction::Ret => InstructionCode::RET,
             RegularInstruction::Callable(_) => InstructionCode::CALLABLE,
+            RegularInstruction::InlineCallable(_) => {
+                InstructionCode::INLINE_CALLABLE
+            }
             RegularInstruction::List(_) => InstructionCode::LIST,
             RegularInstruction::ShortList(_) => InstructionCode::SHORT_LIST,
             RegularInstruction::Map(_) => InstructionCode::MAP,
@@ -410,7 +415,10 @@ impl RegularInstruction {
             | RegularInstruction::JumpIfFalse(_)
             | RegularInstruction::Call(_)
             | RegularInstruction::Ret
-            | RegularInstruction::Callable(_) => NextExpectedInstructions::None,
+            | RegularInstruction::Callable(_)
+            | RegularInstruction::InlineCallable(_) => {
+                NextExpectedInstructions::None
+            }
 
             RegularInstruction::Apply(apply_data) => {
                 NextExpectedInstructions::Regular(
@@ -657,6 +665,9 @@ impl RegularInstruction {
             InstructionCode::CALLABLE => {
                 CallableData::read(reader).map(RegularInstruction::Callable)
             }
+
+            InstructionCode::INLINE_CALLABLE => InlineCallableData::read(reader)
+                .map(RegularInstruction::InlineCallable),
 
             InstructionCode::TAGGED_VALUE => {
                 TaggedValue::read(reader).map(RegularInstruction::TaggedValue)
@@ -1065,6 +1076,15 @@ impl RegularInstruction {
                     "[name: {}, params: {}, body: {} bytes]",
                     data.name.0,
                     data.parameter_count,
+                    data.body_length
+                )
+            }
+            RegularInstruction::InlineCallable(data) => {
+                write!(
+                    string,
+                    "[name: {}, arg_count: {}, body: {} bytes]",
+                    data.name.0,
+                    data.arg_count,
                     data.body_length
                 )
             }

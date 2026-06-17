@@ -6,7 +6,7 @@ use crate::{
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
         CreateShared, DatexExpression, DatexExpressionData,
         GenericInstantiation, GetRef, GetSharedRef, List, Map, PropertyAccess,
-        PropertyAssignment, RemoteExecution, RequestSharedRef,
+        PropertyAssignment, RemoteExecution, RequestSharedRef, Return,
         RootPropertyAccess, StackAssignment, Statements, TagExpression,
         TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, ValueAccessType, VariableAccess,
@@ -130,6 +130,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                     callable_declaration,
                     &expr.span,
                 )
+            }
+            DatexExpressionData::Return(return_expr) => {
+                self.visit_return(return_expr, &expr.span)
             }
             DatexExpressionData::GetRef(get_ref) => {
                 self.visit_get_ref(get_ref, &expr.span)
@@ -433,6 +436,16 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = function_declaration;
+        Ok(VisitAction::VisitChildren)
+    }
+
+    fn visit_return(
+        &mut self,
+        return_expr: &mut Return,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = return_expr;
         Ok(VisitAction::VisitChildren)
     }
 

@@ -4,7 +4,7 @@ use crate::{
         ComparisonOperation, Conditional, CreateMut, CreateShared,
         DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
         GetSharedRef, List, Map, PropertyAccess, PropertyAssignment,
-        RangeDeclaration, RemoteExecution, StackAssignment, Statements,
+        RangeDeclaration, RemoteExecution, Return, StackAssignment, Statements,
         TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
         WhileLoop,
@@ -257,6 +257,16 @@ impl<E> VisitableExpression<E> for CallableDeclaration {
     }
 }
 
+impl<E> VisitableExpression<E> for Return {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.expression)?;
+        Ok(())
+    }
+}
+
 impl<E> VisitableExpression<E> for Unbox {
     fn walk_children(
         &mut self,
@@ -366,6 +376,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             }
             DatexExpressionData::CallableDeclaration(function_declaration) => {
                 function_declaration.walk_children(visitor)
+            }
+            DatexExpressionData::Return(return_expr) => {
+                return_expr.walk_children(visitor)
             }
             DatexExpressionData::GetRef(create_ref) => {
                 create_ref.walk_children(visitor)

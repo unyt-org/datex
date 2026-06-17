@@ -454,6 +454,7 @@ fn function_simple() {
                         .with_default_span()
                 ),
                 injected_variable_count: None,
+                hoisted: false,
             }
         ))
     );
@@ -486,6 +487,7 @@ fn function_with_params() {
                         .with_default_span()
                 ),
                 injected_variable_count: None,
+                hoisted: false,
             }
         ))
     );
@@ -546,6 +548,7 @@ fn function_with_params() {
                     .with_default_span()
                 ),
                 injected_variable_count: None,
+                hoisted: false,
             }
         ))
     );
@@ -586,6 +589,7 @@ fn function_with_return_type() {
                         .with_default_span()
                 ),
                 injected_variable_count: None,
+                hoisted: false,
             }
         ))
     );

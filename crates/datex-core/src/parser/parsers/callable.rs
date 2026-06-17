@@ -52,6 +52,7 @@ impl Parser {
                 yeet_type: None, // TODO #663
                 body: Box::new(body),
                 injected_variable_count: None,
+                hoisted: false,
             },
         ))
         .with_span(start_pos..self.get_current_source_position()))
@@ -125,6 +126,7 @@ mod tests {
                         .with_default_span()
                     ),
                     injected_variable_count: None,
+                    hoisted: false,
                 }
             ))
         );
@@ -152,6 +154,7 @@ mod tests {
                         .with_default_span()
                     ),
                     injected_variable_count: None,
+                    hoisted: false,
                 }
             ))
         );
@@ -197,6 +200,7 @@ mod tests {
                         .with_default_span()
                     ),
                     injected_variable_count: None,
+                    hoisted: false,
                 }
             ))
         );
@@ -243,6 +247,7 @@ mod tests {
                         .with_default_span(),
                     ),
                     injected_variable_count: None,
+                    hoisted: false,
                 }
             ))
         );

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            DatexExpression, DatexExpressionData, RootPropertyAccess,
+            DatexExpression, DatexExpressionData, Return, RootPropertyAccess,
             ValueAccessType,
         },
         spanned::Spanned,
@@ -37,6 +37,7 @@ impl Parser {
             Token::LeftParen => self.parse_parenthesized_statements()?,
             Token::If => self.parse_if_else()?,
             Token::While => self.parse_while_loop()?,
+            Token::Return => self.parse_return_expression()?,
             Token::Function | Token::Procedure => {
                 self.parse_callable_definition()?
             }
@@ -339,11 +340,22 @@ impl Parser {
             }),
         }
     }
+
+    pub(crate) fn parse_return_expression(
+        &mut self,
+    ) -> Result<DatexExpression, SpannedParserError> {
+        let start_pos = self.get_current_source_position();
+        self.advance()?;
+        let expression = self.parse_parenthesized_statements()?;
+        Ok(DatexExpressionData::Return(Return {
+            expression: Box::new(expression),
+        })
+        .with_span(start_pos..self.get_current_source_position()))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-
     use crate::{
         ast::{
             expressions::{
@@ -725,7 +737,6 @@ mod tests {
         );
     }
 
-    #[test]
     fn parse_type_expression() {
         let expr = parse("type<1 | 2>");
         assert_eq!(

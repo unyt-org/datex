@@ -163,6 +163,7 @@ pub enum InstructionCode {
     CALL,
     RET,
     CALLABLE,
+    INLINE_CALLABLE,
 }
 
 #[cfg(test)]

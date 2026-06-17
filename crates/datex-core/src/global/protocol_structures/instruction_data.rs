@@ -275,6 +275,16 @@ pub struct CallableData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
+pub struct InlineCallableData {
+    pub name: ShortTextData,
+    pub arg_count: u16,
+    pub body_length: u32,
+    #[br(count = body_length)]
+    pub body: Vec<u8>,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
 pub struct ShortStatementsData {
     pub statements_count: u8,
     #[br(map = |x: u8| x != 0)]

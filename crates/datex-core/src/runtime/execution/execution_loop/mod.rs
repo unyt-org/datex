@@ -22,9 +22,10 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, CallableData, Float32Data, Float64Data,
-                FloatAsInt16Data, FloatAsInt32Data, JumpOffsetData,
-                ModifyStackValue, RawPointerAddress, ShortTextData,
-                TaggedValue, TextData, UnboundedStatementsData,
+                FloatAsInt16Data, FloatAsInt32Data, InlineCallableData,
+                JumpOffsetData, ModifyStackValue, RawPointerAddress,
+                ShortTextData, TaggedValue, TextData,
+                UnboundedStatementsData,
             },
             instructions::Instruction,
             regular_instructions::RegularInstruction,
@@ -672,6 +673,26 @@ pub fn inner_execution_loop(
                                 let signature = crate::types::type_definition::callable::CallableTypeDefinition {
                                     kind: crate::types::type_definition::callable::CallableKind::Function,
                                     parameter_types: (0..parameter_count).map(|index| {
+                                        (
+                                            Some(format!("arg{}", index)),
+                                            Type::core(crate::libs::core::type_id::CoreLibBaseTypeId::Unknown),
+                                        )
+                                    }).collect(),
+                                    rest_parameter_type: None,
+                                    return_type: None,
+                                    yeet_type: None,
+                                };
+                                Some(RuntimeValue::ValueContainer(ValueContainer::from(Value::callable(
+                                    if name.0.is_empty() { None } else { Some(name.0) },
+                                    signature,
+                                    crate::values::core_values::callable::CallableBody::DatexBytecode(body),
+                                ))))
+                            }
+
+                            RegularInstruction::InlineCallable(InlineCallableData { name, arg_count, body_length: _, body }) => {
+                                let signature = crate::types::type_definition::callable::CallableTypeDefinition {
+                                    kind: crate::types::type_definition::callable::CallableKind::Function,
+                                    parameter_types: (0..arg_count).map(|index| {
                                         (
                                             Some(format!("arg{}", index)),
                                             Type::core(crate::libs::core::type_id::CoreLibBaseTypeId::Unknown),

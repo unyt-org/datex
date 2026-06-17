@@ -10,7 +10,15 @@ use crate::{
         },
     },
     traits::apply::{Apply, ApplyError},
-    values::value_container::ValueContainer,
+    values::{
+        core_values::callable::{Callable, CallableBody},
+        value_container::ValueContainer,
+    },
+};
+
+use crate::runtime::execution::{
+    execution_input::ExecutionCallerMetadata,
+    execution_loop::state::RuntimeExecutionStack,
 };
 
 use crate::{
@@ -81,7 +89,25 @@ pub fn execute_dxb_sync(
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&callee, &args)?;
+                let body =
+                    callee.try_as::<Callable>().and_then(|c| match c.body {
+                        CallableBody::DatexBytecode(b) => Some(b),
+                        _ => None,
+                    });
+                let res = if let Some(body) = body {
+                    let stack = RuntimeExecutionStack {
+                        values: args.into_iter().map(Some).collect(),
+                    };
+                    execute_dxb_sync(ExecutionInput::new_with_stack(
+                        &body,
+                        ExecutionCallerMetadata::local_default(),
+                        ExecutionOptions::default(),
+                        runtime.clone(),
+                        stack,
+                    ))?
+                } else {
+                    handle_apply(&callee, &args)?
+                };
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -154,7 +180,25 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&callee, &args)?;
+                let body =
+                    callee.try_as::<Callable>().and_then(|c| match c.body {
+                        CallableBody::DatexBytecode(b) => Some(b),
+                        _ => None,
+                    });
+                let res = if let Some(body) = body {
+                    let stack = RuntimeExecutionStack {
+                        values: args.into_iter().map(Some).collect(),
+                    };
+                    execute_dxb_sync(ExecutionInput::new_with_stack(
+                        &body,
+                        ExecutionCallerMetadata::local_default(),
+                        ExecutionOptions::default(),
+                        runtime.clone(),
+                        stack,
+                    ))?
+                } else {
+                    handle_apply(&callee, &args)?
+                };
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -1254,5 +1298,63 @@ mod tests {
             "var x = {a: 42}; x.a = 100; x.a",
         );
         assert_eq!(result, Integer::from(100).into());
+    }
+
+    #[test]
+    fn function_return_early() {
+        let result = execute_datex_script_debug_with_result(
+            "
+                function early(a: integer/u8) (
+                    var x = 99u8;
+                    return (x);
+                    var y = 10u8;
+                    y
+                );
+                early(1u8)
+                ",
+        );
+        assert_value_eq!(
+            result,
+            ValueContainer::from(TypedInteger::from(99u8))
+        );
+    }
+
+    #[test]
+    fn function_return_implicit() {
+        let result = execute_datex_script_debug_with_result(
+            "
+                function implicit(a: integer/u8) (
+                    var x = a + 5u8;
+                    x
+                );
+                implicit(10u8)
+                ",
+        );
+        assert_value_eq!(
+            result,
+            ValueContainer::from(TypedInteger::from(15u8))
+        );
+    }
+
+    #[test]
+    fn function_multi_params() {
+        let result = execute_datex_script_debug_with_result(
+            "
+                function add(a: integer/u8, b: integer/u8) (a + b);
+                add(3u8, 4u8)
+            ",
+        );
+        assert_value_eq!(result, ValueContainer::from(TypedInteger::from(7u8)));
+    }
+
+    #[test]
+    fn function_after_call() {
+        let result = execute_datex_script_debug_with_result(
+            "
+                add(3u8, 4u8)
+                function add(a: integer/u8, b: integer/u8) (a + b);
+            ",
+        );
+        assert_value_eq!(result, ValueContainer::from(TypedInteger::from(7u8)));
     }
 }

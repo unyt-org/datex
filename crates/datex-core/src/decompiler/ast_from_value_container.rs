@@ -180,6 +180,7 @@ fn core_value_to_datex_expression(
                             .with_default_span(),
                     ),
                     injected_variable_count: None,
+                    hoisted: false,
                 },
             ))
         }

@@ -152,6 +152,9 @@ pub enum DatexExpressionData {
     /// callable (function/procedure) declaration, e.g. function my_function() -> type ( ... )
     CallableDeclaration(Box<CallableDeclaration>),
 
+    /// Return from a function, e.g. return (42)
+    Return(Return),
+
     /// Create a new shared container
     CreateShared(CreateShared),
     /// Create a new reference
@@ -517,6 +520,11 @@ pub struct RequestSharedRef {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct Return {
+    pub expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct CallableDeclaration {
     pub name: Option<String>,
     pub kind: CallableKind,
@@ -526,6 +534,7 @@ pub struct CallableDeclaration {
     pub yeet_type: Option<TypeExpression>,
     pub body: Box<DatexExpression>,
     pub injected_variable_count: Option<u32>,
+    pub hoisted: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]

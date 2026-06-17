@@ -1,4 +1,5 @@
 use crate::{
+    collections::HashMap,
     core_compiler::{
         core_compilation_context::CoreCompilationContext,
         value_compiler::append_instruction_code_new,
@@ -15,6 +16,11 @@ use crate::{
 use binrw::io::Cursor;
 use core::mem;
 
+struct PendingJump {
+    placeholder_index: usize,
+    target_label: u32,
+}
+
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext {
     pub core_context: CoreCompilationContext,
@@ -23,6 +29,10 @@ pub struct CompilationContext {
     /// this flag is set to true if any non-static value is encountered
     pub has_non_static_value: bool,
     pub execution_mode: ExecutionMode,
+    pub return_target_label: Option<u32>,
+    next_label_id: u32,
+    labels: HashMap<u32, u64>,
+    pending_jumps: Vec<PendingJump>,
 }
 
 impl CompilationContext {
@@ -57,6 +67,10 @@ impl CompilationContext {
             inserted_values,
             has_non_static_value: false,
             execution_mode,
+            return_target_label: None,
+            next_label_id: 0,
+            labels: HashMap::new(),
+            pending_jumps: Vec::new(),
         }
     }
 
@@ -121,5 +135,63 @@ impl CompilationContext {
 
     pub fn append_instruction_code(&mut self, code: InstructionCode) {
         append_instruction_code_new(self.cursor(), code);
+    }
+
+    pub fn new_label(&mut self) -> u32 {
+        let id = self.next_label_id;
+        self.next_label_id += 1;
+        id
+    }
+
+    pub fn bind_label(&mut self, label: u32) {
+        self.labels.insert(label, self.buffer_index());
+        self.resolve_pending_jumps_for_label(label);
+    }
+
+    pub fn emit_jump_to_label(&mut self, label: u32) {
+        self.append_instruction_code(InstructionCode::JUMP);
+        let placeholder = self.append_relative_jump_placeholder();
+        if let Some(&target_index) = self.labels.get(&label) {
+            let offset = target_index as i64
+                - (placeholder as i64 + CompilationContext::INT_32_BYTES as i64);
+            self.set_i32_at_index(offset as i32, placeholder);
+        } else {
+            self.pending_jumps.push(PendingJump {
+                placeholder_index: placeholder,
+                target_label: label,
+            });
+        }
+    }
+
+    pub fn emit_jump_if_false_to_label(&mut self, label: u32) {
+        self.append_instruction_code(InstructionCode::JUMP_IF_FALSE);
+        let placeholder = self.append_relative_jump_placeholder();
+        if let Some(&target_index) = self.labels.get(&label) {
+            let offset = target_index as i64
+                - (placeholder as i64 + CompilationContext::INT_32_BYTES as i64);
+            self.set_i32_at_index(offset as i32, placeholder);
+        } else {
+            self.pending_jumps.push(PendingJump {
+                placeholder_index: placeholder,
+                target_label: label,
+            });
+        }
+    }
+
+    fn resolve_pending_jumps_for_label(&mut self, label: u32) {
+        if let Some(&target_index) = self.labels.get(&label) {
+            let mut i = 0;
+            while i < self.pending_jumps.len() {
+                if self.pending_jumps[i].target_label == label {
+                    let jump = self.pending_jumps.swap_remove(i);
+                    let offset = target_index as i64
+                        - (jump.placeholder_index as i64
+                            + CompilationContext::INT_32_BYTES as i64);
+                    self.set_i32_at_index(offset as i32, jump.placeholder_index);
+                } else {
+                    i += 1;
+                }
+            }
+        }
     }
 }

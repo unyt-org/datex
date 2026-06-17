@@ -4,9 +4,10 @@ use crate::{
         expressions::{
             BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, DatexExpression, DatexExpressionData, RemoteExecution,
-            RootPropertyAccess, Statements, UnaryOperation, UnboundedStatement,
-            UnboxAssignment, ValueAccessType, VariableAccess,
-            VariableAssignment, VariableDeclaration, VariableKind, WhileLoop,
+            Return, RootPropertyAccess, Statements, UnaryOperation,
+            UnboundedStatement, UnboxAssignment, ValueAccessType,
+            VariableAccess, VariableAssignment, VariableDeclaration,
+            VariableKind, WhileLoop,
         },
         resolved_variable::VariableId,
     },
@@ -44,7 +45,7 @@ use crate::{
                 SharedInjectedValueType,
             },
             instruction_data::{
-                CallableData, InstructionBlockData, JumpOffsetData,
+                InlineCallableData, InstructionBlockData,
                 ModifySharedContainerValue, ModifyStackValue, ShortTextData,
                 StackIndex, TaggedValue,
             },
@@ -60,17 +61,8 @@ use crate::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
     time::Instant,
-    types::r#type::Type,
     utils::buffers::{append_u8, append_u16, append_u32},
-    values::{
-        core_value::CoreValue,
-        core_values::{
-            callable::{Callable, CallableBody},
-            decimal::Decimal,
-        },
-        value::Value,
-        value_container::ValueContainer,
-    },
+    values::{core_values::decimal::Decimal, value_container::ValueContainer},
 };
 use binrw::io::Write;
 use core::{cell::RefCell, str::FromStr};
@@ -529,6 +521,74 @@ pub fn compile_rich_ast(
     )
 }
 
+/// compiles a hoisted `CallableDeclaration` (function declaration)
+/// emits `PUSH_TO_STACK` + `InlineCallable` instructions and registers the variable slot in the parent scope
+/// returns the compiled child scope used for the function body
+fn compile_hoisted_callable_declaration(
+    compilation_context: &mut CompilationContext,
+    metadata: &Rc<RefCell<AstMetadata>>,
+    parent_scope: &mut CompilationScope,
+    callable_decl: Box<CallableDeclaration>,
+) -> Result<CompilationScope, CompilerError> {
+    let func_name = callable_decl.name.clone();
+    let parameters = callable_decl.parameters;
+    let body = callable_decl.body;
+
+    let mut child_context = CompilationContext::new(
+        Vec::with_capacity(64),
+        compilation_context.inserted_values.clone(),
+        compilation_context.execution_mode,
+    );
+
+    let mut child_scope =
+        CompilationScope::new(compilation_context.execution_mode);
+    for param in parameters.iter() {
+        let index = child_scope.get_next_stack_index();
+        child_scope.register_variable_slot(Variable {
+            name: param.0.clone(),
+            kind: VariableKind::Const,
+            index,
+            representation: VariableRepresentation::Constant,
+        });
+    }
+
+    let _ = compile_expression(
+        &mut child_context,
+        RichAst::new(*body, &metadata),
+        CompileMetadata::default(),
+        child_scope,
+    )?;
+
+    let body_bytecode = child_context.into_buffer();
+
+    if let Some(ref func_name) = func_name {
+        let index = parent_scope.get_next_stack_index();
+        parent_scope.register_variable_slot(Variable {
+            name: func_name.clone(),
+            kind: VariableKind::Var,
+            index,
+            representation: VariableRepresentation::VariableSlot,
+        });
+
+        compilation_context
+            .append_instruction_code(InstructionCode::PUSH_TO_STACK);
+
+        let arg_count = parameters.len() as u16;
+
+        append_regular_instruction(
+            compilation_context.cursor(),
+            RegularInstruction::InlineCallable(InlineCallableData {
+                name: ShortTextData(func_name.clone()),
+                arg_count,
+                body_length: body_bytecode.len() as u32,
+                body: body_bytecode,
+            }),
+        );
+    }
+
+    Ok(CompilationScope::new(compilation_context.execution_mode))
+}
+
 fn compile_expression(
     compilation_context: &mut CompilationContext,
     rich_ast: RichAst,
@@ -769,6 +829,28 @@ fn compile_expression(
                     scope.push()
                 };
 
+                let mut hoisted_statements: Vec<DatexExpression> = Vec::new();
+                let mut non_hoisted_statements: Vec<DatexExpression> =
+                    Vec::new();
+                for statement in statements.into_iter() {
+                    let is_hoisted_callable = matches!(&statement.data,
+                        DatexExpressionData::CallableDeclaration(callable_decl) if callable_decl.hoisted
+                    );
+                    if is_hoisted_callable {
+                        hoisted_statements.push(statement);
+                    } else {
+                        non_hoisted_statements.push(statement);
+                    }
+                }
+                let effective_is_terminated = if is_terminated
+                    && !hoisted_statements.is_empty()
+                    && !non_hoisted_statements.is_empty()
+                {
+                    false
+                } else {
+                    is_terminated
+                };
+
                 if let Some(UnboundedStatement { is_first, .. }) = unbounded {
                     // if this is the first section of an unbounded statements block, mark as unbounded
                     if is_first {
@@ -776,18 +858,33 @@ fn compile_expression(
                             InstructionCode::UNBOUNDED_STATEMENTS,
                         );
                     }
-                    // if not first, don't insert any instruction code
                 }
                 // otherwise, statements with fixed length
                 else {
                     append_statements_preamble(
                         compilation_context.cursor(),
-                        statements.len(),
-                        is_terminated,
+                        hoisted_statements.len() + non_hoisted_statements.len(),
+                        effective_is_terminated,
                     );
                 }
 
-                for statement in statements.into_iter() {
+                for statement in hoisted_statements {
+                    if let DatexExpressionData::CallableDeclaration(
+                        callable_decl,
+                    ) = statement.data
+                    {
+                        let compiled_child_scope =
+                            compile_hoisted_callable_declaration(
+                                compilation_context,
+                                &metadata,
+                                &mut child_scope,
+                                callable_decl,
+                            )?;
+                        drop(compiled_child_scope);
+                    }
+                }
+
+                for statement in non_hoisted_statements {
                     child_scope = compile_expression(
                         compilation_context,
                         RichAst::new(statement, &metadata),
@@ -814,7 +911,7 @@ fn compile_expression(
                     // append termination flag
                     append_u8(
                         compilation_context.cursor(),
-                        if is_terminated { 1 } else { 0 },
+                        if effective_is_terminated { 1 } else { 0 },
                     );
                 }
             }
@@ -912,96 +1009,74 @@ fn compile_expression(
 
             let CallableDeclaration {
                 name,
-                kind,
+                kind: _,
                 parameters,
                 rest_parameter: _,
-                return_type,
-                yeet_type,
+                return_type: _,
+                yeet_type: _,
                 body,
                 injected_variable_count: _,
+                hoisted,
             } = *callable_decl;
 
-            let callable_name = name.clone();
-            let callable_stack_index = callable_name.as_ref().map(|_| {
-                let stack_index = scope.get_next_stack_index();
-                compilation_context
-                    .append_instruction_code(InstructionCode::PUSH_TO_STACK);
-                stack_index
-            });
-            let mut callable_context = CompilationContext::new(
-                Vec::with_capacity(256),
-                vec![],
-                ExecutionMode::Static,
-            );
-            let mut callable_scope =
-                CompilationScope::new(ExecutionMode::Static);
+            let func_name = name.clone();
+            let stack_index = if !hoisted {
+                func_name.as_ref().map(|_| scope.get_next_stack_index())
+            } else {
+                None
+            };
 
-            for (index, (parameter_name, _parameter_type)) in
-                parameters.iter().enumerate()
-            {
-                callable_scope.register_variable_slot(Variable::new_const(
-                    parameter_name.clone(),
-                    StackIndex(index as u32),
-                ));
+            let mut child_context = CompilationContext::new(
+                Vec::with_capacity(64),
+                compilation_context.inserted_values.clone(),
+                compilation_context.execution_mode,
+            );
+
+            let mut child_scope =
+                CompilationScope::new(compilation_context.execution_mode);
+            for param in parameters.iter() {
+                let index = child_scope.get_next_stack_index();
+                child_scope.register_variable_slot(Variable {
+                    name: param.0.clone(),
+                    kind: VariableKind::Const,
+                    index,
+                    representation: VariableRepresentation::Constant,
+                });
             }
 
             let _ = compile_expression(
-                &mut callable_context,
+                &mut child_context,
                 RichAst::new(*body, &metadata),
                 CompileMetadata::default(),
-                callable_scope,
+                child_scope,
             )?;
 
-            callable_context.append_instruction_code(InstructionCode::RET);
+            let body_bytecode = child_context.into_buffer();
 
-            let parameter_types = parameters
-                .into_iter()
-                .map(|(name, _ty)| {
-                    (
-                        Some(name),
-                        Type::core(crate::libs::core::type_id::CoreLibBaseTypeId::Unknown),
-                    )
-                })
-                .collect::<Vec<_>>();
+            if let Some(ref func_name) = func_name {
+                compilation_context
+                    .append_instruction_code(InstructionCode::PUSH_TO_STACK);
 
-            let return_type = return_type.map(|_ty| {
-                Box::new(Type::core(
-                    crate::libs::core::type_id::CoreLibBaseTypeId::Unknown,
-                ))
-            });
+                let arg_count = parameters.len() as u16;
 
-            let callable_signature = crate::types::type_definition::callable::CallableTypeDefinition {
-                kind,
-                parameter_types,
-                rest_parameter_type: None,
-                return_type,
-                yeet_type: yeet_type.map(|_ty| {
-                    Box::new(Type::core(
-                        crate::libs::core::type_id::CoreLibBaseTypeId::Unknown,
-                    ))
-                }),
-            };
+                append_regular_instruction(
+                    compilation_context.cursor(),
+                    RegularInstruction::InlineCallable(InlineCallableData {
+                        name: ShortTextData(func_name.clone()),
+                        arg_count,
+                        body_length: body_bytecode.len() as u32,
+                        body: body_bytecode,
+                    }),
+                );
 
-            let callable_value = Value {
-                inner: CoreValue::Callable(Callable {
-                    name,
-                    signature: callable_signature,
-                    body: CallableBody::DatexBytecode(
-                        callable_context.into_buffer(),
-                    ),
-                }),
-                custom_type: None,
-            };
-            append_value(compilation_context.core_context(), callable_value)
-                .unwrap();
-
-            if let (Some(callable_name), Some(stack_index)) =
-                (callable_name, callable_stack_index)
-            {
-                scope.register_variable_slot(Variable::new_const(
-                    callable_name,
-                    stack_index,
-                ));
+                if !hoisted {
+                    scope.register_variable_slot(Variable {
+                        name: func_name.clone(),
+                        kind: VariableKind::Var,
+                        index: stack_index.unwrap(),
+                        representation: VariableRepresentation::VariableSlot,
+                    });
+                }
             }
         }
 
@@ -1018,6 +1093,19 @@ fn compile_expression(
                 CompileMetadata::default(),
                 scope,
             )?;
+        }
+
+        DatexExpressionData::Return(return_expr) => {
+            compilation_context.mark_has_non_static_value();
+
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(*return_expr.expression, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+
+            compilation_context.append_instruction_code(InstructionCode::RET);
         }
 
         // operations (add, subtract, multiply, divide, etc.)
@@ -3950,7 +4038,7 @@ pub mod tests {
                 2,
                 0,
                 InstructionCode::PUSH_TO_STACK.into(),
-                InstructionCode::CALLABLE.into(),
+                InstructionCode::INLINE_CALLABLE.into(),
                 5,
                 115,
                 99,
@@ -3959,9 +4047,7 @@ pub mod tests {
                 101,
                 1,
                 0,
-                0,
-                0,
-                12,
+                11,
                 0,
                 0,
                 0,
@@ -3969,18 +4055,17 @@ pub mod tests {
                 2,
                 0,
                 42,
-                71,
+                72,
                 5,
                 44,
+                1,
                 0,
                 0,
                 0,
-                0,
-                98,
                 5,
-                71,
+                72,
                 2,
-                36,
+                44,
                 0,
                 0,
                 0,

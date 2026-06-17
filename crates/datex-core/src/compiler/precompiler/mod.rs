@@ -613,6 +613,23 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     registered_names.insert(name.clone());
                     self.hoist_variable(type_declaration);
                 }
+                DatexExpressionData::CallableDeclaration(callable_declaration) => {
+                    let name = &callable_declaration.name;
+                    if let Some(name) = name {
+                        if registered_names.contains(name) {
+                            self.collect_error(
+                                CompilerError::InvalidRedeclaration(name.clone())
+                                    .into(),
+                            )?
+                        }
+                        registered_names.insert(name.clone());
+                        callable_declaration.hoisted = true;
+                        self.add_new_variable(
+                            name.clone(),
+                            VariableShape::Value(VariableKind::Const),
+                        );
+                    }
+                }
                 // also terminate execution block for remote execution if the result is not used
                 DatexExpressionData::RemoteExecution(remote_execution) => {
                     // if not last statement, or last statement and terminated
@@ -813,23 +830,25 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         self.scope_stack.pop_scope();
         body_result?;
 
-        if let Some(name) = declared_name {
-            if self
-                .scope_stack
-                .get_active_scope()
-                .variable_ids_by_name
-                .contains_key(&name)
-            {
-                return Err(SpannedCompilerError::new_with_span(
-                    CompilerError::InvalidRedeclaration(name),
-                    callable_declaration.body.span.clone(),
-                ));
-            }
+        if !callable_declaration.hoisted {
+            if let Some(name) = declared_name {
+                if self
+                    .scope_stack
+                    .get_active_scope()
+                    .variable_ids_by_name
+                    .contains_key(&name)
+                {
+                    return Err(SpannedCompilerError::new_with_span(
+                        CompilerError::InvalidRedeclaration(name),
+                        callable_declaration.body.span.clone(),
+                    ));
+                }
 
-            self.add_new_variable(
-                name,
-                VariableShape::Value(VariableKind::Const),
-            );
+                self.add_new_variable(
+                    name,
+                    VariableShape::Value(VariableKind::Const),
+                );
+            }
         }
 
         Ok(VisitAction::SkipChildren)
