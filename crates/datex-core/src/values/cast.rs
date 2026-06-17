@@ -10,7 +10,10 @@ use crate::{
         r#type::Type,
         type_definition::collection::{
             CollectionTypeDefinition,
-            type_definition::list::ListCollectionTypeDefinition,
+            type_definition::{
+                list::ListCollectionTypeDefinition,
+                map::MapCollectionTypeDefinition,
+            },
         },
     },
     values::{
@@ -522,9 +525,15 @@ impl<
 impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
     DatexProxyTypes for HashMap<K, V>
 {
-    fn datex_type(_memory: &mut Memory) -> Type {
+    fn datex_type(memory: &mut Memory) -> Type {
         Type::Alias(
-            TypeDefinition::CoreType(CoreLibBaseTypeId::Map.into()).into(),
+            TypeDefinition::Collection(CollectionTypeDefinition::Map(
+                MapCollectionTypeDefinition {
+                    key_type: Box::new(K::datex_type(memory)),
+                    value_type: Box::new(V::datex_type(memory)),
+                },
+            ))
+            .into(),
         )
     }
 }
