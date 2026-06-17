@@ -8,12 +8,9 @@ use crate::{
     types::{
         nominal_type_definition::NominalTypeDefinition,
         r#type::Type,
-        type_definition::{
-            collection::{
-                CollectionTypeDefinition,
-                type_definition::list::ListCollectionTypeDefinition,
-            },
-            list::ListTypeDefinition,
+        type_definition::collection::{
+            CollectionTypeDefinition,
+            type_definition::list::ListCollectionTypeDefinition,
         },
     },
     values::{

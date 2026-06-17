@@ -7,19 +7,23 @@ use crate::{
         },
         spanned::Spanned,
         type_expressions::{TypeExpression, TypeExpressionData},
-    }, dxb_parser::{
+    },
+    dxb_parser::{
         body::{DXBParserError, iterate_instructions},
         instruction_collector::{
             CollectedResults, CollectionResultsPopper, FullOrPartialResult,
             InstructionCollector, StatementResultCollectionStrategy,
         },
-    }, global::{
+    },
+    global::{
         operators::{BinaryOperator, UnaryOperator},
         protocol_structures::instructions::Instruction,
-    }, libs::core::core_lib_id::CoreLibIdTrait, types::literal_type_definition::LiteralTypeDefinition, values::core_values::{
+    },
+    types::literal_type_definition::LiteralTypeDefinition,
+    values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         integer::{Integer, typed_integer::TypedInteger},
-    }
+    },
 };
 
 use crate::{
@@ -71,7 +75,9 @@ impl
         TypeExpression,
     > for CollectedResults<CollectedAstResult>
 {
-    fn try_extract_type_definition_result(result: CollectedAstResult) -> Option<TypeExpression> {
+    fn try_extract_type_definition_result(
+        result: CollectedAstResult,
+    ) -> Option<TypeExpression> {
         match result {
             CollectedAstResult::TypeExpression(expr) => Some(expr),
             _ => None,
@@ -437,9 +443,9 @@ pub fn ast_from_bytecode(
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             TypeInstruction::TypeDefinitionList(_)
                             | TypeInstruction::TypeDefinitionRange
-                            | TypeInstruction::TypeDefinitionImplType(_) | 
-                            TypeInstruction::TypeDefinitionMap(_) |
-                            TypeInstruction::TypeDefinitionWithMetadata(_)=> {
+                            | TypeInstruction::TypeDefinitionImplType(_)
+                            | TypeInstruction::TypeDefinitionMap(_) 
+                            | TypeInstruction::TypeDefinitionWithMetadata(_)=> {
                                 unreachable!()
                             }
                         }

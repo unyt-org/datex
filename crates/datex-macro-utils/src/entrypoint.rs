@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use crate::get_absolute_file_path;
 use datex_core::{
     compiler::{CompileOptions, compile_template},
     datex_proxy::{
@@ -8,13 +9,12 @@ use datex_core::{
     },
     runtime::{Runtime, RuntimeConfig},
 };
-use proc_macro2::{TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
-use crate::get_absolute_file_path;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {

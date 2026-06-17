@@ -189,7 +189,7 @@ impl AstToSourceCodeConverter {
         key: &TypeExpression,
     ) -> String {
         match &key.data {
-            TypeExpressionData::Text(t) => self.key_to_string(&t),
+            TypeExpressionData::Text(t) => self.key_to_string(t),
             TypeExpressionData::Integer(i) => i.to_string(),
             TypeExpressionData::TypedInteger(ti) => {
                 if self.add_variant_suffix() {

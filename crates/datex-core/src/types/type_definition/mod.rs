@@ -2,8 +2,7 @@
 //! A [TypeDefinition] can hold e.g. a [LiteralTypeDefinition], or a [CollectionTypeDefinition], or a [SharedContainerContainingType] wand impl types.
 //! The [TypeDefinition] is used as the underlying structure for type definitions in the type space and is wrapped by [TypeDefinitionWithMetadata] which holds additional metadata for type checking and inference.
 
-use ::binrw::{BinRead, BinWrite};
-use strum::{AsRefStr, EnumDiscriminants, EnumIter, FromRepr};
+use strum::AsRefStr;
 pub mod binrw;
 use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},

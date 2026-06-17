@@ -1,4 +1,3 @@
-use log::info;
 use serde::{Serializer, de::DeserializeSeed, ser::SerializeSeq};
 
 use crate::{

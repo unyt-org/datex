@@ -19,11 +19,11 @@ use crate::{
     ast::{
         expressions::{
             BinaryOperation, CloneExpression, DatexExpression,
-            DatexExpressionData, GetSharedRef, RemoteExecution,
-            RequestSharedRef, Statements, TypeDeclaration, TypeDeclarationKind,
-            Unbox, UnboxAssignment, ValueAccessType, VariableAccess,
-            VariableAssignment, VariableDeclaration, VariableKind,
-            VariantAccess,
+            DatexExpressionData, GetRef, GetSharedRef, PropertyAssignment,
+            RemoteExecution, RequestSharedRef, Statements, TypeDeclaration,
+            TypeDeclarationKind, Unbox, UnboxAssignment, ValueAccessType,
+            VariableAccess, VariableAssignment, VariableDeclaration,
+            VariableKind, VariantAccess,
         },
         resolved_variable::ResolvedVariable,
         spanned::Spanned,
@@ -49,7 +49,10 @@ use crate::{
     utils::maybe_action::{ErrorCollector, MaybeAction, collect_or_pass_error},
     visitor::{
         VisitAction,
-        expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
+        expression::{
+            ExpressionVisitor,
+            visitable::{ExpressionVisitResult, VisitableExpression},
+        },
         type_expression::{
             TypeExpressionVisitor, visitable::TypeExpressionVisitResult,
         },
@@ -59,8 +62,6 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
-use crate::ast::expressions::{GetRef, PropertyAssignment};
-use crate::visitor::expression::visitable::VisitableExpression;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -535,31 +536,37 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         Ok(VisitAction::SkipChildren)
     }
 
-    fn visit_property_assignment(&mut self, property_assignment: &mut PropertyAssignment, span: &Range<usize>) -> ExpressionVisitResult<SpannedCompilerError> {
+    fn visit_property_assignment(
+        &mut self,
+        property_assignment: &mut PropertyAssignment,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
         // visit children first to resolve variable accesses in property value
         property_assignment.walk_children(self)?;
 
         // if base is a variable access, change access type to Borrow
-        match &mut property_assignment.base.data {
-            DatexExpressionData::VariableAccess(variable_access) => {
-                variable_access.access_type = ValueAccessType::Borrow;
-            }
-            _ => {}
+        if let DatexExpressionData::VariableAccess(variable_access) =
+            &mut property_assignment.base.data
+        {
+            variable_access.access_type = ValueAccessType::Borrow;
         }
         Ok(VisitAction::SkipChildren)
     }
 
-    fn visit_get_ref(&mut self, create_ref: &mut GetRef, span: &Range<usize>) -> ExpressionVisitResult<SpannedCompilerError> {
+    fn visit_get_ref(
+        &mut self,
+        create_ref: &mut GetRef,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
         create_ref.walk_children(self)?;
 
         match &mut create_ref.expression.data {
             // for &(x.y), access to x should be a borrow access
             DatexExpressionData::PropertyAccess(property_access) => {
-                match &mut property_access.base.data {
-                    DatexExpressionData::VariableAccess(variable_access) => {
-                        variable_access.access_type = ValueAccessType::Borrow;
-                    }
-                    _ => {}
+                if let DatexExpressionData::VariableAccess(variable_access) =
+                    &mut property_access.base.data
+                {
+                    variable_access.access_type = ValueAccessType::Borrow;
                 }
             }
             // for &x, access to x should be a borrow access
@@ -902,7 +909,8 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                CreateShared, GetRef, GetSharedRef, RequestSharedRef, Unbox,
+                CreateShared, GetRef, GetSharedRef, Map, PropertyAccess,
+                PropertyAssignment, RequestSharedRef, Unbox,
             },
             resolved_variable::ResolvedVariable,
             type_expressions::{StructuralMap, TypeExpressionData},
@@ -920,7 +928,6 @@ mod tests {
         },
     };
     use core::{assert_matches, str::FromStr};
-    use crate::ast::expressions::{Map, PropertyAccess, PropertyAssignment};
 
     fn precompile(
         ast: DatexExpression,
@@ -2053,86 +2060,107 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data,
-            DatexExpressionData::Statements(Statements::new_unterminated(vec![
-                DatexExpressionData::VariableDeclaration(VariableDeclaration {
-                    id: Some(0),
-                    kind: VariableKind::Var,
-                    name: "x".to_string(),
-                    init_expression: Box::new(
-                        DatexExpressionData::Integer(Integer::from(42))
-                            .with_default_span()
-                    ),
-                    type_annotation: None,
-                })
-                    .with_default_span(),
-                DatexExpressionData::GetRef(GetRef {
-                    mutability: LocalReferenceMutability::Immutable,
-                    expression: Box::new(
-                        DatexExpressionData::VariableAccess(VariableAccess {
-                            id: 0,
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
                             name: "x".to_string(),
-                            access_type: ValueAccessType::Borrow,
-                        })
-                        .with_default_span()
+                            init_expression: Box::new(
+                                DatexExpressionData::Integer(Integer::from(42))
+                                    .with_default_span()
+                            ),
+                            type_annotation: None,
+                        }
                     )
-                }).with_default_span(),
-            ]))
+                    .with_default_span(),
+                    DatexExpressionData::GetRef(GetRef {
+                        mutability: LocalReferenceMutability::Immutable,
+                        expression: Box::new(
+                            DatexExpressionData::VariableAccess(
+                                VariableAccess {
+                                    id: 0,
+                                    name: "x".to_string(),
+                                    access_type: ValueAccessType::Borrow,
+                                }
+                            )
+                            .with_default_span()
+                        )
+                    })
+                    .with_default_span(),
+                ]
+            ))
         );
     }
 
     #[test]
     fn property_access_borrow() {
         // Note: variable should only be borrowed in property access
-        let result = parse_and_precompile(
-            "var x = {a: 42}; &x.a",
-        );
+        let result = parse_and_precompile("var x = {a: 42}; &x.a");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data,
-            DatexExpressionData::Statements(Statements::new_unterminated(vec![
-                DatexExpressionData::VariableDeclaration(VariableDeclaration {
-                    id: Some(0),
-                    kind: VariableKind::Var,
-                    name: "x".to_string(),
-                    init_expression: Box::new(
-                        DatexExpressionData::Map(Map {
-                            entries: vec![(
-                                DatexExpressionData::Text("a".into()).with_default_span(),
-                                DatexExpressionData::Integer(Integer::from(42))
-                                    .with_default_span()
-                            )],
-                        }).with_default_span()),
-                    type_annotation: None,
-                })
-                    .with_default_span(),
-                DatexExpressionData::GetRef(GetRef {
-                    mutability: LocalReferenceMutability::Immutable,
-                    expression: Box::new(
-                        DatexExpressionData::PropertyAccess(PropertyAccess {
-                            base: Box::new(
-                                DatexExpressionData::VariableAccess(VariableAccess {
-                                    id: 0,
-                                    name: "x".to_string(),
-                                    access_type: ValueAccessType::Borrow,
-                                }).with_default_span()
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
+                            name: "x".to_string(),
+                            init_expression: Box::new(
+                                DatexExpressionData::Map(Map {
+                                    entries: vec![(
+                                        DatexExpressionData::Text("a".into())
+                                            .with_default_span(),
+                                        DatexExpressionData::Integer(
+                                            Integer::from(42)
+                                        )
+                                        .with_default_span()
+                                    )],
+                                })
+                                .with_default_span()
                             ),
-                            property: Box::new(
-                                DatexExpressionData::Text("a".into()).with_default_span()
-                            ),
-                        }).with_default_span()
+                            type_annotation: None,
+                        }
                     )
-                }).with_default_span(),
-            ]))
+                    .with_default_span(),
+                    DatexExpressionData::GetRef(GetRef {
+                        mutability: LocalReferenceMutability::Immutable,
+                        expression: Box::new(
+                            DatexExpressionData::PropertyAccess(
+                                PropertyAccess {
+                                    base: Box::new(
+                                        DatexExpressionData::VariableAccess(
+                                            VariableAccess {
+                                                id: 0,
+                                                name: "x".to_string(),
+                                                access_type:
+                                                    ValueAccessType::Borrow,
+                                            }
+                                        )
+                                        .with_default_span()
+                                    ),
+                                    property: Box::new(
+                                        DatexExpressionData::Text("a".into())
+                                            .with_default_span()
+                                    ),
+                                }
+                            )
+                            .with_default_span()
+                        )
+                    })
+                    .with_default_span(),
+                ]
+            ))
         );
     }
 
     #[test]
     fn property_assignment() {
         // Note: variable should only be borrowed in property assignment
-        let result = parse_and_precompile(
-            "var x = {a: 42}; x.a = 43;",
-        );
+        let result = parse_and_precompile("var x = {a: 42}; x.a = 43;");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
 
@@ -2146,14 +2174,17 @@ mod tests {
                     init_expression: Box::new(
                         DatexExpressionData::Map(Map {
                             entries: vec![(
-                                DatexExpressionData::Text("a".into()).with_default_span(),
+                                DatexExpressionData::Text("a".into())
+                                    .with_default_span(),
                                 DatexExpressionData::Integer(Integer::from(42))
                                     .with_default_span()
                             )],
-                        }).with_default_span()),
+                        })
+                        .with_default_span()
+                    ),
                     type_annotation: None,
                 })
-                    .with_default_span(),
+                .with_default_span(),
                 DatexExpressionData::PropertyAssignment(PropertyAssignment {
                     operator: None,
                     base: Box::new(
@@ -2161,16 +2192,19 @@ mod tests {
                             id: 0,
                             name: "x".to_string(),
                             access_type: ValueAccessType::Borrow,
-                        }).with_default_span()
+                        })
+                        .with_default_span()
                     ),
                     property: Box::new(
-                        DatexExpressionData::Text("a".into()).with_default_span()
+                        DatexExpressionData::Text("a".into())
+                            .with_default_span()
                     ),
                     assigned_expression: Box::new(
                         DatexExpressionData::Integer(Integer::from(43))
                             .with_default_span()
                     ),
-                }).with_default_span(),
+                })
+                .with_default_span(),
             ]))
         );
     }

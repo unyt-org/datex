@@ -1,6 +1,6 @@
 use crate::{
     libs::core::{
-        core_lib_id::{CoreLibId, CoreLibIdIndex},
+        core_lib_id::CoreLibIdIndex,
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
     },
     prelude::*,
@@ -59,7 +59,7 @@ impl Serialize for LiteralTypeDefinition {
 use core::fmt;
 use serde::{
     Deserialize,
-    de::{self, Deserializer, MapAccess, Visitor},
+    de::{self, Deserializer, Visitor},
 };
 
 impl<'de> Deserialize<'de> for LiteralTypeDefinition {

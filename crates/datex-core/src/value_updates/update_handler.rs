@@ -2,16 +2,15 @@ use crate::{
     prelude::*,
     shared_values::base_shared_value_container::observers::TransceiverId,
     value_updates::{
+        UpdateReturn,
         errors::UpdateError,
         update_data::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData,
+            ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData,
         },
     },
     values::value_container::ValueContainer,
 };
-use crate::value_updates::update_data::{Update, UpdateData};
-use crate::value_updates::UpdateReturn;
 
 pub type UpdateResult = Result<UpdateReturn, UpdateError>;
 
@@ -26,71 +25,67 @@ pub fn into_update_result<T: Into<UpdateReturn>, E: Into<UpdateError>>(
 }
 
 pub trait UpdateHandler {
-
-    fn update(
-        &mut self,
-        update: Update,
-    ) -> UpdateResult {
+    fn update(&mut self, update: Update) -> UpdateResult {
         match update.data {
             UpdateData::AppendEntry(data) => into_update_result(
                 self.try_append_entry(data, update.source_id),
             ),
-            UpdateData::Clear => into_update_result(
-                self.try_clear(update.source_id),
-            ),
-            UpdateData::Replace(data) => into_update_result(
-                self.try_replace(data, update.source_id),
-            ),
-            UpdateData::SetEntry(data) => into_update_result(
-                self.try_set_entry(data, update.source_id),
-            ),
+            UpdateData::Clear => {
+                into_update_result(self.try_clear(update.source_id))
+            }
+            UpdateData::Replace(data) => {
+                into_update_result(self.try_replace(data, update.source_id))
+            }
+            UpdateData::SetEntry(data) => {
+                into_update_result(self.try_set_entry(data, update.source_id))
+            }
             UpdateData::DeleteEntry(data) => into_update_result(
                 self.try_delete_entry(data, update.source_id),
             ),
-            UpdateData::ListSplice(data) => into_update_result(
-                self.try_list_splice(data, update.source_id),
-            ),
+            UpdateData::ListSplice(data) => {
+                into_update_result(self.try_list_splice(data, update.source_id))
+            }
         }
     }
 
     fn try_replace(
         &mut self,
-        data: ReplaceUpdateData,
-        source_id: TransceiverId,
+        _data: ReplaceUpdateData,
+        _source_id: TransceiverId,
     ) -> Result<ValueContainer, UpdateError> {
         unimplemented!()
     }
     fn try_set_entry(
         &mut self,
-        data: SetEntryUpdateData,
-        source_id: TransceiverId,
+        _data: SetEntryUpdateData,
+        _source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
         unimplemented!()
     }
     fn try_delete_entry(
         &mut self,
-        data: DeleteEntryUpdateData,
-        source_id: TransceiverId,
+        _data: DeleteEntryUpdateData,
+        _source_id: TransceiverId,
     ) -> Result<ValueContainer, UpdateError> {
         unimplemented!()
     }
     fn try_append_entry(
         &mut self,
-        data: AppendEntryUpdateData,
-        source_id: TransceiverId,
+        _data: AppendEntryUpdateData,
+        _source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
         unimplemented!()
     }
     fn try_clear(
         &mut self,
-        source_id: TransceiverId,
+        _source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
         unimplemented!()
     }
     fn try_list_splice(
         &mut self,
-        data: ListSpliceUpdateData,
-        source_id: TransceiverId,
+        _data: ListSpliceUpdateData,
+        _source_id: TransceiverId,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         unimplemented!()
     }

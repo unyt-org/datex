@@ -100,7 +100,7 @@ pub enum InstructionCode {
     CREATE_SHARED_MUT, // shared mut x
 
     MODIFY_SHARED_CONTAINER_VALUE, // *x += 10;
-    SET_SHARED_CONTAINER_VALUE, // *x = 10;
+    SET_SHARED_CONTAINER_VALUE,    // *x = 10;
 
     UNBOX, // *x
 

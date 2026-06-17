@@ -9,7 +9,7 @@ use crate::{
                 InjectedValueDeclaration, InjectedValueType,
                 LocalInjectedValueType,
             },
-            instruction_data::{InstructionBlockData, StackIndex},
+            instruction_data::StackIndex,
             routing_header::RoutingHeader,
         },
     },
@@ -20,11 +20,7 @@ use crate::{
 };
 
 use crate::{
-    core_compiler::{
-        core_compilation_context::CoreCompilationContext,
-        value_compiler::append_value_container,
-    },
-    prelude::*,
+    core_compiler::core_compilation_context::CoreCompilationContext, prelude::*,
 };
 use core::result::Result;
 use log::info;

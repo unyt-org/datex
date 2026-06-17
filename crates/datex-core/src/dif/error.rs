@@ -1,10 +1,9 @@
 use crate::{
-    dif::cache::CacheValueRetrievalError,
-    runtime::execution::ExecutionError,
+    dif::cache::CacheValueRetrievalError, runtime::execution::ExecutionError,
     shared_values::base_shared_value_container::observers::ObserverError,
-    value_updates::{errors::UpdateError},
+    value_updates::errors::UpdateError,
 };
-use core::{fmt::Display};
+use core::fmt::Display;
 
 #[derive(Debug)]
 pub enum DIFResolveReferenceError {

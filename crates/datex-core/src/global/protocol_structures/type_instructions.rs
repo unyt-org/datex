@@ -1,9 +1,7 @@
 use crate::{
-    dxb_parser::body::DXBParserError,
     global::protocol_structures::{
         instruction_data::{
-            ImplTypeData, ListData, MapData, ShortTextData, TextData,
-            TypeReferenceData,
+            ImplTypeData, ListData, MapData, TypeReferenceData,
         },
         instructions::NextExpectedInstructions,
     },
@@ -14,12 +12,8 @@ use crate::{
         literal_type_definition::LiteralTypeDefinition,
         type_definition_with_metadata::TypeMetadata,
     },
-    values::core_values::{boolean::Boolean, integer::Integer},
 };
-use binrw::{
-    BinRead, BinResult, BinWrite,
-    io::{Read, Seek},
-};
+use binrw::{BinRead, BinWrite};
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
 use strum::AsRefStr;

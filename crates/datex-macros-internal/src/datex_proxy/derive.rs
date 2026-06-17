@@ -745,7 +745,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                         #field_into
                     )
                 });
-                if (field_names.contains(&field_name)) {
+                if field_names.contains(&field_name) {
                     // This can happen, if the user makes invalid use of #[datex(rename = "whatever")]
                     panic!(
                         "Duplicate field name after renaming: {}",

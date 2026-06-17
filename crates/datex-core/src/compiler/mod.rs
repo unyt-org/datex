@@ -44,9 +44,8 @@ use crate::{
                 SharedInjectedValueType,
             },
             instruction_data::{
-                InstructionBlockData, ModifyStackValue,
-                ModifySharedContainerValue, ShortTextData, StackIndex,
-                TaggedValue,
+                InstructionBlockData, ModifySharedContainerValue,
+                ModifyStackValue, ShortTextData, StackIndex, TaggedValue,
             },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
@@ -969,7 +968,9 @@ fn compile_expression(
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
                     append_regular_instruction(
                         compilation_context.cursor(),
-                        RegularInstruction::SetPropertyText(ShortTextData(key.0.clone())),
+                        RegularInstruction::SetPropertyText(ShortTextData(
+                            key.0.clone(),
+                        )),
                     );
                 }
                 // index access if integer fits in u32
@@ -1154,10 +1155,8 @@ fn compile_expression(
                         )
                     }
                     None => RegularInstruction::SetSharedContainerValue,
-                }
+                },
             );
-
-
 
             // compile unbox expression
             scope = compile_expression(
@@ -1361,7 +1360,10 @@ fn compile_expression(
             compilation_context
                 .append_instruction_code(InstructionCode::TYPE_EXPRESSION);
             let instructions = type_expression
-                .to_instructions(&mut compilation_context.core_context.shared_value_tracking).collect::<Vec<_>>();
+                .to_instructions(
+                    &mut compilation_context.core_context.shared_value_tracking,
+                )
+                .collect::<Vec<_>>();
             for instruction in instructions {
                 append_type_instruction(
                     compilation_context.cursor(),

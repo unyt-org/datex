@@ -114,25 +114,20 @@ fn json() {
         json,
         DatexExpressionData::Map(Map::new(vec![
             (
-                DatexExpressionData::Text("name".into())
-                    .with_default_span(),
-                DatexExpressionData::Text("Test".into())
-                    .with_default_span()
+                DatexExpressionData::Text("name".into()).with_default_span(),
+                DatexExpressionData::Text("Test".into()).with_default_span()
             ),
             (
-                DatexExpressionData::Text("value".into())
-                    .with_default_span(),
+                DatexExpressionData::Text("value".into()).with_default_span(),
                 DatexExpressionData::Integer(Integer::from(42))
                     .with_default_span()
             ),
             (
-                DatexExpressionData::Text("active".into())
-                    .with_default_span(),
+                DatexExpressionData::Text("active".into()).with_default_span(),
                 DatexExpressionData::Boolean(true.into()).with_default_span()
             ),
             (
-                DatexExpressionData::Text("items".into())
-                    .with_default_span(),
+                DatexExpressionData::Text("items".into()).with_default_span(),
                 DatexExpressionData::List(List::new(vec![
                     DatexExpressionData::Integer(Integer::from(1))
                         .with_default_span(),
@@ -148,8 +143,7 @@ fn json() {
                 .with_default_span()
             ),
             (
-                DatexExpressionData::Text("nested".into())
-                    .with_default_span(),
+                DatexExpressionData::Text("nested".into()).with_default_span(),
                 DatexExpressionData::Map(Map::new(
                     vec![(
                         DatexExpressionData::Text("key".into())
@@ -766,7 +760,8 @@ fn if_else() {
             val,
             DatexExpressionData::Conditional(Conditional {
                 condition: Box::new(
-                    DatexExpressionData::Boolean(true.into()).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 then_branch: Box::new(
                     DatexExpressionData::Integer(Integer::from(1))
@@ -798,8 +793,10 @@ fn if_else() {
                                             ArithmeticOperator::Add
                                         ),
                                         left: Box::new(
-                                            DatexExpressionData::Boolean(true.into())
-                                                .with_default_span()
+                                            DatexExpressionData::Boolean(
+                                                true.into()
+                                            )
+                                            .with_default_span()
                                         ),
                                         right: Box::new(
                                             DatexExpressionData::Integer(
@@ -850,8 +847,10 @@ fn if_else() {
                                             ArithmeticOperator::Add
                                         ),
                                         left: Box::new(
-                                            DatexExpressionData::Boolean(true.into())
-                                                .with_default_span()
+                                            DatexExpressionData::Boolean(
+                                                true.into()
+                                            )
+                                            .with_default_span()
                                         ),
                                         right: Box::new(
                                             DatexExpressionData::Integer(
@@ -942,10 +941,8 @@ fn if_else_if_else() {
                                     .with_default_span()
                                 ),
                                 right: Box::new(
-                                    DatexExpressionData::Text(
-                                        "hello".into()
-                                    )
-                                    .with_default_span()
+                                    DatexExpressionData::Text("hello".into())
+                                        .with_default_span()
                                 )
                             }
                         )
@@ -1676,20 +1673,16 @@ fn map_with_key_value_pairs() {
         obj,
         DatexExpressionData::Map(Map::new(vec![
             (
-                DatexExpressionData::Text("key1".into())
-                    .with_default_span(),
-                DatexExpressionData::Text("value1".into())
-                    .with_default_span()
+                DatexExpressionData::Text("key1".into()).with_default_span(),
+                DatexExpressionData::Text("value1".into()).with_default_span()
             ),
             (
-                DatexExpressionData::Text("key2".into())
-                    .with_default_span(),
+                DatexExpressionData::Text("key2".into()).with_default_span(),
                 DatexExpressionData::Integer(Integer::from(42))
                     .with_default_span()
             ),
             (
-                DatexExpressionData::Text("key3".into())
-                    .with_default_span(),
+                DatexExpressionData::Text("key3".into()).with_default_span(),
                 DatexExpressionData::Boolean(true.into()).with_default_span()
             ),
         ]))
@@ -1706,8 +1699,7 @@ fn dynamic_map_keys() {
             (
                 DatexExpressionData::Integer(Integer::from(1))
                     .with_default_span(),
-                DatexExpressionData::Text("value1".into())
-                    .with_default_span()
+                DatexExpressionData::Text("value1".into()).with_default_span()
             ),
             (
                 DatexExpressionData::Integer(Integer::from(2))
@@ -2308,8 +2300,7 @@ fn apply_atom() {
                     .with_default_span()
             ),
             arguments: vec![
-                DatexExpressionData::Text("test".into())
-                    .with_default_span()
+                DatexExpressionData::Text("test".into()).with_default_span()
             ]
         })
     );
@@ -2373,8 +2364,7 @@ fn property_access() {
                 .with_default_span()
             ),
             property: Box::new(
-                DatexExpressionData::Text("test".into())
-                    .with_default_span()
+                DatexExpressionData::Text("test".into()).with_default_span()
             ),
         })
     );
@@ -2431,8 +2421,7 @@ fn property_access_getter() {
                     .with_default_span()
             ),
             property: Box::new(
-                DatexExpressionData::Text("myProp".into())
-                    .with_default_span()
+                DatexExpressionData::Text("myProp".into()).with_default_span()
             ),
         })
     );
@@ -2488,10 +2477,8 @@ fn property_access_multiple() {
                                 .with_default_span()
                             ),
                             property: Box::new(
-                                DatexExpressionData::Text(
-                                    "anotherProp".into()
-                                )
-                                .with_default_span()
+                                DatexExpressionData::Text("anotherProp".into())
+                                    .with_default_span()
                             ),
                         })
                         .with_default_span()
@@ -2582,8 +2569,7 @@ fn apply_and_property_access() {
                 .with_default_span()
             ),
             property: Box::new(
-                DatexExpressionData::Text("myProp".into())
-                    .with_default_span()
+                DatexExpressionData::Text("myProp".into()).with_default_span()
             ),
         })
     );

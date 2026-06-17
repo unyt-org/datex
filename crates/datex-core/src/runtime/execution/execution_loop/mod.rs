@@ -86,7 +86,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use log::info;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -638,7 +637,7 @@ pub fn inner_execution_loop(
                                 match val {
                                     // simple Type value
                                     Some(ValueContainer::Local(Value {
-                                        inner: CoreValue::Type(ty),
+                                        inner: CoreValue::Type(_ty),
                                         ..
                                     })) => todo!(),
                                     // FIXME:

@@ -520,8 +520,10 @@ fn get_datex_type_from_struct() {
                         .into()
                     ),
                     Type::Alias(
-                        TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into())
-                            .into()
+                        TypeDefinition::CoreType(
+                            CoreLibBaseTypeId::Text.into()
+                        )
+                        .into()
                     )
                 ),
                 (
@@ -592,9 +594,7 @@ fn get_datex_type_from_enum() {
                             (
                                 Type::Alias(
                                     TypeDefinition::Literal(
-                                        LiteralTypeDefinition::Text(
-                                            "x".into()
-                                        )
+                                        LiteralTypeDefinition::Text("x".into())
                                     )
                                     .into()
                                 ),
@@ -611,9 +611,7 @@ fn get_datex_type_from_enum() {
                             (
                                 Type::Alias(
                                     TypeDefinition::Literal(
-                                        LiteralTypeDefinition::Text(
-                                            "y".into()
-                                        )
+                                        LiteralTypeDefinition::Text("y".into())
                                     )
                                     .into()
                                 ),

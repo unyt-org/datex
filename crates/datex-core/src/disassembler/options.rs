@@ -1,6 +1,6 @@
 use crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
-use serde::{Deserialize, Serialize};
 use datex_macros_internal::Datex;
+use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Debug, Serialize, Deserialize)]
 

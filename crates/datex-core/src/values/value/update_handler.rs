@@ -5,7 +5,7 @@ use crate::{
         errors::UpdateError,
         update_data::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData,
+            SetEntryUpdateData,
         },
         update_handler::UpdateHandler,
     },
@@ -15,7 +15,6 @@ use crate::{
 };
 
 impl UpdateHandler for Value {
-
     fn try_set_entry(
         &mut self,
         data: SetEntryUpdateData,
@@ -68,9 +67,7 @@ impl UpdateHandler for Value {
     ) -> Result<(), UpdateError> {
         match self.inner {
             CoreValue::Map(ref mut map) => map.try_clear(source_id),
-            CoreValue::List(ref mut list) => {
-                list.try_clear(source_id)
-            }
+            CoreValue::List(ref mut list) => list.try_clear(source_id),
             _ => Err(UpdateError::InvalidUpdate),
         }
     }

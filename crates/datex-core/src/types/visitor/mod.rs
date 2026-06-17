@@ -142,7 +142,7 @@ where
             folder.fold_core_type(*core_type)
         }
 
-        TypeDefinition::Range(range) => {
+        TypeDefinition::Range(_range) => {
             todo!("Add fold_range()")
         }
 
@@ -154,7 +154,7 @@ where
             _ => todo!("Add fold_collection() for other collection types"),
         },
 
-        TypeDefinition::ImplType(impl_type) => {
+        TypeDefinition::ImplType(_impl_type) => {
             todo!("Add fold_impl_type()")
         }
 

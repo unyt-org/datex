@@ -1,12 +1,12 @@
 use crate::{
     core_compiler::{
-        shared_value_tracking::{self, SharedValueTracking},
+        shared_value_tracking::SharedValueTracking,
         to_instructions::ToInstructions,
     },
     global::protocol_structures::type_instructions::TypeInstruction,
+    prelude::*,
     types::r#type::Type,
 };
-use crate::prelude::*;
 impl<'a> ToInstructions<'a> for Type {
     type InstructionType = TypeInstruction;
 

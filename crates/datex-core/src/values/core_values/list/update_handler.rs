@@ -13,7 +13,7 @@ use crate::{
         errors::UpdateError,
         update_data::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData,
+            SetEntryUpdateData,
         },
         update_handler::UpdateHandler,
     },
@@ -21,7 +21,6 @@ use crate::{
 use core::result::Result;
 
 impl UpdateHandler for List {
-
     fn try_set_entry(
         &mut self,
         data: SetEntryUpdateData,

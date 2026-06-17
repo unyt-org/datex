@@ -4,11 +4,8 @@ use crate::{
         to_instructions::ToInstructions,
     },
     global::protocol_structures::type_instructions::TypeInstruction,
-    libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
-    shared_values::ReferenceMutability,
     types::r#type::Type,
-    utils::buffers::append_u8,
 };
 use binrw::{BinWrite, io::Write};
 pub mod type_to_instructions;
@@ -25,7 +22,6 @@ pub fn append_type_instruction(
 pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
     let instructions = ty
         .to_instructions(&mut context.shared_value_tracking)
-        .into_iter()
         .collect::<Vec<_>>();
     for instruction in instructions {
         append_type_instruction(&mut context.cursor, instruction);

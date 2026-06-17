@@ -9,9 +9,9 @@ use crate::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
                 FloatAsInt32Data, InstructionBlockData, Int8Data, Int16Data,
                 Int32Data, Int64Data, Int128Data, ListData, MapData,
-                ModifyStackValue, Move, PerformMove, PushToStackMultiple,
-                RawRemotePointerAddress, RawSelfOwnedPointerAddress,
-                ModifySharedContainerValue, SharedRef, SharedRefWithValue,
+                ModifySharedContainerValue, ModifyStackValue, Move,
+                PerformMove, PushToStackMultiple, RawRemotePointerAddress,
+                RawSelfOwnedPointerAddress, SharedRef, SharedRefWithValue,
                 ShortListData, ShortMapData, ShortStatementsData,
                 ShortTextData, StackIndex, StatementsData, TaggedValue,
                 TextData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
@@ -427,7 +427,7 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(2)
             } // container to set value on + new value
 
-            RegularInstruction::SetSharedContainerValue=> {
+            RegularInstruction::SetSharedContainerValue => {
                 NextExpectedInstructions::Regular(2)
             } // container to set value on + new value
 
@@ -942,7 +942,7 @@ impl RegularInstruction {
                 write!(string, "{}", address.0)
             }
             RegularInstruction::ModifySharedContainerValue(set_shared_container_value) => {
-                write!(string, "{}", set_shared_container_value.operator.to_string())
+                write!(string, "{}", set_shared_container_value.operator)
             }
             RegularInstruction::RequestRemoteSharedRef(address) => {
                 write!(
