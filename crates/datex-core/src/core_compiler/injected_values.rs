@@ -13,7 +13,7 @@ use crate::{
         },
         instruction_data::{
             InstructionBlockData, PerformMove, RawSelfOwnedPointerAddress,
-            SharedRef, SharedRefWithValue,
+            SharedRef, SharedRefWithValue, StatementsData,
         },
         regular_instructions::RegularInstruction,
     },
@@ -25,21 +25,18 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
-use crate::global::protocol_structures::instruction_data::StatementsData;
 
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
     injected_values: Vec<ValueContainer>,
-) -> Result<(Vec<u8>, Vec<OwnedSharedContainer>), InjectedValueValidationError> {
+) -> Result<(Vec<u8>, Vec<OwnedSharedContainer>), InjectedValueValidationError>
+{
     let mut context = CoreCompilationContext::new(Vec::new());
     validate_injected_value_declaration_for_values(
         &instruction_block_data.injected_values,
         &injected_values,
     )?;
-    compile_injected_values_with_context(
-        &mut context,
-        injected_values,
-    )?;
+    compile_injected_values_with_context(&mut context, injected_values)?;
 
     let (mut buffer, values) = context.into_buffer_and_moved_values();
     // append instruction block body to buffer
@@ -67,17 +64,19 @@ fn validate_injected_value_declaration_for_values(
         match &injected_value_declaration.ty {
             // local injected value expects local container
             InjectedValueType::Local(_ty) => match value_container {
-                ValueContainer::Shared(_) => return Err(
-                    InjectedValueValidationError::ExpectedLocalValue,
-                ),
+                ValueContainer::Shared(_) => {
+                    return Err(
+                        InjectedValueValidationError::ExpectedLocalValue,
+                    );
+                }
                 _ => {}
             },
             InjectedValueType::Shared(ty) => match ty {
                 // shared injected move expects owned shared container
                 SharedInjectedValueType::Move => match value_container {
                     ValueContainer::Shared(SharedContainer::Owned(
-                       _owned_container,
-                    )) => {},
+                        _owned_container,
+                    )) => {}
                     _ => return Err(
                         InjectedValueValidationError::ExpectedOwnedSharedValue,
                     ),
@@ -85,7 +84,7 @@ fn validate_injected_value_declaration_for_values(
                 // shared injected ref expects shared container
                 SharedInjectedValueType::Ref
                 | SharedInjectedValueType::RefMut => match value_container {
-                    ValueContainer::Shared(container) => {},
+                    ValueContainer::Shared(container) => {}
                     _ => return Err(
                         InjectedValueValidationError::ExpectedOwnedSharedValue,
                     ),
@@ -115,10 +114,7 @@ fn compile_injected_values_with_context(
             compilation_context.cursor_mut(),
             RegularInstruction::PushToStack,
         );
-        append_value_container(
-            compilation_context,
-            value_container
-        )?;
+        append_value_container(compilation_context, value_container)?;
     }
     Ok(())
 }
@@ -249,9 +245,7 @@ mod tests {
             },
         },
         prelude::*,
-        runtime::{
-            pointer_address_provider::SelfOwnedPointerAddressProvider,
-        },
+        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             OwnedSharedContainer, PointerAddress, ReferenceMutability,
             SharedContainer, SharedContainerMutability,
@@ -263,7 +257,7 @@ mod tests {
     fn remote_execution_no_injected_values() {
         let exec_block_data = InstructionBlockData {
             injected_value_count: 0,
-            length: 1,
+            length: 0,
             injected_values: vec![],
             body: vec![InstructionCode::NULL as u8],
         };
@@ -301,7 +295,7 @@ mod tests {
         .unwrap()
         .0;
         // should allocate slot and then compile the shared value into the buffer, followed by the body
-        
+
         /**
         #0 = (
             #0 = 'shared 42;
@@ -310,7 +304,6 @@ mod tests {
         #1 = #0.0;
         // body
         **/
-        
         assert_regular_instructions_equal!(
             &res,
             [
@@ -327,9 +320,6 @@ mod tests {
                     container_mutability: SharedContainerMutability::Immutable
                 }),
                 RegularInstruction::Int32(Int32Data(42)),
-                
-                
-                
                 // original body
                 RegularInstruction::Null,
             ]
