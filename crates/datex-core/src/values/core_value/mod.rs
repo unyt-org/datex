@@ -56,6 +56,7 @@ pub enum CoreValue {
 }
 pub mod datex_proxy;
 pub mod equality;
+mod child_iterator;
 
 impl From<&str> for CoreValue {
     fn from(value: &str) -> Self {

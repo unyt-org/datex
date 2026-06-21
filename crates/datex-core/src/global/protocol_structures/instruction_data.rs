@@ -306,12 +306,6 @@ impl AddAssign<u32> for StackIndex {
     }
 }
 
-#[derive(BinRead, BinWrite, Clone, Copy, Debug, PartialEq)]
-#[brw(little)]
-pub struct PushToStackMultiple {
-    pub count: u32,
-}
-
 #[derive(
     BinRead, BinWrite, Clone, Debug, PartialEq, Serialize, Deserialize,
 )]

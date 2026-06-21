@@ -54,7 +54,7 @@ impl RuntimeValue {
     /// This possibly involves cloning the value if it is stored in a slot.
     /// Do not use this method if you want to work on the actual value without cloning it.
     #[deprecated(note = "value container clone should not be used")]
-    pub fn into_cloned_value_container(
+    pub fn into_potentially_cloned_value_container(
         self,
         state: &RuntimeExecutionState,
     ) -> Result<ValueContainer, ExecutionError> {

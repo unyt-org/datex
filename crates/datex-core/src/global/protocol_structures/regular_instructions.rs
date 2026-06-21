@@ -10,7 +10,7 @@ use crate::{
                 FloatAsInt32Data, InstructionBlockData, Int8Data, Int16Data,
                 Int32Data, Int64Data, Int128Data, ListData, MapData,
                 ModifySharedContainerValue, ModifyStackValue, Move,
-                PerformMove, PushToStackMultiple, RawRemotePointerAddress,
+                PerformMove, RawRemotePointerAddress,
                 RawSelfOwnedPointerAddress, SharedRef, SharedRefWithValue,
                 ShortListData, ShortMapData, ShortStatementsData,
                 ShortTextData, StackIndex, StatementsData, TaggedValue,
@@ -161,7 +161,7 @@ pub enum RegularInstruction {
     Move(Move),
 
     PushToStack,
-    PushToStackMultiple(PushToStackMultiple),
+    PushListToStack,
     CloneStackValue(StackIndex),
     BorrowStackValue(StackIndex),
     GetStackValueSharedRef(StackIndex),
@@ -326,8 +326,8 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::PerformMove(_) => InstructionCode::PERFORM_MOVE,
             RegularInstruction::Move(_) => InstructionCode::MOVE,
             RegularInstruction::PushToStack => InstructionCode::PUSH_TO_STACK,
-            RegularInstruction::PushToStackMultiple(_) => {
-                InstructionCode::PUSH_TO_STACK_MULTIPLE
+            RegularInstruction::PushListToStack => {
+                InstructionCode::PUSH_LIST_TO_STACK
             }
             RegularInstruction::CloneStackValue(_) => {
                 InstructionCode::CLONE_STACK_VALUE
@@ -491,7 +491,7 @@ impl RegularInstruction {
             }
 
             RegularInstruction::PushToStack
-            | RegularInstruction::PushToStackMultiple(_)
+            | RegularInstruction::PushListToStack
             | RegularInstruction::SetStackValue(_) => {
                 NextExpectedInstructions::Regular(1)
             }
@@ -751,9 +751,8 @@ impl RegularInstruction {
             InstructionCode::PUSH_TO_STACK => {
                 Ok(RegularInstruction::PushToStack)
             }
-            InstructionCode::PUSH_TO_STACK_MULTIPLE => {
-                PushToStackMultiple::read(reader)
-                    .map(RegularInstruction::PushToStackMultiple)
+            InstructionCode::PUSH_LIST_TO_STACK => {
+                Ok(RegularInstruction::PushListToStack)
             }
             InstructionCode::CLONE_STACK_VALUE => StackIndex::read(reader)
                 .map(RegularInstruction::CloneStackValue),
@@ -932,10 +931,6 @@ impl RegularInstruction {
             }
             RegularInstruction::KeyValueShortText(data) => {
                 write!(string, "{}", data.0)
-            }
-
-            RegularInstruction::PushToStackMultiple(push_to_stack_multiple) => {
-                write!(string, "{}", push_to_stack_multiple.count)
             }
             RegularInstruction::CloneStackValue(address) => {
                 write!(string, "{}", address.0)

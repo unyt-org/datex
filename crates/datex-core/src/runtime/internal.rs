@@ -587,21 +587,18 @@ impl RuntimeInternal {
 
     /// Adds a pointer that is approved for move to a specific endpoint
     /// Returns an error if any moving shared container is not an owned pointer
-    pub(crate) fn add_moving_pointers(
+    pub(crate) fn add_moving_shared_container(
         &self,
         new_owner: Endpoint,
-        moving_owned_values: Vec<OwnedSharedContainer>,
+        moving_owned_container: OwnedSharedContainer,
     ) {
-        let pointers = moving_owned_values.into_iter().map(|pointer| {
-            let address = pointer.pointer_address().clone();
-            (address, pointer)
-        });
+        let address = moving_owned_container.pointer_address().clone();
 
         self.moving_pointers
             .borrow_mut()
             .entry(new_owner)
             .or_default()
-            .extend(pointers);
+            .insert(address, moving_owned_container);
     }
 
     pub(crate) fn handle_pointer_move_to_remote(

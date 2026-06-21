@@ -36,6 +36,7 @@ use core::{
     hash::{Hash, Hasher},
 };
 use serde::Serializer;
+use crate::shared_values::ReferenceMutability;
 
 pub mod apply;
 pub mod serde_dif;
@@ -239,6 +240,19 @@ impl SharedContainer {
             SharedContainer::Referenced(referenced) => {
                 referenced.derive_immutable_reference()
             }
+        }
+    }
+    /// Tries to create a new mutable or immutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
+    /// Returns an [Err] if the requested mutability is [ReferenceMutability::Mutable],
+    /// but the current reference_mutability is [ReferenceMutability::Immutable] or the container itself is not mutable
+    pub fn try_derive_reference_with_mutability(
+        &self,
+        mutability: ReferenceMutability,
+    ) -> Result<ReferencedSharedContainer, UnexpectedImmutableReferenceError>
+    {
+        match mutability {
+            ReferenceMutability::Immutable => Ok(self.derive_immutable_reference()),
+            ReferenceMutability::Mutable => self.try_derive_mutable_reference(),
         }
     }
 

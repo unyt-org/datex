@@ -21,6 +21,8 @@ use core::{
     result::Result,
 };
 pub mod serde_dif;
+mod child_iterator;
+
 use indexmap::IndexMap;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -325,7 +327,7 @@ impl Map {
         }
     }
 
-    pub(crate) fn iter(&self) -> MapIterator<'_> {
+    pub(crate) fn iter<'a>(&'a self) -> MapIterator<'a> {
         MapIterator {
             map: self,
             index: 0,

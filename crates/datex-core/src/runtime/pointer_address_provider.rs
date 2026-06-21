@@ -19,7 +19,7 @@ pub struct SelfOwnedPointerAddressProvider {
 
 impl SelfOwnedPointerAddressProvider {
     /// Creates a new, [SelfOwnedPointerAddressProvider] instance
-    pub fn new(endpoint: Endpoint) -> Self {
+    pub const fn new(endpoint: Endpoint) -> Self {
         Self {
             local_endpoint: endpoint,
             local_counter: 0,

@@ -28,7 +28,7 @@ use crate::{
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
     injected_values: Vec<ValueContainer>,
-) -> Result<(Vec<u8>, Vec<OwnedSharedContainer>), InjectedValueValidationError>
+) -> Result<(Vec<u8>, Vec<SharedContainer>), InjectedValueValidationError>
 {
     let mut context = CoreCompilationContext::new(Vec::new());
     validate_injected_value_declaration_for_values(
@@ -37,9 +37,10 @@ pub fn compile_injected_values(
     )?;
     compile_injected_values_with_context(&mut context, injected_values)?;
 
-    let (mut buffer, values) = context.into_buffer_and_moved_values();
+    let (mut buffer, values) = context.into_buffer_and_shared_values();
     // append instruction block body to buffer
     buffer.extend(instruction_block_data.body);
+
     Ok((buffer, values))
 }
 
@@ -48,8 +49,8 @@ pub fn compile_injected_values(
 ///  - shared injected move values must be owned shared containers
 ///  - shared injected ref values must be shared containers (owned or referenced)
 fn validate_injected_value_declaration_for_values(
-    injected_value_declarations: &Vec<InjectedValueDeclaration>,
-    injected_values: &Vec<ValueContainer>,
+    injected_value_declarations: &[InjectedValueDeclaration],
+    injected_values: &[ValueContainer],
 ) -> Result<(), InjectedValueValidationError> {
     if injected_value_declarations.len() != injected_values.len() {
         unreachable!(); // length must always match
@@ -182,43 +183,6 @@ fn append_referenced_shared_container(
     Ok(())
 }
 
-pub fn compile_shared_value_preamble(
-    compilation_context: &mut CoreCompilationContext,
-) {
-    let shared_value_tracking = &compilation_context.shared_value_tracking;
-    let cursor = &mut compilation_context.cursor;
-
-    let moved_ptr_addresses =
-        shared_value_tracking.get_moved_shared_addresses();
-
-    append_regular_instruction(cursor, RegularInstruction::PushToStack);
-
-    // push NULL to stack#1 if no moves
-    if moved_ptr_addresses.is_empty() {
-        append_regular_instruction(cursor, RegularInstruction::Null)
-    }
-    // push moves
-    else {
-        append_regular_instruction(
-            cursor,
-            RegularInstruction::PerformMove(PerformMove {
-                pointer_count: moved_ptr_addresses.len() as u32,
-                pointers: moved_ptr_addresses
-                    .iter()
-                    .map(|shared_container| {
-                        (
-                            0, // TODO: insert value or not?
-                            RawSelfOwnedPointerAddress {
-                                bytes: shared_container.address,
-                            },
-                        )
-                    })
-                    .collect(),
-            }),
-        );
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -246,6 +210,7 @@ mod tests {
         },
         values::value_container::ValueContainer,
     };
+    use crate::global::protocol_structures::instruction_data::ListData;
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -291,17 +256,40 @@ mod tests {
         // should allocate slot and then compile the shared value into the buffer, followed by the body
 
         /**
-        #0 = (
+        // injected value preamble
+        STATEMNETS 2
+
+        #0,... = (
             #0 = 'shared 42;
             [TAKE #0]
         );
-        #1 = #0.0;
-        // body
+        #1 = null
+
+        (
+            // remote preamble
+            STATEMNETS 3
+            PUSH TAKE #0
+            # += [1,2,3,4];
+
+            // body
+            (
+                #2;
+
+                #0 x
+
+                #0 y
+            )
+        )
         **/
         assert_regular_instructions_equal!(
             &res,
             [
+                // outer statements
+                RegularInstruction::statements(2, false),
+
                 // preamble
+                RegularInstruction::PushListToStack,
+
                 RegularInstruction::statements(2, false),
                 // ref
                 RegularInstruction::PushToStack,
@@ -311,6 +299,15 @@ mod tests {
                     container_mutability: SharedContainerMutability::Immutable
                 }),
                 RegularInstruction::Int32(Int32Data(42)),
+                RegularInstruction::ShortList(ListData {
+                    element_count: 1,
+                }),
+                RegularInstruction::TakeStackValue(StackIndex(0)),
+
+                RegularInstruction::statements(2, false),
+                RegularInstruction::PushToStack,
+                RegularInstruction::TakeStackValue(StackIndex(0)),
+
                 // original body
                 RegularInstruction::Null,
             ]

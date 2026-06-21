@@ -3,6 +3,8 @@ use crate::{
     shared_values::OwnedSharedContainer,
 };
 use binrw::io::Cursor;
+use crate::core_compiler::preamble::append_injected_values_preamble;
+use crate::shared_values::SharedContainer;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 
@@ -28,16 +30,28 @@ impl CoreCompilationContext {
         self.cursor.into_inner()
     }
 
-    pub fn into_buffer_and_moved_values(
+    /// Finalizes the compilation context by appending a preamble with the injected shared values,
+    /// and returns the final byte buffer and the list of shared values that were moved or referenced during compilation
+    pub fn into_buffer_and_shared_values(
         self,
-    ) -> (Vec<u8>, Vec<OwnedSharedContainer>) {
+    ) -> (Vec<u8>, Vec<SharedContainer>) {
+
+        let mut cursor = self.cursor;
+        let tracked_values = self.shared_value_tracking.into_tracked_values();
+
+        let top_level_values = append_injected_values_preamble(
+            &mut cursor,
+            tracked_values,
+        );
+
         (
-            self.cursor.into_inner(),
-            self.shared_value_tracking.into_moved_shared_values(),
+            cursor.into_inner(),
+            top_level_values,
         )
     }
 
     pub fn cursor_mut(&mut self) -> &mut Cursor<Vec<u8>> {
         &mut self.cursor
     }
+
 }

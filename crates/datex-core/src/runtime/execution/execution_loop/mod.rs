@@ -184,7 +184,7 @@ impl CollectedResults<CollectedExecutionResult> {
         let mut expressions = Vec::with_capacity(count);
         for _ in 0..count {
             expressions.push(
-                self.pop_cloned_value_container_result_assert_existing(state)?,
+                self.pop_potentially_cloned_value_container_result_assert_existing(state)?,
             );
         }
         expressions.reverse();
@@ -204,12 +204,12 @@ impl CollectedResults<CollectedExecutionResult> {
     /// Pops a value container result, returning an error if none exists.
     /// If the value is a slot address, it is resolved to a cloned value container.
     /// Do not use this method if you want to work on the actual value without cloning it.
-    fn pop_cloned_value_container_result_assert_existing(
+    fn pop_potentially_cloned_value_container_result_assert_existing(
         &mut self,
         state: &RuntimeExecutionState,
     ) -> Result<ValueContainer, ExecutionError> {
         self.pop_runtime_value_result_assert_existing()?
-            .into_cloned_value_container(state)
+            .into_potentially_cloned_value_container(state)
     }
 
     fn collect_key_value_pair_results_assert_existing(
@@ -580,7 +580,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::CreateShared |
                             RegularInstruction::CreateSharedMut |
                             RegularInstruction::PushToStack |
-                            RegularInstruction::PushToStackMultiple(_) |
+                            RegularInstruction::PushListToStack |
                             RegularInstruction::SetStackValue(_) |
                             RegularInstruction::ModifyStackValue(_) |
                             RegularInstruction::ModifySharedContainerValue(_) |
@@ -713,11 +713,11 @@ pub fn inner_execution_loop(
 
                                 RegularInstruction::KeyValueDynamic => {
                                     let value = yield_unwrap!(
-                                        collected_results.pop_cloned_value_container_result_assert_existing(&state)
+                                        collected_results.pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let key = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     CollectedExecutionResult::KeyValuePair((
                                         MapKey::Value(key),
@@ -729,7 +729,7 @@ pub fn inner_execution_loop(
                                     short_text_data,
                                 ) => {
                                     let value = yield_unwrap!(
-                                        collected_results.pop_cloned_value_container_result_assert_existing(&state)
+                                        collected_results.pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let key = MapKey::Text(short_text_data.0);
                                     CollectedExecutionResult::KeyValuePair((
@@ -744,7 +744,7 @@ pub fn inner_execution_loop(
                                     assert!(!is_empty);
 
                                     let value_container = yield_unwrap!(
-                                        collected_results.pop_cloned_value_container_result_assert_existing(&state)
+                                        collected_results.pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     // expected value container to be local value
                                     match value_container {
@@ -772,11 +772,11 @@ pub fn inner_execution_loop(
                                 | RegularInstruction::Divide => {
                                     let right = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let left = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
 
                                     let res = handle_binary_operation(
@@ -799,11 +799,11 @@ pub fn inner_execution_loop(
                                 | RegularInstruction::NotEqual => {
                                     let right = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let left = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
 
                                     let res = handle_comparison_operation(
@@ -836,7 +836,7 @@ pub fn inner_execution_loop(
                                 ) => {
                                     let value = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let pointer = state.runtime.pointer_address_provider().borrow_mut().get_new_self_owned_address();
                                     let mutability = match instruction {
@@ -862,7 +862,7 @@ pub fn inner_execution_loop(
                                 RegularInstruction::GetSharedReference => {
                                     let target = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
 
                                     // value_container must be a shared value, otherwise we cannot create a reference to it
@@ -879,7 +879,7 @@ pub fn inner_execution_loop(
                                 RegularInstruction::GetSharedReferenceMut => {
                                     let target = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
 
                                     // value_container must be a shared value, otherwise we cannot create a reference to it
@@ -923,7 +923,7 @@ pub fn inner_execution_loop(
                                 RegularInstruction::TypedValue => {
                                     let mut value_container = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let ty =
                                         collected_results.pop_type_result();
@@ -964,7 +964,7 @@ pub fn inner_execution_loop(
                                     );
                                     let value = yield_unwrap!(
                                             collected_results
-                                                .pop_cloned_value_container_result_assert_existing(&state)
+                                                .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                         );
 
                                     let new_val = yield_unwrap!(
@@ -985,7 +985,7 @@ pub fn inner_execution_loop(
                                 RegularInstruction::SetSharedContainerValue => {
                                     let value_container = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let mut ref_runtime_value = yield_unwrap!(
                                         collected_results
@@ -1017,7 +1017,7 @@ pub fn inner_execution_loop(
                                 ) => {
                                     let value_container = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let mut ref_runtime_value = yield_unwrap!(
                                         collected_results
@@ -1055,7 +1055,7 @@ pub fn inner_execution_loop(
                                 RegularInstruction::SetStackValue(index) => {
                                     let value = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     yield_unwrap!(
                                         state
@@ -1068,11 +1068,36 @@ pub fn inner_execution_loop(
                                 RegularInstruction::PushToStack => {
                                     let value = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
+
+
                                     state
                                         .stack
                                         .push(value);
+
+                                    None.into()
+                                }
+
+                                RegularInstruction::PushListToStack => {
+                                    let value = yield_unwrap!(
+                                        collected_results
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
+                                    );
+
+                                    // value must be a list value
+                                    // push all entries onto the stack
+                                    match value {
+                                        ValueContainer::Local(Value {inner: CoreValue::List(list), ..}) => {
+                                            for value in list {
+                                                state.stack
+                                                    .push(value);
+                                            }
+                                        }
+                                        _ => {
+                                            return yield Err(ExecutionError::InvalidProgram(InvalidProgramError::ExpectedList))
+                                        }
+                                    }
 
                                     None.into()
                                 }
@@ -1126,7 +1151,7 @@ pub fn inner_execution_loop(
                                 RegularInstruction::GetPropertyDynamic => {
                                     let key = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let mut target = yield_unwrap!(
                                         collected_results
@@ -1176,7 +1201,7 @@ pub fn inner_execution_loop(
                                     );
                                     let value = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let res = target.with_mut_value_container(
                                         &mut state.stack,
@@ -1203,7 +1228,7 @@ pub fn inner_execution_loop(
                                     );
                                     let value = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
 
                                     let res = target.with_mut_value_container(
@@ -1229,11 +1254,11 @@ pub fn inner_execution_loop(
                                     );
                                     let value = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let key = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
 
                                     let res = target.with_mut_value_container(
@@ -1255,28 +1280,38 @@ pub fn inner_execution_loop(
                                 ) => {
                                     let receivers = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
 
                                     let injected_values = yield_unwrap!(state.stack.resolve_injected_values(&exec_block_data.injected_values));
 
                                     // build dxb
-                                    let (buffer, moving_containers) = yield_unwrap!(compile_injected_values(
+                                    let (buffer, shared_containers) = yield_unwrap!(compile_injected_values(
                                         exec_block_data,
                                         injected_values,
                                     ));
 
                                     // store moving pointers
-                                    if !moving_containers.is_empty() {
-                                        // ensure receiver is single endpoint
-                                        let maybe_single_receiver = receivers.with_collapsed_value(|v| {
-                                            if let CoreValue::Endpoint(single_receiver) = &v.inner { Some(single_receiver.clone()) } else { None }
-                                        });
-                                        if let Some(single_receiver) = maybe_single_receiver {
-                                            state.runtime.internal.add_moving_pointers(single_receiver, moving_containers);
-                                        } else {
-                                            return yield Err(ExecutionError::MoveToMultipleEndpoints)
+                                    // ensure receiver is single endpoint
+                                    let maybe_single_receiver = receivers.with_collapsed_value(|v| {
+                                        if let CoreValue::Endpoint(single_receiver) = &v.inner { Some(single_receiver.clone()) } else { None }
+                                    });
+                                    
+                                    for shared_container in shared_containers {
+                                        match shared_container {
+                                            SharedContainer::Owned(owned_shared_container) => {
+                                                if let Some(single_receiver) = maybe_single_receiver.clone() {
+                                                    state.runtime.internal.add_moving_shared_container(single_receiver, owned_shared_container);
+                                                } else {
+                                                    return yield Err(ExecutionError::MoveToMultipleEndpoints)
+                                                } 
+                                            }
+                                            SharedContainer::Referenced(referenced_shared_container) => {
+                                                todo!("Subscribe")
+                                            }
                                         }
+                                        
+                                     
                                     }
 
                                     interrupt_with_maybe_value!(
@@ -1343,7 +1378,7 @@ pub fn inner_execution_loop(
                                 RegularInstruction::SharedRefWithValue(shared_ref) => {
                                     let value = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     // get referenced pointer from address
                                     let pointer_address = RemotePointerAddress::for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes);
@@ -1484,7 +1519,7 @@ pub fn inner_execution_loop(
                 let active_value = yield_unwrap!(
                     last_result
                         .clone()
-                        .map(|v| v.into_cloned_value_container(&state))
+                        .map(|v| v.into_potentially_cloned_value_container(&state))
                         .transpose()
                 );
 

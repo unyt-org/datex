@@ -382,7 +382,7 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::CreateShared
                         | RegularInstruction::CreateSharedMut
                         | RegularInstruction::PushToStack
-                        | RegularInstruction::PushToStackMultiple(_)
+                        | RegularInstruction::PushListToStack
                         | RegularInstruction::SetStackValue(_)
                         | RegularInstruction::ModifyStackValue(_)
                         | RegularInstruction::ModifySharedContainerValue(_)
@@ -649,7 +649,7 @@ pub fn ast_from_bytecode(
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::SlotAssignment(
                                     StackAssignment {
-                                        index: StackIndex(0), // FIXME: count address
+                                        index: StackIndex(0), // FIXME: push
                                         expression: Box::new(expr),
                                     }
                                 )
@@ -657,7 +657,7 @@ pub fn ast_from_bytecode(
                                 .into()
                             }
 
-                            RegularInstruction::PushToStackMultiple(_push_multiple) => {
+                            RegularInstruction::PushListToStack => {
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::SlotAssignment(
                                     StackAssignment {

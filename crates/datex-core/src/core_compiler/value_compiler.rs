@@ -617,6 +617,7 @@ mod tests {
         values::{core_values::list::List, value::Value},
     };
     use core::assert_matches;
+    use crate::core_compiler::shared_value_tracking::TrackedValue;
 
     #[test]
     fn compile_tagged_empty_value() {
@@ -710,7 +711,10 @@ mod tests {
                 .shared_values
                 .remove(&pointer_address)
                 .unwrap(),
-            (SharedContainer::Owned(_), StackIndex(1))
+            TrackedValue::TopLevel {
+                container: SharedContainer::Owned(_),
+                index: StackIndex(1),
+            }
         );
 
         assert_regular_instructions_equal!(
@@ -748,7 +752,21 @@ mod tests {
                 .shared_values
                 .remove(&outer_pointer_address)
                 .unwrap(),
-            (SharedContainer::Owned(_), StackIndex(1))
+            TrackedValue::Child {
+                container: SharedContainer::Referenced(_),
+            }
+        );
+
+        assert_matches!(
+            context
+                .shared_value_tracking
+                .shared_values
+                .remove(&outer_pointer_address)
+                .unwrap(),
+            TrackedValue::TopLevel {
+                container: SharedContainer::Owned(_),
+                index: StackIndex(1),
+            }
         );
 
         assert_regular_instructions_equal!(
@@ -779,7 +797,10 @@ mod tests {
                 .shared_values
                 .remove(&pointer_address)
                 .unwrap(),
-            (SharedContainer::Referenced(_), StackIndex(1))
+            TrackedValue::TopLevel {
+                container: SharedContainer::Referenced(_),
+                index: StackIndex(1),
+            }
         );
 
         assert_regular_instructions_equal!(
@@ -820,7 +841,10 @@ mod tests {
                 .shared_values
                 .remove(&a_pointer_address)
                 .unwrap(),
-            (SharedContainer::Owned(_), StackIndex(1))
+            TrackedValue::TopLevel {
+                container: SharedContainer::Owned(_),
+                index: StackIndex(1),
+            }
         );
         assert_matches!(
             context
@@ -828,7 +852,10 @@ mod tests {
                 .shared_values
                 .remove(&b_pointer_address)
                 .unwrap(),
-            (SharedContainer::Owned(_), StackIndex(2))
+            TrackedValue::TopLevel {
+                container: SharedContainer::Owned(_),
+                index: StackIndex(2),
+            }
         );
 
         assert_regular_instructions_equal!(
