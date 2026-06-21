@@ -830,10 +830,11 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
             // tuple struct or unit struct
             None => {
                 if field_attributes.datex_skip {
-                    from_datex_fields.push(quote! {
-                        ::core::default::Default::default()
-                    });
-                    continue;
+                    panic!("datex(skip) is only supported on named fields");
+                }
+
+                if field_attributes.datex_default {
+                    panic!("datex(default) is only supported on named fields");
                 }
 
                 let field_index = syn::Index::from(index);

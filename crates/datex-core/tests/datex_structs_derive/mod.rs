@@ -152,6 +152,32 @@ fn skip() {
 }
 
 #[test]
+fn skip2() {
+    #[derive(Default, Debug, PartialEq)]
+    struct NoDerive {
+        a: u8,
+        b: String,
+    }
+    #[derive(Datex, Debug, PartialEq)]
+    struct SerdeDatexWithSkip2 {
+        a: u8,
+        #[datex(skip)]
+        b: NoDerive,
+    }
+    let value_container: ValueContainer = SerdeDatexWithSkip2 {
+        a: 42,
+        b: NoDerive {
+            a: 1,
+            b: "Hello".to_string(),
+        },
+    }
+    .into();
+    let deserialized: SerdeDatexWithSkip2 = value_container.try_into().unwrap();
+    assert_eq!(deserialized.a, 42);
+    assert_eq!(deserialized.b, NoDerive::default());
+}
+
+#[test]
 fn default() {
     #[derive(Datex, Debug, PartialEq)]
     struct SerdeDatexWithDefault {
