@@ -3,8 +3,8 @@ use crate::values::core_values::map::{BorrowedMapKey, Map};
 use crate::values::value_container::ValueContainer;
 
 impl<'a> ChildIterator<'a> for Map {
-    fn iter_children(&'a self) -> Box<dyn Iterator<Item = &ValueContainer> + 'a> {
-        Box::new(gen {
+    fn iter_children(&'a self) -> impl Iterator<Item = &ValueContainer> + 'a {
+       gen {
             for (key, value) in self.iter() {
                 match key {
                     BorrowedMapKey::Value(v) => yield v,
@@ -12,6 +12,6 @@ impl<'a> ChildIterator<'a> for Map {
                 };
                 yield value;
             }
-        })
+        }
     }
 }

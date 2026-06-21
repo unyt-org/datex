@@ -30,7 +30,6 @@ use core::{
 };
 pub mod datex_proxy;
 pub mod error;
-mod child_iterator;
 
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {

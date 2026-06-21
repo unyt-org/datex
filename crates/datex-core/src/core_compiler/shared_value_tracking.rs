@@ -9,6 +9,8 @@ use crate::{
 };
 use core::cell::Ref;
 use itertools::Itertools;
+use crate::traits::child_iterator::ChildIterator;
+use crate::values::value_container::ValueContainer;
 
 #[derive(Debug)]
 pub enum TrackedValue {
@@ -106,15 +108,18 @@ impl SharedValueTracking {
         parents: &HashSet<SharedContainer>,
     )  {
         // register children recursively
-        for child in shared_container.value_container().iter_children() {
-            match child {
-                ValueContainer::Shared(child) => self.register_shared_value_with_parents(
-                    shared_container,
-                    &parents.clone().into_iter().chain(core::iter::once(shared_container)).collect(),
-                ),
-                _ => {}
+        let parent = shared_container.clone();
+        shared_container.value_container().with_collapsed_value(|value| {
+            for child in value.iter_children() {
+                match child {
+                    ValueContainer::Shared(child) => self.register_shared_value_with_parents(
+                        child.clone(),
+                        &parents.clone().into_iter().chain(core::iter::once(parent.clone())).collect(),
+                    ),
+                    _ => {}
+                }
             }
-        }
+        });
 
         let address = shared_container.pointer_address();
         if let Some(tracked_value) = self.shared_values.get_mut(&address)

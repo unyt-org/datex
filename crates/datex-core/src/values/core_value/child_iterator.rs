@@ -3,12 +3,20 @@ use crate::values::core_value::CoreValue;
 use crate::values::value_container::ValueContainer;
 
 impl<'a> ChildIterator<'a> for CoreValue {
-    fn iter_children(&self) -> Box<dyn Iterator<Item = &ValueContainer>> {
-        match self {
-            CoreValue::Map(map) => map.iter_children(),
-            CoreValue::List(list) => list.iter_children(),
-            CoreValue::Range(range) => range.iter_children(),
-            _ => Box::new(core::iter::empty()),
+    fn iter_children(&self) -> impl Iterator<Item = &ValueContainer> {
+        gen {
+            match self {
+                CoreValue::Map(map) => for value in map.iter_children() {
+                    yield value;
+                },
+                CoreValue::List(list) => for value in list.iter_children() {
+                    yield value;
+                },
+                CoreValue::Range(range) => for value in range.iter_children() {
+                    yield value;
+                },
+                _ => {}
+            }
         }
     }
 }
