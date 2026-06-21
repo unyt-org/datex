@@ -981,6 +981,9 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "var x = 1; var y = (var x = 2; x); [x, y]",
         );
-        assert_eq!(result, List::from(vec![Integer::from(1), Integer::from(2)]).into());
+        assert_eq!(
+            result,
+            List::from(vec![Integer::from(1), Integer::from(2)]).into()
+        );
     }
 }

@@ -357,7 +357,7 @@ impl<'a> ToInstructions<'a> for CallableTypeDefinition {
 
     fn to_instructions(
         &'a self,
-        shared_value_tracking: &'a mut SharedValueTracking,
+        _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen { todo!() })
     }
@@ -385,7 +385,7 @@ impl<'a> ToInstructions<'a> for TaggedTypeDefinition {
 
     fn to_instructions(
         &'a self,
-        shared_value_tracking: &'a mut SharedValueTracking,
+        _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen { todo!() })
     }

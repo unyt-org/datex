@@ -17,7 +17,10 @@ use crate::{
     },
     global::{
         operators::{BinaryOperator, UnaryOperator},
-        protocol_structures::{instruction_data::{ShortStatementsData, StatementsData}, instructions::Instruction, regular_instructions::RegularInstruction::ShortStatements},
+        protocol_structures::{
+            instruction_data::{ShortStatementsData, StatementsData},
+            instructions::Instruction,
+        },
     },
     types::literal_type_definition::LiteralTypeDefinition,
     values::core_values::{

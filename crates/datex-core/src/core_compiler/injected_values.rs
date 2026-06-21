@@ -3,7 +3,7 @@ use crate::{
         core_compilation_context::CoreCompilationContext,
         value_compiler::{
             InjectedValueValidationError, append_regular_instruction,
-            append_value, append_value_container,
+            append_value_container,
         },
     },
     global::protocol_structures::{
@@ -13,12 +13,11 @@ use crate::{
         },
         instruction_data::{
             InstructionBlockData, PerformMove, RawSelfOwnedPointerAddress,
-            SharedRef, SharedRefWithValue, StatementsData,
+            SharedRef, SharedRefWithValue,
         },
         regular_instructions::RegularInstruction,
     },
     prelude::*,
-    runtime::execution::ExecutionError,
     shared_values::{
         OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
         SharedContainer,
@@ -58,19 +57,18 @@ fn validate_injected_value_declaration_for_values(
 
     for (injected_value_declaration, value_container) in
         injected_value_declarations
-            .into_iter()
-            .zip(injected_values.into_iter())
+            .iter()
+            .zip(injected_values.iter())
     {
         match &injected_value_declaration.ty {
             // local injected value expects local container
-            InjectedValueType::Local(_ty) => match value_container {
-                ValueContainer::Shared(_) => {
+            InjectedValueType::Local(_ty) => {
+                if let ValueContainer::Shared(_) = value_container {
                     return Err(
                         InjectedValueValidationError::ExpectedLocalValue,
                     );
                 }
-                _ => {}
-            },
+            }
             InjectedValueType::Shared(ty) => match ty {
                 // shared injected move expects owned shared container
                 SharedInjectedValueType::Move => match value_container {
@@ -84,7 +82,7 @@ fn validate_injected_value_declaration_for_values(
                 // shared injected ref expects shared container
                 SharedInjectedValueType::Ref
                 | SharedInjectedValueType::RefMut => match value_container {
-                    ValueContainer::Shared(container) => {}
+                    ValueContainer::Shared(_container) => {}
                     _ => return Err(
                         InjectedValueValidationError::ExpectedOwnedSharedValue,
                     ),

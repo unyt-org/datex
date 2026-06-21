@@ -108,7 +108,6 @@ impl RuntimeExecutionStack {
         self.values.truncate(index.0 as usize);
     }
 
-
     /// Takes a stack value by its index and returns its value.
     /// If the stack value is not allocated or the index is out of bounds, it returns an error.
     pub(crate) fn take_stack_value(

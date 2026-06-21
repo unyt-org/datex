@@ -20,7 +20,10 @@ use crate::{
         operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
         protocol_structures::{
             instruction_data::{
-                ApplyData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, ModifyStackValue, RawPointerAddress, ShortStatementsData, ShortTextData, StatementsData, TaggedValue, TextData, UnboundedStatementsData
+                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
+                FloatAsInt32Data, ModifyStackValue, RawPointerAddress,
+                ShortStatementsData, ShortTextData, StatementsData,
+                TaggedValue, TextData, UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
@@ -303,7 +306,7 @@ pub fn inner_execution_loop(
                         .default_regular_instruction_collection(
                             regular_instruction,
                             StatementResultCollectionStrategy::Last,
-                            state.stack.current_index()
+                            state.stack.current_index(),
                         );
 
                     let expr: Option<Option<RuntimeValue>> = if let Some(
@@ -1423,18 +1426,22 @@ pub fn inner_execution_loop(
                     } => {
                         // reset stack index
                         state.stack.truncate(previous_stack_index);
-                        
+
                         match instruction {
                             Instruction::Regular(regular_instruction) => {
                                 match regular_instruction {
                                     RegularInstruction::ShortStatements(
-                                        ShortStatementsData {terminated, ..},
+                                        ShortStatementsData {
+                                            terminated, ..
+                                        },
                                     )
                                     | RegularInstruction::Statements(
-                                        StatementsData {terminated, ..},
+                                        StatementsData { terminated, .. },
                                     ) => {
                                         if terminated {
-                                            CollectedExecutionResult::Value(None)
+                                            CollectedExecutionResult::Value(
+                                                None,
+                                            )
                                         } else {
                                             match collected_result {
                                                 Some(

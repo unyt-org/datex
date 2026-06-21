@@ -2,12 +2,9 @@ use crate::{
     core_compiler::type_compiler::{append_type, append_type_instruction},
     global::{
         instruction_codes::InstructionCode,
-        protocol_structures::{
-            instruction_data::{StatementsData, TextData},
-            regular_instructions::RegularInstruction::ShortStatements,
-        },
+        protocol_structures::instruction_data::TextData,
     },
-    utils::buffers::{append_i16, append_i32, append_u8, append_u32},
+    utils::buffers::{append_i16, append_i32, append_u8},
     values::{
         core_value::CoreValue,
         core_values::{

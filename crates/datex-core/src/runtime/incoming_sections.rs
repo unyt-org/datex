@@ -4,11 +4,6 @@ use crate::{
         protocol_structures::{
             block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
             encrypted_header::EncryptedHeader,
-            injected_values::{
-                InjectedValueDeclaration, InjectedValueType,
-                LocalInjectedValueType,
-            },
-            instruction_data::StackIndex,
             routing_header::RoutingHeader,
         },
     },
@@ -23,8 +18,6 @@ use crate::{
 };
 use core::result::Result;
 use log::info;
-use crate::compiler::compile_block;
-use crate::core_compiler::value_compiler::compile_value_container;
 
 impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
@@ -134,9 +127,8 @@ impl RuntimeInternal {
          *
          */
         if let Ok(value) = result {
-            let dxb = if let Some(value) = value {
-                let mut compilation_context =
-                    CoreCompilationContext::new(vec![]);
+            let dxb = if let Some(_value) = value {
+                let compilation_context = CoreCompilationContext::new(vec![]);
 
                 // todo!()
 

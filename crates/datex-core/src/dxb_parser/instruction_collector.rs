@@ -1,12 +1,12 @@
 use crate::{
     global::protocol_structures::{
+        instruction_data::StackIndex,
         instructions::{Instruction, NextExpectedInstructions},
         regular_instructions::RegularInstruction,
         type_instructions::TypeInstruction,
     },
     prelude::*,
 };
-use crate::global::protocol_structures::instruction_data::StackIndex;
 
 pub trait CollectionResultsPopper<
     Result,
@@ -152,7 +152,7 @@ pub enum ResultCollector<T> {
 pub enum FullOrPartialResult<T> {
     Full {
         instruction: Instruction,
-        results: CollectedResults<T>
+        results: CollectedResults<T>,
     },
     Partial {
         instruction: Instruction,
@@ -179,7 +179,6 @@ pub struct LastResultCollector<T> {
     /// The stack index (size) before entering the instruction (normally Statements instruction) that
     /// produced this result. This is used to correctly clean up the stack at the end of a statements block.
     previous_stack_index: StackIndex,
-
 }
 
 #[derive(Debug)]
@@ -242,7 +241,9 @@ impl<T> ResultCollector<T> {
                 {
                     Some(FullOrPartialResult::Full {
                         instruction: collector.instruction.take().unwrap(),
-                        results: core::mem::take( & mut collector.collected_results)
+                        results: core::mem::take(
+                            &mut collector.collected_results,
+                        ),
                     })
                 } else if collector.collected_results.get_results().len() as u32
                     > collector.expected_count
@@ -287,7 +288,7 @@ impl<T> ResultCollector<T> {
             ResultCollector::FullUnbounded(collector) => {
                 Some(FullOrPartialResult::Full {
                     instruction: collector.instruction.take().unwrap(),
-                    results: core::mem::take( & mut collector.collected_results),
+                    results: core::mem::take(&mut collector.collected_results),
                 })
             }
             _ => None,
@@ -358,7 +359,7 @@ impl<T> InstructionCollector<T> {
     }
 
     pub fn collect_last_unbounded(
-        &mut self, 
+        &mut self,
         instruction: Instruction,
         current_stack_index: StackIndex,
     ) {
@@ -474,8 +475,8 @@ impl<T> InstructionCollector<T> {
                     }
                     StatementResultCollectionStrategy::Last => {
                         self.collect_last_unbounded(
-                            Instruction::Regular(regular_instruction), 
-                            current_stack_index
+                            Instruction::Regular(regular_instruction),
+                            current_stack_index,
                         );
                     }
                 }
