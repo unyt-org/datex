@@ -1,6 +1,12 @@
 use crate::{
     core_compiler::type_compiler::{append_type, append_type_instruction},
-    global::instruction_codes::InstructionCode,
+    global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::{
+            instruction_data::{StatementsData, TextData},
+            regular_instructions::RegularInstruction::ShortStatements,
+        },
+    },
     utils::buffers::{append_i16, append_i32, append_u8, append_u32},
     values::{
         core_value::CoreValue,
@@ -235,12 +241,12 @@ pub fn append_value(
             context.cursor_mut(),
             RegularInstruction::Null,
         ),
-        CoreValue::Text(val) => append_text(context.cursor_mut(), &val.0),
+        CoreValue::Text(val) => append_text(context.cursor_mut(), val.0),
         CoreValue::List(val) => {
             // if list size < 256, use SHORT_LIST
             match val.len() {
                 0..=255 => {
-                    append_instruction_code_new(
+                    append_instruction_code(
                         context.cursor_mut(),
                         InstructionCode::SHORT_LIST,
                     );
@@ -264,7 +270,7 @@ pub fn append_value(
             // if map size < 256, use SHORT_MAP
             match val.size() {
                 0..=255 => {
-                    append_instruction_code_new(
+                    append_instruction_code(
                         context.cursor_mut(),
                         InstructionCode::SHORT_MAP,
                     );
@@ -325,21 +331,23 @@ pub fn append_type_cast(
     Ok(())
 }
 
-pub fn append_text(cursor: &mut ByteCursor, string: &str) {
-    let bytes = string.as_bytes();
-    let len = bytes.len();
-
-    if len < 256 {
-        append_instruction_code_new(cursor, InstructionCode::SHORT_TEXT);
-        append_u8(cursor, len as u8);
+/// Appends a text value, using either the short or regular text instruction depending on the byte length
+/// of the texts string representation
+pub fn append_text(cursor: &mut ByteCursor, string: String) {
+    if string.len() < 256 {
+        append_regular_instruction(
+            cursor,
+            RegularInstruction::ShortText(ShortTextData(string.to_owned())),
+        );
     } else {
-        append_instruction_code_new(cursor, InstructionCode::TEXT);
-        append_u32(cursor, len as u32);
+        append_regular_instruction(
+            cursor,
+            RegularInstruction::Text(TextData(string)),
+        );
     }
-
-    cursor.write_all(&bytes[..len]).unwrap();
 }
 
+/// Appends a boolean value using the TRUE or FALSE instruction
 pub fn append_boolean(cursor: &mut ByteCursor, boolean: bool) {
     if boolean {
         append_regular_instruction(cursor, RegularInstruction::True)
@@ -348,8 +356,9 @@ pub fn append_boolean(cursor: &mut ByteCursor, boolean: bool) {
     }
 }
 
+// Append a decimal value using the DECIMAL instruction code and big decimal encoding
 pub fn append_decimal(cursor: &mut ByteCursor, decimal: &Decimal) {
-    append_instruction_code_new(cursor, InstructionCode::DECIMAL);
+    append_instruction_code(cursor, InstructionCode::DECIMAL);
     append_big_decimal(cursor, decimal);
 }
 
@@ -358,7 +367,7 @@ pub fn append_big_decimal(cursor: &mut ByteCursor, decimal: &Decimal) {
 }
 
 pub fn append_endpoint(cursor: &mut ByteCursor, endpoint: &Endpoint) {
-    append_instruction_code_new(cursor, InstructionCode::ENDPOINT);
+    append_instruction_code(cursor, InstructionCode::ENDPOINT);
     endpoint.write_le(cursor).unwrap();
 }
 
@@ -400,6 +409,7 @@ pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) {
     append_regular_instruction(cursor, instruction);
 }
 
+/// Appends a typed decimal with explicit type casts
 pub fn append_encoded_decimal(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
     fn append_f32_or_f64(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
         match decimal {
@@ -420,10 +430,7 @@ pub fn append_encoded_decimal(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
                 );
             }
             TypedDecimal::Decimal(val) => {
-                append_instruction_code_new(
-                    cursor,
-                    InstructionCode::DECIMAL_BIG,
-                );
+                append_instruction_code(cursor, InstructionCode::DECIMAL_BIG);
                 append_big_decimal(cursor, val);
             }
         }
@@ -452,12 +459,14 @@ pub fn append_encoded_decimal(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
     // }
 }
 
+/// Appends a big integer using the BIG_INTEGER instruction code and big integer encoding
 pub fn append_big_integer(cursor: &mut ByteCursor, integer: &Integer) {
     integer
         .write_le(cursor)
         .expect("Failed to write big integer");
 }
 
+/// Appends a typed decimal with explicit type casts
 pub fn append_typed_decimal(
     context: &mut CoreCompilationContext,
     decimal: &TypedDecimal,
@@ -466,15 +475,19 @@ pub fn append_typed_decimal(
     append_encoded_decimal(context.cursor_mut(), decimal);
 }
 
+/// Appends a decimal as an i16 with the DECIMAL_AS_INT_16 instruction code
 pub fn append_float_as_i16(cursor: &mut ByteCursor, int: i16) {
-    append_instruction_code_new(cursor, InstructionCode::DECIMAL_AS_INT_16);
+    append_instruction_code(cursor, InstructionCode::DECIMAL_AS_INT_16);
     append_i16(cursor, int);
 }
+
+/// Appends a decimal as an i32 with the DECIMAL_AS_INT_32 instruction code
 pub fn append_float_as_i32(cursor: &mut ByteCursor, int: i32) {
-    append_instruction_code_new(cursor, InstructionCode::DECIMAL_AS_INT_32);
+    append_instruction_code(cursor, InstructionCode::DECIMAL_AS_INT_32);
     append_i32(cursor, int);
 }
 
+/// Appends a type cast to a core library type, using the GET_CORE_LIB_VALUE instruction with the type id
 pub fn append_get_shared_ref(
     context: &mut CoreCompilationContext,
     address: &PointerAddress,
@@ -482,7 +495,7 @@ pub fn append_get_shared_ref(
 ) {
     match address {
         PointerAddress::SelfOwned(local_address) => {
-            append_instruction_code_new(
+            append_instruction_code(
                 context.cursor_mut(),
                 InstructionCode::GET_LOCAL_SHARED_REF,
             );
@@ -492,7 +505,7 @@ pub fn append_get_shared_ref(
                 .unwrap();
         }
         PointerAddress::Remote(address) => {
-            append_instruction_code_new(
+            append_instruction_code(
                 context.cursor_mut(),
                 match mutability {
                     ReferenceMutability::Immutable => {
@@ -508,6 +521,7 @@ pub fn append_get_shared_ref(
     }
 }
 
+/// Appends a GET_CORE_LIB_VALUE instruction with the given core library id
 pub fn append_get_core_lib_value(cursor: &mut ByteCursor, id: CoreLibId) {
     append_regular_instruction(
         cursor,
@@ -515,6 +529,7 @@ pub fn append_get_core_lib_value(cursor: &mut ByteCursor, id: CoreLibId) {
     );
 }
 
+/// Appends a key-value pair for map entries, optimizing for short text keys
 pub fn append_key_value_pair(
     context: &mut CoreCompilationContext,
     key: ValueContainer,
@@ -527,7 +542,7 @@ pub fn append_key_value_pair(
             inner: CoreValue::Text(text),
             ..
         }) => {
-            append_key_string(context.cursor_mut(), &text.0);
+            append_key_string(context.cursor_mut(), text.0);
         }
         _ => {
             append_regular_instruction(
@@ -541,19 +556,15 @@ pub fn append_key_value_pair(
     append_value_container(context, value)
 }
 
-pub fn append_key_string(cursor: &mut ByteCursor, key_string: &str) {
-    let bytes = key_string.as_bytes();
-    let len = bytes.len();
-
-    if len < 256 {
-        append_instruction_code_new(
+/// Appends a key string for map entries, optimizing for short text keys
+pub fn append_key_string(cursor: &mut ByteCursor, key_string: String) {
+    if key_string.len() < 256 {
+        append_regular_instruction(
             cursor,
-            InstructionCode::KEY_VALUE_SHORT_TEXT,
+            RegularInstruction::KeyValueShortText(ShortTextData(key_string)),
         );
-        append_u8(cursor, len as u8);
-        cursor.write_all(&bytes[..len]).unwrap();
     } else {
-        append_instruction_code_new(cursor, InstructionCode::KEY_VALUE_DYNAMIC);
+        append_regular_instruction(cursor, RegularInstruction::KeyValueDynamic);
         append_text(cursor, key_string);
     }
 }
@@ -582,42 +593,19 @@ pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
     }
 }
 
-#[deprecated(note = "use append_regular_instruction instead")]
-pub fn append_instruction_code(_buffer: &mut Vec<u8>, _code: InstructionCode) {
-    unimplemented!("append_instruction_code instead")
-}
-
-pub fn append_instruction_code_new(
-    cursor: &mut ByteCursor,
-    code: InstructionCode,
-) {
+pub fn append_instruction_code(cursor: &mut ByteCursor, code: InstructionCode) {
     cursor.write_all(&[code as u8]).unwrap();
 }
 
 pub fn append_statements_preamble(
     cursor: &mut ByteCursor,
-    len: usize,
-    is_terminated: bool,
+    statements_count: usize,
+    terminated: bool,
 ) {
-    match len {
-        0..=255 => {
-            append_instruction_code_new(
-                cursor,
-                InstructionCode::SHORT_STATEMENTS,
-            );
-            append_u8(cursor, len as u8);
-        }
-        _ => {
-            append_instruction_code_new(cursor, InstructionCode::STATEMENTS);
-            append_u32(
-                cursor,
-                len as u32, // FIXME #673: conversion from usize to u32
-            );
-        }
-    }
-
-    // append termination flag
-    append_u8(cursor, if is_terminated { 1 } else { 0 });
+    append_regular_instruction(
+        cursor,
+        RegularInstruction::statements(statements_count as u32, terminated),
+    );
 }
 
 #[cfg(test)]
@@ -626,13 +614,9 @@ mod tests {
     use super::*;
     use crate::{
         assert_regular_instructions_equal,
-        dif::pointer_address,
         global::protocol_structures::instruction_data::StackIndex,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-        shared_values::{
-            OwnedSharedContainer, SelfOwnedPointerAddress,
-            SharedContainerMutability,
-        },
+        shared_values::SharedContainerMutability,
         values::{core_values::list::List, value::Value},
     };
     use core::assert_matches;

@@ -1,6 +1,6 @@
 use crate::{
     core_compiler::value_compiler::{
-        append_instruction_code_new, append_local_pointer_address,
+        append_instruction_code, append_local_pointer_address,
     },
     global::{
         instruction_codes::InstructionCode,
@@ -18,7 +18,7 @@ pub fn compile_request_move(
     let mut cursor =
         Cursor::new(Vec::with_capacity(1 + 5 + (mappings.len() * 2 * 5)));
 
-    append_instruction_code_new(&mut cursor, InstructionCode::MOVE);
+    append_instruction_code(&mut cursor, InstructionCode::MOVE);
     // number of pointer mappings
     append_u32(&mut cursor, mappings.len() as u32);
 

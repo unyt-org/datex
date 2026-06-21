@@ -102,11 +102,7 @@ fn compile_injected_values_with_context(
 ) -> Result<(), InjectedValueValidationError> {
     append_regular_instruction(
         compilation_context.cursor_mut(),
-        RegularInstruction::ShortStatements(StatementsData {
-            // injected value push statements + original body
-            statements_count: injected_values.len() as u32 + 1,
-            terminated: false,
-        }),
+        RegularInstruction::statements(injected_values.len() as u32 + 1, false),
     );
 
     for value_container in injected_values {
@@ -308,10 +304,7 @@ mod tests {
             &res,
             [
                 // preamble
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 2,
-                    terminated: false
-                }),
+                RegularInstruction::statements(2, false),
                 // ref
                 RegularInstruction::PushToStack,
                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
@@ -381,10 +374,7 @@ mod tests {
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 3,
-                    terminated: false
-                }),
+                RegularInstruction::statements(3, false),
                 // first ref
                 RegularInstruction::PushToStack,
                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
@@ -442,10 +432,7 @@ mod tests {
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 3,
-                    terminated: false
-                }),
+                RegularInstruction::statements(3, false),
                 // move
                 RegularInstruction::PushToStack,
                 RegularInstruction::PerformMove(PerformMove {

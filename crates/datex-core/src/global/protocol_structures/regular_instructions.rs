@@ -89,7 +89,7 @@ pub enum RegularInstruction {
     False,
     Null,
     Statements(StatementsData),
-    ShortStatements(StatementsData),
+    ShortStatements(ShortStatementsData),
     UnboundedStatements,
     UnboundedStatementsEnd(UnboundedStatementsData),
     List(ListData),
@@ -177,6 +177,23 @@ pub enum RegularInstruction {
 
     TypedValue,
     TypeExpression,
+}
+
+impl RegularInstruction {
+    pub fn statements(count: u32, terminated: bool) -> RegularInstruction {
+        match count {
+            0..=255 => {
+                RegularInstruction::ShortStatements(ShortStatementsData {
+                    statements_count: count as u8,
+                    terminated,
+                })
+            }
+            _ => RegularInstruction::Statements(StatementsData {
+                statements_count: count,
+                terminated,
+            }),
+        }
+    }
 }
 
 /// Maps each regular instruction to its corresponding instruction code
@@ -381,8 +398,12 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(map.element_count)
             } // map entries
 
-            RegularInstruction::ShortStatements(statements)
-            | RegularInstruction::Statements(statements) => {
+            RegularInstruction::ShortStatements(statements) => {
+                NextExpectedInstructions::Regular(
+                    statements.statements_count as u32,
+                )
+            }
+            RegularInstruction::Statements(statements) => {
                 NextExpectedInstructions::Regular(statements.statements_count)
             } // statements in block
 
@@ -607,10 +628,6 @@ impl RegularInstruction {
             }
             InstructionCode::SHORT_STATEMENTS => {
                 ShortStatementsData::read(reader)
-                    .map(|data| StatementsData {
-                        statements_count: data.statements_count as u32,
-                        terminated: data.terminated,
-                    })
                     .map(RegularInstruction::ShortStatements)
             }
 

@@ -558,7 +558,7 @@ fn compile_expression(
             );
         }
         DatexExpressionData::Text(text) => {
-            append_text(compilation_context.cursor(), &text.0);
+            append_text(compilation_context.cursor(), text.0);
         }
         DatexExpressionData::Boolean(boolean) => {
             append_boolean(compilation_context.cursor(), boolean.0);
@@ -1449,7 +1449,7 @@ fn compile_key_value_entry(
     match key.data {
         // text -> insert key string
         DatexExpressionData::Text(text) => {
-            append_key_string(compilation_context.cursor(), &text.0);
+            append_key_string(compilation_context.cursor(), text.0);
         }
         // other -> insert key as dynamic
         _ => {
@@ -1574,8 +1574,8 @@ pub mod tests {
                     SharedInjectedValueType,
                 },
                 instruction_data::{
-                    InstructionBlockData, MapData, ShortTextData, StackIndex,
-                    StatementsData, TaggedValue, UInt8Data,
+                    InstructionBlockData, ListData, MapData, ShortTextData,
+                    StackIndex, StatementsData, TaggedValue, UInt8Data,
                 },
                 instructions::Instruction,
                 regular_instructions::RegularInstruction,
@@ -1594,7 +1594,6 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::global::protocol_structures::instruction_data::ListData;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
@@ -2663,16 +2662,10 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 5,
-                    terminated: true
-                }),
+                RegularInstruction::statements(5, true),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(1)),
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 3,
-                    terminated: true
-                }),
+                RegularInstruction::statements(3, true),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(2)),
                 RegularInstruction::CloneStackValue(StackIndex(0)),
@@ -2775,10 +2768,7 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 2,
-                    terminated: false
-                }),
+                RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
                 RegularInstruction::_RemoteExecutionDebugFlat(
@@ -2814,10 +2804,7 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 2,
-                    terminated: false
-                }),
+                RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::CreateShared,
                 RegularInstruction::UInt8(UInt8Data(42)),
@@ -2851,10 +2838,7 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 2,
-                    terminated: false
-                }),
+                RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::CreateShared,
                 RegularInstruction::UInt8(UInt8Data(42)),
@@ -2890,10 +2874,7 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 3,
-                    terminated: false
-                }),
+                RegularInstruction::statements(3, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
                 RegularInstruction::PushToStack,
@@ -2947,10 +2928,7 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 3,
-                    terminated: false
-                }),
+                RegularInstruction::statements(3, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
                 RegularInstruction::PushToStack,
@@ -2970,12 +2948,7 @@ pub mod tests {
                         ],
                         body: vec![
                             Instruction::Regular(
-                                RegularInstruction::ShortStatements(
-                                    StatementsData {
-                                        statements_count: 2,
-                                        terminated: false
-                                    }
-                                )
+                                RegularInstruction::statements(2, false)
                             ),
                             Instruction::Regular(
                                 RegularInstruction::PushToStack
@@ -3647,27 +3620,19 @@ pub mod tests {
 
     #[test]
     fn variable_shadowing() {
-        let datex_script = "var x = 42u8; (var x = 43u8;); (var y = 43u8; y); x";
+        let datex_script =
+            "var x = 42u8; (var x = 43u8;); (var y = 43u8; y); x";
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
             [
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 4,
-                    terminated: false
-                }),
+                RegularInstruction::statements(4, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 1,
-                    terminated: true
-                }),
+                RegularInstruction::statements(1, true),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(43)),
-                 RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 2,
-                    terminated: false
-                }),
+                RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(43)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
@@ -3683,23 +3648,15 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &result,
             [
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 3,
-                    terminated: false
-                }),
+                RegularInstruction::statements(3, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(1)),
                 RegularInstruction::PushToStack,
-                RegularInstruction::ShortStatements(StatementsData {
-                    statements_count: 2,
-                    terminated: false
-                }),
+                RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(2)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
-                RegularInstruction::ShortList(ListData {
-                    element_count: 2,
-                }),
+                RegularInstruction::ShortList(ListData { element_count: 2 }),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
             ]

@@ -20,9 +20,7 @@ use crate::{
         operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
         protocol_structures::{
             instruction_data::{
-                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, ModifyStackValue, RawPointerAddress,
-                ShortTextData, TaggedValue, TextData, UnboundedStatementsData,
+                ApplyData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, ModifyStackValue, RawPointerAddress, ShortStatementsData, ShortTextData, StatementsData, TaggedValue, TextData, UnboundedStatementsData
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
@@ -1430,12 +1428,12 @@ pub fn inner_execution_loop(
                             Instruction::Regular(regular_instruction) => {
                                 match regular_instruction {
                                     RegularInstruction::ShortStatements(
-                                        statements_data,
+                                        ShortStatementsData {terminated, ..},
                                     )
                                     | RegularInstruction::Statements(
-                                        statements_data,
+                                        StatementsData {terminated, ..},
                                     ) => {
-                                        if statements_data.terminated {
+                                        if terminated {
                                             CollectedExecutionResult::Value(None)
                                         } else {
                                             match collected_result {

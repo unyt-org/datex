@@ -1,7 +1,7 @@
 use crate::{
     core_compiler::{
         core_compilation_context::CoreCompilationContext,
-        value_compiler::append_instruction_code_new,
+        value_compiler::append_instruction_code,
     },
     global::{
         instruction_codes::InstructionCode,
@@ -90,6 +90,6 @@ impl CompilationContext {
     }
 
     pub fn append_instruction_code(&mut self, code: InstructionCode) {
-        append_instruction_code_new(self.cursor(), code);
+        append_instruction_code(self.cursor(), code);
     }
 }

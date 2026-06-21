@@ -13,6 +13,7 @@ use crate::{
     types::{
         type_definition::{
             TypeDefinition,
+            callable::CallableTypeDefinition,
             collection::{
                 CollectionTypeDefinition,
                 type_definition::{
@@ -22,9 +23,12 @@ use crate::{
                 },
             },
             impl_type::ImplTypeDefinition,
+            intersection::IntersectionTypeDefinition,
             list::ListTypeDefinition,
             map::MapTypeDefinition,
             range::RangeTypeDefinition,
+            tagged_type::TaggedTypeDefinition,
+            union::UnionTypeDefinition,
         },
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
@@ -97,13 +101,14 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
                         yield instruction;
                     }
                 }
-                TypeDefinition::Shared(_shared_container_containing_type) => {
-                    todo!()
-                    // for instruction in
-                    //     shared_container_containing_type.to_instructions(shared_value_tracking)
-                    // {
-                    //     yield instruction;
-                    // }
+                TypeDefinition::Shared(shared_container_containing_type) => {
+                    let instructions: Vec<_> = shared_container_containing_type
+                        .with_collapsed_type_value(|f| {
+                            f.to_instructions(shared_value_tracking).collect()
+                        });
+                    for instruction in instructions {
+                        yield instruction;
+                    }
                 }
                 TypeDefinition::Nested(nested) => {
                     for instruction in
@@ -112,34 +117,33 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
                         yield instruction;
                     }
                 }
-                TypeDefinition::Callable(_callable_type_definition) => {
-                    todo!()
-                    // for instruction in
-                    //     callable_type_definition.to_instructions(shared_value_tracking)
-                    // {
-                    //     yield instruction;
-                    // }
+                TypeDefinition::Callable(callable_type_definition) => {
+                    for instruction in callable_type_definition
+                        .to_instructions(shared_value_tracking)
+                    {
+                        yield instruction;
+                    }
                 }
-                TypeDefinition::Intersection(_intersection_type_definition) => {
-                    todo!()
-                    // for instruction in
-                    //     intersection_type_definition.to_instructions(shared_value_tracking)
-                    // {
-                    //     yield instruction;
-                    // }
+                TypeDefinition::Intersection(intersection_type_definition) => {
+                    for instruction in intersection_type_definition
+                        .to_instructions(shared_value_tracking)
+                    {
+                        yield instruction;
+                    }
                 }
-                TypeDefinition::Union(_union_type_definition) => {
-                    todo!()
-                    // for instruction in union_type_definition.to_instructions(shared_value_tracking) {
-                    //     yield instruction;
-                    // }
+                TypeDefinition::Union(union_type_definition) => {
+                    for instruction in union_type_definition
+                        .to_instructions(shared_value_tracking)
+                    {
+                        yield instruction;
+                    }
                 }
-                TypeDefinition::TaggedType(_tagged_type_definition) => {
-                    todo!()
-                    // for instruction in tagged_type_definition.to_instructions(shared_value_tracking)
-                    // {
-                    //     yield instruction;
-                    // }
+                TypeDefinition::TaggedType(tagged_type_definition) => {
+                    for instruction in tagged_type_definition
+                        .to_instructions(shared_value_tracking)
+                    {
+                        yield instruction;
+                    }
                 }
                 TypeDefinition::CoreType(core_lib_type_id) => {
                     yield TypeInstruction::TypeDefinitionCoreType(
@@ -326,6 +330,62 @@ impl<'a> ToInstructions<'a> for ListSliceCollectionTypeDefinition {
     fn to_instructions(
         &'a self,
         _shared_value_tracking: &'a mut SharedValueTracking,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
+        Box::new(gen { todo!() })
+    }
+}
+
+impl<'a> ToInstructions<'a> for IntersectionTypeDefinition {
+    type InstructionType = TypeInstruction;
+
+    fn to_instructions(
+        &'a self,
+        shared_value_tracking: &'a mut SharedValueTracking,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
+        Box::new(gen {
+            for ty in self.iter() {
+                for instruction in ty.to_instructions(shared_value_tracking) {
+                    yield instruction;
+                }
+            }
+        })
+    }
+}
+
+impl<'a> ToInstructions<'a> for CallableTypeDefinition {
+    type InstructionType = TypeInstruction;
+
+    fn to_instructions(
+        &'a self,
+        shared_value_tracking: &'a mut SharedValueTracking,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
+        Box::new(gen { todo!() })
+    }
+}
+
+impl<'a> ToInstructions<'a> for UnionTypeDefinition {
+    type InstructionType = TypeInstruction;
+
+    fn to_instructions(
+        &'a self,
+        shared_value_tracking: &'a mut SharedValueTracking,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
+        Box::new(gen {
+            for ty in self.iter() {
+                for instruction in ty.to_instructions(shared_value_tracking) {
+                    yield instruction;
+                }
+            }
+        })
+    }
+}
+
+impl<'a> ToInstructions<'a> for TaggedTypeDefinition {
+    type InstructionType = TypeInstruction;
+
+    fn to_instructions(
+        &'a self,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen { todo!() })
     }

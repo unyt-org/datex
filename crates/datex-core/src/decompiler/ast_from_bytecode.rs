@@ -17,7 +17,7 @@ use crate::{
     },
     global::{
         operators::{BinaryOperator, UnaryOperator},
-        protocol_structures::instructions::Instruction,
+        protocol_structures::{instruction_data::{ShortStatementsData, StatementsData}, instructions::Instruction, regular_instructions::RegularInstruction::ShortStatements},
     },
     types::literal_type_definition::LiteralTypeDefinition,
     values::core_values::{
@@ -488,15 +488,15 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                            RegularInstruction::Statements(statements_data)
+                            RegularInstruction::Statements(StatementsData {terminated, ..})
                             | RegularInstruction::ShortStatements(
-                                statements_data,
+                                ShortStatementsData {terminated, ..},
                             ) => {
                                 let statements =
                                     collected_results.collect_value_results();
                                 DatexExpressionData::Statements(Statements {
                                     statements,
-                                    is_terminated: statements_data.terminated,
+                                    is_terminated: terminated,
                                     unbounded: None,
                                 })
                                 .with_default_span()

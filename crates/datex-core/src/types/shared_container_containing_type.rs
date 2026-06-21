@@ -3,7 +3,6 @@ use crate::{
     values::core_value::CoreValue,
 };
 use core::ops::Deref;
-use serde::Serialize;
 
 /// A wrapper around an [SharedContainer] which guarantees
 /// that the contained value is always a [CoreValue::Type]
