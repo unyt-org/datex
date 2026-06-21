@@ -53,6 +53,7 @@ impl From<&Fields> for FieldsType {
 pub struct FieldAttributes {
     serde_mode: SerdeMode,
     datex_rename: Option<String>,
+    datex_default: bool,
 }
 
 /// Top-level attributes for the Datex derive macro
@@ -757,25 +758,49 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
 
                 let field_from = match field_attributes.serde_mode {
                     SerdeMode::None => {
-                        quote! {
-                            DatexValueContainerProxyDeserialize::try_from_map_property(
-                                unsafe {
-                                    map.try_delete_unsafe(#field_name)
+                        if field_attributes.datex_default {
+                            quote! {
+                                match unsafe { map.try_delete_unsafe(#field_name) } {
+                                    Ok(value_container) => {
+                                        DatexValueContainerProxyDeserialize::try_from_value_container(
+                                            value_container
+                                        )?
+                                    }
+                                    Err(_) => ::core::default::Default::default(),
                                 }
-                            )?
+                            }
+                        } else {
+                            quote! {
+                                DatexValueContainerProxyDeserialize::try_from_map_property(
+                                    unsafe {
+                                        map.try_delete_unsafe(#field_name)
+                                    }
+                                )?
+                            }
                         }
                     }
 
                     SerdeMode::Fallible | SerdeMode::Infallible => {
-                        quote! {
-                            try_serde_from_value_container(
-                                unsafe {
-                                    map.try_delete_unsafe(#field_name)
-                                        .map_err(|err| {
-                                            TryFromDatexValueError(err.to_string())
-                                        })?
+                        if field_attributes.datex_default {
+                            quote! {
+                                match unsafe { map.try_delete_unsafe(#field_name) } {
+                                    Ok(value_container) => {
+                                        try_serde_from_value_container(value_container)?
+                                    }
+                                    Err(_) => ::core::default::Default::default(),
                                 }
-                            )?
+                            }
+                        } else {
+                            quote! {
+                                try_serde_from_value_container(
+                                    unsafe {
+                                        map.try_delete_unsafe(#field_name)
+                                            .map_err(|err| {
+                                                TryFromDatexValueError(err.to_string())
+                                            })?
+                                    }
+                                )?
+                            }
                         }
                     }
                 };
@@ -856,6 +881,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
 fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
     let mut serde_mode = SerdeMode::None;
     let mut datex_rename = None;
+    let mut datex_default = false;
 
     // find datex(serde) or datex(serde_infallible) attribute
     for attr in attrs {
@@ -884,6 +910,8 @@ fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
                                 );
                             }
                             serde_mode = SerdeMode::Infallible;
+                        } else if path.is_ident("default") {
+                            datex_default = true;
                         }
                     }
 
@@ -915,6 +943,7 @@ fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
     FieldAttributes {
         serde_mode,
         datex_rename,
+        datex_default,
     }
 }
 

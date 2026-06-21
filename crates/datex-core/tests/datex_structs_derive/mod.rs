@@ -39,13 +39,6 @@ struct SerdeDatexExample {
     serde: SerdeExample,
 }
 
-#[derive(Datex, Debug, Clone, PartialEq)]
-struct SerdeDatexExampleInfallible {
-    a: u8,
-    #[datex(serde_infallible)]
-    serde: SerdeExample,
-}
-
 #[derive(Datex, Debug, PartialEq)]
 struct ExampleNewType(Example);
 
@@ -130,6 +123,24 @@ fn struct_to_value_container() {
         map.get("c").unwrap(),
         &ValueContainer::from(Endpoint::default())
     );
+}
+
+#[test]
+fn default() {
+    #[derive(Datex, Debug, PartialEq)]
+    struct SerdeDatexWithDefault {
+        a: u8,
+        #[datex(default)]
+        b: String,
+    }
+
+    let map: Map =
+        Map::from(vec![("a".to_string(), ValueContainer::from(42u8))]);
+    let value_container = ValueContainer::from(map);
+    let deserialized: SerdeDatexWithDefault =
+        value_container.try_into().unwrap();
+    assert_eq!(deserialized.a, 42);
+    assert_eq!(deserialized.b, "".to_string());
 }
 
 #[test]
@@ -379,6 +390,13 @@ fn struct_with_serde_to_value_container() {
 
 #[test]
 fn struct_with_serde_infallible_to_value_container() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    struct SerdeDatexExampleInfallible {
+        a: u8,
+        #[datex(serde_infallible)]
+        serde: SerdeExample,
+    }
+
     let serde_example = SerdeDatexExampleInfallible {
         a: 42u8,
         serde: SerdeExample {
