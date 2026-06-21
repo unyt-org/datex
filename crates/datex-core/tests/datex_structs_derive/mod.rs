@@ -126,6 +126,32 @@ fn struct_to_value_container() {
 }
 
 #[test]
+fn skip() {
+    #[derive(Datex, Debug, PartialEq)]
+    struct SerdeDatexWithSkip {
+        a: u8,
+
+        #[datex(skip)]
+        b: String,
+    }
+    let value_container: ValueContainer = SerdeDatexWithSkip {
+        a: 42,
+        b: "Hello".to_string(),
+    }
+    .into();
+
+    let map: Map = value_container.try_as().unwrap();
+    assert!(map.has("a"));
+    assert!(!map.has("b"));
+
+    let value_container = ValueContainer::from(map);
+    let deserialized: SerdeDatexWithSkip = value_container.try_into().unwrap();
+
+    assert_eq!(deserialized.a, 42);
+    assert_eq!(deserialized.b, "".to_string());
+}
+
+#[test]
 fn default() {
     #[derive(Datex, Debug, PartialEq)]
     struct SerdeDatexWithDefault {

@@ -54,6 +54,7 @@ pub struct FieldAttributes {
     serde_mode: SerdeMode,
     datex_rename: Option<String>,
     datex_default: bool,
+    datex_skip: bool,
 }
 
 /// Top-level attributes for the Datex derive macro
@@ -709,7 +710,9 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
     // Iterate over the fields of the struct
     for (index, field) in fields.iter().enumerate() {
         let field_attributes = parse_field_attributes(&field.attrs);
-        if field_attributes.serde_mode == SerdeMode::Fallible {
+        if !field_attributes.datex_skip
+            && field_attributes.serde_mode == SerdeMode::Fallible
+        {
             is_fallible_serialization = true;
         }
 
@@ -732,6 +735,14 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                 let field_name = field_attributes
                     .datex_rename
                     .unwrap_or_else(|| field_ident.to_string());
+
+                if field_attributes.datex_skip {
+                    from_datex_fields.push(quote! {
+                        #field_ident: ::core::default::Default::default()
+                    });
+                    continue;
+                }
+
                 let field_into = generate_field_conversion_code(
                     &field_attributes.serde_mode,
                     field_ident,
@@ -818,6 +829,13 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
 
             // tuple struct or unit struct
             None => {
+                if field_attributes.datex_skip {
+                    from_datex_fields.push(quote! {
+                        ::core::default::Default::default()
+                    });
+                    continue;
+                }
+
                 let field_index = syn::Index::from(index);
                 let field_into = generate_field_conversion_code(
                     &field_attributes.serde_mode,
@@ -882,6 +900,7 @@ fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
     let mut serde_mode = SerdeMode::None;
     let mut datex_rename = None;
     let mut datex_default = false;
+    let mut datex_skip = false;
 
     // find datex(serde) or datex(serde_infallible) attribute
     for attr in attrs {
@@ -912,6 +931,13 @@ fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
                             serde_mode = SerdeMode::Infallible;
                         } else if path.is_ident("default") {
                             datex_default = true;
+                        } else if path.is_ident("skip") {
+                            datex_skip = true;
+                        } else {
+                            panic!(
+                                "Unknown datex field attribute: {}",
+                                path.get_ident().unwrap()
+                            );
                         }
                     }
 
@@ -940,10 +966,15 @@ fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
         }
     }
 
+    if datex_skip && datex_default {
+        panic!("Cannot use both datex(skip) and datex(default)");
+    }
+
     FieldAttributes {
         serde_mode,
         datex_rename,
         datex_default,
+        datex_skip,
     }
 }
 
