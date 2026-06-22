@@ -2,16 +2,10 @@ use crate::{
     collections::HashMap,
     global::protocol_structures::instruction_data::StackIndex,
     prelude::*,
-    shared_values::{
-        OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
-        SharedContainer,
-    },
+    shared_values::{PointerAddress, SharedContainer},
     traits::child_iterator::ChildIterator,
     values::value_container::ValueContainer,
 };
-use core::cell::Ref;
-use itertools::Itertools;
-
 #[derive(Debug)]
 pub enum TrackedValue {
     TopLevel {
@@ -80,9 +74,10 @@ impl SharedValueTracking {
         shared_container: SharedContainer,
     ) -> StackIndex {
         let address = shared_container.pointer_address();
-        let mut parents = HashSet::new();
-        self.register_shared_value_with_parents(shared_container, &mut parents);
-
+        self.register_shared_value_with_parents(
+            shared_container,
+            &mut HashSet::new(),
+        );
         let tracked_value = self.shared_values.get(&address).unwrap();
 
         // ensure tracked value is a top level tracked value with stack index
@@ -115,50 +110,30 @@ impl SharedValueTracking {
             existing.update_container(shared_container);
             return;
         }
-
+        let shared_ref = shared_container.clone();
         self.shared_values.insert(
             address.clone(),
             TrackedValue::Child {
                 container: shared_container,
             },
         );
-
-        if !parents.insert(address.clone()) {
-            return;
-        }
-
-        let children = self.collect_shared_child_addresses(&address);
-
-        for child in children {
-            self.register_shared_value_with_parents(
-                self.shared_values.get(&child).unwrap().clone(),
-                parents,
-            );
-        }
-
-        parents.remove(&address);
-    }
-
-    fn collect_shared_child_addresses(
-        &self,
-        address: &PointerAddress,
-    ) -> Vec<PointerAddress> {
-        let tracked_value = self.shared_values.get(address).unwrap();
-
-        let container = match tracked_value {
-            TrackedValue::TopLevel { container, .. } => container,
-            TrackedValue::Child { container } => container,
-        };
-
-        let mut children = Vec::new();
-        container.value_container().with_collapsed_value(|value| {
-            for child in value.iter_children() {
-                if let ValueContainer::Shared(child) = child {
-                    children.push(child.pointer_address()); // no clone to not loose owned value
+        // Only for references, and if the address is not already being visited, we want to register all childrens
+        // with the whole tree of their direct and indirect parents
+        if matches!(shared_ref, SharedContainer::Referenced(_))
+            && parents.insert(address.clone())
+        {
+            shared_ref.value_container().with_collapsed_value(|value| {
+                for child in value.iter_children() {
+                    if let ValueContainer::Shared(child) = child {
+                        self.register_shared_value_with_parents(
+                            child.clone(),
+                            parents,
+                        );
+                    }
                 }
-            }
-        });
-        children
+            });
+            parents.remove(&address);
+        }
     }
 
     /// Extracts all registered owned and referenced shared values
@@ -174,7 +149,7 @@ mod tests {
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             PointerAddress, ReferenceMutability, SharedContainer,
-            SharedContainerMutability, SharedContainerOwnership,
+            SharedContainerMutability,
         },
         values::{core_values::list::List, value_container::ValueContainer},
     };
@@ -232,7 +207,7 @@ mod tests {
                     container.pointer_address(),
                 );
             }
-            TrackedValue::Child { container } => {
+            TrackedValue::Child { .. } => {
                 panic!("expected top-level tracked value")
             }
         }
@@ -393,7 +368,7 @@ mod tests {
     }
 
     #[test]
-    fn tracking_same_child_tracked_onnce() {
+    fn tracking_same_child_tracked_once() {
         let mut tracking = SharedValueTracking::new();
 
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
