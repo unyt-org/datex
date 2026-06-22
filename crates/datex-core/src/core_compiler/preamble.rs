@@ -1,6 +1,7 @@
 use crate::{
     collections::HashMap,
     core_compiler::{
+        buffer_provider::BufferProvider,
         core_compilation_context::{ByteCursor, CoreCompilationContext},
         shared_value_tracking::TrackedValue,
         value_compiler::append_regular_instruction,
@@ -9,14 +10,49 @@ use crate::{
         instruction_data::StackIndex, regular_instructions::RegularInstruction,
     },
     shared_values::SharedContainer,
+    values::value_container::value_key::ValueKey,
 };
 
 #[derive(Debug)]
+struct InsertedValueInfo {
+    inner_stack_index: StackIndex,
+    modification: Vec<ShellModifications>,
+}
+
+#[derive(Debug)]
 struct PreambleContext<'a> {
-    byte_cursor: &'a mut ByteCursor,
-    inserted_values: HashMap<SharedContainer, StackIndex>,
-    top_level_slots: Vec<StackIndex>,
-    // recursive_dependencies: HashMap<SharedContainer, (Option<Vec<SharedContainer>>, ValueKey)>,
+    cursor: &'a mut ByteCursor,
+    inserted_values: HashMap<SharedContainer, InsertedValueInfo>,
+    current_stack_index: StackIndex,
+}
+
+impl BufferProvider for PreambleContext<'_> {
+    fn cursor_mut(&mut self) -> &mut ByteCursor {
+        self.cursor
+    }
+}
+
+impl<'a> PreambleContext<'a> {
+    pub fn try_get_stack_index_for_value(
+        &self,
+        value: &SharedContainer,
+    ) -> Option<StackIndex> {
+        self.inserted_values
+            .get(value)
+            .map(|info| info.inner_stack_index)
+    }
+
+    fn get_next_stack_index(&mut self) -> StackIndex {
+        let stack_index = self.current_stack_index;
+        self.current_stack_index = StackIndex(self.current_stack_index.0 + 1);
+        stack_index
+    }
+}
+
+#[derive(Debug)]
+struct ShellModifications {
+    target_index: StackIndex,
+    assigned_property: ValueKey,
 }
 
 pub(super) fn append_injected_values_preamble(
@@ -28,36 +64,65 @@ pub(super) fn append_injected_values_preamble(
     if tracked_values.is_empty() {
         return Vec::new();
     }
-    /**
-    #0 = 42;
-    #1 = shared 43;
-    #2 = shared [#0, #1];
 
-
-    #4 = {}; <---  #3 -> #4.(#5) = #3
-
-
-    #3 = {a: #1, b: #4}
-    #3.b = #4;
-    **/
     let context = &mut PreambleContext {
-        byte_cursor,
+        cursor: byte_cursor,
         inserted_values: HashMap::new(),
-        top_level_slots: Vec::new(),
+        current_stack_index: StackIndex(0),
     };
 
     for container in tracked_values {
         append_injected_value(context, container);
     }
-
-    /// LIST [#4,#5,#6]
     todo!()
+
+    // /**
+    //  *
+    //  * a = {}
+    //  * b = {}
+    //  * c = {}
+    //  * a.b = b
+    //  * b.c = c
+    //  * c.a = a
+    //  * c.b = b
+    //  *
+    //  * a = {b: b}
+    //  * b = {c: c}
+    //  * c = {b: b, a: a}
+    //  *
+    //  *
+    //  *
+    //  * c = {b: null, a: null} -> (c.b = ?b, c.a = ?a)
+    //  * a = {b: null} -> (a.b = ?b, ?b = ?c.b)
+    //  * b = {a: null}
+    //  *
+    //  *
+    //  *
+    //  *
+    //  *
+    // #0 = 42;
+    // #1 = shared 43;
+    // #2 = null
+    // #2.x = shared [34,43 ,344334#0, #2];
+    // #4 = {}; <---  #3 -> #4.(#5) = #3
+    // #3 = {a: #1, b: #4}
+    // #3.b = #4;
+    // **/
 }
 
 fn append_injected_value(
     context: &mut PreambleContext,
     shared_container: TrackedValue,
 ) {
+    if let Some(index) =
+        context.try_get_stack_index_for_value(shared_container.container())
+    {
+        append_regular_instruction(
+            context.cursor,
+            RegularInstruction::BorrowStackValue(index),
+        );
+    } else {
+    }
     todo!()
     // if context.inserted_values.contains_key(shared_container) {
     //     // #0 = 'shared x
@@ -163,7 +228,7 @@ mod tests {
         );
 
         assert_preamble_instructions(
-            vec![TrackedValue::TopLevel {
+            vec![TrackedValue::Root {
                 container: reference,
                 index: StackIndex(1),
             }],

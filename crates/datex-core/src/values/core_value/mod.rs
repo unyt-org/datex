@@ -54,9 +54,9 @@ pub enum CoreValue {
     Callable(Callable),
     Range(Range),
 }
+mod child_iterator;
 pub mod datex_proxy;
 pub mod equality;
-mod child_iterator;
 
 impl From<&str> for CoreValue {
     fn from(value: &str) -> Self {
@@ -250,6 +250,13 @@ impl CoreValue {
         &'a T: TryFrom<&'a CoreValue>,
     {
         <&T>::try_from(self).ok()
+    }
+
+    pub fn try_as_mut<'a, T: 'a>(&'a mut self) -> Option<&'a mut T>
+    where
+        &'a mut T: TryFrom<&'a mut CoreValue>,
+    {
+        <&mut T>::try_from(self).ok()
     }
 
     /// Casts the value to a [Text] value
