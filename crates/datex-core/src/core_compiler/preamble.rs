@@ -1,24 +1,28 @@
-use crate::collections::HashMap;
-use crate::core_compiler::core_compilation_context::{ByteCursor, CoreCompilationContext};
-use crate::core_compiler::shared_value_tracking::TrackedValue;
-use crate::core_compiler::value_compiler::append_regular_instruction;
-use crate::global::protocol_structures::instruction_data::StackIndex;
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::shared_values::SharedContainer;
+use crate::{
+    collections::HashMap,
+    core_compiler::{
+        core_compilation_context::{ByteCursor, CoreCompilationContext},
+        shared_value_tracking::TrackedValue,
+        value_compiler::append_regular_instruction,
+    },
+    global::protocol_structures::{
+        instruction_data::StackIndex, regular_instructions::RegularInstruction,
+    },
+    shared_values::SharedContainer,
+};
 
 #[derive(Debug)]
 struct PreambleContext<'a> {
     byte_cursor: &'a mut ByteCursor,
     inserted_values: HashMap<SharedContainer, StackIndex>,
+    top_level_slots: Vec<StackIndex>,
     // recursive_dependencies: HashMap<SharedContainer, (Option<Vec<SharedContainer>>, ValueKey)>,
 }
-
 
 pub(super) fn append_injected_values_preamble(
     byte_cursor: &mut ByteCursor,
     tracked_values: Vec<TrackedValue>, // top level shared container roots
-    // TODO: injected context to check if shared value must be inserted or is already known on receiver endpoint
-
+                                       // TODO: injected context to check if shared value must be inserted or is already known on receiver endpoint
 ) -> Vec<SharedContainer> {
     // no injected values
     if tracked_values.is_empty() {
@@ -36,10 +40,10 @@ pub(super) fn append_injected_values_preamble(
     #3 = {a: #1, b: #4}
     #3.b = #4;
     **/
-
     let context = &mut PreambleContext {
         byte_cursor,
         inserted_values: HashMap::new(),
+        top_level_slots: Vec::new(),
     };
 
     for container in tracked_values {
@@ -67,24 +71,35 @@ fn append_injected_value(
     // }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::{assert_regular_instructions_equal};
-    use crate::core_compiler::core_compilation_context::{ByteCursor};
-    use crate::core_compiler::preamble::append_injected_values_preamble;
-    use crate::core_compiler::shared_value_tracking::TrackedValue;
-    use crate::core_compiler::value_compiler::append_regular_instruction;
-    use crate::global::protocol_structures::instruction_data::{Int32Data, ListData, SharedRefWithValue, StackIndex};
-    use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-    use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-    use crate::shared_values::{PointerAddress, ReferenceMutability, SelfOwnedPointerAddress, SelfOwnedSharedContainer, SharedContainer, SharedContainerMutability, SharedContainerOwnership};
-    use crate::values::value_container::ValueContainer;
+    use crate::{
+        assert_regular_instructions_equal,
+        core_compiler::{
+            core_compilation_context::ByteCursor,
+            preamble::append_injected_values_preamble,
+            shared_value_tracking::TrackedValue,
+            value_compiler::append_regular_instruction,
+        },
+        global::protocol_structures::{
+            instruction_data::{
+                Int32Data, ListData, SharedRefWithValue, StackIndex,
+            },
+            regular_instructions::RegularInstruction,
+        },
+        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+        shared_values::{
+            PointerAddress, ReferenceMutability, SelfOwnedPointerAddress,
+            SelfOwnedSharedContainer, SharedContainer,
+            SharedContainerMutability, SharedContainerOwnership,
+        },
+        values::value_container::ValueContainer,
+    };
 
     fn assert_preamble_instructions(
         shared_containers: Vec<TrackedValue>,
         instructions: Vec<RegularInstruction>,
-    )  {
+    ) {
         let mut cursor = ByteCursor::new(vec![]);
 
         // mock body
@@ -102,19 +117,26 @@ mod tests {
         mutability: SharedContainerMutability,
     ) -> (SharedContainer, SelfOwnedPointerAddress) {
         let value_container = value.into();
-        let mut shared_container = SharedContainer::new_owned_with_inferred_allowed_type(
-            value_container,
-            mutability,
-            address_provider,
-        );
+        let mut shared_container =
+            SharedContainer::new_owned_with_inferred_allowed_type(
+                value_container,
+                mutability,
+                address_provider,
+            );
         let address = match &shared_container {
-            SharedContainer::Owned(owned_container) => owned_container.pointer_address().clone(),
-            _ => unreachable!()
+            SharedContainer::Owned(owned_container) => {
+                owned_container.pointer_address().clone()
+            }
+            _ => unreachable!(),
         };
 
         match ownership {
             SharedContainerOwnership::Referenced(mutability) => {
-                shared_container = SharedContainer::Referenced(shared_container.try_derive_reference_with_mutability(mutability).unwrap());
+                shared_container = SharedContainer::Referenced(
+                    shared_container
+                        .try_derive_reference_with_mutability(mutability)
+                        .unwrap(),
+                );
             }
             _ => {}
         };
@@ -124,14 +146,8 @@ mod tests {
 
     #[test]
     fn preamble_no_injected_values() {
-        assert_preamble_instructions(
-            vec![],
-            vec![
-                RegularInstruction::Null
-            ]
-        );
+        assert_preamble_instructions(vec![], vec![RegularInstruction::Null]);
     }
-
 
     #[test]
     fn preamble_single_non_referencing_ref() {
@@ -140,20 +156,19 @@ mod tests {
         let (reference, address) = generate_shared_value_from_value_container(
             address_provider,
             42,
-            SharedContainerOwnership::Referenced(ReferenceMutability::Immutable),
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Immutable,
+            ),
             SharedContainerMutability::Immutable,
         );
 
         assert_preamble_instructions(
-            vec![
-                TrackedValue::TopLevel {
-                    container: reference,
-                    index: StackIndex(1)
-                }
-            ],
+            vec![TrackedValue::TopLevel {
+                container: reference,
+                index: StackIndex(1),
+            }],
             vec![
                 RegularInstruction::statements(2, false),
-
                 // preamble
                 RegularInstruction::statements(2, false),
                 // ref
@@ -161,17 +176,14 @@ mod tests {
                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                     address: address.into(),
                     ref_mutability: ReferenceMutability::Immutable,
-                    container_mutability: SharedContainerMutability::Immutable
+                    container_mutability: SharedContainerMutability::Immutable,
                 }),
                 RegularInstruction::Int32(Int32Data(42)),
-                RegularInstruction::ShortList(ListData {
-                    element_count: 1,
-                }),
+                RegularInstruction::ShortList(ListData { element_count: 1 }),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
-
                 // body
-                RegularInstruction::Null
-            ]
+                RegularInstruction::Null,
+            ],
         );
     }
 }
