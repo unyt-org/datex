@@ -441,14 +441,6 @@ impl<T: DatexValueContainerProxyInfallibleSerialize>
     }
 }
 
-// impl<T: DatexValueContainerProxy> DatexProxyTypes for Vec<T> {
-//     fn datex_type(_memory: &mut Memory) -> Type {
-//         Type::Alias(
-//             TypeDefinition::CoreType(CoreLibBaseTypeId::List.into()).into(),
-//         )
-//     }
-// }
-
 impl<T> DatexProxyTypes for Vec<T>
 where
     T: DatexValueContainerProxy + DatexProxyTypes,

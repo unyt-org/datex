@@ -1,10 +1,20 @@
 use crate::{
-    core_compiler::shared_value_tracking::SharedValueTracking, prelude::*,
-    shared_values::OwnedSharedContainer,
+    core_compiler::{
+        buffer_provider::BufferProvider,
+        preamble::append_injected_values_preamble,
+        shared_value_tracking::SharedValueTracking,
+        value_compiler::{
+            InjectedValueValidationError, append_inline_shared_container,
+            append_value,
+        },
+        value_visitor::ValueVisitor,
+    },
+    prelude::*,
+    shared_values::SharedContainer,
+    types::r#type::Type,
+    values::value_container::ValueContainer,
 };
 use binrw::io::Cursor;
-use crate::core_compiler::preamble::append_injected_values_preamble;
-use crate::shared_values::SharedContainer;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 
@@ -35,23 +45,36 @@ impl CoreCompilationContext {
     pub fn into_buffer_and_shared_values(
         self,
     ) -> (Vec<u8>, Vec<SharedContainer>) {
-
         let mut cursor = self.cursor;
         let tracked_values = self.shared_value_tracking.into_tracked_values();
 
-        let top_level_values = append_injected_values_preamble(
-            &mut cursor,
-            tracked_values,
-        );
+        let top_level_values =
+            append_injected_values_preamble(&mut cursor, tracked_values);
 
-        (
-            cursor.into_inner(),
-            top_level_values,
-        )
+        (cursor.into_inner(), top_level_values)
     }
+}
 
-    pub fn cursor_mut(&mut self) -> &mut Cursor<Vec<u8>> {
+impl BufferProvider for CoreCompilationContext {
+    fn cursor_mut(&mut self) -> &mut ByteCursor {
         &mut self.cursor
     }
+}
 
+impl ValueVisitor for CoreCompilationContext {
+    /// Appends a value container.
+    /// For local values, the value is just serialized
+    /// For shared values, the container is registered in the context shared value tracking
+    fn visit_value_container(&mut self, value_container: ValueContainer) {
+        match value_container {
+            ValueContainer::Local(value) => append_value(self, value),
+            ValueContainer::Shared(reference) => {
+                append_inline_shared_container(self, reference);
+            }
+        }
+    }
+
+    fn visit_type(&mut self, ty: Type) {
+        todo!()
+    }
 }

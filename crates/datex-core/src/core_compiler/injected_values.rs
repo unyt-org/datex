@@ -1,9 +1,9 @@
 use crate::{
     core_compiler::{
+        buffer_provider::BufferProvider,
         core_compilation_context::CoreCompilationContext,
         value_compiler::{
             InjectedValueValidationError, append_regular_instruction,
-            append_value_container,
         },
     },
     global::protocol_structures::{
@@ -28,8 +28,7 @@ use crate::{
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
     injected_values: Vec<ValueContainer>,
-) -> Result<(Vec<u8>, Vec<SharedContainer>), InjectedValueValidationError>
-{
+) -> Result<(Vec<u8>, Vec<SharedContainer>), InjectedValueValidationError> {
     let mut context = CoreCompilationContext::new(Vec::new());
     validate_injected_value_declaration_for_values(
         &instruction_block_data.injected_values,
@@ -196,7 +195,7 @@ mod tests {
                     SharedInjectedValueType,
                 },
                 instruction_data::{
-                    InstructionBlockData, Int32Data, PerformMove,
+                    InstructionBlockData, Int32Data, ListData, PerformMove,
                     SharedRefWithValue, StackIndex, StatementsData, UInt32Data,
                 },
                 regular_instructions::RegularInstruction,
@@ -210,7 +209,6 @@ mod tests {
         },
         values::value_container::ValueContainer,
     };
-    use crate::global::protocol_structures::instruction_data::ListData;
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -286,10 +284,8 @@ mod tests {
             [
                 // outer statements
                 RegularInstruction::statements(2, false),
-
                 // preamble
                 RegularInstruction::PushListToStack,
-
                 RegularInstruction::statements(2, false),
                 // ref
                 RegularInstruction::PushToStack,
@@ -299,15 +295,11 @@ mod tests {
                     container_mutability: SharedContainerMutability::Immutable
                 }),
                 RegularInstruction::Int32(Int32Data(42)),
-                RegularInstruction::ShortList(ListData {
-                    element_count: 1,
-                }),
+                RegularInstruction::ShortList(ListData { element_count: 1 }),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
-
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::TakeStackValue(StackIndex(0)),
-
                 // original body
                 RegularInstruction::Null,
             ]

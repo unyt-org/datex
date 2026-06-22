@@ -8,7 +8,7 @@ use crate::{
 };
 #[derive(Debug)]
 pub enum TrackedValue {
-    TopLevel {
+    Root {
         container: SharedContainer,
         index: StackIndex,
     },
@@ -20,7 +20,7 @@ pub enum TrackedValue {
 impl TrackedValue {
     fn update_container(&mut self, container: SharedContainer) {
         match self {
-            TrackedValue::TopLevel {
+            TrackedValue::Root {
                 container: existing,
                 ..
             } => {
@@ -35,6 +35,13 @@ impl TrackedValue {
                     *existing = container;
                 }
             }
+        }
+    }
+
+    pub fn container(&self) -> &SharedContainer {
+        match self {
+            TrackedValue::Root { container, .. } => container,
+            TrackedValue::Child { container } => container,
         }
     }
 }
@@ -88,7 +95,7 @@ impl SharedValueTracking {
                     Some(TrackedValue::Child { container }) => {
                         self.shared_values.insert(
                             address,
-                            TrackedValue::TopLevel { container, index },
+                            TrackedValue::Root { container, index },
                         );
                     }
                     _ => unreachable!(),
@@ -96,7 +103,7 @@ impl SharedValueTracking {
                 index
             }
             // already a top level value, do nothing
-            TrackedValue::TopLevel { index, .. } => *index,
+            TrackedValue::Root { index, .. } => *index,
         }
     }
 
@@ -151,6 +158,9 @@ mod tests {
             PointerAddress, ReferenceMutability, SharedContainer,
             SharedContainerMutability,
         },
+        value_updates::{
+            update_data::AppendEntryUpdateData, update_handler::UpdateHandler,
+        },
         values::{core_values::list::List, value_container::ValueContainer},
     };
 
@@ -197,7 +207,7 @@ mod tests {
         expected_index: StackIndex,
     ) {
         match tracked_value(tracking, container) {
-            TrackedValue::TopLevel {
+            TrackedValue::Root {
                 container: tracked_container,
                 index,
             } => {
@@ -407,5 +417,35 @@ mod tests {
         assert_top_level(&tracking, &first_parent, StackIndex(1));
         assert_top_level(&tracking, &second_parent, StackIndex(2));
         assert_child(&tracking, &child);
+    }
+
+    #[test]
+    fn self_referencing() {
+        let mut tracking = SharedValueTracking::new();
+
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+
+        // parent = [parent]
+        let (parent, _) = owned_shared(
+            address_provider,
+            42,
+            SharedContainerMutability::Immutable,
+        );
+        let parent = referenced_shared(&parent, ReferenceMutability::Immutable);
+
+        parent
+            .value_container_mut()
+            .with_collapsed_value_mut(|value| {
+                value.inner =
+                    List::from(vec![ValueContainer::Shared(parent.clone())])
+                        .into();
+            });
+
+        let parent_index = tracking.register_shared_value(parent.clone());
+
+        assert_eq!(parent_index, StackIndex(1));
+        assert_eq!(tracking.shared_values.len(), 1);
+
+        assert_top_level(&tracking, &parent, StackIndex(1));
     }
 }

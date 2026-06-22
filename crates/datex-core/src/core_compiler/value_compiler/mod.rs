@@ -1,5 +1,9 @@
 use crate::{
-    core_compiler::type_compiler::{append_type, append_type_instruction},
+    core_compiler::{
+        buffer_provider::BufferProvider,
+        type_compiler::{append_type, append_type_instruction},
+        value_visitor::ValueVisitor,
+    },
     global::{
         instruction_codes::InstructionCode,
         protocol_structures::instruction_data::TextData,
@@ -75,38 +79,14 @@ impl From<InjectedValueValidationError> for ExecutionError {
 /// Compiles a given value container to a DXB body
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
-pub fn compile_value_container(
-    value_container: ValueContainer,
-) -> Result<Vec<u8>, InjectedValueValidationError> {
+pub fn compile_value_container(value_container: ValueContainer) -> Vec<u8> {
     let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
-    append_value_container(&mut context, value_container)?;
-
-    Ok(context.into_buffer())
+    context.visit_value_container(value_container);
+    context.into_buffer()
 }
 
-pub fn compile_value(
-    value_container: Value,
-) -> Result<Vec<u8>, InjectedValueValidationError> {
-    let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
-    append_value(&mut context, value_container)?;
-
-    Ok(context.into_buffer())
-}
-
-/// Appends a value container.
-/// For local values, the value is just serialized
-/// For shared values, the container is registered in the context shared value tracking
-pub fn append_value_container(
-    context: &mut CoreCompilationContext,
-    value_container: ValueContainer,
-) -> Result<(), InjectedValueValidationError> {
-    match value_container {
-        ValueContainer::Local(value) => append_value(context, value),
-        ValueContainer::Shared(reference) => {
-            append_inline_shared_container(context, reference);
-            Ok(())
-        }
-    }
+pub fn compile_value(value_container: Value) -> Vec<u8> {
+    compile_value_container(ValueContainer::Local(value_container))
 }
 
 /// Appends a shared container to the buffer by registering it in the shared value tracking and appending the stack index
@@ -148,10 +128,10 @@ pub fn append_local_pointer_address(
     cursor.write_all(&local_address).unwrap();
 }
 
-pub fn append_value(
-    context: &mut CoreCompilationContext,
+pub fn append_value<T: BufferProvider + ValueVisitor>(
+    context: &mut T,
     value: Value,
-) -> Result<(), InjectedValueValidationError> {
+) {
     // append non-default type information
     if let Some(custom_type) = &value.custom_type {
         // special case: tagged value with default type, no type cast needed
@@ -175,7 +155,7 @@ pub fn append_value(
                         is_empty: true,
                     }),
                 );
-                return Ok(()); // early return, don't append null value; TODO: assert that value is actually null?
+                return; // early return, don't append null value; TODO: assert that value is actually null?
             }
             // tagged value with actual value (e.g. #Example(null))
             TypeDefinition::TaggedType(TaggedTypeDefinition {
@@ -190,7 +170,7 @@ pub fn append_value(
                     }),
                 );
             }
-            _ => append_type_cast(context, custom_type)?,
+            _ => append_type_cast(context, custom_type),
         }
     }
     let _: () = match value.inner {
@@ -205,7 +185,7 @@ pub fn append_value(
                     context.cursor_mut(),
                     RegularInstruction::TypeExpression,
                 );
-                append_type(context, &ty);
+                context.visit_type(ty);
             }
         }
         CoreValue::Callable(_callable) => {
@@ -260,7 +240,7 @@ pub fn append_value(
             }
 
             for item in val {
-                append_value_container(context, item)?;
+                context.visit_value_container(item);
             }
         }
         CoreValue::Map(val) => {
@@ -287,7 +267,7 @@ pub fn append_value(
                     context,
                     ValueContainer::from(key),
                     value,
-                )?;
+                );
             }
         }
         CoreValue::Range(range) => {
@@ -295,37 +275,34 @@ pub fn append_value(
                 context.cursor_mut(),
                 RegularInstruction::Range,
             );
-            append_value_container(context, *range.start)?;
-            append_value_container(context, *range.end)?;
+            context.visit_value_container(*range.start);
+            context.visit_value_container(*range.end);
         }
         CoreValue::NominalTypeDefinition(_) => {
             todo!()
         }
     };
-    Ok(())
 }
 
 pub fn append_core_type_cast(
-    _context: &mut CoreCompilationContext,
+    _context: &mut impl BufferProvider,
     _core_lib_type_id: CoreLibTypeId,
 ) {
     // TODO: append type cast with only id (no need to access shared container)
     todo!()
 }
 
-pub fn append_type_cast(
-    context: &mut CoreCompilationContext,
+pub fn append_type_cast<T: BufferProvider + ValueVisitor>(
+    context: &mut T,
     ty: &TypeDefinition,
-) -> Result<(), InjectedValueValidationError> {
+) {
     append_regular_instruction(
         context.cursor_mut(),
         RegularInstruction::TypedValue,
     );
 
     // append type
-    append_type(context, &Type::from(ty.clone()));
-
-    Ok(())
+    context.visit_type(Type::from(ty.clone()));
 }
 
 /// Appends a text value, using either the short or regular text instruction depending on the byte length
@@ -370,7 +347,7 @@ pub fn append_endpoint(cursor: &mut ByteCursor, endpoint: &Endpoint) {
 
 /// Appends a typed integer with explicit type casts
 pub fn append_typed_integer(
-    context: &mut CoreCompilationContext,
+    context: &mut impl BufferProvider,
     integer: &TypedInteger,
 ) {
     append_core_type_cast(context, CoreLibTypeId::from(integer));
@@ -465,7 +442,7 @@ pub fn append_big_integer(cursor: &mut ByteCursor, integer: &Integer) {
 
 /// Appends a typed decimal with explicit type casts
 pub fn append_typed_decimal(
-    context: &mut CoreCompilationContext,
+    context: &mut impl BufferProvider,
     decimal: &TypedDecimal,
 ) {
     append_core_type_cast(context, CoreLibTypeId::from(decimal));
@@ -486,7 +463,7 @@ pub fn append_float_as_i32(cursor: &mut ByteCursor, int: i32) {
 
 /// Appends a type cast to a core library type, using the GET_CORE_LIB_VALUE instruction with the type id
 pub fn append_get_shared_ref(
-    context: &mut CoreCompilationContext,
+    context: &mut impl BufferProvider,
     address: &PointerAddress,
     mutability: &ReferenceMutability,
 ) {
@@ -527,11 +504,11 @@ pub fn append_get_core_lib_value(cursor: &mut ByteCursor, id: CoreLibId) {
 }
 
 /// Appends a key-value pair for map entries, optimizing for short text keys
-pub fn append_key_value_pair(
-    context: &mut CoreCompilationContext,
+pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
+    context: &mut T,
     key: ValueContainer,
     value: ValueContainer,
-) -> Result<(), InjectedValueValidationError> {
+) {
     // insert key
     match key {
         // if text, append_key_string, else dynamic
@@ -546,11 +523,11 @@ pub fn append_key_value_pair(
                 context.cursor_mut(),
                 RegularInstruction::KeyValueDynamic,
             );
-            append_value_container(context, key)?;
+            context.visit_value_container(key);
         }
     }
     // insert value
-    append_value_container(context, value)
+    context.visit_value_container(value)
 }
 
 /// Appends a key string for map entries, optimizing for short text keys
@@ -611,13 +588,13 @@ mod tests {
     use super::*;
     use crate::{
         assert_regular_instructions_equal,
+        core_compiler::shared_value_tracking::TrackedValue,
         global::protocol_structures::instruction_data::StackIndex,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::SharedContainerMutability,
         values::{core_values::list::List, value::Value},
     };
     use core::assert_matches;
-    use crate::core_compiler::shared_value_tracking::TrackedValue;
 
     #[test]
     fn compile_tagged_empty_value() {
@@ -711,7 +688,7 @@ mod tests {
                 .shared_values
                 .remove(&pointer_address)
                 .unwrap(),
-            TrackedValue::TopLevel {
+            TrackedValue::Root {
                 container: SharedContainer::Owned(_),
                 index: StackIndex(1),
             }
@@ -752,18 +729,7 @@ mod tests {
                 .shared_values
                 .remove(&outer_pointer_address)
                 .unwrap(),
-            TrackedValue::Child {
-                container: SharedContainer::Referenced(_),
-            }
-        );
-
-        assert_matches!(
-            context
-                .shared_value_tracking
-                .shared_values
-                .remove(&outer_pointer_address)
-                .unwrap(),
-            TrackedValue::TopLevel {
+            TrackedValue::Root {
                 container: SharedContainer::Owned(_),
                 index: StackIndex(1),
             }
@@ -797,7 +763,7 @@ mod tests {
                 .shared_values
                 .remove(&pointer_address)
                 .unwrap(),
-            TrackedValue::TopLevel {
+            TrackedValue::Root {
                 container: SharedContainer::Referenced(_),
                 index: StackIndex(1),
             }
@@ -841,7 +807,7 @@ mod tests {
                 .shared_values
                 .remove(&a_pointer_address)
                 .unwrap(),
-            TrackedValue::TopLevel {
+            TrackedValue::Root {
                 container: SharedContainer::Owned(_),
                 index: StackIndex(1),
             }
@@ -852,7 +818,7 @@ mod tests {
                 .shared_values
                 .remove(&b_pointer_address)
                 .unwrap(),
-            TrackedValue::TopLevel {
+            TrackedValue::Root {
                 container: SharedContainer::Owned(_),
                 index: StackIndex(2),
             }

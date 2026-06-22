@@ -1,5 +1,6 @@
 use crate::{
     core_compiler::{
+        buffer_provider::BufferProvider,
         core_compilation_context::{ByteCursor, CoreCompilationContext},
         to_instructions::ToInstructions,
     },
@@ -28,8 +29,21 @@ pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
     }
 }
 
+pub fn append_type_with_visitor<T: BufferProvider>(
+    context: &mut T,
+    ty: &Type,
+    visit_value_container: ValueContainerVisitor<T>,
+) {
+    let instructions = ty
+        .to_instructions(&mut context.shared_value_tracking)
+        .collect::<Vec<_>>();
+    for instruction in instructions {
+        append_type_instruction(&mut context.cursor_mut(), instruction);
+    }
+}
+
 // pub fn append_structural_type_definition(
-//     context: &mut CoreCompilationContext,
+//     context: &mut impl BufferProvider,
 //     type_definition: &TypeDefinition,
 // ) {
 //     match type_definition {
