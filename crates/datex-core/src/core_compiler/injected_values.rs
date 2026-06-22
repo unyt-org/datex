@@ -24,6 +24,7 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::core_compiler::value_visitor::ValueVisitor;
 
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
@@ -34,7 +35,7 @@ pub fn compile_injected_values(
         &instruction_block_data.injected_values,
         &injected_values,
     )?;
-    compile_injected_values_with_context(&mut context, injected_values)?;
+    compile_injected_values_with_context(&mut context, injected_values);
 
     let (mut buffer, values) = context.into_buffer_and_shared_values();
     // append instruction block body to buffer
@@ -97,7 +98,7 @@ fn validate_injected_value_declaration_for_values(
 fn compile_injected_values_with_context(
     compilation_context: &mut CoreCompilationContext,
     injected_values: Vec<ValueContainer>,
-) -> Result<(), InjectedValueValidationError> {
+) {
     append_regular_instruction(
         compilation_context.cursor_mut(),
         RegularInstruction::statements(injected_values.len() as u32 + 1, false),
@@ -108,9 +109,8 @@ fn compile_injected_values_with_context(
             compilation_context.cursor_mut(),
             RegularInstruction::PushToStack,
         );
-        append_value_container(compilation_context, value_container)?;
+        compilation_context.visit_value_container(value_container);
     }
-    Ok(())
 }
 
 //
@@ -163,10 +163,9 @@ fn append_referenced_shared_container(
                     .container_mutability(),
             }),
         );
-        append_value_container(
-            compilation_context,
+        compilation_context.visit_value_container(
             referenced_container.value_container().clone(),
-        )?; // TODO: no clone
+        ); // TODO: no clone
     } else {
         append_regular_instruction(
             compilation_context.cursor_mut(),
@@ -209,6 +208,7 @@ mod tests {
         },
         values::value_container::ValueContainer,
     };
+    use crate::global::protocol_structures::instruction_data::ShortListData;
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -295,7 +295,7 @@ mod tests {
                     container_mutability: SharedContainerMutability::Immutable
                 }),
                 RegularInstruction::Int32(Int32Data(42)),
-                RegularInstruction::ShortList(ListData { element_count: 1 }),
+                RegularInstruction::ShortList(ShortListData { element_count: 1 }),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,

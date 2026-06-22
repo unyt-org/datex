@@ -73,15 +73,6 @@ pub enum RegularInstruction {
     Decimal(Decimal),
 
     RemoteExecution(InstructionBlockData),
-    /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
-    /// This variant is only used by the disassembler
-    #[cfg(feature = "disassembler")]
-    _RemoteExecutionDebugFlat(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat),
-    /// Debug variant for RemoteExecution, includes full remote execution instruction tree instead of raw dxb
-    /// This variant is only used by the disassembler
-    #[cfg(feature = "disassembler")]
-    _RemoteExecutionDebugTree(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugTree),
-
     ShortText(ShortTextData),
     Text(TextData),
 
@@ -93,7 +84,7 @@ pub enum RegularInstruction {
     UnboundedStatements,
     UnboundedStatementsEnd(UnboundedStatementsData),
     List(ListData),
-    ShortList(ListData),
+    ShortList(ShortListData),
     Map(MapData),
     ShortMap(MapData),
 
@@ -177,6 +168,15 @@ pub enum RegularInstruction {
 
     TypedValue,
     TypeExpression,
+
+    /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
+    /// This variant is only used by the disassembler
+    #[cfg(feature = "disassembler")]
+    _RemoteExecutionDebugFlat(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat),
+    /// Debug variant for RemoteExecution, includes full remote execution instruction tree instead of raw dxb
+    /// This variant is only used by the disassembler
+    #[cfg(feature = "disassembler")]
+    _RemoteExecutionDebugTree(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugTree),
 }
 
 impl RegularInstruction {
@@ -192,6 +192,15 @@ impl RegularInstruction {
                 statements_count: count,
                 terminated,
             }),
+        }
+    }
+    
+    pub fn list(count: u32) -> RegularInstruction {
+        match count {
+            0..=255 => RegularInstruction::ShortList(ShortListData {
+                element_count: count as u8,
+            }),
+            _ => RegularInstruction::List(ListData { element_count: count }),
         }
     }
 }
@@ -388,8 +397,11 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(1)
             } // receivers
 
-            RegularInstruction::ShortList(list)
-            | RegularInstruction::List(list) => {
+            RegularInstruction::ShortList(list) => {
+                NextExpectedInstructions::Regular(list.element_count as u32)
+            } // list elements
+
+            RegularInstruction::List(list) => {
                 NextExpectedInstructions::Regular(list.element_count)
             } // list elements
 
@@ -610,9 +622,6 @@ impl RegularInstruction {
                 ListData::read(reader).map(RegularInstruction::List)
             }
             InstructionCode::SHORT_LIST => ShortListData::read(reader)
-                .map(|list| ListData {
-                    element_count: list.element_count as u32,
-                })
                 .map(RegularInstruction::ShortList),
             InstructionCode::MAP => {
                 MapData::read(reader).map(RegularInstruction::Map)

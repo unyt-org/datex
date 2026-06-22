@@ -595,6 +595,7 @@ mod tests {
         values::{core_values::list::List, value::Value},
     };
     use core::assert_matches;
+    use crate::global::protocol_structures::instruction_data::ShortListData;
 
     #[test]
     fn compile_tagged_empty_value() {
@@ -613,7 +614,7 @@ mod tests {
             )),
         };
 
-        let compiled = compile_value(value).unwrap();
+        let compiled = compile_value(value);
         assert_regular_instructions_equal!(
             &compiled,
             [RegularInstruction::TaggedValue(TaggedValue {
@@ -635,7 +636,7 @@ mod tests {
             )),
         };
 
-        let compiled = compile_value(value).unwrap();
+        let compiled = compile_value(value);
         assert_regular_instructions_equal!(
             &compiled,
             [
@@ -657,7 +658,7 @@ mod tests {
             .into(),
         ));
 
-        let compiled = compile_value(value).unwrap();
+        let compiled = compile_value(value);
         assert_regular_instructions_equal!(
             &compiled,
             [RegularInstruction::GetCoreLibValue(
@@ -679,7 +680,7 @@ mod tests {
         let shared_container = ValueContainer::Shared(owned_shared);
         let mut context = CoreCompilationContext::new(Vec::new());
 
-        append_value_container(&mut context, shared_container).unwrap();
+        context.visit_value_container(shared_container);
 
         // The address should now be registered in the shared value tracking
         assert_matches!(
@@ -721,7 +722,7 @@ mod tests {
         let shared_container = ValueContainer::Shared(outer_shared);
         let mut context = CoreCompilationContext::new(Vec::new());
 
-        append_value_container(&mut context, shared_container).unwrap();
+        context.visit_value_container(shared_container);
 
         assert_matches!(
             context
@@ -755,7 +756,7 @@ mod tests {
             ValueContainer::Shared(SharedContainer::Referenced(reference));
         let mut context = CoreCompilationContext::new(Vec::new());
 
-        append_value_container(&mut context, shared_container).unwrap();
+        context.visit_value_container(shared_container);
 
         assert_matches!(
             context
@@ -799,7 +800,7 @@ mod tests {
         );
         let mut context = CoreCompilationContext::new(Vec::new());
 
-        append_value_container(&mut context, local).unwrap();
+        context.visit_value_container(local);
 
         assert_matches!(
             context
@@ -827,7 +828,7 @@ mod tests {
         assert_regular_instructions_equal!(
             &context.into_buffer(),
             [
-                RegularInstruction::ShortList(ListData { element_count: 2 }),
+                RegularInstruction::ShortList(ShortListData { element_count: 2 }),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
                 RegularInstruction::TakeStackValue(StackIndex(2)),
             ]

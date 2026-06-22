@@ -13,6 +13,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use binrw::io::Cursor;
+use crate::core_compiler::buffer_provider::BufferProvider;
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext {

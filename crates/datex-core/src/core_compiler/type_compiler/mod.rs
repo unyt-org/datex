@@ -9,6 +9,8 @@ use crate::{
     types::r#type::Type,
 };
 use binrw::{BinWrite, io::Write};
+use crate::core_compiler::value_visitor::ValueVisitor;
+
 pub mod type_to_instructions;
 
 pub mod type_definition_to_instructions;
@@ -29,18 +31,18 @@ pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
     }
 }
 
-pub fn append_type_with_visitor<T: BufferProvider>(
-    context: &mut T,
-    ty: &Type,
-    visit_value_container: ValueContainerVisitor<T>,
-) {
-    let instructions = ty
-        .to_instructions(&mut context.shared_value_tracking)
-        .collect::<Vec<_>>();
-    for instruction in instructions {
-        append_type_instruction(&mut context.cursor_mut(), instruction);
-    }
-}
+// TODO?
+// pub fn append_type_with_visitor<T: BufferProvider + ValueVisitor>(
+//     context: &mut T,
+//     ty: &Type,
+// ) {
+//     let instructions = ty
+//         .to_instructions(&mut context.shared_value_tracking)
+//         .collect::<Vec<_>>();
+//     for instruction in instructions {
+//         append_type_instruction(&mut context.cursor_mut(), instruction);
+//     }
+// }
 
 // pub fn append_structural_type_definition(
 //     context: &mut impl BufferProvider,
@@ -128,8 +130,7 @@ mod tests {
         let compiled = compile_value(Value {
             custom_type: None,
             inner: CoreValue::Type(ty),
-        })
-        .expect("Failed to compile type");
+        });
 
         assert_instructions_equal!(&compiled, vec)
     }
@@ -138,7 +139,7 @@ mod tests {
         val: Value,
         expected_instructions: Vec<RegularInstruction>,
     ) {
-        let compiled = compile_value(val).expect("Failed to compile value");
+        let compiled = compile_value(val);
         let mut cursor = ByteCursor::new(compiled.to_vec());
         for expected in expected_instructions {
             let instruction = RegularInstruction::read(&mut cursor).unwrap();

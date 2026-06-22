@@ -44,6 +44,13 @@ impl TrackedValue {
             TrackedValue::Child { container } => container,
         }
     }
+    
+    pub fn into_container(self) -> SharedContainer {
+        match self {
+            TrackedValue::Root { container, .. } => container,
+            TrackedValue::Child { container } => container,
+        }
+    }
 }
 
 /// Helper struct used during compilation to keep track which shared values are moved or referenced
