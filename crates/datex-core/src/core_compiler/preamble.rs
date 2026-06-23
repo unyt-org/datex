@@ -3,7 +3,7 @@ use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{ByteCursor, CoreCompilationContext},
-        shared_value_tracking::TrackedValue,
+        shared_value_tracking::{TrackedValue, TrackedValueCollection},
         value_compiler::{
             append_inline_shared_container, append_regular_instruction,
             append_value,
@@ -93,11 +93,11 @@ impl<'a> PreambleContext<'a> {
 }
 
 pub(super) fn append_injected_values_preamble(
-    tracked_values: Vec<TrackedValue>, // top level shared container roots
+    collection: TrackedValueCollection, // top level shared container roots
     body: Vec<u8>,
 ) -> (Vec<u8>, Vec<SharedContainer>) {
     let mut byte_cursor = ByteCursor::new(vec![]);
-
+    let tracked_values = collection.tracked_values;
     // no injected values
     if tracked_values.is_empty() {
         return (body, vec![]);
@@ -108,11 +108,8 @@ pub(super) fn append_injected_values_preamble(
         visited_values: HashMap::new(),
         current_stack_index: StackIndex(0),
     };
-
-    let mut root_container_stack_indices =
-        HashMap::<StackIndex, StackIndex>::new();
-
-    let mut root_containers = Vec::<SharedContainer>::new();
+    let mut root_containers =
+        Vec::<SharedContainer>::with_capacity(collection.root_count);
 
     // statements (preamble + body) start
     append_regular_instruction(
@@ -120,12 +117,22 @@ pub(super) fn append_injected_values_preamble(
         RegularInstruction::statements(2, false),
     );
 
-    // statements (1 + injected values) start
+    // spread preamble injected value
+    append_regular_instruction(
+        context.cursor,
+        RegularInstruction::PushListToStack,
+    );
+
+    // statements (injected values [n] + short list [1])
     append_regular_instruction(
         context.cursor,
         RegularInstruction::statements(1 + tracked_values.len() as u32, false),
     );
 
+    let mut root_container_stack_indices: Vec<Option<StackIndex>> =
+        vec![None; collection.root_count];
+
+    // loop over all injected values
     for tracked_value in tracked_values.into_iter().rev() {
         let index = append_injected_value(context, &tracked_value);
         if let TrackedValue::Root {
@@ -133,22 +140,17 @@ pub(super) fn append_injected_values_preamble(
             ..
         } = tracked_value
         {
-            root_container_stack_indices.insert(root_stack_index, index);
+            // if it is a root tracked value, register in the root container list
+            root_container_stack_indices[root_stack_index.0 as usize] =
+                Some(index);
             root_containers.push(tracked_value.into_container());
         }
     }
-
-    // asserting that root stack index keys are a contiguous list of 0-x -> inner stack indices
-    // convert root_container_stack_indices to Vec<StackIndex> sorted by root stack index
-    let mut root_container_stack_indices_vec: Vec<(StackIndex, StackIndex)> =
-        root_container_stack_indices.into_iter().collect();
-    root_container_stack_indices_vec
-        .sort_by_key(|(root_stack_index, _)| *root_stack_index);
-    let root_container_stack_indices_sorted: Vec<StackIndex> =
-        root_container_stack_indices_vec
-            .into_iter()
-            .map(|(_, inner_stack_index)| inner_stack_index)
-            .collect();
+    // asserting that root stack index keys are a contiguous list of 0-n -> inner stack indices
+    let root_container_stack_indices_sorted = root_container_stack_indices
+        .iter()
+        .map(|opt| opt.expect("Root stack index should have been registered"))
+        .collect::<Vec<_>>();
 
     // append [#0,...#x]
     append_regular_instruction(
@@ -299,7 +301,7 @@ mod tests {
         core_compiler::{
             core_compilation_context::ByteCursor,
             preamble::append_injected_values_preamble,
-            shared_value_tracking::TrackedValue,
+            shared_value_tracking::{TrackedValue, TrackedValueCollection},
             value_compiler::append_regular_instruction,
         },
         disassembler::{
@@ -328,11 +330,15 @@ mod tests {
         // mock body
         let mut cursor = ByteCursor::new(vec![]);
         append_regular_instruction(&mut cursor, RegularInstruction::Null);
-
-        let (bytes, _) = append_injected_values_preamble(
-            shared_containers,
-            cursor.into_inner(),
-        );
+        let collection = TrackedValueCollection {
+            root_count: shared_containers
+                .iter()
+                .filter(|v| matches!(v, TrackedValue::Root { .. }))
+                .count(),
+            tracked_values: shared_containers,
+        };
+        let (bytes, _) =
+            append_injected_values_preamble(collection, cursor.into_inner());
 
         println!(
             "{}",
@@ -391,7 +397,6 @@ mod tests {
     #[test]
     fn preamble_single_non_referencing_ref() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-
         let (reference, address) = generate_shared_value_from_value_container(
             address_provider,
             42,
@@ -404,11 +409,12 @@ mod tests {
         assert_preamble_instructions(
             vec![TrackedValue::Root {
                 container: reference,
-                index: StackIndex(1),
+                index: StackIndex(0),
             }],
             vec![
                 RegularInstruction::statements(2, false),
                 // preamble
+                RegularInstruction::PushListToStack,
                 RegularInstruction::statements(2, false),
                 // ref
                 RegularInstruction::PushToStack,

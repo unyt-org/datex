@@ -1,6 +1,7 @@
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
     collections::HashMap,
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     dif::dif_interface::DIFInterface,
     disassembler::print_disassembled,
     global::{
@@ -301,7 +302,7 @@ impl RuntimeInternal {
         let execute_start = Instant::now();
         let result = RuntimeInternal::execute_dxb_sync(
             self,
-            &dxb,
+            dxb,
             Some(execution_context),
             true,
         )
@@ -315,7 +316,7 @@ impl RuntimeInternal {
 
     pub fn execute_dxb<'a>(
         self: Rc<RuntimeInternal>,
-        dxb_body: Vec<u8>,
+        input: DXBWithSharedValues,
         execution_context: Option<&'a mut ExecutionContext>,
         _end_execution: bool,
     ) -> Pin<
@@ -331,11 +332,10 @@ impl RuntimeInternal {
             );
             match execution_context {
                 ExecutionContext::Remote(context) => {
-                    RuntimeInternal::execute_remote(self, context, dxb_body)
-                        .await
+                    RuntimeInternal::execute_remote(self, context, input).await
                 }
                 ExecutionContext::Local(_) => {
-                    execution_context.execute_dxb(&dxb_body).await
+                    execution_context.execute_dxb(input).await
                 }
             }
         })
@@ -343,7 +343,7 @@ impl RuntimeInternal {
 
     pub fn execute_dxb_sync(
         self: Rc<RuntimeInternal>,
-        dxb: &[u8],
+        dxb: DXBWithSharedValues,
         execution_context: Option<&mut ExecutionContext>,
         _end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
@@ -388,7 +388,7 @@ impl RuntimeInternal {
     pub async fn execute_remote(
         self: Rc<RuntimeInternal>,
         remote_execution_context: &mut RemoteExecutionContext,
-        dxb_body: Vec<u8>,
+        input: DXBWithSharedValues,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let routing_header: RoutingHeader = RoutingHeader::default()
             .with_sender(self.endpoint.clone())
@@ -413,7 +413,7 @@ impl RuntimeInternal {
             routing_header,
             block_header,
             encrypted_header,
-            dxb_body,
+            input.dxb,
         );
 
         block
@@ -514,7 +514,7 @@ impl RuntimeInternal {
             block.block_header.flags_and_timestamp.is_end_of_section();
         RuntimeInternal::execute_dxb(
             self,
-            dxb,
+            DXBWithSharedValues::new(dxb, vec![]), // FIXME double check
             Some(execution_context),
             end_execution,
         )
@@ -554,7 +554,7 @@ impl RuntimeInternal {
         let moved_values = self
             .clone()
             .execute_dxb(
-                body,
+                DXBWithSharedValues::new(body, vec![]),
                 Some(&mut ExecutionContext::Remote(
                     RemoteExecutionContext::new(
                         from_endpoint.clone(),

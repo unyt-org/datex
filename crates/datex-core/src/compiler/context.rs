@@ -1,7 +1,9 @@
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
-        core_compilation_context::CoreCompilationContext,
+        core_compilation_context::{
+            CoreCompilationContext, DXBWithSharedValues,
+        },
         value_compiler::append_instruction_code,
     },
     global::{
@@ -10,6 +12,7 @@ use crate::{
     },
     prelude::*,
     runtime::execution::context::ExecutionMode,
+    shared_values::SharedContainer,
     utils::buffers::append_u32,
     values::value_container::ValueContainer,
 };
@@ -68,8 +71,8 @@ impl CompilationContext {
         self.core_context.cursor_mut()
     }
 
-    pub fn into_buffer(self) -> Vec<u8> {
-        self.core_context.into_buffer()
+    pub fn into_dxb_with_shared_values(self) -> DXBWithSharedValues {
+        self.core_context.into_dxb_with_shared_values()
     }
 
     pub fn core_context(&mut self) -> &mut CoreCompilationContext {

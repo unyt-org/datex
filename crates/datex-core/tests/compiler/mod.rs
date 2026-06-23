@@ -7,11 +7,11 @@ use log::info;
 
 fn compare_compiled_with_decompiled(datex_script: &str) {
     let runtime = Runtime::stub();
-    let (dxb_body, _) =
+    let (dxb, _) =
         compile_script(datex_script, CompileOptions::default(), runtime)
             .unwrap();
 
-    let decompiled = decompile_body(&dxb_body, DecompileOptions::compact())
+    let decompiled = decompile_body(&dxb, DecompileOptions::compact())
         .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
 
     info!("original   : {datex_script}");
@@ -22,19 +22,19 @@ fn compare_compiled_with_decompiled(datex_script: &str) {
 fn compare_compiled(datex_script: &str, expected: &str) {
     let runtime = Runtime::stub();
 
-    let (dxb_body, _) =
+    let (dxb, _) =
         compile_script(datex_script, CompileOptions::default(), runtime)
             .unwrap();
 
     let decompiled_color = decompile_body(
-        &dxb_body,
+        &dxb,
         DecompileOptions {
             formatting_options: FormattingOptions::compact(),
             resolve_slots: true,
         },
     )
     .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
-    let decompiled = decompile_body(&dxb_body, DecompileOptions::default())
+    let decompiled = decompile_body(&dxb, DecompileOptions::default())
         .unwrap_or_else(|err| core::panic!("Failed to decompile: {err:?}"));
 
     info!("original   : {datex_script}");

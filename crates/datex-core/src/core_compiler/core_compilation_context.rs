@@ -20,6 +20,20 @@ use binrw::io::Cursor;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 
+#[derive(Debug)]
+pub struct DXBWithSharedValues {
+    pub dxb: Vec<u8>,
+    pub shared_values: Vec<SharedContainer>,
+}
+impl DXBWithSharedValues {
+    pub fn new(dxb: Vec<u8>, shared_values: Vec<SharedContainer>) -> Self {
+        DXBWithSharedValues { dxb, shared_values }
+    }
+    pub fn into_dxb(self) -> Vec<u8> {
+        self.dxb
+    }
+}
+
 pub struct CoreCompilationContext {
     pub cursor: ByteCursor,
     pub shared_value_tracking: SharedValueTracking,
@@ -38,23 +52,16 @@ impl CoreCompilationContext {
         &self.cursor
     }
 
-    pub fn into_buffer(self) -> Vec<u8> {
-        self.cursor.into_inner()
-    }
-
     /// Finalizes the compilation context by appending a preamble with the injected shared values,
     /// and returns the final byte buffer and the list of shared values that were moved or referenced during compilation
-    pub fn into_buffer_and_shared_values(
-        self,
-    ) -> (Vec<u8>, Vec<SharedContainer>) {
+    pub fn into_dxb_with_shared_values(self) -> DXBWithSharedValues {
         let tracked_values = self.shared_value_tracking.into_tracked_values();
         let (combined_buffer, top_level_values) =
             append_injected_values_preamble(
                 tracked_values,
                 self.cursor.into_inner(),
             );
-
-        (combined_buffer, top_level_values)
+        DXBWithSharedValues::new(combined_buffer, top_level_values)
     }
 }
 

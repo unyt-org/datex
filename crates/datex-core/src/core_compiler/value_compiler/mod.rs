@@ -78,10 +78,11 @@ impl From<InjectedValueValidationError> for ExecutionError {
 /// Compiles a given value container to a DXB body
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
+/// Note: The shared values are dropped here!
 pub fn compile_value_container(value_container: ValueContainer) -> Vec<u8> {
     let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
     context.visit_value_container(value_container);
-    context.into_buffer()
+    context.into_dxb_with_shared_values().dxb
 }
 
 pub fn compile_value(value_container: Value) -> Vec<u8> {
@@ -691,13 +692,13 @@ mod tests {
                 .unwrap(),
             TrackedValue::Root {
                 container: SharedContainer::Owned(_),
-                index: StackIndex(1),
+                index: StackIndex(0),
             }
         );
 
         assert_regular_instructions_equal!(
-            &context.into_buffer(),
-            [RegularInstruction::TakeStackValue(StackIndex(1))]
+            &context.into_dxb_with_shared_values().dxb,
+            [RegularInstruction::TakeStackValue(StackIndex(0))]
         );
     }
 
@@ -731,13 +732,13 @@ mod tests {
                 .unwrap(),
             TrackedValue::Root {
                 container: SharedContainer::Owned(_),
-                index: StackIndex(1),
+                index: StackIndex(0),
             }
         );
 
         assert_regular_instructions_equal!(
-            &context.into_buffer(),
-            [RegularInstruction::TakeStackValue(StackIndex(1)),]
+            &context.into_dxb_with_shared_values().dxb,
+            [RegularInstruction::TakeStackValue(StackIndex(0)),]
         );
     }
 
@@ -765,13 +766,13 @@ mod tests {
                 .unwrap(),
             TrackedValue::Root {
                 container: SharedContainer::Referenced(_),
-                index: StackIndex(1),
+                index: StackIndex(0),
             }
         );
 
         assert_regular_instructions_equal!(
-            &context.into_buffer(),
-            [RegularInstruction::GetStackValueSharedRef(StackIndex(1))]
+            &context.into_dxb_with_shared_values().dxb,
+            [RegularInstruction::GetStackValueSharedRef(StackIndex(0))]
         );
     }
 
@@ -808,7 +809,7 @@ mod tests {
                 .unwrap(),
             TrackedValue::Root {
                 container: SharedContainer::Owned(_),
-                index: StackIndex(1),
+                index: StackIndex(0),
             }
         );
         assert_matches!(
@@ -819,18 +820,18 @@ mod tests {
                 .unwrap(),
             TrackedValue::Root {
                 container: SharedContainer::Owned(_),
-                index: StackIndex(2),
+                index: StackIndex(1),
             }
         );
 
         assert_regular_instructions_equal!(
-            &context.into_buffer(),
+            &context.into_dxb_with_shared_values().dxb,
             [
                 RegularInstruction::ShortList(ShortListData {
                     element_count: 2
                 }),
+                RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
-                RegularInstruction::TakeStackValue(StackIndex(2)),
             ]
         );
     }

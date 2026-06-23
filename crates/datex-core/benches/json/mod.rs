@@ -6,6 +6,7 @@ use criterion::{BenchmarkId, Criterion, criterion_group};
 use crate::{json, json::utils::*};
 use datex_core::{
     compiler::{CompileOptions, compile_script},
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     runtime::Runtime,
 };
 
@@ -78,7 +79,7 @@ fn bench_json_file(c: &mut Criterion, file_path: &str) {
         &dxb,
         |b, dxb| {
             b.iter(|| {
-                json::dxb_to_runtime_value(black_box(dxb));
+                json::dxb_to_runtime_value(black_box(dxb.to_vec()));
                 black_box(());
             })
         },

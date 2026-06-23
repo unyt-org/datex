@@ -61,6 +61,12 @@ pub struct SharedValueTracking {
     pub current_stack_index: StackIndex,
 }
 
+#[derive(Debug, Default)]
+pub struct TrackedValueCollection {
+    pub tracked_values: Vec<TrackedValue>,
+    pub root_count: usize,
+}
+
 impl Default for SharedValueTracking {
     fn default() -> Self {
         Self::new()
@@ -71,8 +77,7 @@ impl SharedValueTracking {
     pub fn new() -> SharedValueTracking {
         SharedValueTracking {
             shared_values: HashMap::new(),
-            // start at stack index 1 - index 0 is reserved for shared value collection
-            current_stack_index: StackIndex(1),
+            current_stack_index: StackIndex(0),
         }
     }
 
@@ -151,8 +156,11 @@ impl SharedValueTracking {
     }
 
     /// Extracts all registered owned and referenced shared values
-    pub fn into_tracked_values(self) -> Vec<TrackedValue> {
-        self.shared_values.into_values().collect()
+    pub fn into_tracked_values(self) -> TrackedValueCollection {
+        TrackedValueCollection {
+            tracked_values: self.shared_values.into_values().collect(),
+            root_count: self.current_stack_index.0 as usize,
+        }
     }
 }
 
@@ -253,7 +261,7 @@ mod tests {
     fn index_start_at_one() {
         let tracking = SharedValueTracking::new();
         assert_eq!(tracking.shared_values.len(), 0);
-        assert_eq!(tracking.current_stack_index, StackIndex(1));
+        assert_eq!(tracking.current_stack_index, StackIndex(0));
     }
 
     #[test]
@@ -269,10 +277,10 @@ mod tests {
 
         let index = tracking.register_shared_value(container.clone());
 
-        assert_eq!(index, StackIndex(1));
+        assert_eq!(index, StackIndex(0));
         assert_eq!(tracking.shared_values.len(), 1);
 
-        assert_top_level(&tracking, &container, StackIndex(1));
+        assert_top_level(&tracking, &container, StackIndex(0));
     }
 
     #[test]
@@ -287,11 +295,11 @@ mod tests {
 
         let first_index = tracking.register_shared_value(container.clone());
         let second_index = tracking.register_shared_value(container.clone());
-        assert_eq!(first_index, StackIndex(1));
-        assert_eq!(second_index, StackIndex(1));
+        assert_eq!(first_index, StackIndex(0));
+        assert_eq!(second_index, StackIndex(0));
         assert_eq!(tracking.shared_values.len(), 1);
 
-        assert_top_level(&tracking, &container, StackIndex(1));
+        assert_top_level(&tracking, &container, StackIndex(0));
     }
 
     #[test]
@@ -316,12 +324,12 @@ mod tests {
         let first_index = tracking.register_shared_value(first.clone());
         let second_index = tracking.register_shared_value(second.clone());
 
-        assert_eq!(first_index, StackIndex(1));
-        assert_eq!(second_index, StackIndex(2));
+        assert_eq!(first_index, StackIndex(0));
+        assert_eq!(second_index, StackIndex(1));
         assert_eq!(tracking.shared_values.len(), 2);
 
-        assert_top_level(&tracking, &first, StackIndex(1));
-        assert_top_level(&tracking, &second, StackIndex(2));
+        assert_top_level(&tracking, &first, StackIndex(0));
+        assert_top_level(&tracking, &second, StackIndex(1));
     }
 
     #[test]
@@ -346,10 +354,10 @@ mod tests {
         let mut tracking = SharedValueTracking::new();
         let parent_index = tracking.register_shared_value(parent.clone());
 
-        assert_eq!(parent_index, StackIndex(1));
+        assert_eq!(parent_index, StackIndex(0));
         assert_eq!(tracking.shared_values.len(), 2);
 
-        assert_top_level(&tracking, &parent, StackIndex(1));
+        assert_top_level(&tracking, &parent, StackIndex(0));
         assert_child(&tracking, &child);
     }
 
@@ -376,12 +384,12 @@ mod tests {
         let parent_index = tracking.register_shared_value(parent.clone());
         let child_index = tracking.register_shared_value(child.clone());
 
-        assert_eq!(parent_index, StackIndex(1));
-        assert_eq!(child_index, StackIndex(2));
+        assert_eq!(parent_index, StackIndex(0));
+        assert_eq!(child_index, StackIndex(1));
         assert_eq!(tracking.shared_values.len(), 2);
 
-        assert_top_level(&tracking, &parent, StackIndex(1));
-        assert_top_level(&tracking, &child, StackIndex(2));
+        assert_top_level(&tracking, &parent, StackIndex(0));
+        assert_top_level(&tracking, &child, StackIndex(1));
     }
 
     #[test]
@@ -417,12 +425,12 @@ mod tests {
         let second_parent_index =
             tracking.register_shared_value(second_parent.clone());
 
-        assert_eq!(first_parent_index, StackIndex(1));
-        assert_eq!(second_parent_index, StackIndex(2));
+        assert_eq!(first_parent_index, StackIndex(0));
+        assert_eq!(second_parent_index, StackIndex(1));
         assert_eq!(tracking.shared_values.len(), 3);
 
-        assert_top_level(&tracking, &first_parent, StackIndex(1));
-        assert_top_level(&tracking, &second_parent, StackIndex(2));
+        assert_top_level(&tracking, &first_parent, StackIndex(0));
+        assert_top_level(&tracking, &second_parent, StackIndex(1));
         assert_child(&tracking, &child);
     }
 
@@ -450,9 +458,9 @@ mod tests {
 
         let parent_index = tracking.register_shared_value(parent.clone());
 
-        assert_eq!(parent_index, StackIndex(1));
+        assert_eq!(parent_index, StackIndex(0));
         assert_eq!(tracking.shared_values.len(), 1);
 
-        assert_top_level(&tracking, &parent, StackIndex(1));
+        assert_top_level(&tracking, &parent, StackIndex(0));
     }
 }

@@ -1,8 +1,11 @@
 //! This module contains the implementation of the execution context, which holds the state of an active execution.
 #[cfg(feature = "compiler")]
-use crate::compiler::{
-    CompileOptions, compile_template, error::SpannedCompilerError,
-    scope::CompilationScope,
+use crate::{
+    compiler::{
+        CompileOptions, compile_template, error::SpannedCompilerError,
+        scope::CompilationScope,
+    },
+    core_compiler::core_compilation_context::DXBWithSharedValues,
 };
 use crate::{
     runtime::execution::{
@@ -78,7 +81,7 @@ impl ExecutionContext {
         &mut self,
         script: &str,
         inserted_values: &[ValueContainer],
-    ) -> Result<Vec<u8>, SpannedCompilerError> {
+    ) -> Result<DXBWithSharedValues, SpannedCompilerError> {
         let compile_scope = self.compile_scope();
         // TODO #107: don't clone compile_scope if possible
         let res = compile_template(
@@ -87,15 +90,14 @@ impl ExecutionContext {
                 .iter()
                 .cloned()
                 .map(Some)
-                .collect::<Vec<_>>()
-                .as_slice(),
+                .collect::<Vec<_>>(),
             CompileOptions::new_with_scope(compile_scope.clone()),
             self.runtime().clone(),
         );
         match res {
-            Ok((bytes, compile_scope)) => {
+            Ok((result, compile_scope)) => {
                 self.set_compile_scope(compile_scope);
-                Ok(bytes)
+                Ok(result)
             }
             Err(err) => Err(err),
         }
@@ -127,10 +129,19 @@ impl ExecutionContext {
         Ok(())
     }
 
-    fn get_local_execution_input<'a>(
-        &'a mut self,
-        dxb: &'a [u8],
-    ) -> Result<ExecutionInput<'a>, ExecutionError> {
+    fn get_local_execution_input(
+        &mut self,
+        input: DXBWithSharedValues,
+    ) -> Result<ExecutionInput, ExecutionError> {
+        // show DXB and decompiled code if verbose is enabled
+        if let ExecutionContext::Local(LocalExecutionContext {
+            verbose: true,
+            ..
+        }) = &self
+        {
+            self.print_dxb_debug(&input.dxb)?;
+        };
+
         match self {
             ExecutionContext::Remote(_) => {
                 core::panic!("Remote execution requires a Runtime");
@@ -143,18 +154,13 @@ impl ExecutionContext {
                 caller_metadata,
                 ..
             }) => {
-                let input = ExecutionInput {
-                    runtime: runtime.clone(),
-                    caller_metadata: caller_metadata.clone(),
-                    loop_state: loop_state.take(),
-                    options: (*execution_options).clone(),
-                    dxb_body: dxb,
-                };
-
-                // show DXB and decompiled code if verbose is enabled
-                if *verbose {
-                    self.print_dxb_debug(dxb)?;
-                }
+                let input = ExecutionInput::new_with_loop_state(
+                    input,
+                    caller_metadata.clone(),
+                    (*execution_options).clone(),
+                    runtime.clone(),
+                    loop_state.take(),
+                );
 
                 Ok(input)
             }
@@ -164,7 +170,7 @@ impl ExecutionContext {
     /// Executes DXB in a local execution context.
     pub fn execute_dxb_sync(
         &mut self,
-        dxb: &[u8],
+        dxb: DXBWithSharedValues,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let execution_input = self.get_local_execution_input(dxb)?;
         let res = execute_dxb_sync(execution_input);
@@ -179,19 +185,19 @@ impl ExecutionContext {
         inserted_values: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
         let dxb = self.compile(script, inserted_values)?;
-        self.execute_dxb_sync(&dxb)
+        self.execute_dxb_sync(dxb)
             .map_err(ScriptExecutionError::from)
     }
 
     pub async fn execute_dxb(
         &mut self,
-        dxb: &[u8],
+        input: DXBWithSharedValues,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         match self {
             ExecutionContext::Local(..) => {
                 let res = {
                     let execution_input =
-                        self.get_local_execution_input(dxb)?;
+                        self.get_local_execution_input(input)?;
                     execute_dxb(execution_input).await
                 };
                 self.intercept_intermediate_result(res)
@@ -237,7 +243,7 @@ impl ExecutionContext {
         inserted_values: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
         let dxb = self.compile(script, inserted_values)?;
-        self.execute_dxb(&dxb)
+        self.execute_dxb(dxb)
             .await
             .map_err(ScriptExecutionError::from)
     }

@@ -2,6 +2,7 @@ use alloc::rc::Rc;
 use datex_core::{
     assert_structural_eq,
     compiler::{CompileOptions, compile_script},
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     decompiler::{
         DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
     },
@@ -79,7 +80,7 @@ fn compare_datex_result_with_json(json_string: &str) {
         compile_script(json_string, CompileOptions::default(), runtime.clone())
             .unwrap();
     let exec_input = ExecutionInput::new(
-        &dxb,
+        DXBWithSharedValues::new(dxb, vec![]),
         ExecutionCallerMetadata::local_default(),
         ExecutionOptions {
             verbose: false,

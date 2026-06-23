@@ -4,7 +4,10 @@ use datex_core::{
         compile_script_or_return_static_value,
         extract_static_value_from_script,
     },
-    core_compiler::value_compiler::compile_value_container,
+    core_compiler::{
+        core_compilation_context::DXBWithSharedValues,
+        value_compiler::compile_value_container,
+    },
     decompiler::{DecompileOptions, decompile_body},
     runtime::{
         Runtime,
@@ -49,7 +52,7 @@ pub fn json_to_datex_value(json: &str) -> ValueContainer {
         compile_script(json, CompileOptions::default(), runtime.clone())
             .expect("Failed to parse JSON string");
     let exec_input = ExecutionInput::new(
-        &dxb,
+        DXBWithSharedValues::new(dxb, vec![]),
         ExecutionCallerMetadata::local_default(),
         ExecutionOptions::default(),
         runtime,
@@ -82,7 +85,7 @@ pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
     )
     .expect("Failed to parse JSON string");
     let exec_input = ExecutionInput::new(
-        &dxb,
+        DXBWithSharedValues::new(dxb, vec![]),
         ExecutionCallerMetadata::local_default(),
         ExecutionOptions::default(),
         runtime,
@@ -129,9 +132,9 @@ pub fn json_to_dxb<'a>(json: &'a str) {
 }
 
 // DXB -> value
-pub fn dxb_to_runtime_value(dxb: &[u8]) {
+pub fn dxb_to_runtime_value(dxb: Vec<u8>) {
     let exec_input = ExecutionInput::new(
-        dxb,
+        DXBWithSharedValues::new(dxb, vec![]),
         ExecutionCallerMetadata::local_default(),
         ExecutionOptions::default(),
         Runtime::stub(),

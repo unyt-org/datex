@@ -1,0 +1,26 @@
+use datex_core::{
+    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+    shared_values::{SharedContainer, SharedContainerMutability},
+    values::{
+        core_values::decimal::typed_decimal::TypedDecimal,
+        value_container::ValueContainer,
+    },
+};
+
+use crate::execution::compile_and_execute;
+
+#[test]
+fn injected_values_owned() {
+    let provider = &mut SelfOwnedPointerAddressProvider::default();
+    let input = ValueContainer::Shared(
+        SharedContainer::new_owned_with_inferred_allowed_type(
+            ValueContainer::from(TypedDecimal::F32(42f32.into())),
+            SharedContainerMutability::Immutable,
+            provider,
+        ),
+    );
+    let referenced = input.clone();
+    let result = compile_and_execute(input);
+    println!("Result: {:?}", result);
+    assert_eq!(result, referenced);
+}

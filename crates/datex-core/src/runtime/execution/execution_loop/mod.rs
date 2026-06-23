@@ -7,7 +7,7 @@ mod runtime_value;
 pub mod state;
 
 use crate::{
-    core_compiler::injected_values::compile_injected_values,
+    core_compiler::{core_compilation_context::DXBWithSharedValues, injected_values::compile_injected_values},
     dxb_parser::{
         body::{DXBParserError, iterate_instructions},
         instruction_collector::{
@@ -1286,7 +1286,7 @@ pub fn inner_execution_loop(
                                     let injected_values = yield_unwrap!(state.stack.resolve_injected_values(&exec_block_data.injected_values));
 
                                     // build dxb
-                                    let (buffer, shared_containers) = yield_unwrap!(compile_injected_values(
+                                    let DXBWithSharedValues {dxb: buffer, shared_values: shared_containers} = yield_unwrap!(compile_injected_values(
                                         exec_block_data,
                                         injected_values,
                                     ));

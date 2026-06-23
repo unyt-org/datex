@@ -155,7 +155,7 @@ impl RuntimeInternal {
                 // TODO: compile_value_conatiner()
 
                 // @example :: MOVE_REF $00000 (value btw: {x:1,})
-                compilation_context.into_buffer()
+                compilation_context.into_dxb_with_shared_values().dxb // FIXME moves
             } else {
                 vec![]
             };

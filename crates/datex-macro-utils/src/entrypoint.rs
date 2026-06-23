@@ -212,7 +212,7 @@ pub fn get_config_compiled_token_stream(
     config_bytes
         .map(|bytes| {
             quote! {
-                Some(&[#(#bytes),*])
+                Some(vec![#(#bytes),*])
             }
         })
         .unwrap_or_else(|| quote! { None })
@@ -242,11 +242,11 @@ pub fn get_arg_ident_and_type(
 fn compile_datex_config(config: RuntimeConfig) -> Vec<u8> {
     let (dxb, _) = compile_template(
         "?",
-        &[Some(config.to_value_container())],
+        vec![Some(config.to_value_container())],
         CompileOptions::default(),
         // FIXME: stub runtime for now
         Runtime::stub(),
     )
     .expect("failed to compile DATEX config file");
-    dxb
+    dxb.dxb
 }

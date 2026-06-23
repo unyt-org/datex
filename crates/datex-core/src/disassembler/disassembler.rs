@@ -719,9 +719,10 @@ mod tests {
                 @test :: (1 + 2);
             )
         "#;
-        let (dxb, _) =
+        let dxb =
             compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap();
+                .unwrap()
+                .0;
         println!(
             "{}",
             disassemble_body_to_string(

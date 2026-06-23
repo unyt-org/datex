@@ -1,5 +1,6 @@
 //! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     runtime::{
         Runtime,
         execution::{
@@ -93,7 +94,7 @@ pub fn execute_dxb_sync(
 }
 
 pub async fn execute_dxb(
-    input: ExecutionInput<'_>,
+    input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let runtime = input.runtime.clone();
     let caller_metadata = input.caller_metadata.clone();
@@ -148,7 +149,10 @@ pub async fn execute_dxb(
                     runtime.clone(),
                 );
                 let res = runtime
-                    .execute_remote(&mut remote_execution_context, body)
+                    .execute_remote(
+                        &mut remote_execution_context,
+                        DXBWithSharedValues::new(body, vec![]), // FIXME do we have shared value
+                    )
                     .await?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
@@ -243,6 +247,7 @@ mod tests {
         assert_structural_eq, assert_value_eq,
         collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
+        core_compiler::core_compilation_context::DXBWithSharedValues,
         datex_list,
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
@@ -290,7 +295,7 @@ mod tests {
         )
         .unwrap();
         let context = ExecutionInput::new(
-            &dxb,
+            DXBWithSharedValues::new(dxb, vec![]),
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
             runtime,
@@ -330,7 +335,8 @@ mod tests {
                 )
                 .unwrap();
                 compilation_scope = new_compilation_scope;
-                yield execution_context.execute_dxb_sync(&dxb)
+                yield execution_context
+                    .execute_dxb_sync(DXBWithSharedValues::new(dxb, vec![]));
             }
         }
     }
@@ -364,7 +370,7 @@ mod tests {
         )
         .unwrap();
         let context = ExecutionInput::new(
-            &dxb,
+            DXBWithSharedValues::new(dxb, vec![]),
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
             runtime,
@@ -376,18 +382,6 @@ mod tests {
         datex_script: &str,
     ) -> ValueContainer {
         execute_datex_script_debug(datex_script).unwrap()
-    }
-
-    fn execute_dxb_debug(
-        dxb_body: &[u8],
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let context = ExecutionInput::new(
-            dxb_body,
-            ExecutionCallerMetadata::local_default(),
-            ExecutionOptions { verbose: true },
-            Runtime::stub(),
-        );
-        execute_dxb_sync(context)
     }
 
     async fn execute_datex_script_with_runtime(
@@ -403,7 +397,7 @@ mod tests {
                 )
                 .unwrap();
                 let context = ExecutionInput::new(
-                    &dxb,
+                    DXBWithSharedValues::new(dxb, vec![]),
                     ExecutionCallerMetadata::local_default(),
                     ExecutionOptions { verbose: true },
                     runtime,

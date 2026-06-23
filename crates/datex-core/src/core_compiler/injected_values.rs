@@ -1,7 +1,9 @@
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
-        core_compilation_context::CoreCompilationContext,
+        core_compilation_context::{
+            CoreCompilationContext, DXBWithSharedValues,
+        },
         value_compiler::{
             InjectedValueValidationError, append_regular_instruction,
         },
@@ -27,7 +29,7 @@ use crate::{
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
     injected_values: Vec<ValueContainer>,
-) -> Result<(Vec<u8>, Vec<SharedContainer>), InjectedValueValidationError> {
+) -> Result<DXBWithSharedValues, InjectedValueValidationError> {
     let mut context = CoreCompilationContext::new(Vec::new());
     validate_injected_value_declaration_for_values(
         &instruction_block_data.injected_values,
@@ -35,11 +37,14 @@ pub fn compile_injected_values(
     )?;
     compile_injected_values_with_context(&mut context, injected_values);
 
-    let (mut buffer, values) = context.into_buffer_and_shared_values();
+    let DXBWithSharedValues {
+        mut dxb,
+        shared_values,
+    } = context.into_dxb_with_shared_values();
     // append instruction block body to buffer
-    buffer.extend(instruction_block_data.body);
+    dxb.extend(instruction_block_data.body);
 
-    Ok((buffer, values))
+    Ok(DXBWithSharedValues { dxb, shared_values })
 }
 
 /// Validates that the injected values match the injected value declarations in the instruction block data
@@ -216,7 +221,9 @@ mod tests {
             injected_values: vec![],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_injected_values(exec_block_data, vec![]).unwrap().0;
+        let res = compile_injected_values(exec_block_data, vec![])
+            .unwrap()
+            .dxb;
         assert_regular_instructions_equal!(&res, [RegularInstruction::Null,])
     }
 
@@ -248,7 +255,7 @@ mod tests {
             ))],
         )
         .unwrap()
-        .0;
+        .dxb;
         // should allocate slot and then compile the shared value into the buffer, followed by the body
 
         /**
@@ -356,7 +363,7 @@ mod tests {
             ],
         )
         .unwrap()
-        .0;
+        .dxb;
         // should allocate slots and then compile the shared values into the buffer, followed by the body
         assert_regular_instructions_equal!(
             &res,
@@ -414,7 +421,7 @@ mod tests {
             vec![ValueContainer::Shared(shared_value)],
         )
         .unwrap()
-        .0;
+        .dxb;
         // should allocate slot and then compile the shared value into the buffer, followed by the body
         assert_regular_instructions_equal!(
             &res,
@@ -477,7 +484,7 @@ mod tests {
             ],
         )
         .unwrap()
-        .0;
+        .dxb;
         // should allocate slots and then compile the shared values into the buffer, followed by the body
         assert_eq!(
             res,

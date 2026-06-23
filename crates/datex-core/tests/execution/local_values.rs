@@ -21,19 +21,7 @@ use datex_core::{
     },
 };
 
-fn compile_and_execute(input: ValueContainer) -> ValueContainer {
-    let runtime = Runtime::stub();
-    let (dxb, _) = compile!(runtime, "?", input.clone()).unwrap();
-
-    execute_dxb_sync(ExecutionInput::new(
-        &dxb,
-        ExecutionCallerMetadata::local_default(),
-        ExecutionOptions { verbose: true },
-        runtime,
-    ))
-    .unwrap()
-    .unwrap()
-}
+use crate::execution::compile_and_execute;
 
 #[test]
 fn compile_and_execute_integer() {

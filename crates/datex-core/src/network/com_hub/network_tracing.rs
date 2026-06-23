@@ -1,6 +1,7 @@
 use core::{fmt::Display, time::Duration};
 
 use crate::{
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -543,7 +544,7 @@ impl ComHub {
         let dxb = block.body.clone();
         let runtime_stub = Runtime::stub(); // FIXME
         let exec_input = ExecutionInput::new(
-            &dxb,
+            DXBWithSharedValues::new(dxb, vec![]),
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions::default(),
             runtime_stub,

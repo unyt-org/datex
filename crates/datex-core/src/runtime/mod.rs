@@ -1,6 +1,8 @@
 //! This module contains the implementation of the runtime, which is the backbone of the DATEX system.
 use crate::{
-    runtime::execution::ExecutionError, values::value_container::ValueContainer,
+    core_compiler::core_compilation_context::DXBWithSharedValues,
+    runtime::execution::ExecutionError,
+    values::value_container::ValueContainer,
 };
 
 use crate::prelude::*;
@@ -88,13 +90,13 @@ impl Runtime {
 
     pub async fn execute_dxb<'a>(
         &'a self,
-        dxb: Vec<u8>,
+        input: DXBWithSharedValues,
         execution_context: Option<&'a mut ExecutionContext>,
         end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb(
             self.internal(),
-            dxb,
+            input,
             execution_context,
             end_execution,
         )
@@ -103,13 +105,13 @@ impl Runtime {
 
     pub fn execute_dxb_sync(
         &self,
-        dxb: &[u8],
+        input: DXBWithSharedValues,
         execution_context: Option<&mut ExecutionContext>,
         end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb_sync(
             self.internal(),
-            dxb,
+            input,
             execution_context,
             end_execution,
         )
@@ -118,12 +120,12 @@ impl Runtime {
     async fn execute_remote(
         &self,
         remote_execution_context: &mut RemoteExecutionContext,
-        dxb: Vec<u8>,
+        input: DXBWithSharedValues,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_remote(
             self.internal(),
             remote_execution_context,
-            dxb,
+            input,
         )
         .await
     }

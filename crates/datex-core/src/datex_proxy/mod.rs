@@ -6,6 +6,7 @@ use crate::compiler::error::SpannedCompilerError;
 #[cfg(feature = "parser")]
 use crate::parser::errors::SpannedParserError;
 use crate::{
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     prelude::*,
     runtime::{
         Runtime,
@@ -110,10 +111,14 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
 
     /// Deserialize a value of type T from a byte slice containing DXB data
     fn try_from_bytes(
-        input: &[u8],
+        dxb: Vec<u8>,
         runtime: &Runtime,
     ) -> Result<Self, DeserializationError> {
-        let value = runtime.execute_dxb_sync(input, None, true)?;
+        let value = runtime.execute_dxb_sync(
+            DXBWithSharedValues::new(dxb, vec![]),
+            None,
+            true,
+        )?;
         if let Some(value) = value {
             let config = Self::try_from_value_container(value)?;
             Ok(config)
