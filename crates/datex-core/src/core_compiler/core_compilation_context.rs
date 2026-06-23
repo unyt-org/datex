@@ -3,6 +3,8 @@ use crate::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
         shared_value_tracking::SharedValueTracking,
+        to_instructions::ToInstructions,
+        type_compiler::append_type_instruction,
         value_compiler::{append_inline_shared_container, append_value},
         value_visitor::ValueVisitor,
     },
@@ -71,7 +73,12 @@ impl ValueVisitor for CoreCompilationContext {
         }
     }
 
-    fn visit_type(&mut self, _ty: Type) {
-        todo!()
+    fn visit_type(&mut self, ty: Type) {
+        let instructions = ty
+            .to_instructions(&mut self.shared_value_tracking)
+            .collect::<Vec<_>>();
+        for instruction in instructions {
+            append_type_instruction(self.cursor_mut(), instruction);
+        }
     }
 }

@@ -19,59 +19,6 @@ pub fn append_type_instruction(
     instruction.write(cursor).unwrap();
 }
 
-pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
-    let instructions = ty
-        .to_instructions(&mut context.shared_value_tracking)
-        .collect::<Vec<_>>();
-    for instruction in instructions {
-        append_type_instruction(&mut context.cursor, instruction);
-    }
-}
-
-// pub fn append_structural_type_definition(
-//     context: &mut impl BufferProvider,
-//     type_definition: &TypeDefinition,
-// ) {
-//     match type_definition {
-//         TypeDefinition::ImplType(ImplTypeDefinition {
-//             inner_type,
-//             impl_markers,
-//         }) => {
-//             // Append the number of impls
-//             let impl_count = impl_markers.len() as u8;
-//             append_u8(context.cursor_mut(), impl_count);
-
-//             // Append each impl address
-//             for impl_type in impl_markers {
-//                 append_get_shared_ref(
-//                     context,
-//                     impl_type,
-//                     &ReferenceMutability::Immutable,
-//                 )
-//             }
-
-//             // Append the base type
-//             append_type(context, inner_type);
-//         }
-//         TypeDefinition::CoreType(core_lib_id) => {
-//             append_type_instruction(
-//                 context.cursor_mut(),
-//                 TypeInstruction::TypeDefinitionCoreType(*core_lib_id),
-//             );
-//         }
-//         TypeDefinition::Shared(type_ref) => {
-//             // TODO #636: ensure pointer_address exists here
-//             let pointer_address = type_ref.pointer_address();
-//             append_get_shared_ref(
-//                 context,
-//                 &pointer_address,
-//                 &ReferenceMutability::Immutable,
-//             )
-//         }
-//         _ => todo!("#637 Type definition compilation not implemented yet"),
-//     };
-// }
-
 #[cfg(test)]
 mod tests {
     use binrw::BinRead;
