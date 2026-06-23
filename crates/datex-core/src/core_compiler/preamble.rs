@@ -9,6 +9,7 @@ use crate::{
     global::protocol_structures::{
         instruction_data::StackIndex, regular_instructions::RegularInstruction,
     },
+    prelude::*,
     shared_values::SharedContainer,
     values::value_container::value_key::ValueKey,
 };
