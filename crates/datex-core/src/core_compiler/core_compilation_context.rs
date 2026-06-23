@@ -69,6 +69,7 @@ impl ValueVisitor for CoreCompilationContext {
     /// For local values, the value is just serialized
     /// For shared values, the container is registered in the context shared value tracking
     fn visit_value_container(&mut self, value_container: ValueContainer) {
+        // TODO can we pass value container by reference?
         match value_container {
             ValueContainer::Local(value) => append_value(self, value),
             ValueContainer::Shared(reference) => {
