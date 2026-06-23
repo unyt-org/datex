@@ -252,9 +252,7 @@ pub fn iterate_instructions(
                 }
                 .into(),
             };
-
-            // println!("instruction {}", instruction);
-
+            
             yield Ok(instruction);
         }
     }

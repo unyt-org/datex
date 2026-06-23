@@ -193,7 +193,8 @@ mod tests {
                 },
                 instruction_data::{
                     InstructionBlockData, Int32Data, ListData, PerformMove,
-                    SharedRefWithValue, StackIndex, StatementsData, UInt32Data,
+                    SharedRefWithValue, ShortListData, StackIndex,
+                    StatementsData, UInt32Data,
                 },
                 regular_instructions::RegularInstruction,
             },
@@ -292,7 +293,9 @@ mod tests {
                     container_mutability: SharedContainerMutability::Immutable
                 }),
                 RegularInstruction::Int32(Int32Data(42)),
-                RegularInstruction::ShortList(ListData { element_count: 1 }),
+                RegularInstruction::ShortList(ShortListData {
+                    element_count: 1
+                }),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,

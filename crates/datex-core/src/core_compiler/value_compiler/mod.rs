@@ -588,7 +588,9 @@ mod tests {
     use crate::{
         assert_regular_instructions_equal,
         core_compiler::shared_value_tracking::TrackedValue,
-        global::protocol_structures::instruction_data::StackIndex,
+        global::protocol_structures::instruction_data::{
+            ShortListData, StackIndex,
+        },
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::SharedContainerMutability,
         values::{core_values::list::List, value::Value},
@@ -824,7 +826,9 @@ mod tests {
         assert_regular_instructions_equal!(
             &context.into_buffer(),
             [
-                RegularInstruction::ShortList(ListData { element_count: 2 }),
+                RegularInstruction::ShortList(ShortListData {
+                    element_count: 2
+                }),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
                 RegularInstruction::TakeStackValue(StackIndex(2)),
             ]

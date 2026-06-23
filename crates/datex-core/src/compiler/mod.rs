@@ -1594,6 +1594,7 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+    use crate::global::protocol_structures::instruction_data::ShortListData;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
@@ -3656,7 +3657,7 @@ pub mod tests {
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(2)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
-                RegularInstruction::ShortList(ListData { element_count: 2 }),
+                RegularInstruction::ShortList(ShortListData { element_count: 2 }),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
             ]

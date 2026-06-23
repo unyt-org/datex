@@ -5,7 +5,10 @@ use crate::{
         shared_value_tracking::SharedValueTracking,
         to_instructions::ToInstructions,
         type_compiler::append_type_instruction,
-        value_compiler::{append_inline_shared_container, append_value},
+        value_compiler::{
+            InjectedValueValidationError, append_inline_shared_container,
+            append_value,
+        },
         value_visitor::ValueVisitor,
     },
     prelude::*,
@@ -44,13 +47,14 @@ impl CoreCompilationContext {
     pub fn into_buffer_and_shared_values(
         self,
     ) -> (Vec<u8>, Vec<SharedContainer>) {
-        let mut cursor = self.cursor;
         let tracked_values = self.shared_value_tracking.into_tracked_values();
+        let (combined_buffer, top_level_values) =
+            append_injected_values_preamble(
+                tracked_values,
+                self.cursor.into_inner(),
+            );
 
-        let top_level_values =
-            append_injected_values_preamble(&mut cursor, tracked_values);
-
-        (cursor.into_inner(), top_level_values)
+        (combined_buffer, top_level_values)
     }
 }
 
