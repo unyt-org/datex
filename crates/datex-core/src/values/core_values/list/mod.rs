@@ -11,8 +11,8 @@ use core::{
     ops::{Index, Range},
     result::Result,
 };
-pub mod update_handler;
 mod child_iterator;
+pub mod update_handler;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct List(Vec<ValueContainer>);

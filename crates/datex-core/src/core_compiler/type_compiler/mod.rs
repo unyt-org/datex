@@ -1,6 +1,5 @@
 use crate::{
     core_compiler::{
-        buffer_provider::BufferProvider,
         core_compilation_context::{ByteCursor, CoreCompilationContext},
         to_instructions::ToInstructions,
     },

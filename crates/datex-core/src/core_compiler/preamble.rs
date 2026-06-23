@@ -1,8 +1,7 @@
 use crate::{
     collections::HashMap,
     core_compiler::{
-        buffer_provider::BufferProvider,
-        core_compilation_context::{ByteCursor, CoreCompilationContext},
+        buffer_provider::BufferProvider, core_compilation_context::ByteCursor,
         shared_value_tracking::TrackedValue,
         value_compiler::append_regular_instruction,
     },
@@ -122,7 +121,6 @@ fn append_injected_value(
             context.cursor,
             RegularInstruction::BorrowStackValue(index),
         );
-    } else {
     }
     todo!()
     // if context.inserted_values.contains_key(shared_container) {

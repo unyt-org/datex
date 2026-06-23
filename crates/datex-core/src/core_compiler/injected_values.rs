@@ -13,8 +13,7 @@ use crate::{
             SharedInjectedValueType,
         },
         instruction_data::{
-            InstructionBlockData, PerformMove, RawSelfOwnedPointerAddress,
-            SharedRef, SharedRefWithValue,
+            InstructionBlockData, SharedRef, SharedRefWithValue,
         },
         regular_instructions::RegularInstruction,
     },

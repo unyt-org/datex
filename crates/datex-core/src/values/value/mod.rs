@@ -15,12 +15,12 @@ use crate::{
     },
 };
 pub mod apply;
+mod child_iterator;
 pub mod datex_proxy;
 pub mod equality;
 pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;
-mod child_iterator;
 
 use crate::shared_values::errors::AccessError;
 use core::{

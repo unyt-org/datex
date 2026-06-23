@@ -1,8 +1,7 @@
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
-        type_compiler::{append_type, append_type_instruction},
-        value_visitor::ValueVisitor,
+        type_compiler::append_type_instruction, value_visitor::ValueVisitor,
     },
     global::{
         instruction_codes::InstructionCode,

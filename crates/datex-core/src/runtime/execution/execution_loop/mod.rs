@@ -1306,7 +1306,7 @@ pub fn inner_execution_loop(
                                                     return yield Err(ExecutionError::MoveToMultipleEndpoints)
                                                 } 
                                             }
-                                            SharedContainer::Referenced(referenced_shared_container) => {
+                                            SharedContainer::Referenced(_referenced_shared_container) => {
                                                 todo!("Subscribe")
                                             }
                                         }
@@ -1519,7 +1519,8 @@ pub fn inner_execution_loop(
                 let active_value = yield_unwrap!(
                     last_result
                         .clone()
-                        .map(|v| v.into_potentially_cloned_value_container(&state))
+                        .map(|v| v
+                            .into_potentially_cloned_value_container(&state))
                         .transpose()
                 );
 

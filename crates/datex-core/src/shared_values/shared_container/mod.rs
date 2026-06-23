@@ -24,8 +24,11 @@ use crate::{
 };
 pub mod identity;
 use crate::{
-    shared_values::base_shared_value_container::observers::{
-        Observer, ObserverError, ObserverId,
+    shared_values::{
+        ReferenceMutability,
+        base_shared_value_container::observers::{
+            Observer, ObserverError, ObserverId,
+        },
     },
     types::type_definition::TypeDefinition,
 };
@@ -36,7 +39,6 @@ use core::{
     hash::{Hash, Hasher},
 };
 use serde::Serializer;
-use crate::shared_values::ReferenceMutability;
 
 pub mod apply;
 pub mod serde_dif;
@@ -251,7 +253,9 @@ impl SharedContainer {
     ) -> Result<ReferencedSharedContainer, UnexpectedImmutableReferenceError>
     {
         match mutability {
-            ReferenceMutability::Immutable => Ok(self.derive_immutable_reference()),
+            ReferenceMutability::Immutable => {
+                Ok(self.derive_immutable_reference())
+            }
             ReferenceMutability::Mutable => self.try_derive_mutable_reference(),
         }
     }

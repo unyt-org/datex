@@ -20,8 +20,8 @@ use core::{
     hash::{Hash, Hasher},
     result::Result,
 };
-pub mod serde_dif;
 mod child_iterator;
+pub mod serde_dif;
 
 use indexmap::IndexMap;
 

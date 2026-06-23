@@ -3,10 +3,7 @@ use crate::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
         shared_value_tracking::SharedValueTracking,
-        value_compiler::{
-            InjectedValueValidationError, append_inline_shared_container,
-            append_value,
-        },
+        value_compiler::{append_inline_shared_container, append_value},
         value_visitor::ValueVisitor,
     },
     prelude::*,
@@ -74,7 +71,7 @@ impl ValueVisitor for CoreCompilationContext {
         }
     }
 
-    fn visit_type(&mut self, ty: Type) {
+    fn visit_type(&mut self, _ty: Type) {
         todo!()
     }
 }
