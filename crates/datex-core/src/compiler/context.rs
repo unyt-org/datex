@@ -1,5 +1,6 @@
 use crate::{
     core_compiler::{
+        buffer_provider::BufferProvider,
         core_compilation_context::CoreCompilationContext,
         value_compiler::append_instruction_code,
     },

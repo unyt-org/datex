@@ -613,7 +613,7 @@ mod tests {
             )),
         };
 
-        let compiled = compile_value(value).unwrap();
+        let compiled = compile_value(value);
         assert_regular_instructions_equal!(
             &compiled,
             [RegularInstruction::TaggedValue(TaggedValue {
@@ -635,7 +635,7 @@ mod tests {
             )),
         };
 
-        let compiled = compile_value(value).unwrap();
+        let compiled = compile_value(value);
         assert_regular_instructions_equal!(
             &compiled,
             [
@@ -657,7 +657,7 @@ mod tests {
             .into(),
         ));
 
-        let compiled = compile_value(value).unwrap();
+        let compiled = compile_value(value);
         assert_regular_instructions_equal!(
             &compiled,
             [RegularInstruction::GetCoreLibValue(
@@ -679,7 +679,7 @@ mod tests {
         let shared_container = ValueContainer::Shared(owned_shared);
         let mut context = CoreCompilationContext::new(Vec::new());
 
-        append_value_container(&mut context, shared_container).unwrap();
+        context.visit_value_container(shared_container);
 
         // The address should now be registered in the shared value tracking
         assert_matches!(
@@ -720,8 +720,7 @@ mod tests {
         let outer_pointer_address = outer_shared.pointer_address();
         let shared_container = ValueContainer::Shared(outer_shared);
         let mut context = CoreCompilationContext::new(Vec::new());
-
-        append_value_container(&mut context, shared_container).unwrap();
+        context.visit_value_container(shared_container);
 
         assert_matches!(
             context
@@ -755,7 +754,7 @@ mod tests {
             ValueContainer::Shared(SharedContainer::Referenced(reference));
         let mut context = CoreCompilationContext::new(Vec::new());
 
-        append_value_container(&mut context, shared_container).unwrap();
+        context.visit_value_container(shared_container);
 
         assert_matches!(
             context
@@ -798,8 +797,7 @@ mod tests {
             .into(),
         );
         let mut context = CoreCompilationContext::new(Vec::new());
-
-        append_value_container(&mut context, local).unwrap();
+        context.visit_value_container(local);
 
         assert_matches!(
             context

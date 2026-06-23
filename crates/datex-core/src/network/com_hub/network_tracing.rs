@@ -617,7 +617,7 @@ impl ComHub {
             .map(|hop| hop.to_value_container())
             .collect::<Vec<ValueContainer>>();
 
-        let dxb = compile_value(Value::from(hops_datex)).unwrap();
+        let dxb = compile_value(Value::from(hops_datex));
         // info!(
         //     "Trace data: {}",
         //     decompile_body(&dxb, DecompileOptions::default()).unwrap()

@@ -651,19 +651,19 @@ fn compile_expression(
                             append_value(
                                 compilation_context.core_context(),
                                 value,
-                            )?;
+                            );
                         }
                         ValueAccessType::Clone => {
                             append_value(
                                 compilation_context.core_context(),
                                 value,
-                            )?;
+                            );
                         }
                         ValueAccessType::Borrow => {
                             append_value(
                                 compilation_context.core_context(),
                                 value,
-                            )?;
+                            );
                         }
                     },
                     ValueContainer::Shared(shared_container) => {
@@ -701,7 +701,7 @@ fn compile_expression(
                                         append_value(
                                             compilation_context.core_context(),
                                             value,
-                                        )?;
+                                        );
                                     }
                                     ValueContainer::Shared(shared_container) => {
                                         append_inline_shared_container(
