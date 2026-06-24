@@ -511,16 +511,16 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
 mod tests {
     use super::*;
 
-    use crate::dif::cache::DIFSharedContainerCache;
     use serde::de::DeserializeSeed;
     use serde_json::json;
     use test_case::test_case;
+    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 
     fn deserialize_value(
         core_lib_id: CoreLibTypeId,
         value: serde_json::Value,
     ) -> Result<CoreValue, serde_json::Error> {
-        let mut cache = DIFSharedContainerCache::default();
+        let mut cache = SharedValuesCache::default();
         let mut context = SerdeContext::<Value>::new(&mut cache);
 
         CoreValueVisitor {

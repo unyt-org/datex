@@ -490,7 +490,7 @@ mod tests {
 
     use crate::{
         libs::core::type_id::CoreLibBaseTypeId,
-        runtime::memory::Memory,
+        runtime::cache::shared_references_cache::SharedReferencesCache,
         types::{
             literal_type_definition::LiteralTypeDefinition,
             r#type::Type,

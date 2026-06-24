@@ -11,7 +11,7 @@ use crate::{
         parse_datex_script_to_rich_ast_detailed_errors,
         precompiler::precompiled_ast::RichAst,
     },
-    runtime::{Runtime, memory::Memory},
+    runtime::{Runtime, cache::shared_references_cache::SharedReferencesCache},
     types::r#type::Type,
 };
 
@@ -96,7 +96,7 @@ impl CompilerWorkspace {
         &self.runtime
     }
 
-    pub fn memory(&self) -> Ref<'_, Memory> {
+    pub fn memory(&self) -> Ref<'_, SharedReferencesCache> {
         self.runtime.memory().borrow()
     }
 }

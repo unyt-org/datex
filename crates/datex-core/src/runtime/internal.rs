@@ -33,7 +33,7 @@ use crate::{
             },
             execution_input::ExecutionCallerMetadata,
         },
-        memory::Memory,
+        cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
         request_move::compile_request_move,
     },
@@ -64,7 +64,7 @@ pub struct RuntimeInternal {
 
     core_library: CoreLibrary,
 
-    memory: RefCell<Memory>,
+    memory: RefCell<SharedReferencesCache>,
     pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     com_hub: Rc<ComHub>,
     config: RuntimeConfig,
@@ -117,7 +117,7 @@ impl From<Rc<RuntimeInternal>> for Runtime {
 impl RuntimeInternal {
     pub(crate) fn new(
         endpoint: Endpoint,
-        memory: RefCell<Memory>,
+        memory: RefCell<SharedReferencesCache>,
         pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
         config: RuntimeConfig,
         com_hub: Rc<ComHub>,
@@ -153,7 +153,7 @@ impl RuntimeInternal {
     pub fn endpoint(&self) -> &Endpoint {
         &self.endpoint
     }
-    pub fn memory(&self) -> &RefCell<Memory> {
+    pub fn memory(&self) -> &RefCell<SharedReferencesCache> {
         &self.memory
     }
     pub fn core_library(&self) -> &CoreLibrary {
@@ -183,7 +183,7 @@ impl RuntimeInternal {
         let (sender, receiver) = create_unbounded_channel();
         RuntimeInternal::new(
             Endpoint::default(),
-            RefCell::new(Memory::default()),
+            RefCell::new(SharedReferencesCache::default()),
             Rc::new(RefCell::new(SelfOwnedPointerAddressProvider::new(
                 Endpoint::default(),
             ))),
@@ -608,7 +608,7 @@ impl RuntimeInternal {
             RawSelfOwnedPointerAddress,
             RawSelfOwnedPointerAddress,
         )>,
-        memory: &Memory,
+        memory: &SharedReferencesCache,
     ) -> Result<Vec<ValueContainer>, ExecutionError> {
         let mut pointer_borrow = self.moving_pointers.borrow_mut();
         let moving_pointers = pointer_borrow

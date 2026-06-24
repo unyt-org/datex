@@ -90,7 +90,7 @@ impl UpdateHandler for BaseSharedValueContainer {
 mod tests {
     use crate::{
         prelude::*,
-        runtime::memory::Memory,
+        runtime::cache::shared_references_cache::SharedReferencesCache,
         shared_values::{
             SharedContainerMutability,
             base_shared_value_container::{

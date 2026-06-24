@@ -1,6 +1,5 @@
 use crate::{
     dif::{
-        cache::{DIFSharedContainerCache, ValueNotFoundInCacheError},
         error::{DIFObserveError, DIFUpdateError},
     },
     prelude::*,
@@ -24,11 +23,12 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
+use crate::runtime::cache::shared_values_cache::{SharedValuesCache, ValueNotFoundInCacheError};
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
 pub struct DIFInterface {
-    pub cache: DIFSharedContainerCache,
+    pub cache: SharedValuesCache,
     address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     transceiver_id: TransceiverId,
 }
@@ -39,7 +39,7 @@ impl DIFInterface {
         address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     ) -> Self {
         DIFInterface {
-            cache: DIFSharedContainerCache::default(),
+            cache: SharedValuesCache::default(),
             address_provider,
             transceiver_id,
         }

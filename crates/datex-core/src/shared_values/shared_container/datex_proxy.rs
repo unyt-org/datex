@@ -8,7 +8,7 @@ use crate::{
     },
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
-    runtime::memory::Memory,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
         SharedContainerOwnership,
@@ -50,7 +50,7 @@ impl DatexValueContainerProxyDeserialize for SharedContainer {
 }
 
 impl DatexProxyTypes for SharedContainer {
-    fn datex_type(_memory: &mut Memory) -> Type {
+    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
         Type::Alias(TypeDefinitionWithMetadata {
             definition: TypeDefinition::CoreType(
                 CoreLibBaseTypeId::Unknown.into(),

@@ -20,7 +20,7 @@ use core::cell::RefCell;
 
 use crate::{
     prelude::*,
-    runtime::memory::Memory,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::base_shared_value_container::observers::TransceiverId,
     types::{r#type::Type, type_match::TypeSatisfiesValueContainer},
     value_updates::{
@@ -41,7 +41,7 @@ pub fn set_property(
 pub fn handle_unary_shared_value_operation(
     operator: SharedValueUnaryOperator,
     value_container: ValueContainer,
-    _memory: &RefCell<Memory>,
+    _memory: &RefCell<SharedReferencesCache>,
 ) -> Result<ValueContainer, ExecutionError> {
     Ok(match operator {
         SharedValueUnaryOperator::Unbox => {
@@ -77,7 +77,7 @@ pub fn handle_unary_arithmetic_operation(
 pub fn handle_unary_operation(
     operator: UnaryOperator,
     value_container: ValueContainer,
-    memory: &RefCell<Memory>,
+    memory: &RefCell<SharedReferencesCache>,
 ) -> Result<ValueContainer, ExecutionError> {
     match operator {
         UnaryOperator::Reference(reference) => {

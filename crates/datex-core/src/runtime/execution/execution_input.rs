@@ -94,6 +94,7 @@ impl ExecutionInput {
     ) -> Self {
         let state = ExecutionLoopState::new(
             dxb_with_shared_values.dxb.clone(), // FIXME avoid clone
+            dxb_with_shared_values.shared_values,
             runtime.clone(),
             stack,
             caller_metadata.clone(),
@@ -102,7 +103,7 @@ impl ExecutionInput {
             options,
             caller_metadata,
             dxb: dxb_with_shared_values.dxb,
-            shared_values: dxb_with_shared_values.shared_values,
+            shared_values: vec![], // FIXME: shared_values where moved to ExecutionLoopState, is that okay?
             loop_state: Some(state),
             runtime,
         }
@@ -128,6 +129,7 @@ impl ExecutionInput {
             else {
                 ExecutionLoopState::new(
                     self.dxb,
+                    self.shared_values,
                     self.runtime.clone(),
                     Default::default(),
                     self.caller_metadata.clone(),

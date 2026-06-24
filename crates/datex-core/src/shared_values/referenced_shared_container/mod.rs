@@ -1,7 +1,7 @@
 pub mod datex_proxy;
 
 use crate::{
-    runtime::memory::Memory,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         ExternalSharedContainer, PointerAddress, ReferenceMutability,
         RemotePointerAddress, SharedContainerInner, SharedContainerMutability,
@@ -61,12 +61,12 @@ impl ReferencedSharedContainer {
     /// Returns an [Err] if the provided [ReferenceMutability] is [ReferenceMutability::Mutable] while
     /// the [SharedContainerMutability] of the container is [SharedContainerMutability::Immutable]
     /// # Safety
-    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [Memory]
+    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
     pub(crate) unsafe fn try_new_external_from_base_container(
         container: BaseSharedValueContainer,
         address: RemotePointerAddress,
         reference_mutability: ReferenceMutability,
-        memory: &Memory,
+        memory: &SharedReferencesCache,
     ) -> Result<Self, ()> {
         // invalid reference mutability
         if reference_mutability == ReferenceMutability::Mutable
@@ -91,11 +91,11 @@ impl ReferencedSharedContainer {
     /// with the provided [ValueContainer] and [RemotePointerAddress].
     /// Automatically infers the allowed type of the shared container from the provided [ValueContainer].
     /// # Safety
-    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [Memory]
+    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
     pub(crate) unsafe fn new_immutable_external_with_inferred_allowed_type(
         value_container: ValueContainer,
         address: RemotePointerAddress,
-        memory: &Memory,
+        memory: &SharedReferencesCache,
     ) -> Self {
         unsafe {
             ReferencedSharedContainer::try_new_external_from_base_container(
@@ -118,13 +118,13 @@ impl ReferencedSharedContainer {
     /// If the allowed [TypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
     /// an error is returned
     /// # Safety
-    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [Memory]
+    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
     pub(crate) unsafe fn try_new_external(
         value_container: ValueContainer,
         address: RemotePointerAddress,
         mutability: SharedContainerMutability,
         allowed_type: TypeDefinition,
-        memory: &Memory,
+        memory: &SharedReferencesCache,
     ) -> Result<Self, SharedValueCreationError> {
         Ok(unsafe {
             ReferencedSharedContainer::try_new_external_from_base_container(

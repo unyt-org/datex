@@ -55,7 +55,7 @@ where
 use datex_core::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     runtime::{
-        memory::Memory,
+        cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
@@ -558,7 +558,7 @@ fn struct_with_owned_shared_value_container() {
 
 #[test]
 fn get_datex_type_from_struct() {
-    let dx_type = Example::datex_type(&mut Memory::default());
+    let dx_type = Example::datex_type(&mut SharedReferencesCache::default());
     println!("{}", dx_type);
 
     assert_eq!(
@@ -618,7 +618,7 @@ fn get_datex_type_from_struct() {
 
 #[test]
 fn get_datex_type_from_enum() {
-    let dx_type = ExampleEnum::datex_type(&mut Memory::default());
+    let dx_type = ExampleEnum::datex_type(&mut SharedReferencesCache::default());
     println!("{}", dx_type);
 
     assert_eq!(

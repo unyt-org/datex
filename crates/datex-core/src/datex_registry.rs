@@ -1,6 +1,6 @@
 //! This module acts as the central type registry, to collect structs and enums annotated with `#[derive(datex)]` to make them available for external projects.
 use crate::{
-    datex_proxy::DatexProxyTypes, prelude::*, runtime::memory::Memory,
+    datex_proxy::DatexProxyTypes, prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
     types::r#type::Type,
 };
 
@@ -30,7 +30,7 @@ pub struct DatexMetadata {
 
 pub struct DatexRegistration {
     pub metadata: DatexMetadata,
-    resolve_type: fn(&mut Memory) -> Type,
+    resolve_type: fn(&mut SharedReferencesCache) -> Type,
 }
 
 impl DatexRegistration {
@@ -43,7 +43,7 @@ impl DatexRegistration {
     }
 
     /// Resolves the Datex type using the provided memory.
-    pub fn resolve(&self, memory: &mut Memory) -> Type {
+    pub fn resolve(&self, memory: &mut SharedReferencesCache) -> Type {
         (self.resolve_type)(memory)
     }
 }
@@ -57,7 +57,7 @@ pub fn all_datex_registrations()
 }
 
 /// Returns a vector of all Datex types resolved using the provided memory.
-pub fn all_datex_types(memory: &mut Memory) -> Vec<Type> {
+pub fn all_datex_types(memory: &mut SharedReferencesCache) -> Vec<Type> {
     all_datex_registrations()
         .map(|registration| registration.resolve(memory))
         .collect()

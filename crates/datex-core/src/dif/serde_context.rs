@@ -1,15 +1,15 @@
-use crate::dif::cache::DIFSharedContainerCache;
 use core::marker::PhantomData;
+use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 
 #[derive(Debug)]
 pub struct SerdeContext<'ctx, T> {
-    pub shared_container_cache: &'ctx mut DIFSharedContainerCache,
+    pub shared_container_cache: &'ctx mut SharedValuesCache,
     _marker: PhantomData<T>,
 }
 
 impl<'ctx, T> SerdeContext<'ctx, T> {
     pub fn new(
-        shared_container_cache: &'ctx mut DIFSharedContainerCache,
+        shared_container_cache: &'ctx mut SharedValuesCache,
     ) -> Self {
         Self {
             shared_container_cache,
@@ -54,8 +54,8 @@ impl<'ctx, T> SerdeContext<'ctx, T> {
     }
 }
 
-impl<'ctx> From<&'ctx mut DIFSharedContainerCache> for SerdeContext<'ctx, ()> {
-    fn from(cache: &'ctx mut DIFSharedContainerCache) -> Self {
+impl<'ctx> From<&'ctx mut SharedValuesCache> for SerdeContext<'ctx, ()> {
+    fn from(cache: &'ctx mut SharedValuesCache) -> Self {
         SerdeContext::new(cache)
     }
 }

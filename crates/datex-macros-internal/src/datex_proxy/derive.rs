@@ -225,7 +225,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 },
                 types::r#type::Type,
                 types::literal_type_definition::LiteralTypeDefinition,
-                runtime::memory::Memory,
+                runtime::cache::shared_references_cache::SharedReferencesCache,
                 libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
                 values::value_container::ValueContainer,
                 values::value::Value,
@@ -279,7 +279,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
             #[automatically_derived]
             impl DatexProxyTypes for #ident {
-                fn datex_type(memory: &mut Memory) -> Type {
+                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     (#datex_type).with_name(#datex_name)
                 }
             }
@@ -1126,7 +1126,7 @@ fn generate_named_field_type_code(
             quote! {
                 (
                     Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
-                    <#field_type as DatexProxyTypes>::datex_type(memory)
+                    <#field_type as DatexProxyTypes>::datex_type(cache)
                 )
             }
         }
@@ -1150,7 +1150,7 @@ fn generate_unnamed_field_type_code(
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                <#field_type as DatexProxyTypes>::datex_type(memory)
+                <#field_type as DatexProxyTypes>::datex_type(cache)
             }
         }
         // Cannot infer type

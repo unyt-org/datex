@@ -22,6 +22,8 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, fmt::Debug};
+use crate::runtime::cache::shared_values_cache::SharedValuesCache;
+use crate::shared_values::SharedContainer;
 
 pub struct ExecutionLoopState {
     pub iterator: Box<
@@ -33,6 +35,7 @@ pub struct ExecutionLoopState {
 impl ExecutionLoopState {
     pub fn new(
         dxb_body: Vec<u8>,
+        shared_values: Vec<SharedContainer>,
         runtime: Runtime,
         stack: RuntimeExecutionStack,
         caller_metadata: ExecutionCallerMetadata,
@@ -42,6 +45,7 @@ impl ExecutionLoopState {
             source_id: TransceiverId(0), // TODO #640: set proper source ID
             stack,
             caller_metadata,
+            shared_value_cache: SharedValuesCache::new(shared_values),
         };
         // TODO #641: optimize, don't clone the whole DXB body every time here
         let dxb_rc = Rc::new(RefCell::new(dxb_body.to_vec()));
@@ -73,6 +77,7 @@ pub struct RuntimeExecutionState {
     pub runtime: Runtime,
     pub source_id: TransceiverId,
     pub caller_metadata: ExecutionCallerMetadata,
+    pub shared_value_cache: SharedValuesCache,
 }
 
 #[derive(Debug, Default)]

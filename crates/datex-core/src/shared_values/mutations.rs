@@ -1,5 +1,5 @@
 // use crate::{
-//     runtime::memory::Memory,
+//     runtime::memory::SharedReferencesCache,
 //     shared_values::{
 //         SharedContainerMutability,
 //         base_shared_value_container::BaseSharedValueContainer,
@@ -19,7 +19,7 @@
 //
 // pub enum UpdateDataOrMemory<'a> {
 //     Update(&'a UpdateData),
-//     Memory(&'a RefCell<Memory>),
+//     SharedReferencesCache(&'a RefCell<SharedReferencesCache>),
 // }
 //
 // impl<'a> From<&'a UpdateData> for UpdateDataOrMemory<'a> {
@@ -28,9 +28,9 @@
 //     }
 // }
 //
-// impl<'a> From<&'a RefCell<Memory>> for UpdateDataOrMemory<'a> {
-//     fn from(memory: &'a RefCell<Memory>) -> Self {
-//         UpdateDataOrMemory::Memory(memory)
+// impl<'a> From<&'a RefCell<SharedReferencesCache>> for UpdateDataOrMemory<'a> {
+//     fn from(memory: &'a RefCell<SharedReferencesCache>) -> Self {
+//         UpdateDataOrMemory::SharedReferencesCache(memory)
 //     }
 // }
 //

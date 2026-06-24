@@ -104,7 +104,7 @@ mod tests {
         let address = owned_shared_container.pointer_address();
 
         let serialized = SerdeContext::<SharedContainer>::new(
-            &mut DIFSharedContainerCache::default(),
+            &mut SharedValuesCache::default(),
         )
         .serialize_to_json(&SharedContainer::Referenced(
             owned_shared_container,
@@ -124,7 +124,7 @@ mod tests {
             );
 
         let serialized = SerdeContext::<SharedContainer>::new(
-            &mut DIFSharedContainerCache::default(),
+            &mut SharedValuesCache::default(),
         )
         .serialize_to_json(&owned_container);
         assert_eq!(
@@ -134,17 +134,15 @@ mod tests {
     }
 
     use crate::dif::{
-        cache::{
-            CacheValueRetrievalError, DIFSharedContainerCache,
-            ValueNotFoundInCacheError,
-        },
         serde_context::SerdeContext,
     };
     use core::assert_matches;
+    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 
     #[test]
     fn deserialize_owned_pointer_address_to_shared_container() {
-        let cache = &mut DIFSharedContainerCache::default();
+        let cache = &mut SharedValuesCache::default();
 
         let owned_shared_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
@@ -172,7 +170,7 @@ mod tests {
     #[test]
     fn deserialize_pointer_address_to_shared_container() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let cache = &mut DIFSharedContainerCache::default();
+        let cache = &mut SharedValuesCache::default();
 
         let owned_container =
             SharedContainer::new_owned_with_inferred_allowed_type(

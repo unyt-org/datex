@@ -5,7 +5,7 @@ use crate::{
         TryFromDatexValueError, TryToDatexValueError,
     },
     libs::core::type_id::CoreLibBaseTypeId,
-    runtime::memory::Memory,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     types::{r#type::Type, type_definition::TypeDefinition},
     values::{core_value::CoreValue, value::Value},
 };
@@ -27,7 +27,7 @@ impl DatexValueProxyDeserialize for CoreValue {
 }
 
 impl DatexProxyTypes for CoreValue {
-    fn datex_type(_memory: &mut Memory) -> Type {
+    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
         Type::Alias(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()).into(),
         )

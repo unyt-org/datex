@@ -271,7 +271,6 @@ mod tests {
 
     use super::*;
     use crate::{
-        dif::cache::DIFSharedContainerCache,
         libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
@@ -280,11 +279,12 @@ mod tests {
         },
         values::{core_value::CoreValue, core_values::list::List},
     };
+    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 
     #[test]
     fn pointer_address() {
         let mut provider = SelfOwnedPointerAddressProvider::default();
-        let mut cache = DIFSharedContainerCache::default();
+        let mut cache = SharedValuesCache::default();
         let value = ValueContainer::Shared(SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,
@@ -310,7 +310,7 @@ mod tests {
     #[test]
     fn owned() {
         let mut provider = SelfOwnedPointerAddressProvider::default();
-        let mut cache = DIFSharedContainerCache::default();
+        let mut cache = SharedValuesCache::default();
         let value = ValueContainer::Shared(SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,
@@ -338,7 +338,7 @@ mod tests {
 
     #[test]
     fn referenced() {
-        let cache = &mut DIFSharedContainerCache::default();
+        let cache = &mut SharedValuesCache::default();
         let owned_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn deserialize_nested_pointer_address() {
-        let cache = &mut DIFSharedContainerCache::default();
+        let cache = &mut SharedValuesCache::default();
 
         let owned_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(

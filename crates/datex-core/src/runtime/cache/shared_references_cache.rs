@@ -4,17 +4,16 @@ use crate::{
 };
 
 #[derive(Debug, Default)]
-pub struct Memory {
+pub struct SharedReferencesCache {
     /// Shared values that are actively referenced or owned somewhere
     /// in the runtime or on remote endpoints
     values: HashMap<PointerAddress, ReferencedSharedContainer>,
 }
 
-impl Memory {
-    /// Registers a referenced shared container in memory. If the reference has no PointerAddress, a new local one is generated.
+impl SharedReferencesCache {
+    /// Registers a referenced shared container in the cache.
     /// If the reference is already registered (has a PointerAddress), the existing address is returned and no new registration is done.
     /// Owned shared containers shall not be registered in memory.
-    /// Returns the PointerAddress of the registered reference.
     pub fn register_referenced_shared_container(
         &mut self,
         container: &ReferencedSharedContainer,

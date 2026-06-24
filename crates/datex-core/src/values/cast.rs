@@ -35,7 +35,7 @@ use crate::{
 };
 
 use crate::{
-    runtime::memory::Memory,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::{TypeDefinition, union::UnionTypeDefinition},
     values::core_values::{
         decimal::typed_decimal::DecimalTypeVariant,
@@ -147,7 +147,7 @@ macro_rules! derive_try_from_chain {
         }
 
         impl DatexProxyTypes for $type {
-            fn datex_type(_memory: &mut Memory) -> Type {
+            fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
                 Type::Alias(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
@@ -177,7 +177,7 @@ macro_rules! impl_datex_direct_via_value_container {
         }
 
         impl DatexProxyTypes for $type {
-            fn datex_type(_memory: &mut Memory) -> Type {
+            fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
                 Type::Alias(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
@@ -389,7 +389,7 @@ impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
 }
 
 impl<T: DatexValueContainerProxy> DatexProxyTypes for Option<T> {
-    fn datex_type(memory: &mut Memory) -> Type {
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         // null | T
         Type::Alias(
             TypeDefinition::Union(UnionTypeDefinition(vec![
@@ -445,7 +445,7 @@ impl<T> DatexProxyTypes for Vec<T>
 where
     T: DatexValueContainerProxy + DatexProxyTypes,
 {
-    fn datex_type(memory: &mut Memory) -> Type {
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         Type::Alias(
             TypeDefinition::Collection(CollectionTypeDefinition::List(
                 ListCollectionTypeDefinition(Box::new(T::datex_type(memory))),
@@ -517,7 +517,7 @@ impl<
 impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
     DatexProxyTypes for HashMap<K, V>
 {
-    fn datex_type(memory: &mut Memory) -> Type {
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         Type::Alias(
             TypeDefinition::Collection(CollectionTypeDefinition::Map(
                 MapCollectionTypeDefinition {

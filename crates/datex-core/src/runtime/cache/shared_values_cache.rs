@@ -1,21 +1,12 @@
-use crate::{
-    collections::HashMap,
-    shared_values::{
-        OwnedSharedContainer, PointerAddress, ReferenceMutability,
-        ReferencedSharedContainer, SharedContainer, SharedContainerOwnership,
-        errors::{
-            UnexpectedImmutableReferenceError,
-            UnexpectedSharedContainerOwnershipError,
-        },
-    },
-};
 use core::fmt::Display;
+use crate::collections::HashMap;
 use strum_macros::Display;
+use crate::shared_values::{OwnedSharedContainer, PointerAddress, ReferenceMutability, ReferencedSharedContainer, SharedContainer, SharedContainerOwnership};
+use crate::shared_values::errors::{UnexpectedImmutableReferenceError, UnexpectedSharedContainerOwnershipError};
 
-/// Cache layer that stores references or owned and referenced shared containers used by the DIF client
-/// during deserialization
+/// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]
-pub struct DIFSharedContainerCache {
+pub struct SharedValuesCache {
     values: HashMap<PointerAddress, SharedContainer>,
 }
 
@@ -48,14 +39,26 @@ impl From<ValueNotFoundInCacheError> for CacheValueRetrievalError {
 }
 
 impl From<UnexpectedSharedContainerOwnershipError>
-    for CacheValueRetrievalError
+for CacheValueRetrievalError
 {
     fn from(error: UnexpectedSharedContainerOwnershipError) -> Self {
         CacheValueRetrievalError::UnexpectedSharedContainerOwnership(error)
     }
 }
 
-impl DIFSharedContainerCache {
+impl SharedValuesCache {
+    
+    /// Creates a new SharedValuesCache and populates it with the provided shared containers.
+    /// Assumes that all provided containers have unique pointer addresses.
+    pub fn new(values: Vec<SharedContainer>) -> Self {
+        SharedValuesCache {
+            values: values
+                .into_iter()
+                .map(|container| (container.pointer_address(), container))
+                .collect(),
+        }
+    }
+    
     /// Stores a shared container in the cache, indexed by its pointer address.
     /// If a container already exists at the address, the container with the maximum ownership is kept.
     pub fn store_shared_container(&mut self, container: SharedContainer) {
@@ -106,7 +109,7 @@ impl DIFSharedContainerCache {
                             ),
                             expected: SharedContainerOwnership::Owned,
                         }
-                        .into())
+                            .into())
                     }
                 }
             }

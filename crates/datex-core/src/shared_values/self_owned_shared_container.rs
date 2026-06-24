@@ -1,5 +1,5 @@
 use crate::{
-    runtime::memory::Memory,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         ExternalSharedContainer, RemotePointerAddress, SelfOwnedPointerAddress,
         base_shared_value_container::BaseSharedValueContainer,
@@ -46,13 +46,13 @@ impl SelfOwnedSharedContainer {
     /// Converts the [SelfOwnedSharedContainer] into an [ExternalSharedContainer],
     /// setting the provided [RemotePointerAddress]
     /// # Safety
-    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [Memory]
+    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
     /// # Safety
     /// TODO: handle subscriber transfer somewhere
     pub unsafe fn convert_to_external_container(
         self,
         remote_address: RemotePointerAddress,
-        memory: &Memory,
+        memory: &SharedReferencesCache,
     ) -> ExternalSharedContainer {
         unsafe {
             ExternalSharedContainer::create_external_shared_container(

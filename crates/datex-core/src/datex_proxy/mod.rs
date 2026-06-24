@@ -11,7 +11,7 @@ use crate::{
     runtime::{
         Runtime,
         execution::{ExecutionError, context::ScriptExecutionError},
-        memory::Memory,
+        cache::shared_references_cache::SharedReferencesCache,
     },
     shared_values::errors::KeyNotFoundError,
     types::r#type::Type,
@@ -91,7 +91,7 @@ pub trait DatexValueProxy:
 
 /// Trait for providing DATEX type information for a DatexProxy type
 pub trait DatexProxyTypes {
-    fn datex_type(memory: &mut Memory) -> Type;
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type;
 }
 
 /// Conversion from a [ValueContainer] to a rust value

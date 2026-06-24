@@ -38,7 +38,7 @@ use crate::{
         type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     },
     prelude::*,
-    runtime::memory::Memory,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainerOwnership,
     },
@@ -118,7 +118,7 @@ impl InferOutcome {
 
 pub fn infer_expression_type_simple_error(
     rich_ast: &mut RichAst,
-    memory: &Memory,
+    memory: &SharedReferencesCache,
 ) -> Result<Type, SpannedTypeError> {
     match infer_expression_type(
         rich_ast,
@@ -137,7 +137,7 @@ pub fn infer_expression_type_simple_error(
 
 pub fn infer_expression_type_detailed_errors(
     rich_ast: &mut RichAst,
-    memory: &Memory,
+    memory: &SharedReferencesCache,
 ) -> Result<Type, DetailedTypeErrors> {
     match infer_expression_type(
         rich_ast,
@@ -156,7 +156,7 @@ pub fn infer_expression_type_detailed_errors(
 
 pub fn infer_expression_type_with_errors(
     rich_ast: &mut RichAst,
-    memory: &Memory,
+    memory: &SharedReferencesCache,
 ) -> InferOutcome {
     infer_expression_type(
         rich_ast,
@@ -174,7 +174,7 @@ pub fn infer_expression_type_with_errors(
 fn infer_expression_type(
     rich_ast: &mut RichAst,
     options: InferExpressionTypeOptions,
-    memory: &Memory,
+    memory: &SharedReferencesCache,
 ) -> Result<InferOutcome, SimpleOrDetailedTypeError> {
     TypeInference::new(rich_ast.metadata.clone(), memory)
         .infer(&mut rich_ast.ast, options)
@@ -182,11 +182,11 @@ fn infer_expression_type(
 pub struct TypeInference<'a> {
     errors: Option<DetailedTypeErrors>,
     metadata: Rc<RefCell<AstMetadata>>,
-    memory: &'a Memory,
+    memory: &'a SharedReferencesCache,
 }
 
 impl<'a> TypeInference<'a> {
-    pub fn new(metadata: Rc<RefCell<AstMetadata>>, memory: &'a Memory) -> Self {
+    pub fn new(metadata: Rc<RefCell<AstMetadata>>, memory: &'a SharedReferencesCache) -> Self {
         TypeInference {
             metadata,
             errors: None,
@@ -1531,7 +1531,7 @@ mod tests {
         parser::Parser,
         prelude::*,
         runtime::{
-            Runtime, memory::Memory,
+            Runtime, cache::shared_references_cache::SharedReferencesCache,
             pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
         shared_values::{
@@ -2077,7 +2077,7 @@ mod tests {
 
     #[test]
     fn statements_expression() {
-        let memory = &Memory::default();
+        let memory = &SharedReferencesCache::default();
         let inferred = infer_type_from_script_ignore_errors("10; 20; 30");
         assert_eq!(
             inferred,

@@ -289,7 +289,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        dif::{cache::DIFSharedContainerCache, serde_context::SerdeContext},
+        dif::{serde_context::SerdeContext},
         libs::core::{
             core_lib_id::CoreLibIdIndex,
             type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
@@ -300,10 +300,12 @@ mod tests {
     };
 
     fn to_json(value: &TypeDefinition) -> String {
-        SerdeContext::new(&mut DIFSharedContainerCache::default())
+        SerdeContext::new(&mut SharedValuesCache::default())
             .serialize_to_json(value)
     }
     use test_case::test_case;
+    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 
     #[test_case(CoreLibTypeId::Base(CoreLibBaseTypeId::Text) ; "Text")]
     #[test_case(CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)) ; "integer/u8")]
@@ -317,7 +319,7 @@ mod tests {
 
         // Deserialize the JSON back to a TypeDefinition
         let deserialized: TypeDefinition =
-            SerdeContext::new(&mut DIFSharedContainerCache::default())
+            SerdeContext::new(&mut SharedValuesCache::default())
                 .try_deserialize_from_json(&serialized)
                 .unwrap();
         assert_eq!(type_def, deserialized);

@@ -4,7 +4,7 @@ use crate::{
     network::com_hub::ComHub,
     prelude::*,
     runtime::{
-        Runtime, RuntimeConfig, RuntimeInternal, memory::Memory,
+        Runtime, RuntimeConfig, RuntimeInternal, cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     time::now_ms,
@@ -38,7 +38,7 @@ impl RuntimeRunner {
 
         let (com_hub, com_hub_task_future) =
             ComHub::create(endpoint.clone(), incoming_sections_sender);
-        let memory = RefCell::new(Memory::default());
+        let memory = RefCell::new(SharedReferencesCache::default());
         let pointer_address_provider = Rc::new(RefCell::new(
             SelfOwnedPointerAddressProvider::new(endpoint.clone()),
         ));

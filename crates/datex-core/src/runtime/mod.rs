@@ -15,13 +15,13 @@ mod config;
 pub mod execution;
 mod incoming_sections;
 mod internal;
-pub mod memory;
 mod runner;
 
 pub mod pointer_address_provider;
 mod request_move;
 #[cfg(test)]
 pub mod test_utils;
+pub mod cache;
 
 pub use config::*;
 pub use internal::*;

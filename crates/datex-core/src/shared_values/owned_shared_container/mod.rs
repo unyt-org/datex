@@ -2,7 +2,7 @@ pub mod datex_proxy;
 
 use crate::{
     runtime::{
-        memory::Memory,
+        cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
@@ -254,11 +254,11 @@ impl OwnedSharedContainer {
     /// Moves an owned shared container by converting it to a [ReferencedSharedContainer] with a [RemotePointerAddress] pointing to the given remote address.
     /// Drops the original owned shared container
     /// # Safety
-    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [Memory]
+    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
     pub unsafe fn move_to_remote(
         self,
         remote_address: RemotePointerAddress,
-        memory: &Memory,
+        memory: &SharedReferencesCache,
     ) {
         let mut inner = self.inner_mut();
         // replace previous with null value

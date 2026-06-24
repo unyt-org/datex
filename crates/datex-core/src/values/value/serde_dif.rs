@@ -404,7 +404,6 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Value> {
 mod tests {
     use super::*;
     use crate::{
-        dif::cache::DIFSharedContainerCache,
         libs::core::{
             core_lib_id::CoreLibIdIndex,
             type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
@@ -422,6 +421,7 @@ mod tests {
     };
     use core::str::FromStr;
     use test_case::test_case;
+    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 
     #[test]
     fn endpoint_serialization() {
@@ -430,7 +430,7 @@ mod tests {
             inner: CoreValue::Endpoint(endpoint.clone()),
             custom_type: None,
         };
-        let mut cache = DIFSharedContainerCache::default();
+        let mut cache = SharedValuesCache::default();
         let serialized =
             SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
         assert_eq!(
@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn serialize_map() {
-        let mut cache = DIFSharedContainerCache::default();
+        let mut cache = SharedValuesCache::default();
 
         // { endpoint: "@jonas" } -> [<map-idx>, { endpoint: [<endpoint-idx>, "@jonas"] }]
         let value =
@@ -498,7 +498,7 @@ mod tests {
         // text
         let value = Value::from(CoreValue::Text("Hello, world!".into()));
         let serialized =
-            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
+            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
                 .serialize_to_json(&value);
         assert_eq!(serialized, r#""Hello, world!""#);
 
@@ -507,14 +507,14 @@ mod tests {
             5.14f64.into(),
         )));
         let serialized =
-            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
+            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
                 .serialize_to_json(&value);
         assert_eq!(serialized, r#"5.14"#);
 
         // boolean
         let value = Value::from(CoreValue::Boolean(true.into()));
         let serialized =
-            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
+            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
                 .serialize_to_json(&value);
         assert_eq!(serialized, r#"true"#);
     }
@@ -526,7 +526,7 @@ mod tests {
             5.14f32.into(),
         )));
         let serialized =
-            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
+            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
                 .serialize_to_json(&value);
 
         assert_eq!(
@@ -542,7 +542,7 @@ mod tests {
         // integer
         let value = Value::from(CoreValue::Integer(Integer::new(42)));
         let serialized =
-            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
+            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
                 .serialize_to_json(&value);
         assert_eq!(
             serialized,
@@ -557,7 +557,7 @@ mod tests {
         // typed integer
         let value = Value::from(CoreValue::TypedInteger(42u8.into()));
         let serialized =
-            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
+            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
                 .serialize_to_json(&value);
         assert_eq!(
             serialized,
@@ -635,7 +635,7 @@ mod tests {
     )]
     fn roundtrip_no_custom_type(value: CoreValue) {
         let value = Value::from(value);
-        let mut cache = DIFSharedContainerCache::default();
+        let mut cache = SharedValuesCache::default();
         let serialized =
             SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
         let deserialized: Value = SerdeContext::<Value>::new(&mut cache)

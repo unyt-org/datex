@@ -7,7 +7,7 @@ use crate::{
         TryToDatexValueError, shared::Shared,
     },
     prelude::*,
-    runtime::memory::Memory,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{SharedContainerMutability, SharedContainerOwnership},
     types::{
         r#type::Type,
@@ -52,7 +52,7 @@ impl<T: DatexValueContainerProxy> DatexValueContainerProxyDeserialize
 }
 
 impl<T: DatexValueContainerProxy> DatexProxyTypes for Shared<T> {
-    fn datex_type(memory: &mut Memory) -> Type {
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         Type::Alias(TypeDefinitionWithMetadata {
             definition: TypeDefinition::Nested(Box::new(T::datex_type(memory))),
             metadata: TypeMetadata::Shared {

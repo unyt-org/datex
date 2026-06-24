@@ -714,7 +714,7 @@ mod tests {
     use crate::{
         prelude::*,
         runtime::{
-            memory::Memory,
+            cache::shared_references_cache::SharedReferencesCache,
             pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
         shared_values::{
