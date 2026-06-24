@@ -87,6 +87,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use crate::shared_values::SelfOwnedPointerAddress;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -1380,24 +1381,41 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
-                                    // get referenced pointer from address
-                                    let pointer_address = RemotePointerAddress::for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes);
 
-                                    if state.runtime.memory().borrow().has_reference(&PointerAddress::Remote(pointer_address.clone())) {
-                                        return yield Err(ExecutionError::Unknown); // TODO: error
+                                    // if caller endpoint is local endpoint, this is a local pointer
+                                    let referenced_container = if state.caller_metadata.endpoint.is_local() || &state.caller_metadata.endpoint == state.runtime.endpoint() {
+                                        let pointer_address = SelfOwnedPointerAddress::new(shared_ref.address.bytes);
+
+                                        if state.runtime.memory().borrow().has_reference(&PointerAddress::SelfOwned(pointer_address.clone())) {
+                                            return yield Err(ExecutionError::Unknown); // TODO: error
+                                        }
+
+                                        // try to find in execution context or memory (note: the passed value is ignored, since the owner/local endpoint is the source of truth)
+                                        todo!()
                                     }
+                                    // else, get remote pointer from address
+                                    else {
+                                        let pointer_address = RemotePointerAddress::for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes);
 
-                                    // Note: safe because we checked if the address already exists in memory before
-                                    let referenced_container = yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external_from_base_container(
-                                        yield_unwrap!(BaseSharedValueContainer::try_new(
+                                        if state.runtime.memory().borrow().has_reference(&PointerAddress::Remote(pointer_address.clone())) {
+                                            return yield Err(ExecutionError::Unknown); // TODO: error
+                                        }
+
+                                        let base = yield_unwrap!(BaseSharedValueContainer::try_new(
                                             value,
                                             TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()),
                                             shared_ref.container_mutability,
-                                        )),
-                                        pointer_address,
-                                        shared_ref.ref_mutability,
-                                        &state.runtime.memory().borrow_mut(),
-                                    )}.map_err(|_err| ExecutionError::InvalidSharedValueType));
+                                        ));
+
+                                        // Note: safe because we checked if the address already exists in memory before
+                                        yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external_from_base_container(
+                                            base,
+                                            pointer_address,
+                                            shared_ref.ref_mutability,
+                                            &state.runtime.memory().borrow_mut(),
+                                        )}.map_err(|_err| ExecutionError::InvalidSharedValueType))
+                                    };
+
                                     let container = SharedContainer::Referenced(referenced_container);
                                     CollectedExecutionResult::Value(Some(ValueContainer::Shared(container).into()))
                                 },

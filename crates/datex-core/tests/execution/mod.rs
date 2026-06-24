@@ -11,19 +11,30 @@ use datex_core::{
     },
     values::{core_values::list::List, value_container::ValueContainer},
 };
+use datex_core::shared_values::{ReferenceMutability, ReferencedSharedContainer, SharedContainer};
 
 pub mod local_values;
 pub mod shared_values;
 
+/// Compiles and executes a script that takes a single value input.
+/// Compiles local values and owned shared values as "?", and shared references as "'?" or "'mut ?" depending on their mutability.
 pub fn compile_and_execute(input: ValueContainer) -> ValueContainer {
     compile_and_execute_multiple(vec![input]).remove(0)
 }
 
+/// Compiles and executes a script that takes multiple value inputs as a list.
+/// Compiles local values and owned shared values as "?", and shared references as "'?" or "'mut ?" depending on their mutability.
 fn compile_and_execute_multiple(
     input: Vec<ValueContainer>,
 ) -> Vec<ValueContainer> {
     let runtime = Runtime::stub();
-    let script = format!("[{}]", "?,".repeat(input.len()));
+    let script = format!("[{}]", input.iter().map(|value| {
+        match value {
+            ValueContainer::Shared(SharedContainer::Referenced(reference)) if reference.reference_mutability() == ReferenceMutability::Immutable => "'?",
+            ValueContainer::Shared(SharedContainer::Referenced(reference))  if reference.reference_mutability() == ReferenceMutability::Mutable => "'mut ?",
+            _ => "?",
+        }
+    }).collect::<Vec<_>>().join(", "));
 
     let (dxb, _) = compile_template(
         &script,
