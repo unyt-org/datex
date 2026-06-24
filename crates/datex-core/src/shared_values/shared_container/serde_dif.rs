@@ -138,7 +138,7 @@ mod tests {
     };
     use core::assert_matches;
     use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
+    use crate::runtime::cache::shared_values_cache::{CacheValueRetrievalError, SharedValuesCache};
 
     #[test]
     fn deserialize_owned_pointer_address_to_shared_container() {

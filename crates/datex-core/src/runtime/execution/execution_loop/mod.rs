@@ -87,7 +87,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::shared_values::SelfOwnedPointerAddress;
+use crate::shared_values::{SelfOwnedPointerAddress, SharedContainerOwnership};
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -1390,8 +1390,24 @@ pub fn inner_execution_loop(
                                             return yield Err(ExecutionError::Unknown); // TODO: error
                                         }
 
-                                        // try to find in execution context or memory (note: the passed value is ignored, since the owner/local endpoint is the source of truth)
-                                        panic!("maemory: {:#?}", state.shared_value_cache);
+                                        // try to find in execution context cache
+                                        // note: the passed value is ignored, since the owner/local endpoint is the source of truth
+                                        match state.shared_value_cache.try_get_shared_container_with_ownership(
+                                            &PointerAddress::SelfOwned(shared_ref.address.into()),
+                                            SharedContainerOwnership::Referenced(shared_ref.ref_mutability)
+                                        ) {
+                                            Ok(container) => {
+                                                match container {
+                                                    SharedContainer::Referenced(referenced_container) => referenced_container,
+                                                    SharedContainer::Owned(_) => {
+                                                        unreachable!()
+                                                    }
+                                                }
+                                            }
+                                            Err(e) => {
+                                                return yield Err(ExecutionError::InvalidSharedValueType); // TODO: pass error?
+                                            }
+                                        }
                                     }
                                     // else, get remote pointer from address
                                     else {
