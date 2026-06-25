@@ -17,6 +17,7 @@ use crate::{
         },
         regular_instructions::RegularInstruction,
     },
+    prelude::*,
     shared_values::{PointerAddress, SharedContainer},
     types::r#type::Type,
     values::value_container::{ValueContainer, value_key::ValueKey},
