@@ -99,7 +99,6 @@ pub(super) fn append_injected_values_preamble(
     if tracked_values.is_empty() {
         return (body, vec![]);
     }
-
     let context = &mut PreambleContext {
         cursor: &mut byte_cursor,
         visited_values: HashMap::new(),
@@ -236,7 +235,7 @@ fn append_injected_value(
 fn push_injected_value(
     context: &mut PreambleContext,
     container: &SharedContainer,
-    with_value: bool,
+    is_known: bool,
 ) -> StackIndex {
     let index = context.get_next_stack_index();
     let container_clone = container.clone();
@@ -246,7 +245,7 @@ fn push_injected_value(
 
     match container {
         SharedContainer::Referenced(referenced_container) => {
-            if with_value {
+            if !is_known {
                 append_referenced_shared_container_with_value(
                     context,
                     referenced_container,

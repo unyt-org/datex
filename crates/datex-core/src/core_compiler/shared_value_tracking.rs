@@ -27,12 +27,8 @@ pub enum TrackedValue {
 impl TrackedValue {
     pub fn is_known(&self) -> bool {
         match self {
-            TrackedValue::Root {
-                is_known: known, ..
-            } => *known,
-            TrackedValue::Child {
-                is_known: known, ..
-            } => *known,
+            TrackedValue::Root { is_known, .. } => *is_known,
+            TrackedValue::Child { is_known, .. } => *is_known,
         }
     }
     fn update_container(&mut self, container: SharedContainer) {
@@ -163,9 +159,10 @@ impl<'a> SharedValueTracking<'a> {
             return;
         }
         let shared_ref = shared_container.clone();
-        let is_known = self
-            .pointer_availability_lookup
-            .is_available_for_all_endpoints(self.receivers, &address);
+        let is_known = !self.receivers.is_empty()
+            && self
+                .pointer_availability_lookup
+                .is_available_for_all_endpoints(self.receivers, &address);
         self.shared_values.insert(
             address.clone(),
             TrackedValue::Child {
