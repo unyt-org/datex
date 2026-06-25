@@ -10,7 +10,7 @@ use crate::{
                 FloatAsInt32Data, InstructionBlockData, Int8Data, Int16Data,
                 Int32Data, Int64Data, Int128Data, ListData, MapData,
                 ModifySharedContainerValue, ModifyStackValue, Move,
-                PerformMove, RawRemotePointerAddress,
+                PerformMoves, RawRemotePointerAddress,
                 RawSelfOwnedPointerAddress, SharedRef, SharedRefWithValue,
                 ShortListData, ShortMapData, ShortStatementsData,
                 ShortTextData, StackIndex, StatementsData, TaggedValue,
@@ -148,7 +148,7 @@ pub enum RegularInstruction {
     SharedRef(SharedRef),
     SharedRefWithValue(SharedRefWithValue), // shared ref with current value (only if caller owns the pointer)
 
-    PerformMove(PerformMove),
+    PerformMoves(PerformMoves),
     Move(Move),
 
     PushToStack,
@@ -332,7 +332,7 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::SharedRefWithValue(_) => {
                 InstructionCode::SHARED_REF_WITH_VALUE
             }
-            RegularInstruction::PerformMove(_) => InstructionCode::PERFORM_MOVE,
+            RegularInstruction::PerformMoves(_) => InstructionCode::PERFORM_MOVE,
             RegularInstruction::Move(_) => InstructionCode::MOVE,
             RegularInstruction::PushToStack => InstructionCode::PUSH_TO_STACK,
             RegularInstruction::PushListToStack => {
@@ -801,7 +801,7 @@ impl RegularInstruction {
                 .map(RegularInstruction::GetCoreLibValue),
 
             InstructionCode::PERFORM_MOVE => {
-                PerformMove::read(reader).map(RegularInstruction::PerformMove)
+                PerformMoves::read(reader).map(RegularInstruction::PerformMoves)
             }
 
             InstructionCode::MOVE => {
@@ -1011,7 +1011,7 @@ impl RegularInstruction {
                     shared_ref.container_mutability
                 )
             }
-            RegularInstruction::PerformMove(perform_move) => {
+            RegularInstruction::PerformMoves(perform_move) => {
                 write!(
                     string,
                     "[pointers: {}]",

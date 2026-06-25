@@ -292,7 +292,7 @@ pub fn ast_from_bytecode(
                             DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                         }
 
-                        RegularInstruction::PerformMove(_perform_move) => {
+                        RegularInstruction::PerformMoves(_perform_move) => {
                             DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                         }
 

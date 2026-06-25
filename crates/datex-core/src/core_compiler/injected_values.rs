@@ -211,7 +211,7 @@ mod tests {
                     SharedInjectedValueType,
                 },
                 instruction_data::{
-                    InstructionBlockData, Int32Data, ListData, PerformMove,
+                    InstructionBlockData, Int32Data, ListData, PerformMoves,
                     SharedRefWithValue, ShortListData, StackIndex,
                     StatementsData, UInt32Data,
                 },
@@ -475,7 +475,7 @@ mod tests {
                 RegularInstruction::statements(3, false),
                 // move
                 RegularInstruction::PushToStack,
-                RegularInstruction::PerformMove(PerformMove {
+                RegularInstruction::PerformMoves(PerformMoves {
                     pointer_count: 1,
                     pointers: vec![(0, owned_address.into())]
                 }),

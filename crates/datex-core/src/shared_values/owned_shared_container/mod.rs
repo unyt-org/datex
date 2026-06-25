@@ -27,6 +27,7 @@ use core::{
     fmt::Display,
     mem,
 };
+use core::hash::{Hash, Hasher};
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -314,6 +315,13 @@ impl Eq for OwnedSharedContainer {}
 impl PartialEq for OwnedSharedContainer {
     fn eq(&self, other: &Self) -> bool {
         self.identical(other)
+    }
+}
+
+impl Hash for OwnedSharedContainer {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let ptr = Rc::as_ptr(self.get_rc_internal());
+        ptr.hash(state); // hash the address
     }
 }
 

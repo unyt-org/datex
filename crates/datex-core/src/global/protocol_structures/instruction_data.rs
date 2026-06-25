@@ -425,7 +425,7 @@ pub struct GetOrCreateRemoteRefData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct PerformMove {
+pub struct PerformMoves {
     pub pointer_count: u32,
     #[br(count = pointer_count)]
     pub pointers: Vec<(u8, RawSelfOwnedPointerAddress)>, // FIXME: bool instead of u8

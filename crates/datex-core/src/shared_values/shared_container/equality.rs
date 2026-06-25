@@ -1,9 +1,12 @@
+use alloc::rc::Rc;
+use core::hash::{Hash, Hasher};
 use crate::{
     shared_values::SharedContainer,
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
 };
+use crate::shared_values::internal_traits::_ExposeRcInternal;
 
 impl Eq for SharedContainer {}
 
@@ -11,6 +14,13 @@ impl Eq for SharedContainer {}
 impl PartialEq for SharedContainer {
     fn eq(&self, other: &Self) -> bool {
         self.identical(other)
+    }
+}
+
+impl Hash for SharedContainer {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let ptr = Rc::as_ptr(self.get_rc_internal());
+        ptr.hash(state); // hash the address
     }
 }
 

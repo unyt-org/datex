@@ -497,7 +497,7 @@ pub fn inner_execution_loop(
                                 ))
                             }
 
-                            RegularInstruction::PerformMove(perform_move) => {
+                            RegularInstruction::PerformMoves(perform_move) => {
                                 // TODO: RequestMove not required if pointers are already local addresses (= current caller is local)
                                 let resolved_moved_values = interrupt_with_values!(
                                     interrupt_provider,

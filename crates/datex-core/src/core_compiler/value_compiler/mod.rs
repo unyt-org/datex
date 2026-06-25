@@ -602,7 +602,7 @@ mod tests {
         assert_regular_instructions_equal,
         core_compiler::{
             core_compilation_context::default_core_compilation_context,
-            shared_value_tracking::{SharedValueTracking, TrackedValue},
+            shared_value_tracking::{SharedValueTracking, TrackedReference},
         },
         global::protocol_structures::instruction_data::{
             ShortListData, StackIndex,
@@ -612,6 +612,8 @@ mod tests {
         values::{core_values::list::List, value::Value},
     };
     use core::assert_matches;
+    use std::ops::Deref;
+    use crate::core_compiler::shared_value_tracking::TrackedOwned;
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -710,7 +712,12 @@ mod tests {
                 SharedContainerMutability::Immutable,
                 &mut provider,
             );
-        let pointer_address = owned_shared.pointer_address();
+        
+        let pointer_address = match &owned_shared {
+            SharedContainer::Owned(owned) => owned.pointer_address().clone(),
+            _ => unreachable!(),
+        };
+        
         let shared_container = ValueContainer::Shared(owned_shared);
         let mut context = core_compilation_context();
 
@@ -720,13 +727,12 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
-                .shared_values
-                .remove(&pointer_address)
+                .owned_values
+                .shift_remove(&pointer_address)
                 .unwrap(),
-            TrackedValue::Root {
-                container: SharedContainer::Owned(_),
+            TrackedOwned::Root {
                 index: StackIndex(0),
-                is_known: false
+                ..
             }
         );
 
@@ -753,7 +759,11 @@ mod tests {
                 SharedContainerMutability::Immutable,
                 &mut provider,
             );
-        let outer_pointer_address = outer_shared.pointer_address();
+        let outer_pointer_address = match &outer_shared {
+            SharedContainer::Owned(owned) => owned.pointer_address().clone(),
+            _ => unreachable!(),
+        };
+        
         let shared_container = ValueContainer::Shared(outer_shared);
         let mut context = core_compilation_context();
         context.visit_value_container(shared_container);
@@ -761,13 +771,12 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
-                .shared_values
+                .owned_values
                 .remove(&outer_pointer_address)
                 .unwrap(),
-            TrackedValue::Root {
-                container: SharedContainer::Owned(_),
+            TrackedOwned::Root {
                 index: StackIndex(0),
-                is_known: false
+                ..
             }
         );
 
@@ -796,13 +805,13 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
-                .shared_values
+                .referenced_values
                 .remove(&pointer_address)
                 .unwrap(),
-            TrackedValue::Root {
-                container: SharedContainer::Referenced(_),
+            TrackedReference::Root {
                 index: StackIndex(0),
-                is_known: false
+                is_known: false,
+                ..
             }
         );
 
@@ -820,13 +829,21 @@ mod tests {
             SharedContainerMutability::Immutable,
             &mut provider,
         );
-        let a_pointer_address = a_shared.pointer_address();
+        let a_pointer_address = match &a_shared {
+            SharedContainer::Owned(owned) => owned.pointer_address().clone(),
+            _ => unreachable!(),
+        };
+        
         let b_shared = SharedContainer::new_owned_with_inferred_allowed_type(
             2,
             SharedContainerMutability::Immutable,
             &mut provider,
         );
-        let b_pointer_address = b_shared.pointer_address();
+        let b_pointer_address = match &b_shared {
+            SharedContainer::Owned(owned) => owned.pointer_address().clone(),
+            _ => unreachable!(),
+        };
+        
         let local = ValueContainer::Local(
             List::new(vec![
                 ValueContainer::Shared(a_shared),
@@ -840,25 +857,23 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
-                .shared_values
+                .owned_values
                 .remove(&a_pointer_address)
                 .unwrap(),
-            TrackedValue::Root {
-                container: SharedContainer::Owned(_),
+            TrackedOwned::Root {
                 index: StackIndex(0),
-                is_known: false
+                ..
             }
         );
         assert_matches!(
             context
                 .shared_value_tracking
-                .shared_values
+                .owned_values
                 .remove(&b_pointer_address)
                 .unwrap(),
-            TrackedValue::Root {
-                container: SharedContainer::Owned(_),
+            TrackedOwned::Root {
                 index: StackIndex(1),
-                is_known: false
+                ..
             }
         );
 

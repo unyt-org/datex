@@ -20,6 +20,8 @@ use core::{
     cell::{Ref, RefCell, RefMut},
     fmt::Display,
 };
+use core::hash::{Hash, Hasher};
+use crate::shared_values::SharedContainer;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -272,6 +274,13 @@ impl Eq for ReferencedSharedContainer {}
 impl PartialEq for ReferencedSharedContainer {
     fn eq(&self, other: &Self) -> bool {
         self.identical(other)
+    }
+}
+
+impl Hash for ReferencedSharedContainer {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let ptr = Rc::as_ptr(self.get_rc_internal());
+        ptr.hash(state); // hash the address
     }
 }
 

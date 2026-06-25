@@ -353,13 +353,6 @@ impl Display for SharedContainer {
 pub mod datex_proxy;
 pub mod equality;
 
-impl Hash for SharedContainer {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let ptr = Rc::as_ptr(self.get_rc_internal());
-        ptr.hash(state); // hash the address
-    }
-}
-
 impl From<OwnedSharedContainer> for SharedContainer {
     fn from(value: OwnedSharedContainer) -> Self {
         SharedContainer::Owned(value)
