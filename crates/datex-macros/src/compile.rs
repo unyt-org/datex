@@ -44,7 +44,8 @@ pub fn precompile(input: PrecompileInput) -> TokenStream {
         runtime,
     )
     .unwrap()
-    .0;
+    .0
+    .dxb;
     quote! {
         vec![#(#dxb),*]
     }
