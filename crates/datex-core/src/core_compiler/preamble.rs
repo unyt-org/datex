@@ -126,29 +126,33 @@ pub(super) fn append_injected_values_preamble(
     );
 
     // statements (injected values [n] + short list [1])
+    let injection_statements_count = tracked_references.len() + if !tracked_owned.is_empty() { 1 } else { 0 };
     append_regular_instruction(
         context.cursor,
-        RegularInstruction::statements(1 + tracked_references.len() as u32, false),
+        RegularInstruction::statements(1 + injection_statements_count as u32, false),
     );
 
     let mut root_container_stack_indices: Vec<Option<StackIndex>> =
         vec![None; collection.root_count];
 
-    // first compile all moves
-    append_shared_container_moves(context, &tracked_owned.iter().map(|v| v.container()).collect::<Vec<_>>());
-    for tracked_owned in tracked_owned.into_iter().rev() {
-        let index = context.get_next_stack_index();
-        if let TrackedOwned::Root {
-            index: root_stack_index,
-            ..
-        } = tracked_owned
-        {
-            // if it is a root tracked value, register in the root container list
-            root_container_stack_indices[root_stack_index.0 as usize] =
-                Some(index);
-            root_containers.push(SharedContainer::Owned(tracked_owned.into_container()));
+    // first compile all moves if there are any
+    if !tracked_owned.is_empty() {
+        append_shared_container_moves(context, &tracked_owned.iter().rev().map(|v| v.container()).collect::<Vec<_>>());
+        for tracked_owned in tracked_owned.into_iter().rev() {
+            let index = context.get_next_stack_index();
+            if let TrackedOwned::Root {
+                index: root_stack_index,
+                ..
+            } = tracked_owned
+            {
+                // if it is a root tracked value, register in the root container list
+                root_container_stack_indices[root_stack_index.0 as usize] =
+                    Some(index);
+                root_containers.push(SharedContainer::Owned(tracked_owned.into_container()));
+            }
         }
     }
+
 
     // loop over all injected values
     for tracked_ref in tracked_references.into_iter().rev() {
@@ -164,6 +168,7 @@ pub(super) fn append_injected_values_preamble(
             root_containers.push(SharedContainer::Referenced(tracked_ref.into_container()));
         }
     }
+
     // asserting that root stack index keys are a contiguous list of 0-n -> inner stack indices
     let root_container_stack_indices_sorted = root_container_stack_indices
         .iter()
@@ -301,7 +306,7 @@ fn append_shared_container_moves(
     append_regular_instruction(
         context.cursor,
         RegularInstruction::PerformMoves(PerformMoves {
-            pointer_count: 0,
+            pointer_count: owned_containers.len() as u32,
             pointers: owned_containers
                 .iter()
                 .map(|container|

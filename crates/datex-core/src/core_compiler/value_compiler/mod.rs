@@ -102,7 +102,7 @@ pub fn compile_value(
 }
 
 /// Appends a shared container to the buffer by registering it in the shared value tracking and appending the stack index
-pub fn append_inline_shared_container(
+pub fn append_shared_container_from_stack(
     context: &mut CoreCompilationContext,
     shared_container: SharedContainer,
 ) {
@@ -602,7 +602,7 @@ mod tests {
         assert_regular_instructions_equal,
         core_compiler::{
             core_compilation_context::default_core_compilation_context,
-            shared_value_tracking::{SharedValueTracking, TrackedReference},
+            shared_value_tracking::{TrackedReference},
         },
         global::protocol_structures::instruction_data::{
             ShortListData, StackIndex,
@@ -612,8 +612,10 @@ mod tests {
         values::{core_values::list::List, value::Value},
     };
     use core::assert_matches;
-    use std::ops::Deref;
     use crate::core_compiler::shared_value_tracking::TrackedOwned;
+    use crate::disassembler::{get_disassembled_with_options, print_disassembled};
+    use crate::disassembler::options::DisassemblerOptions;
+    use crate::global::protocol_structures::instruction_data::{PerformMoves, SharedRefWithValue};
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -712,12 +714,12 @@ mod tests {
                 SharedContainerMutability::Immutable,
                 &mut provider,
             );
-        
+
         let pointer_address = match &owned_shared {
             SharedContainer::Owned(owned) => owned.pointer_address().clone(),
             _ => unreachable!(),
         };
-        
+
         let shared_container = ValueContainer::Shared(owned_shared);
         let mut context = core_compilation_context();
 
@@ -728,7 +730,7 @@ mod tests {
             context
                 .shared_value_tracking
                 .owned_values
-                .shift_remove(&pointer_address)
+                .get(&pointer_address)
                 .unwrap(),
             TrackedOwned::Root {
                 index: StackIndex(0),
@@ -763,7 +765,7 @@ mod tests {
             SharedContainer::Owned(owned) => owned.pointer_address().clone(),
             _ => unreachable!(),
         };
-        
+
         let shared_container = ValueContainer::Shared(outer_shared);
         let mut context = core_compilation_context();
         context.visit_value_container(shared_container);
@@ -772,7 +774,7 @@ mod tests {
             context
                 .shared_value_tracking
                 .owned_values
-                .remove(&outer_pointer_address)
+                .get(&outer_pointer_address)
                 .unwrap(),
             TrackedOwned::Root {
                 index: StackIndex(0),
@@ -780,9 +782,26 @@ mod tests {
             }
         );
 
+        let dxb = context.into_dxb_with_shared_values().dxb;
+        println!("{}", get_disassembled_with_options(&dxb, DisassemblerOptions::default()));
+
         assert_regular_instructions_equal!(
-            &context.into_dxb_with_shared_values().dxb,
-            [RegularInstruction::TakeStackValue(StackIndex(0)),]
+            &dxb,
+            [
+                RegularInstruction::statements(2, false),
+                RegularInstruction::PushListToStack,
+
+                RegularInstruction::statements(2, false),
+                RegularInstruction::PushListToStack,
+                RegularInstruction::PerformMoves(PerformMoves {
+                    pointer_count: 1,
+                    pointers: vec![(0, outer_pointer_address.into())],
+                }),
+                RegularInstruction::list(1),
+                RegularInstruction::TakeStackValue(StackIndex(0)),
+
+                RegularInstruction::TakeStackValue(StackIndex(0)),
+            ]
         );
     }
 
@@ -795,7 +814,10 @@ mod tests {
             &mut provider,
         )
         .derive_immutable_reference();
-        let pointer_address = reference.pointer_address();
+        let pointer_address = match reference.pointer_address() {
+            PointerAddress::SelfOwned(local_address) => local_address,
+            _ => unreachable!(),
+        };
         let shared_container =
             ValueContainer::Shared(SharedContainer::Referenced(reference));
         let mut context = core_compilation_context();
@@ -806,7 +828,7 @@ mod tests {
             context
                 .shared_value_tracking
                 .referenced_values
-                .remove(&pointer_address)
+                .get(&PointerAddress::SelfOwned(pointer_address.clone()))
                 .unwrap(),
             TrackedReference::Root {
                 index: StackIndex(0),
@@ -815,9 +837,31 @@ mod tests {
             }
         );
 
+        let dxb = context.into_dxb_with_shared_values().dxb;
+
+        println!("{}", get_disassembled_with_options(&dxb, DisassemblerOptions::default()));
+
         assert_regular_instructions_equal!(
-            &context.into_dxb_with_shared_values().dxb,
-            [RegularInstruction::GetStackValueSharedRef(StackIndex(0))]
+            &dxb,
+            [
+                RegularInstruction::statements(2, false),
+                RegularInstruction::PushListToStack,
+
+                RegularInstruction::statements(2, false),
+                RegularInstruction::PushToStack,
+                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                    address: pointer_address.into(),
+                    ref_mutability: ReferenceMutability::Immutable,
+                    container_mutability: SharedContainerMutability::Immutable,
+                }),
+
+                RegularInstruction::Int32(Int32Data(5)),
+
+                RegularInstruction::list(1),
+                RegularInstruction::TakeStackValue(StackIndex(0)),
+
+                RegularInstruction::GetStackValueSharedRef(StackIndex(0))
+            ]
         );
     }
 
@@ -833,7 +877,7 @@ mod tests {
             SharedContainer::Owned(owned) => owned.pointer_address().clone(),
             _ => unreachable!(),
         };
-        
+
         let b_shared = SharedContainer::new_owned_with_inferred_allowed_type(
             2,
             SharedContainerMutability::Immutable,
@@ -843,9 +887,10 @@ mod tests {
             SharedContainer::Owned(owned) => owned.pointer_address().clone(),
             _ => unreachable!(),
         };
-        
+
         let local = ValueContainer::Local(
             List::new(vec![
+                ValueContainer::from("test"),
                 ValueContainer::Shared(a_shared),
                 ValueContainer::Shared(b_shared),
             ])
@@ -858,7 +903,7 @@ mod tests {
             context
                 .shared_value_tracking
                 .owned_values
-                .remove(&a_pointer_address)
+                .get(&a_pointer_address)
                 .unwrap(),
             TrackedOwned::Root {
                 index: StackIndex(0),
@@ -869,7 +914,7 @@ mod tests {
             context
                 .shared_value_tracking
                 .owned_values
-                .remove(&b_pointer_address)
+                .get(&b_pointer_address)
                 .unwrap(),
             TrackedOwned::Root {
                 index: StackIndex(1),
@@ -877,12 +922,31 @@ mod tests {
             }
         );
 
+        let dxb = context.into_dxb_with_shared_values().dxb;
+        println!("{}", get_disassembled_with_options(&dxb, DisassemblerOptions::default()));
+
         assert_regular_instructions_equal!(
-            &context.into_dxb_with_shared_values().dxb,
+            &dxb,
             [
+                RegularInstruction::statements(2, false),
+                RegularInstruction::PushListToStack,
+
+                RegularInstruction::statements(2, false),
+                RegularInstruction::PushListToStack,
+                RegularInstruction::PerformMoves(PerformMoves {pointer_count: 2, pointers: vec![
+                    (0, b_pointer_address.into()),
+                    (0, a_pointer_address.into()),
+                ]}),
                 RegularInstruction::ShortList(ShortListData {
                     element_count: 2
                 }),
+                RegularInstruction::TakeStackValue(StackIndex(1)),
+                RegularInstruction::TakeStackValue(StackIndex(0)),
+
+                RegularInstruction::ShortList(ShortListData {
+                    element_count: 3
+                }),
+                RegularInstruction::ShortText(ShortTextData("test".to_string())),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
             ]

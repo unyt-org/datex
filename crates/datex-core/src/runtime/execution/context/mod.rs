@@ -5,9 +5,9 @@ use crate::{
         CompileOptions, compile_template, error::SpannedCompilerError,
         scope::CompilationScope,
     },
-    core_compiler::core_compilation_context::DXBWithSharedValues,
-    values::core_values::endpoint::Endpoint,
 };
+use crate::core_compiler::core_compilation_context::DXBWithSharedValues;
+use crate::values::core_values::endpoint::Endpoint;
 use crate::{
     runtime::execution::{
         ExecutionError, ExecutionInput, MemoryDump, execute_dxb,

@@ -90,7 +90,7 @@ pub enum InstructionCode {
     SHARED_REF,            // '/'mut $1234
     SHARED_REF_WITH_VALUE, // '/'mut $1234 mut [value]
 
-    PERFORM_MOVE, // PERFORM_MOVE(3) $a, $b, $c (indicates two executing endpoint that pointers should be moved from sender to local, triggers MOVE)
+    PERFORM_MOVES, // PERFORM_MOVE(3) $a, $b, $c (indicates two executing endpoint that pointers should be moved from sender to local, triggers MOVE)
     MOVE, // MOVE(3) $a->$a2, $b->$b2, $c->$c2 (indicates that pointers should be moved from local to receiver, triggered by PERFORM_MOVE, includes mapping to new ids)
 
     GET_SHARED_REF,     // dynamic 'x

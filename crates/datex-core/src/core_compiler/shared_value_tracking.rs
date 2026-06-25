@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-use std::ops::Deref;
 use indexmap::IndexMap;
 use crate::{
     collections::HashMap,
@@ -27,39 +25,14 @@ pub enum TrackedReference {
         /// if the pointer of this container is already known for to be available on all receivers
         is_known: bool,
     },
-    /// needed for swap, do not use
-    _Uninitialized
 }
 
 impl TrackedReference {
-
-    pub fn change_to_root(&mut self, index: StackIndex) {
-
-        let old = std::mem::replace(
-            self,
-            TrackedReference::_Uninitialized,
-        );
-
-        *self = match old {
-            TrackedReference::Root { .. } => {
-                unreachable!("Root can not be changed to root reference")
-            }
-            TrackedReference::Child { container, is_known } => {
-                TrackedReference::Root {
-                    container,
-                    index,
-                    is_known,
-                }
-            }
-            TrackedReference::_Uninitialized => unreachable!()
-        }
-    }
 
     pub fn is_known(&self) -> bool {
         match self {
             TrackedReference::Root { is_known, .. } => *is_known,
             TrackedReference::Child { is_known, .. } => *is_known,
-            TrackedReference::_Uninitialized => unreachable!()
         }
     }
     fn update_container(&mut self, container: ReferencedSharedContainer) {
@@ -80,7 +53,6 @@ impl TrackedReference {
                     *existing = container;
                 }
             }
-            TrackedReference::_Uninitialized => unreachable!()
         }
     }
 
@@ -88,7 +60,6 @@ impl TrackedReference {
         match self {
             TrackedReference::Root { container, .. } => container,
             TrackedReference::Child { container, .. } => container,
-            TrackedReference::_Uninitialized => unreachable!()
         }
     }
 
@@ -96,7 +67,6 @@ impl TrackedReference {
         match self {
             TrackedReference::Root { container, .. } => container,
             TrackedReference::Child { container, .. } => container,
-            TrackedReference::_Uninitialized => unreachable!()
         }
     }
 }
@@ -111,33 +81,13 @@ pub enum TrackedOwned {
     Child {
         container: OwnedSharedContainer,
     },
-    /// needed for swap, do not use
-    _Uninitialized,
 }
 
 impl TrackedOwned {
-    pub fn change_to_root(&mut self, index: StackIndex) {
-        let old = std::mem::replace(
-            self,
-            TrackedOwned::_Uninitialized,
-        );
-
-        *self = match old {
-            TrackedOwned::Root { .. } => {
-                unreachable!("Root can not be changed to root reference")
-            }
-            TrackedOwned::Child { container } => {
-                TrackedOwned::Root { container, index }
-            }
-            TrackedOwned::_Uninitialized => unreachable!()
-        }
-    }
-
     pub fn container(&self) -> &OwnedSharedContainer {
         match self {
             TrackedOwned::Root { container, .. } => container,
             TrackedOwned::Child { container } => container,
-            TrackedOwned::_Uninitialized => unreachable!()
         }
     }
 
@@ -145,7 +95,6 @@ impl TrackedOwned {
         match self {
             TrackedOwned::Root { container, .. } => container,
             TrackedOwned::Child { container } => container,
-            TrackedOwned::_Uninitialized => unreachable!()
         }
     }
 }
@@ -217,14 +166,22 @@ impl<'a> SharedValueTracking<'a> {
 
                 // ensure tracked value is a top level tracked value with stack index
                 match tracked_value {
-                    TrackedOwned::Child { .. } => {
+                    TrackedOwned::Child { container, .. } => {
+                        // SAFETY: We can clone the owned container since th original
+                        // tracked value containing it is overridden by the newly inserted value
+                        let container_clone = unsafe { container.clone_unsafe()};
                         let index = self.get_next_stack_index();
-                        self.owned_values.get_mut(&address).unwrap().change_to_root(index);
+                        self.owned_values.insert(
+                            address,
+                            TrackedOwned::Root {
+                                container: container_clone,
+                                index,
+                            },
+                        );
                         index
                     }
                     // already a top level value, do nothing
                     TrackedOwned::Root { index, .. } => *index,
-                    TrackedOwned::_Uninitialized => unreachable!()
                 }
             }
             SharedContainer::Referenced(referenced) => {
@@ -236,14 +193,22 @@ impl<'a> SharedValueTracking<'a> {
 
                 // ensure tracked value is a top level tracked value with stack index
                 match tracked_value {
-                    TrackedReference::Child { .. } => {
+                    TrackedReference::Child { container, is_known, .. } => {
+                        let container_clone = container.clone();
+                        let is_known = *is_known;
                         let index = self.get_next_stack_index();
-                        self.referenced_values.get_mut(&address).unwrap().change_to_root(index);
+                        self.referenced_values.insert(
+                            address,
+                            TrackedReference::Root {
+                                container: container_clone,
+                                index,
+                                is_known,
+                            },
+                        );
                         index
                     }
                     // already a top level value, do nothing
                     TrackedReference::Root { index, .. } => *index,
-                    TrackedReference::_Uninitialized => unreachable!()
                 }
             }
         }
@@ -387,7 +352,6 @@ mod tests {
             TrackedReference::Child { .. } => {
                 panic!("expected top-level tracked value")
             }
-            TrackedReference::_Uninitialized => unreachable!()
         }
     }
 

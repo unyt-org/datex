@@ -27,7 +27,7 @@ use crate::{
         value_compiler::{
             append_boolean, append_decimal, append_encoded_integer,
             append_endpoint, append_float_as_i16, append_float_as_i32,
-            append_get_shared_ref, append_inline_shared_container,
+            append_get_shared_ref, append_shared_container_from_stack,
             append_integer, append_key_string, append_regular_instruction,
             append_statements_preamble, append_text, append_typed_decimal,
             append_value,
@@ -689,13 +689,13 @@ fn compile_expression(
                                 let shared_container_mut_ref = shared_container
                                     .try_derive_mutable_reference()
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
-                                append_inline_shared_container(
+                                append_shared_container_from_stack(
                                     compilation_context.core_context(),
                                     shared_container_mut_ref.into(),
                                 );
                             }
                             ValueAccessType::SharedRef => {
-                                append_inline_shared_container(
+                                append_shared_container_from_stack(
                                     compilation_context.core_context(),
                                     shared_container.derive_immutable_reference().into(),
                                 )
@@ -703,7 +703,7 @@ fn compile_expression(
                             ValueAccessType::MoveOrCopy => {
                                 match shared_container {
                                     SharedContainer::Owned(shared_container) => {
-                                        append_inline_shared_container(
+                                        append_shared_container_from_stack(
                                             compilation_context.core_context(),
                                             shared_container.into(),
                                         );
@@ -721,7 +721,7 @@ fn compile_expression(
                                         );
                                     }
                                     ValueContainer::Shared(shared_container) => {
-                                        append_inline_shared_container(
+                                        append_shared_container_from_stack(
                                             compilation_context.core_context(),
                                             shared_container,
                                         )
@@ -729,7 +729,7 @@ fn compile_expression(
                                 }
                             },
                             ValueAccessType::Borrow => {
-                                append_inline_shared_container(
+                                append_shared_container_from_stack(
                                     compilation_context.core_context(),
                                     shared_container.derive_with_max_mutability().into(),
                                 );

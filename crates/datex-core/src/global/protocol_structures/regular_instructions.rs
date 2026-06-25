@@ -332,7 +332,7 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::SharedRefWithValue(_) => {
                 InstructionCode::SHARED_REF_WITH_VALUE
             }
-            RegularInstruction::PerformMoves(_) => InstructionCode::PERFORM_MOVE,
+            RegularInstruction::PerformMoves(_) => InstructionCode::PERFORM_MOVES,
             RegularInstruction::Move(_) => InstructionCode::MOVE,
             RegularInstruction::PushToStack => InstructionCode::PUSH_TO_STACK,
             RegularInstruction::PushListToStack => {
@@ -800,7 +800,7 @@ impl RegularInstruction {
             InstructionCode::GET_CORE_LIB_VALUE => CoreLibIdIndex::read(reader)
                 .map(RegularInstruction::GetCoreLibValue),
 
-            InstructionCode::PERFORM_MOVE => {
+            InstructionCode::PERFORM_MOVES => {
                 PerformMoves::read(reader).map(RegularInstruction::PerformMoves)
             }
 

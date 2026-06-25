@@ -5,7 +5,7 @@ use crate::{
         shared_value_tracking::{SharedValueTracking, default_tracking},
         to_instructions::ToInstructions,
         type_compiler::append_type_instruction,
-        value_compiler::{append_inline_shared_container, append_value},
+        value_compiler::{append_shared_container_from_stack, append_value},
         value_visitor::ValueVisitor,
     },
     prelude::*,
@@ -124,7 +124,7 @@ impl ValueVisitor for CoreCompilationContext<'_> {
         match value_container {
             ValueContainer::Local(value) => append_value(self, value),
             ValueContainer::Shared(reference) => {
-                append_inline_shared_container(self, reference);
+                append_shared_container_from_stack(self, reference);
             }
         }
     }

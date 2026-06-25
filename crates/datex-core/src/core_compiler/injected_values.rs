@@ -544,7 +544,7 @@ mod tests {
                 0,
                 0, // slot address of moved pointers
                 // compiled shared moves
-                InstructionCode::PERFORM_MOVE as u8,
+                InstructionCode::PERFORM_MOVES as u8,
                 1,
                 0,
                 0,
