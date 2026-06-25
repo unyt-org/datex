@@ -124,11 +124,8 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         #(#stack_init)*
 
         let runtime_execution_stack = RuntimeExecutionStack { values: stack_values };
-        let dxb_body: &'static [u8] = &[#(#dxb),*];
-        let dxb_with_shared_values = DXBWithSharedValues {
-            dxb: dxb_body,
-            shared_values: vec![],
-        };
+        let dxb_body: Vec<u8> = vec![#(#dxb),*];
+        let dxb_with_shared_values = DXBWithSharedValues::new(dxb_body, vec![]);
         let runtime = Runtime::stub();
         ExecutionInput::new_with_stack(
             dxb_with_shared_values,
