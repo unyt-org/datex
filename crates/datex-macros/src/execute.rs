@@ -117,6 +117,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         use datex_core::values::value_container::ValueContainer;
         use datex_core::collections::HashMap;
         use datex_core::runtime::execution::{ExecutionInput, ExecutionOptions};
+        use datex_core::core_compiler::core_compilation_context::DXBWithSharedValues;
         use datex_core::runtime::Runtime;
         use datex_core::prelude::*;
 
