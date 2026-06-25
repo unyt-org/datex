@@ -1,6 +1,6 @@
 use datex_core::{
     compile,
-    compiler::{CompileOptions, compile_template},
+    compiler::{CompileOptions, compile_template, scope::CompilationScope},
     disassembler::{disassemble_body_to_string, options::DisassemblerOptions},
     runtime::{
         Runtime,
@@ -9,9 +9,14 @@ use datex_core::{
             execution_input::ExecutionCallerMetadata,
         },
     },
-    values::{core_values::list::List, value_container::ValueContainer},
+    shared_values::{
+        ReferenceMutability, ReferencedSharedContainer, SharedContainer,
+    },
+    values::{
+        core_values::{endpoint::Endpoint, list::List},
+        value_container::ValueContainer,
+    },
 };
-use datex_core::shared_values::{ReferenceMutability, ReferencedSharedContainer, SharedContainer};
 
 pub mod local_values;
 pub mod shared_values;
@@ -28,18 +33,38 @@ fn compile_and_execute_multiple(
     input: Vec<ValueContainer>,
 ) -> Vec<ValueContainer> {
     let runtime = Runtime::stub();
-    let script = format!("[{}]", input.iter().map(|value| {
-        match value {
-            ValueContainer::Shared(SharedContainer::Referenced(reference)) if reference.reference_mutability() == ReferenceMutability::Immutable => "'?",
-            ValueContainer::Shared(SharedContainer::Referenced(reference))  if reference.reference_mutability() == ReferenceMutability::Mutable => "'mut ?",
-            _ => "?",
-        }
-    }).collect::<Vec<_>>().join(", "));
+    let script = format!(
+        "[{}]",
+        input
+            .iter()
+            .map(|value| {
+                match value {
+                    ValueContainer::Shared(SharedContainer::Referenced(
+                        reference,
+                    )) if reference.reference_mutability()
+                        == ReferenceMutability::Immutable =>
+                    {
+                        "'?"
+                    }
+                    ValueContainer::Shared(SharedContainer::Referenced(
+                        reference,
+                    )) if reference.reference_mutability()
+                        == ReferenceMutability::Mutable =>
+                    {
+                        "'mut ?"
+                    }
+                    _ => "?",
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    // FIXME can we make this cleaner, by using one of the other 10000 helper functions doing the same shit
 
     let (dxb, _) = compile_template(
         &script,
         input.into_iter().map(Some).collect::<Vec<_>>(),
-        CompileOptions::default(),
+        CompileOptions::new(CompilationScope::default(), vec![Endpoint::LOCAL]),
         runtime.clone(),
     )
     .unwrap();

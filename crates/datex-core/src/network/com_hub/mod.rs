@@ -544,7 +544,7 @@ impl ComHub {
 
     /// Checks if the given endpoint is the local endpoint, matching instances as well
     pub fn is_local_endpoint_exact(&self, endpoint: &Endpoint) -> bool {
-        &self.endpoint == endpoint || endpoint.is_local()
+        self.endpoint.is_local_or_equals_endpoint(endpoint)
     }
 
     /// Register an incoming block interceptor

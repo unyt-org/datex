@@ -726,6 +726,7 @@ mod tests {
             TrackedValue::Root {
                 container: SharedContainer::Owned(_),
                 index: StackIndex(0),
+                is_known: false
             }
         );
 
@@ -766,6 +767,7 @@ mod tests {
             TrackedValue::Root {
                 container: SharedContainer::Owned(_),
                 index: StackIndex(0),
+                is_known: false
             }
         );
 
@@ -800,6 +802,7 @@ mod tests {
             TrackedValue::Root {
                 container: SharedContainer::Referenced(_),
                 index: StackIndex(0),
+                is_known: false
             }
         );
 
@@ -843,6 +846,7 @@ mod tests {
             TrackedValue::Root {
                 container: SharedContainer::Owned(_),
                 index: StackIndex(0),
+                is_known: false
             }
         );
         assert_matches!(
@@ -854,6 +858,7 @@ mod tests {
             TrackedValue::Root {
                 container: SharedContainer::Owned(_),
                 index: StackIndex(1),
+                is_known: false
             }
         );
 

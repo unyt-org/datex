@@ -14,13 +14,27 @@ pub enum TrackedValue {
     Root {
         container: SharedContainer,
         index: StackIndex,
+        /// if the pointer of this container is already known for to be available on all receivers
+        is_known: bool,
     },
     Child {
         container: SharedContainer,
+        /// if the pointer of this container is already known for to be available on all receivers
+        is_known: bool,
     },
 }
 
 impl TrackedValue {
+    pub fn is_known(&self) -> bool {
+        match self {
+            TrackedValue::Root {
+                is_known: known, ..
+            } => *known,
+            TrackedValue::Child {
+                is_known: known, ..
+            } => *known,
+        }
+    }
     fn update_container(&mut self, container: SharedContainer) {
         match self {
             TrackedValue::Root {
@@ -33,6 +47,7 @@ impl TrackedValue {
             }
             TrackedValue::Child {
                 container: existing,
+                ..
             } => {
                 if container.ownership() > existing.ownership() {
                     *existing = container;
@@ -44,14 +59,14 @@ impl TrackedValue {
     pub fn container(&self) -> &SharedContainer {
         match self {
             TrackedValue::Root { container, .. } => container,
-            TrackedValue::Child { container } => container,
+            TrackedValue::Child { container, .. } => container,
         }
     }
 
     pub fn into_container(self) -> SharedContainer {
         match self {
             TrackedValue::Root { container, .. } => container,
-            TrackedValue::Child { container } => container,
+            TrackedValue::Child { container, .. } => container,
         }
     }
 }
@@ -115,10 +130,17 @@ impl<'a> SharedValueTracking<'a> {
             TrackedValue::Child { .. } => {
                 let index = self.get_next_stack_index();
                 match self.shared_values.remove(&address) {
-                    Some(TrackedValue::Child { container }) => {
+                    Some(TrackedValue::Child {
+                        container,
+                        is_known,
+                    }) => {
                         self.shared_values.insert(
                             address,
-                            TrackedValue::Root { container, index },
+                            TrackedValue::Root {
+                                container,
+                                index,
+                                is_known,
+                            },
                         );
                     }
                     _ => unreachable!(),
@@ -141,16 +163,21 @@ impl<'a> SharedValueTracking<'a> {
             return;
         }
         let shared_ref = shared_container.clone();
+        let is_known = self
+            .pointer_availability_lookup
+            .is_available_for_all_endpoints(self.receivers, &address);
         self.shared_values.insert(
             address.clone(),
             TrackedValue::Child {
                 container: shared_container,
+                is_known,
             },
         );
         // Only for references, and if the address is not already being visited, we want to register all childrens
         // with the whole tree of their direct and indirect parents
         if matches!(shared_ref, SharedContainer::Referenced(_))
             && parents.insert(address.clone())
+            && !is_known
         {
             shared_ref.value_container().with_collapsed_value(|value| {
                 for child in value.iter_children() {
@@ -236,6 +263,7 @@ mod tests {
             TrackedValue::Root {
                 container: tracked_container,
                 index,
+                ..
             } => {
                 assert_eq!(*index, expected_index);
                 assert_eq!(
@@ -256,6 +284,7 @@ mod tests {
         match tracked_value(tracking, container) {
             TrackedValue::Child {
                 container: tracked_container,
+                ..
             } => {
                 assert_eq!(
                     tracked_container.pointer_address(),

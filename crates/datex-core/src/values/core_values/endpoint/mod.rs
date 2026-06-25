@@ -437,6 +437,15 @@ impl Endpoint {
         }
     }
 
+    /// This function returns true, if the current endpoint is a local endpoint
+    /// or the given endpoint is equal to the current endpoint.
+    pub fn is_local_or_equals_endpoint(&self, endpoint: &Endpoint) -> bool {
+        if self.is_local() {
+            return true;
+        }
+        self == endpoint
+    }
+
     pub fn to_slice(&self) -> [u8; 21] {
         let mut writer = Cursor::new(Vec::new());
         self.write(&mut writer).unwrap();

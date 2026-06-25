@@ -4,20 +4,17 @@ use crate::{
         buffer_provider::BufferProvider,
         core_compilation_context::ByteCursor,
         shared_value_tracking::{TrackedValue, TrackedValueCollection},
-        value_compiler::{
-            append_regular_instruction,
-            append_value,
-        },
+        value_compiler::{append_regular_instruction, append_value},
         value_visitor::ValueVisitor,
     },
     global::protocol_structures::{
-        instruction_data::{
-            SharedRef, SharedRefWithValue, StackIndex,
-        },
+        instruction_data::{SharedRef, SharedRefWithValue, StackIndex},
         regular_instructions::RegularInstruction,
     },
     prelude::*,
-    shared_values::{PointerAddress, SharedContainer},
+    shared_values::{
+        PointerAddress, ReferencedSharedContainer, SharedContainer,
+    },
     types::r#type::Type,
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
@@ -212,7 +209,11 @@ fn append_injected_value(
 ) -> StackIndex {
     match context.visited_values.get(tracked_value.container()) {
         // value was not yet required or inserted, just add compilation to push new to stack
-        None => push_injected_value(context, tracked_value.container()),
+        None => push_injected_value(
+            context,
+            tracked_value.container(),
+            tracked_value.is_known(),
+        ),
         // value is required by other shared container that was already inserted,
         // first push value, then init missing partial instantiations
         Some(VisitedValue::Required {
@@ -220,7 +221,7 @@ fn append_injected_value(
         }) => {
             // first push the value
             let container = tracked_value.container();
-            push_injected_value(context, container);
+            push_injected_value(context, container, tracked_value.is_known());
             // once instantiated, also init missing partial instantiations
             todo!()
         }
@@ -235,6 +236,7 @@ fn append_injected_value(
 fn push_injected_value(
     context: &mut PreambleContext,
     container: &SharedContainer,
+    with_value: bool,
 ) -> StackIndex {
     let index = context.get_next_stack_index();
     let container_clone = container.clone();
@@ -244,40 +246,16 @@ fn push_injected_value(
 
     match container {
         SharedContainer::Referenced(referenced_container) => {
-            match referenced_container.pointer_address() {
-                // insert with value for self owned references
-                PointerAddress::SelfOwned(pointer_address) => {
-                    append_regular_instruction(
-                        context.cursor,
-                        RegularInstruction::SharedRefWithValue(
-                            SharedRefWithValue {
-                                address: pointer_address.into(),
-                                ref_mutability: referenced_container
-                                    .reference_mutability(),
-                                container_mutability: referenced_container
-                                    .container_mutability(),
-                            },
-                        ),
-                    );
-                    // TODO: no clone?
-                    context.visit_value_container(
-                        referenced_container.value_container().clone(),
-                    );
-                }
-                // insert without value for non self owned references
-                PointerAddress::Remote(pointer_address) => {
-                    append_regular_instruction(
-                        context.cursor,
-                        RegularInstruction::SharedRef(SharedRef {
-                            address: PointerAddress::Remote(pointer_address)
-                                .into(),
-                            ref_mutability: referenced_container
-                                .reference_mutability(),
-                            container_mutability: referenced_container
-                                .container_mutability(),
-                        }),
-                    );
-                }
+            if with_value {
+                append_referenced_shared_container_with_value(
+                    context,
+                    referenced_container,
+                );
+            } else {
+                append_referenced_shared_container(
+                    context,
+                    referenced_container,
+                );
             }
         }
 
@@ -292,6 +270,72 @@ fn push_injected_value(
     );
 
     index
+}
+
+fn append_referenced_shared_container(
+    context: &mut PreambleContext,
+    referenced_container: &ReferencedSharedContainer,
+) {
+    match referenced_container.pointer_address() {
+        PointerAddress::SelfOwned(pointer_address) => {
+            append_regular_instruction(
+                context.cursor,
+                RegularInstruction::SharedRef(SharedRef {
+                    address: PointerAddress::SelfOwned(pointer_address).into(),
+                    ref_mutability: referenced_container.reference_mutability(),
+                    container_mutability: referenced_container
+                        .container_mutability(),
+                }),
+            );
+        }
+        PointerAddress::Remote(pointer_address) => {
+            append_regular_instruction(
+                context.cursor,
+                RegularInstruction::SharedRef(SharedRef {
+                    address: PointerAddress::Remote(pointer_address).into(),
+                    ref_mutability: referenced_container.reference_mutability(),
+                    container_mutability: referenced_container
+                        .container_mutability(),
+                }),
+            );
+        }
+    }
+}
+
+fn append_referenced_shared_container_with_value(
+    context: &mut PreambleContext,
+    referenced_container: &ReferencedSharedContainer,
+) {
+    match referenced_container.pointer_address() {
+        // insert with value for self owned references
+        PointerAddress::SelfOwned(pointer_address) => {
+            append_regular_instruction(
+                context.cursor,
+                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                    address: pointer_address.into(),
+                    ref_mutability: referenced_container.reference_mutability(),
+                    container_mutability: referenced_container
+                        .container_mutability(),
+                }),
+            );
+            // TODO: no clone?
+            context.visit_value_container(
+                referenced_container.value_container().clone(),
+            );
+        }
+        // insert without value for non self owned references
+        PointerAddress::Remote(pointer_address) => {
+            append_regular_instruction(
+                context.cursor,
+                RegularInstruction::SharedRef(SharedRef {
+                    address: PointerAddress::Remote(pointer_address).into(),
+                    ref_mutability: referenced_container.reference_mutability(),
+                    container_mutability: referenced_container
+                        .container_mutability(),
+                }),
+            );
+        }
+    }
 }
 
 #[cfg(test)]
@@ -410,6 +454,7 @@ mod tests {
             vec![TrackedValue::Root {
                 container: reference,
                 index: StackIndex(0),
+                is_known: false,
             }],
             vec![
                 RegularInstruction::statements(2, false),
