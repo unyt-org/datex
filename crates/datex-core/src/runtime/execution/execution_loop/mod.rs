@@ -525,9 +525,14 @@ pub fn inner_execution_loop(
                                 Some(RuntimeValue::ValueContainer(ValueContainer::from(moved_values)))
                             }
 
-                            RegularInstruction::SharedRef(_shared_ref) => {
-                                // shared ref without value, assumes value already known, otherwise request
-                                todo!()
+                            RegularInstruction::SharedRef(shared_ref) => {
+                                // shared ref without value, assumes value already known, otherwise request (todo)
+                                let container = yield_unwrap!(resolve_cache_value(
+                                    &mut state,
+                                    shared_ref.address.into(),
+                                    SharedContainerOwnership::Referenced(shared_ref.ref_mutability)
+                                ));
+                                Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container)))
                             }
 
                             RegularInstruction::TaggedValue(TaggedValue {is_empty: true, tag: ShortTextData(tag)}) => {
@@ -1394,29 +1399,16 @@ pub fn inner_execution_loop(
                                     );
 
                                     // if caller endpoint is local endpoint, this is a local pointer
-                                    let referenced_container = if state.caller_metadata.endpoint.is_local() || &state.caller_metadata.endpoint == state.runtime.endpoint() {
-                                        let pointer_address = SelfOwnedPointerAddress::new(shared_ref.address.bytes);
-
-                                        if state.runtime.memory().borrow().has_reference(&PointerAddress::SelfOwned(pointer_address.clone())) {
-                                            return yield Err(ExecutionError::Unknown); // TODO: error
-                                        }
-
-                                        // try to find in execution context cache
-                                        // note: the passed value is ignored, since the owner/local endpoint is the source of truth
-                                        match state.shared_value_cache.try_get_shared_container_with_ownership(
-                                            &PointerAddress::SelfOwned(shared_ref.address.into()),
+                                    let referenced_container = if state.caller_metadata.endpoint.is_local_or_equals_endpoint(state.runtime.endpoint()) {
+                                        let container = yield_unwrap!(resolve_cache_value(
+                                            &mut state,
+                                            PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(shared_ref.address.bytes)),
                                             SharedContainerOwnership::Referenced(shared_ref.ref_mutability)
-                                        ) {
-                                            Ok(container) => {
-                                                match container {
-                                                    SharedContainer::Referenced(referenced_container) => referenced_container,
-                                                    SharedContainer::Owned(_) => {
-                                                        unreachable!()
-                                                    }
-                                                }
-                                            }
-                                            Err(_e) => {
-                                                return yield Err(ExecutionError::InvalidSharedValueType); // TODO: pass error?
+                                        ));
+                                        match container {
+                                            SharedContainer::Referenced(referenced_container) => referenced_container,
+                                            SharedContainer::Owned(_) => {
+                                                unreachable!()
                                             }
                                         }
                                     }
@@ -1592,5 +1584,26 @@ pub fn inner_execution_loop(
         } else {
             panic!("Execution finished without root result");
         }
+    }
+}
+
+
+fn resolve_cache_value(
+    state: &mut RuntimeExecutionState,
+    pointer_address: PointerAddress,
+    ownership: SharedContainerOwnership,
+) -> Result<SharedContainer, ExecutionError> {
+    if state.runtime.memory().borrow().has_reference(&pointer_address) {
+        return Err(ExecutionError::Unknown); // TODO: error
+    }
+
+    // try to find in execution context cache
+    // note: the passed value is ignored, since the owner/local endpoint is the source of truth
+    match state.shared_value_cache.try_get_shared_container_with_ownership(
+        &pointer_address,
+        ownership,
+    ) {
+        Ok(container) => Ok(container),
+        Err(_e) => Err(ExecutionError::InvalidSharedValueType) // TODO: pass error?
     }
 }
