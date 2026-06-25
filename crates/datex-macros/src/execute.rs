@@ -2,6 +2,7 @@ use crate::utils::expr_to_value_container;
 use datex_core::{
     self,
     compiler::{CompileOptions, compile_template},
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     prelude::*,
     runtime::Runtime,
     values::value_container::ValueContainer,
@@ -98,7 +99,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         )
         .to_compile_error();
     }
-    let dxb = dxb.unwrap().0;
+    let dxb: DXBWithSharedValues = dxb.unwrap().0;
 
     if placeholder_count != arg_count {
         return syn::Error::new_spanned(
@@ -119,13 +120,14 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         use datex_core::runtime::Runtime;
         use datex_core::prelude::*;
 
+        let dxb: DXBWithSharedValues = #dxb;
         let mut stack_values: Vec<Option<ValueContainer>> = Vec::new();
         #(#stack_init)*
 
         let runtime_execution_stack = RuntimeExecutionStack { values: stack_values };
         let runtime = Runtime::stub();
         ExecutionInput::new_with_stack(
-            #dxb,
+            dxb,
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions::default(),
             runtime,
