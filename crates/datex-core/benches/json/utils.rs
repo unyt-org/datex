@@ -5,7 +5,7 @@ use datex_core::{
         extract_static_value_from_script,
     },
     core_compiler::{
-        core_compilation_context::DXBWithSharedValues,
+        core_compilation_context::{CompileInput, DXBWithSharedValues},
         value_compiler::compile_value_container,
     },
     decompiler::{DecompileOptions, decompile_body},
@@ -15,6 +15,7 @@ use datex_core::{
             ExecutionInput, ExecutionOptions, execute_dxb_sync,
             execution_input::ExecutionCallerMetadata,
         },
+        pointer_availability_lookup::PointerAvailabilityLookup,
     },
     values::value_container::ValueContainer,
 };
@@ -159,13 +160,18 @@ pub fn runtime_value_to_json_baseline_json_syntax(value: &json_syntax::Value) {
 }
 
 pub fn runtime_value_to_json_datex(value: &ValueContainer) {
-    let dxb = compile_value_container(value.clone());
-    let string = decompile_body(&dxb, DecompileOptions::json_compat()).unwrap();
+    let pointer_lookup = PointerAvailabilityLookup::default();
+    let input = CompileInput::new(&pointer_lookup, &[]);
+    let dxb = compile_value_container(value.clone(), input);
+    let string =
+        decompile_body(&dxb.dxb, DecompileOptions::json_compat()).unwrap();
     assert!(!string.is_empty(), "Expected DATEX string to be non-empty");
 }
 
 pub fn runtime_value_to_dxb(value: &ValueContainer) {
-    let dxb = compile_value_container(value.clone());
+    let pointer_lookup = PointerAvailabilityLookup::default();
+    let input = CompileInput::new(&pointer_lookup, &[]);
+    let dxb = compile_value_container(value.clone(), input).dxb;
     assert!(!dxb.is_empty(), "Expected DXB to be non-empty");
 }
 

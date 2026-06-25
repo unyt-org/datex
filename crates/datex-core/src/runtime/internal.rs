@@ -25,6 +25,7 @@ use crate::{
     prelude::*,
     runtime::{
         Runtime, RuntimeConfig, RuntimeConfigInterface,
+        cache::shared_references_cache::SharedReferencesCache,
         execution::{
             ExecutionError, InvalidProgramError,
             context::{
@@ -33,8 +34,8 @@ use crate::{
             },
             execution_input::ExecutionCallerMetadata,
         },
-        cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
+        pointer_availability_lookup::PointerAvailabilityLookup,
         request_move::compile_request_move,
     },
     shared_values::{
@@ -88,6 +89,8 @@ pub struct RuntimeInternal {
             HashMap<SelfOwnedPointerAddress, OwnedSharedContainer>,
         >,
     >,
+
+    pointer_availability_lookup: RefCell<PointerAvailabilityLookup>,
 }
 
 macro_rules! get_execution_context {
@@ -124,6 +127,8 @@ impl RuntimeInternal {
         task_manager: TaskManager,
         incoming_sections_receiver: UnboundedReceiver<IncomingSection>,
     ) -> RuntimeInternal {
+        let pointer_availability_lookup =
+            PointerAvailabilityLookup::new(endpoint.clone());
         RuntimeInternal {
             version: env!("CARGO_PKG_VERSION").to_string(),
             endpoint,
@@ -139,6 +144,9 @@ impl RuntimeInternal {
             execution_contexts: RefCell::new(HashMap::new()),
             moving_pointers: RefCell::new(HashMap::new()),
             transceiver_counter: RefCell::new(0),
+            pointer_availability_lookup: RefCell::new(
+                pointer_availability_lookup,
+            ),
         }
     }
     pub fn version(&self) -> &str {
@@ -152,6 +160,16 @@ impl RuntimeInternal {
     }
     pub fn endpoint(&self) -> &Endpoint {
         &self.endpoint
+    }
+    pub fn pointer_availability_lookup(
+        &self,
+    ) -> Ref<PointerAvailabilityLookup> {
+        self.pointer_availability_lookup.borrow()
+    }
+    pub fn pointer_availability_lookup_mut(
+        &self,
+    ) -> RefMut<PointerAvailabilityLookup> {
+        self.pointer_availability_lookup.borrow_mut()
     }
     pub fn memory(&self) -> &RefCell<SharedReferencesCache> {
         &self.memory
@@ -261,7 +279,11 @@ impl RuntimeInternal {
             execution_context
         );
         let compile_start = Instant::now();
-        let dxb = execution_context.compile(script, inserted_values)?;
+        let dxb = execution_context.compile(
+            script,
+            inserted_values,
+            execution_context.receivers(),
+        )?;
         debug!(
             "[Compilation took {} ms]",
             compile_start.elapsed().as_millis()
@@ -294,7 +316,11 @@ impl RuntimeInternal {
             execution_context
         );
         let compile_start = Instant::now();
-        let dxb = execution_context.compile(script, inserted_values)?;
+        let dxb = execution_context.compile(
+            script,
+            inserted_values,
+            execution_context.receivers(),
+        )?;
         debug!(
             "[Compilation took {} ms]",
             compile_start.elapsed().as_millis()

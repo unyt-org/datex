@@ -1,7 +1,9 @@
 use core::{fmt::Display, time::Duration};
 
 use crate::{
-    core_compiler::core_compilation_context::DXBWithSharedValues,
+    core_compiler::core_compilation_context::{
+        CompileInput, DXBWithSharedValues,
+    },
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -18,7 +20,10 @@ use crate::{
             properties::ComInterfaceProperties, socket::ComInterfaceSocketUUID,
         },
     },
-    runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    runtime::{
+        execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+        pointer_availability_lookup::PointerAvailabilityLookup,
+    },
     values::{
         core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
         value_container::ValueContainer,
@@ -618,13 +623,17 @@ impl ComHub {
             .map(|hop| hop.to_value_container())
             .collect::<Vec<ValueContainer>>();
 
-        let dxb = compile_value(Value::from(hops_datex));
+        let pointer_lookup = PointerAvailabilityLookup::default();
+        let dxb = compile_value(
+            Value::from(hops_datex),
+            CompileInput::new(&pointer_lookup, &vec![]),
+        );
         // info!(
         //     "Trace data: {}",
         //     decompile_body(&dxb, DecompileOptions::default()).unwrap()
         // );
 
-        block.body = dxb;
+        block.body = dxb.dxb;
     }
 
     pub(crate) fn add_hop_to_block_trace_data(

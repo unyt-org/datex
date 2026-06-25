@@ -21,7 +21,7 @@ use crate::{
         scope::CompilationScope,
     },
     core_compiler::{
-        core_compilation_context::DXBWithSharedValues,
+        core_compilation_context::{CompileInput, DXBWithSharedValues},
         to_instructions::ToInstructions,
         type_compiler::append_type_instruction,
         value_compiler::{
@@ -61,7 +61,10 @@ use crate::{
     },
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},
-    values::{core_values::decimal::Decimal, value_container::ValueContainer},
+    values::{
+        core_values::{decimal::Decimal, endpoint::Endpoint},
+        value_container::ValueContainer,
+    },
 };
 use binrw::io::Write;
 use core::{cell::RefCell, str::FromStr};
@@ -85,13 +88,20 @@ pub mod workspace;
 pub struct CompileOptions {
     pub compile_scope: CompilationScope,
     pub parser_options: ParserOptions,
+
+    /// If the receiver of a compilation is known (e.g. remote execution), we can pass that value
+    pub receivers: Vec<Endpoint>,
 }
 
 impl CompileOptions {
-    pub fn new_with_scope(compile_scope: CompilationScope) -> Self {
+    pub fn new(
+        compile_scope: CompilationScope,
+        receivers: Vec<Endpoint>,
+    ) -> Self {
         CompileOptions {
             compile_scope,
             parser_options: ParserOptions::default(),
+            receivers,
         }
     }
 }
@@ -243,15 +253,21 @@ pub fn compile_script_or_return_static_value(
     let ast = parse_datex_script_to_rich_ast_simple_error(
         datex_script,
         &mut options,
-        runtime,
+        runtime.clone(),
     )?;
+    let lookup = runtime.pointer_availability_lookup();
     let mut compilation_context = CompilationContext::new(
         Vec::with_capacity(256),
         vec![],
         options.compile_scope.execution_mode,
+        CompileInput::new(&lookup, &options.receivers),
     );
     // FIXME #480: no clone here
-    let scope = compile_ast(ast.clone(), &mut compilation_context, options)?;
+    let scope = compile_ast(
+        ast.clone(),
+        &mut compilation_context,
+        options.compile_scope,
+    )?;
     if compilation_context.has_non_static_value {
         Ok((
             StaticValueOrDXB::DXB(
@@ -403,15 +419,18 @@ pub fn compile_template(
     let ast = parse_datex_script_to_rich_ast_simple_error(
         datex_script,
         &mut options,
-        runtime,
+        runtime.clone(),
     )?;
+    let lookup = runtime.pointer_availability_lookup();
+    let input = CompileInput::new(&lookup, &options.receivers);
     let mut compilation_context = CompilationContext::new(
         Vec::with_capacity(256),
         inserted_values,
         options.compile_scope.execution_mode,
+        input,
     );
     let compile_start = Instant::now();
-    let res = compile_ast(ast, &mut compilation_context, options)
+    let res = compile_ast(ast, &mut compilation_context, options.compile_scope)
         .map(|scope| (compilation_context.into_dxb_with_shared_values(), scope))
         .map_err(SpannedCompilerError::from);
     debug!(
@@ -425,10 +444,9 @@ pub fn compile_template(
 fn compile_ast(
     ast: RichAst,
     compilation_context: &mut CompilationContext,
-    options: CompileOptions,
+    scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
-    let compilation_scope =
-        compile_rich_ast(compilation_context, ast, options.compile_scope)?;
+    let compilation_scope = compile_rich_ast(compilation_context, ast, scope)?;
     Ok(compilation_scope)
 }
 
@@ -1235,12 +1253,13 @@ fn compile_expression(
             injected_variable_count,
         }) => {
             compilation_context.mark_has_non_static_value();
-
+            let input = compilation_context.core_context.input.clone();
             // compile remote execution block
             let mut execution_block_ctx = CompilationContext::new(
                 Vec::with_capacity(256),
                 vec![],
                 ExecutionMode::Static,
+                input,
             );
 
             let stack_index_offset =
@@ -1260,8 +1279,10 @@ fn compile_expression(
                 .ok_or(CompilerError::ScopePopError)?;
 
             scope = *external_parent_scope.scope;
-            let DXBWithSharedValues { dxb, shared_values: _ } =
-                execution_block_ctx.into_dxb_with_shared_values();
+            let DXBWithSharedValues {
+                dxb,
+                shared_values: _,
+            } = execution_block_ctx.into_dxb_with_shared_values();
             // insert remote execution instruction
             append_regular_instruction(
                 compilation_context.cursor(),
@@ -1553,7 +1574,9 @@ pub mod tests {
 
     use crate::{
         compiler::scope::CompilationScope,
-        core_compiler::core_compilation_context::DXBWithSharedValues,
+        core_compiler::core_compilation_context::{
+            CompileInput, DXBWithSharedValues, default_compile_input,
+        },
         global::{
             instruction_codes::InstructionCode,
             protocol_structures::type_instructions::TypeInstruction,
@@ -1626,13 +1649,15 @@ pub mod tests {
             Runtime::stub(),
         )
         .unwrap();
-
+        let input = unsafe { default_compile_input() };
         let mut compilation_context = CompilationContext::new(
             Vec::with_capacity(256),
             vec![],
             options.compile_scope.execution_mode,
+            input,
         );
-        compile_ast(ast, &mut compilation_context, options).unwrap();
+        compile_ast(ast, &mut compilation_context, options.compile_scope)
+            .unwrap();
         compilation_context
     }
 
@@ -1653,7 +1678,7 @@ pub mod tests {
                 }
                 let (result, new_compilation_scope) = compile_script(
                     script_part,
-                    CompileOptions::new_with_scope(compilation_scope),
+                    CompileOptions::new(compilation_scope, vec![]),
                     Runtime::stub(),
                 )
                 .unwrap();

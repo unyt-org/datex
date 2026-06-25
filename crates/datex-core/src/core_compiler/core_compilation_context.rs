@@ -2,19 +2,19 @@ use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
-        shared_value_tracking::SharedValueTracking,
+        shared_value_tracking::{SharedValueTracking, default_tracking},
         to_instructions::ToInstructions,
         type_compiler::append_type_instruction,
-        value_compiler::{
-            append_inline_shared_container,
-            append_value,
-        },
+        value_compiler::{append_inline_shared_container, append_value},
         value_visitor::ValueVisitor,
     },
     prelude::*,
+    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     shared_values::SharedContainer,
     types::r#type::Type,
-    values::value_container::ValueContainer,
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
 };
 use binrw::io::Cursor;
 
@@ -34,17 +34,61 @@ impl DXBWithSharedValues {
     }
 }
 
-pub struct CoreCompilationContext {
-    pub cursor: ByteCursor,
-    pub shared_value_tracking: SharedValueTracking,
+#[derive(Debug, Clone)]
+pub struct CompileInput<'a> {
+    pub pointer_lookup: &'a PointerAvailabilityLookup,
+    pub receivers: &'a [Endpoint],
+}
+impl<'a> CompileInput<'a> {
+    pub fn new(
+        pointer_lookup: &'a PointerAvailabilityLookup,
+        receivers: &'a [Endpoint],
+    ) -> Self {
+        CompileInput {
+            pointer_lookup,
+            receivers,
+        }
+    }
 }
 
-impl CoreCompilationContext {
+/// # Safety
+/// This function is unsafe because it creates a CompileInput with a static lifetime, which may lead to dangling references if used incorrectly. It should only be used in tests where the leaked memory is acceptable
+pub(crate) unsafe fn default_compile_input<'a>() -> CompileInput<'a> {
+    CompileInput {
+        pointer_lookup: Box::leak(Box::new(
+            PointerAvailabilityLookup::default(),
+        )),
+        receivers: Box::leak(Box::new([])),
+    }
+}
+
+#[derive(Debug)]
+pub struct CoreCompilationContext<'a> {
+    pub cursor: ByteCursor,
+    pub shared_value_tracking: SharedValueTracking<'a>,
+    pub input: CompileInput<'a>,
+}
+
+/// # Safety
+/// This function is unsafe because it creates a CoreCompilationContext
+pub(crate) unsafe fn default_core_compilation_context<'a>()
+-> CoreCompilationContext<'a> {
+    CoreCompilationContext::new(Vec::new(), unsafe { default_compile_input() })
+}
+
+impl<'a> CoreCompilationContext<'a> {
     /// Create a new core compilation context with an initial byte input buffer and starting slot address for shared value tracking
-    pub fn new(buffer: Vec<u8>) -> CoreCompilationContext {
+    pub fn new(
+        buffer: Vec<u8>,
+        input: CompileInput<'a>,
+    ) -> CoreCompilationContext<'a> {
         CoreCompilationContext {
             cursor: Cursor::new(buffer),
-            shared_value_tracking: SharedValueTracking::new(),
+            shared_value_tracking: SharedValueTracking::new(
+                input.pointer_lookup,
+                input.receivers,
+            ),
+            input,
         }
     }
 
@@ -65,13 +109,13 @@ impl CoreCompilationContext {
     }
 }
 
-impl BufferProvider for CoreCompilationContext {
+impl BufferProvider for CoreCompilationContext<'_> {
     fn cursor_mut(&mut self) -> &mut ByteCursor {
         &mut self.cursor
     }
 }
 
-impl ValueVisitor for CoreCompilationContext {
+impl ValueVisitor for CoreCompilationContext<'_> {
     /// Appends a value container.
     /// For local values, the value is just serialized
     /// For shared values, the container is registered in the context shared value tracking

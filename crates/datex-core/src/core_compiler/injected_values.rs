@@ -2,7 +2,7 @@ use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{
-            CoreCompilationContext, DXBWithSharedValues,
+            CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
         value_compiler::{
             InjectedValueValidationError, append_regular_instruction,
@@ -30,8 +30,9 @@ use crate::{
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
     injected_values: Vec<ValueContainer>,
+    compile_input: CompileInput,
 ) -> Result<DXBWithSharedValues, InjectedValueValidationError> {
-    let mut context = CoreCompilationContext::new(Vec::new());
+    let mut context = CoreCompilationContext::new(Vec::new(), compile_input);
 
     validate_injected_value_declaration_for_values(
         &instruction_block_data.injected_values,
@@ -197,7 +198,11 @@ fn append_referenced_shared_container(
 mod tests {
     use crate::{
         assert_regular_instructions_equal,
-        core_compiler::injected_values::compile_injected_values,
+        core_compiler::{
+            self,
+            core_compilation_context::{CompileInput, DXBWithSharedValues},
+            value_compiler::InjectedValueValidationError,
+        },
         global::{
             instruction_codes::InstructionCode,
             protocol_structures::{
@@ -214,13 +219,45 @@ mod tests {
             },
         },
         prelude::*,
-        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+        runtime::{
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+            pointer_availability_lookup::PointerAvailabilityLookup,
+        },
         shared_values::{
             OwnedSharedContainer, PointerAddress, ReferenceMutability,
             SharedContainer, SharedContainerMutability,
         },
-        values::value_container::ValueContainer,
+        values::{
+            core_values::endpoint::Endpoint, value_container::ValueContainer,
+        },
     };
+
+    fn compile_injected_values_test_with_receivers(
+        instruction_block_data: InstructionBlockData,
+        injected_values: Vec<ValueContainer>,
+        receivers: &[Endpoint],
+    ) -> Result<DXBWithSharedValues, InjectedValueValidationError> {
+        let pointer_availability_lookup =
+            PointerAvailabilityLookup::new(Endpoint::default());
+        core_compiler::injected_values::compile_injected_values(
+            instruction_block_data,
+            injected_values,
+            CompileInput {
+                pointer_lookup: &pointer_availability_lookup,
+                receivers,
+            },
+        )
+    }
+    fn compile_injected_values_test(
+        instruction_block_data: InstructionBlockData,
+        injected_values: Vec<ValueContainer>,
+    ) -> Result<DXBWithSharedValues, InjectedValueValidationError> {
+        compile_injected_values_test_with_receivers(
+            instruction_block_data,
+            injected_values,
+            &[],
+        )
+    }
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -230,7 +267,7 @@ mod tests {
             injected_values: vec![],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_injected_values(exec_block_data, vec![])
+        let res = compile_injected_values_test(exec_block_data, vec![])
             .unwrap()
             .dxb;
         assert_regular_instructions_equal!(&res, [RegularInstruction::Null,])
@@ -257,7 +294,7 @@ mod tests {
             }],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_injected_values(
+        let res = compile_injected_values_test(
             exec_block_data,
             vec![ValueContainer::Shared(SharedContainer::Owned(
                 owned_container,
@@ -364,7 +401,7 @@ mod tests {
             ],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_injected_values(
+        let res = compile_injected_values_test(
             exec_block_data,
             vec![
                 ValueContainer::Shared(shared_value1),
@@ -425,7 +462,7 @@ mod tests {
             }],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_injected_values(
+        let res = compile_injected_values_test(
             exec_block_data,
             vec![ValueContainer::Shared(shared_value)],
         )
@@ -485,7 +522,7 @@ mod tests {
             ],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_injected_values(
+        let res = compile_injected_values_test(
             exec_block_data,
             vec![
                 ValueContainer::Shared(shared_value1),

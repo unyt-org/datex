@@ -7,7 +7,7 @@ mod runtime_value;
 pub mod state;
 
 use crate::{
-    core_compiler::{core_compilation_context::DXBWithSharedValues, injected_values::compile_injected_values},
+    core_compiler::{core_compilation_context::{CompileInput, DXBWithSharedValues}, injected_values::compile_injected_values},
     dxb_parser::{
         body::{DXBParserError, iterate_instructions},
         instruction_collector::{
@@ -1283,20 +1283,31 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
-
-                                    let injected_values = yield_unwrap!(state.stack.resolve_injected_values(&exec_block_data.injected_values));
-
-                                    // build dxb
-                                    let DXBWithSharedValues {dxb: buffer, shared_values: shared_containers} = yield_unwrap!(compile_injected_values(
-                                        exec_block_data,
-                                        injected_values,
-                                    ));
-
-                                    // store moving pointers
+    // store moving pointers
                                     // ensure receiver is single endpoint
                                     let maybe_single_receiver = receivers.with_collapsed_value(|v| {
                                         if let CoreValue::Endpoint(single_receiver) = &v.inner { Some(single_receiver.clone()) } else { None }
                                     });
+                                    let injected_values = yield_unwrap!(state.stack.resolve_injected_values(&exec_block_data.injected_values));
+
+                                    // build dxb
+                                  
+                                    let DXBWithSharedValues {dxb: buffer, shared_values: shared_containers} = yield_unwrap!({
+                                        let lookup = state.runtime.pointer_availability_lookup();
+                                        let endpoint_receivers = maybe_single_receiver.clone().map(|single_receiver| vec![single_receiver]).unwrap_or_default();
+                                        let compile_input = CompileInput::new(
+                                            &lookup,
+                                            &endpoint_receivers  ,
+                                        );
+                                        
+                                        compile_injected_values(
+                                            exec_block_data,
+                                            injected_values,
+                                            compile_input
+                                        )
+                                    });
+
+                                
                                     
                                     for shared_container in shared_containers {
                                         match shared_container {

@@ -22,9 +22,13 @@ mod tests {
     use crate::{
         assert_instructions_equal,
         core_compiler::{
-            core_compilation_context::ByteCursor,
+            core_compilation_context::{
+                ByteCursor, default_compile_input,
+                default_core_compilation_context,
+            },
             shared_value_tracking::SharedValueTracking,
-            to_instructions::ToInstructions, value_compiler::compile_value,
+            to_instructions::ToInstructions,
+            value_compiler::compile_value,
         },
         global::protocol_structures::{
             instructions::Instruction,
@@ -48,26 +52,31 @@ mod tests {
         ty: Type,
         expected_instruction: Vec<TypeInstruction>,
     ) {
+        let compile_input = unsafe { default_compile_input() };
         let vec =
             vec![Instruction::Regular(RegularInstruction::TypeExpression)]
                 .into_iter()
                 .chain(expected_instruction.into_iter().map(Instruction::Type))
                 .collect::<Vec<_>>();
 
-        let compiled = compile_value(Value {
-            custom_type: None,
-            inner: CoreValue::Type(ty),
-        });
-
-        assert_instructions_equal!(&compiled, vec)
+        let compiled = compile_value(
+            Value {
+                custom_type: None,
+                inner: CoreValue::Type(ty),
+            },
+            compile_input,
+        );
+        assert_eq!(compiled.shared_values.len(), 0);
+        assert_instructions_equal!(&compiled.dxb, vec)
     }
 
     fn assert_regular_instructions_equal(
         val: Value,
         expected_instructions: Vec<RegularInstruction>,
     ) {
-        let compiled = compile_value(val);
-        let mut cursor = ByteCursor::new(compiled.to_vec());
+        let compile_input = unsafe { default_compile_input() };
+        let compiled = compile_value(val, compile_input);
+        let mut cursor = ByteCursor::new(compiled.dxb.to_vec());
         for expected in expected_instructions {
             let instruction = RegularInstruction::read(&mut cursor).unwrap();
             assert_eq!(instruction, expected);

@@ -1,12 +1,15 @@
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
-        type_compiler::append_type_instruction, value_visitor::ValueVisitor,
+        core_compilation_context::{CompileInput, DXBWithSharedValues},
+        type_compiler::append_type_instruction,
+        value_visitor::ValueVisitor,
     },
     global::{
         instruction_codes::InstructionCode,
         protocol_structures::instruction_data::TextData,
     },
+    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     utils::buffers::{append_i16, append_i32, append_u8},
     values::{
         core_value::CoreValue,
@@ -78,15 +81,24 @@ impl From<InjectedValueValidationError> for ExecutionError {
 /// Compiles a given value container to a DXB body
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
-/// Note: The shared values are dropped here!
-pub fn compile_value_container(value_container: ValueContainer) -> Vec<u8> {
-    let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
+pub fn compile_value_container<'a>(
+    value_container: ValueContainer,
+    compile_input: CompileInput<'a>,
+) -> DXBWithSharedValues {
+    let mut context =
+        CoreCompilationContext::new(Vec::with_capacity(256), compile_input);
     context.visit_value_container(value_container);
-    context.into_dxb_with_shared_values().dxb
+    context.into_dxb_with_shared_values()
 }
 
-pub fn compile_value(value_container: Value) -> Vec<u8> {
-    compile_value_container(ValueContainer::Local(value_container))
+pub fn compile_value(
+    value_container: Value,
+    compile_input: CompileInput,
+) -> DXBWithSharedValues {
+    compile_value_container(
+        ValueContainer::Local(value_container),
+        compile_input,
+    )
 }
 
 /// Appends a shared container to the buffer by registering it in the shared value tracking and appending the stack index
@@ -588,7 +600,10 @@ mod tests {
     use super::*;
     use crate::{
         assert_regular_instructions_equal,
-        core_compiler::shared_value_tracking::TrackedValue,
+        core_compiler::{
+            core_compilation_context::default_core_compilation_context,
+            shared_value_tracking::{SharedValueTracking, TrackedValue},
+        },
         global::protocol_structures::instruction_data::{
             ShortListData, StackIndex,
         },
@@ -597,6 +612,23 @@ mod tests {
         values::{core_values::list::List, value::Value},
     };
     use core::assert_matches;
+
+    fn compile_value_assert_instructions(
+        value: Value,
+        expected_instructions: &[RegularInstruction],
+    ) {
+        let compiled = compile_value(
+            value,
+            CompileInput {
+                pointer_lookup: &PointerAvailabilityLookup::default(),
+                receivers: &[],
+            },
+        );
+        assert_regular_instructions_equal!(
+            &compiled.dxb,
+            expected_instructions.to_vec()
+        );
+    }
 
     #[test]
     fn compile_tagged_empty_value() {
@@ -615,13 +647,12 @@ mod tests {
             )),
         };
 
-        let compiled = compile_value(value);
-        assert_regular_instructions_equal!(
-            &compiled,
-            [RegularInstruction::TaggedValue(TaggedValue {
+        compile_value_assert_instructions(
+            value,
+            &[RegularInstruction::TaggedValue(TaggedValue {
                 tag: ShortTextData("Example".to_string()),
-                is_empty: true
-            })]
+                is_empty: true,
+            })],
         );
     }
 
@@ -637,16 +668,15 @@ mod tests {
             )),
         };
 
-        let compiled = compile_value(value);
-        assert_regular_instructions_equal!(
-            &compiled,
-            [
+        compile_value_assert_instructions(
+            value,
+            &[
                 RegularInstruction::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::Null
-            ]
+                RegularInstruction::Null,
+            ],
         );
     }
 
@@ -659,13 +689,16 @@ mod tests {
             .into(),
         ));
 
-        let compiled = compile_value(value);
-        assert_regular_instructions_equal!(
-            &compiled,
-            [RegularInstruction::GetCoreLibValue(
-                CoreLibBaseTypeId::Integer.into()
-            )]
+        compile_value_assert_instructions(
+            value,
+            &[RegularInstruction::GetCoreLibValue(
+                CoreLibBaseTypeId::Integer.into(),
+            )],
         );
+    }
+
+    fn core_compilation_context() -> CoreCompilationContext<'static> {
+        unsafe { default_core_compilation_context() }
     }
 
     #[test]
@@ -679,7 +712,7 @@ mod tests {
             );
         let pointer_address = owned_shared.pointer_address();
         let shared_container = ValueContainer::Shared(owned_shared);
-        let mut context = CoreCompilationContext::new(Vec::new());
+        let mut context = core_compilation_context();
 
         context.visit_value_container(shared_container);
 
@@ -721,7 +754,7 @@ mod tests {
             );
         let outer_pointer_address = outer_shared.pointer_address();
         let shared_container = ValueContainer::Shared(outer_shared);
-        let mut context = CoreCompilationContext::new(Vec::new());
+        let mut context = core_compilation_context();
         context.visit_value_container(shared_container);
 
         assert_matches!(
@@ -754,7 +787,7 @@ mod tests {
         let pointer_address = reference.pointer_address();
         let shared_container =
             ValueContainer::Shared(SharedContainer::Referenced(reference));
-        let mut context = CoreCompilationContext::new(Vec::new());
+        let mut context = core_compilation_context();
 
         context.visit_value_container(shared_container);
 
@@ -798,7 +831,7 @@ mod tests {
             ])
             .into(),
         );
-        let mut context = CoreCompilationContext::new(Vec::new());
+        let mut context = core_compilation_context();
         context.visit_value_container(local);
 
         assert_matches!(

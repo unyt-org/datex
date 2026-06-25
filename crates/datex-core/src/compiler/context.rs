@@ -2,7 +2,7 @@ use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{
-            CoreCompilationContext, DXBWithSharedValues,
+            CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
         value_compiler::append_instruction_code,
     },
@@ -18,8 +18,8 @@ use crate::{
 use binrw::io::Cursor;
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
-pub struct CompilationContext {
-    pub core_context: CoreCompilationContext,
+pub struct CompilationContext<'a> {
+    pub core_context: CoreCompilationContext<'a>,
     pub inserted_value_index: usize,
     pub inserted_values: Vec<Option<ValueContainer>>,
     /// this flag is set to true if any non-static value is encountered
@@ -27,7 +27,7 @@ pub struct CompilationContext {
     pub execution_mode: ExecutionMode,
 }
 
-impl CompilationContext {
+impl<'a> CompilationContext<'a> {
     const MAX_INT_32: i64 = 2_147_483_647;
     const MIN_INT_32: i64 = -2_147_483_648;
 
@@ -52,10 +52,11 @@ impl CompilationContext {
         buffer: Vec<u8>,
         inserted_values: Vec<Option<ValueContainer>>,
         execution_mode: ExecutionMode,
+        input: CompileInput<'a>,
     ) -> Self {
         CompilationContext {
             inserted_value_index: 0,
-            core_context: CoreCompilationContext::new(buffer),
+            core_context: CoreCompilationContext::new(buffer, input),
             inserted_values,
             has_non_static_value: false,
             execution_mode,
@@ -74,7 +75,7 @@ impl CompilationContext {
         self.core_context.into_dxb_with_shared_values()
     }
 
-    pub fn core_context(&mut self) -> &mut CoreCompilationContext {
+    pub fn core_context(&mut self) -> &mut CoreCompilationContext<'a> {
         &mut self.core_context
     }
 

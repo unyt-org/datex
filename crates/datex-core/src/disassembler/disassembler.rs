@@ -394,6 +394,7 @@ macro_rules! assert_instructions_equal {
     }}
 }
 
+// TODO: fix &[] slice instead of vec![] for expected instructions
 #[cfg(feature = "disassembler")]
 #[macro_export]
 macro_rules! assert_regular_instructions_equal {

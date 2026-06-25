@@ -2,9 +2,12 @@ use crate::{
     collections::HashMap,
     global::protocol_structures::instruction_data::StackIndex,
     prelude::*,
+    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     shared_values::{PointerAddress, SharedContainer},
     traits::child_iterator::ChildIterator,
-    values::value_container::ValueContainer,
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
 };
 #[derive(Debug)]
 pub enum TrackedValue {
@@ -55,10 +58,19 @@ impl TrackedValue {
 
 /// Helper struct used during compilation to keep track which shared values are moved or referenced
 #[derive(Debug)]
-pub struct SharedValueTracking {
+pub struct SharedValueTracking<'a> {
     /// shared values that were injected in the compiler
     pub shared_values: HashMap<PointerAddress, TrackedValue>,
     pub current_stack_index: StackIndex,
+    pub pointer_availability_lookup: &'a PointerAvailabilityLookup,
+    pub receivers: &'a [Endpoint],
+}
+
+/// # Safety: This function is unsafe because it leaks memory and returns a reference with a static lifetime. It should only be used in tests where the leaked memory is acceptable.
+pub(crate) unsafe fn default_tracking<'a>() -> SharedValueTracking<'a> {
+    let lookup = Box::leak(Box::new(PointerAvailabilityLookup::default()));
+    let receivers: &'a [Endpoint] = Box::leak(Box::new([]));
+    SharedValueTracking::new(lookup, receivers)
 }
 
 #[derive(Debug, Default)]
@@ -67,17 +79,16 @@ pub struct TrackedValueCollection {
     pub root_count: usize,
 }
 
-impl Default for SharedValueTracking {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl SharedValueTracking {
-    pub fn new() -> SharedValueTracking {
+impl<'a> SharedValueTracking<'a> {
+    pub fn new(
+        pointer_availability_lookup: &'a PointerAvailabilityLookup,
+        receivers: &'a [Endpoint],
+    ) -> SharedValueTracking<'a> {
         SharedValueTracking {
             shared_values: HashMap::new(),
             current_stack_index: StackIndex(0),
+            pointer_availability_lookup,
+            receivers,
         }
     }
 
@@ -257,9 +268,13 @@ mod tests {
         }
     }
 
+    fn tracking() -> SharedValueTracking<'static> {
+        unsafe { default_tracking() }
+    }
+
     #[test]
     fn index_start_at_one() {
-        let tracking = SharedValueTracking::new();
+        let tracking = tracking();
         assert_eq!(tracking.shared_values.len(), 0);
         assert_eq!(tracking.current_stack_index, StackIndex(0));
     }
@@ -273,7 +288,8 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let mut tracking = SharedValueTracking::new();
+        let lookup = &PointerAvailabilityLookup::default();
+        let mut tracking = tracking();
 
         let index = tracking.register_shared_value(container.clone());
 
@@ -285,7 +301,7 @@ mod tests {
 
     #[test]
     fn top_level_reuse_index() {
-        let mut tracking = SharedValueTracking::new();
+        let mut tracking = tracking();
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
         let (container, _) = owned_shared(
             address_provider,
@@ -304,7 +320,7 @@ mod tests {
 
     #[test]
     fn two_toplevel() {
-        let mut tracking = SharedValueTracking::new();
+        let mut tracking = tracking();
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
         // #0 = first
@@ -351,7 +367,7 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let mut tracking = SharedValueTracking::new();
+        let mut tracking = tracking();
         let parent_index = tracking.register_shared_value(parent.clone());
 
         assert_eq!(parent_index, StackIndex(0));
@@ -363,7 +379,7 @@ mod tests {
 
     #[test]
     fn child_get_top_level() {
-        let mut tracking = SharedValueTracking::new();
+        let mut tracking = tracking();
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
         // child
@@ -394,7 +410,7 @@ mod tests {
 
     #[test]
     fn tracking_same_child_tracked_once() {
-        let mut tracking = SharedValueTracking::new();
+        let mut tracking = tracking();
 
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
@@ -436,8 +452,7 @@ mod tests {
 
     #[test]
     fn self_referencing() {
-        let mut tracking = SharedValueTracking::new();
-
+        let mut tracking = tracking();
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
         // parent = [parent]

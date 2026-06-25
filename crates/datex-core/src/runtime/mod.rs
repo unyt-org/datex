@@ -10,18 +10,18 @@ use core::{fmt::Debug, ops::Deref, result::Result};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
-
 mod config;
 pub mod execution;
 mod incoming_sections;
 mod internal;
+pub mod pointer_availability_lookup;
 mod runner;
 
+pub mod cache;
 pub mod pointer_address_provider;
 mod request_move;
 #[cfg(test)]
 pub mod test_utils;
-pub mod cache;
 
 pub use config::*;
 pub use internal::*;

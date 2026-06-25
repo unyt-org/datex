@@ -6,6 +6,7 @@ use crate::{
         scope::CompilationScope,
     },
     core_compiler::core_compilation_context::DXBWithSharedValues,
+    values::core_values::endpoint::Endpoint,
 };
 use crate::{
     runtime::execution::{
@@ -32,6 +33,18 @@ mod script;
 pub enum ExecutionContext {
     Local(LocalExecutionContext),
     Remote(RemoteExecutionContext),
+}
+impl ExecutionContext {
+    pub fn receivers(&self) -> Vec<Endpoint> {
+        match self {
+            ExecutionContext::Local(_) => {
+                vec![Endpoint::LOCAL]
+            }
+            ExecutionContext::Remote(remote_context) => {
+                vec![remote_context.endpoint.clone()]
+            }
+        }
+    }
 }
 
 impl ExecutionContext {
@@ -81,6 +94,7 @@ impl ExecutionContext {
         &mut self,
         script: &str,
         inserted_values: &[ValueContainer],
+        receivers: Vec<Endpoint>,
     ) -> Result<DXBWithSharedValues, SpannedCompilerError> {
         let compile_scope = self.compile_scope();
         // TODO #107: don't clone compile_scope if possible
@@ -91,7 +105,7 @@ impl ExecutionContext {
                 .cloned()
                 .map(Some)
                 .collect::<Vec<_>>(),
-            CompileOptions::new_with_scope(compile_scope.clone()),
+            CompileOptions::new(compile_scope.clone(), receivers),
             self.runtime().clone(),
         );
         match res {
@@ -184,7 +198,8 @@ impl ExecutionContext {
         script: &str,
         inserted_values: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let dxb = self.compile(script, inserted_values)?;
+        let dxb =
+            self.compile(script, inserted_values, vec![Endpoint::LOCAL])?;
         self.execute_dxb_sync(dxb)
             .map_err(ScriptExecutionError::from)
     }
@@ -242,7 +257,8 @@ impl ExecutionContext {
         script: &str,
         inserted_values: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let dxb = self.compile(script, inserted_values)?;
+        let dxb =
+            self.compile(script, inserted_values, vec![Endpoint::LOCAL])?;
         self.execute_dxb(dxb)
             .await
             .map_err(ScriptExecutionError::from)

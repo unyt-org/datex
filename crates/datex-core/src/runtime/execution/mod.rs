@@ -331,7 +331,10 @@ mod tests {
 
                 let (dxb, new_compilation_scope) = compile_script(
                     script_part,
-                    CompileOptions::new_with_scope(compilation_scope),
+                    CompileOptions::new(
+                        compilation_scope,
+                        vec![Endpoint::LOCAL],
+                    ),
                     runtime.clone(),
                 )
                 .unwrap();

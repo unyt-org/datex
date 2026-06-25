@@ -13,7 +13,7 @@ use crate::{
 pub struct RemoteExecutionContext {
     #[cfg(feature = "compiler")]
     pub compile_scope: CompilationScope,
-    pub endpoint: Endpoint,
+    pub endpoint: Endpoint, // FIXME do we need multiple here?
     pub context_id: Option<OutgoingContextId>,
     pub execution_mode: ExecutionMode,
     pub runtime: Runtime,

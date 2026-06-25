@@ -1,4 +1,5 @@
 use crate::{
+    core_compiler::core_compilation_context::CompileInput,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -127,8 +128,12 @@ impl RuntimeInternal {
          *
          */
         if let Ok(value) = result {
+            let lookup = self.pointer_availability_lookup();
+            let receivers = vec![receiver_endpoint.clone()];
+            let compile_input = CompileInput::new(&lookup, &receivers);
             let dxb = if let Some(_value) = value {
-                let compilation_context = CoreCompilationContext::new(vec![]);
+                let compilation_context =
+                    CoreCompilationContext::new(vec![], compile_input);
 
                 // todo!()
 
