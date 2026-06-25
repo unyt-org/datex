@@ -26,17 +26,20 @@ use crate::{
     values::value_container::ValueContainer,
 };
 
+/// Compiles injected values into a DXB buffer with shared values
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
     injected_values: Vec<ValueContainer>,
 ) -> Result<DXBWithSharedValues, InjectedValueValidationError> {
     let mut context = CoreCompilationContext::new(Vec::new());
+
     validate_injected_value_declaration_for_values(
         &instruction_block_data.injected_values,
         &injected_values,
     )?;
-    compile_injected_values_with_context(&mut context, injected_values);
-
+    if !injected_values.is_empty() {
+        compile_injected_values_with_context(&mut context, injected_values);
+    }
     let DXBWithSharedValues {
         mut dxb,
         shared_values,
@@ -98,10 +101,16 @@ fn validate_injected_value_declaration_for_values(
     Ok(())
 }
 
+/// Compiles injected values into a DXB buffer with shared values, using the provided compilation context.
+/// # Safety
+/// The caller must ensure that minimum a single injected value is provided, as this function assumes that the injected values are not empty.
 fn compile_injected_values_with_context(
     compilation_context: &mut CoreCompilationContext,
     injected_values: Vec<ValueContainer>,
 ) {
+    if injected_values.is_empty() {
+        unreachable!(); // injected values should not be empty, this function should only be called if there are injected values
+    }
     append_regular_instruction(
         compilation_context.cursor_mut(),
         RegularInstruction::statements(injected_values.len() as u32 + 1, false),
