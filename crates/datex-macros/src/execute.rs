@@ -123,10 +123,9 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         #(#stack_init)*
 
         let runtime_execution_stack = RuntimeExecutionStack { values: stack_values };
-        let dxb_body: &'static [u8] = &[#(#dxb),*];
         let runtime = Runtime::stub();
         ExecutionInput::new_with_stack(
-            &dxb_body,
+            #dxb,
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions::default(),
             runtime,
