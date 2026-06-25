@@ -87,7 +87,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
 
     let dxb = compile_template(
         &script,
-        &placeholders,
+        placeholders,
         CompileOptions::default(),
         runtime,
     );

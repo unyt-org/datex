@@ -2,18 +2,17 @@ use crate::{
     collections::HashMap,
     core_compiler::{
         buffer_provider::BufferProvider,
-        core_compilation_context::{ByteCursor, CoreCompilationContext},
+        core_compilation_context::ByteCursor,
         shared_value_tracking::{TrackedValue, TrackedValueCollection},
         value_compiler::{
-            append_inline_shared_container, append_regular_instruction,
+            append_regular_instruction,
             append_value,
         },
         value_visitor::ValueVisitor,
     },
-    datex_proxy::DatexValueContainerProxyInfallibleSerialize,
     global::protocol_structures::{
         instruction_data::{
-            ListData, SharedRef, SharedRefWithValue, ShortListData, StackIndex,
+            SharedRef, SharedRefWithValue, StackIndex,
         },
         regular_instructions::RegularInstruction,
     },
@@ -64,7 +63,7 @@ impl ValueVisitor for PreambleContext<'_> {
                         todo!();
                     }
                     Some(VisitedValue::Required {
-                        partial_instantiations,
+                        partial_instantiations: _,
                     }) => {
                         todo!()
                     }
@@ -80,7 +79,7 @@ impl ValueVisitor for PreambleContext<'_> {
         }
     }
 
-    fn visit_type(&mut self, ty: Type) {
+    fn visit_type(&mut self, _ty: Type) {
         todo!()
     }
 }
@@ -217,7 +216,7 @@ fn append_injected_value(
         // value is required by other shared container that was already inserted,
         // first push value, then init missing partial instantiations
         Some(VisitedValue::Required {
-            partial_instantiations,
+            partial_instantiations: _,
         }) => {
             // first push the value
             let container = tracked_value.container();
@@ -282,7 +281,7 @@ fn push_injected_value(
             }
         }
 
-        SharedContainer::Owned(owned_container) => {
+        SharedContainer::Owned(_owned_container) => {
             todo!("move")
         }
     }

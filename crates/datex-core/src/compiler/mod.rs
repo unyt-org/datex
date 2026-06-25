@@ -1260,7 +1260,7 @@ fn compile_expression(
                 .ok_or(CompilerError::ScopePopError)?;
 
             scope = *external_parent_scope.scope;
-            let DXBWithSharedValues { dxb, shared_values } =
+            let DXBWithSharedValues { dxb, shared_values: _ } =
                 execution_block_ctx.into_dxb_with_shared_values();
             // insert remote execution instruction
             append_regular_instruction(

@@ -150,7 +150,7 @@ impl ExecutionContext {
                 runtime,
                 loop_state,
                 execution_options,
-                verbose,
+                verbose: _,
                 caller_metadata,
                 ..
             }) => {

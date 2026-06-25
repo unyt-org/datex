@@ -6,7 +6,7 @@ use crate::{
         to_instructions::ToInstructions,
         type_compiler::append_type_instruction,
         value_compiler::{
-            InjectedValueValidationError, append_inline_shared_container,
+            append_inline_shared_container,
             append_value,
         },
         value_visitor::ValueVisitor,

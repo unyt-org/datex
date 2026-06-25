@@ -1404,7 +1404,7 @@ pub fn inner_execution_loop(
                                                     }
                                                 }
                                             }
-                                            Err(e) => {
+                                            Err(_e) => {
                                                 return yield Err(ExecutionError::InvalidSharedValueType); // TODO: pass error?
                                             }
                                         }
