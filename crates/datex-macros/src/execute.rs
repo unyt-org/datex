@@ -2,7 +2,6 @@ use crate::utils::expr_to_value_container;
 use datex_core::{
     self,
     compiler::{CompileOptions, compile_template},
-    core_compiler::core_compilation_context::DXBWithSharedValues,
     prelude::*,
     runtime::Runtime,
     values::value_container::ValueContainer,
@@ -99,7 +98,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         )
         .to_compile_error();
     }
-    let dxb: DXBWithSharedValues = dxb.unwrap().0;
+    let dxb = dxb.unwrap().0;
 
     if placeholder_count != arg_count {
         return syn::Error::new_spanned(
@@ -117,18 +116,22 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         use datex_core::values::value_container::ValueContainer;
         use datex_core::collections::HashMap;
         use datex_core::runtime::execution::{ExecutionInput, ExecutionOptions};
-        use datex_core::core_compiler::core_compilation_context::DXBWithSharedValues;
         use datex_core::runtime::Runtime;
         use datex_core::prelude::*;
+        use datex_core::core_compiler::core_compilation_context::DXBWithSharedValues;
 
-        let dxb: DXBWithSharedValues = #dxb;
         let mut stack_values: Vec<Option<ValueContainer>> = Vec::new();
         #(#stack_init)*
 
         let runtime_execution_stack = RuntimeExecutionStack { values: stack_values };
+        let dxb_body: &'static [u8] = &[#(#dxb),*];
+        let dxb_with_shared_values = DXBWithSharedValues {
+            dxb: dxb_body,
+            shared_values: vec![],
+        };
         let runtime = Runtime::stub();
         ExecutionInput::new_with_stack(
-            dxb,
+            dxb_with_shared_values,
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions::default(),
             runtime,
