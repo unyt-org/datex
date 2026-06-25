@@ -98,7 +98,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         )
         .to_compile_error();
     }
-    let dxb = dxb.unwrap().0;
+    let dxb_with_shared_values = dxb.unwrap().0;
 
     if placeholder_count != arg_count {
         return syn::Error::new_spanned(
@@ -124,7 +124,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         #(#stack_init)*
 
         let runtime_execution_stack = RuntimeExecutionStack { values: stack_values };
-        let dxb_body: Vec<u8> = vec![#(#dxb),*];
+        let dxb_body: Vec<u8> = vec![#(#dxb.dxb),*];
         let dxb_with_shared_values = DXBWithSharedValues::new(dxb_body, vec![]);
         let runtime = Runtime::stub();
         ExecutionInput::new_with_stack(
