@@ -39,7 +39,7 @@ pub fn precompile(input: PrecompileInput) -> TokenStream {
     let PrecompileInput { script, args, .. } = input;
     let dxb = compile_template(
         &script,
-        &args.iter().cloned().map(Some).collect::<Vec<_>>(),
+        args.iter().cloned().map(Some).collect::<Vec<_>>(),
         CompileOptions::default(),
         runtime,
     )
