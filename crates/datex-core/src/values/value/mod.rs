@@ -67,30 +67,51 @@ impl Value {
         }
     }
 
-    pub fn is_type(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Type(_))
-    }
+    #[deprecated]
     pub fn is_null(&self) -> bool {
         core::matches!(self.inner, CoreValue::Null)
     }
+    #[deprecated]
     pub fn is_text(&self) -> bool {
         core::matches!(self.inner, CoreValue::Text(_))
     }
+    #[deprecated]
     pub fn is_integer_i8(&self) -> bool {
         core::matches!(
             &self.inner,
             CoreValue::TypedInteger(TypedInteger::I8(_))
         )
     }
-    pub fn is_bool(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Boolean(_))
-    }
+    #[deprecated]
     pub fn is_map(&self) -> bool {
         core::matches!(self.inner, CoreValue::Map(_))
     }
-    pub fn is_list(&self) -> bool {
-        core::matches!(self.inner, CoreValue::List(_))
+
+    /// Tries to get a borrow of the current value as the specified type.
+    /// Does not perform any type conversion.
+    pub fn try_as<'a, T: 'a>(&'a self) -> Option<&'a T>
+    where
+        &'a T: TryFrom<&'a CoreValue>,
+    {
+        <&T>::try_from(&self.inner).ok()
     }
+
+    pub fn try_as_mut<'a, T: 'a>(&'a mut self) -> Option<&'a mut T>
+    where
+        &'a mut T: TryFrom<&'a mut CoreValue>,
+    {
+        <&mut T>::try_from(&mut self.inner).ok()
+    }
+
+
+    /// Tries to convert the current value into the specific specified type.
+    /// Does not perform any type conversion.
+    pub fn try_into_value<T>(self) -> Option<T>
+    where
+        T: TryFrom<CoreValue> {
+        T::try_from(self.inner).ok()
+    }
+
 
     /// Returns true if the current Value's actual type is the same as its default type
     /// E.g. if the type is integer for an Integer value, or integer/u8 for a typed integer value

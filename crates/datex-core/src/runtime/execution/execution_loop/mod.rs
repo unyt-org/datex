@@ -503,21 +503,13 @@ pub fn inner_execution_loop(
                                     let mut moved_values = Vec::with_capacity(perform_move.pointers.len());
 
                                     for (mutable_flag, address) in perform_move.pointers {
-                                        let mutability = if mutable_flag != 0 {
-                                            SharedContainerMutability::Mutable
-                                        } else {
-                                            SharedContainerMutability::Immutable
-                                        }; // FIXME
-
                                         let container = yield_unwrap!(resolve_cache_value(
                                             &mut state,
                                             PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(address.bytes)),
                                             SharedContainerOwnership::Owned,
                                         ));
-                                        println!("PerformMoves: Moved value for address {:?} with mutability {:?}: {:?}", address, mutability, container);
                                         moved_values.push(ValueContainer::Shared(container));
                                     }
-
                                     Some(RuntimeValue::ValueContainer(ValueContainer::from(moved_values)))
                                 }
                                 else {

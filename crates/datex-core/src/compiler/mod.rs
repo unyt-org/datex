@@ -731,7 +731,7 @@ fn compile_expression(
                             ValueAccessType::Borrow => {
                                 append_shared_container_from_stack(
                                     compilation_context.core_context(),
-                                    shared_container.derive_with_max_mutability().into(),
+                                    shared_container.derive_reference_with_max_mutability().into(),
                                 );
                             }
                         };
@@ -1747,7 +1747,7 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            [RegularInstruction::CreateShared, RegularInstruction::Null,]
+            (RegularInstruction::CreateShared, RegularInstruction::Null)
         );
     }
 
@@ -1757,10 +1757,10 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            [
+            (
                 RegularInstruction::CreateSharedMut,
                 RegularInstruction::Null,
-            ]
+            )
         );
     }
 
@@ -2300,10 +2300,10 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            [RegularInstruction::TaggedValue(TaggedValue {
+            (RegularInstruction::TaggedValue(TaggedValue {
                 tag: ShortTextData("Example".to_string()),
                 is_empty: true,
-            }),]
+            }))
         )
     }
 
@@ -2313,7 +2313,7 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            [
+            (
                 RegularInstruction::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
@@ -2323,7 +2323,7 @@ pub mod tests {
                     "a".to_string()
                 )),
                 RegularInstruction::True,
-            ]
+            )
         )
     }
 
@@ -2333,7 +2333,7 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            [
+            (
                 RegularInstruction::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
@@ -2341,7 +2341,7 @@ pub mod tests {
                 RegularInstruction::ShortText(ShortTextData(
                     "test".to_string()
                 )),
-            ]
+            )
         )
     }
 
@@ -2351,13 +2351,13 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            [
+            (
                 RegularInstruction::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
                 RegularInstruction::Null,
-            ]
+            )
         )
     }
 
@@ -2710,7 +2710,7 @@ pub mod tests {
         print_disassembled(&res);
         assert_regular_instructions_equal!(
             &res,
-            [
+            (
                 RegularInstruction::statements(5, true),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(1)),
@@ -2723,7 +2723,7 @@ pub mod tests {
                 RegularInstruction::UInt8(UInt8Data(3)),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
-            ]
+            )
         );
     }
 
@@ -2819,7 +2819,7 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            [
+            (
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
@@ -2840,7 +2840,7 @@ pub mod tests {
                     }
                 ),
                 RegularInstruction::UInt8(UInt8Data(1)),
-            ]
+            )
         );
     }
 
@@ -2856,7 +2856,7 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            [
+            (
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::CreateShared,
@@ -2877,7 +2877,7 @@ pub mod tests {
                     }
                 ),
                 RegularInstruction::UInt8(UInt8Data(1)),
-            ]
+            )
         )
     }
 
@@ -2891,7 +2891,7 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            [
+            (
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::CreateShared,
@@ -2914,7 +2914,7 @@ pub mod tests {
                     }
                 ),
                 RegularInstruction::UInt8(UInt8Data(1)),
-            ]
+            )
         )
     }
 
@@ -2928,7 +2928,7 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            [
+            (
                 RegularInstruction::statements(3, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
@@ -2969,7 +2969,7 @@ pub mod tests {
                     }
                 ),
                 RegularInstruction::UInt8(UInt8Data(1)),
-            ]
+            )
         );
     }
 
@@ -2983,7 +2983,7 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            [
+            (
                 RegularInstruction::statements(3, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
@@ -3027,7 +3027,7 @@ pub mod tests {
                     }
                 ),
                 RegularInstruction::UInt8(UInt8Data(1)),
-            ]
+            )
         );
     }
 
@@ -3244,7 +3244,7 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            [RegularInstruction::GetRootProperty(RootProperty::ENDPOINT),]
+            (RegularInstruction::GetRootProperty(RootProperty::ENDPOINT))
         );
     }
 
@@ -3257,7 +3257,7 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            [RegularInstruction::GetRootProperty(RootProperty::CALLER),]
+            (RegularInstruction::GetRootProperty(RootProperty::CALLER))
         );
     }
 
@@ -3336,12 +3336,12 @@ pub mod tests {
 
         assert_regular_instructions_equal!(
             &res,
-            [RegularInstruction::GetCoreLibValue(
+            (RegularInstruction::GetCoreLibValue(
                 CoreLibId::Type(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Integer
                 ))
                 .into()
-            ),]
+            ))
         )
     }
 
@@ -3689,7 +3689,7 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            [
+            (
                 RegularInstruction::statements(4, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
@@ -3701,7 +3701,7 @@ pub mod tests {
                 RegularInstruction::UInt8(UInt8Data(43)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
                 RegularInstruction::TakeStackValue(StackIndex(0))
-            ]
+            )
         );
     }
 
@@ -3711,7 +3711,7 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            [
+            (
                 RegularInstruction::statements(3, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(1)),
@@ -3725,7 +3725,7 @@ pub mod tests {
                 }),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
-            ]
+            )
         )
     }
 }

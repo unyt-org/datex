@@ -160,13 +160,13 @@ pub mod tests {
         .unwrap();
         assert_eq!(config_interface.interface_type, "test");
         let setup_data = config_interface.config.clone();
-        let map = setup_data.try_as::<Map>().unwrap();
+        let map: Map = setup_data.try_into_value().unwrap();
         assert_eq!(
-            map.get("field1").unwrap().try_as::<String>().unwrap(),
+            map.get("field1").unwrap().clone().try_into_value::<String>().unwrap(),
             "value".to_string()
         );
-        assert_eq!(map.get("field2").unwrap().try_as::<i32>().unwrap(), 42);
-
+        assert_eq!(map.get("field2").unwrap().clone().try_into_value::<i32>().unwrap(), 42);
+        
         let value_container = config_interface.to_value_container();
         let parsed_config_interface: RuntimeConfigInterface =
             value_container.try_into().unwrap();

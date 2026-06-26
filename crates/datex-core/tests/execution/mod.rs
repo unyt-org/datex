@@ -83,6 +83,6 @@ fn compile_and_execute_multiple(
     .unwrap()
     .unwrap();
 
-    let list: List = result.try_as().expect("Failed to convert result to List");
+    let list: List = result.try_into_value().expect("Failed to convert result to List");
     list.into()
 }

@@ -619,7 +619,7 @@ mod tests {
 
     fn compile_value_assert_instructions(
         value: Value,
-        expected_instructions: &[RegularInstruction],
+        expected_instructions: Vec<RegularInstruction>,
     ) {
         let compiled = compile_value(
             value,
@@ -630,7 +630,7 @@ mod tests {
         );
         assert_regular_instructions_equal!(
             &compiled.dxb,
-            expected_instructions.to_vec()
+            expected_instructions,
         );
     }
 
@@ -653,7 +653,7 @@ mod tests {
 
         compile_value_assert_instructions(
             value,
-            &[RegularInstruction::TaggedValue(TaggedValue {
+            vec![RegularInstruction::TaggedValue(TaggedValue {
                 tag: ShortTextData("Example".to_string()),
                 is_empty: true,
             })],
@@ -674,7 +674,7 @@ mod tests {
 
         compile_value_assert_instructions(
             value,
-            &[
+            vec![
                 RegularInstruction::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
@@ -695,7 +695,7 @@ mod tests {
 
         compile_value_assert_instructions(
             value,
-            &[RegularInstruction::GetCoreLibValue(
+            vec![RegularInstruction::GetCoreLibValue(
                 CoreLibBaseTypeId::Integer.into(),
             )],
         );
@@ -740,7 +740,21 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &context.into_dxb_with_shared_values().dxb,
-            [RegularInstruction::TakeStackValue(StackIndex(0))]
+            (
+                RegularInstruction::statements(2, false),
+                RegularInstruction::PushListToStack,
+
+                RegularInstruction::statements(2, false),
+                RegularInstruction::PushListToStack,
+                RegularInstruction::PerformMoves(PerformMoves {
+                    pointer_count: 1,
+                    pointers: vec![(0, pointer_address.into())],
+                }),
+                RegularInstruction::list(1),
+                RegularInstruction::TakeStackValue(StackIndex(0)),
+
+                RegularInstruction::TakeStackValue(StackIndex(0))
+            )
         );
     }
 
@@ -783,11 +797,10 @@ mod tests {
         );
 
         let dxb = context.into_dxb_with_shared_values().dxb;
-        println!("{}", get_disassembled_with_options(&dxb, DisassemblerOptions::default()));
 
         assert_regular_instructions_equal!(
             &dxb,
-            [
+            (
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushListToStack,
 
@@ -801,7 +814,7 @@ mod tests {
                 RegularInstruction::TakeStackValue(StackIndex(0)),
 
                 RegularInstruction::TakeStackValue(StackIndex(0)),
-            ]
+            )
         );
     }
 
@@ -839,11 +852,9 @@ mod tests {
 
         let dxb = context.into_dxb_with_shared_values().dxb;
 
-        println!("{}", get_disassembled_with_options(&dxb, DisassemblerOptions::default()));
-
         assert_regular_instructions_equal!(
             &dxb,
-            [
+            (
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushListToStack,
 
@@ -861,7 +872,7 @@ mod tests {
                 RegularInstruction::TakeStackValue(StackIndex(0)),
 
                 RegularInstruction::GetStackValueSharedRef(StackIndex(0))
-            ]
+            )
         );
     }
 
@@ -923,11 +934,10 @@ mod tests {
         );
 
         let dxb = context.into_dxb_with_shared_values().dxb;
-        println!("{}", get_disassembled_with_options(&dxb, DisassemblerOptions::default()));
 
         assert_regular_instructions_equal!(
             &dxb,
-            [
+            (
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushListToStack,
 
@@ -949,7 +959,7 @@ mod tests {
                 RegularInstruction::ShortText(ShortTextData("test".to_string())),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
-            ]
+            )
         );
     }
 }

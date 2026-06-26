@@ -1,3 +1,4 @@
+use crate::random::RandomState;
 use indexmap::IndexMap;
 use crate::{
     collections::HashMap,
@@ -103,8 +104,8 @@ impl TrackedOwned {
 #[derive(Debug)]
 pub struct SharedValueTracking<'a> {
     /// shared values that were injected in the compiler
-    pub referenced_values: IndexMap<PointerAddress, TrackedReference>,
-    pub owned_values: IndexMap<SelfOwnedPointerAddress, TrackedOwned>,
+    pub referenced_values: IndexMap<PointerAddress, TrackedReference, RandomState>,
+    pub owned_values: IndexMap<SelfOwnedPointerAddress, TrackedOwned, RandomState>,
     pub current_stack_index: StackIndex,
     pub pointer_availability_lookup: &'a PointerAvailabilityLookup,
     pub receivers: &'a [Endpoint],
@@ -136,8 +137,8 @@ impl<'a> SharedValueTracking<'a> {
         receivers: &'a [Endpoint],
     ) -> SharedValueTracking<'a> {
         SharedValueTracking {
-            referenced_values: IndexMap::new(),
-            owned_values: IndexMap::new(),
+            referenced_values: IndexMap::default(),
+            owned_values: IndexMap::default(),
             current_stack_index: StackIndex(0),
             pointer_availability_lookup,
             receivers,
@@ -262,7 +263,7 @@ impl<'a> SharedValueTracking<'a> {
                             self.register_referenced_shared_value_with_parents(
                                 // Note we can convert to a ref here since the parent
                                 // was already a ref, so the child can never be owned
-                                child.derive_with_max_mutability(),
+                                child.derive_reference_with_max_mutability(),
                                 parents,
                             );
                         }

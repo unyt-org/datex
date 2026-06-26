@@ -31,7 +31,7 @@ impl<'a> From<&'a ValueContainer> for BorrowedValueContainer<'a> {
             }
             ValueContainer::Shared(shared_container) => {
                 BorrowedValueContainer::Shared(SharedContainer::Referenced(
-                    shared_container.derive_with_max_mutability(),
+                    shared_container.derive_reference_with_max_mutability(),
                 ))
             }
         }

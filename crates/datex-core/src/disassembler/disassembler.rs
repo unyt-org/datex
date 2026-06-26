@@ -92,7 +92,16 @@ pub fn disassemble_body_to_string(
         body,
         options.nested_instructions_resolution_strategy(),
     );
-    let instructions = instruction_tree_to_detailed_tree(instructions);
+    disassemble_instruction_tree_to_string(instructions, err, options)
+}
+
+/// Converts an instruction tree in to human-readable disassembled instructions string
+pub fn disassemble_instruction_tree_to_string(
+    instruction_tree: InstructionTree<Instruction>,
+    error: Option<DXBParserError>,
+    options: DisassemblerOptions,
+) -> String {
+    let instructions = instruction_tree_to_detailed_tree(instruction_tree);
 
     let mut output = String::new();
 
@@ -116,14 +125,14 @@ pub fn disassemble_body_to_string(
         );
     }
 
-    if let Some(err) = err {
+    if let Some(err) = error {
         if options.colorized {
             write!(
                 &mut output,
                 "\x1b[38;2;245;39;60m\n[!] Parser Error: {}\x1b[0m",
                 err
             )
-            .unwrap();
+                .unwrap();
         } else {
             write!(&mut output, "[!] Parser Error: {}", err).unwrap();
         }
@@ -141,11 +150,22 @@ pub fn disassemble_body(
         Rc::new(RefCell::new(body.to_vec())),
         nested_instruction_resolution_strategy,
     );
+    get_instruction_tree(&mut iterator)
+}
+
+/// Converts a list of Instruction values into an instruction tree
+pub fn get_instruction_tree_from_list(instructions: Vec<Instruction>) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
+    let mut iterator = instructions.into_iter().map(Ok);
+    get_instruction_tree(&mut iterator)
+}
+
+/// Converts an instruction iterator into a list of disassembled Instruction values
+pub fn get_instruction_tree(instructions: impl Iterator<Item = Result<Instruction, DXBParserError>>) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
     let mut tree = InstructionTree::new(Instruction::Regular(
         RegularInstruction::UnboundedStatements,
     )); // initial tree root, gets overridden
     let err = disassemble_body_inner(
-        &mut iterator,
+        &mut instructions.into_iter(),
         &mut tree,
         CountOrUnbounded::UnboundedStart,
         true,
@@ -374,53 +394,6 @@ fn disassemble_body_inner(
     }
 
     None
-}
-
-#[cfg(feature = "disassembler")]
-#[macro_export]
-macro_rules! assert_instructions_equal {
-    ($dxb:expr, $expected:expr) => {{
-        use $crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
-        use $crate::disassembler::disassemble_body;
-
-        let (instructions, err) = disassemble_body($dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesFlat);
-        if let Some(err) = err {
-            panic!("Parser error: {}", err);
-        }
-        assert_eq!(
-            &instructions.flatten(),
-            &$expected
-        );
-    }}
-}
-
-// TODO: fix &[] slice instead of vec![] for expected instructions
-#[cfg(feature = "disassembler")]
-#[macro_export]
-macro_rules! assert_regular_instructions_equal {
-    ($dxb:expr, $expected:expr) => {{
-        use $crate::{
-            disassembler::disassemble_body,
-            global::protocol_structures::instructions::{
-                Instruction, NestedInstructionResolutionStrategy,
-            },
-        };
-
-        let (instructions, err) = disassemble_body(
-            $dxb,
-            NestedInstructionResolutionStrategy::ResolveNestedScopesFlat,
-        );
-        if let Some(err) = err {
-            panic!("Parser error: {}", err);
-        }
-        assert_eq!(
-            &instructions.flatten(),
-            &($expected
-                .into_iter()
-                .map(Instruction::Regular)
-                .collect::<Vec<_>>())
-        );
-    }};
 }
 
 #[cfg(test)]

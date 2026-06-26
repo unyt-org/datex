@@ -3,6 +3,8 @@
 #[cfg(feature = "disassembler")]
 mod disassembler;
 pub mod options;
+pub mod assertions;
+
 use crate::{disassembler::options::DisassemblerOptions, prelude::*};
 use cfg_if::cfg_if;
 #[cfg(feature = "disassembler")]

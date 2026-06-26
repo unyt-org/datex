@@ -1,3 +1,4 @@
+use std::assert_matches;
 use datex_core::{
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{SharedContainer, SharedContainerMutability},
@@ -22,6 +23,7 @@ fn injected_value_reference() {
     let referenced = input.clone();
     let result = compile_and_execute(input);
     println!("Result: {:?}", result);
+    assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(_)));
     assert_eq!(result, referenced);
 }
 
@@ -38,5 +40,6 @@ fn injected_value_owned() {
     let referenced = input.clone();
     let result = compile_and_execute(input);
     println!("Result: {:?}", result);
+    assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(_)));
     assert_eq!(result, referenced);
 }

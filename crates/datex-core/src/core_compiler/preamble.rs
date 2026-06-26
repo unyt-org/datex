@@ -22,6 +22,7 @@ use binrw::io::Write;
 use crate::core_compiler::shared_value_tracking::TrackedOwned;
 use crate::global::protocol_structures::instruction_data::PerformMoves;
 use crate::shared_values::{OwnedSharedContainer, SharedContainerMutability};
+use crate::prelude::*;
 
 #[derive(Debug)]
 enum VisitedValue {
@@ -57,7 +58,7 @@ impl ValueVisitor for PreambleContext<'_> {
         match value_container {
             ValueContainer::Local(value) => append_value(self, value),
             ValueContainer::Shared(shared_container) => {
-                match self.visited_refs.get_mut(&shared_container.derive_with_max_mutability()) {
+                match self.visited_refs.get_mut(&shared_container.derive_reference_with_max_mutability()) {
                     // shared container was not yet inserted, keep track as required dependency
                     None => {
                         todo!();
@@ -415,6 +416,7 @@ mod tests {
         },
         values::value_container::ValueContainer,
     };
+    use crate::prelude::*;
     use crate::core_compiler::shared_value_tracking::TrackedOwned;
     use crate::shared_values::{OwnedSharedContainer, ReferencedSharedContainer};
 
@@ -444,17 +446,17 @@ mod tests {
         let (bytes, _) =
             append_injected_values_preamble(collection, cursor.into_inner());
 
-        println!(
-            "{}",
-            disassemble_body_to_string(
-                &bytes,
-                DisassemblerOptions {
-                    tree: true,
-                    colorized: true,
-                    recursive: false,
-                }
-            )
-        );
+        // println!(
+        //     "{}",
+        //     disassemble_body_to_string(
+        //         &bytes,
+        //         DisassemblerOptions {
+        //             tree: true,
+        //             colorized: true,
+        //             recursive: false,
+        //         }
+        //     )
+        // );
 
         assert_regular_instructions_equal!(&bytes, instructions);
     }

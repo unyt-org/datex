@@ -71,17 +71,33 @@ impl ValueContainer {
         self.with_collapsed_value(|value| value.clone())
     }
 
-    /// Tries to get the current collapsed value as a specific [CoreValue] variant.
+    /// Tries to get an immutable reference to the value as a specified type.
     /// Does not perform any type conversion.
-    /// Note: this performs a clone on the collapsed value
-    pub fn try_as<T>(&self) -> Option<T>
+    /// This only works for local values, not for shared values.
+    pub fn try_as<'a, T>(&'a self) -> Option<&'a T>
     where
-        T: TryFrom<CoreValue>,
+        &'a T: TryFrom<&'a CoreValue>,
     {
-        self.with_collapsed_value(|value| value.inner.clone().try_into().ok())
+        match self {
+            ValueContainer::Local(value) => value.inner.try_as(),
+            ValueContainer::Shared(_) => None,
+        }
     }
 
-    /// Tries to get the current collapsed value as a specific [CoreValue] variant.
+    /// Tries to get a mutable reference to the value as a specified type.
+    /// Does not perform any type conversion.
+    /// This only works for local values, not for shared values.
+    pub fn try_as_mut<'a, T>(&'a mut self) -> Option<&'a  mut T>
+    where
+        &'a mut T: TryFrom<&'a mut CoreValue>,
+    {
+        match self {
+            ValueContainer::Local(value) => value.inner.try_as_mut(),
+            ValueContainer::Shared(_) => None,
+        }
+    }
+
+    /// Tries to get the current collapsed value as a specified type.
     /// Does not perform any type conversion.
     /// Runs the provided closure with a reference to the typed value if the conversion was successful, otherwise returns None.
     pub fn try_with<T, R, F>(&self, f: F) -> Option<R>
@@ -90,6 +106,20 @@ impl ValueContainer {
         for<'a> &'a T: TryFrom<&'a CoreValue>,
     {
         self.with_collapsed_value(|value| value.inner.try_as().map(f))
+    }
+
+
+    /// Tries to get the current collapsed value as a specified type.
+    /// Does not perform any type conversion.
+    /// This only works for local values, not for shared values.
+    pub fn try_into_value<T>(self) -> Option<T>
+    where
+        T: TryFrom<CoreValue>,
+    {
+        match self {
+            ValueContainer::Local(value) => value.inner.try_into().ok(),
+            ValueContainer::Shared(_) => None,
+        }
     }
 
     /// Performs a clone used by the "clone" command

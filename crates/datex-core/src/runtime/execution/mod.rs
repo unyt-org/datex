@@ -143,7 +143,7 @@ pub async fn execute_dxb(
             ExternalExecutionInterrupt::RemoteExecution(receivers, body) => {
                 // assert that receivers is a single endpoint
                 // TODO #230: support advanced receivers
-                let receiver_endpoint = receivers.try_as::<Endpoint>().unwrap();
+                let receiver_endpoint = receivers.try_into_value::<Endpoint>().unwrap();
                 let mut remote_execution_context = RemoteExecutionContext::new(
                     receiver_endpoint,
                     ExecutionMode::Static,
@@ -494,7 +494,7 @@ mod tests {
     #[test]
     fn empty_list() {
         let result = execute_datex_script_debug_with_result("[]");
-        let list: List = result.try_as().unwrap();
+        let list: &List = result.try_as().unwrap();
         assert_eq!(list.len(), 0);
         assert_eq!(result, Vec::<ValueContainer>::new().into());
         assert_eq!(result, ValueContainer::from(Vec::<ValueContainer>::new()));
@@ -552,7 +552,7 @@ mod tests {
     #[test]
     fn list() {
         let result = execute_datex_script_debug_with_result("[1, 2, 3]");
-        let list: List = result.try_as().unwrap();
+        let list: &List = result.try_as().unwrap();
         let expected = datex_list![
             Integer::from(1i8),
             Integer::from(2i8),
@@ -874,7 +874,7 @@ mod tests {
         .await
         .unwrap();
         assert!(res.is_some());
-        let env = res.unwrap().try_as::<Map>().unwrap();
+        let env = res.unwrap().try_into_value::<Map>().unwrap();
         assert_eq!(env.get("TEST_ENV_VAR"), Ok(&"test_value".into()));
     }
 

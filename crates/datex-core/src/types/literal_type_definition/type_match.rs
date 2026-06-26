@@ -25,25 +25,25 @@ impl TypeSatisfiesValueContainer for LiteralTypeDefinition {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
         match self {
             LiteralTypeDefinition::Integer(expected) => {
-                value.try_as().map(|v: Integer| v == *expected)
+                value.try_as().map(|v: &Integer| v == expected)
             }
             LiteralTypeDefinition::TypedInteger(expected) => {
-                value.try_as().map(|v: TypedInteger| v == *expected)
+                value.try_as().map(|v: &TypedInteger| v == expected)
             }
             LiteralTypeDefinition::Decimal(expected) => {
-                value.try_as().map(|v: Decimal| v == *expected)
+                value.try_as().map(|v: &Decimal| v == expected)
             }
             LiteralTypeDefinition::TypedDecimal(expected) => {
-                value.try_as().map(|v: TypedDecimal| v == *expected)
+                value.try_as().map(|v: &TypedDecimal| v == expected)
             }
             LiteralTypeDefinition::Text(expected) => {
-                value.try_as().map(|v: Text| v == *expected)
+                value.try_as().map(|v: &Text| v == expected)
             }
             LiteralTypeDefinition::Boolean(expected) => {
-                value.try_as().map(|v: Boolean| v == *expected)
+                value.try_as().map(|v: &Boolean| v == expected)
             }
             LiteralTypeDefinition::Endpoint(expected) => {
-                value.try_as().map(|v: Endpoint| v == *expected)
+                value.try_as().map(|v: &Endpoint| v == expected)
             }
         }
         .unwrap_or(false)

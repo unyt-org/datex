@@ -243,7 +243,7 @@ impl CoreValue {
         CoreLibTypeId::from(self)
     }
 
-    /// Tries to get a borrow of the current value as the specific [CoreValue] variant.
+    /// Tries to get a borrow of the current value as the specified type.
     /// Does not perform any type conversion.
     pub fn try_as<'a, T: 'a>(&'a self) -> Option<&'a T>
     where
@@ -257,6 +257,15 @@ impl CoreValue {
         &'a mut T: TryFrom<&'a mut CoreValue>,
     {
         <&mut T>::try_from(self).ok()
+    }
+    
+    
+    /// Tries to convert the current value into the specific specified type.
+    /// Does not perform any type conversion.
+    pub fn try_into_value<T>(self) -> Option<T>
+    where
+        T: TryFrom<CoreValue> {
+        T::try_from(self).ok()
     }
 
     /// Casts the value to a [Text] value

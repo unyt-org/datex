@@ -55,6 +55,7 @@ pub fn compile_injected_values(
 ///  - local injected values must be local containers
 ///  - shared injected move values must be owned shared containers
 ///  - shared injected ref values must be shared containers (owned or referenced)
+/// TODO: check full type constraints for values here in the future, not just ownership
 fn validate_injected_value_declaration_for_values(
     injected_value_declarations: &[InjectedValueDeclaration],
     injected_values: &[ValueContainer],
@@ -196,41 +197,33 @@ fn append_referenced_shared_container(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        assert_regular_instructions_equal,
-        core_compiler::{
-            self,
-            core_compilation_context::{CompileInput, DXBWithSharedValues},
-            value_compiler::InjectedValueValidationError,
-        },
-        global::{
-            instruction_codes::InstructionCode,
-            protocol_structures::{
-                injected_values::{
-                    InjectedValueDeclaration, InjectedValueType,
-                    SharedInjectedValueType,
-                },
-                instruction_data::{
-                    InstructionBlockData, Int32Data, ListData, PerformMoves,
-                    SharedRefWithValue, ShortListData, StackIndex,
-                    StatementsData, UInt32Data,
-                },
-                regular_instructions::RegularInstruction,
+    use crate::{assert_regular_instructions_equal, core_compiler::{
+        self,
+        core_compilation_context::{CompileInput, DXBWithSharedValues},
+        value_compiler::InjectedValueValidationError,
+    }, global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::{
+            injected_values::{
+                InjectedValueDeclaration, InjectedValueType,
+                SharedInjectedValueType,
             },
+            instruction_data::{
+                InstructionBlockData, Int32Data, ListData, PerformMoves,
+                SharedRefWithValue, ShortListData, StackIndex,
+                StatementsData, UInt32Data,
+            },
+            regular_instructions::RegularInstruction,
         },
-        prelude::*,
-        runtime::{
-            pointer_address_provider::SelfOwnedPointerAddressProvider,
-            pointer_availability_lookup::PointerAvailabilityLookup,
-        },
-        shared_values::{
-            OwnedSharedContainer, PointerAddress, ReferenceMutability,
-            SharedContainer, SharedContainerMutability,
-        },
-        values::{
-            core_values::endpoint::Endpoint, value_container::ValueContainer,
-        },
-    };
+    }, instructions, prelude::*, runtime::{
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
+        pointer_availability_lookup::PointerAvailabilityLookup,
+    }, shared_values::{
+        OwnedSharedContainer, PointerAddress, ReferenceMutability,
+        SharedContainer, SharedContainerMutability,
+    }, values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    }};
 
     fn compile_injected_values_test_with_receivers(
         instruction_block_data: InstructionBlockData,
@@ -270,7 +263,7 @@ mod tests {
         let res = compile_injected_values_test(exec_block_data, vec![])
             .unwrap()
             .dxb;
-        assert_regular_instructions_equal!(&res, [RegularInstruction::Null,])
+        assert_regular_instructions_equal!(&res, (RegularInstruction::Null))
     }
 
     #[test]
@@ -296,67 +289,42 @@ mod tests {
         };
         let res = compile_injected_values_test(
             exec_block_data,
-            vec![ValueContainer::Shared(SharedContainer::Owned(
-                owned_container,
+            vec![ValueContainer::Shared(SharedContainer::Referenced(
+                owned_container.derive_with_max_mutability(),
             ))],
         )
         .unwrap()
         .dxb;
-        // should allocate slot and then compile the shared value into the buffer, followed by the body
 
-        /**
-        // injected value preamble
-        STATEMNETS 2
-
-        #0,... = (
-            #0 = 'shared 42;
-            [TAKE #0]
-        );
-        #1 = null
-
-        (
-            // remote preamble
-            STATEMNETS 3
-            PUSH TAKE #0
-            # += [1,2,3,4];
-
-            // body
-            (
-                #2;
-
-                #0 x
-
-                #0 y
-            )
-        )
-        **/
         assert_regular_instructions_equal!(
             &res,
-            [
-                // outer statements
-                RegularInstruction::statements(2, false),
-                // preamble
-                RegularInstruction::PushListToStack,
-                RegularInstruction::statements(2, false),
-                // ref
-                RegularInstruction::PushToStack,
-                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                    address: owned_address.into(),
-                    ref_mutability: ReferenceMutability::Immutable,
-                    container_mutability: SharedContainerMutability::Immutable
-                }),
-                RegularInstruction::Int32(Int32Data(42)),
-                RegularInstruction::ShortList(ShortListData {
-                    element_count: 1
-                }),
-                RegularInstruction::TakeStackValue(StackIndex(0)),
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::TakeStackValue(StackIndex(0)),
-                // original body
-                RegularInstruction::Null,
-            ]
-        )
+            (
+                RegularInstruction::statements_with_children(false, instructions!(
+                    // injected values preamble
+                    RegularInstruction::PushListToStack.with_children(instructions!(
+                        RegularInstruction::statements_with_children(false, instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                                address: owned_address.into(),
+                                ref_mutability: ReferenceMutability::Immutable,
+                                container_mutability: SharedContainerMutability::Immutable
+                            }),
+                            RegularInstruction::Int32(Int32Data(42)),
+                            RegularInstruction::list_with_children(instructions!(
+                                RegularInstruction::TakeStackValue(StackIndex(0))
+                            )),
+                        ))
+                    )),
+                    RegularInstruction::statements_with_children(false, instructions!(
+                        // remote execution preamble
+                        RegularInstruction::PushToStack,
+                        RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
+                        // original body
+                        RegularInstruction::Null,
+                    ))
+                )),
+            )
+        );
     }
 
     #[test]
@@ -364,17 +332,17 @@ mod tests {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
         let shared_value1 =
-            SharedContainer::new_owned_with_inferred_allowed_type(
+            SharedContainer::Referenced(SharedContainer::new_owned_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Immutable,
                 address_provider,
-            );
+            ).derive_reference_with_max_mutability());
         let shared_value2 =
-            SharedContainer::new_owned_with_inferred_allowed_type(
+            SharedContainer::Referenced(SharedContainer::new_owned_with_inferred_allowed_type(
                 100,
                 SharedContainerMutability::Mutable,
                 address_provider,
-            );
+            ).derive_reference_with_max_mutability());
         let owned_address_1 = match shared_value1.pointer_address().clone() {
             PointerAddress::SelfOwned(address) => address,
             _ => unreachable!(),
@@ -410,30 +378,47 @@ mod tests {
         )
         .unwrap()
         .dxb;
+
         // should allocate slots and then compile the shared values into the buffer, followed by the body
         assert_regular_instructions_equal!(
             &res,
-            [
-                RegularInstruction::statements(3, false),
-                // first ref
-                RegularInstruction::PushToStack,
-                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                    address: owned_address_1.into(),
-                    ref_mutability: ReferenceMutability::Immutable,
-                    container_mutability: SharedContainerMutability::Immutable
-                }),
-                RegularInstruction::Int32(Int32Data(42)),
-                // second ref
-                RegularInstruction::PushToStack,
-                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                    address: owned_address_2.into(),
-                    ref_mutability: ReferenceMutability::Mutable,
-                    container_mutability: SharedContainerMutability::Mutable
-                }),
-                RegularInstruction::Int32(Int32Data(100)),
-                // original body
-                RegularInstruction::Null,
-            ]
+            (
+                RegularInstruction::statements_with_children(false, instructions!(
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(false, instructions!(
+                        RegularInstruction::PushToStack,
+                        RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                            address: owned_address_2.into(),
+                            ref_mutability: ReferenceMutability::Mutable,
+                            container_mutability: SharedContainerMutability::Mutable
+                        }),
+                        RegularInstruction::Int32(Int32Data(100)),
+
+                        RegularInstruction::PushToStack,
+                        RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                            address: owned_address_1.into(),
+                            ref_mutability: ReferenceMutability::Immutable,
+                            container_mutability: SharedContainerMutability::Immutable
+                        }),
+                        RegularInstruction::Int32(Int32Data(42)),
+
+                        RegularInstruction::list_with_children(instructions!(
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                            RegularInstruction::TakeStackValue(StackIndex(0)),
+                        )),
+                    )),
+
+                     RegularInstruction::statements_with_children(false, instructions!(
+                        RegularInstruction::PushToStack,
+                        RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
+
+                        RegularInstruction::PushToStack,
+                        RegularInstruction::GetStackValueSharedRefMut(StackIndex(1)),
+
+                        RegularInstruction::Null
+                    )),
+                )),
+            )
         );
     }
 
@@ -468,24 +453,34 @@ mod tests {
         )
         .unwrap()
         .dxb;
-        // should allocate slot and then compile the shared value into the buffer, followed by the body
+
         assert_regular_instructions_equal!(
             &res,
-            [
-                RegularInstruction::statements(3, false),
-                // move
-                RegularInstruction::PushToStack,
-                RegularInstruction::PerformMoves(PerformMoves {
-                    pointer_count: 1,
-                    pointers: vec![(0, owned_address.into())]
-                }),
-                // get first moved value
-                RegularInstruction::PushToStack,
-                RegularInstruction::TakePropertyIndex(UInt32Data(0)),
-                RegularInstruction::BorrowStackValue(StackIndex(0)),
-                // original body
-                RegularInstruction::Null,
-            ]
+            (
+                RegularInstruction::statements_with_children(false, instructions!(
+                    // injected values preamble
+                    RegularInstruction::PushListToStack.with_children(instructions!(
+                        RegularInstruction::statements_with_children(false, instructions!(
+                            RegularInstruction::PushListToStack.with_children(instructions!(
+                                RegularInstruction::PerformMoves(PerformMoves {
+                                    pointer_count: 1,
+                                    pointers: vec![(0, owned_address.into())]
+                                }),
+                            )),
+                            RegularInstruction::list_with_children(instructions!(
+                                RegularInstruction::TakeStackValue(StackIndex(0))
+                            )),
+                        ))
+                    )),
+                    RegularInstruction::statements_with_children(false, instructions!(
+                        // remote execution preamble
+                        RegularInstruction::PushToStack,
+                        RegularInstruction::TakeStackValue(StackIndex(0)),
+                        // original body
+                        RegularInstruction::Null,
+                    ))
+                )),
+            )
         );
     }
 
@@ -499,12 +494,24 @@ mod tests {
                 SharedContainerMutability::Immutable,
                 address_provider,
             );
+
+        let shared_value1_address = match shared_value1.pointer_address().clone() {
+            PointerAddress::SelfOwned(address) => address,
+            _ => unreachable!(),
+        };
+
         let shared_value2 =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 100,
                 SharedContainerMutability::Immutable,
                 address_provider,
             );
+
+        let shared_value2_address = match shared_value2.pointer_address().clone() {
+            PointerAddress::SelfOwned(address) => address,
+            _ => unreachable!(),
+        };
+
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,
             length: 1,
@@ -526,71 +533,52 @@ mod tests {
             exec_block_data,
             vec![
                 ValueContainer::Shared(shared_value1),
-                ValueContainer::Shared(shared_value2),
+                ValueContainer::Shared(SharedContainer::Referenced(shared_value2.derive_reference_with_max_mutability())),
             ],
         )
         .unwrap()
         .dxb;
-        // should allocate slots and then compile the shared values into the buffer, followed by the body
-        assert_eq!(
-            res,
-            vec![
-                InstructionCode::SHORT_STATEMENTS as u8,
-                4,
-                0,
-                InstructionCode::PUSH_TO_STACK as u8,
-                2,
-                0,
-                0,
-                0, // slot address of moved pointers
-                // compiled shared moves
-                InstructionCode::PERFORM_MOVES as u8,
-                1,
-                0,
-                0,
-                0, // number of moves (1)
-                0, // immmut
-                0,
-                0,
-                0,
-                0,
-                0, // pointer address (assuming the first shared container is stored at address 0)
-                InstructionCode::PUSH_TO_STACK as u8,
-                0,
-                0,
-                0,
-                0, // slot address of first value (moved)
-                InstructionCode::TAKE_PROPERTY_INDEX as u8,
-                0,
-                0,
-                0,
-                0, // index of the moved pointer
-                InstructionCode::CLONE_STACK_VALUE as u8,
-                2,
-                0,
-                0,
-                0, // slot address of the moved pointers
-                InstructionCode::PUSH_TO_STACK as u8,
-                1,
-                0,
-                0,
-                0, // slot address of second value
-                // compiled shared reference for second value
-                InstructionCode::SHARED_REF_WITH_VALUE as u8,
-                0,
-                0,
-                0,
-                0,
-                0, // address of the second shared value
-                0, // immutable ref
-                1, // mutable value
-                InstructionCode::INT_32 as u8,
-                100,
-                0,
-                0,
-                0, // value of the second shared integer
-                InstructionCode::NULL as u8, // body
-            ]
+
+        assert_regular_instructions_equal!(
+            &res,
+            (
+                RegularInstruction::statements_with_children(false, instructions!(
+                    // injected values preamble
+                    RegularInstruction::PushListToStack.with_children(instructions!(
+                        RegularInstruction::statements_with_children(false, instructions!(
+                            RegularInstruction::PushListToStack.with_children(instructions!(
+                                RegularInstruction::PerformMoves(PerformMoves {
+                                    pointer_count: 1,
+                                    pointers: vec![(0, shared_value1_address.into())]
+                                }),
+                            )),
+
+                            RegularInstruction::PushToStack.with_children(instructions!(
+                                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                                    address: shared_value2_address.into(),
+                                    ref_mutability: ReferenceMutability::Immutable,
+                                    container_mutability: SharedContainerMutability::Immutable
+                                }),
+                                RegularInstruction::Int32(Int32Data(100)),
+                            )),
+
+                            RegularInstruction::list_with_children(instructions!(
+                                RegularInstruction::TakeStackValue(StackIndex(0)),
+                                RegularInstruction::TakeStackValue(StackIndex(1)),
+                            )),
+                        ))
+                    )),
+                    RegularInstruction::statements_with_children(false, instructions!(
+                        // remote execution preamble
+                        RegularInstruction::PushToStack,
+                        RegularInstruction::TakeStackValue(StackIndex(0)),
+                        RegularInstruction::PushToStack,
+                        RegularInstruction::GetStackValueSharedRef(StackIndex(1)),
+                        // original body
+                        RegularInstruction::Null,
+                    ))
+                )),
+            )
         );
     }
 }

@@ -113,7 +113,7 @@ fn struct_to_value_container() {
     }
     .into();
 
-    let map: Map = value_container.try_as().unwrap();
+    let map: Map = value_container.try_into_value().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(
         map.get("b").unwrap(),
@@ -140,7 +140,7 @@ fn skip() {
     }
     .into();
 
-    let map: Map = value_container.try_as().unwrap();
+    let map: Map = value_container.try_into_value().unwrap();
     assert!(map.has("a"));
     assert!(!map.has("b"));
 
@@ -427,9 +427,9 @@ fn struct_with_serde_to_value_container() {
     // Note: uses try_into because of datex(serde)
     let value_container: ValueContainer = serde_example.try_into().unwrap();
 
-    let map: Map = value_container.try_as().unwrap();
+    let map: Map = value_container.try_into_value().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
-    let serde_map: Map = map.get("serde").unwrap().try_as().unwrap();
+    let serde_map: Map = map.get("serde").unwrap().clone().try_into_value().unwrap();
     assert_eq!(
         serde_map.get("inner_a").unwrap(),
         &ValueContainer::from(1u8)
@@ -460,9 +460,9 @@ fn struct_with_serde_infallible_to_value_container() {
     // Note: uses into instead of try_into because of datex(serde_infallible)
     let value_container: ValueContainer = serde_example.into();
 
-    let map: Map = value_container.try_as().unwrap();
+    let map: Map = value_container.try_into_value().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
-    let serde_map: Map = map.get("serde").unwrap().try_as().unwrap();
+    let serde_map: Map = map.get("serde").unwrap().clone().try_into_value().unwrap();
     assert_eq!(
         serde_map.get("inner_a").unwrap(),
         &ValueContainer::from(1u8)
@@ -511,7 +511,7 @@ fn struct_with_value_container() {
     };
 
     let value_container: ValueContainer = example_shared.into();
-    let map: Map = value_container.try_as().unwrap();
+    let map: &Map = value_container.try_as().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(map.get("val").unwrap(), &shared_container);
 
