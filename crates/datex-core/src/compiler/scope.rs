@@ -55,10 +55,19 @@ impl ExternalParentScope {
             self.scope.resolve_variable_name(name, Some(value_type))?;
         if let Some((variable_parent_index, variable_kind)) = variable {
             // parent variable already registered
-            if let Some(injected_variable) =
+            if let Some(variable_child_index) =
                 self.injected_variables_map.get(&variable_parent_index)
             {
-                return Ok(Some((*injected_variable, variable_kind)));
+                let declaration= self.injected_values.get_mut(variable_child_index.0 as usize).unwrap();
+                // update declaration type for max ownership
+                if match (value_type, declaration.ty) {
+                    (InjectedValueType::Local(new), InjectedValueType::Local(current)) => new > current,
+                    (InjectedValueType::Shared(new), InjectedValueType::Shared(current)) => new > current,
+                    _ => unreachable!("injected value type mismatch")
+                } {
+                    declaration.ty = value_type;
+                }
+                return Ok(Some((*variable_child_index, variable_kind)));
             }
             // otherwise, map variable and store mapping
             let child_stack_index =

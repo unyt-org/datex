@@ -295,7 +295,7 @@ pub async fn remote_shared_roundtrip_move(
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute(&format!("const x = {shared_string} 42; @test_b :: (print 'x; x);"), &[], None)
+                .execute(&format!("const x = {shared_string} 42; @test_b :: (print 'x; x)"), &[], None)
                 .await
                 .unwrap().unwrap();
             if let ValueContainer::Shared(shared_container) = result {

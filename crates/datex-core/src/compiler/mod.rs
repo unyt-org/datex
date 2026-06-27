@@ -1572,19 +1572,12 @@ pub mod tests {
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
 
-    use crate::{
-        compiler::scope::CompilationScope,
-        core_compiler::core_compilation_context::{
-            CompileInput, DXBWithSharedValues, default_compile_input,
-        },
-        global::{
-            instruction_codes::InstructionCode,
-            protocol_structures::type_instructions::TypeInstruction,
-        },
-        runtime::execution::context::ExecutionMode,
-        types::literal_type_definition::LiteralTypeDefinition,
-        values::value_container::ValueContainer,
-    };
+    use crate::{compiler::scope::CompilationScope, core_compiler::core_compilation_context::{
+        CompileInput, DXBWithSharedValues, default_compile_input,
+    }, global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::type_instructions::TypeInstruction,
+    }, instructions, runtime::execution::context::ExecutionMode, types::literal_type_definition::LiteralTypeDefinition, values::value_container::ValueContainer};
 
     #[cfg(feature = "disassembler")]
     use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
@@ -1622,6 +1615,7 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+    use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugTree;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
@@ -2914,6 +2908,45 @@ pub mod tests {
                     }
                 ),
                 RegularInstruction::UInt8(UInt8Data(1)),
+            )
+        )
+    }
+
+    #[test]
+    #[cfg(feature = "disassembler")]
+    fn remote_execution_injected_shared_ref_and_move() {
+        let script = "const x = shared 42u8; 1u8 :: ('x; x)";
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
+        assert_regular_instructions_equal!(
+            &res,
+            (
+                RegularInstruction::statements_with_children(false, instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::CreateShared,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::_RemoteExecutionDebugTree(
+                        InstructionBlockDataDebugTree {
+                            length: 13,
+                            injected_variable_count: 1,
+                            injected_values: vec![
+                                InjectedValueDeclaration {
+                                    index: StackIndex(0),
+                                    ty: InjectedValueType::Shared(
+                                        SharedInjectedValueType::Move
+                                    )
+                                }
+                            ],
+                            body: RegularInstruction::statements_with_children(false, instructions!(
+                                RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
+                                RegularInstruction::TakeStackValue(StackIndex(0))
+                            )),
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )),
             )
         )
     }

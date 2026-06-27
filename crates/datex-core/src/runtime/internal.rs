@@ -642,8 +642,6 @@ impl RuntimeInternal {
             )
             .await?;
 
-        println!("moved values: {:?}", moved_values);
-
         // moved values should be list
         match moved_values {
             Some(ValueContainer::Local(Value {

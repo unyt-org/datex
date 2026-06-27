@@ -6,24 +6,24 @@ use binrw::{
     io::{Read, Seek, Write},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SharedInjectedValueType {
     // shared x
-    Move,
-    // 'shared x
-    Ref,
+    Move = 2,
     // 'mut shared mut x
-    RefMut,
+    RefMut = 1,
+    // 'shared x
+    Ref = 0,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum LocalInjectedValueType {
     /// The value is moved into the child scope and no longer used afterward
-    Move,
-    /// The value is moved into the child scope but still used afterward (clone or immutable ref (&x))
-    Copy,
+    Move = 2,
     /// The value is temporarily borrowed in the child scope - the changed value must be written back to the parent scope afterward
-    RefMut,
+    RefMut = 1,
+    /// The value is moved into the child scope but still used afterward (clone or immutable ref (&x))
+    Copy = 0,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

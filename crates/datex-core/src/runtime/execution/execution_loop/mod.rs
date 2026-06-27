@@ -87,6 +87,8 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use crate::disassembler::disassemble_body_to_string;
+use crate::disassembler::options::DisassemblerOptions;
 use crate::shared_values::{SelfOwnedPointerAddress, SharedContainerOwnership};
 use crate::values::core_values::callable::{Callable, CallableBody, CoreStub, NativeCallable};
 use crate::values::core_values::endpoint::Endpoint;
@@ -495,13 +497,14 @@ pub fn inner_execution_loop(
                             }
 
                             RegularInstruction::TakeStackValue(index) => {
+                                let val = yield_unwrap!(state.stack.take_stack_value(index));
                                 Some(RuntimeValue::ValueContainer(
-                                    yield_unwrap!(state.stack.take_stack_value(index))
+                                    val
                                 ))
                             }
 
                             RegularInstruction::PerformMoves(perform_move) => {
-                                // TODO: RequestMove not required if pointers are already local addresses (= current caller is local)
+                                // request move not required if pointers are already local addresses (= current caller is local)
                                 if state.caller_metadata.endpoint.is_local_or_equals_endpoint(state.runtime.endpoint()) {
                                     let mut moved_values = Vec::with_capacity(perform_move.pointers.len());
 
@@ -1096,7 +1099,6 @@ pub fn inner_execution_loop(
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
 
-
                                     state
                                         .stack
                                         .push(value);
@@ -1344,7 +1346,6 @@ pub fn inner_execution_loop(
                                             )
                                         }.map_err(|e| ExecutionError::MoveToMultipleEndpoints)
                                     );
-
 
                                     interrupt_with_maybe_value!(
                                         interrupt_provider,

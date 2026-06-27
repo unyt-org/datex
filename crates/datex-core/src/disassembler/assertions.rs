@@ -1,50 +1,9 @@
-use core::fmt::Debug;
 use core::slice::Iter;
 use crate::disassembler::{disassemble_body, disassemble_body_to_string, disassemble_instruction_tree_to_string, get_instruction_tree_from_list, InstructionTree};
 use crate::disassembler::options::DisassemblerOptions;
 use crate::global::protocol_structures::instructions::{CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::prelude::*;
-
-#[derive(Debug)]
-pub enum InstructionAssertionNode {
-    Parent(Vec<InstructionAssertionNode>),
-    Leaf(Instruction),
-}
-
-impl InstructionAssertionNode
-where {
-    pub fn flatten(self) -> Vec<Instruction> {
-        match self {
-            InstructionAssertionNode::Parent(children) => {
-                let mut result = Vec::new();
-                for child in children {
-                    result.extend(child.flatten());
-                }
-                result
-            }
-            InstructionAssertionNode::Leaf(value) => vec![value],
-        }
-    }
-}
-
-impl From<Vec<InstructionAssertionNode>> for InstructionAssertionNode {
-    fn from(children: Vec<InstructionAssertionNode>) -> Self {
-        InstructionAssertionNode::Parent(children)
-    }
-}
-
-impl From<Instruction> for InstructionAssertionNode {
-    fn from(value: Instruction) -> Self {
-        InstructionAssertionNode::Leaf(value)
-    }
-}
-
-impl From<RegularInstruction> for InstructionAssertionNode {
-    fn from(value: RegularInstruction) -> Self {
-        InstructionAssertionNode::Leaf(Instruction::Regular(value))
-    }
-}
 
 #[cfg(feature = "disassembler")]
 #[macro_export]
@@ -68,20 +27,26 @@ macro_rules! assert_instructions_equal {
 #[macro_export]
 macro_rules! assert_regular_instructions_equal {
     ($dxb:expr, ($($expr:expr),* $(,)?)) => {{
-        use $crate::disassembler::assertions::{resolve_instructions, InstructionAssertionNode, assert_instruction_lists_eq};
+        use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
+        use $crate::disassembler::{InstructionTree};
+        use $crate::global::protocol_structures::instructions::Instruction;
+
         let dxb = $dxb;
         assert_instruction_lists_eq(
             resolve_instructions(dxb),
-            InstructionAssertionNode::Parent(vec![$($expr.into(),)*]).flatten(),
+            InstructionTree::<Instruction>::from(vec![$(InstructionTree::<Instruction>::from($expr),)*]).flatten_instructions(),
             dxb,
         );
     }};
     ($dxb:expr, $vec:expr $(,)?) => {{
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
+        use $crate::disassembler::{InstructionTree};
+        use $crate::global::protocol_structures::instructions::Instruction;
+        
         let dxb = $dxb;
         assert_instruction_lists_eq(
             resolve_instructions(dxb),
-            $vec.into_iter().map(|i| i.into()).collect::<Vec<_>>(),
+            InstructionTree::<Instruction>::from($vec.into_iter().map(|i| i.into()).collect::<Vec<_>>()).flatten_instructions(),
             dxb,
         );
     }}
@@ -93,6 +58,8 @@ pub fn assert_instruction_lists_eq(
     output_dxb: &[u8],
 ) {
     if output_instructions != expected_instructions {
+        println!("Output: {:#?}", output_instructions);
+        println!("Expected: {:#?}", expected_instructions);
         let (expected_tree, expected_err) = get_instruction_tree_from_list(expected_instructions);
         panic!(
             "Output did not match expected instructions:\n\nOutput:\n{}\n\nExpected:\n{}\n",
@@ -114,7 +81,7 @@ pub fn resolve_instructions(dxb: &[u8]) -> Vec<Instruction> {
 }
 
 impl RegularInstruction {
-    pub fn with_children(self, children: Vec<InstructionAssertionNode>) -> InstructionAssertionNode {
+    pub fn with_children(self, children: Vec<InstructionTree<Instruction>>) -> InstructionTree<Instruction> {
         // assert that children count matches expected count
         if children.is_empty() &&
             let CountOrUnbounded::Count(count) =
@@ -123,22 +90,17 @@ impl RegularInstruction {
             panic!("Expected {} children for instruction {:?}, but got {}", count, self, children.len());
         }
 
-        InstructionAssertionNode::Parent(
-            vec![self.into()]
-                .into_iter()
-                .chain(children)
-                .collect()
-        )
+        InstructionTree::new_with_children(self.into(), children)
     }
 
     /// Calculates the actual child count of a list of instructions, skipping nested child instructions
-    fn calculate_children_count(children: &[InstructionAssertionNode]) -> u32 {
+    fn calculate_children_count(children: &[InstructionTree<Instruction>]) -> u32 {
         fn visit_next_child(
             count: &mut u32,
             skip: bool,
-            iterator: &mut Iter<InstructionAssertionNode>,
+            iterator: &mut Iter<InstructionTree<Instruction>>,
         ) -> Option<u32> {
-            let child = match iterator.next() {
+            let current = match iterator.next() {
                 Some(next) => next,
                 None => return Some(*count),
             };
@@ -148,8 +110,8 @@ impl RegularInstruction {
             }
 
             // if instruction with next expected instructions, skip the next n instructions
-            if let InstructionAssertionNode::Leaf(instruction) = child &&
-                let Some(child_count) = instruction.get_next_expected_instructions().total_count() &&
+            if current.children().is_empty() &&
+                let Some(child_count) = current.instruction().get_next_expected_instructions().total_count() &&
                 let CountOrUnbounded::Count(child_count) = child_count {
 
                 for _ in 0..child_count {
@@ -159,7 +121,7 @@ impl RegularInstruction {
 
             None
         }
-        
+
         let iterator = &mut children.iter();
         let mut count = 0;
         loop {
@@ -169,12 +131,12 @@ impl RegularInstruction {
         }
     }
 
-    pub fn statements_with_children(terminated: bool, children: Vec<InstructionAssertionNode>) -> InstructionAssertionNode {
+    pub fn statements_with_children(terminated: bool, children: Vec<InstructionTree<Instruction>>) -> InstructionTree<Instruction> {
          RegularInstruction::statements(RegularInstruction::calculate_children_count(&children), terminated)
              .with_children(children)
     }
 
-    pub fn list_with_children(children: Vec<InstructionAssertionNode>) -> InstructionAssertionNode {
+    pub fn list_with_children(children: Vec<InstructionTree<Instruction>>) -> InstructionTree<Instruction> {
         RegularInstruction::list(RegularInstruction::calculate_children_count(&children))
             .with_children(children)
     }

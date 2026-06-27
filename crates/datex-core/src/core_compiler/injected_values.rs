@@ -1,3 +1,4 @@
+use binrw::io::Write;
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
@@ -25,30 +26,49 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::core_compiler::core_compilation_context::ByteCursor;
 
 /// Compiles injected values into a DXB buffer with shared values
+///
+/// push list to stack (
+///     push list to stack (preamble)
+///     list(#0,#2,#1)
+/// )
+/// original body (#0,#1,#2)
+///
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
     injected_values: Vec<ValueContainer>,
     compile_input: CompileInput,
 ) -> Result<DXBWithSharedValues, InjectedValueValidationError> {
-    let mut context = CoreCompilationContext::new(Vec::new(), compile_input);
-
-    validate_injected_value_declaration_for_values(
-        &instruction_block_data.injected_values,
-        &injected_values,
-    )?;
-    if !injected_values.is_empty() {
-        compile_injected_values_with_context(&mut context, injected_values);
+    if injected_values.is_empty() {
+        Ok(DXBWithSharedValues { dxb: instruction_block_data.body, shared_values: vec![] })
     }
-    let DXBWithSharedValues {
-        mut dxb,
-        shared_values,
-    } = context.into_dxb_with_shared_values();
-    // append instruction block body to buffer
-    dxb.extend(instruction_block_data.body);
+    else {
+        let mut context = CoreCompilationContext::new(Vec::new(), compile_input);
 
-    Ok(DXBWithSharedValues { dxb, shared_values })
+        validate_injected_value_declaration_for_values(
+            &instruction_block_data.injected_values,
+            &injected_values,
+        )?;
+        
+        compile_injected_values_with_context(&mut context, injected_values);
+
+        let DXBWithSharedValues {
+            dxb: preambles_dxb,
+            shared_values,
+        } = context.into_dxb_with_shared_values();
+
+        // prepend statements block
+        let mut cursor = ByteCursor::new(Vec::new());
+        append_regular_instruction(&mut cursor, RegularInstruction::statements(2, false));
+        append_regular_instruction(&mut cursor, RegularInstruction::PushListToStack);
+
+        cursor.write_all(&preambles_dxb).unwrap();
+        cursor.write_all(&instruction_block_data.body).unwrap();
+
+        Ok(DXBWithSharedValues { dxb: cursor.into_inner(), shared_values })
+    }
 }
 
 /// Validates that the injected values match the injected value declarations in the instruction block data
@@ -115,14 +135,10 @@ fn compile_injected_values_with_context(
     }
     append_regular_instruction(
         compilation_context.cursor_mut(),
-        RegularInstruction::statements(injected_values.len() as u32 + 1, false),
+        RegularInstruction::list(injected_values.len() as u32),
     );
 
     for value_container in injected_values {
-        append_regular_instruction(
-            compilation_context.cursor_mut(),
-            RegularInstruction::PushToStack,
-        );
         compilation_context.visit_value_container(value_container);
     }
 }
@@ -298,32 +314,36 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements_with_children(false, instructions!(
-                    // injected values preamble
-                    RegularInstruction::PushListToStack.with_children(instructions!(
-                        RegularInstruction::statements_with_children(false, instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                                address: owned_address.into(),
-                                ref_mutability: ReferenceMutability::Immutable,
-                                container_mutability: SharedContainerMutability::Immutable
-                            }),
-                            RegularInstruction::Int32(Int32Data(42)),
-                            RegularInstruction::list_with_children(instructions!(
-                                RegularInstruction::TakeStackValue(StackIndex(0))
-                            )),
-                        ))
-                    )),
+               (
                     RegularInstruction::statements_with_children(false, instructions!(
-                        // remote execution preamble
-                        RegularInstruction::PushToStack,
-                        RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
+                        RegularInstruction::PushListToStack,
+                        RegularInstruction::statements_with_children(false, instructions!(
+                            // injected values preamble
+                            RegularInstruction::PushListToStack,
+                            RegularInstruction::statements_with_children(false, instructions!(    
+                                RegularInstruction::PushToStack,
+                                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                                    address: owned_address,
+                                    ref_mutability: ReferenceMutability::Immutable,
+                                    container_mutability: SharedContainerMutability::Immutable
+                                }),
+                                RegularInstruction::Int32(Int32Data(42)),
+    
+                                RegularInstruction::list_with_children(instructions!(
+                                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                                )),
+                            )),
+    
+                            // remote execution preamble
+                            RegularInstruction::list_with_children(instructions!(
+                                RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
+                            )),
+                        )),
+    
                         // original body
                         RegularInstruction::Null,
-                    ))
-                )),
-            )
+                    )),
+               )
         );
     }
 
@@ -379,44 +399,46 @@ mod tests {
         .unwrap()
         .dxb;
 
-        // should allocate slots and then compile the shared values into the buffer, followed by the body
         assert_regular_instructions_equal!(
             &res,
             (
                 RegularInstruction::statements_with_children(false, instructions!(
                     RegularInstruction::PushListToStack,
                     RegularInstruction::statements_with_children(false, instructions!(
-                        RegularInstruction::PushToStack,
-                        RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                            address: owned_address_2.into(),
-                            ref_mutability: ReferenceMutability::Mutable,
-                            container_mutability: SharedContainerMutability::Mutable
-                        }),
-                        RegularInstruction::Int32(Int32Data(100)),
+                        // injected values preamble
+                        RegularInstruction::PushListToStack,
+                        RegularInstruction::statements_with_children(false, instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                                address: owned_address_2,
+                                ref_mutability: ReferenceMutability::Mutable,
+                                container_mutability: SharedContainerMutability::Mutable
+                            }),
+                            RegularInstruction::Int32(Int32Data(100)),
 
-                        RegularInstruction::PushToStack,
-                        RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                            address: owned_address_1.into(),
-                            ref_mutability: ReferenceMutability::Immutable,
-                            container_mutability: SharedContainerMutability::Immutable
-                        }),
-                        RegularInstruction::Int32(Int32Data(42)),
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                                address: owned_address_1,
+                                ref_mutability: ReferenceMutability::Immutable,
+                                container_mutability: SharedContainerMutability::Immutable
+                            }),
+                            RegularInstruction::Int32(Int32Data(42)),
 
+                            RegularInstruction::list_with_children(instructions!(
+                                RegularInstruction::TakeStackValue(StackIndex(1)),
+                                RegularInstruction::TakeStackValue(StackIndex(0)),
+                            )),
+                        )),
+
+                        // remote execution preamble
                         RegularInstruction::list_with_children(instructions!(
-                            RegularInstruction::TakeStackValue(StackIndex(1)),
-                            RegularInstruction::TakeStackValue(StackIndex(0)),
+                            RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
+                            RegularInstruction::GetStackValueSharedRefMut(StackIndex(1)),
                         )),
                     )),
 
-                     RegularInstruction::statements_with_children(false, instructions!(
-                        RegularInstruction::PushToStack,
-                        RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
-
-                        RegularInstruction::PushToStack,
-                        RegularInstruction::GetStackValueSharedRefMut(StackIndex(1)),
-
-                        RegularInstruction::Null
-                    )),
+                    // original body
+                    RegularInstruction::Null,
                 )),
             )
         );
@@ -458,27 +480,30 @@ mod tests {
             &res,
             (
                 RegularInstruction::statements_with_children(false, instructions!(
-                    // injected values preamble
-                    RegularInstruction::PushListToStack.with_children(instructions!(
-                        RegularInstruction::statements_with_children(false, instructions!(
-                            RegularInstruction::PushListToStack.with_children(instructions!(
-                                RegularInstruction::PerformMoves(PerformMoves {
-                                    pointer_count: 1,
-                                    pointers: vec![(0, owned_address.into())]
-                                }),
-                            )),
-                            RegularInstruction::list_with_children(instructions!(
-                                RegularInstruction::TakeStackValue(StackIndex(0))
-                            )),
-                        ))
-                    )),
+                    RegularInstruction::PushListToStack,
                     RegularInstruction::statements_with_children(false, instructions!(
+                        // injected values preamble
+                        RegularInstruction::PushListToStack,
+                        RegularInstruction::statements_with_children(false, instructions!(
+                            RegularInstruction::PushListToStack,
+                            RegularInstruction::PerformMoves(PerformMoves {
+                                pointer_count: 1,
+                                pointers: vec![(0, owned_address)]
+                            }),
+
+                            RegularInstruction::list_with_children(instructions!(
+                                RegularInstruction::TakeStackValue(StackIndex(0)),
+                            )),
+                        )),
+
                         // remote execution preamble
-                        RegularInstruction::PushToStack,
-                        RegularInstruction::TakeStackValue(StackIndex(0)),
-                        // original body
-                        RegularInstruction::Null,
-                    ))
+                        RegularInstruction::list_with_children(instructions!(
+                            RegularInstruction::TakeStackValue(StackIndex(0)),
+                        )),
+                    )),
+
+                    // original body
+                    RegularInstruction::Null,
                 )),
             )
         );
@@ -543,40 +568,40 @@ mod tests {
             &res,
             (
                 RegularInstruction::statements_with_children(false, instructions!(
-                    // injected values preamble
-                    RegularInstruction::PushListToStack.with_children(instructions!(
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(false, instructions!(
+                        // injected values preamble
+                        RegularInstruction::PushListToStack,
                         RegularInstruction::statements_with_children(false, instructions!(
-                            RegularInstruction::PushListToStack.with_children(instructions!(
-                                RegularInstruction::PerformMoves(PerformMoves {
-                                    pointer_count: 1,
-                                    pointers: vec![(0, shared_value1_address.into())]
-                                }),
-                            )),
+                            RegularInstruction::PushListToStack,
+                            RegularInstruction::PerformMoves(PerformMoves {
+                                pointer_count: 1,
+                                pointers: vec![(0, shared_value1_address)]
+                            }),
 
-                            RegularInstruction::PushToStack.with_children(instructions!(
-                                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                                    address: shared_value2_address.into(),
-                                    ref_mutability: ReferenceMutability::Immutable,
-                                    container_mutability: SharedContainerMutability::Immutable
-                                }),
-                                RegularInstruction::Int32(Int32Data(100)),
-                            )),
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                                address: shared_value2_address,
+                                ref_mutability: ReferenceMutability::Immutable,
+                                container_mutability: SharedContainerMutability::Immutable
+                            }),
+                            RegularInstruction::Int32(Int32Data(100)),
 
                             RegularInstruction::list_with_children(instructions!(
                                 RegularInstruction::TakeStackValue(StackIndex(0)),
                                 RegularInstruction::TakeStackValue(StackIndex(1)),
                             )),
-                        ))
-                    )),
-                    RegularInstruction::statements_with_children(false, instructions!(
+                        )),
+
                         // remote execution preamble
-                        RegularInstruction::PushToStack,
-                        RegularInstruction::TakeStackValue(StackIndex(0)),
-                        RegularInstruction::PushToStack,
-                        RegularInstruction::GetStackValueSharedRef(StackIndex(1)),
-                        // original body
-                        RegularInstruction::Null,
-                    ))
+                        RegularInstruction::list_with_children(instructions!(
+                            RegularInstruction::TakeStackValue(StackIndex(0)),
+                            RegularInstruction::GetStackValueSharedRef(StackIndex(1)),
+                        )),
+                    )),
+
+                    // original body
+                    RegularInstruction::Null,
                 )),
             )
         );
