@@ -1587,8 +1587,10 @@ pub mod tests {
         values::value_container::ValueContainer,
     };
 
-    use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
-    use crate::{assert_instructions_equal, assert_regular_instructions_equal};
+    use crate::{
+        assert_instructions_equal, assert_regular_instructions_equal,
+        global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat,
+    };
 
     use crate::{
         compiler::error::CompilerError,

@@ -3,7 +3,9 @@ use crate::{
     collections::HashMap,
     core_compiler::core_compilation_context::DXBWithSharedValues,
     dif::dif_interface::DIFInterface,
-    disassembler::{options::DisassemblerOptions},
+    disassembler::{
+        options::DisassemblerOptions, print_disassembled_with_options,
+    },
     global::{
         dxb_block::{
             DXBBlock, IncomingEndpointContextSectionId, IncomingSection,
@@ -56,7 +58,6 @@ use core::{
     slice,
 };
 use log::{debug, error, info};
-use crate::disassembler::print_disassembled_with_options;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -544,10 +545,7 @@ impl RuntimeInternal {
             );
         }
         let dxb = block.body;
-        info!(
-            "executing on {}:\n",
-            self.endpoint,
-        );
+        info!("executing on {}:\n", self.endpoint,);
 
         print_disassembled_with_options(&dxb, DisassemblerOptions::default());
 

@@ -1,7 +1,9 @@
 use datex_core::{
     compile,
     compiler::{CompileOptions, compile_template, scope::CompilationScope},
-    disassembler::{options::DisassemblerOptions},
+    disassembler::{
+        options::DisassemblerOptions, print_disassembled_with_options,
+    },
     runtime::{
         Runtime,
         execution::{
@@ -17,7 +19,6 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
-use datex_core::disassembler::print_disassembled_with_options;
 
 pub mod local_values;
 pub mod shared_values;
