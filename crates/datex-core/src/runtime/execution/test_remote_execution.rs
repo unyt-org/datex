@@ -160,7 +160,7 @@ pub async fn remote_shared_value_inject_move() {
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("var x = shared 42; @test_b ::  x + 1", &[], None)
+                .execute("var x = shared 42; @test_b :: x + 1", &[], None)
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -249,6 +249,7 @@ pub async fn remote_shared_value_return(
                 .await
                 .unwrap()
                 .unwrap();
+
             if let ValueContainer::Shared(shared_container) = result {
                 shared_container
                     .try_get_owned()

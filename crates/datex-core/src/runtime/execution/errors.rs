@@ -70,6 +70,7 @@ impl Display for InvalidProgramError {
 
 #[derive(Debug)]
 pub enum ExecutionError {
+    Unspecified(String), // TODO: replace with nested stack trace exceptions
     DXBParserError(DXBParserError),
     ValueError(ValueError),
     InvalidProgram(InvalidProgramError),
@@ -289,6 +290,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::UpdateError(err) => {
                 core::write!(f, "Value update error: {err}")
+            }
+            ExecutionError::Unspecified(msg) => {
+                core::write!(f, "Unspecified error: {msg}")
             }
         }
     }

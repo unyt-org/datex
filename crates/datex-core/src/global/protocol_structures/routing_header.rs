@@ -2,13 +2,13 @@ use super::serializable::Serializable;
 use crate::values::core_values::endpoint::Endpoint;
 
 use crate::{
-    global::protocol_structures::instruction_data::RawRemotePointerAddress,
     prelude::*,
 };
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
 use itertools::Itertools;
 use modular_bitfield::prelude::*;
+use crate::shared_values::RemotePointerAddress;
 
 // 2 bit
 #[derive(
@@ -255,7 +255,7 @@ pub struct RoutingHeader {
 
     // TODO #115: add custom match receiver queries
     #[brw(if(flags.receiver_type() == ReceiverType::Pointer))]
-    receivers_pointer_id: Option<RawRemotePointerAddress>,
+    receivers_pointer_id: Option<RemotePointerAddress>,
     #[brw(if(flags.receiver_type() == ReceiverType::Receivers))]
     #[serde(flatten)]
     receivers_endpoints: Option<ReceiverEndpoints>,
@@ -296,7 +296,7 @@ impl Default for RoutingHeader {
 pub enum Receivers {
     None,
     // TODO #431 rename to PointerAddress
-    PointerId(RawRemotePointerAddress),
+    PointerId(RemotePointerAddress),
     Endpoints(Vec<Endpoint>),
     EndpointsWithKeys(Vec<(Endpoint, Key512)>),
 }
@@ -330,7 +330,7 @@ impl Display for Receivers {
 
 impl<T> From<T> for Receivers
 where
-    T: Into<RawRemotePointerAddress>,
+    T: Into<RemotePointerAddress>,
 {
     fn from(pid: T) -> Self {
         Receivers::PointerId(pid.into())

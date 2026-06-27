@@ -10,8 +10,7 @@ use crate::{
                 FloatAsInt32Data, InstructionBlockData, Int8Data, Int16Data,
                 Int32Data, Int64Data, Int128Data, ListData, MapData,
                 ModifySharedContainerValue, ModifyStackValue, Move,
-                PerformMoves, RawRemotePointerAddress,
-                RawSelfOwnedPointerAddress, SharedRef, SharedRefWithValue,
+                PerformMoves, SharedRef, SharedRefWithValue,
                 ShortListData, ShortMapData, ShortStatementsData,
                 ShortTextData, StackIndex, StatementsData, TaggedValue,
                 TextData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
@@ -37,6 +36,7 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
+use crate::shared_values::{RemotePointerAddress, SelfOwnedPointerAddress};
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -119,7 +119,7 @@ pub enum RegularInstruction {
     GetPropertyDynamic,
     SetPropertyDynamic,
     TakePropertyDynamic,
-
+    
     // comparison operator
     Is,
     Matches,
@@ -138,10 +138,10 @@ pub enum RegularInstruction {
     CreateSharedMut,
 
     // ' $ABCDE
-    RequestRemoteSharedRef(RawRemotePointerAddress),
+    RequestRemoteSharedRef(RemotePointerAddress),
     // 'mut $ABCDE
-    RequestRemoteSharedRefMut(RawRemotePointerAddress),
-    GetLocalSharedRef(RawSelfOwnedPointerAddress),
+    RequestRemoteSharedRefMut(RemotePointerAddress),
+    GetLocalSharedRef(SelfOwnedPointerAddress),
     // get a core lib value, e.g. integer or print by id
     GetCoreLibValue(CoreLibIdIndex),
 
@@ -533,7 +533,6 @@ impl RegularInstruction {
             RegularInstruction::SharedRefWithValue(_) => {
                 NextExpectedInstructions::Regular(1)
             }
-
             _ => NextExpectedInstructions::None,
         }
     }
@@ -783,17 +782,17 @@ impl RegularInstruction {
             }
 
             InstructionCode::REQUEST_REMOTE_SHARED_REF => {
-                RawRemotePointerAddress::read(reader)
+                RemotePointerAddress::read(reader)
                     .map(RegularInstruction::RequestRemoteSharedRef)
             }
 
             InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT => {
-                RawRemotePointerAddress::read(reader)
+                RemotePointerAddress::read(reader)
                     .map(RegularInstruction::RequestRemoteSharedRefMut)
             }
 
             InstructionCode::GET_LOCAL_SHARED_REF => {
-                RawSelfOwnedPointerAddress::read(reader)
+                SelfOwnedPointerAddress::read(reader)
                     .map(RegularInstruction::GetLocalSharedRef)
             }
 
@@ -968,24 +967,24 @@ impl RegularInstruction {
             RegularInstruction::RequestRemoteSharedRef(address) => {
                 write!(
                     string,
-                    "[{}:{}]",
-                    address.endpoint().expect("Invalid endpoint"),
-                    hex::encode(address.id)
+                    "[endpoint: {}, address:{}]",
+                    address.endpoint(),
+                    address
                 )
             }
             RegularInstruction::RequestRemoteSharedRefMut(address) => {
                 write!(
                     string,
-                    "[{}:{}]",
-                    address.endpoint().expect("Invalid endpoint"),
-                    hex::encode(address.id)
+                    "[endpoint: {}, address:{}]",
+                    address.endpoint(),
+                    address
                 )
             }
             RegularInstruction::GetLocalSharedRef(address) => {
                 write!(
                     string,
-                    "[origin_id: {}]",
-                    hex::encode(address.bytes)
+                    "[address:{}]",
+                    address
                 )
             }
             RegularInstruction::GetCoreLibValue(address) => {
@@ -1015,7 +1014,7 @@ impl RegularInstruction {
                 write!(
                     string,
                     "[pointers: {}]",
-                    perform_move.pointers.iter().map(|(_mut, addr)| hex::encode(addr.bytes)).collect::<Vec<_>>().join(", ")
+                    perform_move.pointers.iter().map(|(_mut, addr)| addr.to_string()).collect::<Vec<_>>().join(", ")
                 )
             }
             RegularInstruction::Move(mv) => {

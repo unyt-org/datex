@@ -268,7 +268,7 @@ impl OwnedSharedContainer {
             &mut *inner,
             SharedContainerInner::EndpointOwned(SelfOwnedSharedContainer::new(
                 BaseSharedValueContainer::null(),
-                SelfOwnedPointerAddress { address: [0; 5] },
+                SelfOwnedPointerAddress([0; 5])
             )),
         );
 

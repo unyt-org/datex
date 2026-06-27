@@ -17,6 +17,12 @@ pub type NativeCallable =
 pub enum CallableBody {
     Native(NativeCallable),
     DatexBytecode,
+    CoreStub(CoreStub),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum CoreStub {
+    Panic,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -36,6 +42,7 @@ impl Callable {
             CallableBody::DatexBytecode => {
                 todo!("#606 Calling Datex bytecode is not yet implemented")
             }
+            CallableBody::CoreStub(stub) => Err(CallableError::RuntimeOnlyCallable)
         }
     }
 }

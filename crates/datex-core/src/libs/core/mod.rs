@@ -30,10 +30,12 @@ use crate::{
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
+use crate::values::core_values::callable::CoreStub;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
     print: Value,
+    panic: Value,
 }
 
 impl Default for CoreLibraryValues {
@@ -53,6 +55,20 @@ impl Default for CoreLibraryValues {
                 },
                 CallableBody::Native(Self::print_impl),
             ),
+            panic: Value::callable(
+                Some("panic".to_string()),
+                CallableTypeDefinition {
+                    kind: CallableKind::Function,
+                    parameter_types: vec![],
+                    rest_parameter_type: Some((
+                        Some("values".to_string()),
+                        Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
+                    )),
+                    return_type: None,
+                    yeet_type: None,
+                },
+                CallableBody::CoreStub(CoreStub::Panic),
+            ),
         }
     }
 }
@@ -62,6 +78,7 @@ impl CoreLibraryValues {
     pub fn get_by_id(&self, id: &CoreLibValueId) -> &Value {
         match id {
             CoreLibValueId::Print => &self.print,
+            CoreLibValueId::Panic => &self.panic,
         }
     }
 
@@ -70,6 +87,12 @@ impl CoreLibraryValues {
         for id in CoreLibValueId::iter() {
             yield (id, self.get_by_id(&id));
         }
+    }
+    
+    pub fn panic_impl(
+        _args: &[ValueContainer],
+    ) -> Result<Option<ValueContainer>, CallableError> {
+        unreachable!("Panic called from core library. This should be handled by the runtime.");
     }
 
     fn print_impl(

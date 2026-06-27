@@ -1077,7 +1077,7 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
             append_get_shared_ref(
                 compilation_context.core_context(),
-                &shared_reference.address,
+                shared_reference.address,
                 &shared_reference.mutability,
             )
         }

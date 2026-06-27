@@ -19,7 +19,7 @@ use crate::{
 };
 use core::result::Result;
 use log::info;
-use crate::core_compiler::value_compiler::{compile_value, compile_value_container};
+use crate::core_compiler::value_compiler::{compile_panic, compile_value, compile_value_container};
 
 impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
@@ -49,7 +49,7 @@ impl RuntimeInternal {
         section: IncomingSection,
     ) {
         let (result, endpoint, context_id) =
-            RuntimeInternal::execute_incoming_section(self.clone(), section)
+            RuntimeInternal::execute_incoming_section(self.clone(), section, None)
                 .await;
         match &result {
             Ok(Some(result)) => info!(
@@ -116,32 +116,40 @@ impl RuntimeInternal {
             "send response, context_id: {context_id:?}, receiver: {receiver_endpoint}"
         );
 
+        let lookup = self.pointer_availability_lookup();
+        let receivers = vec![receiver_endpoint.clone()];
+        let compile_input = CompileInput::new(&lookup, &receivers);
 
-        if let Ok(value) = result {
-            info!("Sending result value {:?}", value);
-            let dxb = if let Some(value) = value {
-                let lookup = self.pointer_availability_lookup();
-                let receivers = vec![receiver_endpoint.clone()];
-                let compile_input = CompileInput::new(&lookup, &receivers);
+        let dxb = match result {
+            Ok(value) => {
+                info!("Sending result value {:?}", value);
+                if let Some(value) = value {
+                    let res = compile_value_container(value, compile_input);
 
-                let res = compile_value_container(value, compile_input);
+                    self.register_shared_containers_for_single_endpoint(
+                        &receiver_endpoint,
+                        res.shared_values,
+                    );
 
-                res.dxb // FIXME moves
-            } else {
-                vec![]
-            };
+                    res.dxb
+                } else {
+                    vec![]
+                }
+            }
+            Err(e) => {
+                info!("Execution error (on {}): {}", self.endpoint(), e);
+                compile_panic(e.to_string(), compile_input)
+            }
+        };
 
-            let mut block = DXBBlock::new(
-                routing_header,
-                block_header,
-                encrypted_header,
-                dxb,
-            );
-            block.set_receivers(core::slice::from_ref(&receiver_endpoint));
+        let mut block = DXBBlock::new(
+            routing_header,
+            block_header,
+            encrypted_header,
+            dxb,
+        );
+        block.set_receivers(core::slice::from_ref(&receiver_endpoint));
 
-            self.com_hub().send_own_block_async(block).await
-        } else {
-            core::todo!("#233 Handle returning error response block");
-        }
+        self.com_hub().send_own_block_async(block).await
     }
 }

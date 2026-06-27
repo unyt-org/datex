@@ -5,6 +5,7 @@ use crate::runtime::execution::ExecutionError;
 #[derive(Debug)]
 pub enum CallableError {
     InvalidSignature,
+    RuntimeOnlyCallable,
     ExecutionError(ExecutionError),
 }
 impl Display for CallableError {
@@ -15,6 +16,9 @@ impl Display for CallableError {
             }
             CallableError::ExecutionError(error) => {
                 write!(f, "Execution error: {}", error)
+            }
+            CallableError::RuntimeOnlyCallable => {
+                write!(f, "This callable can only be called inside a runtime context")
             }
         }
     }

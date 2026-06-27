@@ -5,7 +5,7 @@ use crate::{
     },
     global::protocol_structures::{
         instruction_data::{
-            ImplTypeData, ListData, MapData, RawPointerAddress,
+            ImplTypeData, ListData, MapData,
         },
         type_instructions::TypeInstruction,
     },
@@ -33,6 +33,7 @@ use crate::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
+use crate::shared_values::PointerAddress;
 
 impl<'a> ToInstructions<'a> for TypeDefinitionWithMetadata {
     type InstructionType = TypeInstruction;
@@ -168,7 +169,7 @@ impl<'a> ToInstructions<'a> for ImplTypeDefinition {
                 impls: self
                     .impl_markers
                     .iter()
-                    .map(|address| RawPointerAddress::from(address.clone()))
+                    .map(|address| PointerAddress::from(address.clone()))
                     .collect(),
             });
             for instruction in

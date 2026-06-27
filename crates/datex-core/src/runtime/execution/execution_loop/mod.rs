@@ -21,7 +21,7 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, ModifyStackValue, RawPointerAddress,
+                FloatAsInt32Data, ModifyStackValue,
                 ShortStatementsData, ShortTextData, StatementsData,
                 TaggedValue, TextData, UnboundedStatementsData,
             },
@@ -87,8 +87,10 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::runtime::cache::shared_values_cache::CacheValueRetrievalError;
 use crate::shared_values::{SelfOwnedPointerAddress, SharedContainerOwnership};
+use crate::values::core_values::callable::{Callable, CallableBody, CoreStub, NativeCallable};
+use crate::values::core_values::endpoint::Endpoint;
+use crate::values::value_container::error::ValueError;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -506,7 +508,7 @@ pub fn inner_execution_loop(
                                     for (mutable_flag, address) in perform_move.pointers {
                                         let container = yield_unwrap!(resolve_cache_value(
                                             &mut state,
-                                            PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(address.bytes)),
+                                            PointerAddress::SelfOwned(address),
                                             SharedContainerOwnership::Owned,
                                         ));
                                         moved_values.push(ValueContainer::Shared(container));
@@ -542,10 +544,11 @@ pub fn inner_execution_loop(
                             }
 
                             RegularInstruction::SharedRef(shared_ref) => {
+                                let endpoint = state.runtime.endpoint().clone();
                                 // shared ref without value, assumes value already known, otherwise request (todo)
                                 let container = yield_unwrap!(resolve_cache_value(
                                     &mut state,
-                                    shared_ref.address.into(),
+                                    PointerAddress::from(shared_ref.address).normalize(&endpoint),
                                     SharedContainerOwnership::Referenced(shared_ref.ref_mutability)
                                 ));
                                 Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container)))
@@ -638,7 +641,7 @@ pub fn inner_execution_loop(
                                 let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
                                     match type_ref.address {
-                                        RawPointerAddress::SelfOwned(
+                                        PointerAddress::SelfOwned(
                                             address,
                                         ) => {
                                             ExecutionInterrupt::External(
@@ -647,7 +650,7 @@ pub fn inner_execution_loop(
                                                 ),
                                             )
                                         }
-                                        RawPointerAddress::Remote(address) => {
+                                        PointerAddress::Remote(address) => {
                                             ExecutionInterrupt::External(
                                                 ExternalExecutionInterrupt::GetReferenceToRemotePointer(
                                                     address,
@@ -1304,21 +1307,23 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
-    // store moving pointers
+
                                     // ensure receiver is single endpoint
-                                    let maybe_single_receiver = receivers.with_collapsed_value(|v| {
-                                        if let CoreValue::Endpoint(single_receiver) = &v.inner { Some(single_receiver.clone()) } else { None }
-                                    });
+                                    let receivers_list: Vec<Endpoint> = match receivers {
+                                        ValueContainer::Local(Value {inner: CoreValue::Endpoint(endpoint), ..}) => vec![endpoint],
+                                        // TODO: support advanced receivers
+                                        _ => return yield Err(ExecutionError::ValueError(ValueError::InvalidOperation))
+                                    };
+
                                     let injected_values = yield_unwrap!(state.stack.resolve_injected_values(&exec_block_data.injected_values));
 
                                     // build dxb
                                   
                                     let DXBWithSharedValues {dxb: buffer, shared_values: shared_containers} = yield_unwrap!({
                                         let lookup = state.runtime.pointer_availability_lookup();
-                                        let endpoint_receivers = maybe_single_receiver.clone().map(|single_receiver| vec![single_receiver]).unwrap_or_default();
                                         let compile_input = CompileInput::new(
                                             &lookup,
-                                            &endpoint_receivers  ,
+                                            &receivers_list,
                                         );
                                         
                                         compile_injected_values(
@@ -1328,31 +1333,29 @@ pub fn inner_execution_loop(
                                         )
                                     });
 
-                                
-                                    
-                                    for shared_container in shared_containers {
-                                        match shared_container {
-                                            SharedContainer::Owned(owned_shared_container) => {
-                                                if let Some(single_receiver) = maybe_single_receiver.clone() {
-                                                    state.runtime.internal.add_moving_shared_container(single_receiver, owned_shared_container);
-                                                } else {
-                                                    return yield Err(ExecutionError::MoveToMultipleEndpoints)
-                                                } 
-                                            }
-                                            SharedContainer::Referenced(_referenced_shared_container) => {
-                                                // TODO: Subscribe
-                                            }
-                                        }
-                                        
-                                     
-                                    }
+                                    let shared_references_cache = shared_containers.iter().cloned().collect::<Vec<_>>();
+
+                                    yield_unwrap!(
+                                        // SAFETY: we guarantee that receivers is not empty.
+                                        unsafe {
+                                            state.runtime.internal.register_shared_containers_for_endpoints(
+                                                &receivers_list.iter().collect::<Vec<_>>(),
+                                                shared_containers
+                                            )
+                                        }.map_err(|e| ExecutionError::MoveToMultipleEndpoints)
+                                    );
+
 
                                     interrupt_with_maybe_value!(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
-                                            ExternalExecutionInterrupt::RemoteExecution(
-                                                receivers, buffer
-                                            )
+                                            ExternalExecutionInterrupt::RemoteExecution {
+                                                input: DXBWithSharedValues {
+                                                    dxb: buffer,
+                                                    shared_values: shared_references_cache,
+                                                },
+                                                receivers: receivers_list
+                                            }
                                         )
                                     )
                                         .map(RuntimeValue::ValueContainer)
@@ -1365,6 +1368,15 @@ pub fn inner_execution_loop(
                                     let mut args = yield_unwrap!(collected_results.collect_value_container_results_assert_existing(&state));
                                     // last argument is the callee
                                     let callee = args.remove(args.len() - 1);
+
+                                    // special handling for panic function - abort execution
+                                    if let ValueContainer::Local(Value {inner: CoreValue::Callable(Callable {body: CallableBody::CoreStub(CoreStub::Panic), ..}), ..}) = callee
+                                    {
+                                        // assert for now that single string arg
+                                        let error: String = args.remove(0).try_into_value().unwrap();
+                                        return yield Err(ExecutionError::Unspecified(error));
+                                    }
+
                                     interrupt_with_maybe_value!(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
@@ -1418,7 +1430,7 @@ pub fn inner_execution_loop(
                                     let referenced_container = if state.caller_metadata.endpoint.is_local_or_equals_endpoint(state.runtime.endpoint()) {
                                         let container = yield_unwrap!(resolve_cache_value(
                                             &mut state,
-                                            PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(shared_ref.address.bytes)),
+                                            PointerAddress::SelfOwned(shared_ref.address),
                                             SharedContainerOwnership::Referenced(shared_ref.ref_mutability)
                                         ));
                                         match container {
@@ -1430,7 +1442,7 @@ pub fn inner_execution_loop(
                                     }
                                     // else, get remote pointer from address
                                     else {
-                                        let pointer_address = RemotePointerAddress::for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes);
+                                        let pointer_address = RemotePointerAddress::for_endpoint(&state.caller_metadata.endpoint, &shared_ref.address);
 
                                         if state.runtime.memory().borrow().has_reference(&PointerAddress::Remote(pointer_address.clone())) {
                                             return yield Err(ExecutionError::Unknown); // TODO: error

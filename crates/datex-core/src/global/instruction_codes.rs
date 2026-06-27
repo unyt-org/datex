@@ -80,7 +80,7 @@ pub enum InstructionCode {
 
     GET_ROOT_PROPERTY, // e.g. $.endpoint
 
-    // Note: fix to sync with RawPointerAddress
+    // Note: fix to sync with PointerAddress
     REQUEST_REMOTE_SHARED_REF,     // '$x
     REQUEST_REMOTE_SHARED_REF_MUT, // 'mut $x
 
@@ -145,7 +145,7 @@ pub enum InstructionCode {
     ENDPOINT,
 
     TAGGED_VALUE, // e.g. #Example or #Example {example: 42}
-
+    
     // lists and maps 0xe0 - 0xef
     LIST,       // (1,2,3)
     SHORT_LIST, // (1,2,3) - optimized short list with up to 255 elements

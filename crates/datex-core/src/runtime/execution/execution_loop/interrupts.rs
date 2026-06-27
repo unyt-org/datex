@@ -3,13 +3,13 @@ use core::cell::RefCell;
 use crate::values::value_container::ValueContainer;
 
 use crate::{
-    global::protocol_structures::instruction_data::{
-        RawRemotePointerAddress, RawSelfOwnedPointerAddress,
-    },
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
     shared_values::{ReferenceMutability, SharedContainerMutability},
 };
+use crate::core_compiler::core_compilation_context::DXBWithSharedValues;
+use crate::shared_values::{RemotePointerAddress, SelfOwnedPointerAddress};
+use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {
@@ -22,15 +22,18 @@ pub enum ExecutionInterrupt {
 #[derive(Debug)]
 pub enum ExternalExecutionInterrupt {
     Result(Option<ValueContainer>),
-    GetReferenceToRemotePointer(RawRemotePointerAddress, ReferenceMutability),
-    GetReferenceToLocalPointer(RawSelfOwnedPointerAddress),
+    GetReferenceToRemotePointer(RemotePointerAddress, ReferenceMutability),
+    GetReferenceToLocalPointer(SelfOwnedPointerAddress),
     GetCoreLibValue(CoreLibId),
-    RemoteExecution(ValueContainer, Vec<u8>),
+    RemoteExecution {
+        input: DXBWithSharedValues,
+        receivers: Vec<Endpoint>,
+    },
     Apply(ValueContainer, Vec<ValueContainer>),
     /// Request to move a list of pointers from the current caller endpoint to the local endpoint
-    RequestMove(Vec<(SharedContainerMutability, RawSelfOwnedPointerAddress)>),
+    RequestMove(Vec<(SharedContainerMutability, SelfOwnedPointerAddress)>),
     /// Move a list of pointers from the local endpoint to the caller
-    Move(Vec<(RawSelfOwnedPointerAddress, RawSelfOwnedPointerAddress)>),
+    Move(Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>),
 }
 
 #[derive(Debug)]

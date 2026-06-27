@@ -306,120 +306,10 @@ impl AddAssign<u32> for StackIndex {
     }
 }
 
-#[derive(
-    BinRead, BinWrite, Clone, Debug, PartialEq, Serialize, Deserialize,
-)]
-#[brw(little)]
-pub struct RawRemotePointerAddress {
-    pub id: [u8; 26],
-}
-impl RawRemotePointerAddress {
-    pub fn endpoint(&self) -> Result<Endpoint, EndpointParsingError> {
-        let mut endpoint = [0u8; 21];
-        endpoint.copy_from_slice(&self.id[0..21]);
-        Endpoint::from_slice(endpoint)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct PointerAddressConversionError;
-
-impl TryFrom<PointerAddress> for RawRemotePointerAddress {
-    type Error = PointerAddressConversionError;
-    fn try_from(ptr: PointerAddress) -> Result<Self, Self::Error> {
-        match ptr {
-            PointerAddress::Remote(addr) => {
-                Ok(RawRemotePointerAddress::from(addr))
-            }
-            _ => Err(PointerAddressConversionError),
-        }
-    }
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
-pub struct RawSelfOwnedPointerAddress {
-    pub bytes: [u8; 5],
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
-pub enum RawPointerAddress {
-    #[brw(magic = 0u8)]
-    SelfOwned(RawSelfOwnedPointerAddress),
-    #[brw(magic = 2u8)]
-    Remote(RawRemotePointerAddress),
-}
-
-impl RawPointerAddress {
-    fn get_size(&self) -> usize {
-        match self {
-            RawPointerAddress::Remote(_) => 26,
-            RawPointerAddress::SelfOwned(_) => 5,
-        }
-    }
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut writer = Cursor::new(Vec::with_capacity(1 + self.get_size()));
-        self.write_le(&mut writer)
-            .expect("Failed to write raw pointer address");
-        writer.into_inner()
-    }
-}
-
-impl From<PointerAddress> for RawPointerAddress {
-    fn from(ptr: PointerAddress) -> Self {
-        match ptr {
-            PointerAddress::Remote(addr) => {
-                RawPointerAddress::Remote(RawRemotePointerAddress::from(addr))
-            }
-            PointerAddress::SelfOwned(addr) => RawPointerAddress::SelfOwned(
-                RawSelfOwnedPointerAddress::from(addr),
-            ),
-        }
-    }
-}
-
-impl From<RawPointerAddress> for PointerAddress {
-    fn from(raw: RawPointerAddress) -> Self {
-        match raw {
-            RawPointerAddress::Remote(addr) => {
-                PointerAddress::Remote(RemotePointerAddress::from(addr))
-            }
-            RawPointerAddress::SelfOwned(local) => {
-                PointerAddress::SelfOwned(SelfOwnedPointerAddress::from(local))
-            }
-        }
-    }
-}
-
-impl From<SelfOwnedPointerAddress> for RawSelfOwnedPointerAddress {
-    fn from(ptr: SelfOwnedPointerAddress) -> Self {
-        RawSelfOwnedPointerAddress { bytes: ptr.address }
-    }
-}
-
-impl From<RemotePointerAddress> for RawRemotePointerAddress {
-    fn from(addr: RemotePointerAddress) -> Self {
-        RawRemotePointerAddress { id: addr.0 }
-    }
-}
-
-impl From<RawRemotePointerAddress> for RemotePointerAddress {
-    fn from(addr: RawRemotePointerAddress) -> Self {
-        RemotePointerAddress(addr.id)
-    }
-}
-
-impl From<RawSelfOwnedPointerAddress> for SelfOwnedPointerAddress {
-    fn from(ptr: RawSelfOwnedPointerAddress) -> Self {
-        SelfOwnedPointerAddress { address: ptr.bytes }
-    }
-}
-
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct GetOrCreateRemoteRefData {
-    pub address: RawRemotePointerAddress,
+    pub address: RemotePointerAddress,
     pub create_block_size: u64,
 }
 
@@ -428,13 +318,13 @@ pub struct GetOrCreateRemoteRefData {
 pub struct PerformMoves {
     pub pointer_count: u32,
     #[br(count = pointer_count)]
-    pub pointers: Vec<(u8, RawSelfOwnedPointerAddress)>, // FIXME: bool instead of u8
+    pub pointers: Vec<(u8, SelfOwnedPointerAddress)>, // FIXME: bool instead of u8
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct SharedRef {
-    pub address: RawPointerAddress,
+    pub address: PointerAddress,
     pub ref_mutability: ReferenceMutability,
     pub container_mutability: SharedContainerMutability,
 }
@@ -442,7 +332,7 @@ pub struct SharedRef {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct SharedRefWithValue {
-    pub address: RawSelfOwnedPointerAddress, // address of the caller
+    pub address: SelfOwnedPointerAddress, // address of the caller
     pub ref_mutability: ReferenceMutability,
     pub container_mutability: SharedContainerMutability,
 }
@@ -466,7 +356,7 @@ pub struct Move {
     pub pointer_count: u32,
     #[br(count = pointer_count)]
     pub address_mappings:
-        Vec<(RawSelfOwnedPointerAddress, RawSelfOwnedPointerAddress)>,
+        Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -567,13 +457,13 @@ pub struct ApplyData {
 pub struct ImplTypeData {
     pub impl_count: u8,
     #[br(count = impl_count)]
-    pub impls: Vec<RawPointerAddress>,
+    pub impls: Vec<PointerAddress>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct TypeReferenceData {
-    pub address: RawPointerAddress,
+    pub address: PointerAddress,
 }
 
 #[bitfield]

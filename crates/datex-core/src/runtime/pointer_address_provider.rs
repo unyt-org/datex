@@ -1,5 +1,4 @@
 use crate::{
-    global::protocol_structures::instruction_data::RawRemotePointerAddress,
     prelude::*,
     shared_values::{
         PointerAddress, RemotePointerAddress, SelfOwnedPointerAddress,
@@ -27,27 +26,13 @@ impl SelfOwnedPointerAddressProvider {
         }
     }
 
-    /// Takes a RawFullPointerAddress and converts it to a PointerAddress::Local or PointerAddress::Remote,
+    /// Takes a [RemotePointerAddress] and converts it to a [PointerAddress::Local] or [PointerAddress::Remote],
     /// depending on whether the pointer origin id matches the local endpoint.
-    pub fn get_pointer_address_from_raw_full_address(
+    pub fn normalize_address(
         &self,
-        raw_address: RawRemotePointerAddress,
+        raw_address: RemotePointerAddress,
     ) -> PointerAddress {
-        if let Ok(endpoint) = raw_address.endpoint()
-            && endpoint == self.local_endpoint
-        {
-            // TODO #639: check if it makes sense to take the last 5 bytes only here
-            let last_bytes = &raw_address.id[raw_address.id.len() - 5..];
-            PointerAddress::self_owned(last_bytes.try_into().unwrap())
-        } else {
-            // combine raw_address.endpoint and raw_address.id to [u8; 26]
-            let writer = Cursor::new(Vec::new());
-            let mut bytes = writer.into_inner();
-            bytes.extend_from_slice(&raw_address.id);
-            PointerAddress::Remote(RemotePointerAddress(
-                <[u8; 26]>::try_from(bytes).unwrap(),
-            ))
-        }
+        raw_address.normalize(&self.local_endpoint)
     }
 
     pub fn get_new_self_owned_address(&mut self) -> SelfOwnedPointerAddress {

@@ -1,34 +1,51 @@
 use crate::prelude::*;
 
 use crate::{
-    global::protocol_structures::instruction_data::{
-        RawRemotePointerAddress, RawSelfOwnedPointerAddress,
-    },
     values::core_values::endpoint::Endpoint,
 };
 use core::{fmt::Display, result::Result};
+use binrw::{BinRead, BinWrite};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SelfOwnedPointerAddress {
-    pub(crate) address: [u8; 5],
-}
+#[derive(BinWrite, BinRead, Debug, Clone, PartialEq, Eq, Hash)]
+#[brw(little)]
+pub struct SelfOwnedPointerAddress(pub [u8; 5]);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(BinWrite, BinRead, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[brw(little)]
 pub struct RemotePointerAddress(pub [u8; 26]);
 
 impl RemotePointerAddress {
-    pub fn for_endpoint(endpoint: &Endpoint, id: [u8; 5]) -> Self {
+    pub fn for_endpoint(endpoint: &Endpoint, self_owned_pointer_address: &SelfOwnedPointerAddress) -> Self {
         let endpoint_slice = endpoint.to_slice();
         let mut address = [0u8; 26];
         address[..endpoint_slice.len()].copy_from_slice(&endpoint_slice);
-        address[endpoint_slice.len()..endpoint_slice.len() + id.len()]
-            .copy_from_slice(&id);
+        address[endpoint_slice.len()..endpoint_slice.len() + self_owned_pointer_address.0.len()]
+            .copy_from_slice(&self_owned_pointer_address.0);
         RemotePointerAddress(address)
     }
 
     pub fn to_address_string(&self) -> String {
         hex::encode(self.0)
+    }
+
+    /// Returns the endpoint part of the remote pointer address
+    pub fn endpoint(&self) -> Endpoint {
+        let mut endpoint = [0u8; 21];
+        endpoint.copy_from_slice(&self.0[0..21]);
+        Endpoint::from_slice(endpoint).unwrap()
+    }
+
+    /// Normalizes the pointer address to a self-owned address if it is a
+    /// remote address with the same endpoint as the provided local endpoint.
+    pub fn normalize(self, local_endpoint: &Endpoint) -> PointerAddress {
+        if &self.endpoint() == local_endpoint {
+            let mut id = [0u8; 5];
+            id.copy_from_slice(&self.0[21..26]);
+            PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(id))
+        } else {
+            PointerAddress::Remote(self)
+        }
     }
 }
 
@@ -40,11 +57,11 @@ impl Display for RemotePointerAddress {
 
 impl SelfOwnedPointerAddress {
     pub fn new(address: [u8; 5]) -> Self {
-        SelfOwnedPointerAddress { address }
+        SelfOwnedPointerAddress(address)
     }
 
     pub fn to_address_string(&self) -> String {
-        hex::encode(self.address)
+        hex::encode(self.0)
     }
 }
 
@@ -77,11 +94,14 @@ impl Display for SelfOwnedPointerAddress {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(BinWrite, BinRead, Debug, Clone, PartialEq, Eq, Hash)]
+#[brw(little)]
 pub enum PointerAddress {
     // pointer with the local endpoint as origin
     // the full pointer id consists of the local endpoint id + this local id
+    #[brw(magic = 0u8)]
     SelfOwned(SelfOwnedPointerAddress),
+    #[brw(magic = 1u8)]
     // pointer with a remote endpoint as origin, contains the full pointers address
     Remote(RemotePointerAddress),
 }
@@ -95,8 +115,15 @@ impl PointerAddress {
         PointerAddress::Remote(RemotePointerAddress(address))
     }
 
-    pub fn remote_for_endpoint(endpoint: &Endpoint, id: [u8; 5]) -> Self {
-        PointerAddress::Remote(RemotePointerAddress::for_endpoint(endpoint, id))
+    /// Normalizes the pointer address to a self-owned address if it is a
+    /// remote address with the same endpoint as the provided local endpoint.
+    pub fn normalize(self, local_endpoint: &Endpoint) -> Self {
+        match self {
+            PointerAddress::Remote(remote_address) => {
+                remote_address.normalize(local_endpoint)
+            }
+            _ => self,
+        }
     }
 }
 
@@ -138,15 +165,9 @@ impl From<SelfOwnedPointerAddress> for PointerAddress {
     }
 }
 
-impl From<RawSelfOwnedPointerAddress> for PointerAddress {
-    fn from(raw: RawSelfOwnedPointerAddress) -> Self {
-        PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(raw.bytes))
-    }
-}
-
-impl From<RawRemotePointerAddress> for PointerAddress {
-    fn from(raw: RawRemotePointerAddress) -> Self {
-        PointerAddress::Remote(RemotePointerAddress(raw.id))
+impl From<RemotePointerAddress> for PointerAddress {
+    fn from(remote: RemotePointerAddress) -> Self {
+        PointerAddress::Remote(remote)
     }
 }
 
@@ -200,7 +221,7 @@ impl<'de> Deserialize<'de> for PointerAddress {
 impl PointerAddress {
     pub fn bytes(&self) -> &[u8] {
         match self {
-            PointerAddress::SelfOwned(local_address) => &local_address.address,
+            PointerAddress::SelfOwned(local_address) => &local_address.0,
             PointerAddress::Remote(addr) => &addr.0,
         }
     }

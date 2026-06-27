@@ -31,7 +31,7 @@ use crate::{
     global::protocol_structures::{
         instruction_data::{
             Float32Data, Float64Data, Int8Data, Int16Data, Int32Data,
-            Int64Data, Int128Data, ListData, MapData, RawPointerAddress,
+            Int64Data, Int128Data, ListData, MapData,
             ShortTextData, TaggedValue, UInt8Data, UInt16Data, UInt32Data,
             UInt64Data, UInt128Data,
         },
@@ -54,6 +54,8 @@ use crate::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
+use crate::global::protocol_structures::instruction_data::ApplyData;
+use crate::libs::core::value_id::CoreLibValueId;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -92,13 +94,32 @@ pub fn compile_value_container<'a>(
 }
 
 pub fn compile_value(
-    value_container: Value,
+    value: Value,
     compile_input: CompileInput,
 ) -> DXBWithSharedValues {
     compile_value_container(
-        ValueContainer::Local(value_container),
+        ValueContainer::Local(value),
         compile_input,
     )
+}
+
+// TODO: add struct for panics
+pub fn compile_panic(
+    panic_value: String,
+    compile_input: CompileInput,
+) -> Vec<u8> {
+    let mut context =
+        CoreCompilationContext::new(Vec::with_capacity(256), compile_input);
+
+    append_apply(
+        &mut context,
+        RegularInstruction::GetCoreLibValue(CoreLibId::Value(CoreLibValueId::Panic).into()),
+        vec![
+            ValueContainer::Local(panic_value.into())
+        ]
+    );
+
+    context.into_dxb_with_shared_values().dxb
 }
 
 /// Appends a shared container to the buffer by registering it in the shared value tracking and appending the stack index
@@ -124,13 +145,6 @@ pub fn append_shared_container_from_stack(
             ) => RegularInstruction::GetStackValueSharedRefMut(index),
         },
     );
-}
-
-pub fn append_raw_pointer_address(
-    cursor: &mut ByteCursor,
-    raw_address: &RawPointerAddress,
-) {
-    cursor.write_all(&raw_address.to_bytes()).unwrap();
 }
 
 pub fn append_local_pointer_address(
@@ -302,6 +316,26 @@ pub fn append_core_type_cast(
 ) {
     // TODO: append type cast with only id (no need to access shared container)
     todo!()
+}
+
+pub fn append_apply<T: BufferProvider + ValueVisitor>(
+    context: &mut T,
+    callee: RegularInstruction,
+    args: Vec<ValueContainer>,
+) {
+    append_regular_instruction(
+        context.cursor_mut(),
+        RegularInstruction::Apply(ApplyData {
+            arg_count: args.len() as u16,
+        }),
+    );
+    for arg in args {
+        context.visit_value_container(arg);
+    }
+    append_regular_instruction(
+        context.cursor_mut(),
+        callee,
+    );
 }
 
 pub fn append_type_cast<T: BufferProvider + ValueVisitor>(
@@ -476,33 +510,31 @@ pub fn append_float_as_i32(cursor: &mut ByteCursor, int: i32) {
 /// Appends a type cast to a core library type, using the GET_CORE_LIB_VALUE instruction with the type id
 pub fn append_get_shared_ref(
     context: &mut impl BufferProvider,
-    address: &PointerAddress,
+    address: PointerAddress,
     mutability: &ReferenceMutability,
 ) {
     match address {
         PointerAddress::SelfOwned(local_address) => {
-            append_instruction_code(
+            append_regular_instruction(
                 context.cursor_mut(),
-                InstructionCode::GET_LOCAL_SHARED_REF,
+                RegularInstruction::GetLocalSharedRef(local_address)
             );
-            context
-                .cursor_mut()
-                .write_all(&local_address.address)
-                .unwrap();
         }
         PointerAddress::Remote(address) => {
-            append_instruction_code(
-                context.cursor_mut(),
-                match mutability {
-                    ReferenceMutability::Immutable => {
-                        InstructionCode::REQUEST_REMOTE_SHARED_REF
-                    }
-                    ReferenceMutability::Mutable => {
-                        InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT
-                    }
-                },
-            );
-            context.cursor_mut().write_all(&address.0).unwrap();
+            match mutability {
+                ReferenceMutability::Immutable => {
+                    append_regular_instruction(
+                        context.cursor_mut(),
+                        RegularInstruction::RequestRemoteSharedRef(address)
+                    );
+                }
+                ReferenceMutability::Mutable => {
+                    append_regular_instruction(
+                        context.cursor_mut(),
+                        RegularInstruction::RequestRemoteSharedRefMut(address)
+                    );
+                }
+            }
         }
     }
 }

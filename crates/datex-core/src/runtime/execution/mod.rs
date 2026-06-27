@@ -16,9 +16,6 @@ use crate::{
 };
 
 use crate::{
-    global::protocol_structures::instruction_data::{
-        RawRemotePointerAddress, RawSelfOwnedPointerAddress,
-    },
     libs::core::core_lib_id::CoreLibId,
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
@@ -30,6 +27,7 @@ use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
+use crate::shared_values::{RemotePointerAddress, SelfOwnedPointerAddress};
 
 pub mod context;
 mod errors;
@@ -140,19 +138,19 @@ pub async fn execute_dxb(
                     )),
                 );
             }
-            ExternalExecutionInterrupt::RemoteExecution(receivers, body) => {
+            ExternalExecutionInterrupt::RemoteExecution {input, mut receivers} => {
                 // assert that receivers is a single endpoint
-                // TODO #230: support advanced receivers
-                let receiver_endpoint = receivers.try_into_value::<Endpoint>().unwrap();
+                assert_eq!(receivers.len(), 1);
+
                 let mut remote_execution_context = RemoteExecutionContext::new(
-                    receiver_endpoint,
+                    receivers.remove(0),
                     ExecutionMode::Static,
                     runtime.clone(),
                 );
                 let res = runtime
                     .execute_remote(
                         &mut remote_execution_context,
-                        DXBWithSharedValues::new(body, vec![]), // FIXME do we have shared value
+                        input,
                     )
                     .await?;
                 interrupt_provider
@@ -208,13 +206,13 @@ fn handle_apply(
 
 fn get_remote_shared_container_reference(
     runtime: &Runtime,
-    address: RawRemotePointerAddress,
+    address: RemotePointerAddress,
     _mutability: ReferenceMutability,
 ) -> Result<Option<ReferencedSharedContainer>, ExecutionError> {
     let address_provider = runtime.pointer_address_provider().borrow();
     let memory = runtime.memory().borrow();
     let resolved_address =
-        address_provider.get_pointer_address_from_raw_full_address(address);
+        address_provider.normalize_address(address);
     // convert slot to InternalSlot enum
     // TODO #770: resolve from remote, handle mutability
     Ok(memory.get_reference(&resolved_address).cloned())
@@ -230,13 +228,13 @@ fn get_core_lib_value_container(
 
 fn get_local_pointer_value(
     runtime: &Runtime,
-    address: RawSelfOwnedPointerAddress,
+    address: SelfOwnedPointerAddress,
 ) -> Option<ReferencedSharedContainer> {
     // convert slot to InternalSlot enum
     runtime
         .memory()
         .borrow()
-        .get_reference(&PointerAddress::self_owned(address.bytes))
+        .get_reference(&PointerAddress::SelfOwned(address))
         .cloned()
 }
 

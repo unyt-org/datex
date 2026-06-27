@@ -9,7 +9,6 @@ use datex_core::{
         protocol_structures::{
             block_header::{BlockHeader, BlockType},
             encrypted_header::{self, EncryptedHeader},
-            instruction_data::RawRemotePointerAddress,
             routing_header::{EncryptionType, RoutingHeader},
             serializable::Serializable,
         },
@@ -19,6 +18,7 @@ use datex_core::{
 };
 use serde::Serialize;
 use serde_json::ser::PrettyFormatter;
+use datex_core::shared_values::RemotePointerAddress;
 
 #[test]
 pub fn parse_encrypted_header() {
@@ -240,11 +240,10 @@ pub fn dxb_blocks() {
         let endpoint =
             hex::encode(Endpoint::from_str("@jonas").unwrap().to_slice());
         block.set_receivers(
-            RawRemotePointerAddress::try_from(
-                PointerAddress::try_from(format!("${}FFFFFFFFFF", endpoint))
-                    .unwrap(),
-            )
-            .unwrap(),
+            match PointerAddress::try_from(format!("${}FFFFFFFFFF", endpoint)).unwrap() {
+                PointerAddress::Remote(remote) => remote,
+                _ => unreachable!(),
+            }
         );
         block.routing_header = block
             .routing_header
