@@ -110,6 +110,8 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         )
         .to_compile_error();
     }
+    let dxb = dxb_with_shared_values.dxb;
+    
     quote! {{
         use datex_core::runtime::execution::execution_loop::state::RuntimeExecutionStack;
         use datex_core::runtime::execution::execution_input::ExecutionCallerMetadata;
@@ -124,7 +126,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         #(#stack_init)*
 
         let runtime_execution_stack = RuntimeExecutionStack { values: stack_values };
-        let dxb_body: Vec<u8> = vec![#(#dxb.dxb),*];
+        let dxb_body: Vec<u8> = vec![#(#dxb),*];
         let dxb_with_shared_values = DXBWithSharedValues::new(dxb_body, vec![]);
         let runtime = Runtime::stub();
         ExecutionInput::new_with_stack(
