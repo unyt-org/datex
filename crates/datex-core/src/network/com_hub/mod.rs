@@ -681,7 +681,7 @@ impl ComHub {
                 // handle blocks for own endpoint
                 let own_received_block =
                     if is_for_own && block_type != BlockType::Hello {
-                        info!("Block is for this endpoint");
+                        info!("Block is for this endpoint ({})", self.endpoint);
 
                         Some(block.clone()) // FIXME #733: no clone
                     } else {

@@ -19,6 +19,7 @@ use crate::{
 };
 use core::result::Result;
 use log::info;
+use crate::core_compiler::value_compiler::{compile_value, compile_value_container};
 
 impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
@@ -115,52 +116,17 @@ impl RuntimeInternal {
             "send response, context_id: {context_id:?}, receiver: {receiver_endpoint}"
         );
 
-        // @example  --> @remote
-        // @example :: (x) REQUEST_MOVE
-        // @example :: (x;)
 
-        /**
-         * @example :: (x;)
-         * --> PERFORM_MOVE $x
-         *
-         * @remote
-         * <!-- MOVE $x
-         *
-         */
         if let Ok(value) = result {
-            let lookup = self.pointer_availability_lookup();
-            let receivers = vec![receiver_endpoint.clone()];
-            let compile_input = CompileInput::new(&lookup, &receivers);
-            let dxb = if let Some(_value) = value {
-                let compilation_context =
-                    CoreCompilationContext::new(vec![], compile_input);
+            info!("Sending result value {:?}", value);
+            let dxb = if let Some(value) = value {
+                let lookup = self.pointer_availability_lookup();
+                let receivers = vec![receiver_endpoint.clone()];
+                let compile_input = CompileInput::new(&lookup, &receivers);
 
-                // todo!()
+                let res = compile_value_container(value, compile_input);
 
-                // compile_injected_values_with_context
-                // append_value_container(&mut compilation_context, value)
-                //     .expect("Failed to compile response value container");
-
-                // let injected_value_declarations =
-                //     vec![InjectedValueDeclaration {
-                //         index: StackIndex(0),
-                //         ty: InjectedValueType::Local(
-                //             LocalInjectedValueType::Move,
-                //         ),
-                //     }];
-                //
-                // compile_injected_values_with_context(
-                //     &mut compilation_context,
-                //     injected_value_declarations,
-                //     vec![value],
-                // );
-                //
-                // // datex("?", ValueContainer())
-
-                // TODO: compile_value_conatiner()
-
-                // @example :: MOVE_REF $00000 (value btw: {x:1,})
-                compilation_context.into_dxb_with_shared_values().dxb // FIXME moves
+                res.dxb // FIXME moves
             } else {
                 vec![]
             };
