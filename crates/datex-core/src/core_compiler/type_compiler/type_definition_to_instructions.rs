@@ -163,7 +163,7 @@ impl<'a> ToInstructions<'a> for ImplTypeDefinition {
         Box::new(gen {
             yield TypeInstruction::TypeDefinitionImplType(ImplTypeData {
                 impl_count: self.impl_markers.len() as u8,
-                impls: self.impl_markers.iter().cloned().collect(),
+                impls: self.impl_markers.to_vec(),
             });
             for instruction in
                 self.inner_type.to_instructions(shared_value_tracking)

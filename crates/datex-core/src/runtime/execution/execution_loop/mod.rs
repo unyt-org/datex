@@ -1322,14 +1322,12 @@ pub fn inner_execution_loop(
                                     let injected_values = yield_unwrap!(state.stack.resolve_injected_values(&exec_block_data.injected_values));
 
                                     // build dxb
-                                  
                                     let DXBWithSharedValues {dxb: buffer, shared_values: shared_containers} = yield_unwrap!({
                                         let lookup = state.runtime.pointer_availability_lookup();
                                         let compile_input = CompileInput::new(
                                             &lookup,
                                             &receivers_list,
                                         );
-                                        
                                         compile_injected_values(
                                             exec_block_data,
                                             injected_values,
@@ -1406,7 +1404,6 @@ pub fn inner_execution_loop(
                                     {
                                         // reset stack index
                                         state.stack.truncate(previous_stack_index);
-                                        
                                         if terminated {
                                             CollectedExecutionResult::Value(
                                                 None,
