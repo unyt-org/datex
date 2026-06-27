@@ -1565,6 +1565,7 @@ fn compile_dynamic_property_assignment(
 }
 
 #[cfg(test)]
+#[cfg(feature = "disassembler")]
 pub mod tests {
     use super::{
         CompilationContext, CompileOptions, StaticValueOrDXB, compile_ast,
