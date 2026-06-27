@@ -22,7 +22,6 @@ use binrw::io::Write;
 use crate::core_compiler::shared_value_tracking::TrackedOwned;
 use crate::global::protocol_structures::instruction_data::PerformMoves;
 use crate::shared_values::{OwnedSharedContainer, SharedContainerMutability};
-use crate::prelude::*;
 
 #[derive(Debug)]
 enum VisitedValue {
@@ -314,7 +313,7 @@ fn append_shared_container_moves(
                     (
                         // mutability flag, TODO: improve
                         if container.container_mutability() == SharedContainerMutability::Mutable { 1 } else { 0 },
-                        container.pointer_address().clone().into()
+                        container.pointer_address().clone()
                     )
                 )
                 .collect(),
@@ -331,7 +330,7 @@ fn append_referenced_shared_container(
             append_regular_instruction(
                 context.cursor,
                 RegularInstruction::SharedRef(SharedRef {
-                    address: PointerAddress::SelfOwned(pointer_address).into(),
+                    address: PointerAddress::SelfOwned(pointer_address),
                     ref_mutability: referenced_container.reference_mutability(),
                     container_mutability: referenced_container
                         .container_mutability(),
@@ -342,7 +341,7 @@ fn append_referenced_shared_container(
             append_regular_instruction(
                 context.cursor,
                 RegularInstruction::SharedRef(SharedRef {
-                    address: PointerAddress::Remote(pointer_address).into(),
+                    address: PointerAddress::Remote(pointer_address),
                     ref_mutability: referenced_container.reference_mutability(),
                     container_mutability: referenced_container
                         .container_mutability(),
@@ -362,7 +361,7 @@ fn append_referenced_shared_container_with_value(
             append_regular_instruction(
                 context.cursor,
                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                    address: pointer_address.into(),
+                    address: pointer_address,
                     ref_mutability: referenced_container.reference_mutability(),
                     container_mutability: referenced_container
                         .container_mutability(),
@@ -378,7 +377,7 @@ fn append_referenced_shared_container_with_value(
             append_regular_instruction(
                 context.cursor,
                 RegularInstruction::SharedRef(SharedRef {
-                    address: PointerAddress::Remote(pointer_address).into(),
+                    address: PointerAddress::Remote(pointer_address),
                     ref_mutability: referenced_container.reference_mutability(),
                     container_mutability: referenced_container
                         .container_mutability(),

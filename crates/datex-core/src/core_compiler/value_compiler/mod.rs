@@ -9,7 +9,6 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::instruction_data::TextData,
     },
-    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     utils::buffers::{append_i16, append_i32, append_u8},
     values::{
         core_value::CoreValue,
@@ -648,6 +647,7 @@ mod tests {
     use crate::disassembler::{get_disassembled_with_options, print_disassembled};
     use crate::disassembler::options::DisassemblerOptions;
     use crate::global::protocol_structures::instruction_data::{PerformMoves, SharedRefWithValue};
+    use crate::runtime::pointer_availability_lookup::PointerAvailabilityLookup;
 
     fn compile_value_assert_instructions(
         value: Value,

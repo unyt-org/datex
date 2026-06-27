@@ -1,7 +1,6 @@
 use crate::random::RandomState;
 use indexmap::IndexMap;
 use crate::{
-    collections::HashMap,
     global::protocol_structures::instruction_data::StackIndex,
     prelude::*,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
@@ -11,7 +10,7 @@ use crate::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
-use crate::shared_values::{OwnedSharedContainer, ReferencedSharedContainer, SelfOwnedPointerAddress, SharedContainerInner};
+use crate::shared_values::{OwnedSharedContainer, ReferencedSharedContainer, SelfOwnedPointerAddress};
 
 #[derive(Debug)]
 pub enum TrackedReference {

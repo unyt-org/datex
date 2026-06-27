@@ -998,7 +998,7 @@ impl RegularInstruction {
                 write!(
                     string,
                     "[ref_mutability: {:?}, address: {}]",
-                    shared_ref.ref_mutability, PointerAddress::from(shared_ref.address.clone())
+                    shared_ref.ref_mutability, shared_ref.address.clone()
                 )
             }
             RegularInstruction::SharedRefWithValue(shared_ref) => {

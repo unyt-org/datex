@@ -21,7 +21,6 @@ use core::{
     fmt::Display,
 };
 use core::hash::{Hash, Hasher};
-use crate::shared_values::SharedContainer;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///

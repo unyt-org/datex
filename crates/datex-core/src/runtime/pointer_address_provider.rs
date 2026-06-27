@@ -5,7 +5,6 @@ use crate::{
     },
     values::core_values::endpoint::Endpoint,
 };
-use binrw::io::Cursor;
 
 #[derive(Default, Debug)]
 pub struct SelfOwnedPointerAddressProvider {

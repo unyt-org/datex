@@ -441,7 +441,7 @@ pub fn ast_from_bytecode(
                             TypeInstruction::TypeDefinitionSharedTypeReference(reference) => {
                                 // TODO #769: handle metadata
                                 TypeExpressionData::GetReference(
-                                    PointerAddress::from(reference.address),
+                                    reference.address,
                                 )
                             }
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!

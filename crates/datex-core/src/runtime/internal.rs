@@ -3,7 +3,6 @@ use crate::{
     collections::HashMap,
     core_compiler::core_compilation_context::DXBWithSharedValues,
     dif::dif_interface::DIFInterface,
-    disassembler::print_disassembled,
     global::{
         dxb_block::{
             DXBBlock, IncomingEndpointContextSectionId, IncomingSection,
@@ -58,7 +57,6 @@ use core::{
 use log::{debug, error, info};
 use crate::disassembler::disassemble_body_to_string;
 use crate::disassembler::options::DisassemblerOptions;
-use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 use crate::shared_values::SharedContainer;
 
 #[derive(Debug)]
@@ -166,12 +164,12 @@ impl RuntimeInternal {
     }
     pub fn pointer_availability_lookup(
         &self,
-    ) -> Ref<PointerAvailabilityLookup> {
+    ) -> Ref<'_, PointerAvailabilityLookup> {
         self.pointer_availability_lookup.borrow()
     }
     pub fn pointer_availability_lookup_mut(
         &self,
-    ) -> RefMut<PointerAvailabilityLookup> {
+    ) -> RefMut<'_, PointerAvailabilityLookup> {
         self.pointer_availability_lookup.borrow_mut()
     }
     pub fn memory(&self) -> &RefCell<SharedReferencesCache> {

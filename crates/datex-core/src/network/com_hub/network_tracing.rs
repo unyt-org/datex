@@ -626,7 +626,7 @@ impl ComHub {
         let pointer_lookup = PointerAvailabilityLookup::default();
         let dxb = compile_value(
             Value::from(hops_datex),
-            CompileInput::new(&pointer_lookup, &vec![]),
+            CompileInput::new(&pointer_lookup, &[]),
         );
         // info!(
         //     "Trace data: {}",

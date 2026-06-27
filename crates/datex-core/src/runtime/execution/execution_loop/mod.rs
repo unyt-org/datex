@@ -87,10 +87,8 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::disassembler::disassemble_body_to_string;
-use crate::disassembler::options::DisassemblerOptions;
-use crate::shared_values::{SelfOwnedPointerAddress, SharedContainerOwnership};
-use crate::values::core_values::callable::{Callable, CallableBody, CoreStub, NativeCallable};
+use crate::shared_values::SharedContainerOwnership;
+use crate::values::core_values::callable::{Callable, CallableBody, CoreStub};
 use crate::values::core_values::endpoint::Endpoint;
 use crate::values::value_container::error::ValueError;
 
@@ -508,7 +506,7 @@ pub fn inner_execution_loop(
                                 if state.caller_metadata.endpoint.is_local_or_equals_endpoint(state.runtime.endpoint()) {
                                     let mut moved_values = Vec::with_capacity(perform_move.pointers.len());
 
-                                    for (mutable_flag, address) in perform_move.pointers {
+                                    for (_mutable_flag, address) in perform_move.pointers {
                                         let container = yield_unwrap!(resolve_cache_value(
                                             &mut state,
                                             PointerAddress::SelfOwned(address),
@@ -551,7 +549,7 @@ pub fn inner_execution_loop(
                                 // shared ref without value, assumes value already known, otherwise request (todo)
                                 let container = yield_unwrap!(resolve_cache_value(
                                     &mut state,
-                                    PointerAddress::from(shared_ref.address).normalize(&endpoint),
+                                    shared_ref.address.normalize(&endpoint),
                                     SharedContainerOwnership::Referenced(shared_ref.ref_mutability)
                                 ));
                                 Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container)))
@@ -1335,7 +1333,7 @@ pub fn inner_execution_loop(
                                         )
                                     });
 
-                                    let shared_references_cache = shared_containers.iter().cloned().collect::<Vec<_>>();
+                                    let shared_references_cache = shared_containers.to_vec();
 
                                     yield_unwrap!(
                                         // SAFETY: we guarantee that receivers is not empty.
@@ -1344,7 +1342,7 @@ pub fn inner_execution_loop(
                                                 &receivers_list.iter().collect::<Vec<_>>(),
                                                 shared_containers
                                             )
-                                        }.map_err(|e| ExecutionError::MoveToMultipleEndpoints)
+                                        }.map_err(|_e| ExecutionError::MoveToMultipleEndpoints)
                                     );
 
                                     interrupt_with_maybe_value!(
@@ -1488,9 +1486,7 @@ pub fn inner_execution_loop(
                                             def,
                                             impl_type_data
                                                 .impls
-                                                .into_iter()
-                                                .map(PointerAddress::from)
-                                                .collect(),
+                                                .into_iter().collect(),
                                         )).into()
                                     }
                                     TypeInstruction::TypeDefinitionRange => {

@@ -20,7 +20,6 @@ use core::{
     cell::RefCell,
     fmt::{Debug, Write},
 };
-use core::slice::Iter;
 use serde::Serialize;
 use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
 

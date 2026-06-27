@@ -200,7 +200,6 @@ impl Type {
         // just collapse to definition
         if let Type::Alias(TypeDefinitionWithMetadata {
             metadata,
-            definition: _,
             ..
         }) = &self
             && metadata == &TypeMetadata::default()

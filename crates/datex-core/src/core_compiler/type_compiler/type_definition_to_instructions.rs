@@ -169,7 +169,7 @@ impl<'a> ToInstructions<'a> for ImplTypeDefinition {
                 impls: self
                     .impl_markers
                     .iter()
-                    .map(|address| PointerAddress::from(address.clone()))
+                    .map(|address| address.clone())
                     .collect(),
             });
             for instruction in

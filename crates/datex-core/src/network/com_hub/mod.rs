@@ -1201,7 +1201,7 @@ impl ComHub {
                     // add to response for matching endpoint
                     else if let Some(matches_endpoint) = self.try_match_sender(&mut responses, &sender) {
                         let response = responses.get_mut(&matches_endpoint).unwrap();
-                        info!("Received resolved response from {} -> {}", &sender, &sender.any_instance_endpoint());
+                        info!("Received resolved response from {} -> {}", sender, sender.any_instance_endpoint());
                         sender = sender.any_instance_endpoint();
                         // check if the receiver is already set (= current set response is Err)
                         if response.is_err() {
@@ -1211,12 +1211,12 @@ impl ComHub {
                         }
                         // already received a response from a matching endpoint - ignore
                         else {
-                            info!("Received multiple resolved responses from the {}", &sender);
+                            info!("Received multiple resolved responses from the {}", sender);
                         }
                     }
                     // response from unexpected sender
                     else {
-                        error!("Received response from unexpected sender: {}", &sender);
+                        error!("Received response from unexpected sender: {}", sender);
                     }
 
                     // if resolution strategy is ReturnOnFirstResult, break if any response is received

@@ -101,7 +101,7 @@ impl TypeInstruction {
                 write!(
                     string,
                     "(address: {})",
-                    PointerAddress::from(reference_data.address.clone())
+                    reference_data.address.clone()
                 )
             }
             TypeInstruction::TypeDefinitionImplType(data) => {

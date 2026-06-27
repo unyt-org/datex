@@ -184,7 +184,7 @@ fn append_referenced_shared_container(
             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                 address: match referenced_container.pointer_address() {
                     PointerAddress::SelfOwned(self_owned_address) => {
-                        self_owned_address.into()
+                        self_owned_address
                     }
                     _ => unreachable!(), // referenced containers with insert_value=true should always be self owned
                 },
@@ -200,7 +200,7 @@ fn append_referenced_shared_container(
         append_regular_instruction(
             compilation_context.cursor_mut(),
             RegularInstruction::SharedRef(SharedRef {
-                address: referenced_container.pointer_address().clone().into(),
+                address: referenced_container.pointer_address().clone(),
                 ref_mutability: referenced_container.reference_mutability(),
                 container_mutability: referenced_container
                     .container_mutability(),

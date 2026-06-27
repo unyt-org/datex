@@ -493,14 +493,13 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 self.scope_stack.push_scope();
                 self.scope_stack.increment_realm_index();
             }
-            NewScopeType::NewScope => {
+            NewScopeType::NewScope
                 // if in top level scope, don't create a new scope if first ast level
                 if !(self.scope_stack.scopes.len() == 1
                     && self.is_first_level_expression)
-                {
+                => {
                     self.scope_stack.push_scope();
                 }
-            }
             _ => {}
         };
 
@@ -509,12 +508,11 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
     fn after_visit_datex_expression(&mut self, expr: &mut DatexExpression) {
         match self.scope_type_for_expression(expr) {
-            NewScopeType::NewScope | NewScopeType::NewScopeWithNewRealm => {
+            NewScopeType::NewScope | NewScopeType::NewScopeWithNewRealm
                 // always keep top level scope
-                if self.scope_stack.scopes.len() > 1 {
+                if self.scope_stack.scopes.len() > 1 => {
                     self.scope_stack.pop_scope();
                 }
-            }
             _ => {}
         };
     }
@@ -603,9 +601,9 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     self.hoist_variable(type_declaration);
                 }
                 // also terminate execution block for remote execution if the result is not used
-                DatexExpressionData::RemoteExecution(remote_execution) => {
+                DatexExpressionData::RemoteExecution(remote_execution)
                     // if not last statement, or last statement and terminated
-                    if i != statements_length - 1 || is_terminated {
+                    if (i != statements_length - 1 || is_terminated) => {
                         match &mut remote_execution.right.data {
                             DatexExpressionData::Statements(statements) => {
                                 statements.is_terminated = true;
@@ -627,7 +625,6 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                             }
                         }
                     }
-                }
                 _ => {}
             }
         }

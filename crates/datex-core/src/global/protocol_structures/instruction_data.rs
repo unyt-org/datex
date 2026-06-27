@@ -16,7 +16,6 @@ use crate::{
         SelfOwnedPointerAddress, SharedContainerMutability,
     },
     types::type_definition_with_metadata::TypeMetadata,
-    values::core_values::endpoint::{Endpoint, EndpointParsingError},
 };
 use alloc::string::FromUtf8Error;
 use binrw::{
@@ -27,7 +26,6 @@ use binrw::{
 use cfg_if::cfg_if;
 use core::{fmt::Display, ops::AddAssign};
 use modular_bitfield::{bitfield, prelude::B4};
-use serde::{Deserialize, Serialize};
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

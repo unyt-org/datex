@@ -1,7 +1,7 @@
 use crate::{prelude::*, types::type_definition::TypeDefinition};
 use core::{fmt::Display, hash::Hash};
 
-mod metadata;
+pub mod metadata;
 pub mod serde_dif;
 pub use metadata::*;
 pub mod type_match;

@@ -1,14 +1,4 @@
-use binrw::BinWrite;
-use crate::{
-    core_compiler::value_compiler::{
-        append_instruction_code, append_local_pointer_address,
-    },
-    global::{
-        instruction_codes::InstructionCode,
-    },
-    prelude::*,
-    utils::buffers::append_u32,
-};
+use crate::prelude::*;
 use binrw::io::Cursor;
 use crate::core_compiler::value_compiler::append_regular_instruction;
 use crate::global::protocol_structures::instruction_data::Move;
@@ -32,6 +22,7 @@ pub fn compile_request_move(
 
 #[cfg(test)]
 mod tests {
+    use crate::global::instruction_codes::InstructionCode;
     use super::*;
 
     #[test]

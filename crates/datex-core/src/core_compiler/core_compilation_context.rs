@@ -2,7 +2,7 @@ use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
-        shared_value_tracking::{SharedValueTracking, default_tracking},
+        shared_value_tracking::SharedValueTracking,
         to_instructions::ToInstructions,
         type_compiler::append_type_instruction,
         value_compiler::{append_shared_container_from_stack, append_value},

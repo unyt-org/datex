@@ -1,7 +1,5 @@
 //! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
-    core_compiler::core_compilation_context::DXBWithSharedValues,
-    prelude::*,
     runtime::{
         Runtime,
         execution::{
@@ -21,7 +19,6 @@ use crate::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         SharedContainer,
     },
-    values::core_values::endpoint::Endpoint,
 };
 use core::{result::Result, unreachable};
 pub use errors::*;
@@ -282,6 +279,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
+    use crate::values::core_values::endpoint::Endpoint;
 
     fn execute_datex_script_debug(
         datex_script: &str,
