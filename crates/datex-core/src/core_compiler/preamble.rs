@@ -420,9 +420,6 @@ mod tests {
             },
             value_compiler::append_regular_instruction,
         },
-        disassembler::{
-            disassemble_body_to_string, options::DisassemblerOptions,
-        },
         global::protocol_structures::{
             instruction_data::{
                 Int32Data, ListData, SharedRefWithValue, ShortListData,

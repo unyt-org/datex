@@ -201,7 +201,7 @@ pub enum InnerInstructions<'a> {
 }
 
 /// Converts a raw DXB body in to human-readable disassembled instructions string
-pub fn disassemble_body_to_string(
+pub(super) fn disassemble_body_to_string(
     body: &[u8],
     options: DisassemblerOptions,
 ) -> String {

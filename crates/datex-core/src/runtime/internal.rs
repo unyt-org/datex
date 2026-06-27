@@ -56,6 +56,7 @@ use core::{
     slice,
 };
 use log::{debug, error, info};
+use crate::disassembler::print_disassembled_with_options;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -544,10 +545,12 @@ impl RuntimeInternal {
         }
         let dxb = block.body;
         info!(
-            "executing on {}:\n{}",
+            "executing on {}:\n",
             self.endpoint,
-            disassemble_body_to_string(&dxb, DisassemblerOptions::default())
         );
+
+        print_disassembled_with_options(&dxb, DisassemblerOptions::default());
+        
         let end_execution =
             block.block_header.flags_and_timestamp.is_end_of_section();
 
