@@ -408,6 +408,7 @@ mod tests {
             core_lib_id::CoreLibIdIndex,
             type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
         },
+        runtime::cache::shared_values_cache::SharedValuesCache,
         values::{
             core_value::CoreValue,
             core_values::{
@@ -421,7 +422,6 @@ mod tests {
     };
     use core::str::FromStr;
     use test_case::test_case;
-    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 
     #[test]
     fn endpoint_serialization() {

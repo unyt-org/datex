@@ -87,7 +87,7 @@ impl ValueContainer {
     /// Tries to get a mutable reference to the value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_as_mut<'a, T>(&'a mut self) -> Option<&'a  mut T>
+    pub fn try_as_mut<'a, T>(&'a mut self) -> Option<&'a mut T>
     where
         &'a mut T: TryFrom<&'a mut CoreValue>,
     {
@@ -107,7 +107,6 @@ impl ValueContainer {
     {
         self.with_collapsed_value(|value| value.inner.try_as().map(f))
     }
-
 
     /// Tries to get the current collapsed value as a specified type.
     /// Does not perform any type conversion.

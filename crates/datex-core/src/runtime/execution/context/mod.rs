@@ -1,19 +1,18 @@
 //! This module contains the implementation of the execution context, which holds the state of an active execution.
 #[cfg(feature = "compiler")]
-use crate::{
-    compiler::{
-        CompileOptions, compile_template, error::SpannedCompilerError,
-        scope::CompilationScope,
-    },
+use crate::compiler::{
+    CompileOptions, compile_template, error::SpannedCompilerError,
+    scope::CompilationScope,
 };
-use crate::core_compiler::core_compilation_context::DXBWithSharedValues;
-use crate::values::core_values::endpoint::Endpoint;
 use crate::{
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     runtime::execution::{
         ExecutionError, ExecutionInput, MemoryDump, execute_dxb,
         execute_dxb_sync,
     },
-    values::value_container::ValueContainer,
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
 };
 
 use crate::{prelude::*, runtime::Runtime};

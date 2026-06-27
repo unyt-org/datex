@@ -429,7 +429,8 @@ fn struct_with_serde_to_value_container() {
 
     let map: Map = value_container.try_into_value().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
-    let serde_map: Map = map.get("serde").unwrap().clone().try_into_value().unwrap();
+    let serde_map: Map =
+        map.get("serde").unwrap().clone().try_into_value().unwrap();
     assert_eq!(
         serde_map.get("inner_a").unwrap(),
         &ValueContainer::from(1u8)
@@ -462,7 +463,8 @@ fn struct_with_serde_infallible_to_value_container() {
 
     let map: Map = value_container.try_into_value().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
-    let serde_map: Map = map.get("serde").unwrap().clone().try_into_value().unwrap();
+    let serde_map: Map =
+        map.get("serde").unwrap().clone().try_into_value().unwrap();
     assert_eq!(
         serde_map.get("inner_a").unwrap(),
         &ValueContainer::from(1u8)
@@ -618,7 +620,8 @@ fn get_datex_type_from_struct() {
 
 #[test]
 fn get_datex_type_from_enum() {
-    let dx_type = ExampleEnum::datex_type(&mut SharedReferencesCache::default());
+    let dx_type =
+        ExampleEnum::datex_type(&mut SharedReferencesCache::default());
     println!("{}", dx_type);
 
     assert_eq!(

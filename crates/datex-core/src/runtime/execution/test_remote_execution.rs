@@ -295,28 +295,39 @@ pub async fn remote_shared_roundtrip_move(
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute(&format!("const x = {shared_string} 42; @test_b :: (print 'x; x)"), &[], None)
+                .execute(
+                    &format!(
+                        "const x = {shared_string} 42; @test_b :: (print 'x; x)"
+                    ),
+                    &[],
+                    None,
+                )
                 .await
-                .unwrap().unwrap();
+                .unwrap()
+                .unwrap();
             if let ValueContainer::Shared(shared_container) = result {
-                shared_container.try_get_owned().expect("shared container should be owned");
+                shared_container
+                    .try_get_owned()
+                    .expect("shared container should be owned");
                 assert_matches!(
                     shared_container.pointer_address(),
                     PointerAddress::SelfOwned(..)
                 );
                 assert_eq!(
-                    *shared_container.inner().base_shared_container().mutability(),
+                    *shared_container
+                        .inner()
+                        .base_shared_container()
+                        .mutability(),
                     mutable_value
                 );
                 assert_eq!(
                     *shared_container.value_container(),
                     ValueContainer::from(Integer::from(42))
                 )
-            }
-            else {
+            } else {
                 panic!("Expected SharedContainer");
             }
         },
     )
-        .await;
+    .await;
 }

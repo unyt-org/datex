@@ -3,13 +3,15 @@ use core::cell::RefCell;
 use crate::values::value_container::ValueContainer;
 
 use crate::{
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
-    shared_values::{ReferenceMutability, SharedContainerMutability},
+    shared_values::{
+        ReferenceMutability, RemotePointerAddress, SelfOwnedPointerAddress,
+        SharedContainerMutability,
+    },
+    values::core_values::endpoint::Endpoint,
 };
-use crate::core_compiler::core_compilation_context::DXBWithSharedValues;
-use crate::shared_values::{RemotePointerAddress, SelfOwnedPointerAddress};
-use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {

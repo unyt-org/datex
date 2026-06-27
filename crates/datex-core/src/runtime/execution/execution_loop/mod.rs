@@ -7,7 +7,10 @@ mod runtime_value;
 pub mod state;
 
 use crate::{
-    core_compiler::{core_compilation_context::{CompileInput, DXBWithSharedValues}, injected_values::compile_injected_values},
+    core_compiler::{
+        core_compilation_context::{CompileInput, DXBWithSharedValues},
+        injected_values::compile_injected_values,
+    },
     dxb_parser::{
         body::{DXBParserError, iterate_instructions},
         instruction_collector::{
@@ -21,9 +24,9 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, ModifyStackValue,
-                ShortStatementsData, ShortTextData, StatementsData,
-                TaggedValue, TextData, UnboundedStatementsData,
+                FloatAsInt32Data, ModifyStackValue, ShortStatementsData,
+                ShortTextData, StatementsData, TaggedValue, TextData,
+                UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
@@ -57,6 +60,7 @@ use crate::{
         OwnedSharedContainer, PointerAddress, ReferenceMutability,
         ReferencedSharedContainer, RemotePointerAddress,
         SelfOwnedSharedContainer, SharedContainer, SharedContainerMutability,
+        SharedContainerOwnership,
         base_shared_value_container::{
             BaseSharedValueContainer, observers::TransceiverId,
         },
@@ -76,21 +80,21 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
+            callable::{Callable, CallableBody, CoreStub},
             decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
             integer::typed_integer::TypedInteger,
             list::List,
             map::{Map, MapKey},
         },
         value::Value,
-        value_container::{ValueContainer, value_key::ValueKey},
+        value_container::{
+            ValueContainer, error::ValueError, value_key::ValueKey,
+        },
     },
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::shared_values::SharedContainerOwnership;
-use crate::values::core_values::callable::{Callable, CallableBody, CoreStub};
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::value_container::error::ValueError;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -1612,15 +1616,14 @@ pub fn inner_execution_loop(
     }
 }
 
-
 fn resolve_cache_value(
     state: &mut RuntimeExecutionState,
     pointer_address: PointerAddress,
     ownership: SharedContainerOwnership,
 ) -> Result<SharedContainer, ExecutionError> {
     // try to find in execution context cache
-    state.shared_value_cache.try_get_shared_container_with_ownership(
-        &pointer_address,
-        ownership,
-    ).map_err(ExecutionError::CacheValueRetrievalError)
+    state
+        .shared_value_cache
+        .try_get_shared_container_with_ownership(&pointer_address, ownership)
+        .map_err(ExecutionError::CacheValueRetrievalError)
 }

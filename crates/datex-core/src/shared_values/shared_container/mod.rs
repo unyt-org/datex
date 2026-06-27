@@ -295,7 +295,9 @@ impl SharedContainer {
     }
 
     /// Clones the shared container as a mutable reference if possible, otherwise as an immutable reference
-    pub fn derive_reference_with_max_mutability(&self) -> ReferencedSharedContainer {
+    pub fn derive_reference_with_max_mutability(
+        &self,
+    ) -> ReferencedSharedContainer {
         self.try_derive_mutable_reference()
             .unwrap_or_else(|_| self.derive_immutable_reference())
     }

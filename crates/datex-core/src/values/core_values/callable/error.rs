@@ -18,7 +18,10 @@ impl Display for CallableError {
                 write!(f, "Execution error: {}", error)
             }
             CallableError::RuntimeOnlyCallable => {
-                write!(f, "This callable can only be called inside a runtime context")
+                write!(
+                    f,
+                    "This callable can only be called inside a runtime context"
+                )
             }
         }
     }

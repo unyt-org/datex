@@ -10,8 +10,8 @@ use crate::{
     prelude::*,
     runtime::{
         Runtime,
-        execution::{ExecutionError, context::ScriptExecutionError},
         cache::shared_references_cache::SharedReferencesCache,
+        execution::{ExecutionError, context::ScriptExecutionError},
     },
     shared_values::errors::KeyNotFoundError,
     types::r#type::Type,

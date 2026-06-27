@@ -19,8 +19,8 @@ use alloc::rc::Rc;
 use core::{
     cell::{Ref, RefCell, RefMut},
     fmt::Display,
+    hash::{Hash, Hasher},
 };
-use core::hash::{Hash, Hasher};
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///

@@ -17,14 +17,13 @@ use crate::{
     libs::core::core_lib_id::CoreLibId,
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
-        SharedContainer,
+        RemotePointerAddress, SelfOwnedPointerAddress, SharedContainer,
     },
 };
 use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
-use crate::shared_values::{RemotePointerAddress, SelfOwnedPointerAddress};
 
 pub mod context;
 mod errors;
@@ -135,7 +134,10 @@ pub async fn execute_dxb(
                     )),
                 );
             }
-            ExternalExecutionInterrupt::RemoteExecution {input, mut receivers} => {
+            ExternalExecutionInterrupt::RemoteExecution {
+                input,
+                mut receivers,
+            } => {
                 // assert that receivers is a single endpoint
                 assert_eq!(receivers.len(), 1);
 
@@ -145,10 +147,7 @@ pub async fn execute_dxb(
                     runtime.clone(),
                 );
                 let res = runtime
-                    .execute_remote(
-                        &mut remote_execution_context,
-                        input,
-                    )
+                    .execute_remote(&mut remote_execution_context, input)
                     .await?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
@@ -208,8 +207,7 @@ fn get_remote_shared_container_reference(
 ) -> Result<Option<ReferencedSharedContainer>, ExecutionError> {
     let address_provider = runtime.pointer_address_provider().borrow();
     let memory = runtime.memory().borrow();
-    let resolved_address =
-        address_provider.normalize_address(address);
+    let resolved_address = address_provider.normalize_address(address);
     // convert slot to InternalSlot enum
     // TODO #770: resolve from remote, handle mutability
     Ok(memory.get_reference(&resolved_address).cloned())
@@ -270,6 +268,7 @@ mod tests {
             core_value::CoreValue,
             core_values::{
                 decimal::Decimal,
+                endpoint::Endpoint,
                 integer::{Integer, typed_integer::TypedInteger},
                 list::List,
                 map::Map,
@@ -279,7 +278,6 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
-    use crate::values::core_values::endpoint::Endpoint;
 
     fn execute_datex_script_debug(
         datex_script: &str,

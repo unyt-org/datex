@@ -186,7 +186,10 @@ pub struct TypeInference<'a> {
 }
 
 impl<'a> TypeInference<'a> {
-    pub fn new(metadata: Rc<RefCell<AstMetadata>>, memory: &'a SharedReferencesCache) -> Self {
+    pub fn new(
+        metadata: Rc<RefCell<AstMetadata>>,
+        memory: &'a SharedReferencesCache,
+    ) -> Self {
         TypeInference {
             metadata,
             errors: None,

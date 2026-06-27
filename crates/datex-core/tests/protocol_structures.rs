@@ -13,12 +13,11 @@ use datex_core::{
             serializable::Serializable,
         },
     },
-    shared_values::PointerAddress,
+    shared_values::{PointerAddress, RemotePointerAddress},
     values::core_values::endpoint::{Endpoint, EndpointInstance, EndpointType},
 };
 use serde::Serialize;
 use serde_json::ser::PrettyFormatter;
-use datex_core::shared_values::RemotePointerAddress;
 
 #[test]
 pub fn parse_encrypted_header() {
@@ -240,10 +239,12 @@ pub fn dxb_blocks() {
         let endpoint =
             hex::encode(Endpoint::from_str("@jonas").unwrap().to_slice());
         block.set_receivers(
-            match PointerAddress::try_from(format!("${}FFFFFFFFFF", endpoint)).unwrap() {
+            match PointerAddress::try_from(format!("${}FFFFFFFFFF", endpoint))
+                .unwrap()
+            {
                 PointerAddress::Remote(remote) => remote,
                 _ => unreachable!(),
-            }
+            },
         );
         block.routing_header = block
             .routing_header

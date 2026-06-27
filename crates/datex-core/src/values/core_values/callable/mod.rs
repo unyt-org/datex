@@ -42,7 +42,9 @@ impl Callable {
             CallableBody::DatexBytecode => {
                 todo!("#606 Calling Datex bytecode is not yet implemented")
             }
-            CallableBody::CoreStub(_stub) => Err(CallableError::RuntimeOnlyCallable)
+            CallableBody::CoreStub(_stub) => {
+                Err(CallableError::RuntimeOnlyCallable)
+            }
         }
     }
 }

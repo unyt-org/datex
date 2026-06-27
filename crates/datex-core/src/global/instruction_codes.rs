@@ -145,7 +145,7 @@ pub enum InstructionCode {
     ENDPOINT,
 
     TAGGED_VALUE, // e.g. #Example or #Example {example: 42}
-    
+
     // lists and maps 0xe0 - 0xef
     LIST,       // (1,2,3)
     SHORT_LIST, // (1,2,3) - optimized short list with up to 255 elements

@@ -103,15 +103,14 @@ impl Value {
         <&mut T>::try_from(&mut self.inner).ok()
     }
 
-
     /// Tries to convert the current value into the specific specified type.
     /// Does not perform any type conversion.
     pub fn try_into_value<T>(self) -> Option<T>
     where
-        T: TryFrom<CoreValue> {
+        T: TryFrom<CoreValue>,
+    {
         T::try_from(self.inner).ok()
     }
-
 
     /// Returns true if the current Value's actual type is the same as its default type
     /// E.g. if the type is integer for an Integer value, or integer/u8 for a typed integer value

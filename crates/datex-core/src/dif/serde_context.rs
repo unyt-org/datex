@@ -1,5 +1,5 @@
-use core::marker::PhantomData;
 use crate::runtime::cache::shared_values_cache::SharedValuesCache;
+use core::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct SerdeContext<'ctx, T> {
@@ -8,9 +8,7 @@ pub struct SerdeContext<'ctx, T> {
 }
 
 impl<'ctx, T> SerdeContext<'ctx, T> {
-    pub fn new(
-        shared_container_cache: &'ctx mut SharedValuesCache,
-    ) -> Self {
+    pub fn new(shared_container_cache: &'ctx mut SharedValuesCache) -> Self {
         Self {
             shared_container_cache,
             _marker: PhantomData,

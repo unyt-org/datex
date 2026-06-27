@@ -4,9 +4,7 @@ use crate::{
         to_instructions::ToInstructions,
     },
     global::protocol_structures::{
-        instruction_data::{
-            ImplTypeData, ListData, MapData,
-        },
+        instruction_data::{ImplTypeData, ListData, MapData},
         type_instructions::TypeInstruction,
     },
     prelude::*,
@@ -33,7 +31,6 @@ use crate::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
-use crate::shared_values::PointerAddress;
 
 impl<'a> ToInstructions<'a> for TypeDefinitionWithMetadata {
     type InstructionType = TypeInstruction;
@@ -166,11 +163,7 @@ impl<'a> ToInstructions<'a> for ImplTypeDefinition {
         Box::new(gen {
             yield TypeInstruction::TypeDefinitionImplType(ImplTypeData {
                 impl_count: self.impl_markers.len() as u8,
-                impls: self
-                    .impl_markers
-                    .iter()
-                    .map(|address| address.clone())
-                    .collect(),
+                impls: self.impl_markers.iter().cloned().collect(),
             });
             for instruction in
                 self.inner_type.to_instructions(shared_value_tracking)

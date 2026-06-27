@@ -4,7 +4,8 @@ use crate::{
     network::com_hub::ComHub,
     prelude::*,
     runtime::{
-        Runtime, RuntimeConfig, RuntimeInternal, cache::shared_references_cache::SharedReferencesCache,
+        Runtime, RuntimeConfig, RuntimeInternal,
+        cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     time::now_ms,

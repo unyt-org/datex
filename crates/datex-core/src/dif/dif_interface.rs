@@ -1,9 +1,12 @@
 use crate::{
-    dif::{
-        error::{DIFObserveError, DIFUpdateError},
-    },
+    dif::error::{DIFObserveError, DIFUpdateError},
     prelude::*,
-    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+    runtime::{
+        cache::shared_values_cache::{
+            SharedValuesCache, ValueNotFoundInCacheError,
+        },
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
+    },
     shared_values::{
         OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
         SelfOwnedSharedContainer, SharedContainer, SharedContainerOwnership,
@@ -23,7 +26,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
-use crate::runtime::cache::shared_values_cache::{SharedValuesCache, ValueNotFoundInCacheError};
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 

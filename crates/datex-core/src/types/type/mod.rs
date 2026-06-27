@@ -198,10 +198,7 @@ impl Type {
     /// Converts the given [Type] to an equivalent [TypeDefinition]
     pub fn convert_to_definition(self) -> TypeDefinition {
         // just collapse to definition
-        if let Type::Alias(TypeDefinitionWithMetadata {
-            metadata,
-            ..
-        }) = &self
+        if let Type::Alias(TypeDefinitionWithMetadata { metadata, .. }) = &self
             && metadata == &TypeMetadata::default()
         {
             match self {

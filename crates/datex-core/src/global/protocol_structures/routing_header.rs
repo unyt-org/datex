@@ -1,14 +1,11 @@
 use super::serializable::Serializable;
 use crate::values::core_values::endpoint::Endpoint;
 
-use crate::{
-    prelude::*,
-};
+use crate::{prelude::*, shared_values::RemotePointerAddress};
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
 use itertools::Itertools;
 use modular_bitfield::prelude::*;
-use crate::shared_values::RemotePointerAddress;
 
 // 2 bit
 #[derive(

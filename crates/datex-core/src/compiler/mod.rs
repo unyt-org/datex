@@ -27,8 +27,8 @@ use crate::{
         value_compiler::{
             append_boolean, append_decimal, append_encoded_integer,
             append_endpoint, append_float_as_i16, append_float_as_i32,
-            append_get_shared_ref, append_shared_container_from_stack,
-            append_integer, append_key_string, append_regular_instruction,
+            append_get_shared_ref, append_integer, append_key_string,
+            append_regular_instruction, append_shared_container_from_stack,
             append_statements_preamble, append_text, append_typed_decimal,
             append_value,
         },
@@ -1572,12 +1572,20 @@ pub mod tests {
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
 
-    use crate::{compiler::scope::CompilationScope, core_compiler::core_compilation_context::{
-        CompileInput, DXBWithSharedValues, default_compile_input,
-    }, global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::type_instructions::TypeInstruction,
-    }, instructions, runtime::execution::context::ExecutionMode, types::literal_type_definition::LiteralTypeDefinition, values::value_container::ValueContainer};
+    use crate::{
+        compiler::scope::CompilationScope,
+        core_compiler::core_compilation_context::{
+            CompileInput, DXBWithSharedValues, default_compile_input,
+        },
+        global::{
+            instruction_codes::InstructionCode,
+            protocol_structures::type_instructions::TypeInstruction,
+        },
+        instructions,
+        runtime::execution::context::ExecutionMode,
+        types::literal_type_definition::LiteralTypeDefinition,
+        values::value_container::ValueContainer,
+    };
 
     #[cfg(feature = "disassembler")]
     use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
@@ -1594,9 +1602,9 @@ pub mod tests {
                     SharedInjectedValueType,
                 },
                 instruction_data::{
-                    InstructionBlockData, ListData, MapData, ShortListData,
-                    ShortTextData, StackIndex, StatementsData, TaggedValue,
-                    UInt8Data,
+                    InstructionBlockData, InstructionBlockDataDebugTree,
+                    ListData, MapData, ShortListData, ShortTextData,
+                    StackIndex, StatementsData, TaggedValue, UInt8Data,
                 },
                 instructions::Instruction,
                 regular_instructions::RegularInstruction,
@@ -1615,7 +1623,6 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugTree;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
@@ -2922,8 +2929,9 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements_with_children(false, instructions!(
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
                     RegularInstruction::PushToStack,
                     RegularInstruction::CreateShared,
                     RegularInstruction::UInt8(UInt8Data(42)),
@@ -2931,23 +2939,28 @@ pub mod tests {
                         InstructionBlockDataDebugTree {
                             length: 13,
                             injected_variable_count: 1,
-                            injected_values: vec![
-                                InjectedValueDeclaration {
-                                    index: StackIndex(0),
-                                    ty: InjectedValueType::Shared(
-                                        SharedInjectedValueType::Move
+                            injected_values: vec![InjectedValueDeclaration {
+                                index: StackIndex(0),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Move
+                                )
+                            }],
+                            body: RegularInstruction::statements_with_children(
+                                false,
+                                instructions!(
+                                    RegularInstruction::GetStackValueSharedRef(
+                                        StackIndex(0)
+                                    ),
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
                                     )
-                                }
-                            ],
-                            body: RegularInstruction::statements_with_children(false, instructions!(
-                                RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
-                                RegularInstruction::TakeStackValue(StackIndex(0))
-                            )),
+                                )
+                            ),
                         }
                     ),
                     RegularInstruction::UInt8(UInt8Data(1)),
-                )),
-            )
+                )
+            ),)
         )
     }
 

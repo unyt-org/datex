@@ -3,6 +3,7 @@ use crate::{
     collections::HashMap,
     core_compiler::core_compilation_context::DXBWithSharedValues,
     dif::dif_interface::DIFInterface,
+    disassembler::{disassemble_body_to_string, options::DisassemblerOptions},
     global::{
         dxb_block::{
             DXBBlock, IncomingEndpointContextSectionId, IncomingSection,
@@ -38,7 +39,7 @@ use crate::{
     },
     shared_values::{
         OwnedSharedContainer, PointerAddress, RemotePointerAddress,
-        SelfOwnedPointerAddress, SharedContainerMutability,
+        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
         base_shared_value_container::observers::TransceiverId,
     },
     time::Instant,
@@ -55,9 +56,6 @@ use core::{
     slice,
 };
 use log::{debug, error, info};
-use crate::disassembler::disassemble_body_to_string;
-use crate::disassembler::options::DisassemblerOptions;
-use crate::shared_values::SharedContainer;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -453,9 +451,13 @@ impl RuntimeInternal {
             .remove(0)?;
         let incoming_section = response.take_incoming_section();
 
-        RuntimeInternal::execute_incoming_section(self, incoming_section, Some(input.shared_values))
-            .await
-            .0
+        RuntimeInternal::execute_incoming_section(
+            self,
+            incoming_section,
+            Some(input.shared_values),
+        )
+        .await
+        .0
     }
 
     pub(crate) async fn execute_incoming_section(
@@ -528,7 +530,7 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         block: DXBBlock,
         execution_context: Option<&mut ExecutionContext>,
-        shared_values: Option<Vec<SharedContainer>>
+        shared_values: Option<Vec<SharedContainer>>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let execution_context = get_execution_context!(
             Runtime::from(self.clone()),
@@ -541,7 +543,11 @@ impl RuntimeInternal {
             );
         }
         let dxb = block.body;
-        info!("executing on {}:\n{}", self.endpoint, disassemble_body_to_string(&dxb, DisassemblerOptions::default()));
+        info!(
+            "executing on {}:\n{}",
+            self.endpoint,
+            disassemble_body_to_string(&dxb, DisassemblerOptions::default())
+        );
         let end_execution =
             block.block_header.flags_and_timestamp.is_end_of_section();
 
@@ -558,13 +564,14 @@ impl RuntimeInternal {
     pub fn register_shared_containers_for_single_endpoint(
         &self,
         endpoint: &Endpoint,
-        shared_containers: Vec<SharedContainer>
+        shared_containers: Vec<SharedContainer>,
     ) {
         unsafe {
             self.register_shared_containers_for_endpoints(
                 &[endpoint],
-                shared_containers
-            ).unwrap()
+                shared_containers,
+            )
+            .unwrap()
         }
     }
 
@@ -573,7 +580,7 @@ impl RuntimeInternal {
     pub unsafe fn register_shared_containers_for_endpoints(
         &self,
         endpoints: &[&Endpoint],
-        shared_containers: Vec<SharedContainer>
+        shared_containers: Vec<SharedContainer>,
     ) -> Result<(), ()> {
         if endpoints.is_empty() {
             panic!("endpoints must not be empty");
@@ -583,9 +590,12 @@ impl RuntimeInternal {
             match shared_container {
                 SharedContainer::Owned(owned_shared_container) => {
                     if endpoints.len() == 1 {
-                        self.add_moving_shared_container(endpoints[0].clone(), owned_shared_container);
+                        self.add_moving_shared_container(
+                            endpoints[0].clone(),
+                            owned_shared_container,
+                        );
                     } else {
-                        return Err(())
+                        return Err(());
                     }
                 }
                 SharedContainer::Referenced(_referenced_shared_container) => {
@@ -596,7 +606,6 @@ impl RuntimeInternal {
 
         Ok(())
     }
-
 
     /// Request to move a list of external pointers from an endpoint to the local endpoint
     /// This only works if the local endpoint has the permission to move the pointers, either because
@@ -612,10 +621,9 @@ impl RuntimeInternal {
             .map(|original| {
                 (
                     original,
-                    self
-                        .pointer_address_provider
+                    self.pointer_address_provider
                         .borrow_mut()
-                        .get_new_self_owned_address()
+                        .get_new_self_owned_address(),
                 )
             })
             .collect::<Vec<_>>();
@@ -701,10 +709,8 @@ impl RuntimeInternal {
         let values = pointer_mapping
             .into_iter()
             .map(|(original_address, new)| {
-                let new_address = RemotePointerAddress::for_endpoint(
-                    from_endpoint,
-                    &new,
-                );
+                let new_address =
+                    RemotePointerAddress::for_endpoint(from_endpoint, &new);
                 let shared_container = moving_pointers
                     .remove(&original_address)
                     .ok_or(ExecutionError::UnauthorizedMove)?;

@@ -1,6 +1,7 @@
 //! This module acts as the central type registry, to collect structs and enums annotated with `#[derive(datex)]` to make them available for external projects.
 use crate::{
-    datex_proxy::DatexProxyTypes, prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
+    datex_proxy::DatexProxyTypes, prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     types::r#type::Type,
 };
 

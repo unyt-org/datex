@@ -511,10 +511,10 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
 mod tests {
     use super::*;
 
+    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
     use serde::de::DeserializeSeed;
     use serde_json::json;
     use test_case::test_case;
-    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 
     fn deserialize_value(
         core_lib_id: CoreLibTypeId,

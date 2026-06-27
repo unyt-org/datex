@@ -10,11 +10,10 @@ use crate::{
                 FloatAsInt32Data, InstructionBlockData, Int8Data, Int16Data,
                 Int32Data, Int64Data, Int128Data, ListData, MapData,
                 ModifySharedContainerValue, ModifyStackValue, Move,
-                PerformMoves, SharedRef, SharedRefWithValue,
-                ShortListData, ShortMapData, ShortStatementsData,
-                ShortTextData, StackIndex, StatementsData, TaggedValue,
-                TextData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
-                UInt128Data, UnboundedStatementsData,
+                PerformMoves, SharedRef, SharedRefWithValue, ShortListData,
+                ShortMapData, ShortStatementsData, ShortTextData, StackIndex,
+                StatementsData, TaggedValue, TextData, UInt8Data, UInt16Data,
+                UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -22,7 +21,9 @@ use crate::{
     },
     libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
-    shared_values::PointerAddress,
+    shared_values::{
+        PointerAddress, RemotePointerAddress, SelfOwnedPointerAddress,
+    },
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
@@ -36,7 +37,6 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-use crate::shared_values::{RemotePointerAddress, SelfOwnedPointerAddress};
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -194,13 +194,15 @@ impl RegularInstruction {
             }),
         }
     }
-    
+
     pub fn list(count: u32) -> RegularInstruction {
         match count {
             0..=255 => RegularInstruction::ShortList(ShortListData {
                 element_count: count as u8,
             }),
-            _ => RegularInstruction::List(ListData { element_count: count }),
+            _ => RegularInstruction::List(ListData {
+                element_count: count,
+            }),
         }
     }
 }
@@ -332,7 +334,9 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::SharedRefWithValue(_) => {
                 InstructionCode::SHARED_REF_WITH_VALUE
             }
-            RegularInstruction::PerformMoves(_) => InstructionCode::PERFORM_MOVES,
+            RegularInstruction::PerformMoves(_) => {
+                InstructionCode::PERFORM_MOVES
+            }
             RegularInstruction::Move(_) => InstructionCode::MOVE,
             RegularInstruction::PushToStack => InstructionCode::PUSH_TO_STACK,
             RegularInstruction::PushListToStack => {
@@ -620,8 +624,9 @@ impl RegularInstruction {
             InstructionCode::LIST => {
                 ListData::read(reader).map(RegularInstruction::List)
             }
-            InstructionCode::SHORT_LIST => ShortListData::read(reader)
-                .map(RegularInstruction::ShortList),
+            InstructionCode::SHORT_LIST => {
+                ShortListData::read(reader).map(RegularInstruction::ShortList)
+            }
             InstructionCode::MAP => {
                 MapData::read(reader).map(RegularInstruction::Map)
             }

@@ -272,14 +272,16 @@ mod tests {
     use super::*;
     use crate::{
         libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
-        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+        runtime::{
+            cache::shared_values_cache::SharedValuesCache,
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+        },
         shared_values::{
             OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
             SharedContainerMutability,
         },
         values::{core_value::CoreValue, core_values::list::List},
     };
-    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 
     #[test]
     fn pointer_address() {

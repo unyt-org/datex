@@ -29,10 +29,10 @@ use crate::{
     },
     global::protocol_structures::{
         instruction_data::{
-            Float32Data, Float64Data, Int8Data, Int16Data, Int32Data,
-            Int64Data, Int128Data, ListData, MapData,
-            ShortTextData, TaggedValue, UInt8Data, UInt16Data, UInt32Data,
-            UInt64Data, UInt128Data,
+            ApplyData, Float32Data, Float64Data, Int8Data, Int16Data,
+            Int32Data, Int64Data, Int128Data, ListData, MapData, ShortTextData,
+            TaggedValue, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
+            UInt128Data,
         },
         instructions::Instruction,
         regular_instructions::RegularInstruction,
@@ -40,6 +40,7 @@ use crate::{
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdIndex},
         type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        value_id::CoreLibValueId,
     },
     prelude::*,
     runtime::execution::ExecutionError,
@@ -53,8 +54,6 @@ use crate::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
-use crate::global::protocol_structures::instruction_data::ApplyData;
-use crate::libs::core::value_id::CoreLibValueId;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -96,10 +95,7 @@ pub fn compile_value(
     value: Value,
     compile_input: CompileInput,
 ) -> DXBWithSharedValues {
-    compile_value_container(
-        ValueContainer::Local(value),
-        compile_input,
-    )
+    compile_value_container(ValueContainer::Local(value), compile_input)
 }
 
 // TODO: add struct for panics
@@ -112,10 +108,10 @@ pub fn compile_panic(
 
     append_apply(
         &mut context,
-        RegularInstruction::GetCoreLibValue(CoreLibId::Value(CoreLibValueId::Panic).into()),
-        vec![
-            ValueContainer::Local(panic_value.into())
-        ]
+        RegularInstruction::GetCoreLibValue(
+            CoreLibId::Value(CoreLibValueId::Panic).into(),
+        ),
+        vec![ValueContainer::Local(panic_value.into())],
     );
 
     context.into_dxb_with_shared_values().dxb
@@ -331,10 +327,7 @@ pub fn append_apply<T: BufferProvider + ValueVisitor>(
     for arg in args {
         context.visit_value_container(arg);
     }
-    append_regular_instruction(
-        context.cursor_mut(),
-        callee,
-    );
+    append_regular_instruction(context.cursor_mut(), callee);
 }
 
 pub fn append_type_cast<T: BufferProvider + ValueVisitor>(
@@ -516,25 +509,23 @@ pub fn append_get_shared_ref(
         PointerAddress::SelfOwned(local_address) => {
             append_regular_instruction(
                 context.cursor_mut(),
-                RegularInstruction::GetLocalSharedRef(local_address)
+                RegularInstruction::GetLocalSharedRef(local_address),
             );
         }
-        PointerAddress::Remote(address) => {
-            match mutability {
-                ReferenceMutability::Immutable => {
-                    append_regular_instruction(
-                        context.cursor_mut(),
-                        RegularInstruction::RequestRemoteSharedRef(address)
-                    );
-                }
-                ReferenceMutability::Mutable => {
-                    append_regular_instruction(
-                        context.cursor_mut(),
-                        RegularInstruction::RequestRemoteSharedRefMut(address)
-                    );
-                }
+        PointerAddress::Remote(address) => match mutability {
+            ReferenceMutability::Immutable => {
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::RequestRemoteSharedRef(address),
+                );
             }
-        }
+            ReferenceMutability::Mutable => {
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::RequestRemoteSharedRefMut(address),
+                );
+            }
+        },
     }
 }
 
@@ -633,21 +624,23 @@ mod tests {
         assert_regular_instructions_equal,
         core_compiler::{
             core_compilation_context::default_core_compilation_context,
-            shared_value_tracking::{TrackedReference},
+            shared_value_tracking::{TrackedOwned, TrackedReference},
+        },
+        disassembler::{
+            get_disassembled_with_options, options::DisassemblerOptions,
+            print_disassembled,
         },
         global::protocol_structures::instruction_data::{
-            ShortListData, StackIndex,
+            PerformMoves, SharedRefWithValue, ShortListData, StackIndex,
         },
-        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+        runtime::{
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+            pointer_availability_lookup::PointerAvailabilityLookup,
+        },
         shared_values::SharedContainerMutability,
         values::{core_values::list::List, value::Value},
     };
     use core::assert_matches;
-    use crate::core_compiler::shared_value_tracking::TrackedOwned;
-    use crate::disassembler::{get_disassembled_with_options, print_disassembled};
-    use crate::disassembler::options::DisassemblerOptions;
-    use crate::global::protocol_structures::instruction_data::{PerformMoves, SharedRefWithValue};
-    use crate::runtime::pointer_availability_lookup::PointerAvailabilityLookup;
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -775,7 +768,6 @@ mod tests {
             (
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushListToStack,
-
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushListToStack,
                 RegularInstruction::PerformMoves(PerformMoves {
@@ -784,7 +776,6 @@ mod tests {
                 }),
                 RegularInstruction::list(1),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
-
                 RegularInstruction::TakeStackValue(StackIndex(0))
             )
         );
@@ -835,7 +826,6 @@ mod tests {
             (
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushListToStack,
-
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushListToStack,
                 RegularInstruction::PerformMoves(PerformMoves {
@@ -844,7 +834,6 @@ mod tests {
                 }),
                 RegularInstruction::list(1),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
-
                 RegularInstruction::TakeStackValue(StackIndex(0)),
             )
         );
@@ -889,7 +878,6 @@ mod tests {
             (
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushListToStack,
-
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushToStack,
                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
@@ -897,12 +885,9 @@ mod tests {
                     ref_mutability: ReferenceMutability::Immutable,
                     container_mutability: SharedContainerMutability::Immutable,
                 }),
-
                 RegularInstruction::Int32(Int32Data(5)),
-
                 RegularInstruction::list(1),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
-
                 RegularInstruction::GetStackValueSharedRef(StackIndex(0))
             )
         );
@@ -972,23 +957,26 @@ mod tests {
             (
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushListToStack,
-
                 RegularInstruction::statements(2, false),
                 RegularInstruction::PushListToStack,
-                RegularInstruction::PerformMoves(PerformMoves {pointer_count: 2, pointers: vec![
-                    (0, b_pointer_address.into()),
-                    (0, a_pointer_address.into()),
-                ]}),
+                RegularInstruction::PerformMoves(PerformMoves {
+                    pointer_count: 2,
+                    pointers: vec![
+                        (0, b_pointer_address.into()),
+                        (0, a_pointer_address.into()),
+                    ]
+                }),
                 RegularInstruction::ShortList(ShortListData {
                     element_count: 2
                 }),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
-
                 RegularInstruction::ShortList(ShortListData {
                     element_count: 3
                 }),
-                RegularInstruction::ShortText(ShortTextData("test".to_string())),
+                RegularInstruction::ShortText(ShortTextData(
+                    "test".to_string()
+                )),
                 RegularInstruction::TakeStackValue(StackIndex(0)),
                 RegularInstruction::TakeStackValue(StackIndex(1)),
             )

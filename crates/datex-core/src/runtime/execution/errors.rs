@@ -4,7 +4,10 @@ use crate::{
     libs::core::core_lib_id::CoreLibIdIndex,
     network::com_hub::network_response::ResponseError,
     prelude::*,
-    runtime::execution::execution_loop::state::ExecutionLoopState,
+    runtime::{
+        cache::shared_values_cache::CacheValueRetrievalError,
+        execution::execution_loop::state::ExecutionLoopState,
+    },
     shared_values::errors::{
         AccessError, AssignmentError, SharedValueCreationError,
     },
@@ -14,7 +17,6 @@ use crate::{
     values::value_container::{ValueContainer, error::ValueError},
 };
 use core::fmt::Display;
-use crate::runtime::cache::shared_values_cache::CacheValueRetrievalError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {

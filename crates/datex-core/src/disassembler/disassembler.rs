@@ -4,6 +4,7 @@ use crate::{
     global::{
         instruction_codes::InstructionCode,
         protocol_structures::{
+            instruction_data::InstructionBlockDataDebugFlat,
             instructions::{
                 CountOrUnbounded, Instruction,
                 NestedInstructionResolutionStrategy,
@@ -14,14 +15,12 @@ use crate::{
     prelude::*,
     utils::ansi_colors::{AnsiColor, AnsiWrite},
 };
-use alloc::rc::Rc;
-use alloc::vec::IntoIter;
+use alloc::{rc::Rc, vec::IntoIter};
 use core::{
     cell::RefCell,
     fmt::{Debug, Write},
 };
 use serde::Serialize;
-use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
 
 /// A generic tree structure for instructions with child instructions.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -43,21 +42,17 @@ where
     }
 }
 
-impl From<RegularInstruction> for InstructionTree<Instruction>
-{
+impl From<RegularInstruction> for InstructionTree<Instruction> {
     fn from(instruction: RegularInstruction) -> Self {
         InstructionTree::new(Instruction::Regular(instruction))
     }
 }
 
-
-
 impl From<Vec<InstructionTree<Instruction>>> for InstructionTree<Instruction> {
     fn from(mut instruction_trees: Vec<InstructionTree<Instruction>>) -> Self {
         if instruction_trees.len() == 1 {
             instruction_trees.remove(0)
-        }
-        else {
+        } else {
             fn visit_next_child(
                 parent: &mut InstructionTree<Instruction>,
                 iterator: &mut IntoIter<InstructionTree<Instruction>>,
@@ -68,13 +63,20 @@ impl From<Vec<InstructionTree<Instruction>>> for InstructionTree<Instruction> {
                 };
 
                 // if instruction with next expected instructions, skip the next n instructions
-                if current.children().is_empty() &&
-                    let Some(child_count) = current.instruction().get_next_expected_instructions().total_count() &&
-                    let CountOrUnbounded::Count(child_count) = child_count {
-
+                if current.children().is_empty()
+                    && let Some(child_count) = current
+                        .instruction()
+                        .get_next_expected_instructions()
+                        .total_count()
+                    && let CountOrUnbounded::Count(child_count) = child_count
+                {
                     for _ in 0..child_count {
                         if !visit_next_child(&mut current, iterator) {
-                            panic!("Expected {} children for instruction {:?}, but got fewer", child_count, current.instruction());
+                            panic!(
+                                "Expected {} children for instruction {:?}, but got fewer",
+                                child_count,
+                                current.instruction()
+                            );
                         }
                     }
                 }
@@ -86,7 +88,8 @@ impl From<Vec<InstructionTree<Instruction>>> for InstructionTree<Instruction> {
 
             let mut iterator = instruction_trees.into_iter();
 
-            let mut root: InstructionTree<Instruction> = iterator.next().unwrap();
+            let mut root: InstructionTree<Instruction> =
+                iterator.next().unwrap();
             if !root.children().is_empty() {
                 panic!("Multiple root nodes found in instruction tree.");
             }
@@ -103,15 +106,21 @@ impl InstructionTree<Instruction> {
     /// also recursively flattens [RegularInstruction::_RemoteExecutionDebugTree]
     /// into [RegularInstruction::_RemoteExecutionDebugFlat]
     pub fn flatten_instructions(self) -> Vec<Instruction> {
-        if let Instruction::Regular(RegularInstruction::_RemoteExecutionDebugTree(tree)) = *self.instruction {
-            vec![Instruction::Regular(RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
-                length: tree.length,
-                injected_variable_count: tree.injected_variable_count,
-                injected_values: tree.injected_values,
-                body: tree.body.flatten_instructions(),
-            }))]
-        }
-        else {
+        if let Instruction::Regular(
+            RegularInstruction::_RemoteExecutionDebugTree(tree),
+        ) = *self.instruction
+        {
+            vec![Instruction::Regular(
+                RegularInstruction::_RemoteExecutionDebugFlat(
+                    InstructionBlockDataDebugFlat {
+                        length: tree.length,
+                        injected_variable_count: tree.injected_variable_count,
+                        injected_values: tree.injected_values,
+                        body: tree.body.flatten_instructions(),
+                    },
+                ),
+            )]
+        } else {
             let mut result = vec![*self.instruction];
             for child in self.children {
                 result.extend(child.flatten_instructions());
@@ -134,7 +143,10 @@ where
     }
 
     /// Create a new tree with a root instruction and children
-    pub fn new_with_children(instruction: T, children: Vec<InstructionTree<T>>) -> Self {
+    pub fn new_with_children(
+        instruction: T,
+        children: Vec<InstructionTree<T>>,
+    ) -> Self {
         Self {
             instruction: Box::new(instruction),
             children,
@@ -237,7 +249,7 @@ pub fn disassemble_instruction_tree_to_string(
                 "\x1b[38;2;245;39;60m\n[!] Parser Error: {}\x1b[0m",
                 err
             )
-                .unwrap();
+            .unwrap();
         } else {
             write!(&mut output, "[!] Parser Error: {}", err).unwrap();
         }
@@ -259,13 +271,17 @@ pub fn disassemble_body(
 }
 
 /// Converts a list of Instruction values into an instruction tree
-pub fn get_instruction_tree_from_list(instructions: Vec<Instruction>) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
+pub fn get_instruction_tree_from_list(
+    instructions: Vec<Instruction>,
+) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
     let mut iterator = instructions.into_iter().map(Ok);
     get_instruction_tree(&mut iterator)
 }
 
 /// Converts an instruction iterator into a list of disassembled Instruction values
-pub fn get_instruction_tree(instructions: impl Iterator<Item = Result<Instruction, DXBParserError>>) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
+pub fn get_instruction_tree(
+    instructions: impl Iterator<Item = Result<Instruction, DXBParserError>>,
+) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
     let mut tree = InstructionTree::new(Instruction::Regular(
         RegularInstruction::UnboundedStatements,
     )); // initial tree root, gets overridden

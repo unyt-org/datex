@@ -1,26 +1,30 @@
 use crate::prelude::*;
 
-use crate::{
-    values::core_values::endpoint::Endpoint,
-};
-use core::{fmt::Display, result::Result};
+use crate::values::core_values::endpoint::Endpoint;
 use binrw::{BinRead, BinWrite};
+use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(BinWrite, BinRead, Debug, Clone, PartialEq, Eq, Hash)]
 #[brw(little)]
 pub struct SelfOwnedPointerAddress(pub [u8; 5]);
 
-#[derive(BinWrite, BinRead, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(
+    BinWrite, BinRead, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash,
+)]
 #[brw(little)]
 pub struct RemotePointerAddress(pub [u8; 26]);
 
 impl RemotePointerAddress {
-    pub fn for_endpoint(endpoint: &Endpoint, self_owned_pointer_address: &SelfOwnedPointerAddress) -> Self {
+    pub fn for_endpoint(
+        endpoint: &Endpoint,
+        self_owned_pointer_address: &SelfOwnedPointerAddress,
+    ) -> Self {
         let endpoint_slice = endpoint.to_slice();
         let mut address = [0u8; 26];
         address[..endpoint_slice.len()].copy_from_slice(&endpoint_slice);
-        address[endpoint_slice.len()..endpoint_slice.len() + self_owned_pointer_address.0.len()]
+        address[endpoint_slice.len()
+            ..endpoint_slice.len() + self_owned_pointer_address.0.len()]
             .copy_from_slice(&self_owned_pointer_address.0);
         RemotePointerAddress(address)
     }

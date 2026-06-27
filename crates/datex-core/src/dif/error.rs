@@ -1,10 +1,12 @@
 use crate::{
-    runtime::execution::ExecutionError,
+    runtime::{
+        cache::shared_values_cache::CacheValueRetrievalError,
+        execution::ExecutionError,
+    },
     shared_values::base_shared_value_container::observers::ObserverError,
     value_updates::errors::UpdateError,
 };
 use core::fmt::Display;
-use crate::runtime::cache::shared_values_cache::CacheValueRetrievalError;
 
 #[derive(Debug)]
 pub enum DIFResolveReferenceError {

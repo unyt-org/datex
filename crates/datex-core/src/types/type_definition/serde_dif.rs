@@ -289,7 +289,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        dif::{serde_context::SerdeContext},
+        dif::serde_context::SerdeContext,
         libs::core::{
             core_lib_id::CoreLibIdIndex,
             type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
@@ -303,9 +303,11 @@ mod tests {
         SerdeContext::new(&mut SharedValuesCache::default())
             .serialize_to_json(value)
     }
+    use crate::runtime::cache::{
+        shared_references_cache::SharedReferencesCache,
+        shared_values_cache::SharedValuesCache,
+    };
     use test_case::test_case;
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-    use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 
     #[test_case(CoreLibTypeId::Base(CoreLibBaseTypeId::Text) ; "Text")]
     #[test_case(CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)) ; "integer/u8")]

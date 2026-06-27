@@ -1,9 +1,9 @@
 //! This module contains the disassembler for DATEX, which converts DXB bytecode into a human-readable assembly-like string representation.
 
+pub mod assertions;
 #[cfg(feature = "disassembler")]
 mod disassembler;
 pub mod options;
-pub mod assertions;
 
 use crate::{disassembler::options::DisassemblerOptions, prelude::*};
 use cfg_if::cfg_if;

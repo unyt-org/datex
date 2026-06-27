@@ -258,13 +258,13 @@ impl CoreValue {
     {
         <&mut T>::try_from(self).ok()
     }
-    
-    
+
     /// Tries to convert the current value into the specific specified type.
     /// Does not perform any type conversion.
     pub fn try_into_value<T>(self) -> Option<T>
     where
-        T: TryFrom<CoreValue> {
+        T: TryFrom<CoreValue>,
+    {
         T::try_from(self).ok()
     }
 

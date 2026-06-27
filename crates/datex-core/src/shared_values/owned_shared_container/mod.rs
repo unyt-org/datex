@@ -25,9 +25,9 @@ use alloc::rc::Rc;
 use core::{
     cell::{Ref, RefCell, RefMut},
     fmt::Display,
+    hash::{Hash, Hasher},
     mem,
 };
-use core::hash::{Hash, Hasher};
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -268,7 +268,7 @@ impl OwnedSharedContainer {
             &mut *inner,
             SharedContainerInner::EndpointOwned(SelfOwnedSharedContainer::new(
                 BaseSharedValueContainer::null(),
-                SelfOwnedPointerAddress([0; 5])
+                SelfOwnedPointerAddress([0; 5]),
             )),
         );
 

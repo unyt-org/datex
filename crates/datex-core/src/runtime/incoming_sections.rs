@@ -14,10 +14,12 @@ use crate::{
     },
 };
 
-use crate::prelude::*;
+use crate::{
+    core_compiler::value_compiler::{compile_panic, compile_value_container},
+    prelude::*,
+};
 use core::result::Result;
 use log::info;
-use crate::core_compiler::value_compiler::{compile_panic, compile_value_container};
 
 impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
@@ -47,8 +49,12 @@ impl RuntimeInternal {
         section: IncomingSection,
     ) {
         let (result, endpoint, context_id) =
-            RuntimeInternal::execute_incoming_section(self.clone(), section, None)
-                .await;
+            RuntimeInternal::execute_incoming_section(
+                self.clone(),
+                section,
+                None,
+            )
+            .await;
         match &result {
             Ok(Some(result)) => info!(
                 "Successful Execution result (on {} from {}): {}",
@@ -140,12 +146,8 @@ impl RuntimeInternal {
             }
         };
 
-        let mut block = DXBBlock::new(
-            routing_header,
-            block_header,
-            encrypted_header,
-            dxb,
-        );
+        let mut block =
+            DXBBlock::new(routing_header, block_header, encrypted_header, dxb);
         block.set_receivers(core::slice::from_ref(&receiver_endpoint));
 
         self.com_hub().send_own_block_async(block).await

@@ -1,9 +1,18 @@
+use crate::{
+    disassembler::{
+        InstructionTree, disassemble_body, disassemble_body_to_string,
+        disassemble_instruction_tree_to_string, get_instruction_tree_from_list,
+        options::DisassemblerOptions,
+    },
+    global::protocol_structures::{
+        instructions::{
+            CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
+        },
+        regular_instructions::RegularInstruction,
+    },
+    prelude::*,
+};
 use core::slice::Iter;
-use crate::disassembler::{disassemble_body, disassemble_body_to_string, disassemble_instruction_tree_to_string, get_instruction_tree_from_list, InstructionTree};
-use crate::disassembler::options::DisassemblerOptions;
-use crate::global::protocol_structures::instructions::{CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy};
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::prelude::*;
 
 #[cfg(feature = "disassembler")]
 #[macro_export]
@@ -58,11 +67,19 @@ pub fn assert_instruction_lists_eq(
     output_dxb: &[u8],
 ) {
     if output_instructions != expected_instructions {
-        let (expected_tree, expected_err) = get_instruction_tree_from_list(expected_instructions);
+        let (expected_tree, expected_err) =
+            get_instruction_tree_from_list(expected_instructions);
         panic!(
             "Output did not match expected instructions:\n\nOutput:\n{}\n\nExpected:\n{}\n",
-            disassemble_body_to_string(output_dxb, DisassemblerOptions::default()),
-            disassemble_instruction_tree_to_string(expected_tree, expected_err, DisassemblerOptions::default()),
+            disassemble_body_to_string(
+                output_dxb,
+                DisassemblerOptions::default()
+            ),
+            disassemble_instruction_tree_to_string(
+                expected_tree,
+                expected_err,
+                DisassemblerOptions::default()
+            ),
         );
     }
 }
@@ -79,20 +96,33 @@ pub fn resolve_instructions(dxb: &[u8]) -> Vec<Instruction> {
 }
 
 impl RegularInstruction {
-    pub fn with_children(self, children: Vec<InstructionTree<Instruction>>) -> InstructionTree<Instruction> {
+    pub fn with_children(
+        self,
+        children: Vec<InstructionTree<Instruction>>,
+    ) -> InstructionTree<Instruction> {
         // assert that children count matches expected count
-        if children.is_empty() &&
-            let CountOrUnbounded::Count(count) =
-                self.get_next_expected_instructions().total_count().expect("Expected count should be set for this instruction") &&
-            count as usize != children.len() {
-            panic!("Expected {} children for instruction {:?}, but got {}", count, self, children.len());
+        if children.is_empty()
+            && let CountOrUnbounded::Count(count) = self
+                .get_next_expected_instructions()
+                .total_count()
+                .expect("Expected count should be set for this instruction")
+            && count as usize != children.len()
+        {
+            panic!(
+                "Expected {} children for instruction {:?}, but got {}",
+                count,
+                self,
+                children.len()
+            );
         }
 
         InstructionTree::new_with_children(self.into(), children)
     }
 
     /// Calculates the actual child count of a list of instructions, skipping nested child instructions
-    fn calculate_children_count(children: &[InstructionTree<Instruction>]) -> u32 {
+    fn calculate_children_count(
+        children: &[InstructionTree<Instruction>],
+    ) -> u32 {
         fn visit_next_child(
             count: &mut u32,
             skip: bool,
@@ -108,10 +138,13 @@ impl RegularInstruction {
             }
 
             // if instruction with next expected instructions, skip the next n instructions
-            if current.children().is_empty() &&
-                let Some(child_count) = current.instruction().get_next_expected_instructions().total_count() &&
-                let CountOrUnbounded::Count(child_count) = child_count {
-
+            if current.children().is_empty()
+                && let Some(child_count) = current
+                    .instruction()
+                    .get_next_expected_instructions()
+                    .total_count()
+                && let CountOrUnbounded::Count(child_count) = child_count
+            {
                 for _ in 0..child_count {
                     visit_next_child(count, true, iterator);
                 }
@@ -129,17 +162,26 @@ impl RegularInstruction {
         }
     }
 
-    pub fn statements_with_children(terminated: bool, children: Vec<InstructionTree<Instruction>>) -> InstructionTree<Instruction> {
-         RegularInstruction::statements(RegularInstruction::calculate_children_count(&children), terminated)
-             .with_children(children)
+    pub fn statements_with_children(
+        terminated: bool,
+        children: Vec<InstructionTree<Instruction>>,
+    ) -> InstructionTree<Instruction> {
+        RegularInstruction::statements(
+            RegularInstruction::calculate_children_count(&children),
+            terminated,
+        )
+        .with_children(children)
     }
 
-    pub fn list_with_children(children: Vec<InstructionTree<Instruction>>) -> InstructionTree<Instruction> {
-        RegularInstruction::list(RegularInstruction::calculate_children_count(&children))
-            .with_children(children)
+    pub fn list_with_children(
+        children: Vec<InstructionTree<Instruction>>,
+    ) -> InstructionTree<Instruction> {
+        RegularInstruction::list(RegularInstruction::calculate_children_count(
+            &children,
+        ))
+        .with_children(children)
     }
 }
-
 
 #[cfg(feature = "disassembler")]
 #[macro_export]

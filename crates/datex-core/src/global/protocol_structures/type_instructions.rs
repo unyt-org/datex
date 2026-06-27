@@ -7,7 +7,6 @@ use crate::{
     },
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
-    shared_values::PointerAddress,
     types::{
         literal_type_definition::LiteralTypeDefinition,
         type_definition_with_metadata::TypeMetadata,
@@ -98,11 +97,7 @@ impl TypeInstruction {
             TypeInstruction::TypeDefinitionSharedTypeReference(
                 reference_data,
             ) => {
-                write!(
-                    string,
-                    "(address: {})",
-                    reference_data.address.clone()
-                )
+                write!(string, "(address: {})", reference_data.address.clone())
             }
             TypeInstruction::TypeDefinitionImplType(data) => {
                 write!(string, "({} impls)", data.impl_count)

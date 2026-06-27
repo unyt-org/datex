@@ -26,11 +26,11 @@ pub mod value_id;
 use crate::{
     prelude::*,
     types::{r#type::Type, type_definition::callable::CallableKind},
+    values::core_values::callable::CoreStub,
 };
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::values::core_values::callable::CoreStub;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
@@ -88,11 +88,13 @@ impl CoreLibraryValues {
             yield (id, self.get_by_id(&id));
         }
     }
-    
+
     pub fn panic_impl(
         _args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, CallableError> {
-        unreachable!("Panic called from core library. This should be handled by the runtime.");
+        unreachable!(
+            "Panic called from core library. This should be handled by the runtime."
+        );
     }
 
     fn print_impl(

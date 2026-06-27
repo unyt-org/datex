@@ -111,7 +111,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         .to_compile_error();
     }
     let dxb = dxb_with_shared_values.dxb;
-    
+
     quote! {{
         use datex_core::runtime::execution::execution_loop::state::RuntimeExecutionStack;
         use datex_core::runtime::execution::execution_input::ExecutionCallerMetadata;
