@@ -186,8 +186,9 @@ impl TypeMetadata {
     }
 }
 
-impl const Default for TypeMetadata {
-    fn default() -> Self {
+impl TypeMetadata {
+    // FIXME: Move to const default once supported is stable
+    pub const fn default() -> Self {
         TypeMetadata::Local {
             mutability: LocalMutability::Immutable,
             ownership: LocalOwnership::Owned,
