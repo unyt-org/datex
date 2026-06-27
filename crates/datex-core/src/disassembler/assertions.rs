@@ -42,7 +42,7 @@ macro_rules! assert_regular_instructions_equal {
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
         use $crate::disassembler::{InstructionTree};
         use $crate::global::protocol_structures::instructions::Instruction;
-        
+
         let dxb = $dxb;
         assert_instruction_lists_eq(
             resolve_instructions(dxb),
@@ -58,8 +58,6 @@ pub fn assert_instruction_lists_eq(
     output_dxb: &[u8],
 ) {
     if output_instructions != expected_instructions {
-        println!("Output: {:#?}", output_instructions);
-        println!("Expected: {:#?}", expected_instructions);
         let (expected_tree, expected_err) = get_instruction_tree_from_list(expected_instructions);
         panic!(
             "Output did not match expected instructions:\n\nOutput:\n{}\n\nExpected:\n{}\n",
