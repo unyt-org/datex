@@ -119,7 +119,7 @@ pub enum RegularInstruction {
     GetPropertyDynamic,
     SetPropertyDynamic,
     TakePropertyDynamic,
-    
+
     // comparison operator
     Is,
     Matches,

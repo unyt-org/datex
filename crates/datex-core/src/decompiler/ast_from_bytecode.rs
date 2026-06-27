@@ -412,7 +412,6 @@ pub fn ast_from_bytecode(
                             TypeInstruction::TypeDefinitionCoreType(core_lib_id) => {
                                 TypeExpressionData::Identifier(core_lib_id.to_string())
                             }
-                            
                             TypeInstruction::TypeDefinitionLiteral(literal) => {
                                 match literal {
                                     LiteralTypeDefinition::Integer(integer) => {

@@ -340,7 +340,7 @@ mod tests {
                         RegularInstruction::statements_with_children(false, instructions!(
                             // injected values preamble
                             RegularInstruction::PushListToStack,
-                            RegularInstruction::statements_with_children(false, instructions!(    
+                            RegularInstruction::statements_with_children(false, instructions!(
                                 RegularInstruction::PushToStack,
                                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                     address: owned_address,
@@ -348,18 +348,15 @@ mod tests {
                                     container_mutability: SharedContainerMutability::Immutable
                                 }),
                                 RegularInstruction::Int32(Int32Data(42)),
-    
                                 RegularInstruction::list_with_children(instructions!(
                                     RegularInstruction::TakeStackValue(StackIndex(0)),
                                 )),
                             )),
-    
                             // remote execution preamble
                             RegularInstruction::list_with_children(instructions!(
                                 RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
                             )),
                         )),
-    
                         // original body
                         RegularInstruction::Null,
                     )),
