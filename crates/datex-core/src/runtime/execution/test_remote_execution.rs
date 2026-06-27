@@ -192,6 +192,7 @@ pub async fn remote_shared_value_inject_ref() {
                 .await
                 .unwrap()
                 .unwrap();
+
             let result_list = result.try_into_value::<List>().unwrap();
             let result_vec = result_list.as_vec();
 

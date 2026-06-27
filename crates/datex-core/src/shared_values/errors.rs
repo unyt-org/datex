@@ -42,6 +42,7 @@ use crate::{
         core_values::map::MapAccessError, value_container::ValueContainer,
     },
 };
+use crate::runtime::cache::shared_values_cache::CacheValueRetrievalError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SharedValueCreationError {

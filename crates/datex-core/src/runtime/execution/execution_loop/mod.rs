@@ -87,6 +87,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use crate::runtime::cache::shared_values_cache::CacheValueRetrievalError;
 use crate::shared_values::{SelfOwnedPointerAddress, SharedContainerOwnership};
 
 #[derive(Debug)]
@@ -1339,7 +1340,7 @@ pub fn inner_execution_loop(
                                                 } 
                                             }
                                             SharedContainer::Referenced(_referenced_shared_container) => {
-                                                todo!("Subscribe")
+                                                // TODO: Subscribe
                                             }
                                         }
                                         
@@ -1608,17 +1609,9 @@ fn resolve_cache_value(
     pointer_address: PointerAddress,
     ownership: SharedContainerOwnership,
 ) -> Result<SharedContainer, ExecutionError> {
-    if state.runtime.memory().borrow().has_reference(&pointer_address) {
-        return Err(ExecutionError::Unknown); // TODO: error
-    }
-
     // try to find in execution context cache
-    // note: the passed value is ignored, since the owner/local endpoint is the source of truth
-    match state.shared_value_cache.try_get_shared_container_with_ownership(
+    state.shared_value_cache.try_get_shared_container_with_ownership(
         &pointer_address,
         ownership,
-    ) {
-        Ok(container) => Ok(container),
-        Err(_e) => Err(ExecutionError::InvalidSharedValueType) // TODO: pass error?
-    }
+    ).map_err(ExecutionError::CacheValueRetrievalError)
 }

@@ -14,6 +14,7 @@ use crate::{
     values::value_container::{ValueContainer, error::ValueError},
 };
 use core::fmt::Display;
+use crate::runtime::cache::shared_values_cache::CacheValueRetrievalError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
@@ -73,6 +74,7 @@ pub enum ExecutionError {
     ValueError(ValueError),
     InvalidProgram(InvalidProgramError),
     AccessError(AccessError),
+    CacheValueRetrievalError(CacheValueRetrievalError),
     UpdateError(UpdateError),
     Unknown,
     NotImplemented(String),
@@ -112,6 +114,12 @@ impl From<ApplyError> for ExecutionError {
 impl From<SharedValueCreationError> for ExecutionError {
     fn from(error: SharedValueCreationError) -> Self {
         ExecutionError::ReferenceCreationError(error)
+    }
+}
+
+impl From<CacheValueRetrievalError> for ExecutionError {
+    fn from(err: CacheValueRetrievalError) -> Self {
+        ExecutionError::CacheValueRetrievalError(err)
     }
 }
 
@@ -216,6 +224,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::AccessError(err) => {
                 core::write!(f, "Access error: {err}")
+            }
+            ExecutionError::CacheValueRetrievalError(err) => {
+                core::write!(f, "Cache value retrieval error: {err}")
             }
             ExecutionError::IntermediateResultWithState(
                 value_opt,
