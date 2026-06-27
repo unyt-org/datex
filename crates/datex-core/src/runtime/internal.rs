@@ -3,7 +3,7 @@ use crate::{
     collections::HashMap,
     core_compiler::core_compilation_context::DXBWithSharedValues,
     dif::dif_interface::DIFInterface,
-    disassembler::{disassemble_body_to_string, options::DisassemblerOptions},
+    disassembler::{options::DisassemblerOptions},
     global::{
         dxb_block::{
             DXBBlock, IncomingEndpointContextSectionId, IncomingSection,
@@ -550,7 +550,7 @@ impl RuntimeInternal {
         );
 
         print_disassembled_with_options(&dxb, DisassemblerOptions::default());
-        
+
         let end_execution =
             block.block_header.flags_and_timestamp.is_end_of_section();
 

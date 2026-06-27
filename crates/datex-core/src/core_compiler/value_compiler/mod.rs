@@ -617,6 +617,7 @@ pub fn append_statements_preamble(
 }
 
 #[cfg(test)]
+#[cfg(feature = "disassembler")]
 mod tests {
 
     use super::*;
@@ -625,10 +626,6 @@ mod tests {
         core_compiler::{
             core_compilation_context::default_core_compilation_context,
             shared_value_tracking::{TrackedOwned, TrackedReference},
-        },
-        disassembler::{
-            get_disassembled_with_options, options::DisassemblerOptions,
-            print_disassembled,
         },
         global::protocol_structures::instruction_data::{
             PerformMoves, SharedRefWithValue, ShortListData, StackIndex,

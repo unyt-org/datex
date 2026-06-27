@@ -14,7 +14,6 @@ use crate::{
 };
 use core::slice::Iter;
 
-#[cfg(feature = "disassembler")]
 #[macro_export]
 macro_rules! assert_instructions_equal {
     ($dxb:expr, $expected:expr) => {{
@@ -32,7 +31,6 @@ macro_rules! assert_instructions_equal {
     }}
 }
 
-#[cfg(feature = "disassembler")]
 #[macro_export]
 macro_rules! assert_regular_instructions_equal {
     ($dxb:expr, ($($expr:expr),* $(,)?)) => {{
@@ -183,7 +181,6 @@ impl RegularInstruction {
     }
 }
 
-#[cfg(feature = "disassembler")]
 #[macro_export]
 macro_rules! instructions {
     ($($expr:expr),* $(,)?) => {vec![

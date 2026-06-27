@@ -1587,9 +1587,7 @@ pub mod tests {
         values::value_container::ValueContainer,
     };
 
-    #[cfg(feature = "disassembler")]
     use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
-    #[cfg(feature = "disassembler")]
     use crate::{assert_instructions_equal, assert_regular_instructions_equal};
 
     use crate::{
@@ -2014,7 +2012,6 @@ pub mod tests {
     }
 
     #[test]
-    #[cfg(feature = "disassembler")]
     fn range_i64() {
         let start = 128i64;
         let end = 256i64;
@@ -2690,7 +2687,6 @@ pub mod tests {
     }
 
     #[test]
-    #[cfg(feature = "disassembler")]
     fn nested_statements() {
         flexi_logger::init();
         let script = r#"
@@ -2811,7 +2807,6 @@ pub mod tests {
     }
 
     #[test]
-    #[cfg(feature = "disassembler")]
     fn remote_execution_injected_const() {
         let script = "const x = 42u8; 1u8 :: x";
         let res =
@@ -2846,7 +2841,6 @@ pub mod tests {
     }
 
     #[test]
-    #[cfg(feature = "disassembler")]
     fn remote_execution_injected_shared_move() {
         // var x only refers to a value, not a ref, but since it is transferred to a
         // remote context, its state is synced via a ref (VariableReference model)
@@ -2883,7 +2877,6 @@ pub mod tests {
     }
 
     #[test]
-    #[cfg(feature = "disassembler")]
     fn remote_execution_injected_shared_ref() {
         let script = "const x = shared 42u8; 1u8 :: 'x";
         let res =
@@ -2920,7 +2913,6 @@ pub mod tests {
     }
 
     #[test]
-    #[cfg(feature = "disassembler")]
     fn remote_execution_injected_shared_ref_and_move() {
         let script = "const x = shared 42u8; 1u8 :: ('x; x)";
         let res =
@@ -2965,7 +2957,6 @@ pub mod tests {
     }
 
     #[test]
-    #[cfg(feature = "disassembler")]
     fn remote_execution_injected_consts() {
         let script = "const x = 42u8; const y = 69u8; 1u8 :: x + y";
         let res =

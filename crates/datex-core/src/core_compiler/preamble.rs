@@ -409,6 +409,7 @@ fn append_referenced_shared_container_with_value(
 }
 
 #[cfg(test)]
+#[cfg(feature = "disassembler")]
 mod tests {
     use crate::{
         assert_regular_instructions_equal,

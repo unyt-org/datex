@@ -1,7 +1,7 @@
 use datex_core::{
     compile,
     compiler::{CompileOptions, compile_template, scope::CompilationScope},
-    disassembler::{disassemble_body_to_string, options::DisassemblerOptions},
+    disassembler::{options::DisassemblerOptions},
     runtime::{
         Runtime,
         execution::{
@@ -17,6 +17,7 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
+use datex_core::disassembler::print_disassembled_with_options;
 
 pub mod local_values;
 pub mod shared_values;
@@ -69,10 +70,7 @@ fn compile_and_execute_multiple(
     )
     .unwrap();
 
-    println!(
-        "{}",
-        disassemble_body_to_string(&dxb.dxb, DisassemblerOptions::default())
-    );
+    print_disassembled_with_options(&dxb.dxb, DisassemblerOptions::default());
 
     let result = execute_dxb_sync(ExecutionInput::new(
         dxb,

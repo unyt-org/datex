@@ -16,6 +16,7 @@ pub fn append_type_instruction(
 }
 
 #[cfg(test)]
+#[cfg(feature = "disassembler")]
 mod tests {
     use binrw::BinRead;
 
