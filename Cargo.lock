@@ -906,7 +906,7 @@ dependencies = [
 
 [[package]]
 name = "datex-crypto-esp32"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "datex-crypto-facade",
  "esp-hal",
@@ -1408,7 +1408,6 @@ dependencies = [
  "bitflags 2.13.0",
  "bytemuck",
  "cfg-if",
- "critical-section",
  "delegate",
  "digest",
  "document-features",
@@ -1434,10 +1433,6 @@ dependencies = [
  "esp-synopsys-usb-otg",
  "esp32 0.39.0",
  "esp32c2 0.28.0",
- "esp32c3",
- "esp32c6",
- "esp32h2",
- "esp32s2",
  "esp32s3 0.34.0",
  "fugit",
  "instability",
@@ -1452,7 +1447,6 @@ dependencies = [
  "strum",
  "ufmt-write",
  "xtensa-lx",
- "xtensa-lx-rt",
 ]
 
 [[package]]
@@ -1570,46 +1564,6 @@ version = "0.29.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ef0b623533bbaa37e348c18b6b41cfd5b47c3cb64a4b9e44f0295941d62aa2e"
 dependencies = [
- "vcell",
-]
-
-[[package]]
-name = "esp32c3"
-version = "0.31.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "356af3771d0d6536c735bf71136594f4d1cbb506abf6e0c51a6639e9bf4e7988"
-dependencies = [
- "critical-section",
- "vcell",
-]
-
-[[package]]
-name = "esp32c6"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f5e511df672d79cd63365c92045135e01ba952b6bddd25b660baff5e1110f6b"
-dependencies = [
- "critical-section",
- "vcell",
-]
-
-[[package]]
-name = "esp32h2"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed4a50bbd1380931e095e0973b9b12f782a9c481f2edf1f7c42e7eb4ff736d6d"
-dependencies = [
- "critical-section",
- "vcell",
-]
-
-[[package]]
-name = "esp32s2"
-version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98574d4c577fbe888fe3e6df7fc80d25a05624d9998f7d7de1500ae21fcca78f"
-dependencies = [
- "critical-section",
  "vcell",
 ]
 
@@ -4950,28 +4904,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e012d667b0aa6d2592ace8ef145a98bff3e76cca7a644f4181ecd7a916ed289b"
 dependencies = [
  "critical-section",
-]
-
-[[package]]
-name = "xtensa-lx-rt"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8709f037fb123fe7ff146d2bce86f9dc0dfc53045c016bfd9d703317b6502845"
-dependencies = [
- "document-features",
- "xtensa-lx",
- "xtensa-lx-rt-proc-macros",
-]
-
-[[package]]
-name = "xtensa-lx-rt-proc-macros"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96fb42cd29c42f8744c74276e9f5bee7b06685bbe5b88df891516d72cb320450"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.118",
 ]
 
 [[package]]
