@@ -1,8 +1,5 @@
 use crate::prelude::*;
-use core::{
-    cell::OnceCell,
-    sync::atomic::{AtomicU32, Ordering},
-};
+use core::sync::atomic::{AtomicU32, Ordering};
 use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
 
 pub struct CryptoStub;
