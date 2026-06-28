@@ -880,7 +880,7 @@ dependencies = [
  "num-integer",
  "num-traits",
  "num_enum",
- "ordered-float 5.3.0",
+ "ordered-float",
  "pretty",
  "realhydroper-lsp",
  "ringmap",
@@ -2829,15 +2829,6 @@ dependencies = [
 
 [[package]]
 name = "ordered-float"
-version = "2.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68f19d67e5a2795c94e73e0bb1cc1a7edeb2e28efd39e2e1c9b7a40c1108b11c"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
-name = "ordered-float"
 version = "5.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7d950ca161dc355eaf28f82b11345ed76c6e1f6eb1f4f4479e0323b9e2fbd0e"
@@ -3617,11 +3608,10 @@ dependencies = [
 
 [[package]]
 name = "serde-value"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
+version = "0.8.0"
+source = "git+https://github.com/unyt-org/serde-value#9faf65908a04bb40fade8227e912cd1114a811e8"
 dependencies = [
- "ordered-float 2.10.1",
+ "ordered-float",
  "serde",
 ]
 
