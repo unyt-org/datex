@@ -198,9 +198,9 @@ target_esp_shared = [
     # FIXME: enable once crypto is fully implemented for esp32
     "allow_unsigned_blocks",
 ]
-target_esp32 = ["datex-crypto-esp32/esp32"]
-target_esp32s3 = ["datex-crypto-esp32/esp32s3"]
-target_esp32c2 = ["datex-crypto-esp32/esp32c2"]
+target_esp32 = ["target_esp_shared", "datex-crypto-esp32/esp32"]
+target_esp32s3 = ["target_esp_shared", "datex-crypto-esp32/esp32s3"]
+target_esp32c2 = ["target_esp_shared", "datex-crypto-esp32/esp32c2"]
 
 # native - std, tokio runtime
 target_native = [
