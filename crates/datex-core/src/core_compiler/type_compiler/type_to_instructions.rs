@@ -14,7 +14,7 @@ impl<'a> ToInstructions<'a> for Type {
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
+        Box::new(gen move {
             match self {
                 Type::Nominal(_) => unreachable!(),
                 Type::Alias(def) => {

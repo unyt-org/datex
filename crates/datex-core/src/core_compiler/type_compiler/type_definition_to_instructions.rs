@@ -57,7 +57,7 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
+        Box::new(gen move {
             match self {
                 TypeDefinition::ImplType(impl_type_def) => {
                     for instruction in
@@ -247,7 +247,7 @@ impl<'a> ToInstructions<'a> for CollectionTypeDefinition {
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
+        Box::new(gen move {
             match self {
                 CollectionTypeDefinition::List(list) => {
                     for instruction in

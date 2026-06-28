@@ -5,7 +5,7 @@ use crate::{
 
 impl<'a> ChildIterator<'a> for CoreValue {
     fn iter_children(&self) -> impl Iterator<Item = &ValueContainer> {
-        gen {
+        gen move {
             match self {
                 CoreValue::Map(map) => {
                     for value in map.iter_children() {
