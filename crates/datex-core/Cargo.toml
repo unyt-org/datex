@@ -146,7 +146,7 @@ logos = { version = "0.15.0", optional = true }
 # crypto facade crates (optional)
 datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.2" }
 datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.2", optional = true }
-datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.3", optional = true }
+datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.3", optional = true, default-features = false }
 datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.2", optional = true }
 
 
@@ -191,15 +191,16 @@ full = ["compiler", "decompiler"]
 ### features for specific targets #############################################
 
 # esp32 - no_std, embassy runtime
-target_esp32 = [
+target_esp_shared = [
     "no_std",
     "embassy_runtime",
     "dep:datex-crypto-esp32",
-    # FIXME: remove once crypto is fully implemented for esp32
-    "allow_unsigned_blocks",
     # FIXME: enable once crypto is fully implemented for esp32
-    # "crypto_enabled"
+    "allow_unsigned_blocks",
 ]
+target_esp32 = ["datex-crypto-esp32/esp32"]
+target_esp32s3 = ["datex-crypto-esp32/esp32s3"]
+target_esp32c2 = ["datex-crypto-esp32/esp32c2"]
 
 # native - std, tokio runtime
 target_native = [
