@@ -31,7 +31,6 @@ esp-hal = { version = "1.0.0", features = [
 
 
 [features]
-default = ["esp32s3"]
 esp32 = ["esp-hal/esp32"]
 esp32s3 = ["esp-hal/esp32s3"]
 esp32c2 = ["esp-hal/esp32c2"]
