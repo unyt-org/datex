@@ -96,11 +96,12 @@ pub enum WebRTCSignalDX {
     IceCandidate(RTCIceCandidateInitDX),
     EndOfCandidates,
 }
+
 use core::pin::Pin;
 pub type WebRTCSignalResult<T> = Result<T, String>;
 
 /// FIXME: Replace with pointer callable once functions work
-pub trait NativeWebRTCSignaling: Send + Sync + 'static {
+pub trait WebRTCSignaling: Send + Sync + 'static {
     fn send(
         &self,
         signal: WebRTCSignalDX,
