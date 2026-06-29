@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+use datex_macros_internal::Datex;
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Hash)]
+#[derive(Datex, Default, Debug, Clone, PartialEq, Hash)]
 
 pub struct RTCIceServer {
     pub urls: Vec<String>,
@@ -27,29 +27,27 @@ impl RTCIceServer {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Datex, Default, Debug, Clone, PartialEq, Eq)]
 pub struct RTCIceCandidateInitDX {
     pub candidate: String,
     pub sdp_mid: Option<String>,
-    #[serde(rename = "sdpMLineIndex")]
     pub sdp_mline_index: Option<u16>,
     pub username_fragment: Option<String>,
 }
 
-#[derive(Default, Debug, Clone, Serialize, PartialEq, Deserialize)]
+#[derive(Datex, Default, Debug, Clone, PartialEq)]
 pub enum RTCSdpTypeDX {
     #[default]
     Unspecified,
-    #[serde(rename = "answer")]
+    #[datex(rename = "answer")]
     Answer,
-    #[serde(rename = "offer")]
+    #[datex(rename = "offer")]
     Offer,
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Datex, Default, Debug, Clone)]
 pub struct RTCSessionDescriptionDX {
-    #[serde(rename = "type")]
+    #[datex(rename = "type")]
     pub sdp_type: RTCSdpTypeDX,
     pub sdp: String,
 }

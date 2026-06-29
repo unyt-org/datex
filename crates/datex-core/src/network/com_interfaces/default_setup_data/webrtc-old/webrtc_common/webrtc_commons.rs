@@ -1,10 +1,18 @@
+use crate::{
+    core_compiler::{
+        core_compilation_context::CompileInput,
+        value_compiler::compile_value_container,
+    },
+    datex_proxy::DatexValueContainerProxySerialize,
+    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
+    values::core_values::endpoint::Endpoint,
+};
+use alloc::collections::VecDeque;
+use datex_macros_internal::Datex;
 use log::error;
 use serde::{Deserialize, Serialize};
 
-use crate::values::core_values::endpoint::Endpoint;
-
 use super::structures::{RTCIceCandidateInitDX, RTCIceServer};
-use crate::serde::serializer::to_bytes;
 
 pub struct WebRTCCommon {
     pub endpoint: Endpoint,
@@ -37,8 +45,12 @@ impl WebRTCCommon {
     }
     pub fn on_ice_candidate(&self, candidate: RTCIceCandidateInitDX) {
         if let Some(ref on_ice_candidate) = self.on_ice_candidate {
-            if let Ok(candidate) = to_bytes(&candidate) {
-                on_ice_candidate(candidate);
+            if let Ok(candidate) = candidate.try_to_value_container() {
+                let pointer_lookup = PointerAvailabilityLookup::default();
+                let compile_input = CompileInput::new(&pointer_lookup, &vec![]);
+                on_ice_candidate(
+                    compile_value_container(candidate, compile_input).dxb,
+                );
             } else {
                 error!("Failed to serialize candidate");
             }
@@ -48,8 +60,7 @@ impl WebRTCCommon {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-
+#[derive(Datex)]
 pub struct WebRTCInterfaceSetupData {
     pub peer_endpoint: Endpoint,
     pub ice_servers: Option<Vec<RTCIceServer>>,
