@@ -1,8 +1,8 @@
 use crate::{
     macros::Datex,
     network::com_interfaces::com_interface::properties::ComInterfaceProperties,
+    prelude::*,
 };
-use crate::prelude::*;
 
 /// Represents an ICE candidate initialization message in WebRTC.
 #[derive(Datex, Default, Debug)]

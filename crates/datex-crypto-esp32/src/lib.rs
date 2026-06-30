@@ -12,7 +12,7 @@ use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 mod hal {
     use esp_hal::rng::Rng;
-    use spin::{Mutex, MutexGuard, Spin, Once};
+    use spin::{Mutex, MutexGuard, Once, Spin};
     use static_cell::StaticCell;
 
     static RNG: StaticCell<Mutex<Rng>> = StaticCell::new();
