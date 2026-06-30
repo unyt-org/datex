@@ -22,9 +22,9 @@ result_unit_err = "allow"
 
 [dependencies]
 datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.2" }
-spin = "0.10.0"
+spin = "0.12.1"
 static_cell = "2.1.1"
-esp-hal = { version = "1.1.0", features = [
+esp-hal = { version = "1.1.1", features = [
     "log-04",
     "unstable",
 ], default-features = false }
