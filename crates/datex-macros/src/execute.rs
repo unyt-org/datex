@@ -2,6 +2,7 @@ use crate::utils::expr_to_value_container;
 use datex_core::{
     self,
     compiler::{CompileOptions, compile_template},
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     prelude::*,
     runtime::Runtime,
     values::value_container::ValueContainer,
@@ -63,6 +64,17 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
     let placeholder_count = script.chars().filter(|&c| c == '?').count();
     let arg_count = input.args.len();
 
+    if placeholder_count != arg_count {
+        return syn::Error::new_spanned(
+            script,
+            format!(
+                "execute!: placeholder count ({}) != argument count ({})",
+                placeholder_count, arg_count
+            ),
+        )
+        .to_compile_error();
+    }
+
     let stack_init = input
         .args
         .iter()
@@ -98,19 +110,20 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         )
         .to_compile_error();
     }
-    let dxb_with_shared_values = dxb.unwrap().0;
+    let DXBWithSharedValues { dxb, shared_values } = dxb.unwrap().0;
 
-    if placeholder_count != arg_count {
-        return syn::Error::new_spanned(
-            script,
+    if dxb.is_empty() {
+        return syn::Error::new(
+            proc_macro2::Span::call_site(),
             format!(
-                "execute!: placeholder count ({}) != argument count ({})",
-                placeholder_count, arg_count
+                "execute!: compiled DXB body is empty for script `{}`",
+                script
             ),
         )
         .to_compile_error();
     }
-    let dxb = dxb_with_shared_values.dxb;
+    println!("compiled DXB length = {}", dxb.len());
+    println!("shared values length = {}", shared_values.len());
 
     quote! {{
         use datex_core::runtime::execution::execution_loop::state::RuntimeExecutionStack;
@@ -126,8 +139,16 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         #(#stack_init)*
 
         let runtime_execution_stack = RuntimeExecutionStack { values: stack_values };
-        let dxb_body: Vec<u8> = vec![#(#dxb),*];
-        let dxb_with_shared_values = DXBWithSharedValues::new(dxb_body, vec![]);
+        let dxb_with_shared_values = DXBWithSharedValues {
+            dxb: vec![#(#dxb),*],
+            shared_values: vec![],
+        };
+
+        // println!("runtime_execution_stack.values.len() = {}", datex_core::decompiler::decompile_body(
+        //     &dxb_with_shared_values.dxb,
+        //     datex_core::decompiler::DecompileOptions::colorized(),
+        // ).unwrap());
+
         let runtime = Runtime::stub();
         ExecutionInput::new_with_stack(
             dxb_with_shared_values,

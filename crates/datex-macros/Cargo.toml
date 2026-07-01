@@ -20,6 +20,7 @@ datex-macro-utils = { path = "../datex-macro-utils", version = "0.0.1" }
 datex-core = { path = "../datex-core", version = "0.0.12", features = [
     "target_native",
     "compiler",
+    "decompiler",
 ] }
 
 [dev-dependencies]
