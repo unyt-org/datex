@@ -1,6 +1,6 @@
 [package]
 name = "datex-crypto-facade"
-version = "0.0.2"
+version = "0.0.3"
 description = "DATEX Crypto Trait used by the datex crate"
 authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
@@ -8,7 +8,7 @@ authors = [
     "Norbert Brzezinski <norbert@unyt.org>",
 ]
 edition = "2024"
-license-file = "LICENSE"
+license-file = "../LICENSE"
 
 [lib]
 crate-type = ["rlib"]

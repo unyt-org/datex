@@ -10,7 +10,7 @@ authors = [
     "Norbert Brzezinski <norbert@unyt.org>",
 ]
 edition = "2024"
-license-file = "LICENSE"
+license-file = "../LICENSE"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -144,10 +144,10 @@ pretty = { version = "0.12.5", optional = true }
 logos = { version = "0.15.0", optional = true }
 
 # crypto facade crates (optional)
-datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.2" }
-datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.2", optional = true }
+datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.3" }
+datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.3", optional = true }
 datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.3", optional = true, default-features = false }
-datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.2", optional = true }
+datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.3", optional = true }
 
 
 # webrtc features (optional)

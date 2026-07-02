@@ -16,7 +16,8 @@ use openssl::{
     sign::{Signer, Verifier},
     symm::{Cipher, Crypter, Mode},
 };
-use rand::{TryRngCore, rngs::OsRng};
+use rand::{TryRng, rngs::SysRng};
+
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -28,7 +29,7 @@ impl Crypto for CryptoNative {
 
     fn random_bytes(length: usize) -> Vec<u8> {
         let mut out = vec![0u8; length];
-        OsRng
+        SysRng
             .try_fill_bytes(&mut out)
             .expect("CryptoNative random_bytes failed");
         out
