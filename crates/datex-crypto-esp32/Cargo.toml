@@ -27,7 +27,7 @@ static_cell = "2.1.1"
 esp-hal = { version = "1.1.1", features = [
     "log-04",
     "unstable",
-], default-features = false }
+], default-features = false, optional = true }
 
 
 [features]
