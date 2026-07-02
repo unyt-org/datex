@@ -7,15 +7,19 @@ use crate::{
     },
     prelude::*,
     values::core_values::{
-        callable::CallableKind,
+        boolean::Boolean,
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
         integer::{Integer, typed_integer::TypedInteger},
-        r#type::Type,
+        text::Text,
     },
 };
 
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::{
+    libs::core::type_id::CoreLibTypeId,
+    shared_values::PointerAddress,
+    types::{r#type::Type, type_definition::callable::CallableKind},
+};
 use core::ops;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -34,13 +38,15 @@ pub enum TypeExpressionData {
     VariableAccess(VariableAccess),
     GetReference(PointerAddress),
 
+    GetCoreLibType(CoreLibTypeId),
+
     // literals
     Integer(Integer),
     TypedInteger(TypedInteger),
     Decimal(Decimal),
     TypedDecimal(TypedDecimal),
-    Boolean(bool),
-    Text(String),
+    Boolean(Boolean),
+    Text(Text),
     Endpoint(Endpoint),
 
     // [integer, text, endpoint]

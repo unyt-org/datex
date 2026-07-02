@@ -39,9 +39,12 @@ impl<T> Receiver<T> {
 #[derive(Debug)]
 pub struct UnboundedReceiver<T>(_UnboundedReceiver<T>);
 impl<T> UnboundedReceiver<T> {
+    /// Create a new [UnboundedReceiver] from a given [_UnboundedReceiver].
     pub fn new(receiver: _UnboundedReceiver<T>) -> Self {
         UnboundedReceiver(receiver)
     }
+
+    /// Asynchronously receive the next item from the channel.
     pub async fn next(&mut self) -> Option<T> {
         #[cfg(feature = "std")]
         {
@@ -63,10 +66,13 @@ impl<T> Clone for Sender<T> {
     }
 }
 impl<T> Sender<T> {
+    /// Create a new [Sender] from a given [_Sender].
     pub fn new(sender: _Sender<T>) -> Self {
         Sender(sender)
     }
 
+    /// Attempt to send an item into the channel without waiting.
+    /// Returns `Ok(())` if the item was sent successfully, or `Err(())` is closed.
     pub fn start_send(&mut self, item: T) -> Result<(), ()> {
         #[cfg(feature = "std")]
         {
@@ -78,6 +84,7 @@ impl<T> Sender<T> {
         }
     }
 
+    /// Asynchronously send an item into the channel
     pub async fn send(&mut self, item: T) -> Result<(), ()> {
         #[cfg(feature = "std")]
         {
@@ -89,6 +96,7 @@ impl<T> Sender<T> {
         }
     }
 
+    /// Close the channel, preventing any further sends.
     pub fn close_channel(&mut self) {
         #[cfg(feature = "std")]
         {
@@ -110,10 +118,12 @@ impl<T> Clone for UnboundedSender<T> {
 }
 
 impl<T> UnboundedSender<T> {
+    /// Create a new [UnboundedSender] from a given [_UnboundedSender].
     pub fn new(sender: _UnboundedSender<T>) -> Self {
         UnboundedSender(sender)
     }
 
+    /// Attempt to send an item into the channel without waiting.
     pub fn start_send(&mut self, item: T) -> Result<(), ()> {
         #[cfg(feature = "std")]
         {
@@ -125,6 +135,7 @@ impl<T> UnboundedSender<T> {
         }
     }
 
+    /// Asynchronously send an item into the channel
     pub async fn send(&mut self, item: T) -> Result<(), ()> {
         #[cfg(feature = "std")]
         {
@@ -136,6 +147,7 @@ impl<T> UnboundedSender<T> {
         }
     }
 
+    /// Close the channel, preventing any further sends.
     pub fn close_channel(&self) {
         #[cfg(feature = "std")]
         {
@@ -148,20 +160,26 @@ impl<T> UnboundedSender<T> {
 
 cfg_if! {
     if #[cfg(feature = "std")] {
+        /// Create a new bounded channel with the specified capacity, returning the sender and receiver.
         pub fn create_bounded_channel<T>(capacity: usize) -> (Sender<T>, Receiver<T>) {
             let (sender, receiver) = futures::channel::mpsc::channel::<T>(capacity);
             (Sender::new(sender), Receiver::new(receiver))
         }
+
+        /// Create a new unbounded channel, returning the sender and receiver.
         pub fn create_unbounded_channel<T>() -> (UnboundedSender<T>, UnboundedReceiver<T>) {
             let (sender, receiver) = futures::channel::mpsc::unbounded::<T>();
             (UnboundedSender::new(sender), UnboundedReceiver::new(receiver))
         }
     }
     else {
+        /// Create a new bounded channel with the specified capacity, returning the sender and receiver.
         pub fn create_bounded_channel<T>(capacity: usize) -> (Sender<T>, Receiver<T>) {
             let (sender, receiver) = async_unsync::bounded::channel::<T>(capacity).into_split();
             (Sender::new(sender), Receiver::new(receiver))
         }
+
+        /// Create a new unbounded channel, returning the sender and receiver.
         pub fn create_unbounded_channel<T>() -> (UnboundedSender<T>, UnboundedReceiver<T>) {
             let (sender, receiver) = async_unsync::unbounded::channel::<T>().into_split();
             (UnboundedSender::new(sender), UnboundedReceiver::new(receiver))

@@ -18,7 +18,6 @@ use crate::{
     },
     prelude::*,
 };
-use core::time::Duration;
 
 /// A simple local loopback interface that puts outgoing data
 /// back into the incoming queue.
@@ -64,7 +63,7 @@ impl LocalLoopbackInterfaceSetupData {
             interface_type: "local".to_string(),
             channel: "local".to_string(),
             auto_identify: false,
-            round_trip_time: Duration::from_millis(0),
+            round_trip_time: 0,
             max_bandwidth: u32::MAX,
             ..ComInterfaceProperties::default()
         }
@@ -83,7 +82,7 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn test_local_loopback_interface() {
+    async fn local_loopback_interface() {
         let mut interface_configuration =
             LocalLoopbackInterfaceSetupData.create_interface().unwrap();
         assert_eq!(interface_configuration.properties.interface_type, "local");

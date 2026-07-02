@@ -60,14 +60,14 @@ mod tests {
             expr.data,
             TypeExpressionData::StructuralMap(StructuralMap(vec![
                 (
-                    TypeExpressionData::Text("key1".to_string())
-                        .with_default_span(),
-                    TypeExpressionData::Boolean(true).with_default_span()
+                    TypeExpressionData::Text("key1".into()).with_default_span(),
+                    TypeExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 (
-                    TypeExpressionData::Text("key2".to_string())
-                        .with_default_span(),
-                    TypeExpressionData::Boolean(false).with_default_span()
+                    TypeExpressionData::Text("key2".into()).with_default_span(),
+                    TypeExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
             ]))
         );
@@ -80,14 +80,14 @@ mod tests {
             expr.data,
             TypeExpressionData::StructuralMap(StructuralMap(vec![
                 (
-                    TypeExpressionData::Text("key1".to_string())
-                        .with_default_span(),
-                    TypeExpressionData::Boolean(true).with_default_span()
+                    TypeExpressionData::Text("key1".into()).with_default_span(),
+                    TypeExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 (
-                    TypeExpressionData::Text("key2".to_string())
-                        .with_default_span(),
-                    TypeExpressionData::Boolean(false).with_default_span()
+                    TypeExpressionData::Text("key2".into()).with_default_span(),
+                    TypeExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
             ]))
         );
@@ -100,14 +100,14 @@ mod tests {
             expr.data,
             TypeExpressionData::StructuralMap(StructuralMap(vec![
                 (
-                    TypeExpressionData::Text("if".to_string())
-                        .with_default_span(),
-                    TypeExpressionData::Boolean(true).with_default_span()
+                    TypeExpressionData::Text("if".into()).with_default_span(),
+                    TypeExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 (
-                    TypeExpressionData::Text("type".to_string())
-                        .with_default_span(),
-                    TypeExpressionData::Boolean(false).with_default_span()
+                    TypeExpressionData::Text("type".into()).with_default_span(),
+                    TypeExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
             ]))
         );
@@ -122,16 +122,19 @@ mod tests {
                 (
                     TypeExpressionData::Identifier("x".to_string())
                         .with_default_span(),
-                    TypeExpressionData::Boolean(true).with_default_span()
+                    TypeExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 (
                     TypeExpressionData::Intersection(Intersection(vec![
                         TypeExpressionData::Identifier("y".to_string())
                             .with_default_span(),
-                        TypeExpressionData::Boolean(true).with_default_span(),
+                        TypeExpressionData::Boolean(true.into())
+                            .with_default_span(),
                     ]))
                     .with_default_span(),
-                    TypeExpressionData::Boolean(false).with_default_span(),
+                    TypeExpressionData::Boolean(false.into())
+                        .with_default_span(),
                 )
             ]))
         );

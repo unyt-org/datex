@@ -1,8 +1,12 @@
 use crate::{
     ast::{
-        expressions::{DatexExpression, DatexExpressionData, Slot},
+        expressions::{
+            DatexExpression, DatexExpressionData, RootPropertyAccess,
+            ValueAccessType,
+        },
         spanned::Spanned,
     },
+    global::protocol_structures::instruction_data::StackIndex,
     parser::{
         Parser, SpannedParserError,
         errors::ParserError,
@@ -12,14 +16,13 @@ use crate::{
             parse_integer_with_variant, unescape_text,
         },
     },
+    prelude::*,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
     },
 };
 use core::str::FromStr;
-
-use crate::prelude::*;
 
 impl Parser {
     pub(crate) fn parse_atom(
@@ -44,9 +47,12 @@ impl Parser {
             Token::False => self.parse_false()?,
             Token::Null => self.parse_null()?,
             Token::Identifier(name) => self.parse_identifier(name)?,
-            Token::NamedSlot(slot_name) => self.parse_named_slot(slot_name)?,
-            Token::Slot(slot_address) => {
-                self.parse_addressed_slot(slot_address)?
+            Token::Tag(_) => self.parse_tagged_value()?,
+            Token::StackIndex(stack_index) => {
+                self.parse_stack_index(stack_index)?
+            }
+            Token::RootPropertyAccess(root_property_access) => {
+                self.parse_root_property_access(root_property_access)?
             }
             Token::StringLiteral(value) => self.parse_string_literal(value)?,
             Token::Infinity => self.parse_infinity()?,
@@ -78,14 +84,38 @@ impl Parser {
                         expected: vec![
                             Token::LeftCurly,
                             Token::LeftBracket,
+                            Token::TypeExpressionStart,
                             Token::LeftParen,
                             Token::True,
                             Token::False,
                             Token::Null,
                             Token::Identifier("".to_string()),
+                            Token::Placeholder,
+                            Token::Tag("".to_string()),
                             Token::StringLiteral("".to_string()),
                             Token::Infinity,
                             Token::Nan,
+                            Token::Endpoint("".to_string()),
+                            Token::IntegerLiteral("".to_string()),
+                            Token::BinaryIntegerLiteral(IntegerWithVariant {
+                                value: "".to_string(),
+                                variant: None,
+                            }),
+                            Token::HexadecimalIntegerLiteral(
+                                IntegerWithVariant {
+                                    value: "".to_string(),
+                                    variant: None,
+                                },
+                            ),
+                            Token::OctalIntegerLiteral(IntegerWithVariant {
+                                value: "".to_string(),
+                                variant: None,
+                            }),
+                            Token::DecimalLiteral(DecimalWithVariant {
+                                value: "".to_string(),
+                                variant: None,
+                            }),
+                            Token::FractionLiteral("".to_string()),
                         ],
                         found: self.peek()?.token.clone(),
                     },
@@ -178,13 +208,10 @@ impl Parser {
 
         let span = self.advance()?.span.clone();
         let res = match variant {
-            Some(var) => {
-                TypedDecimal::from_string_and_variant_in_range(&value, var)
-                    .map(DatexExpressionData::TypedDecimal)
-            }
-            None => {
-                Decimal::from_string(&value).map(DatexExpressionData::Decimal)
-            }
+            Some(var) => TypedDecimal::try_from_string_and_variant(&value, var)
+                .map(DatexExpressionData::TypedDecimal),
+            None => Decimal::try_from_string(&value)
+                .map(DatexExpressionData::Decimal),
         };
         match res {
             Ok(expr) => Ok(expr.with_span(span)),
@@ -198,19 +225,24 @@ impl Parser {
     pub(crate) fn parse_placeholder(
         &mut self,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Placeholder.with_span(self.advance()?.span))
+        Ok(
+            DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+                .with_span(self.advance()?.span),
+        )
     }
 
     pub(crate) fn parse_true(
         &mut self,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Boolean(true).with_span(self.advance()?.span))
+        Ok(DatexExpressionData::Boolean(true.into())
+            .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_false(
         &mut self,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Boolean(false).with_span(self.advance()?.span))
+        Ok(DatexExpressionData::Boolean(false.into())
+            .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_null(
@@ -260,23 +292,23 @@ impl Parser {
         }
     }
 
-    pub(crate) fn parse_named_slot(
+    pub(crate) fn parse_stack_index(
         &mut self,
-        slot_name: String,
+        index: String,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(
-            DatexExpressionData::Slot(Slot::Named(slot_name[1..].to_string()))
-                .with_span(self.advance()?.span),
-        )
+        Ok(DatexExpressionData::StackIndex(StackIndex(
+            index[1..].parse::<u32>().unwrap(),
+        ))
+        .with_span(self.advance()?.span))
     }
 
-    pub(crate) fn parse_addressed_slot(
+    pub(crate) fn parse_root_property_access(
         &mut self,
-        slot_address: String,
+        property_access: String,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Slot(Slot::Addressed(
-            slot_address[1..].parse::<u32>().unwrap(),
-        ))
+        Ok(DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+            property_name: property_access[2..].to_string(), // remove leading '$.'
+        })
         .with_span(self.advance()?.span))
     }
 
@@ -285,10 +317,8 @@ impl Parser {
         value: String,
     ) -> Result<DatexExpression, SpannedParserError> {
         let unescaped = unescape_text(&value);
-        Ok(
-            DatexExpressionData::Text(unescaped)
-                .with_span(self.advance()?.span),
-        )
+        Ok(DatexExpressionData::Text(unescaped.into())
+            .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_fraction_literal(
@@ -298,7 +328,7 @@ impl Parser {
         let span = self.advance()?.span.clone();
         // remove all underscores from fraction string
         let fraction: String = fraction.chars().filter(|&c| c != '_').collect();
-        match Decimal::from_string(&fraction) {
+        match Decimal::try_from_string(&fraction) {
             Ok(decimal) => {
                 Ok(DatexExpressionData::Decimal(decimal).with_span(span))
             }
@@ -315,10 +345,14 @@ mod tests {
 
     use crate::{
         ast::{
-            expressions::{DatexExpressionData, Slot, Statements},
+            expressions::{
+                CloneExpression, DatexExpressionData, GetSharedRef,
+                RootPropertyAccess, Statements, TagExpression, ValueAccessType,
+            },
             spanned::Spanned,
             type_expressions::{TypeExpressionData, Union},
         },
+        global::protocol_structures::instruction_data::StackIndex,
         parser::{
             errors::ParserError,
             parser_result::ParserResult,
@@ -328,7 +362,7 @@ mod tests {
             },
         },
         prelude::*,
-        shared_values::pointer_address::PointerAddress,
+        shared_values::{PointerAddress, ReferenceMutability},
         values::core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::{Endpoint, InvalidEndpointError},
@@ -340,13 +374,13 @@ mod tests {
     #[test]
     fn parse_boolean_true() {
         let expr = parse("true");
-        assert_eq!(expr.data, DatexExpressionData::Boolean(true));
+        assert_eq!(expr.data, DatexExpressionData::Boolean(true.into()));
     }
 
     #[test]
     fn parse_boolean_false() {
         let expr = parse("false");
-        assert_eq!(expr.data, DatexExpressionData::Boolean(false));
+        assert_eq!(expr.data, DatexExpressionData::Boolean(false.into()));
     }
 
     #[test]
@@ -369,7 +403,7 @@ mod tests {
         let expr = parse("\"Hello, World!\"");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Text("Hello, World!".to_string())
+            DatexExpressionData::Text("Hello, World!".into())
         );
     }
 
@@ -419,7 +453,8 @@ mod tests {
             DatexExpressionData::Statements(Statements {
                 statements: vec![
                     DatexExpressionData::Recover.with_default_span(),
-                    DatexExpressionData::Boolean(true).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
                 ],
                 is_terminated: false,
                 unbounded: None,
@@ -436,24 +471,79 @@ mod tests {
     }
 
     #[test]
-    fn parse_named_slot() {
-        let expr = parse("#mySlot");
-        assert_eq!(
-            expr.data,
-            DatexExpressionData::Slot(Slot::Named("mySlot".to_string()))
-        );
+    fn parse_stack_index() {
+        let expr = parse("\\42");
+        assert_eq!(expr.data, DatexExpressionData::StackIndex(StackIndex(42)));
     }
 
     #[test]
-    fn parse_addressed_slot() {
-        let expr = parse("#42");
-        assert_eq!(expr.data, DatexExpressionData::Slot(Slot::Addressed(42)));
+    fn parse_root_property_access() {
+        let expr = parse("$.myProperty");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+                property_name: "myProperty".to_string()
+            })
+        );
     }
 
     #[test]
     fn parse_placeholder() {
         let expr = parse("?");
-        assert_eq!(expr.data, DatexExpressionData::Placeholder);
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+        );
+    }
+
+    #[test]
+    fn parse_placeholder_shared_ref() {
+        let expr = parse("'?");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                expression: Box::new(
+                    DatexExpressionData::Placeholder(
+                        ValueAccessType::MoveOrCopy
+                    )
+                    .with_default_span()
+                ),
+                mutability: ReferenceMutability::Immutable,
+            })
+        );
+    }
+
+    #[test]
+    fn parse_placeholder_shared_ref_mut() {
+        let expr = parse("'mut ?");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                expression: Box::new(
+                    DatexExpressionData::Placeholder(
+                        ValueAccessType::MoveOrCopy
+                    )
+                    .with_default_span()
+                ),
+                mutability: ReferenceMutability::Mutable,
+            })
+        );
+    }
+
+    #[test]
+    fn parse_clone() {
+        let expr = parse("clone ?");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::Clone(CloneExpression {
+                expression: Box::new(
+                    DatexExpressionData::Placeholder(
+                        ValueAccessType::MoveOrCopy
+                    )
+                    .with_default_span()
+                )
+            })
+        );
     }
 
     #[test]
@@ -534,7 +624,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::Decimal(
-                Decimal::from_string("123.456").unwrap()
+                Decimal::try_from_string("123.456").unwrap()
             )
         );
     }
@@ -554,7 +644,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::Decimal(
-                Decimal::from_string("-0.001").unwrap()
+                Decimal::try_from_string("-0.001").unwrap()
             )
         );
     }
@@ -565,7 +655,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::Decimal(
-                Decimal::from_string("1.23e4").unwrap()
+                Decimal::try_from_string("1.23e4").unwrap()
             )
         );
     }
@@ -586,7 +676,9 @@ mod tests {
         let expr = parse("42e2");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Decimal(Decimal::from_string("42e2").unwrap())
+            DatexExpressionData::Decimal(
+                Decimal::try_from_string("42e2").unwrap()
+            )
         );
     }
 
@@ -604,7 +696,9 @@ mod tests {
         let expr = parse("3/4");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Decimal(Decimal::from_string("3/4").unwrap())
+            DatexExpressionData::Decimal(
+                Decimal::try_from_string("3/4").unwrap()
+            )
         );
     }
 
@@ -614,7 +708,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::Decimal(
-                Decimal::from_string("1000/2500").unwrap()
+                Decimal::try_from_string("1000/2500").unwrap()
             )
         );
     }
@@ -625,7 +719,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::Decimal(
-                Decimal::from_string("-7500/2500").unwrap()
+                Decimal::try_from_string("-7500/2500").unwrap()
             )
         );
     }

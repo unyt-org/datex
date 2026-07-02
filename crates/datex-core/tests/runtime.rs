@@ -12,7 +12,7 @@ pub async fn init_runtime() {
         "@test",
     )))
     .run(async |runtime| {
-        assert_eq!(runtime.version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(runtime.version(), env!("CARGO_PKG_VERSION"));
     })
     .await;
 }

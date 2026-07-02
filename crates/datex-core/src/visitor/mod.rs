@@ -1,4 +1,6 @@
-use crate::values::core_values::r#type::Type;
+//! This module contains the implementation of the visitor pattern for traversing and transforming the AST of DATEX expressions and type expressions.
+//! It defines the [VisitAction] enum, which represents the possible actions that can be taken when visiting a node in the AST, such as replacing the node, skipping its children, or setting its type annotation
+use crate::types::r#type::Type;
 
 pub mod expression;
 pub mod type_expression;
@@ -29,14 +31,15 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, CreateRef, DatexExpression,
-                DatexExpressionData, Statements, VariableAccess,
+                BinaryOperation, DatexExpression, DatexExpressionData, GetRef,
+                Statements, ValueAccessType, VariableAccess,
             },
             type_expressions::{TypeExpression, TypeExpressionData},
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::Parser,
         prelude::*,
+        values::core_values::boolean::Boolean,
         visitor::{
             VisitAction,
             expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
@@ -74,6 +77,7 @@ mod tests {
                 TypeExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "MYTYPE".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
                 }),
                 span.clone(),
             )))
@@ -93,9 +97,9 @@ mod tests {
             );
             Err(error)
         }
-        fn visit_create_ref(
+        fn visit_get_ref(
             &mut self,
-            create_ref: &mut CreateRef,
+            create_ref: &mut GetRef,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::VisitChildren)
@@ -110,6 +114,7 @@ mod tests {
                 data: DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: identifier.clone(),
+                    access_type: ValueAccessType::MoveOrCopy,
                 }),
                 span: span.clone(),
                 ty: None,
@@ -118,7 +123,7 @@ mod tests {
 
         fn visit_boolean(
             &mut self,
-            boolean: &mut bool,
+            boolean: &mut Boolean,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Err(MyAstExpressionError::new("Booleans are not allowed"))

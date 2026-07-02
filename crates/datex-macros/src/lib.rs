@@ -1,4 +1,4 @@
-use datex_core::macro_utils::entrypoint::{
+use datex_macro_utils::entrypoint::{
     DatexMainInput, ParsedAttributes, datex_main_impl,
 };
 use proc_macro::TokenStream;

@@ -69,8 +69,10 @@ mod tests {
             expr.data,
             DatexExpressionData::List(List {
                 items: vec![
-                    DatexExpressionData::Boolean(true).with_default_span(),
-                    DatexExpressionData::Boolean(false).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span(),
                     DatexExpressionData::Null.with_default_span(),
                 ]
             })
@@ -84,8 +86,10 @@ mod tests {
             expr.data,
             DatexExpressionData::List(List {
                 items: vec![
-                    DatexExpressionData::Boolean(true).with_default_span(),
-                    DatexExpressionData::Boolean(false).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span(),
                     DatexExpressionData::Null.with_default_span(),
                 ]
             })
@@ -132,9 +136,11 @@ mod tests {
                 res.ast.data,
                 DatexExpressionData::List(List {
                     items: vec![
-                        DatexExpressionData::Boolean(true).with_default_span(),
+                        DatexExpressionData::Boolean(true.into())
+                            .with_default_span(),
                         DatexExpressionData::Recover.with_default_span(),
-                        DatexExpressionData::Boolean(false).with_default_span(),
+                        DatexExpressionData::Boolean(false.into())
+                            .with_default_span(),
                     ]
                 })
             );
@@ -158,7 +164,8 @@ mod tests {
                 res.ast.data,
                 DatexExpressionData::List(List {
                     items: vec![
-                        DatexExpressionData::Boolean(true).with_default_span(),
+                        DatexExpressionData::Boolean(true.into())
+                            .with_default_span(),
                         DatexExpressionData::Recover.with_default_span(),
                     ]
                 })

@@ -1,5 +1,5 @@
 use crate::{
-    core_compiler::value_compiler::compile_value_container,
+    core_compiler::core_compilation_context::CompileInput,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -14,7 +14,10 @@ use crate::{
     },
 };
 
-use crate::prelude::*;
+use crate::{
+    core_compiler::value_compiler::{compile_panic, compile_value_container},
+    prelude::*,
+};
 use core::result::Result;
 use log::info;
 
@@ -22,8 +25,7 @@ impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
         self: Rc<RuntimeInternal>,
     ) {
-        let mut sections_receiver =
-            self.incoming_sections_receiver.borrow_mut();
+        let mut sections_receiver = self.incoming_sections_receiver_mut();
 
         while let Some(section) = sections_receiver.next().await {
             let self_clone = self.clone();
@@ -36,7 +38,7 @@ impl RuntimeInternal {
             #[cfg(not(feature = "embassy_runtime"))]
             {
                 // TODO #741: task
-                self.task_manager.register_task(
+                self.task_manager().register_task(
                     self_clone.handle_incoming_section_task(section),
                 );
             }
@@ -47,12 +49,43 @@ impl RuntimeInternal {
         section: IncomingSection,
     ) {
         let (result, endpoint, context_id) =
-            RuntimeInternal::execute_incoming_section(self.clone(), section)
-                .await;
-        info!(
-            "Execution result (on {} from {}): {result:?}",
-            self.endpoint, endpoint
-        );
+            RuntimeInternal::execute_incoming_section(
+                self.clone(),
+                section,
+                None,
+            )
+            .await;
+        match &result {
+            Ok(Some(result)) => info!(
+                "Successful Execution result (on {} from {}): {}",
+                self.endpoint(),
+                endpoint,
+                {
+                    #[cfg(feature = "decompiler")]
+                    {
+                        crate::decompiler::decompile_value(
+                            result,
+                            crate::decompiler::DecompileOptions::colorized(),
+                        )
+                    }
+                    #[cfg(not(feature = "decompiler"))]
+                    {
+                        result
+                    }
+                }
+            ),
+            Ok(None) => info!(
+                "Successful Execution result (on {} from {}): None",
+                self.endpoint(),
+                endpoint
+            ),
+            Err(e) => info!(
+                "Execution error (on {} from {}): {e}",
+                self.endpoint(),
+                endpoint
+            ),
+        }
+
         // send response back to the sender
         let _res = RuntimeInternal::send_response_block(
             self.clone(),
@@ -71,7 +104,7 @@ impl RuntimeInternal {
         context_id: OutgoingContextId,
     ) -> Result<(), Vec<Endpoint>> {
         let routing_header: RoutingHeader = RoutingHeader::default()
-            .with_sender(self.endpoint.clone())
+            .with_sender(self.endpoint().clone())
             .to_owned();
         let block_header = BlockHeader {
             context_id,
@@ -87,24 +120,36 @@ impl RuntimeInternal {
             "send response, context_id: {context_id:?}, receiver: {receiver_endpoint}"
         );
 
-        if let Ok(value) = result {
-            let dxb = if let Some(value) = &value {
-                compile_value_container(value)
-            } else {
-                vec![]
-            };
+        let lookup = self.pointer_availability_lookup();
+        let receivers = vec![receiver_endpoint.clone()];
+        let compile_input = CompileInput::new(&lookup, &receivers);
 
-            let mut block = DXBBlock::new(
-                routing_header,
-                block_header,
-                encrypted_header,
-                dxb,
-            );
-            block.set_receivers(core::slice::from_ref(&receiver_endpoint));
+        let dxb = match result {
+            Ok(value) => {
+                info!("Sending result value {:?}", value);
+                if let Some(value) = value {
+                    let res = compile_value_container(value, compile_input);
 
-            self.com_hub.send_own_block_async(block).await
-        } else {
-            core::todo!("#233 Handle returning error response block");
-        }
+                    self.register_shared_containers_for_single_endpoint(
+                        &receiver_endpoint,
+                        res.shared_values,
+                    );
+
+                    res.dxb
+                } else {
+                    vec![]
+                }
+            }
+            Err(e) => {
+                info!("Execution error (on {}): {}", self.endpoint(), e);
+                compile_panic(e.to_string(), compile_input)
+            }
+        };
+
+        let mut block =
+            DXBBlock::new(routing_header, block_header, encrypted_header, dxb);
+        block.set_receivers(core::slice::from_ref(&receiver_endpoint));
+
+        self.com_hub().send_own_block_async(block).await
     }
 }

@@ -1,3 +1,4 @@
+//! This module contains the decompiler for DATEX, which converts DXB bytecode back into a human-readable string representation of the original DATEX source code.
 mod ast_from_bytecode;
 mod ast_from_value_container;
 mod ast_to_source_code;

@@ -579,7 +579,7 @@ mod tests {
     use datex_crypto_facade::crypto::Crypto;
 
     #[test]
-    pub fn test_recalculate() {
+    pub fn recalculate() {
         let mut routing_header = RoutingHeader::default()
             .with_sender(Endpoint::from_str("@test").unwrap())
             .to_owned();

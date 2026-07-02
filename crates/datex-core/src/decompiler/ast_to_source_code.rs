@@ -1,15 +1,19 @@
-use crate::ast::{
-    expressions::{
-        Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, DatexExpression, DatexExpressionData, List, Map,
-        PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
-        SlotAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
-        VariableAssignment, VariableDeclaration, VariantAccess,
+use crate::{
+    ast::{
+        expressions::{
+            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+            Conditional, DatexExpression, DatexExpressionData, List, Map,
+            PropertyAccess, PropertyAssignment, RangeDeclaration,
+            RemoteExecution, StackAssignment, TypeDeclaration, UnboxAssignment,
+            VariableAccess, VariableAssignment, VariableDeclaration,
+            VariantAccess,
+        },
+        type_expressions::{
+            CallableTypeExpression, TypeExpression, TypeExpressionData,
+            TypeVariantAccess,
+        },
     },
-    type_expressions::{
-        CallableTypeExpression, TypeExpression, TypeExpressionData,
-        TypeVariantAccess,
-    },
+    values::core_values::text::Text,
 };
 
 use crate::prelude::*;
@@ -17,9 +21,12 @@ use alloc::format;
 use core::fmt::{self};
 
 use crate::{
+    ast::expressions::{
+        RootPropertyAccess, UnboxSlotAssignment, ValueAccessType,
+    },
     decompiler::{FormattingMode, FormattingOptions, IndentType},
-    shared_values::pointer::PointerReferenceMutability,
-    values::core_values::r#type::LocalReferenceMutability,
+    shared_values::ReferenceMutability,
+    types::type_definition_with_metadata::LocalReferenceMutability,
 };
 
 #[derive(Clone, Default)]
@@ -135,8 +142,9 @@ impl AstToSourceCodeConverter {
     }
 
     /// Escape text to be a valid source code string literal
-    fn text_to_source_code(&self, text: &str) -> String {
+    fn text_to_source_code(&self, text: &Text) -> String {
         let text = text
+            .0
             .replace('\\', r#"\\"#)
             .replace('"', r#"\""#)
             .replace('\u{0008}', r#"\b"#)
@@ -150,10 +158,12 @@ impl AstToSourceCodeConverter {
     }
 
     /// Convert a key (string) to source code, adding quotes if necessary
-    fn key_to_string(&self, key: &str) -> String {
+    fn key_to_string(&self, key: &Text) -> String {
         // if text does not just contain a-z, A-Z, 0-9, _, and starts with a-z, A-Z,  _, add quotes
-        if !self.options.json_compat && is_alphanumeric_identifier(key) {
-            key.to_string()
+        if !self.options.json_compat
+            && is_alphanumeric_identifier(key.0.as_str())
+        {
+            key.0.to_string()
         } else {
             self.text_to_source_code(key)
         }
@@ -368,6 +378,7 @@ impl AstToSourceCodeConverter {
                 // TODO #653
                 "/*Recovered Type Expression*/".to_string()
             }
+            TypeExpressionData::GetCoreLibType(core_id) => core_id.to_string(),
         }
     }
 
@@ -486,10 +497,14 @@ impl AstToSourceCodeConverter {
             }) => {
                 ast_fmt!(
                     &self,
-                    "{}.{}{}%s{operator}%s{}",
+                    "{}.{}{}%s{}%s{}",
                     self.format(base),
                     self.key_expression_to_source_code(property),
                     self.space(),
+                    match operator {
+                        Some(operator) => operator.to_string(),
+                        None => "=".to_string(),
+                    },
                     self.format(assigned_expression)
                 )
             }
@@ -529,7 +544,7 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Identifier(l) => l.to_string(),
             DatexExpressionData::Map(map) => self.map_to_source_code(map),
             DatexExpressionData::List(list) => self.list_to_source_code(list),
-            DatexExpressionData::CreateRef(create_ref) => {
+            DatexExpressionData::GetRef(create_ref) => {
                 match &create_ref.mutability {
                     LocalReferenceMutability::Mutable => {
                         format!("&mut {}", self.format(&create_ref.expression))
@@ -539,15 +554,15 @@ impl AstToSourceCodeConverter {
                     }
                 }
             }
-            DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+            DatexExpressionData::GetSharedRef(create_shared_ref) => {
                 match &create_shared_ref.mutability {
-                    PointerReferenceMutability::Mutable => {
+                    ReferenceMutability::Mutable => {
                         format!(
                             "'mut {}",
                             self.format(&create_shared_ref.expression)
                         )
                     }
-                    PointerReferenceMutability::Immutable => {
+                    ReferenceMutability::Immutable => {
                         format!(
                             "'{}",
                             self.format(&create_shared_ref.expression)
@@ -627,12 +642,12 @@ impl AstToSourceCodeConverter {
                     .collect();
                 statements_code.join("")
             }
-            DatexExpressionData::GetSharedRef(get_shared_ref) => {
+            DatexExpressionData::RequestSharedRef(get_shared_ref) => {
                 format!(
                     "{}{}",
                     match get_shared_ref.mutability {
-                        PointerReferenceMutability::Mutable => "'mut ",
-                        PointerReferenceMutability::Immutable => "'",
+                        ReferenceMutability::Mutable => "'mut ",
+                        ReferenceMutability::Immutable => "'",
                     },
                     get_shared_ref.address,
                 )
@@ -671,7 +686,9 @@ impl AstToSourceCodeConverter {
             }) => {
                 let mut code = String::new();
                 code.push_str(name);
-                code.push_str(&self.pad(&operator.to_string()));
+                if let Some(operator) = operator {
+                    code.push_str(&self.pad(&operator.to_string()));
+                }
                 code.push_str(&self.format(expression));
                 code
             }
@@ -703,6 +720,7 @@ impl AstToSourceCodeConverter {
                     return_type,
                     yeet_type,
                     body,
+                    ..
                 } = &**callable;
                 let mut params_code: Vec<String> = parameters
                     .iter()
@@ -763,9 +781,12 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Unbox(unbox) => {
                 format!("*{}", self.format(&unbox.expression))
             }
-            DatexExpressionData::Slot(slot) => slot.to_string(),
-            DatexExpressionData::SlotAssignment(SlotAssignment {
-                slot,
+            DatexExpressionData::Clone(clone) => {
+                format!("clone {}", self.format(&clone.expression))
+            }
+            DatexExpressionData::StackIndex(slot) => slot.to_string(),
+            DatexExpressionData::SlotAssignment(StackAssignment {
+                index: slot,
                 expression,
             }) => {
                 format!("{}%s=%s{}", slot, self.format(expression))
@@ -790,9 +811,31 @@ impl AstToSourceCodeConverter {
                 let unbox_prefix = "*";
                 ast_fmt!(
                     &self,
-                    "{}{}%s{operator}%s{}",
+                    "{}{}%s{}%s{}",
                     unbox_prefix,
                     self.format(unbox_expression),
+                    match operator {
+                        Some(operator) => operator.to_string(),
+                        None => "=".to_string(),
+                    },
+                    self.format(assigned_expression)
+                )
+            }
+            DatexExpressionData::UnboxSlotAssignment(UnboxSlotAssignment {
+                operator,
+                stack_index: slot,
+                assigned_expression,
+            }) => {
+                let unbox_prefix = "*";
+                ast_fmt!(
+                    &self,
+                    "{}{}%s{}%s{}",
+                    unbox_prefix,
+                    slot.to_string(),
+                    match operator {
+                        Some(operator) => operator.to_string(),
+                        None => "=".to_string(),
+                    },
                     self.format(assigned_expression)
                 )
             }
@@ -803,12 +846,26 @@ impl AstToSourceCodeConverter {
                     self.format(&unary_operation.expression)
                 )
             }
-            DatexExpressionData::Placeholder => "?".to_string(),
+            DatexExpressionData::Placeholder(placeholder_type) => {
+                match placeholder_type {
+                    ValueAccessType::SharedRef => "'?".to_string(),
+                    ValueAccessType::SharedRefMut => "'mut ?".to_string(),
+                    ValueAccessType::MoveOrCopy => "?".to_string(),
+                    ValueAccessType::Clone => "clone ?".to_string(),
+                    ValueAccessType::Borrow => "?".to_string(),
+                }
+            }
             DatexExpressionData::RemoteExecution(RemoteExecution {
                 left,
                 right,
+                ..
             }) => {
-                format!("{}%s::%s{}", self.format(left), self.format(right))
+                ast_fmt!(
+                    &self,
+                    "{}%s::%s{}",
+                    self.format(left),
+                    self.format(right)
+                )
             }
             DatexExpressionData::PropertyAccess(PropertyAccess {
                 base,
@@ -826,6 +883,37 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::GenericInstantiation(_) => {
                 todo!("#654 Undescribed by author.")
             }
+            DatexExpressionData::Tag(tag) => match &tag.expression {
+                Some(tag_expression) => match &tag_expression.data {
+                    DatexExpressionData::Map(_)
+                    | DatexExpressionData::List(_)
+                    | DatexExpressionData::Statements(_) => {
+                        ast_fmt!(
+                            &self,
+                            "#{}%s{}",
+                            tag.tag,
+                            self.format(tag_expression)
+                        )
+                    }
+                    _ => {
+                        ast_fmt!(
+                            &self,
+                            "#{}%s({})",
+                            tag.tag,
+                            self.format(tag_expression)
+                        )
+                    }
+                },
+                None => format!("#{}", tag.tag),
+            },
+            DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+                property_name,
+            }) => {
+                format!("$.{}", property_name)
+            }
+            DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
+                format!("{}", core_lib_id)
+            }
         }
     }
 }
@@ -842,13 +930,13 @@ mod tests {
             expressions::{
                 Apply, DatexExpression, DatexExpressionData, List, Map,
                 PropertyAccess, RangeDeclaration, Unbox, UnboxAssignment,
-                VariableAccess, VariableDeclaration, VariableKind,
+                ValueAccessType, VariableAccess, VariableDeclaration,
+                VariableKind,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
         },
         decompiler::options::FormattingOptions,
-        global::operators::assignment::AssignmentOperator,
         parser::Parser,
         values::core_values::decimal::Decimal,
     };
@@ -927,7 +1015,7 @@ mod tests {
     }
 
     #[test]
-    fn test_primitives() {
+    fn primitives() {
         let int_ast = DatexExpressionData::Integer(42.into());
         assert_eq!(compact().format(&int_ast.with_default_span()), "42");
 
@@ -937,8 +1025,9 @@ mod tests {
             "42i8"
         );
 
-        let decimal_ast =
-            DatexExpressionData::Decimal(Decimal::from_string("1.23").unwrap());
+        let decimal_ast = DatexExpressionData::Decimal(
+            Decimal::try_from_string("1.23").unwrap(),
+        );
         assert_eq!(compact().format(&decimal_ast.with_default_span()), "1.23");
 
         let decimal_ast = DatexExpressionData::Decimal(Decimal::Infinity);
@@ -963,10 +1052,10 @@ mod tests {
             "2.71f32"
         );
 
-        let bool_ast = DatexExpressionData::Boolean(true);
+        let bool_ast = DatexExpressionData::Boolean(true.into());
         assert_eq!(compact().format(&bool_ast.with_default_span()), "true");
 
-        let text_ast = DatexExpressionData::Text("Hello".to_string());
+        let text_ast = DatexExpressionData::Text("Hello".into());
         assert_eq!(
             compact().format(&text_ast.with_default_span()),
             "\"Hello\""
@@ -988,7 +1077,7 @@ mod tests {
     }
 
     #[test]
-    fn test_list() {
+    fn list() {
         let list_ast = DatexExpressionData::List(List::new(vec![
             DatexExpressionData::Integer(1.into()).with_default_span(),
             DatexExpressionData::Integer(2.into()).with_default_span(),
@@ -998,20 +1087,18 @@ mod tests {
 
         // long list should be multi-line
         let long_list_ast = DatexExpressionData::List(List::new(vec![
-            DatexExpressionData::Text("This is a long string".to_string())
+            DatexExpressionData::Text("This is a long string".into())
                 .with_default_span(),
-            DatexExpressionData::Text("Another long string".to_string())
+            DatexExpressionData::Text("Another long string".into())
                 .with_default_span(),
-            DatexExpressionData::Text("Yet another long string".to_string())
+            DatexExpressionData::Text("Yet another long string".into())
                 .with_default_span(),
             DatexExpressionData::Text(
-                "More long strings to increase length".to_string(),
+                "More long strings to increase length".into(),
             )
             .with_default_span(),
-            DatexExpressionData::Text(
-                "Final long string in the list".to_string(),
-            )
-            .with_default_span(),
+            DatexExpressionData::Text("Final long string in the list".into())
+                .with_default_span(),
         ]));
 
         assert_eq!(
@@ -1028,25 +1115,22 @@ mod tests {
     }
 
     #[test]
-    fn test_map() {
+    fn map() {
         let map_ast = DatexExpressionData::Map(Map::new(vec![
             (
-                DatexExpressionData::Text("key1".to_string())
-                    .with_default_span(),
+                DatexExpressionData::Text("key1".into()).with_default_span(),
                 DatexExpressionData::Integer(1.into()).with_default_span(),
             ),
             (
-                DatexExpressionData::Text("key2".to_string())
-                    .with_default_span(),
-                DatexExpressionData::Text("two".to_string())
-                    .with_default_span(),
+                DatexExpressionData::Text("key2".into()).with_default_span(),
+                DatexExpressionData::Text("two".into()).with_default_span(),
             ),
             (
                 DatexExpressionData::Integer(42.into()).with_default_span(),
-                DatexExpressionData::Boolean(true).with_default_span(),
+                DatexExpressionData::Boolean(true.into()).with_default_span(),
             ),
             (
-                DatexExpressionData::Text("x".repeat(30).to_string())
+                DatexExpressionData::Text("x".repeat(30).into())
                     .with_default_span(),
                 DatexExpressionData::Integer(42.into()).with_default_span(),
             ),
@@ -1069,12 +1153,13 @@ mod tests {
     }
 
     #[test]
-    fn test_unbox() {
+    fn unbox() {
         let unbox_ast = DatexExpressionData::Unbox(Unbox {
             expression: Box::new(
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "ptr".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span(),
             ),
@@ -1083,14 +1168,15 @@ mod tests {
     }
 
     #[test]
-    fn test_unbox_assignment() {
+    fn unbox_assignment() {
         let unbox_assign_ast =
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 unbox_expression: Box::new(
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "ptr".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span(),
                 ),
@@ -1105,7 +1191,7 @@ mod tests {
     }
 
     #[test]
-    fn test_variable_declaration() {
+    fn variable_declaration() {
         let var_decl_ast =
             DatexExpressionData::VariableDeclaration(VariableDeclaration {
                 id: Some(0),
@@ -1156,11 +1242,12 @@ mod tests {
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "obj".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span(),
                 ),
                 property: Box::new(
-                    DatexExpressionData::Text("myProp".to_string())
+                    DatexExpressionData::Text("myProp".into())
                         .with_default_span(),
                 ),
             })
@@ -1177,11 +1264,13 @@ mod tests {
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "obj".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span(),
                 ),
                 property: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span(),
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span(),
                 ),
             })
             .with_default_span();
@@ -1197,6 +1286,7 @@ mod tests {
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "obj".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span(),
                 ),
@@ -1216,6 +1306,7 @@ mod tests {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "func".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span(),
             ),
@@ -1235,13 +1326,13 @@ mod tests {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "func".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span(),
             ),
             arguments: vec![
                 DatexExpressionData::Integer(10.into()).with_default_span(),
-                DatexExpressionData::Text("arg".to_string())
-                    .with_default_span(),
+                DatexExpressionData::Text("arg".into()).with_default_span(),
             ],
         })
         .with_default_span();

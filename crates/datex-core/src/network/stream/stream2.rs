@@ -70,7 +70,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_datex_stream() {
+    async fn datex_stream() {
         let (tx, mut stream) = unbounded::<u8>();
 
         tx.send(1).unwrap();

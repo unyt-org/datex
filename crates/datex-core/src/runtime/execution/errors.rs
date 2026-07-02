@@ -1,31 +1,44 @@
 use crate::{
     dxb_parser::body::DXBParserError,
+    global::protocol_structures::instruction_data::StackIndex,
+    libs::core::core_lib_id::CoreLibIdIndex,
     network::com_hub::network_response::ResponseError,
-    runtime::execution::execution_loop::state::ExecutionLoopState,
-    shared_values::shared_container::{
+    prelude::*,
+    runtime::{
+        cache::shared_values_cache::CacheValueRetrievalError,
+        execution::execution_loop::state::ExecutionLoopState,
+    },
+    shared_values::errors::{
         AccessError, AssignmentError, SharedValueCreationError,
     },
+    traits::apply::ApplyError,
     types::error::IllegalTypeError,
-    values::value_container::{ValueContainer, ValueError},
+    value_updates::errors::UpdateError,
+    values::value_container::{ValueContainer, error::ValueError},
 };
 use core::fmt::Display;
 
-use crate::prelude::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
     // any unterminated sequence, e.g. missing key in key-value pair
     UnterminatedSequence,
     MissingRemoteExecutionReceiver,
     ExpectedTypeValue,
+    ExpectedAliasType,
     ExpectedValue,
+    ExpectedList,
     ExpectedInstruction,
     ExpectedRegularInstruction,
     ExpectedTypeInstruction,
+    InvalidCoreLibId(CoreLibIdIndex),
 }
 
 impl Display for InvalidProgramError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
+            InvalidProgramError::ExpectedAliasType => {
+                core::write!(f, "Expected an alias type definition")
+            }
             InvalidProgramError::UnterminatedSequence => {
                 core::write!(f, "Unterminated sequence")
             }
@@ -47,20 +60,30 @@ impl Display for InvalidProgramError {
             InvalidProgramError::ExpectedInstruction => {
                 core::write!(f, "Expected an instruction")
             }
+            InvalidProgramError::ExpectedList => {
+                core::write!(f, "Expected a list")
+            }
+            InvalidProgramError::InvalidCoreLibId(core_lib_id) => {
+                core::write!(f, "Invalid core library id: {core_lib_id}")
+            }
         }
     }
 }
 
 #[derive(Debug)]
 pub enum ExecutionError {
+    Unspecified(String), // TODO: replace with nested stack trace exceptions
     DXBParserError(DXBParserError),
     ValueError(ValueError),
     InvalidProgram(InvalidProgramError),
     AccessError(AccessError),
+    CacheValueRetrievalError(CacheValueRetrievalError),
+    UpdateError(UpdateError),
     Unknown,
     NotImplemented(String),
-    SlotNotAllocated(u32),
-    SlotNotInitialized(u32),
+    StackValueNotAllocated(StackIndex),
+    StackOutOfBoundsAccess(StackIndex),
+    InternalSlotDoesNotExist(u32),
     RequiresAsyncExecution,
     ResponseError(ResponseError),
     IllegalTypeError(IllegalTypeError),
@@ -68,7 +91,10 @@ pub enum ExecutionError {
     InvalidUnbox,
     InvalidTypeCast,
     ExpectedTypeValue,
-    ReferenceToNonSharedValue,
+    InvalidSharedValueType,
+    ExpectedSharedValue,
+    ExpectedLocalValue,
+    ExpectedOwnedSharedValue,
     MutableReferenceToNonMutableValue,
     AssignmentError(AssignmentError),
     ReferenceCreationError(SharedValueCreationError),
@@ -76,17 +102,39 @@ pub enum ExecutionError {
         Option<ValueContainer>,
         Option<ExecutionLoopState>,
     ),
-    InvalidApply,
+    ApplyError(ApplyError),
+    UnauthorizedMove,
+    InvalidMove,
+    MoveToMultipleEndpoints,
 }
+
+impl From<ApplyError> for ExecutionError {
+    fn from(error: ApplyError) -> Self {
+        ExecutionError::ApplyError(error)
+    }
+}
+
 impl From<SharedValueCreationError> for ExecutionError {
     fn from(error: SharedValueCreationError) -> Self {
         ExecutionError::ReferenceCreationError(error)
     }
 }
 
+impl From<CacheValueRetrievalError> for ExecutionError {
+    fn from(err: CacheValueRetrievalError) -> Self {
+        ExecutionError::CacheValueRetrievalError(err)
+    }
+}
+
 impl From<AccessError> for ExecutionError {
     fn from(error: AccessError) -> Self {
         ExecutionError::AccessError(error)
+    }
+}
+
+impl From<UpdateError> for ExecutionError {
+    fn from(error: UpdateError) -> Self {
+        ExecutionError::UpdateError(error)
     }
 }
 
@@ -132,6 +180,9 @@ impl Display for ExecutionError {
             ExecutionError::ReferenceCreationError(err) => {
                 core::write!(f, "Reference from value container error: {err}")
             }
+            ExecutionError::ApplyError(err) => {
+                core::write!(f, "Apply error: {err}")
+            }
             ExecutionError::ReferenceNotFound => {
                 core::write!(f, "Reference not found")
             }
@@ -149,18 +200,6 @@ impl Display for ExecutionError {
             }
             ExecutionError::NotImplemented(msg) => {
                 core::write!(f, "Not implemented: {msg}")
-            }
-            ExecutionError::SlotNotAllocated(address) => {
-                core::write!(
-                    f,
-                    "Tried to access unallocated slot at address {address}"
-                )
-            }
-            ExecutionError::SlotNotInitialized(address) => {
-                core::write!(
-                    f,
-                    "Tried to access uninitialized slot at address {address}"
-                )
             }
             ExecutionError::RequiresAsyncExecution => {
                 core::write!(f, "Program must be executed asynchronously")
@@ -183,8 +222,14 @@ impl Display for ExecutionError {
             ExecutionError::ExpectedTypeValue => {
                 core::write!(f, "Expected a type value")
             }
+            ExecutionError::InvalidSharedValueType => {
+                core::write!(f, "Invalid shared value type")
+            }
             ExecutionError::AccessError(err) => {
                 core::write!(f, "Access error: {err}")
+            }
+            ExecutionError::CacheValueRetrievalError(err) => {
+                core::write!(f, "Cache value retrieval error: {err}")
             }
             ExecutionError::IntermediateResultWithState(
                 value_opt,
@@ -197,13 +242,31 @@ impl Display for ExecutionError {
                     state_opt
                 )
             }
-            ExecutionError::InvalidApply => {
-                core::write!(f, "Invalid apply operation")
+            ExecutionError::UnauthorizedMove => {
+                core::write!(f, "Unauthorized move of shared pointer")
             }
-            ExecutionError::ReferenceToNonSharedValue => {
+            ExecutionError::InvalidMove => {
+                core::write!(f, "Invalid move of shared pointer")
+            }
+            ExecutionError::MoveToMultipleEndpoints => {
+                core::write!(f, "Illegal move to multiple endpoints")
+            }
+            ExecutionError::ExpectedSharedValue => {
                 core::write!(
                     f,
-                    "Tried to create a reference to a non-shared value"
+                    "Expected a shared value, but got a local value"
+                )
+            }
+            ExecutionError::ExpectedLocalValue => {
+                core::write!(
+                    f,
+                    "Expected a local value, but got a shared value"
+                )
+            }
+            ExecutionError::ExpectedOwnedSharedValue => {
+                core::write!(
+                    f,
+                    "Expected an owned shared value, but got a non-owned shared value"
                 )
             }
             ExecutionError::MutableReferenceToNonMutableValue => {
@@ -211,6 +274,27 @@ impl Display for ExecutionError {
                     f,
                     "Tried to create a mutable reference to a non-mutable value"
                 )
+            }
+            ExecutionError::StackValueNotAllocated(index) => {
+                core::write!(
+                    f,
+                    "Tried to access unallocated stack value at index {index}"
+                )
+            }
+            ExecutionError::StackOutOfBoundsAccess(index) => {
+                core::write!(
+                    f,
+                    "Tried to access out of bounds stack value at index {index}"
+                )
+            }
+            ExecutionError::InternalSlotDoesNotExist(index) => {
+                core::write!(f, "Internal slot does not exist at index {index}")
+            }
+            ExecutionError::UpdateError(err) => {
+                core::write!(f, "Value update error: {err}")
+            }
+            ExecutionError::Unspecified(msg) => {
+                core::write!(f, "Unspecified error: {msg}")
             }
         }
     }

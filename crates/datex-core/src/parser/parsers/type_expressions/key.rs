@@ -25,9 +25,8 @@ impl Parser {
             }
 
             // treat plain identifiers as text keys
-            Token::Identifier(name) => {
-                TypeExpressionData::Text(name).with_span(self.advance()?.span)
-            }
+            Token::Identifier(name) => TypeExpressionData::Text(name.into())
+                .with_span(self.advance()?.span),
             // map reserved keywords to text keys
             // TODO #667: add more keywords as needed
             t @ Token::True
@@ -40,7 +39,7 @@ impl Parser {
             | t @ Token::Matches
             | t @ Token::And
             | t @ Token::Or => {
-                TypeExpressionData::Text(t.as_const_str().unwrap().to_string())
+                TypeExpressionData::Text(t.as_const_str().unwrap().into())
                     .with_span(self.advance()?.span)
             }
 

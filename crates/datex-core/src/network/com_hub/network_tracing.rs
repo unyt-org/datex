@@ -1,7 +1,9 @@
 use core::{fmt::Display, time::Duration};
 
 use crate::{
-    core_compiler::value_compiler::compile_value_container,
+    core_compiler::core_compilation_context::{
+        CompileInput, DXBWithSharedValues,
+    },
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -18,25 +20,32 @@ use crate::{
             properties::ComInterfaceProperties, socket::ComInterfaceSocketUUID,
         },
     },
-    runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    runtime::{
+        execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+        pointer_availability_lookup::PointerAvailabilityLookup,
+    },
     values::{
-        core_value::CoreValue,
-        core_values::{
-            boolean::Boolean, endpoint::Endpoint,
-            integer::typed_integer::TypedInteger, map::Map,
-        },
-        value::Value,
+        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
         value_container::ValueContainer,
     },
 };
 
-use crate::{prelude::*, runtime::RuntimeInternal};
+use crate::{
+    core_compiler::value_compiler::compile_value,
+    datex_proxy::{
+        DatexValueContainerProxyDeserialize,
+        DatexValueContainerProxyInfallibleSerialize,
+    },
+    prelude::*,
+    runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
+};
+use datex_macros_internal::Datex;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Serialize, Deserialize, Debug, Clone)]
+
 pub struct NetworkTraceHopSocket {
     pub interface_type: String,
     pub interface_name: Option<String>,
@@ -59,17 +68,23 @@ impl NetworkTraceHopSocket {
 }
 
 #[derive(
-    Serialize, Deserialize, Debug, PartialEq, Clone, strum_macros::Display,
+    Datex,
+    Serialize,
+    Deserialize,
+    Debug,
+    PartialEq,
+    Clone,
+    strum_macros::Display,
 )]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+
 pub enum NetworkTraceHopDirection {
     Outgoing,
     Incoming,
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Serialize, Deserialize, Debug, Clone)]
+
 pub struct NetworkTraceHop {
     pub endpoint: Endpoint,
     pub distance: i8,
@@ -80,14 +95,14 @@ pub struct NetworkTraceHop {
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Debug, Clone, Deserialize, Serialize)]
+
 pub struct NetworkTraceResult {
     pub sender: Endpoint,
     pub receiver: Endpoint,
     pub hops: Vec<NetworkTraceHop>,
     #[serde_as(as = "DurationMilliSeconds")]
-    #[cfg_attr(feature = "wasm_runtime", tsify(type = "number"))]
+    #[datex(serde_infallible)]
     pub round_trip_time: Duration,
 }
 
@@ -532,9 +547,10 @@ impl ComHub {
     ) -> Option<Vec<NetworkTraceHop>> {
         // convert DATEX to hops
         let dxb = block.body.clone();
-        let runtime_stub = Rc::new(RuntimeInternal::stub());
+        let runtime_stub = Runtime::stub(); // FIXME
         let exec_input = ExecutionInput::new(
-            &dxb,
+            DXBWithSharedValues::new(dxb, vec![]),
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions::default(),
             runtime_stub,
         );
@@ -545,120 +561,11 @@ impl ComHub {
             ..
         })) = hops_datex
         {
-            let mut hops: Vec<NetworkTraceHop> = vec![];
-            for value in list {
-                if let ValueContainer::Local(Value {
-                    inner: CoreValue::Map(obj),
-                    ..
-                }) = value
-                {
-                    // FIXME #191 what should the access look like?
-                    // let endpoint: Endpoint = obj.get("endpoint").into();
-                    // let endpoint: Option<Endpoint> = obj.get("endpoint").try_into();
-                    // let endpoint: Endpoint = obj.get("endpoint").try_cast_to_endpoint().unwrap();
-                    // let endpoint: Endpoint = obj.get("endpoint").cast_to_endpoint();
-
-                    let endpoint: Endpoint = obj
-                        .get("endpoint")
-                        .unwrap()
-                        .to_value()
-                        .borrow()
-                        .cast_to_endpoint()
-                        .unwrap();
-                    let distance: TypedInteger =
-                        obj.get("distance").ok().cloned().try_into().unwrap();
-
-                    let socket = obj.get("socket").unwrap();
-                    let (interface_type, interface_name, channel, socket_uuid) =
-                        if let ValueContainer::Local(Value {
-                            inner: CoreValue::Map(socket_obj),
-                            ..
-                        }) = socket
-                        {
-                            let interface_type = socket_obj
-                                .get("interface_type")
-                                .unwrap()
-                                .to_value()
-                                .borrow()
-                                .cast_to_text()
-                                .0;
-                            let interface_name =
-                                if let ValueContainer::Local(Value {
-                                    inner: CoreValue::Text(name),
-                                    ..
-                                }) = socket_obj.get("interface_name").ok()?
-                                {
-                                    Some(name.clone().0)
-                                } else {
-                                    None
-                                };
-                            let channel = socket_obj
-                                .get("channel")
-                                .unwrap()
-                                .to_value()
-                                .borrow()
-                                .cast_to_text()
-                                .0;
-                            let socket_uuid = socket_obj
-                                .get("socket_uuid")
-                                .unwrap()
-                                .to_value()
-                                .borrow()
-                                .cast_to_text()
-                                .0;
-                            (
-                                interface_type,
-                                interface_name,
-                                channel,
-                                socket_uuid,
-                            )
-                        } else {
-                            error!("Invalid socket data in trace block");
-                            continue;
-                        };
-                    let direction = obj
-                        .get("direction")
-                        .unwrap()
-                        .to_value()
-                        .borrow()
-                        .cast_to_text()
-                        .0;
-                    let fork_nr = obj
-                        .get("fork_nr")
-                        .unwrap()
-                        .to_value()
-                        .borrow()
-                        .cast_to_text()
-                        .0;
-                    let bounce_back: Boolean = obj
-                        .get("bounce_back")
-                        .ok()
-                        .cloned()
-                        .try_into()
-                        .unwrap();
-
-                    hops.push(NetworkTraceHop {
-                        endpoint,
-                        distance: distance.as_i8().unwrap(),
-                        socket: NetworkTraceHopSocket {
-                            interface_type,
-                            interface_name,
-                            channel,
-                            socket_uuid,
-                        },
-                        direction: match direction.as_str() {
-                            "Outgoing" => NetworkTraceHopDirection::Outgoing,
-                            "Incoming" => NetworkTraceHopDirection::Incoming,
-                            _ => unreachable!(),
-                        },
-                        fork_nr,
-                        bounce_back: bounce_back.0,
-                    });
-                } else {
-                    error!("Invalid hop data in trace block");
-                    continue;
-                }
-            }
+            let hops: Vec<NetworkTraceHop> = list
+                .into_iter()
+                .map(NetworkTraceHop::try_from_value_container)
+                .collect::<Result<Vec<_>, _>>()
+                .ok()?;
             Some(hops)
         } else {
             None
@@ -711,34 +618,22 @@ impl ComHub {
         hops: Vec<NetworkTraceHop>,
     ) {
         // convert hops to DATEX
-        let mut hops_datex = Vec::<ValueContainer>::new();
+        let hops_datex = hops
+            .into_iter()
+            .map(|hop| hop.to_value_container())
+            .collect::<Vec<ValueContainer>>();
 
-        for hop in hops {
-            let mut data_map = Map::default();
-
-            data_map.set("endpoint", hop.endpoint);
-            data_map.set("distance", hop.distance);
-
-            let mut socket_obj = Map::default();
-            socket_obj.set("interface_type", hop.socket.interface_type);
-            socket_obj.set("interface_name", hop.socket.interface_name);
-            socket_obj.set("channel", hop.socket.channel);
-            socket_obj.set("socket_uuid", hop.socket.socket_uuid);
-
-            data_map.set("socket", ValueContainer::from(socket_obj));
-            data_map.set("direction", hop.direction.to_string());
-            data_map.set("fork_nr", hop.fork_nr);
-            data_map.set("bounce_back", hop.bounce_back);
-            hops_datex.push(ValueContainer::from(data_map));
-        }
-
-        let dxb = compile_value_container(&ValueContainer::from(hops_datex));
+        let pointer_lookup = PointerAvailabilityLookup::default();
+        let dxb = compile_value(
+            Value::from(hops_datex),
+            CompileInput::new(&pointer_lookup, &[]),
+        );
         // info!(
         //     "Trace data: {}",
         //     decompile_body(&dxb, DecompileOptions::default()).unwrap()
         // );
 
-        block.body = dxb;
+        block.body = dxb.dxb;
     }
 
     pub(crate) fn add_hop_to_block_trace_data(

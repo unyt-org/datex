@@ -16,7 +16,8 @@ use openssl::{
     sign::{Signer, Verifier},
     symm::{Cipher, Crypter, Mode},
 };
-use rand::{TryRngCore, rngs::OsRng};
+use rand::{TryRng, rngs::SysRng};
+
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -28,7 +29,7 @@ impl Crypto for CryptoNative {
 
     fn random_bytes(length: usize) -> Vec<u8> {
         let mut out = vec![0u8; length];
-        OsRng
+        SysRng
             .try_fill_bytes(&mut out)
             .expect("CryptoNative random_bytes failed");
         out
@@ -386,7 +387,7 @@ mod tests {
         error::{Ed25519VerifyError, KeyUnwrapError, X25519DeriveError},
     };
     #[test]
-    fn test_uuid() {
+    fn uuid() {
         let uuid1 = CryptoNative::create_uuid();
         let uuid2 = CryptoNative::create_uuid();
         assert_ne!(uuid1, uuid2);
@@ -403,7 +404,7 @@ mod tests {
     }
 
     #[test]
-    fn test_random_bytes() {
+    fn random_bytes() {
         let bytes1 = CryptoNative::random_bytes(16);
         let bytes2 = CryptoNative::random_bytes(16);
         assert_eq!(bytes1.len(), 16);
@@ -412,7 +413,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sha256_matches_openssl() {
+    async fn sha256_matches_openssl() {
         let msg = b"hello world";
         let got = CryptoNative::hash_sha256(msg).await.expect("sha256");
         let expected = openssl::sha::sha256(msg);
@@ -420,7 +421,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_hkdf_deterministic_and_changes_with_inputs() {
+    async fn hkdf_deterministic_and_changes_with_inputs() {
         let ikm = b"input key material";
         let salt1 = b"salt one";
         let salt2 = b"salt two";
@@ -438,7 +439,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_ed25519_sign_verify_ok_and_mismatch() {
+    async fn ed25519_sign_verify_ok_and_mismatch() {
         let (pub_key, pri_key) =
             CryptoNative::gen_ed25519().await.expect("gen ed25519");
         let msg = b"Hello DATEX";
@@ -458,7 +459,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_ed25519_verify_rejects_wrong_sig_length() {
+    async fn ed25519_verify_rejects_wrong_sig_length() {
         let (pub_key, _pri_key) =
             CryptoNative::gen_ed25519().await.expect("gen ed25519");
         let msg = b"msg";
@@ -472,7 +473,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_aes_ctr_roundtrip_and_wrong_key_changes_output() {
+    async fn aes_ctr_roundtrip_and_wrong_key_changes_output() {
         let key = [7u8; 32];
         let iv = [9u8; 16];
         let pt = b"Hello DATEX";
@@ -495,7 +496,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_rfc3394_wrap_unwrap_roundtrip() {
+    async fn rfc3394_wrap_unwrap_roundtrip() {
         let kek = [1u8; 32];
         let key_to_wrap = [2u8; 32];
 
@@ -512,7 +513,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore = "Integrity check is not implemented"]
-    async fn test_rfc3394_unwrap_integrity_failure_on_tamper() {
+    async fn rfc3394_unwrap_integrity_failure_on_tamper() {
         let kek = [3u8; 32];
         let key_to_wrap = [4u8; 32];
 
@@ -530,7 +531,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_x25519_derive_same_secret_both_sides() {
+    async fn x25519_derive_same_secret_both_sides() {
         let (a_pub, a_pri) = CryptoNative::gen_x25519().await.expect("gen a");
         let (b_pub, b_pri) = CryptoNative::gen_x25519().await.expect("gen b");
 
@@ -545,7 +546,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_x25519_invalid_peer_key_errors() {
+    async fn x25519_invalid_peer_key_errors() {
         let (_pub, pri) = CryptoNative::gen_x25519().await.expect("gen");
 
         // peer key with wrong bytes should error

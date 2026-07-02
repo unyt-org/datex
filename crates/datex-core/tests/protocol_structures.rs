@@ -9,12 +9,11 @@ use datex_core::{
         protocol_structures::{
             block_header::{BlockHeader, BlockType},
             encrypted_header::{self, EncryptedHeader},
-            instructions::RawRemotePointerAddress,
             routing_header::{EncryptionType, RoutingHeader},
             serializable::Serializable,
         },
     },
-    shared_values::pointer_address::PointerAddress,
+    shared_values::{PointerAddress, RemotePointerAddress},
     values::core_values::endpoint::{Endpoint, EndpointInstance, EndpointType},
 };
 use serde::Serialize;
@@ -240,11 +239,12 @@ pub fn dxb_blocks() {
         let endpoint =
             hex::encode(Endpoint::from_str("@jonas").unwrap().to_slice());
         block.set_receivers(
-            RawRemotePointerAddress::try_from(
-                PointerAddress::try_from(format!("${}FFFFFFFFFF", endpoint))
-                    .unwrap(),
-            )
-            .unwrap(),
+            match PointerAddress::try_from(format!("${}FFFFFFFFFF", endpoint))
+                .unwrap()
+            {
+                PointerAddress::Remote(remote) => remote,
+                _ => unreachable!(),
+            },
         );
         block.routing_header = block
             .routing_header

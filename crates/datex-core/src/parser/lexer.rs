@@ -227,6 +227,8 @@ pub enum Token {
     #[token("'")] SharedRef,
     #[token("'mut")] SharedRefMut,
 
+    #[token("clone")] Clone,
+
     #[token("function")] Function,
     #[token("procedure")] Procedure,
     #[token("if")] If,
@@ -243,8 +245,8 @@ pub enum Token {
     #[regex(r"\$(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{10}|[0-9a-fA-F]{52})", allocated_string)] PointerAddress(String),
 
     // decimal literals (infinity, nan)
-    #[regex(r"[Ii]nfinity")] Infinity,
-    #[regex(r"(?:nan|NaN)")] Nan,
+    #[regex(r"infinity")] Infinity,
+    #[regex(r"nan")] Nan,
 
     /// Decimal integer with suffix
     /// Includes
@@ -288,11 +290,14 @@ pub enum Token {
     // identifiers
     #[regex(r"[_\p{L}][_\p{L}\p{N}]*", allocated_string, priority=1)] Identifier(String),
 
-    // number slots (starting with #, followed by digits)
-    #[regex(r"#\d+", allocated_string)] Slot(String),
+    // stack index (starting with \, followed by digits)
+    #[regex(r"\\\d+", allocated_string)] StackIndex(String),
 
-    // named slots (starting with #, followed by A-Z, a-z, _ and alphanumeric characters)
-    #[regex(r"#[_a-zA-Z][_a-zA-Z0-9]*", allocated_string)] NamedSlot(String),
+    // tagged value/type (starting with #, followed by A-Z, a-z, _ and alphanumeric characters)
+    #[regex(r"#[_a-zA-Z][_a-zA-Z0-9]*", allocated_string)] Tag(String),
+
+    // root property access (e.g. $.endpoint)
+    #[regex(r"\$\.[_a-zA-Z][_a-zA-Z0-9]*", allocated_string)] RootPropertyAccess(String),
 }
 
 impl Token {
@@ -361,6 +366,7 @@ impl Token {
             Token::RefMut => Some("&mut"),
             Token::SharedRef => Some("'"),
             Token::SharedRefMut => Some("'mut"),
+            Token::Clone => Some("clone"),
             Token::And => Some("and"),
             Token::Or => Some("or"),
             Token::Star => Some("*"),
@@ -559,19 +565,16 @@ mod tests {
 
     #[test]
     fn infinity() {
-        let mut lexer = Token::lexer("Infinity");
-        assert_eq!(lexer.next().unwrap(), Ok(Token::Infinity));
-
         let mut lexer = Token::lexer("infinity");
         assert_eq!(lexer.next().unwrap(), Ok(Token::Infinity));
 
-        let lexer = Token::lexer("-Infinity");
+        let lexer = Token::lexer("-infinity");
         assert_eq!(
             lexer.map(Result::unwrap).collect::<Vec<_>>(),
             vec![Token::Minus, Token::Infinity]
         );
 
-        let lexer = Token::lexer("+Infinity");
+        let lexer = Token::lexer("+infinity");
         assert_eq!(
             lexer.map(Result::unwrap).collect::<Vec<_>>(),
             vec![Token::Plus, Token::Infinity]
@@ -580,19 +583,14 @@ mod tests {
 
     #[test]
     fn nan() {
-        let mut lexer = Token::lexer("NaN");
-        assert_eq!(lexer.next().unwrap(), Ok(Token::Nan));
-
         let mut lexer = Token::lexer("nan");
         assert_eq!(lexer.next().unwrap(), Ok(Token::Nan));
-
-        let lexer = Token::lexer("-NaN");
+        let lexer = Token::lexer("-nan");
         assert_eq!(
             lexer.map(Result::unwrap).collect::<Vec<_>>(),
             vec![Token::Minus, Token::Nan]
         );
-
-        let lexer = Token::lexer("+NaN");
+        let lexer = Token::lexer("+nan");
         assert_eq!(
             lexer.map(Result::unwrap).collect::<Vec<_>>(),
             vec![Token::Plus, Token::Nan]

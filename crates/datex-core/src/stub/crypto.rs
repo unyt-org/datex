@@ -1,18 +1,13 @@
 use crate::prelude::*;
-use core::{
-    cell::OnceCell,
-    sync::atomic::{AtomicU32, Ordering},
-};
+use core::sync::atomic::{AtomicU32, Ordering};
 use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
 
 pub struct CryptoStub;
 
-#[thread_local]
-static UUID_COUNTER: OnceCell<AtomicU32> = OnceCell::new();
+static UUID_COUNTER: AtomicU32 = AtomicU32::new(1);
 
 fn generate_pseudo_uuid() -> String {
-    let counter = UUID_COUNTER.get_or_init(|| AtomicU32::new(1));
-    let count = counter.fetch_add(1, Ordering::Relaxed);
+    let count = UUID_COUNTER.fetch_add(1, Ordering::Relaxed);
 
     // Encode counter into last segment, keeping UUID-like structure
     format!("00000000-0000-0000-0000-{count:012x}")

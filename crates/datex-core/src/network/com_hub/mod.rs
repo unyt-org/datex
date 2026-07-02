@@ -1,3 +1,4 @@
+//! This module contains the implementation of the Communication Hub (ComHub) for DATEX, which is responsible for managing network communication.
 use crate::{
     channel::mpsc::UnboundedSender,
     collections::HashMap,
@@ -87,6 +88,7 @@ use crate::{
 };
 use async_select::select;
 use datex_crypto_facade::crypto::Crypto;
+use datex_macros_internal::Datex;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
 
@@ -124,9 +126,18 @@ impl Debug for ComHub {
 }
 
 #[derive(
-    Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize,
+    Datex,
+    Debug,
+    Clone,
+    Copy,
+    Ord,
+    PartialOrd,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+/// The priority of an interface, which determines the order in which interfaces are used for routing fallback logic.
 pub enum InterfacePriority {
     /// The interface will not be used for fallback routing if no other interface is available
     /// This is useful for interfaces which cannot communicate with the outside world or are not
@@ -409,8 +420,6 @@ impl ComHub {
         cleanup_callback: Option<CloseAsyncCallback>,
         hello_sent_sender: Option<Sender<Result<(), ()>>>,
     ) {
-        info!("start handle socket task");
-
         // send hello block in background task
         self.task_manager
             .register_task(self.clone().send_socket_hello(
@@ -535,7 +544,7 @@ impl ComHub {
 
     /// Checks if the given endpoint is the local endpoint, matching instances as well
     pub fn is_local_endpoint_exact(&self, endpoint: &Endpoint) -> bool {
-        &self.endpoint == endpoint || endpoint.is_local()
+        self.endpoint.is_local_or_equals_endpoint(endpoint)
     }
 
     /// Register an incoming block interceptor
@@ -672,7 +681,7 @@ impl ComHub {
                 // handle blocks for own endpoint
                 let own_received_block =
                     if is_for_own && block_type != BlockType::Hello {
-                        info!("Block is for this endpoint");
+                        info!("Block is for this endpoint ({})", self.endpoint);
 
                         Some(block.clone()) // FIXME #733: no clone
                     } else {
@@ -1192,7 +1201,7 @@ impl ComHub {
                     // add to response for matching endpoint
                     else if let Some(matches_endpoint) = self.try_match_sender(&mut responses, &sender) {
                         let response = responses.get_mut(&matches_endpoint).unwrap();
-                        info!("Received resolved response from {} -> {}", &sender, &sender.any_instance_endpoint());
+                        info!("Received resolved response from {} -> {}", sender, sender.any_instance_endpoint());
                         sender = sender.any_instance_endpoint();
                         // check if the receiver is already set (= current set response is Err)
                         if response.is_err() {
@@ -1202,12 +1211,12 @@ impl ComHub {
                         }
                         // already received a response from a matching endpoint - ignore
                         else {
-                            info!("Received multiple resolved responses from the {}", &sender);
+                            info!("Received multiple resolved responses from the {}", sender);
                         }
                     }
                     // response from unexpected sender
                     else {
-                        error!("Received response from unexpected sender: {}", &sender);
+                        error!("Received response from unexpected sender: {}", sender);
                     }
 
                     // if resolution strategy is ReturnOnFirstResult, break if any response is received
@@ -1647,6 +1656,7 @@ pub mod tests {
     };
     use alloc::rc::Rc;
     use async_select::select;
+    use datex_macros_internal::Datex;
     use futures_util::FutureExt;
     use log::info;
     use serde::Deserialize;
@@ -1856,7 +1866,7 @@ pub mod tests {
         blocks
     }
 
-    #[derive(Debug, Clone, Deserialize)]
+    #[derive(Datex, Debug, Clone)]
     struct MockupInterfaceSetupData {
         pub name: String,
     }
@@ -1974,7 +1984,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_send() {
+    pub async fn send() {
         run_with_com_hub_and_proxy_interface(
             async move |com_hub, _, mut outgoing_block_receiver, _| {
                 // send block via com hub to proxy interface
@@ -1995,7 +2005,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_send_between_com_hubs() {
+    pub async fn send_between_com_hubs() {
         run_with_coupled_com_hubs(async |a, mut b| {
             // send block via com hub to proxy interface
             let mut block = DXBBlock::new_with_body(b"Hello world!");
@@ -2014,7 +2024,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_send_block_to_invalid_receiver() {
+    pub async fn send_block_to_invalid_receiver() {
         run_with_com_hub_and_proxy_interface(async move |com_hub, _, _, _| {
             let mut block = DXBBlock::new_with_body(b"Hello world!");
             // cannot send to endpoint c, since only interface is not a fallback interface and only knows endpoint b
@@ -2068,7 +2078,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_receive() {
+    pub async fn receive() {
         flexi_logger::init();
         run_with_com_hub_and_proxy_interface(
             async move |com_hub,
@@ -2105,7 +2115,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_receive_multiple_blocks_single_section() {
+    pub async fn receive_multiple_blocks_single_section() {
         run_with_com_hub_and_proxy_interface(
             async move |com_hub,
                         mut incoming_data_sender,
@@ -2181,7 +2191,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_receive_multiple_separate_blocks() {
+    pub async fn receive_multiple_separate_blocks() {
         run_with_com_hub_and_proxy_interface(
             async move |com_hub,
                         mut incoming_data_sender,
@@ -2340,7 +2350,7 @@ pub mod tests {
     //
     //
     // #[async_test]
-    // pub async fn test_reconnect() {
+    // pub async fn reconnect() {
     //     let com_hub = create_mock_com_hub();
     //
     //     // TODO #738: refactor using proxy

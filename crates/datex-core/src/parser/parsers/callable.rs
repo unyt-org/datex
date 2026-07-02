@@ -1,8 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            CallableDeclaration, CallableKind, DatexExpression,
-            DatexExpressionData,
+            CallableDeclaration, DatexExpression, DatexExpressionData,
         },
         spanned::Spanned,
         type_expressions::TypeExpression,
@@ -10,7 +9,8 @@ use crate::{
     parser::{Parser, SpannedParserError, lexer::Token},
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, types::type_definition::callable::CallableKind};
+
 impl Parser {
     pub(crate) fn parse_callable_definition(
         &mut self,
@@ -51,6 +51,7 @@ impl Parser {
                 return_type,
                 yeet_type: None, // TODO #663
                 body: Box::new(body),
+                injected_variable_count: None,
             },
         ))
         .with_span(start_pos..self.get_current_source_position()))
@@ -90,8 +91,8 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, CallableDeclaration, CallableKind,
-                DatexExpressionData, Statements,
+                BinaryOperation, CallableDeclaration, DatexExpressionData,
+                Statements,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
@@ -99,6 +100,7 @@ mod tests {
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::tests::parse,
         prelude::*,
+        types::type_definition::callable::CallableKind,
     };
 
     #[test]
@@ -122,6 +124,7 @@ mod tests {
                         })
                         .with_default_span()
                     ),
+                    injected_variable_count: None,
                 }
             ))
         );
@@ -148,6 +151,7 @@ mod tests {
                         })
                         .with_default_span()
                     ),
+                    injected_variable_count: None,
                 }
             ))
         );
@@ -192,6 +196,7 @@ mod tests {
                         })
                         .with_default_span()
                     ),
+                    injected_variable_count: None,
                 }
             ))
         );
@@ -221,10 +226,8 @@ mod tests {
                     body: Box::new(
                         DatexExpressionData::BinaryOperation(BinaryOperation {
                             left: Box::new(
-                                DatexExpressionData::Text(
-                                    "Hello, ".to_string()
-                                )
-                                .with_default_span()
+                                DatexExpressionData::Text("Hello, ".into())
+                                    .with_default_span()
                             ),
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add
@@ -238,7 +241,8 @@ mod tests {
                             ty: None,
                         })
                         .with_default_span(),
-                    )
+                    ),
+                    injected_variable_count: None,
                 }
             ))
         );

@@ -1,3 +1,4 @@
+//! The `datex-core` crate is the core library for the DATEX system.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(assert_matches)]
 #![feature(gen_blocks)]
@@ -13,7 +14,12 @@
 #![feature(thread_local)]
 #![feature(future_join)]
 #![allow(static_mut_refs)]
-
+#![feature(variant_count)]
+#![feature(const_cmp)]
+#![feature(const_trait_impl)]
+#![feature(custom_test_frameworks)]
+#![feature(specialization)]
+#![feature(const_default)]
 extern crate alloc;
 extern crate num_integer;
 
@@ -21,7 +27,6 @@ extern crate num_integer;
 extern crate std;
 
 pub mod channel;
-pub mod dif;
 pub mod prelude;
 
 #[cfg(feature = "ast")]
@@ -47,22 +52,26 @@ pub mod type_inference;
 pub mod visitor;
 
 pub mod core_compiler;
+pub mod datex_proxy;
+pub mod dif;
+pub mod disassembler;
 pub mod dxb_parser;
-#[cfg(all(feature = "macro_utils", feature = "std", feature = "compiler"))]
-pub mod macro_utils;
-pub mod serde;
 mod stub;
 pub mod task;
 pub mod traits;
 pub mod types;
 pub mod utils;
+pub mod value_updates;
 pub mod values;
 
 // reexport macros
 pub use datex_macros_internal as macros;
 extern crate core;
 
-// HashMap and HashSet that work in both std and no_std environments.
+pub mod datex_registry;
+pub use inventory;
+
+/// HashMap and HashSet that work in both std and no_std environments.
 pub mod collections {
     #[cfg(feature = "std")]
     pub use std::collections::{HashMap, HashSet, hash_map, hash_set};
@@ -84,7 +93,7 @@ pub mod crypto {
     cfg_if::cfg_if! {
         if #[cfg(any(feature = "target_native", test))] {
             pub use datex_crypto_native::CryptoNative as CryptoImpl;
-        } else if #[cfg(feature = "target_esp32")] {
+        } else if #[cfg(feature = "target_esp_shared")] {
             pub use datex_crypto_esp32::CryptoEsp32 as CryptoImpl;
         } else if #[cfg(feature = "target_wasm")] {
             pub use datex_crypto_web::CryptoWeb as CryptoImpl;
@@ -127,7 +136,7 @@ pub mod time {
                     .duration_since(UNIX_EPOCH)
                     .expect("System time is before UNIX_EPOCH")
                     .as_millis() as u64
-            } else if #[cfg(feature = "target_esp32")] {
+            } else if #[cfg(feature = "target_esp_shared")] {
                 datex_crypto_esp32::now_ms()
             } else {
                 Instant::now().elapsed().as_millis() as u64

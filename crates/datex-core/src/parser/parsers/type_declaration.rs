@@ -19,7 +19,7 @@ impl Parser {
             Token::TypeDeclaration | Token::TypeAlias => {
                 let kind = match self.advance()?.token {
                     Token::TypeDeclaration => TypeDeclarationKind::Nominal,
-                    Token::TypeAlias => TypeDeclarationKind::Structural,
+                    Token::TypeAlias => TypeDeclarationKind::Alias,
                     _ => unreachable!(),
                 };
 
@@ -97,7 +97,7 @@ mod tests {
                 id: None,
                 kind: TypeDeclarationKind::Nominal,
                 name: "myType".to_string(),
-                definition: TypeExpressionData::Boolean(true)
+                definition: TypeExpressionData::Boolean(true.into())
                     .with_default_span(),
                 hoisted: false,
             })
@@ -111,9 +111,9 @@ mod tests {
             expr.data,
             DatexExpressionData::TypeDeclaration(TypeDeclaration {
                 id: None,
-                kind: TypeDeclarationKind::Structural,
+                kind: TypeDeclarationKind::Alias,
                 name: "myAlias".to_string(),
-                definition: TypeExpressionData::Boolean(false)
+                definition: TypeExpressionData::Boolean(false.into())
                     .with_default_span(),
                 hoisted: false,
             })
@@ -145,7 +145,7 @@ mod tests {
                 id: None,
                 kind: TypeDeclarationKind::Nominal,
                 name: "myType".to_string(),
-                definition: TypeExpressionData::Boolean(true)
+                definition: TypeExpressionData::Boolean(true.into())
                     .with_default_span(),
                 hoisted: false,
             })
@@ -161,7 +161,7 @@ mod tests {
                 id: None,
                 kind: TypeDeclarationKind::Nominal,
                 name: "myType/variantA".to_string(),
-                definition: TypeExpressionData::Boolean(false)
+                definition: TypeExpressionData::Boolean(false.into())
                     .with_default_span(),
                 hoisted: false,
             })

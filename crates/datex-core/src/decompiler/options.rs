@@ -1,13 +1,9 @@
-use crate::serde::Deserialize;
-use serde::Serialize;
+use datex_macros_internal::Datex;
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Datex, Debug, Clone, Default)]
 pub struct DecompileOptions {
-    #[serde(default)]
     pub formatting_options: FormattingOptions,
     /// display slots with generated variable names
-    #[serde(default)]
     pub resolve_slots: bool,
 }
 
@@ -27,6 +23,26 @@ impl DecompileOptions {
         }
     }
 
+    /// Formats the output with indentation and newlines
+    pub fn pretty() -> Self {
+        DecompileOptions {
+            formatting_options: FormattingOptions::pretty(),
+            ..DecompileOptions::default()
+        }
+    }
+
+    /// Formats and colorizes the output with indentation and newlines
+    pub fn colorized_pretty() -> Self {
+        DecompileOptions {
+            formatting_options: FormattingOptions {
+                colorized: true,
+                mode: FormattingMode::pretty(),
+                ..FormattingOptions::default()
+            },
+            ..DecompileOptions::default()
+        }
+    }
+
     /// No extra spaces or newlines, no colorization
     pub fn compact() -> Self {
         DecompileOptions {
@@ -36,17 +52,14 @@ impl DecompileOptions {
     }
 }
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
-#[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
+#[derive(Datex, Clone, Debug, Copy, Default)]
 pub enum IndentType {
     #[default]
     Spaces,
     Tabs,
 }
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[derive(Debug, Clone, Default, Datex)]
 pub enum FormattingMode {
     /// compact formatting, no unnecessary spaces or newlines
     #[default]
@@ -54,7 +67,6 @@ pub enum FormattingMode {
     /// pretty formatting with indentation and newlines
     Pretty {
         indent: usize,
-        #[serde(default)]
         indent_type: IndentType,
     },
 }
@@ -79,16 +91,11 @@ impl FormattingMode {
     }
 }
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Datex, Debug, Clone, Default)]
 pub struct FormattingOptions {
-    #[serde(default)]
     pub mode: FormattingMode,
-    #[serde(default)]
     pub json_compat: bool,
-    #[serde(default)]
     pub colorized: bool,
-    #[serde(default)]
     pub add_variant_suffix: bool,
 }
 

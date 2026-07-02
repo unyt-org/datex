@@ -1,7 +1,7 @@
 use datex_macros::precompile;
 
 #[test]
-fn test_integer() {
+fn integer() {
     precompile!("1 + ?", 42);
     precompile!("1 + ?", 42u8);
     precompile!("1 + ?", 42u16);
@@ -16,24 +16,24 @@ fn test_integer() {
 }
 
 #[test]
-fn test_float() {
+fn float() {
     precompile!("1.0 + ?", 42.0);
     precompile!("1.0 + ?", 42.0f32);
     precompile!("1.0 + ?", 42.0f64);
 }
 
 #[test]
-fn test_bool() {
+fn bool() {
     precompile!("true == ?", true);
     precompile!("false == ?", false);
 }
 
 #[test]
-fn test_string() {
+fn string() {
     precompile!("\"Hello, ?!\"");
 }
 
 #[test]
-fn test_mixed() {
+fn mixed() {
     precompile!("? + ? == ?", 1, 2.0, true);
 }

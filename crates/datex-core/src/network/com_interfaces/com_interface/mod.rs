@@ -1,3 +1,4 @@
+//! This module contains the implementation of the communication interfaces for DATEX
 use crate::utils::uuid::UUID;
 use core::fmt::{Debug, Display};
 
@@ -7,8 +8,6 @@ pub mod factory;
 pub mod properties;
 pub mod socket;
 
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
-#[cfg_attr(feature = "wasm_runtime", tsify(type = "string"))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComInterfaceUUID(UUID);
 
