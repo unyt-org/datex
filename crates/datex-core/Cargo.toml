@@ -80,7 +80,7 @@ serde_with = { version = "3.12.0", default-features = false, features = [
 serde_json = { version = "1.0.140", default-features = false, features = [
     "alloc",
 ] }
-serde-value = { version = "0.8.0", git = "https://github.com/unyt-org/serde-value" }
+serde-val = { version = "0.1.0", git = "https://github.com/unyt-org/serde-value" }
 serde-big-array = { version = "0.5.1" }
 async-select = "0.3.0"
 foldhash = { version = "0.2.0", default-features = false }
