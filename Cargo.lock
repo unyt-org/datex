@@ -906,7 +906,7 @@ dependencies = [
  "ringmap",
  "serde",
  "serde-big-array",
- "serde-value",
+ "serde-val",
  "serde_json",
  "serde_repr",
  "serde_with",
@@ -3529,9 +3529,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde-value"
-version = "0.8.0"
-source = "git+https://github.com/unyt-org/serde-value#7d80bf185183ae5793746bbd1ea80c079b3522fd"
+name = "serde-val"
+version = "0.1.0"
+source = "git+https://github.com/unyt-org/serde-value#b774c8c4316b1e5b87a5d766df6c4c8b7b6511b0"
 dependencies = [
  "ordered-float",
  "serde",
