@@ -7,7 +7,7 @@ authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
     "Jonas Strehle <jonas@unyt.org>",
 ]
-license-file = "../LICENSE"
+license-file = "../../LICENSE"
 
 [lib]
 proc-macro = true
