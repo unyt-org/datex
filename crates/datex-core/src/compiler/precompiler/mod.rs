@@ -890,6 +890,35 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         }
     }
 
+    fn visit_comparison_operation(
+        &mut self,
+        comparison_operation: &mut crate::ast::expressions::ComparisonOperation,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        self.visit_datex_expression(&mut comparison_operation.left)?;
+        self.visit_datex_expression(&mut comparison_operation.right)?;
+
+        match &mut comparison_operation.left.data {
+            DatexExpressionData::VariableAccess(VariableAccess {
+                access_type,
+                ..
+            }) => *access_type = ValueAccessType::Borrow,
+            // Add PropertyAccess
+            _ => {}
+        };
+
+        match &mut comparison_operation.right.data {
+            DatexExpressionData::VariableAccess(VariableAccess {
+                access_type,
+                ..
+            }) => *access_type = ValueAccessType::Borrow,
+            // Add PropertyAccess
+            _ => {}
+        };
+
+        Ok(VisitAction::SkipChildren)
+    }
+
     fn visit_identifier(
         &mut self,
         identifier: &mut String,
@@ -915,6 +944,7 @@ mod tests {
             resolved_variable::ResolvedVariable,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
+        compiler::ComparisonOperation,
         libs::core::type_id::{
             CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
         },
@@ -2207,5 +2237,60 @@ mod tests {
                 .with_default_span(),
             ]))
         );
+    }
+
+    #[test]
+    fn copy_or_move_in_nested_condition() {
+        let result = parse_and_precompile(
+            "
+                var a = 0;
+                a==(a+a)
+            ",
+        );
+        assert!(result.is_ok());
+        let statements = if let DatexExpressionData::Statements(stmts) =
+            result.unwrap().ast.data
+        {
+            stmts
+        } else {
+            core::panic!("Expected statements");
+        };
+        assert_eq!(
+                *statements.statements.get(1).unwrap(),
+                DatexExpressionData::ComparisonOperation(ComparisonOperation {
+                    operator: crate::global::operators::ComparisonOperator::StructuralEqual,
+                    left: Box::new(
+                        DatexExpressionData::VariableAccess(VariableAccess {
+                            id: 0,
+                            name: "a".to_string(),
+                            access_type: ValueAccessType::Borrow,
+                        })
+                        .with_default_span()
+                    ),
+                    right: Box::new(
+                        DatexExpressionData::BinaryOperation(BinaryOperation {
+                            operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
+                            left: Box::new(
+                                DatexExpressionData::VariableAccess(VariableAccess {
+                                    id: 0,
+                                    name: "a".to_string(),
+                                    access_type: ValueAccessType::MoveOrCopy,
+                                })
+                                .with_default_span()
+                            ),
+                            right: Box::new(
+                                DatexExpressionData::VariableAccess(VariableAccess {
+                                    id: 0,
+                                    name: "a".to_string(),
+                                    access_type: ValueAccessType::MoveOrCopy,
+                                })
+                                .with_default_span()
+                            ),
+                            ty: None
+                        }).with_default_span()
+                    ),
+                })
+                .with_default_span()
+            );
     }
 }

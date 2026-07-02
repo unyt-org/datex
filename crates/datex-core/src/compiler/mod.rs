@@ -1803,12 +1803,12 @@ pub mod tests {
                 69,
                 // a is b
                 InstructionCode::IS.into(),
-                InstructionCode::TAKE_STACK_VALUE.into(),
+                InstructionCode::BORROW_STACK_VALUE.into(),
                 0,
                 0,
                 0,
                 0, // slot address for a
-                InstructionCode::TAKE_STACK_VALUE.into(),
+                InstructionCode::BORROW_STACK_VALUE.into(),
                 1,
                 0,
                 0,
