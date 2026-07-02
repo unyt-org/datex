@@ -165,7 +165,7 @@ indoc = "2.0.6"
 test-case = "3.3.1"
 
 # enable native crypto for tests
-datex-crypto-native = { path = "../datex-crypto-native" }
+datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.3" }
 # enable tokio for tests
 tokio = { version = "1.43.0", features = [
     "sync",
