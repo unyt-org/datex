@@ -11,13 +11,12 @@ use crate::{
     },
     prelude::*,
     runtime::RuntimeConfigInterface,
-    serde::Deserialize,
 };
-use core::time::Duration;
-use serde::Serialize;
+use datex_macros_internal::Datex;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Debug, Serialize, Deserialize)]
+
 pub struct WebSocketServerInterfaceSetupData {
     /// The address to bind the WebSocket server to (e.g., "0.0.0.0:8080").
     pub bind_address: String,
@@ -33,7 +32,7 @@ impl WebSocketServerInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "websocket-server".to_string(),
             channel: "websocket".to_string(),
-            round_trip_time: Duration::from_millis(40),
+            round_trip_time: 40,
             max_bandwidth: 1000,
             ..ComInterfaceProperties::default()
         }

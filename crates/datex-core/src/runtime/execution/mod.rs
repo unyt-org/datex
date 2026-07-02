@@ -1,8 +1,7 @@
+//! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
-    global::protocol_structures::instructions::*,
-    libs::core::{CoreLibPointerId, get_core_lib_value},
     runtime::{
-        RuntimeInternal,
+        Runtime,
         execution::{
             context::{ExecutionMode, RemoteExecutionContext},
             execution_loop::interrupts::{
@@ -10,28 +9,28 @@ use crate::{
             },
         },
     },
-    traits::apply::Apply,
+    traits::apply::{Apply, ApplyError},
     values::value_container::ValueContainer,
 };
 
 use crate::{
-    prelude::*,
+    libs::core::core_lib_id::CoreLibId,
     shared_values::{
-        pointer::PointerReferenceMutability,
-        pointer_address::{PointerAddress, ReferencedPointerAddress},
+        PointerAddress, ReferenceMutability, ReferencedSharedContainer,
+        RemotePointerAddress, SelfOwnedPointerAddress, SharedContainer,
     },
 };
 use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
-pub use memory_dump::*;
+pub use stack_dump::*;
 
 pub mod context;
 mod errors;
-mod execution_input;
+pub mod execution_input;
 pub mod execution_loop;
 pub mod macros;
-mod memory_dump;
+mod stack_dump;
 
 #[cfg(all(test, feature = "std"))]
 mod test_remote_execution;
@@ -39,7 +38,7 @@ mod test_remote_execution;
 pub fn execute_dxb_sync(
     input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
-    let runtime_internal = input.runtime.clone();
+    let runtime = input.runtime.clone();
     let (interrupt_provider, execution_loop) = input.execution_loop();
 
     for output in execution_loop {
@@ -49,27 +48,31 @@ pub fn execute_dxb_sync(
                 address,
                 mutability,
             ) => interrupt_provider.provide_result(
-                InterruptResult::ResolvedValue(get_remote_pointer_value(
-                    &runtime_internal,
-                    address,
-                    mutability,
-                )?),
+                InterruptResult::ResolvedValue(
+                    get_remote_shared_container_reference(
+                        &runtime, address, mutability,
+                    )?
+                    .map(|v| {
+                        ValueContainer::Shared(SharedContainer::Referenced(v))
+                    }),
+                ),
             ),
             ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
                 // TODO #401: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(get_local_pointer_value(
-                        &runtime_internal,
-                        address,
-                    )?),
+                    InterruptResult::ResolvedValue(
+                        get_local_pointer_value(&runtime, address).map(|v| {
+                            ValueContainer::Shared(SharedContainer::Referenced(
+                                v,
+                            ))
+                        }),
+                    ),
                 );
             }
-            ExternalExecutionInterrupt::GetReferenceInternalPointer(
-                address,
-            ) => {
+            ExternalExecutionInterrupt::GetCoreLibValue(id) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
-                        get_internal_pointer_value(&runtime_internal, address)?,
+                        get_core_lib_value_container(&runtime, id)?,
                     )),
                 );
             }
@@ -86,9 +89,10 @@ pub fn execute_dxb_sync(
 }
 
 pub async fn execute_dxb(
-    input: ExecutionInput<'_>,
+    input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
-    let runtime_internal = input.runtime.clone();
+    let runtime = input.runtime.clone();
+    let caller_metadata = input.caller_metadata.clone();
     let (interrupt_provider, execution_loop) = input.execution_loop();
 
     for output in execution_loop {
@@ -99,46 +103,52 @@ pub async fn execute_dxb(
                 mutability,
             ) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(get_remote_pointer_value(
-                        &runtime_internal,
-                        address,
-                        mutability,
-                    )?),
+                    InterruptResult::ResolvedValue(
+                        get_remote_shared_container_reference(
+                            &runtime, address, mutability,
+                        )?
+                        .map(|v| {
+                            ValueContainer::Shared(SharedContainer::Referenced(
+                                v,
+                            ))
+                        }),
+                    ),
                 );
             }
             ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
                 // TODO #402: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(get_local_pointer_value(
-                        &runtime_internal,
-                        address,
-                    )?),
+                    InterruptResult::ResolvedValue(
+                        get_local_pointer_value(&runtime, address).map(|v| {
+                            ValueContainer::Shared(SharedContainer::Referenced(
+                                v,
+                            ))
+                        }),
+                    ),
                 );
             }
-            ExternalExecutionInterrupt::GetReferenceInternalPointer(
-                address,
-            ) => {
+            ExternalExecutionInterrupt::GetCoreLibValue(id) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
-                        get_internal_pointer_value(&runtime_internal, address)?,
+                        get_core_lib_value_container(&runtime, id)?,
                     )),
                 );
             }
-            ExternalExecutionInterrupt::RemoteExecution(receivers, body) => {
+            ExternalExecutionInterrupt::RemoteExecution {
+                input,
+                mut receivers,
+            } => {
                 // assert that receivers is a single endpoint
-                // TODO #230: support advanced receivers
-                let receiver_endpoint =
-                    receivers.to_value().borrow().cast_to_endpoint().unwrap();
+                assert_eq!(receivers.len(), 1);
+
                 let mut remote_execution_context = RemoteExecutionContext::new(
-                    receiver_endpoint,
+                    receivers.remove(0),
                     ExecutionMode::Static,
+                    runtime.clone(),
                 );
-                let res = RuntimeInternal::execute_remote(
-                    runtime_internal.clone(),
-                    &mut remote_execution_context,
-                    body,
-                )
-                .await?;
+                let res = runtime
+                    .execute_remote(&mut remote_execution_context, input)
+                    .await?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -146,6 +156,30 @@ pub async fn execute_dxb(
                 let res = handle_apply(&callee, &args)?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
+            }
+            ExternalExecutionInterrupt::RequestMove(pointers) => {
+                let moved_values = runtime
+                    .internal
+                    .clone()
+                    .request_pointer_move(&caller_metadata.endpoint, pointers)
+                    .await?
+                    .into_iter()
+                    .map(|v| ValueContainer::Shared(SharedContainer::Owned(v)))
+                    .collect();
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValues(moved_values),
+                );
+            }
+            ExternalExecutionInterrupt::Move(address_mapping) => {
+                let moved_values =
+                    runtime.internal.clone().handle_pointer_move_to_remote(
+                        &caller_metadata.endpoint,
+                        address_mapping,
+                        &runtime.memory().borrow(),
+                    )?;
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValues(moved_values),
+                );
             }
         }
     }
@@ -156,77 +190,47 @@ pub async fn execute_dxb(
 fn handle_apply(
     callee: &ValueContainer,
     args: &[ValueContainer],
-) -> Result<Option<ValueContainer>, ExecutionError> {
+) -> Result<Option<ValueContainer>, ApplyError> {
     // callee is guaranteed to be Some here
     // apply_single if one arg, apply otherwise
     Ok(if args.len() == 1 {
-        callee.apply_single(&args[0])?
+        callee.try_apply_single(&args[0])?
     } else {
-        callee.apply(args)?
+        callee.try_apply(args)?
     })
 }
 
-fn get_remote_pointer_value(
-    runtime_internal: &Rc<RuntimeInternal>,
-    address: RawRemotePointerAddress,
-    _mutability: PointerReferenceMutability,
-) -> Result<Option<ValueContainer>, ExecutionError> {
-    let memory = runtime_internal.memory.borrow();
-    let resolved_address =
-        memory.get_pointer_address_from_raw_full_address(address);
+fn get_remote_shared_container_reference(
+    runtime: &Runtime,
+    address: RemotePointerAddress,
+    _mutability: ReferenceMutability,
+) -> Result<Option<ReferencedSharedContainer>, ExecutionError> {
+    let address_provider = runtime.pointer_address_provider().borrow();
+    let memory = runtime.memory().borrow();
+    let resolved_address = address_provider.normalize_address(address);
     // convert slot to InternalSlot enum
     // TODO #770: resolve from remote, handle mutability
-    Ok(memory
-        .get_reference(&resolved_address)
-        .map(|r| ValueContainer::Shared(r.clone())))
+    Ok(memory.get_reference(&resolved_address).cloned())
 }
 
-fn get_internal_pointer_value(
-    runtime_internal: &Rc<RuntimeInternal>,
-    address: RawInternalPointerAddress,
+fn get_core_lib_value_container(
+    runtime: &Runtime,
+    id: CoreLibId,
 ) -> Result<ValueContainer, ExecutionError> {
-    // first try to get from memory
-    if let Ok(core_lib_id) =
-        get_internal_pointer_value_from_memory(runtime_internal, &address)
-    {
-        return Ok(core_lib_id);
-    }
-
-    let core_lib_id = CoreLibPointerId::try_from(&PointerAddress::Referenced(
-        ReferencedPointerAddress::Internal(address.id),
-    ));
-    core_lib_id
-        .map_err(|_| ExecutionError::ReferenceNotFound)
-        .map(|id| {
-            get_core_lib_value(id).ok_or(ExecutionError::ReferenceNotFound)
-        })?
-}
-
-fn get_internal_pointer_value_from_memory(
-    runtime_internal: &Rc<RuntimeInternal>,
-    address: &RawInternalPointerAddress,
-) -> Result<ValueContainer, ExecutionError> {
-    let pointer_address = PointerAddress::Referenced(
-        ReferencedPointerAddress::Internal(address.id),
-    );
-    let memory = runtime_internal.memory.borrow();
-    if let Some(reference) = memory.get_reference(&pointer_address) {
-        Ok(ValueContainer::Shared(reference.clone()))
-    } else {
-        Err(ExecutionError::ReferenceNotFound)
-    }
+    let value = runtime.core_library().value_or_type_by_id(id);
+    Ok(ValueContainer::Local(value.clone()))
 }
 
 fn get_local_pointer_value(
-    runtime_internal: &Rc<RuntimeInternal>,
-    address: RawLocalPointerAddress,
-) -> Result<Option<ValueContainer>, ExecutionError> {
+    runtime: &Runtime,
+    address: SelfOwnedPointerAddress,
+) -> Option<ReferencedSharedContainer> {
     // convert slot to InternalSlot enum
-    Ok(runtime_internal
-        .memory
+    runtime
+        .memory()
         .borrow()
-        .get_reference(&PointerAddress::owned(address.id))
-        .map(|r| ValueContainer::Shared(r.clone())))
+        .get_reference(&PointerAddress::SelfOwned(address))
+        .cloned()
 }
 
 #[cfg(test)]
@@ -235,52 +239,68 @@ mod tests {
     use super::*;
     use crate::{
         assert_structural_eq, assert_value_eq,
+        collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
+        core_compiler::core_compilation_context::DXBWithSharedValues,
         datex_list,
-        global::instruction_codes::InstructionCode,
-        libs::core::get_core_lib_type_reference,
+        libs::core::type_id::CoreLibBaseTypeId,
+        prelude::*,
         runtime::{
-            RuntimeConfig, RuntimeRunner,
+            Runtime, RuntimeConfig, RuntimeRunner,
             execution::{
                 context::{ExecutionContext, LocalExecutionContext},
-                execution_input::ExecutionOptions,
+                execution_input::{ExecutionCallerMetadata, ExecutionOptions},
             },
         },
-        shared_values::shared_container::{
-            SharedContainer, SharedContainerMutability,
+        shared_values::{
+            OwnedSharedContainer, ReferencedSharedContainer, SharedContainer,
+            SharedContainerInner, SharedContainerMutability,
+            base_shared_value_container::BaseSharedValueContainer,
         },
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+        types::{
+            r#type::Type,
+            type_definition::{
+                TypeDefinition, tagged_type::TaggedTypeDefinition,
+            },
+        },
         values::{
             core_value::CoreValue,
             core_values::{
                 decimal::Decimal,
+                endpoint::Endpoint,
                 integer::{Integer, typed_integer::TypedInteger},
                 list::List,
                 map::Map,
             },
+            value::Value,
         },
     };
-    use binrw::meta::EndianKind::Runtime;
     use core::assert_matches;
     use log::{debug, info};
 
     fn execute_datex_script_debug(
         datex_script: &str,
     ) -> Option<ValueContainer> {
-        let (dxb, _) =
-            compile_script(datex_script, CompileOptions::default()).unwrap();
+        let runtime = Runtime::stub();
+        let (dxb, _) = compile_script(
+            datex_script,
+            CompileOptions::default(),
+            runtime.clone(),
+        )
+        .unwrap();
         let context = ExecutionInput::new(
-            &dxb,
+            DXBWithSharedValues::new(dxb, vec![]),
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
-            Rc::new(RuntimeInternal::stub()),
+            runtime,
         );
-        execute_dxb_sync(context).unwrap_or_else(|err| {
-            core::panic!("Execution failed: {err}");
-        })
+        execute_dxb_sync(context).unwrap()
     }
 
     fn execute_datex_script_debug_unbounded(
         datex_script_parts: impl Iterator<Item = &'static str>,
+        runtime: Runtime,
     ) -> impl Iterator<Item = Result<Option<ValueContainer>, ExecutionError>>
     {
         gen move {
@@ -288,7 +308,8 @@ mod tests {
             let mut execution_context =
                 ExecutionContext::Local(LocalExecutionContext::new(
                     ExecutionMode::unbounded(),
-                    Rc::new(RuntimeInternal::stub()),
+                    runtime.clone(),
+                    ExecutionCallerMetadata::local_default(),
                 ));
             let mut compilation_scope =
                 CompilationScope::new(ExecutionMode::unbounded());
@@ -304,11 +325,16 @@ mod tests {
 
                 let (dxb, new_compilation_scope) = compile_script(
                     script_part,
-                    CompileOptions::new_with_scope(compilation_scope),
+                    CompileOptions::new(
+                        compilation_scope,
+                        vec![Endpoint::LOCAL],
+                    ),
+                    runtime.clone(),
                 )
                 .unwrap();
                 compilation_scope = new_compilation_scope;
-                yield execution_context.execute_dxb_sync(&dxb)
+                yield execution_context
+                    .execute_dxb_sync(DXBWithSharedValues::new(dxb, vec![]));
             }
         }
     }
@@ -316,12 +342,15 @@ mod tests {
     fn assert_unbounded_input_matches_output(
         input: Vec<&'static str>,
         expected_output: Vec<Option<ValueContainer>>,
+        runtime: Runtime,
     ) {
         let input = input.into_iter();
         let expected_output = expected_output.into_iter();
-        for (result, expected) in
-            execute_datex_script_debug_unbounded(input.into_iter())
-                .zip(expected_output.into_iter())
+        for (result, expected) in execute_datex_script_debug_unbounded(
+            input.into_iter(),
+            runtime.clone(),
+        )
+        .zip(expected_output.into_iter())
         {
             let result = result.unwrap();
             assert_eq!(result, expected);
@@ -331,12 +360,18 @@ mod tests {
     fn execute_datex_script_debug_with_error(
         datex_script: &str,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let (dxb, _) =
-            compile_script(datex_script, CompileOptions::default()).unwrap();
+        let runtime = Runtime::stub();
+        let (dxb, _) = compile_script(
+            datex_script,
+            CompileOptions::default(),
+            runtime.clone(),
+        )
+        .unwrap();
         let context = ExecutionInput::new(
-            &dxb,
+            DXBWithSharedValues::new(dxb, vec![]),
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
-            Rc::new(RuntimeInternal::stub()),
+            runtime,
         );
         execute_dxb_sync(context)
     }
@@ -347,30 +382,23 @@ mod tests {
         execute_datex_script_debug(datex_script).unwrap()
     }
 
-    fn execute_dxb_debug(
-        dxb_body: &[u8],
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let context = ExecutionInput::new(
-            dxb_body,
-            ExecutionOptions { verbose: true },
-            Rc::new(RuntimeInternal::stub()),
-        );
-        execute_dxb_sync(context)
-    }
-
     async fn execute_datex_script_with_runtime(
         config: RuntimeConfig,
         datex_script: &str,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeRunner::new(config)
             .run(async |runtime| {
-                let (dxb, _) =
-                    compile_script(datex_script, CompileOptions::default())
-                        .unwrap();
+                let (dxb, _) = compile_script(
+                    datex_script,
+                    CompileOptions::default(),
+                    runtime.clone(),
+                )
+                .unwrap();
                 let context = ExecutionInput::new(
-                    &dxb,
+                    DXBWithSharedValues::new(dxb, vec![]),
+                    ExecutionCallerMetadata::local_default(),
                     ExecutionOptions { verbose: true },
-                    runtime.internal,
+                    runtime,
                 );
                 execute_dxb(context).await
             })
@@ -460,16 +488,65 @@ mod tests {
     #[test]
     fn empty_list() {
         let result = execute_datex_script_debug_with_result("[]");
-        let list: List = result.to_value().borrow().cast_to_list().unwrap();
+        let list: &List = result.try_as().unwrap();
         assert_eq!(list.len(), 0);
         assert_eq!(result, Vec::<ValueContainer>::new().into());
         assert_eq!(result, ValueContainer::from(Vec::<ValueContainer>::new()));
     }
 
     #[test]
+    fn empty_tag() {
+        let result = execute_datex_script_debug_with_result("#Example");
+        if let ValueContainer::Local(value) = result {
+            assert_eq!(&value.inner, &CoreValue::Null);
+            assert_eq!(
+                &value.custom_type,
+                &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: "Example".to_string(),
+                    ty: Some(Box::new(Type::Alias(
+                        TypeDefinition::CoreType(
+                            CoreLibBaseTypeId::Unit.into()
+                        )
+                        .into()
+                    ))),
+                }))
+            )
+        } else {
+            panic!("Result should be Local value");
+        }
+    }
+
+    #[test]
+    fn empty_with_map() {
+        let result =
+            execute_datex_script_debug_with_result("#Example {a: true}");
+        if let ValueContainer::Local(value) = result {
+            assert_eq!(
+                &value.inner,
+                &CoreValue::Map(Map::StructuralWithStringKeys(vec![(
+                    "a".to_string(),
+                    ValueContainer::from(true)
+                )]))
+            );
+            assert_eq!(
+                &value.custom_type,
+                &Some(
+                    TypeDefinition::TaggedType(TaggedTypeDefinition {
+                        tag: "Example".to_string(),
+                        ty: None,
+                    })
+                    .into()
+                )
+            )
+        } else {
+            panic!("Result should be Local value");
+        }
+    }
+
+    #[test]
     fn list() {
         let result = execute_datex_script_debug_with_result("[1, 2, 3]");
-        let list: List = result.to_value().borrow().cast_to_list().unwrap();
+        let list: &List = result.try_as().unwrap();
         let expected = datex_list![
             Integer::from(1i8),
             Integer::from(2i8),
@@ -512,14 +589,17 @@ mod tests {
     #[test]
     fn decimal() {
         let result = execute_datex_script_debug_with_result("1.5");
-        assert_eq!(result, Decimal::from_string("1.5").unwrap().into());
+        assert_eq!(result, Decimal::try_from_string("1.5").unwrap().into());
         assert_structural_eq!(result, ValueContainer::from(1.5));
     }
 
     #[test]
     fn decimal_and_integer() {
         let result = execute_datex_script_debug_with_result("-2341324.0");
-        assert_eq!(result, Decimal::from_string("-2341324").unwrap().into());
+        assert_eq!(
+            result,
+            Decimal::try_from_string("-2341324").unwrap().into()
+        );
         assert!(!result.structural_eq(&ValueContainer::from(-2341324)));
     }
 
@@ -586,7 +666,7 @@ mod tests {
     fn map() {
         let result =
             execute_datex_script_debug_with_result("{x: 1, y: 2, z: 42}");
-        let map: CoreValue = result.clone().to_value().borrow().clone().inner;
+        let map: CoreValue = result.get_cloned_value().inner;
         let map: Map = map.try_into().unwrap();
 
         // form and size
@@ -623,7 +703,7 @@ mod tests {
     #[test]
     fn empty_map() {
         let result = execute_datex_script_debug_with_result("{}");
-        let map: CoreValue = result.clone().to_value().borrow().clone().inner;
+        let map: CoreValue = result.clone().get_cloned_value().inner;
         let map: Map = map.try_into().unwrap();
 
         // form and size
@@ -666,12 +746,73 @@ mod tests {
     }
 
     #[test]
-    fn shared_assignment() {
+    fn shared_creation_mut_ref_to_mut() {
         let result = execute_datex_script_debug_with_result(
+            "const x = 'mut shared mut 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
+            container.container_mutability().clone() == SharedContainerMutability::Mutable &&
+            container.reference_mutability() == ReferenceMutability::Mutable
+        );
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_creation_immut_ref_to_mut() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = 'shared mut 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
+            container.container_mutability().clone() == SharedContainerMutability::Mutable &&
+            container.reference_mutability() == ReferenceMutability::Immutable
+        );
+
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_creation_immut_ref() {
+        let result =
+            execute_datex_script_debug_with_result("const x = 'shared 42; x");
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
+            container.container_mutability().clone() == SharedContainerMutability::Immutable &&
+            container.reference_mutability() == ReferenceMutability::Immutable
+        );
+
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_creation_immut() {
+        let result =
+            execute_datex_script_debug_with_result("const x = shared 42; x");
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(ref container)) if
+            container.container_mutability().clone() == SharedContainerMutability::Immutable
+        );
+
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_creation_mut() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = shared mut 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(
+            ref container @ OwnedSharedContainer { .. }
+        )) if container.container_mutability().clone() == SharedContainerMutability::Mutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_creation_mut_ref_to_immut() {
+        let result = execute_datex_script_debug_with_error(
             "const x = 'mut shared 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(..));
-        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+        assert_matches!(
+            result,
+            Err(ExecutionError::MutableReferenceToNonMutableValue)
+        );
     }
 
     #[test]
@@ -683,7 +824,10 @@ mod tests {
         assert_value_eq!(result, ValueContainer::from(Integer::from(43)));
         assert_matches!(result, ValueContainer::Shared(..));
         if let ValueContainer::Shared(shared) = &result {
-            assert_eq!(shared.mutability(), SharedContainerMutability::Mutable);
+            assert_eq!(
+                *shared.inner().base_shared_container().mutability(),
+                SharedContainerMutability::Mutable
+            );
         } else {
             panic!("Expected shared value");
         }
@@ -692,18 +836,21 @@ mod tests {
     #[test]
     fn shared_value_sub_assignment() {
         let result = execute_datex_script_debug_with_result(
-            "const x = 'mut shared mut 42; *x -= 1",
-        );
-        assert_value_eq!(result, ValueContainer::from(Integer::from(41)));
-
-        let result = execute_datex_script_debug_with_result(
             "const x = 'mut shared mut 42; *x -= 1; x",
         );
 
-        // FIXME #414 due to addition the resulting value container of the slot
-        // is no longer a reference but a value what is incorrect.
-        // assert_matches!(result, ValueContainer::Reference(..));
+        assert_matches!(result, ValueContainer::Shared(..));
         assert_value_eq!(result, ValueContainer::from(Integer::from(41)));
+    }
+
+    #[test]
+    fn shared_value_assignment() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = 'mut shared mut 42; *x = 100; x",
+        );
+
+        assert_matches!(result, ValueContainer::Shared(..));
+        assert_value_eq!(result, ValueContainer::from(Integer::from(100)));
     }
 
     #[tokio::test]
@@ -716,12 +863,12 @@ mod tests {
                 )])),
                 ..Default::default()
             },
-            "#env",
+            "$.env",
         )
         .await
         .unwrap();
         assert!(res.is_some());
-        let env = res.unwrap().to_value().borrow().cast_to_map().unwrap();
+        let env = res.unwrap().try_into_value::<Map>().unwrap();
         assert_eq!(env.get("TEST_ENV_VAR"), Ok(&"test_value".into()));
     }
 
@@ -765,26 +912,70 @@ mod tests {
         assert_unbounded_input_matches_output(
             vec!["1", "2"],
             vec![Some(Integer::from(1).into()), Some(Integer::from(2).into())],
+            Runtime::stub(),
         )
     }
 
     #[test]
+    fn resolve_core_lib_type_reference() {
+        let result = execute_datex_script_debug_with_result("integer");
+        assert_eq!(
+            result,
+            ValueContainer::Local(Value::from(Type::core(
+                CoreLibBaseTypeId::Integer,
+            )))
+        );
+    }
+
+    #[test]
     fn continuous_execution_multiple_external_interrupts() {
+        let runtime = Runtime::stub();
+
         assert_unbounded_input_matches_output(
-            vec!["1", "integer", "integer"],
+            vec!["1", "integer", "boolean"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Shared(SharedContainer::Type(
-                    get_core_lib_type_reference(CoreLibPointerId::Integer(
-                        None,
-                    )),
-                ))),
-                Some(ValueContainer::Shared(SharedContainer::Type(
-                    get_core_lib_type_reference(CoreLibPointerId::Integer(
-                        None,
-                    )),
-                ))),
+                Some(ValueContainer::Local(Value::from(Type::core(
+                    CoreLibBaseTypeId::Integer,
+                )))),
+                Some(ValueContainer::Local(Value::from(Type::core(
+                    CoreLibBaseTypeId::Boolean,
+                )))),
             ],
+            runtime,
         )
+    }
+
+    #[test]
+    fn property_text_access() {
+        let result =
+            execute_datex_script_debug_with_result("var x = {a: 42}; x.a");
+        assert_eq!(result, Integer::from(42).into());
+    }
+
+    #[test]
+    fn property_index_access() {
+        let result =
+            execute_datex_script_debug_with_result("var x = [1,2,3]; x.1");
+        assert_eq!(result, Integer::from(2).into());
+    }
+
+    #[test]
+    fn property_text_update() {
+        let result = execute_datex_script_debug_with_result(
+            "var x = {a: 42}; x.a = 100; x.a",
+        );
+        assert_eq!(result, Integer::from(100).into());
+    }
+
+    #[test]
+    fn nested_stack() {
+        let result = execute_datex_script_debug_with_result(
+            "var x = 1; var y = (var x = 2; x); [x, y]",
+        );
+        assert_eq!(
+            result,
+            List::from(vec![Integer::from(1), Integer::from(2)]).into()
+        );
     }
 }

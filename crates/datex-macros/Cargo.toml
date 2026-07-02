@@ -7,7 +7,7 @@ authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
     "Jonas Strehle <jonas@unyt.org>",
 ]
-license = "MIT"
+license-file = "../../LICENSE"
 
 [lib]
 proc-macro = true
@@ -16,9 +16,11 @@ proc-macro = true
 quote = "1.0"
 syn = { version = "2.0", features = ["full"] }
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
+datex-macro-utils = { path = "../datex-macro-utils", version = "0.0.1" }
 datex-core = { path = "../datex-core", version = "0.0.12", features = [
     "target_native",
     "compiler",
+    "decompiler",
 ] }
 
 [dev-dependencies]

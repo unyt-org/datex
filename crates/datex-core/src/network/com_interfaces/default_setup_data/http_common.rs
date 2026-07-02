@@ -1,10 +1,12 @@
 use core::fmt::Display;
 
 use crate::{
+    datex_proxy::DatexValueProxySerialize,
     network::com_hub::errors::ComInterfaceCreateError, prelude::*,
-    runtime::RuntimeConfigInterface, serde::Deserialize,
+    runtime::RuntimeConfigInterface,
 };
-use serde::Serialize;
+use datex_macros_internal::Datex;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 #[derive(Debug)]
@@ -23,9 +25,7 @@ impl Display for URLError {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(tag = "type", content = "data")]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Debug, Serialize, Deserialize, Clone)]
 pub enum TLSMode {
     /// The TLS certificate is handled externally (e.g., by a reverse proxy or load balancer).
     HandledExternally,
@@ -36,8 +36,7 @@ pub enum TLSMode {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Debug, Serialize, Deserialize, Clone)]
 pub struct AcceptAddress {
     address: String,
     tls_mode: Option<TLSMode>,
@@ -57,7 +56,7 @@ pub fn parse_url(address: &str) -> Result<Url, URLError> {
 }
 
 /// Generates the setup data for client interfaces based on the server's accept addresses.
-pub fn get_clients_setup_data<T: Serialize>(
+pub fn get_clients_setup_data<T: DatexValueProxySerialize>(
     accept_addresses: Option<Vec<AcceptAddress>>,
     protocols: (String, String),
     interface_type: String,

@@ -1,0 +1,48 @@
+pub mod datex_proxy;
+
+use crate::{
+    datex_proxy::{DatexValueContainerProxy, TryFromDatexValueError},
+    shared_values::SharedContainer,
+};
+
+pub struct Shared<T: DatexValueContainerProxy> {
+    value: T,
+    container: SharedContainer,
+}
+
+impl<T: DatexValueContainerProxy> Shared<T> {}
+
+impl<T: DatexValueContainerProxy> TryFrom<SharedContainer> for Shared<T> {
+    type Error = TryFromDatexValueError;
+    fn try_from(container: SharedContainer) -> Result<Self, Self::Error> {
+        let value =
+            T::try_from_value_container(container.value_container().clone())?;
+        Ok(Shared { value, container })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{
+        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+        shared_values::SharedContainerMutability,
+    };
+
+    use crate::prelude::*;
+    #[test]
+    fn string_shared() {
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+
+        let shared_container =
+            SharedContainer::new_owned_with_inferred_allowed_type(
+                "Hello DATEX",
+                SharedContainerMutability::Mutable,
+                address_provider,
+            );
+
+        let shared_string: Shared<String> =
+            Shared::try_from(shared_container).unwrap();
+        assert_eq!(shared_string.value, "Hello DATEX");
+    }
+}

@@ -128,7 +128,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_sampling_stream() {
+    fn sampling_stream() {
         let mut stream = SamplingStream {
             buffer: None,
             ended: false,
@@ -150,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    fn test_queuing_stream() {
+    fn queuing_stream() {
         let mut stream = QueuingStream {
             buffer: VecDeque::new(),
             ended: false,

@@ -1,10 +1,16 @@
+//! This module contains the precompiler for DATEX, which performs variable resolution and collects metadata about the AST.
+//! The precompiler traverses the AST, resolves variable references and shared values.
+
 use crate::{
-    collections::HashSet, type_inference::infer_expression_type_detailed_errors,
+    collections::HashSet,
+    type_inference::infer_expression_type_detailed_errors,
+    types::shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+    values::core_value::CoreValue,
 };
 
 use crate::prelude::*;
 use alloc::format;
-use core::{cell::RefCell, ops::Range, str::FromStr, unreachable};
+use core::{cell::RefCell, ops::Range, unreachable};
 pub mod options;
 pub mod precompiled_ast;
 pub mod scope;
@@ -12,10 +18,12 @@ pub mod scope_stack;
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, DatexExpression, DatexExpressionData,
-            GetSharedRef, RemoteExecution, Statements, TypeDeclaration,
-            TypeDeclarationKind, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariableKind, VariantAccess,
+            BinaryOperation, CloneExpression, DatexExpression,
+            DatexExpressionData, GetRef, GetSharedRef, PropertyAssignment,
+            RemoteExecution, RequestSharedRef, Statements, TypeDeclaration,
+            TypeDeclarationKind, Unbox, UnboxAssignment, ValueAccessType,
+            VariableAccess, VariableAssignment, VariableDeclaration,
+            VariableKind, VariantAccess,
         },
         resolved_variable::ResolvedVariable,
         spanned::Spanned,
@@ -28,17 +36,23 @@ use crate::{
         SpannedCompilerError,
     },
     global::operators::{BinaryOperator, binary::ArithmeticOperator},
-    libs::core::CoreLibPointerId,
+    libs::core::{core_lib_id::CoreLibId, type_id::CoreLibBaseTypeId},
+    runtime::Runtime,
     shared_values::{
-        pointer::{Pointer, PointerReferenceMutability},
-        shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
+        ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
-    types::definition::TypeDefinition,
+    types::{
+        nominal_type_definition::NominalTypeDefinition,
+        shared_container_containing_type::SharedContainerContainingType,
+        r#type::Type, type_definition::TypeDefinition,
+    },
     utils::maybe_action::{ErrorCollector, MaybeAction, collect_or_pass_error},
-    values::core_values::r#type::{Type, TypeMetadata},
     visitor::{
         VisitAction,
-        expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
+        expression::{
+            ExpressionVisitor,
+            visitable::{ExpressionVisitResult, VisitableExpression},
+        },
         type_expression::{
             TypeExpressionVisitor, visitable::TypeExpressionVisitResult,
         },
@@ -54,6 +68,7 @@ pub struct Precompiler<'a> {
     scope_stack: &'a mut PrecompilerScopeStack,
     collected_errors: Option<DetailedCompilerErrors>,
     is_first_level_expression: bool,
+    runtime: Runtime,
 }
 
 /// Precompile the AST by resolving variable references and collecting metadata.
@@ -62,6 +77,7 @@ pub fn precompile_ast_simple_error(
     ast: DatexExpression,
     scope_stack: &mut PrecompilerScopeStack,
     ast_metadata: Rc<RefCell<AstMetadata>>,
+    runtime: Runtime,
 ) -> Result<RichAst, SpannedCompilerError> {
     precompile_ast(
         ast,
@@ -70,6 +86,7 @@ pub fn precompile_ast_simple_error(
         PrecompilerOptions {
             detailed_errors: false,
         },
+        runtime,
     )
     .map_err(|e| {
         match e {
@@ -87,6 +104,7 @@ pub fn precompile_ast_detailed_errors(
     ast: DatexExpression,
     scope_stack: &mut PrecompilerScopeStack,
     ast_metadata: Rc<RefCell<AstMetadata>>,
+    runtime: Runtime,
 ) -> Result<RichAst, DetailedCompilerErrorsWithRichAst> {
     precompile_ast(
         ast,
@@ -95,6 +113,7 @@ pub fn precompile_ast_detailed_errors(
         PrecompilerOptions {
             detailed_errors: true,
         },
+        runtime,
     )
     .map_err(|e| {
         match e {
@@ -112,20 +131,24 @@ pub fn precompile_ast(
     scope_stack: &mut PrecompilerScopeStack,
     ast_metadata: Rc<RefCell<AstMetadata>>,
     options: PrecompilerOptions,
+    runtime: Runtime,
 ) -> Result<RichAst, SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst> {
-    Precompiler::new(scope_stack, ast_metadata).precompile(ast, options)
+    Precompiler::new(scope_stack, ast_metadata, runtime)
+        .precompile(ast, options)
 }
 
 impl<'a> Precompiler<'a> {
     pub fn new(
         scope_stack: &'a mut PrecompilerScopeStack,
         ast_metadata: Rc<RefCell<AstMetadata>>,
+        runtime: Runtime,
     ) -> Self {
         Self {
             ast_metadata,
             scope_stack,
             collected_errors: None,
             is_first_level_expression: true,
+            runtime,
         }
     }
 
@@ -194,7 +217,10 @@ impl<'a> Precompiler<'a> {
         // type inference - currently only if detailed errors are enabled
         // FIXME #675: always do type inference here, not only for detailed errors
         if options.detailed_errors {
-            let type_res = infer_expression_type_detailed_errors(&mut rich_ast);
+            let type_res = infer_expression_type_detailed_errors(
+                &mut rich_ast,
+                &self.runtime.memory().borrow(),
+            );
 
             // append type errors to collected_errors if any
             if let Some(collected_errors) = self.collected_errors.as_mut()
@@ -244,8 +270,8 @@ impl<'a> Precompiler<'a> {
             Ok(ResolvedVariable::VariableId(id))
         }
         // try to resolve core variable
-        else if let Ok(core) = CoreLibPointerId::from_str(name) {
-            Ok(ResolvedVariable::PointerAddress(core.into()))
+        else if let Some(core) = CoreLibId::try_from_str(name) {
+            Ok(ResolvedVariable::CoreLibId(core))
         } else {
             Err(CompilerError::UndeclaredVariable(name.to_string()))
         }
@@ -271,24 +297,44 @@ impl<'a> Precompiler<'a> {
         let type_id =
             self.add_new_variable(data.name.clone(), VariableShape::Type);
 
-        let reference = match data.kind {
-            TypeDeclarationKind::Nominal => {
-                Rc::new(RefCell::new(SharedTypeContainer::nominal(
-                    Type::UNIT,
-                    NominalTypeDeclaration::from(data.name.clone()),
-                    Pointer::NULL,
-                )))
-            }
-            TypeDeclarationKind::Structural => Rc::new(RefCell::new(
-                SharedTypeContainer::anonymous(Type::UNIT, Pointer::NULL),
-            )),
+        let type_def = match data.kind {
+            // creating a nominal type containing an endpoint owned shared container type here
+            // the inner value will be replaced, once the type declaration is fully visited in
+            // during the type inference (visit_type_declaration in type_inference::type_inference_visitor)
+            TypeDeclarationKind::Nominal => Type::Nominal(unsafe {
+                SharedContainerContainingNominalType::new_unchecked(
+                    SharedContainer::new_owned_with_inferred_allowed_type(
+                        CoreValue::NominalTypeDefinition(
+                            NominalTypeDefinition::new_base(
+                                Type::core(CoreLibBaseTypeId::Unknown),
+                                data.name.clone(),
+                            ),
+                        ),
+                        SharedContainerMutability::Immutable,
+                        &mut self
+                            .runtime
+                            .pointer_address_provider()
+                            .borrow_mut(),
+                    ),
+                )
+            }),
+            TypeDeclarationKind::Alias => Type::Alias(
+                TypeDefinition::Shared(unsafe {
+                    SharedContainerContainingType::new_unchecked(
+                        SharedContainer::new_owned_with_inferred_allowed_type(
+                            Type::core(CoreLibBaseTypeId::Unknown),
+                            SharedContainerMutability::Mutable,
+                            &mut self
+                                .runtime
+                                .pointer_address_provider()
+                                .borrow_mut(),
+                        ),
+                    )
+                })
+                .into(),
+            ),
         };
 
-        // register placeholder ref in metadata
-        let type_def = Type::new(
-            TypeDefinition::shared_reference(reference),
-            TypeMetadata::default(),
-        );
         {
             self.ast_metadata
                 .borrow_mut()
@@ -311,9 +357,17 @@ impl<'a> TypeExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 TypeExpressionData::VariableAccess(VariableAccess {
                     id,
                     name: literal.to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_span(span.clone())
             }
+            ResolvedVariable::CoreLibId(core) => match core {
+                CoreLibId::Type(value_id) => {
+                    TypeExpressionData::GetCoreLibType(value_id)
+                        .with_span(span.clone())
+                }
+                _ => todo!(),
+            },
             ResolvedVariable::PointerAddress(pointer_address) => {
                 TypeExpressionData::GetReference(pointer_address)
                     .with_span(span.clone())
@@ -337,9 +391,17 @@ impl<'a> TypeExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 TypeExpressionData::VariableAccess(VariableAccess {
                     id,
                     name: literal,
+                    access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_span(span.clone())
             }
+            ResolvedVariable::CoreLibId(core) => match core {
+                CoreLibId::Type(value_id) => {
+                    TypeExpressionData::GetCoreLibType(value_id)
+                        .with_span(span.clone())
+                }
+                _ => unreachable!(),
+            },
             ResolvedVariable::PointerAddress(pointer_address) => {
                 TypeExpressionData::GetReference(pointer_address)
                     .with_span(span.clone())
@@ -347,6 +409,68 @@ impl<'a> TypeExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         }))
     }
 }
+
+impl Precompiler<'_> {
+    /// Returns a new DATEX expression for getting an identifier either as variable access or as pointer.
+    /// If the variable could not be resolved
+    /// - Ok(None) is returned if error collection is enabled
+    /// - Err() is returned if early abort for errors is enabled
+    fn get_identifier_with_access_type(
+        &mut self,
+        identifier: &String,
+        span: &Range<usize>,
+        access_type: ValueAccessType,
+    ) -> Result<Option<DatexExpression>, SpannedCompilerError> {
+        let result = self.resolve_variable(identifier).map_err(|error| {
+            SpannedCompilerError::new_with_span(error, span.clone())
+        });
+        let action = self.collect_result(result)?;
+        Ok(if let MaybeAction::Do(resolved_variable) = action {
+            Some(match resolved_variable {
+                ResolvedVariable::VariableId(id) => {
+                    DatexExpressionData::VariableAccess(VariableAccess {
+                        id,
+                        name: identifier.clone(),
+                        access_type,
+                    })
+                    .with_span(span.clone())
+                }
+                ResolvedVariable::CoreLibId(core_lib_id) => {
+                    DatexExpressionData::ResolveCoreLibId(core_lib_id)
+                        .with_span(span.clone())
+                }
+                ResolvedVariable::PointerAddress(pointer_address) => {
+                    DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                        address: pointer_address,
+                        mutability: ReferenceMutability::Immutable,
+                    })
+                    .with_span(span.clone())
+                }
+            })
+        } else {
+            None
+        })
+    }
+
+    fn visit_identifier_with_access_type(
+        &mut self,
+        identifier: &String,
+        span: &Range<usize>,
+        access_type: ValueAccessType,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        let expression = self.get_identifier_with_access_type(
+            identifier,
+            span,
+            access_type,
+        )?;
+
+        Ok(match expression {
+            Some(expression) => VisitAction::Replace(expression),
+            None => VisitAction::SkipChildren,
+        })
+    }
+}
+
 impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     /// Handle expression errors by either recording them if collected_errors is Some,
     /// or aborting the traversal if collected_errors is None.
@@ -369,14 +493,13 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 self.scope_stack.push_scope();
                 self.scope_stack.increment_realm_index();
             }
-            NewScopeType::NewScope => {
+            NewScopeType::NewScope
                 // if in top level scope, don't create a new scope if first ast level
                 if !(self.scope_stack.scopes.len() == 1
                     && self.is_first_level_expression)
-                {
+                => {
                     self.scope_stack.push_scope();
                 }
-            }
             _ => {}
         };
 
@@ -385,12 +508,11 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
     fn after_visit_datex_expression(&mut self, expr: &mut DatexExpression) {
         match self.scope_type_for_expression(expr) {
-            NewScopeType::NewScope | NewScopeType::NewScopeWithNewRealm => {
+            NewScopeType::NewScope | NewScopeType::NewScopeWithNewRealm
                 // always keep top level scope
-                if self.scope_stack.scopes.len() > 1 {
+                if self.scope_stack.scopes.len() > 1 => {
                     self.scope_stack.pop_scope();
                 }
-            }
             _ => {}
         };
     }
@@ -406,7 +528,52 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         self.scope_stack.increment_realm_index();
 
         self.visit_datex_expression(&mut remote_execution.right)?;
-        self.scope_stack.pop_scope();
+        let scope = self.scope_stack.pop_scope();
+        remote_execution.injected_variable_count =
+            Some(scope.external_variables.len() as u32);
+        Ok(VisitAction::SkipChildren)
+    }
+
+    fn visit_property_assignment(
+        &mut self,
+        property_assignment: &mut PropertyAssignment,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        // visit children first to resolve variable accesses in property value
+        property_assignment.walk_children(self)?;
+
+        // if base is a variable access, change access type to Borrow
+        if let DatexExpressionData::VariableAccess(variable_access) =
+            &mut property_assignment.base.data
+        {
+            variable_access.access_type = ValueAccessType::Borrow;
+        }
+        Ok(VisitAction::SkipChildren)
+    }
+
+    fn visit_get_ref(
+        &mut self,
+        create_ref: &mut GetRef,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        create_ref.walk_children(self)?;
+
+        match &mut create_ref.expression.data {
+            // for &(x.y), access to x should be a borrow access
+            DatexExpressionData::PropertyAccess(property_access) => {
+                if let DatexExpressionData::VariableAccess(variable_access) =
+                    &mut property_access.base.data
+                {
+                    variable_access.access_type = ValueAccessType::Borrow;
+                }
+            }
+            // for &x, access to x should be a borrow access
+            DatexExpressionData::VariableAccess(variable_access) => {
+                variable_access.access_type = ValueAccessType::Borrow;
+            }
+            _ => {}
+        }
+
         Ok(VisitAction::SkipChildren)
     }
 
@@ -416,19 +583,49 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         let mut registered_names = HashSet::new();
-        for statements in statements.statements.iter_mut() {
-            if let DatexExpressionData::TypeDeclaration(type_declaration) =
-                &mut statements.data
-            {
-                let name = &type_declaration.name;
-                if registered_names.contains(name) {
-                    self.collect_error(
-                        CompilerError::InvalidRedeclaration(name.clone())
-                            .into(),
-                    )?
+        let is_terminated = statements.is_terminated;
+        let statements_length = statements.statements.len();
+        for (i, statement_expressions) in
+            statements.statements.iter_mut().enumerate()
+        {
+            match &mut statement_expressions.data {
+                DatexExpressionData::TypeDeclaration(type_declaration) => {
+                    let name = &type_declaration.name;
+                    if registered_names.contains(name) {
+                        self.collect_error(
+                            CompilerError::InvalidRedeclaration(name.clone())
+                                .into(),
+                        )?
+                    }
+                    registered_names.insert(name.clone());
+                    self.hoist_variable(type_declaration);
                 }
-                registered_names.insert(name.clone());
-                self.hoist_variable(type_declaration);
+                // also terminate execution block for remote execution if the result is not used
+                DatexExpressionData::RemoteExecution(remote_execution)
+                    // if not last statement, or last statement and terminated
+                    if (i != statements_length - 1 || is_terminated) => {
+                        match &mut remote_execution.right.data {
+                            DatexExpressionData::Statements(statements) => {
+                                statements.is_terminated = true;
+                            }
+                            _ => {
+                                *remote_execution.right =
+                                    DatexExpressionData::Statements(
+                                        Statements {
+                                            is_terminated: true,
+                                            unbounded: None,
+                                            statements: vec![
+                                                *remote_execution.right.clone(),
+                                            ],
+                                        },
+                                    )
+                                    .with_span(
+                                        remote_execution.right.span.clone(),
+                                    );
+                            }
+                        }
+                    }
+                _ => {}
             }
         }
         Ok(VisitAction::VisitChildren)
@@ -531,11 +728,14 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 span.clone(),
             ));
         }
+
+        variable_declaration.walk_children(self)?;
+
         variable_declaration.id = Some(self.add_new_variable(
             variable_declaration.name.clone(),
             VariableShape::Value(variable_declaration.kind),
         ));
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::SkipChildren)
     }
 
     fn visit_variable_assignment(
@@ -571,34 +771,135 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         Ok(VisitAction::VisitChildren)
     }
 
+    fn visit_get_shared_ref(
+        &mut self,
+        get_shared_ref: &mut GetSharedRef,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        // if expression is an identifier, set access type to shared (mut)
+        if let DatexExpressionData::Identifier(name) =
+            &get_shared_ref.expression.data
+        {
+            let access_type = ValueAccessType::from(&get_shared_ref.mutability);
+            self.visit_identifier_with_access_type(name, span, access_type)
+        }
+        // if expression is placeholder, set access type to shared (mut)
+        else if let DatexExpressionData::Placeholder(_access_type) =
+            &get_shared_ref.expression.data
+        {
+            let access_type = ValueAccessType::from(&get_shared_ref.mutability);
+            Ok(VisitAction::Replace(
+                DatexExpressionData::Placeholder(access_type)
+                    .with_span(span.clone()),
+            ))
+        } else {
+            Ok(VisitAction::VisitChildren)
+        }
+    }
+
+    fn visit_clone(
+        &mut self,
+        clone: &mut CloneExpression,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        // if expression is an identifier, set access type to clone
+        if let DatexExpressionData::Identifier(name) = &clone.expression.data {
+            self.visit_identifier_with_access_type(
+                name,
+                span,
+                ValueAccessType::Clone,
+            )
+        }
+        // if expression is placeholder, set access type to clone
+        else if let DatexExpressionData::Placeholder(_access_type) =
+            &clone.expression.data
+        {
+            Ok(VisitAction::Replace(
+                DatexExpressionData::Placeholder(ValueAccessType::Clone)
+                    .with_span(span.clone()),
+            ))
+        } else {
+            Ok(VisitAction::VisitChildren)
+        }
+    }
+
+    fn visit_unbox(
+        &mut self,
+        unbox: &mut Unbox,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        // if expression is an identifier, set access type to clone
+        if let DatexExpressionData::Identifier(name) = &unbox.expression.data {
+            let expression = self.get_identifier_with_access_type(
+                name,
+                &unbox.expression.span,
+                ValueAccessType::Borrow,
+            )?;
+            match expression {
+                Some(expression) => Ok(VisitAction::ReplaceRecurse(
+                    DatexExpressionData::Unbox(Unbox {
+                        expression: Box::new(expression),
+                    })
+                    .with_span(span.clone()),
+                )),
+                None => Ok(VisitAction::SkipChildren),
+            }
+        }
+        // if expression is placeholder, set access type to clone
+        else if let DatexExpressionData::Placeholder(_access_type) =
+            &unbox.expression.data
+        {
+            Ok(VisitAction::Replace(
+                DatexExpressionData::Placeholder(ValueAccessType::Borrow)
+                    .with_span(span.clone()),
+            ))
+        } else {
+            Ok(VisitAction::VisitChildren)
+        }
+    }
+
+    fn visit_unbox_assignment(
+        &mut self,
+        unbox_assignment: &mut UnboxAssignment,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        // if expression is an identifier, set access type to clone
+        if let DatexExpressionData::Identifier(name) =
+            &unbox_assignment.unbox_expression.data
+        {
+            let expression = self.get_identifier_with_access_type(
+                name,
+                &unbox_assignment.unbox_expression.span,
+                ValueAccessType::Borrow,
+            )?;
+            match expression {
+                Some(expression) => Ok(VisitAction::ReplaceRecurse(
+                    DatexExpressionData::UnboxAssignment(UnboxAssignment {
+                        operator: unbox_assignment.operator,
+                        unbox_expression: Box::new(expression),
+                        assigned_expression: unbox_assignment
+                            .assigned_expression
+                            .clone(),
+                    })
+                    .with_span(span.clone()),
+                )),
+                None => Ok(VisitAction::SkipChildren),
+            }
+        } else {
+            Ok(VisitAction::VisitChildren)
+        }
+    }
+
     fn visit_identifier(
         &mut self,
         identifier: &mut String,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
-        let result = self.resolve_variable(identifier).map_err(|error| {
-            SpannedCompilerError::new_with_span(error, span.clone())
-        });
-        let action = self.collect_result(result)?;
-        if let MaybeAction::Do(resolved_variable) = action {
-            return Ok(VisitAction::Replace(match resolved_variable {
-                ResolvedVariable::VariableId(id) => {
-                    DatexExpressionData::VariableAccess(VariableAccess {
-                        id,
-                        name: identifier.clone(),
-                    })
-                    .with_span(span.clone())
-                }
-                ResolvedVariable::PointerAddress(pointer_address) => {
-                    DatexExpressionData::GetSharedRef(GetSharedRef {
-                        address: pointer_address,
-                        mutability: PointerReferenceMutability::Immutable,
-                    })
-                    .with_span(span.clone())
-                }
-            }));
-        }
-        Ok(VisitAction::SkipChildren)
+        self.visit_identifier_with_access_type(
+            identifier,
+            span,
+            ValueAccessType::MoveOrCopy,
+        )
     }
 }
 
@@ -607,30 +908,36 @@ mod tests {
     use super::*;
     use crate::{
         ast::{
-            expressions::{CreateRef, CreateSharedRef, GetSharedRef, Unbox},
+            expressions::{
+                CreateShared, GetRef, GetSharedRef, Map, PropertyAccess,
+                PropertyAssignment, RequestSharedRef, Unbox,
+            },
             resolved_variable::ResolvedVariable,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
-        parser::Parser,
-        shared_values::{
-            pointer::PointerReferenceMutability,
-            pointer_address::PointerAddress,
-            shared_container::SharedContainerMutability,
+        libs::core::type_id::{
+            CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
         },
+        parser::Parser,
+        runtime::{RuntimeConfig, RuntimeRunner},
+        shared_values::{PointerAddress, SharedContainerMutability},
+        types::type_definition_with_metadata::LocalReferenceMutability,
         values::core_values::{
-            integer::Integer, r#type::LocalReferenceMutability,
+            endpoint::Endpoint,
+            integer::{Integer, typed_integer::IntegerTypeVariant},
         },
     };
-    use core::assert_matches;
+    use core::{assert_matches, str::FromStr};
 
     fn precompile(
         ast: DatexExpression,
         options: PrecompilerOptions,
     ) -> Result<RichAst, SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst>
     {
+        let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
-        Precompiler::new(&mut scope_stack, ast_metadata)
+        Precompiler::new(&mut scope_stack, ast_metadata, runtime)
             .precompile(ast, options)
     }
 
@@ -641,23 +948,6 @@ mod tests {
             "var x: integer = 34; var y = 10; x + y",
         )
         .unwrap();
-        precompile(ast, options).expect("Should precompile without errors");
-    }
-
-    #[test]
-    fn property_access() {
-        let options = PrecompilerOptions::default();
-        let ast =
-            Parser::parse_with_default_options("var x = {a: 1}; x.a").unwrap();
-        precompile(ast, options).expect("Should precompile without errors");
-    }
-
-    #[test]
-    fn property_access_assignment() {
-        let options = PrecompilerOptions::default();
-        let ast =
-            Parser::parse_with_default_options("var x = {a: 1}; x.a = 2;")
-                .unwrap();
         precompile(ast, options).expect("Should precompile without errors");
     }
 
@@ -704,10 +994,16 @@ mod tests {
     fn parse_and_precompile_spanned_result(
         src: &str,
     ) -> Result<RichAst, SpannedCompilerError> {
+        let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         let ast = Parser::parse_with_default_options(src)?;
-        precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata)
+        precompile_ast_simple_error(
+            ast,
+            &mut scope_stack,
+            ast_metadata,
+            runtime,
+        )
     }
 
     fn parse_and_precompile(src: &str) -> Result<RichAst, CompilerError> {
@@ -739,10 +1035,12 @@ mod tests {
                         name: "User".to_string(),
                         definition: TypeExpressionData::StructuralMap(
                             StructuralMap(vec![(
-                                TypeExpressionData::Text("a".to_string())
+                                TypeExpressionData::Text("a".into())
                                     .with_default_span(),
-                                TypeExpressionData::GetReference(
-                                    CoreLibPointerId::Integer(None).into()
+                                TypeExpressionData::GetCoreLibType(
+                                    CoreLibTypeId::Base(
+                                        CoreLibBaseTypeId::Integer
+                                    )
                                 )
                                 .with_default_span(),
                             )])
@@ -754,7 +1052,8 @@ mod tests {
                     .with_default_span(),
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
-                        name: "User".to_string()
+                        name: "User".to_string(),
+                        access_type: ValueAccessType::default(),
                     })
                     .with_default_span()
                 ]
@@ -782,31 +1081,41 @@ mod tests {
         let result = parse_and_precompile("boolean");
         assert_matches!(
             result,
-            Ok(
-                RichAst {
-                    ast: DatexExpression { data: DatexExpressionData::GetSharedRef(GetSharedRef{address, mutability}), ..},
+            Ok(RichAst {
+                ast: DatexExpression {
+                    data: DatexExpressionData::ResolveCoreLibId(
+                        CoreLibId::Type(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Boolean
+                        ))
+                    ),
                     ..
-                }
-            ) if address == CoreLibPointerId::Boolean.into() && mutability == PointerReferenceMutability::Immutable
+                },
+                ..
+            })
         );
         let result = parse_and_precompile("integer");
         assert_matches!(
             result,
-            Ok(
-                RichAst {
-                    ast: DatexExpression { data: DatexExpressionData::GetSharedRef(GetSharedRef{address, mutability}), ..},
+            Ok(RichAst {
+                ast: DatexExpression {
+                    data: DatexExpressionData::ResolveCoreLibId(
+                        CoreLibId::Type(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Integer
+                        ))
+                    ),
                     ..
-                }
-            ) if address == CoreLibPointerId::Integer(None).into()  && mutability == PointerReferenceMutability::Immutable
+                },
+                ..
+            })
         );
 
         let result = parse_and_precompile("integer/u8");
         assert_eq!(
             result.unwrap().ast,
             DatexExpressionData::VariantAccess(VariantAccess {
-                base: ResolvedVariable::PointerAddress(
-                    CoreLibPointerId::Integer(None).into()
-                ),
+                base: ResolvedVariable::CoreLibId(CoreLibId::Type(
+                    CoreLibBaseTypeId::Integer.into()
+                )),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
             })
@@ -822,9 +1131,9 @@ mod tests {
         assert_eq!(
             result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
-                base: ResolvedVariable::PointerAddress(
-                    CoreLibPointerId::Integer(None).into()
-                ),
+                base: ResolvedVariable::CoreLibId(CoreLibId::Type(
+                    CoreLibBaseTypeId::Integer.into()
+                )),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
             })
@@ -836,9 +1145,9 @@ mod tests {
         assert_eq!(
             result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
-                base: ResolvedVariable::PointerAddress(
-                    CoreLibPointerId::Integer(None).into()
-                ),
+                base: ResolvedVariable::CoreLibId(CoreLibId::Type(
+                    CoreLibBaseTypeId::Integer.into()
+                )),
                 name: "integer".to_string(),
                 variant: "invalid".to_string(),
             })
@@ -916,14 +1225,16 @@ mod tests {
                 left: Box::new(
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
-                        name: "a".to_string()
+                        name: "a".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span()
                 ),
                 right: Box::new(
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 1,
-                        name: "b".to_string()
+                        name: "b".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span()
                 ),
@@ -951,14 +1262,16 @@ mod tests {
                 left: Box::new(
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 1,
-                        name: "a".to_string()
+                        name: "a".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span()
                 ),
                 right: Box::new(
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
-                        name: "b".to_string()
+                        name: "b".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span()
                 ),
@@ -993,7 +1306,8 @@ mod tests {
                     init_expression: Box::new(
                         DatexExpressionData::VariableAccess(VariableAccess {
                             id: 0,
-                            name: "MyInt".to_string()
+                            name: "MyInt".to_string(),
+                            access_type: ValueAccessType::MoveOrCopy,
                         })
                         .with_default_span()
                     ),
@@ -1021,7 +1335,8 @@ mod tests {
                     init_expression: Box::new(
                         DatexExpressionData::VariableAccess(VariableAccess {
                             id: 0,
-                            name: "MyInt".to_string()
+                            name: "MyInt".to_string(),
+                            access_type: ValueAccessType::MoveOrCopy,
                         })
                         .with_default_span()
                     ),
@@ -1056,7 +1371,8 @@ mod tests {
                     definition: TypeExpressionData::VariableAccess(
                         VariableAccess {
                             id: 1,
-                            name: "MyInt".to_string()
+                            name: "MyInt".to_string(),
+                            access_type: ValueAccessType::MoveOrCopy,
                         }
                     )
                     .with_default_span(),
@@ -1070,7 +1386,8 @@ mod tests {
                     definition: TypeExpressionData::VariableAccess(
                         VariableAccess {
                             id: 0,
-                            name: "x".to_string()
+                            name: "x".to_string(),
+                            access_type: ValueAccessType::MoveOrCopy,
                         }
                     )
                     .with_default_span(),
@@ -1124,7 +1441,9 @@ mod tests {
                                         TypeExpressionData::VariableAccess(
                                             VariableAccess {
                                                 id: 0,
-                                                name: "x".to_string()
+                                                name: "x".to_string(),
+                                                access_type:
+                                                    ValueAccessType::MoveOrCopy,
                                             }
                                         )
                                         .with_default_span(),
@@ -1152,8 +1471,8 @@ mod tests {
             DatexExpressionData::TypeDeclaration(TypeDeclaration {
                 id: Some(0),
                 name: "x".to_string(),
-                definition: TypeExpressionData::GetReference(
-                    PointerAddress::from(CoreLibPointerId::Integer(None))
+                definition: TypeExpressionData::GetCoreLibType(
+                    CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)
                 )
                 .with_default_span(),
                 hoisted: true,
@@ -1178,7 +1497,7 @@ mod tests {
                             kind: VariableKind::Const,
                             name: "x".to_string(),
                             init_expression: Box::new(
-                                DatexExpressionData::CreateRef(CreateRef {
+                                DatexExpressionData::GetRef(GetRef {
                                     mutability:
                                         LocalReferenceMutability::Immutable,
                                     expression: Box::new(
@@ -1199,7 +1518,8 @@ mod tests {
                             DatexExpressionData::VariableAccess(
                                 VariableAccess {
                                     id: 0,
-                                    name: "x".to_string()
+                                    name: "x".to_string(),
+                                    access_type: ValueAccessType::Borrow,
                                 }
                             )
                             .with_default_span()
@@ -1214,7 +1534,7 @@ mod tests {
 
     #[test]
     fn unbox_shared() {
-        let result = parse_and_precompile("const x = '42; *x");
+        let result = parse_and_precompile("const x = 'shared 42; *x");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
@@ -1227,13 +1547,15 @@ mod tests {
                             kind: VariableKind::Const,
                             name: "x".to_string(),
                             init_expression: Box::new(
-                                DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                                    mutability: PointerReferenceMutability::Immutable,
+                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                                    mutability: ReferenceMutability::Immutable,
                                     expression: Box::new(
-                                        DatexExpressionData::Integer(
-                                            Integer::from(42)
-                                        )
-                                            .with_default_span()
+                                        DatexExpressionData::CreateShared(CreateShared {
+                                            expression: Box::new(DatexExpressionData::Integer(
+                                                Integer::from(42)
+                                            ).with_default_span()),
+                                            mutability: SharedContainerMutability::Immutable,
+                                        }).with_default_span(),
                                     )
                                 })
                                     .with_default_span(),
@@ -1243,20 +1565,647 @@ mod tests {
                     )
                         .with_default_span(),
                     DatexExpressionData::Unbox(Unbox {
+                        expression: Box::new(DatexExpressionData::VariableAccess(
+                            VariableAccess {
+                                id: 0,
+                                name: "x".to_string(),
+                                access_type: ValueAccessType::Borrow,
+                            }
+                        )
+                            .with_default_span())
+                    }).with_default_span(),
+                ]
+            ))
+                .with_default_span()
+        );
+    }
+
+    #[test]
+    fn placeholder_access() {
+        let result = parse_and_precompile("?");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+                .with_default_span()
+        );
+    }
+
+    #[test]
+    fn placeholder_shared_ref_access() {
+        let result = parse_and_precompile("'?");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Placeholder(ValueAccessType::SharedRef)
+                .with_default_span()
+        );
+
+        let result = parse_and_precompile("'((?))");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Placeholder(ValueAccessType::SharedRef)
+                .with_default_span()
+        );
+    }
+
+    #[test]
+    fn placeholder_mut_shared_ref_access() {
+        let result = parse_and_precompile("'mut ?");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Placeholder(ValueAccessType::SharedRefMut)
+                .with_default_span()
+        );
+
+        let result = parse_and_precompile("'mut ((?))");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Placeholder(ValueAccessType::SharedRefMut)
+                .with_default_span()
+        );
+    }
+
+    #[test]
+    fn placeholder_clone_access() {
+        let result = parse_and_precompile("clone ?");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Placeholder(ValueAccessType::Clone)
+                .with_default_span()
+        );
+
+        let result = parse_and_precompile("clone ((?))");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Placeholder(ValueAccessType::Clone)
+                .with_default_span()
+        );
+    }
+
+    #[test]
+    fn variable_shared_ref_access() {
+        let result = parse_and_precompile("var x = 42; 'x");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
+                            name: "x".to_string(),
+                            init_expression: Box::new(
+                                DatexExpressionData::Integer(Integer::from(42))
+                                    .with_default_span()
+                            ),
+                            type_annotation: None,
+                        }
+                    )
+                    .with_default_span(),
+                    DatexExpressionData::VariableAccess(VariableAccess {
+                        id: 0,
+                        name: "x".to_string(),
+                        access_type: ValueAccessType::SharedRef,
+                    })
+                    .with_default_span(),
+                ]
+            ))
+            .with_default_span()
+        );
+    }
+
+    #[test]
+    fn variable_shared_ref_mut_access() {
+        let result = parse_and_precompile("var x = 42; 'mut x");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
+                            name: "x".to_string(),
+                            init_expression: Box::new(
+                                DatexExpressionData::Integer(Integer::from(42))
+                                    .with_default_span()
+                            ),
+                            type_annotation: None,
+                        }
+                    )
+                    .with_default_span(),
+                    DatexExpressionData::VariableAccess(VariableAccess {
+                        id: 0,
+                        name: "x".to_string(),
+                        access_type: ValueAccessType::SharedRefMut,
+                    })
+                    .with_default_span(),
+                ]
+            ))
+            .with_default_span()
+        );
+    }
+
+    #[test]
+    fn variable_clone_access() {
+        let result = parse_and_precompile("var x = 42; clone x");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
+                            name: "x".to_string(),
+                            init_expression: Box::new(
+                                DatexExpressionData::Integer(Integer::from(42))
+                                    .with_default_span()
+                            ),
+                            type_annotation: None,
+                        }
+                    )
+                    .with_default_span(),
+                    DatexExpressionData::VariableAccess(VariableAccess {
+                        id: 0,
+                        name: "x".to_string(),
+                        access_type: ValueAccessType::Clone,
+                    })
+                    .with_default_span(),
+                ]
+            ))
+            .with_default_span()
+        );
+    }
+
+    #[test]
+    fn variable_unbox_access() {
+        let result = parse_and_precompile("var x = 42; *x");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
+                            name: "x".to_string(),
+                            init_expression: Box::new(
+                                DatexExpressionData::Integer(Integer::from(42))
+                                    .with_default_span()
+                            ),
+                            type_annotation: None,
+                        }
+                    )
+                    .with_default_span(),
+                    DatexExpressionData::Unbox(Unbox {
                         expression: Box::new(
                             DatexExpressionData::VariableAccess(
                                 VariableAccess {
                                     id: 0,
-                                    name: "x".to_string()
+                                    name: "x".to_string(),
+                                    access_type: ValueAccessType::Borrow,
                                 }
                             )
-                                .with_default_span()
+                            .with_default_span(),
                         )
                     })
+                    .with_default_span(),
+                ]
+            ))
+            .with_default_span()
+        );
+    }
+
+    #[test]
+    fn remote_execution_terminate_single_statement() {
+        let result = parse_and_precompile("@example :: 1;");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
+                DatexExpressionData::RemoteExecution(RemoteExecution {
+                    left: Box::new(
+                        DatexExpressionData::Endpoint(
+                            Endpoint::from_str("@example").unwrap()
+                        )
+                        .with_default_span()
+                    ),
+                    right: Box::new(
+                        DatexExpressionData::Statements(
+                            Statements::new_terminated(vec![
+                                DatexExpressionData::Integer(Integer::from(1))
+                                    .with_default_span()
+                            ])
+                        )
+                        .with_default_span()
+                    ),
+                    injected_variable_count: Some(0),
+                })
+                .with_default_span()
+            ]))
+        )
+    }
+
+    #[test]
+    fn remote_execution_terminate_multiple_statements() {
+        let result = parse_and_precompile("@example :: 1; 2");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::RemoteExecution(RemoteExecution {
+                        left: Box::new(
+                            DatexExpressionData::Endpoint(
+                                Endpoint::from_str("@example").unwrap()
+                            )
+                            .with_default_span()
+                        ),
+                        right: Box::new(
+                            DatexExpressionData::Statements(
+                                Statements::new_terminated(vec![
+                                    DatexExpressionData::Integer(
+                                        Integer::from(1)
+                                    )
+                                    .with_default_span()
+                                ])
+                            )
+                            .with_default_span()
+                        ),
+                        injected_variable_count: Some(0),
+                    })
+                    .with_default_span(),
+                    DatexExpressionData::Integer(Integer::from(2))
                         .with_default_span(),
                 ]
             ))
+        )
+    }
+
+    #[test]
+    fn remote_execution_terminate_inner_unterminated() {
+        let result = parse_and_precompile("@example :: (1;2);");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
+                DatexExpressionData::RemoteExecution(RemoteExecution {
+                    left: Box::new(
+                        DatexExpressionData::Endpoint(
+                            Endpoint::from_str("@example").unwrap()
+                        )
+                        .with_default_span()
+                    ),
+                    right: Box::new(
+                        DatexExpressionData::Statements(
+                            Statements::new_terminated(vec![
+                                DatexExpressionData::Integer(Integer::from(1))
+                                    .with_default_span(),
+                                DatexExpressionData::Integer(Integer::from(2))
+                                    .with_default_span(),
+                            ],)
+                        )
+                        .with_default_span()
+                    ),
+                    injected_variable_count: Some(0),
+                })
                 .with_default_span()
+            ]))
+        )
+    }
+
+    #[test]
+    fn remote_execution_injected_variables() {
+        let result = parse_and_precompile("var x = 10; @example :: x");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
+                            name: "x".to_string(),
+                            init_expression: Box::new(
+                                DatexExpressionData::Integer(Integer::from(10))
+                                    .with_default_span()
+                            ),
+                            type_annotation: None,
+                        }
+                    )
+                    .with_default_span(),
+                    DatexExpressionData::RemoteExecution(RemoteExecution {
+                        left: Box::new(
+                            DatexExpressionData::Endpoint(
+                                Endpoint::from_str("@example").unwrap()
+                            )
+                            .with_default_span()
+                        ),
+                        right: Box::new(
+                            DatexExpressionData::VariableAccess(
+                                VariableAccess {
+                                    id: 0,
+                                    name: "x".to_string(),
+                                    access_type: ValueAccessType::MoveOrCopy,
+                                }
+                            )
+                            .with_default_span()
+                        ),
+                        injected_variable_count: Some(1),
+                    })
+                    .with_default_span(),
+                ]
+            ))
+        )
+    }
+
+    #[test]
+    fn remote_execution_injected_variables_statements() {
+        let result = parse_and_precompile("var x = 10; @example :: (x;x+1);");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(10))
+                            .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::RemoteExecution(RemoteExecution {
+                    left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
+                    right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(
+                        vec![
+                            DatexExpressionData::VariableAccess(VariableAccess {
+                                id: 0,
+                                name: "x".to_string(),
+                                access_type: ValueAccessType::MoveOrCopy,
+                            }).with_default_span(),
+                            DatexExpressionData::BinaryOperation(BinaryOperation {
+                                operator: BinaryOperator::Arithmetic(
+                                    ArithmeticOperator::Add
+                                ),
+                                left: Box::new(DatexExpressionData::VariableAccess(VariableAccess {
+                                    id: 0,
+                                    name: "x".to_string(),
+                                    access_type: ValueAccessType::MoveOrCopy,
+                                }).with_default_span()),
+                                right: Box::new(DatexExpressionData::Integer(Integer::from(1)).with_default_span()),
+                                ty: None
+                            }).with_default_span(),
+                        ],
+                    )).with_default_span()),
+                    injected_variable_count: Some(1),
+                }).with_default_span(),
+            ]))
+        )
+    }
+
+    #[test]
+    fn nested_remote_execution_injected_variables() {
+        let result = parse_and_precompile(
+            "var x = 10; var y = 11; @example :: (x; @example2 :: y);",
+        );
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(10))
+                            .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(1),
+                    kind: VariableKind::Var,
+                    name: "y".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(11))
+                            .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::RemoteExecution(RemoteExecution {
+                    left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
+                    right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(vec![
+                        DatexExpressionData::VariableAccess(VariableAccess {
+                            id: 0,
+                            name: "x".to_string(),
+                            access_type: ValueAccessType::MoveOrCopy,
+                        }).with_default_span(),
+                        DatexExpressionData::RemoteExecution(RemoteExecution {
+                            left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example2").unwrap()).with_default_span()),
+                            right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(vec![
+                                DatexExpressionData::VariableAccess(VariableAccess {
+                                    id: 1,
+                                    name: "y".to_string(),
+                                    access_type: ValueAccessType::MoveOrCopy,
+                                }).with_default_span(),
+                            ])).with_default_span()),
+                            injected_variable_count: Some(1),
+                        }).with_default_span(),
+                    ])).with_default_span()),
+                    injected_variable_count: Some(2),
+                }).with_default_span(),
+            ]))
+        )
+    }
+
+    #[test]
+    fn variable_access_borrow() {
+        // Note: access type of variable should be borrow
+        let result = parse_and_precompile("var x = 42; &x");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
+                            name: "x".to_string(),
+                            init_expression: Box::new(
+                                DatexExpressionData::Integer(Integer::from(42))
+                                    .with_default_span()
+                            ),
+                            type_annotation: None,
+                        }
+                    )
+                    .with_default_span(),
+                    DatexExpressionData::GetRef(GetRef {
+                        mutability: LocalReferenceMutability::Immutable,
+                        expression: Box::new(
+                            DatexExpressionData::VariableAccess(
+                                VariableAccess {
+                                    id: 0,
+                                    name: "x".to_string(),
+                                    access_type: ValueAccessType::Borrow,
+                                }
+                            )
+                            .with_default_span()
+                        )
+                    })
+                    .with_default_span(),
+                ]
+            ))
+        );
+    }
+
+    #[test]
+    fn property_access_borrow() {
+        // Note: variable should only be borrowed in property access
+        let result = parse_and_precompile("var x = {a: 42}; &x.a");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
+                            name: "x".to_string(),
+                            init_expression: Box::new(
+                                DatexExpressionData::Map(Map {
+                                    entries: vec![(
+                                        DatexExpressionData::Text("a".into())
+                                            .with_default_span(),
+                                        DatexExpressionData::Integer(
+                                            Integer::from(42)
+                                        )
+                                        .with_default_span()
+                                    )],
+                                })
+                                .with_default_span()
+                            ),
+                            type_annotation: None,
+                        }
+                    )
+                    .with_default_span(),
+                    DatexExpressionData::GetRef(GetRef {
+                        mutability: LocalReferenceMutability::Immutable,
+                        expression: Box::new(
+                            DatexExpressionData::PropertyAccess(
+                                PropertyAccess {
+                                    base: Box::new(
+                                        DatexExpressionData::VariableAccess(
+                                            VariableAccess {
+                                                id: 0,
+                                                name: "x".to_string(),
+                                                access_type:
+                                                    ValueAccessType::Borrow,
+                                            }
+                                        )
+                                        .with_default_span()
+                                    ),
+                                    property: Box::new(
+                                        DatexExpressionData::Text("a".into())
+                                            .with_default_span()
+                                    ),
+                                }
+                            )
+                            .with_default_span()
+                        )
+                    })
+                    .with_default_span(),
+                ]
+            ))
+        );
+    }
+
+    #[test]
+    fn property_assignment() {
+        // Note: variable should only be borrowed in property assignment
+        let result = parse_and_precompile("var x = {a: 42}; x.a = 43;");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Map(Map {
+                            entries: vec![(
+                                DatexExpressionData::Text("a".into())
+                                    .with_default_span(),
+                                DatexExpressionData::Integer(Integer::from(42))
+                                    .with_default_span()
+                            )],
+                        })
+                        .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                .with_default_span(),
+                DatexExpressionData::PropertyAssignment(PropertyAssignment {
+                    operator: None,
+                    base: Box::new(
+                        DatexExpressionData::VariableAccess(VariableAccess {
+                            id: 0,
+                            name: "x".to_string(),
+                            access_type: ValueAccessType::Borrow,
+                        })
+                        .with_default_span()
+                    ),
+                    property: Box::new(
+                        DatexExpressionData::Text("a".into())
+                            .with_default_span()
+                    ),
+                    assigned_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(43))
+                            .with_default_span()
+                    ),
+                })
+                .with_default_span(),
+            ]))
         );
     }
 }

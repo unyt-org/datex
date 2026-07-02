@@ -517,6 +517,7 @@ async fn simple_network() {
 #[tokio::test]
 #[timeout(7000)]
 async fn complex_network_1() {
+    flexi_logger::init();
     run_async! {
         let mut network = Network::load("complex.json");
         network.start().await;

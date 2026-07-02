@@ -57,8 +57,8 @@ mod tests {
         assert_eq!(
             expr.data,
             TypeExpressionData::StructuralList(StructuralList(vec![
-                TypeExpressionData::Boolean(true).with_default_span(),
-                TypeExpressionData::Boolean(false).with_default_span(),
+                TypeExpressionData::Boolean(true.into()).with_default_span(),
+                TypeExpressionData::Boolean(false.into()).with_default_span(),
                 TypeExpressionData::Null.with_default_span(),
             ]))
         );
@@ -70,8 +70,8 @@ mod tests {
         assert_eq!(
             expr.data,
             TypeExpressionData::StructuralList(StructuralList(vec![
-                TypeExpressionData::Boolean(true).with_default_span(),
-                TypeExpressionData::Boolean(false).with_default_span(),
+                TypeExpressionData::Boolean(true.into()).with_default_span(),
+                TypeExpressionData::Boolean(false.into()).with_default_span(),
                 TypeExpressionData::Null.with_default_span(),
             ]))
         );

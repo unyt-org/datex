@@ -1,3 +1,4 @@
+//! This module contains the components of the parser.
 pub mod atom;
 pub mod callable;
 pub mod compile;
@@ -8,6 +9,7 @@ pub mod key;
 pub mod list;
 pub mod map;
 pub mod statements;
+pub mod tagged_value;
 pub mod type_declaration;
 pub mod type_expressions;
 pub mod variable_declaration;

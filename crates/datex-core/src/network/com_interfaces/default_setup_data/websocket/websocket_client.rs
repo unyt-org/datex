@@ -2,11 +2,11 @@ use crate::{
     network::com_interfaces::com_interface::properties::ComInterfaceProperties,
     prelude::*,
 };
-use core::time::Duration;
+use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Debug, Datex, Serialize, Deserialize)]
+
 pub struct WebSocketClientInterfaceSetupData {
     /// A websocket URL (ws:// or wss://).
     pub url: String,
@@ -17,7 +17,7 @@ impl WebSocketClientInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "websocket-client".to_string(),
             channel: "websocket".to_string(),
-            round_trip_time: Duration::from_millis(40),
+            round_trip_time: 40,
             max_bandwidth: 1000,
             ..ComInterfaceProperties::default()
         }

@@ -22,11 +22,12 @@ use crate::{
     prelude::*,
 };
 use core::fmt::Display;
+use datex_macros_internal::Datex;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Debug, Clone)]
+
 pub struct ComHubMetadataInterfaceSocket {
     pub uuid: String,
     pub direction: InterfaceDirection,
@@ -34,15 +35,14 @@ pub struct ComHubMetadataInterfaceSocket {
     pub properties: Option<DynamicEndpointProperties>,
 }
 
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Serialize, Deserialize, Clone)]
+
 pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
     pub uuid: String,
     pub direction: InterfaceDirection,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Debug, Datex, Clone)]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
     pub properties: ComInterfaceProperties,
@@ -50,8 +50,7 @@ pub struct ComHubMetadataInterface {
     pub is_waiting_for_socket_connections: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Debug, Datex, Clone)]
 pub struct ComHubMetadata {
     pub endpoint: Endpoint,
     pub interfaces: Vec<ComHubMetadataInterface>,

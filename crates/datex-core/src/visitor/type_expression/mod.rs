@@ -1,4 +1,9 @@
-use crate::{ast::type_expressions::RangeTypeExpr, prelude::*};
+//! This module contains the implementation of the visitor pattern for traversing and transforming the AST of [TypeExpression]s.
+use crate::{
+    ast::type_expressions::RangeTypeExpr,
+    prelude::*,
+    values::core_values::{boolean::Boolean, text::Text},
+};
 use core::ops::Range;
 
 use crate::{
@@ -10,7 +15,8 @@ use crate::{
             TypeExpressionData, TypeVariantAccess, Union,
         },
     },
-    shared_values::pointer_address::PointerAddress,
+    libs::core::type_id::CoreLibTypeId,
+    shared_values::PointerAddress,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
@@ -133,6 +139,9 @@ pub trait TypeExpressionVisitor<E>: Sized {
             }
             TypeExpressionData::Recover => {
                 unreachable!("Recover expression should not be visited")
+            }
+            TypeExpressionData::GetCoreLibType(core_lib_type_id) => {
+                self.visit_get_core_lib_type(core_lib_type_id, &expr.span)
             }
         };
         let action = match visit_result {
@@ -363,7 +372,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     /// Visit text literal
     fn visit_text_type(
         &mut self,
-        text: &mut String,
+        text: &mut Text,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
@@ -396,7 +405,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     /// Visit boolean literal
     fn visit_boolean_type(
         &mut self,
-        boolean: &mut bool,
+        boolean: &mut Boolean,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
@@ -452,5 +461,15 @@ pub trait TypeExpressionVisitor<E>: Sized {
         let _ = span;
         let _ = range;
         Ok(VisitAction::VisitChildren)
+    }
+
+    fn visit_get_core_lib_type(
+        &mut self,
+        core_lib_type_id: &mut CoreLibTypeId,
+        span: &Range<usize>,
+    ) -> TypeExpressionVisitResult<E> {
+        let _ = span;
+        let _ = core_lib_type_id;
+        Ok(VisitAction::SkipChildren)
     }
 }

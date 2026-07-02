@@ -1,40 +1,26 @@
+//! This module contains the implementation of the [Integer] struct, which represents an arbitrary precision integer value in type system.
+
 use core::result::Result;
 pub mod typed_integer;
 pub mod utils;
 use crate::prelude::*;
 
-use crate::{
-    traits::structural_eq::StructuralEq,
-    values::core_values::{
-        error::NumberParseError, integer::typed_integer::TypedInteger,
-    },
+use crate::values::core_values::{
+    error::NumberParseError, integer::typed_integer::TypedInteger,
 };
-use binrw::{
-    BinRead, BinReaderExt, BinResult, BinWrite, Endian,
-    io::{Read, Seek, Write},
-};
-use core::{
-    fmt::Display,
-    hash::Hash,
-    ops::{Add, Neg, Sub},
-    str::FromStr,
-};
-use num::{BigInt, Num};
+pub mod equality;
+pub mod ops;
+pub mod serde_dif;
+use num::{BigInt, Num, ToPrimitive};
+
+use core::{fmt::Display, hash::Hash, str::FromStr};
 use num_integer::Integer as NumInteger;
-use num_traits::ToPrimitive;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+pub mod binrw;
+pub mod primitive;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]
 pub struct Integer(pub BigInt);
-
-impl Serialize for Integer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.0.to_string())
-    }
-}
 
 impl<'de> Deserialize<'de> for Integer {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -42,7 +28,7 @@ impl<'de> Deserialize<'de> for Integer {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Integer::from_string(&s).map_err(serde::de::Error::custom)
+        Integer::try_from_string(&s).map_err(serde::de::Error::custom)
     }
 }
 
@@ -52,7 +38,7 @@ impl Integer {
     }
     /// Parse an integer from a string in base 10.
     /// Returns an error if the string is not a valid integer.
-    pub fn from_string(s: &str) -> Result<Self, NumberParseError> {
+    pub fn try_from_string(s: &str) -> Result<Self, NumberParseError> {
         BigInt::from_str(s)
             .map(Integer)
             .map_err(|_| NumberParseError::InvalidFormat)
@@ -275,105 +261,9 @@ impl Integer {
     }
 }
 
-impl StructuralEq for Integer {
-    fn structural_eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl Neg for Integer {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        Integer(-self.0)
-    }
-}
-
-impl Add for Integer {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Integer(self.0 + rhs.0)
-    }
-}
-impl Add for &Integer {
-    type Output = Integer;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        // FIXME #348: Optimize to avoid cloning if possible
-        Integer::add(self.clone(), rhs.clone())
-    }
-}
-
-impl Sub for Integer {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        self + (-rhs)
-    }
-}
-
-impl Sub for &Integer {
-    type Output = Integer;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        // FIXME #349: Optimize to avoid cloning if possible
-        Integer::sub(self.clone(), rhs.clone())
-    }
-}
-
 impl Display for Integer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(f, "{}", self.0)
-    }
-}
-
-impl BinWrite for Integer {
-    type Args<'a> = ();
-
-    fn write_options<W: Write + Seek>(
-        &self,
-        writer: &mut W,
-        _endian: Endian,
-        _: Self::Args<'_>,
-    ) -> BinResult<()> {
-        let (sign, bytes) = self.0.to_bytes_be();
-        let len = bytes.len() as u32;
-        writer.write_all(&[sign as u8])?;
-        writer.write_all(&len.to_le_bytes())?;
-        writer.write_all(&bytes)?;
-
-        Ok(())
-    }
-}
-impl BinRead for Integer {
-    type Args<'a> = ();
-
-    fn read_options<R: Read + Seek>(
-        reader: &mut R,
-        _endian: Endian,
-        _: Self::Args<'_>,
-    ) -> BinResult<Self> {
-        let sign = reader.read_le::<u8>()?;
-        let len = reader.read_le::<u32>()? as usize;
-        let mut bytes = vec![0; len];
-        reader.read_exact(&mut bytes)?;
-
-        let big_int = BigInt::from_bytes_be(
-            match sign {
-                0 => num::bigint::Sign::Minus,
-                1 => num::bigint::Sign::NoSign,
-                2 => num::bigint::Sign::Plus,
-                _ => {
-                    return Err(binrw::Error::AssertFail {
-                        pos: reader.stream_position()?,
-                        message: "Invalid sign byte".into(),
-                    });
-                }
-            },
-            &bytes,
-        );
-        Ok(Integer(big_int))
     }
 }
 
@@ -457,33 +347,33 @@ mod tests {
 
     #[test]
     fn integer_addition() {
-        let dec1 = Integer::from_string("12").unwrap();
-        let dec2 = Integer::from_string("56").unwrap();
+        let dec1 = Integer::try_from_string("12").unwrap();
+        let dec2 = Integer::try_from_string("56").unwrap();
         let result = dec1 + dec2;
         assert_eq!(result.to_string(), "68");
 
-        let dec1 = Integer::from_string("-12345").unwrap();
-        let dec2 = Integer::from_string("3").unwrap();
+        let dec1 = Integer::try_from_string("-12345").unwrap();
+        let dec2 = Integer::try_from_string("3").unwrap();
         let result = dec1 + dec2;
         assert_eq!(result.to_string(), "-12342");
     }
 
     #[test]
     fn formatting() {
-        let int1 = Integer::from_string("12").unwrap();
+        let int1 = Integer::try_from_string("12").unwrap();
         assert_eq!(int1.to_string(), "12");
 
-        let int2 = Integer::from_string("-12345").unwrap();
+        let int2 = Integer::try_from_string("-12345").unwrap();
         assert_eq!(int2.to_string(), "-12345");
-        let int3 = Integer::from_string("0").unwrap();
+        let int3 = Integer::try_from_string("0").unwrap();
         assert_eq!(int3.to_string(), "0");
 
         let int4 =
-            Integer::from_string("123456789012345678901234567890").unwrap();
+            Integer::try_from_string("123456789012345678901234567890").unwrap();
         assert_eq!(int4.to_string(), "123456789012345678901234567890");
 
-        let int5 =
-            Integer::from_string("-123456789012345678901234567890").unwrap();
+        let int5 = Integer::try_from_string("-123456789012345678901234567890")
+            .unwrap();
         assert_eq!(int5.to_string(), "-123456789012345678901234567890");
     }
 }

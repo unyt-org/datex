@@ -1,11 +1,11 @@
 use crate::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, ComparisonOperation, CreateMut, CreateRef,
-            CreateShared, CreateSharedRef, DatexExpression,
-            DatexExpressionData, GenericInstantiation, GetSharedRef,
-            PropertyAccess, PropertyAssignment, RangeDeclaration,
-            RemoteExecution, SlotAssignment, UnaryOperation, Unbox,
+            Apply, BinaryOperation, CloneExpression, ComparisonOperation,
+            CreateMut, CreateShared, DatexExpression, DatexExpressionData,
+            GenericInstantiation, GetRef, GetSharedRef, PropertyAccess,
+            PropertyAssignment, RangeDeclaration, RemoteExecution,
+            RequestSharedRef, StackAssignment, UnaryOperation, Unbox,
             UnboxAssignment, VariableAssignment,
         },
         spanned::Spanned,
@@ -22,15 +22,13 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
-        shared_container::SharedContainerMutability,
+        PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
-    values::core_values::{
-        error::NumberParseError, r#type::LocalReferenceMutability,
-    },
+    types::type_definition_with_metadata::LocalReferenceMutability,
+    values::core_values::error::NumberParseError,
 };
 
-static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
+pub static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
 impl Parser {
     pub(crate) fn parse_expression(
@@ -165,6 +163,7 @@ impl Parser {
                 DatexExpressionData::RemoteExecution(RemoteExecution {
                     left: Box::new(lhs),
                     right: Box::new(rhs),
+                    injected_variable_count: None,
                 })
                 .with_span(span)
             }
@@ -211,11 +210,11 @@ impl Parser {
         let rhs = self.parse_expression(r_bp)?;
         let span = lhs.span.start..rhs.span.end;
         let assignment_operator = match op.token {
-            Token::Assign => AssignmentOperator::Assign,
-            Token::AddAssign => AssignmentOperator::AddAssign,
-            Token::SubAssign => AssignmentOperator::SubtractAssign,
-            Token::MulAssign => AssignmentOperator::MultiplyAssign,
-            Token::DivAssign => AssignmentOperator::DivideAssign,
+            Token::Assign => None,
+            Token::AddAssign => Some(AssignmentOperator::AddAssign),
+            Token::SubAssign => Some(AssignmentOperator::SubtractAssign),
+            Token::MulAssign => Some(AssignmentOperator::MultiplyAssign),
+            Token::DivAssign => Some(AssignmentOperator::DivideAssign),
             _ => unreachable!(),
         };
 
@@ -248,9 +247,9 @@ impl Parser {
                 })
             }
             // slot assignment
-            DatexExpressionData::Slot(slot) => {
-                DatexExpressionData::SlotAssignment(SlotAssignment {
-                    slot,
+            DatexExpressionData::StackIndex(slot) => {
+                DatexExpressionData::SlotAssignment(StackAssignment {
+                    index: slot,
                     expression: Box::new(rhs),
                 })
             }
@@ -470,12 +469,22 @@ impl Parser {
                 })
                 .with_span(span))
             }
+            // clone
+            Token::Clone => {
+                let op = self.advance()?;
+                let rhs = self.parse_expression(UNARY_BP)?;
+                let span = op.span.start..rhs.span.end;
+                Ok(DatexExpressionData::Clone(CloneExpression {
+                    expression: Box::new(rhs),
+                })
+                .with_span(span))
+            }
             // ref (&)
             Token::Ampersand => {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(DatexExpressionData::CreateRef(CreateRef {
+                Ok(DatexExpressionData::GetRef(GetRef {
                     mutability: LocalReferenceMutability::Immutable,
                     expression: Box::new(rhs),
                 })
@@ -486,7 +495,7 @@ impl Parser {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(DatexExpressionData::CreateRef(CreateRef {
+                Ok(DatexExpressionData::GetRef(GetRef {
                     mutability: LocalReferenceMutability::Mutable,
                     expression: Box::new(rhs),
                 })
@@ -502,15 +511,16 @@ impl Parser {
                 {
                     let address =
                         PointerAddress::try_from(&address[1..]).unwrap();
-                    drop(next);
 
-                    let end_token = self.advance()?.span; // consume pointer address
-                    let span = op.span.start..end_token.end;
+                    let span = op.span.start..next.span.end;
+                    self.advance()?; // consume pointer address
 
-                    Ok(DatexExpressionData::GetSharedRef(GetSharedRef {
-                        mutability: PointerReferenceMutability::Immutable,
-                        address,
-                    })
+                    Ok(DatexExpressionData::RequestSharedRef(
+                        RequestSharedRef {
+                            mutability: ReferenceMutability::Immutable,
+                            address,
+                        },
+                    )
                     .with_span(span))
                 }
                 // normal shared ref to dynamic expression
@@ -518,8 +528,8 @@ impl Parser {
                     let rhs = self.parse_expression(UNARY_BP)?;
                     let span = op.span.start..rhs.span.end;
 
-                    Ok(DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                        mutability: PointerReferenceMutability::Immutable,
+                    Ok(DatexExpressionData::GetSharedRef(GetSharedRef {
+                        mutability: ReferenceMutability::Immutable,
                         expression: Box::new(rhs),
                     })
                     .with_span(span))
@@ -535,15 +545,16 @@ impl Parser {
                 {
                     let address =
                         PointerAddress::try_from(&address[1..]).unwrap();
-                    drop(next);
 
-                    let end_token = self.advance()?.span; // consume pointer address
-                    let span = op.span.start..end_token.end;
+                    let span = op.span.start..next.span.end;
+                    self.advance()?; // consume pointer address
 
-                    Ok(DatexExpressionData::GetSharedRef(GetSharedRef {
-                        mutability: PointerReferenceMutability::Mutable,
-                        address,
-                    })
+                    Ok(DatexExpressionData::RequestSharedRef(
+                        RequestSharedRef {
+                            mutability: ReferenceMutability::Mutable,
+                            address,
+                        },
+                    )
                     .with_span(span))
                 }
                 // normal shared ref to dynamic expression
@@ -551,8 +562,8 @@ impl Parser {
                     let rhs = self.parse_expression(UNARY_BP)?;
                     let span = op.span.start..rhs.span.end;
 
-                    Ok(DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                        mutability: PointerReferenceMutability::Mutable,
+                    Ok(DatexExpressionData::GetSharedRef(GetSharedRef {
+                        mutability: ReferenceMutability::Mutable,
                         expression: Box::new(rhs),
                     })
                     .with_span(span))
@@ -630,7 +641,7 @@ impl Parser {
             | Token::IntegerLiteral(_)
             | Token::DecimalLiteral(_)
             | Token::PointerAddress(_)
-            | Token::Slot(_)
+            | Token::StackIndex(_)
             | Token::Endpoint(_) => Some((30, 31)),
             _ => None,
         }
@@ -644,19 +655,23 @@ mod tests {
         ast::{
             expressions::{
                 Apply, BinaryOperation, ComparisonOperation, CreateMut,
-                CreateRef, CreateShared, CreateSharedRef, DatexExpressionData,
-                GenericInstantiation, GetSharedRef, PropertyAccess,
-                PropertyAssignment, RemoteExecution, Slot, SlotAssignment,
-                Statements, UnaryOperation, Unbox, UnboxAssignment,
-                VariableAssignment,
+                CreateShared, DatexExpressionData, GenericInstantiation,
+                GetRef, GetSharedRef, PropertyAccess, PropertyAssignment,
+                RemoteExecution, RequestSharedRef, StackAssignment, Statements,
+                UnaryOperation, Unbox, UnboxAssignment, VariableAssignment,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
         },
-        global::operators::{
-            ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-            ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
-            binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
+        global::{
+            operators::{
+                ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+                ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
+                binary::{
+                    ArithmeticOperator, BitwiseOperator, LogicalOperator,
+                },
+            },
+            protocol_structures::instruction_data::StackIndex,
         },
         parser::{
             errors::ParserError,
@@ -664,11 +679,9 @@ mod tests {
         },
         prelude::*,
         shared_values::{
-            pointer::PointerReferenceMutability,
-            pointer_address::PointerAddress,
-            shared_container::SharedContainerMutability,
+            PointerAddress, ReferenceMutability, SharedContainerMutability,
         },
-        values::core_values::r#type::LocalReferenceMutability,
+        types::type_definition_with_metadata::LocalReferenceMutability,
     };
 
     #[test]
@@ -678,11 +691,13 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
                 right: Box::new(
-                    DatexExpressionData::Boolean(false).with_default_span()
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
                 ty: None,
             })
@@ -696,13 +711,14 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
                 right: Box::new(
                     DatexExpressionData::BinaryOperation(BinaryOperation {
                         left: Box::new(
-                            DatexExpressionData::Boolean(false)
+                            DatexExpressionData::Boolean(false.into())
                                 .with_default_span()
                         ),
                         operator: BinaryOperator::Arithmetic(
@@ -730,7 +746,8 @@ mod tests {
                     ArithmeticUnaryOperator::Minus
                 ),
                 expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );
@@ -747,7 +764,7 @@ mod tests {
                         .with_default_span()
                 ),
                 property: Box::new(
-                    DatexExpressionData::Text("myProperty".to_string())
+                    DatexExpressionData::Text("myProperty".into())
                         .with_default_span()
                 ),
             })
@@ -765,8 +782,7 @@ mod tests {
                         .with_default_span()
                 ),
                 property: Box::new(
-                    DatexExpressionData::Text("if".to_string())
-                        .with_default_span()
+                    DatexExpressionData::Text("if".into()).with_default_span()
                 ),
             })
         );
@@ -787,16 +803,14 @@ mod tests {
                             .with_default_span()
                         ),
                         property: Box::new(
-                            DatexExpressionData::Text(
-                                "innerObject".to_string()
-                            )
-                            .with_default_span()
+                            DatexExpressionData::Text("innerObject".into())
+                                .with_default_span()
                         ),
                     })
                     .with_default_span()
                 ),
                 property: Box::new(
-                    DatexExpressionData::Text("myProperty".to_string())
+                    DatexExpressionData::Text("myProperty".into())
                         .with_default_span()
                 ),
             })
@@ -825,7 +839,7 @@ mod tests {
                                     ),
                                     property: Box::new(
                                         DatexExpressionData::Text(
-                                            "value1".to_string()
+                                            "value1".into()
                                         )
                                         .with_default_span()
                                     ),
@@ -850,7 +864,7 @@ mod tests {
                                     ),
                                     property: Box::new(
                                         DatexExpressionData::Text(
-                                            "value2".to_string()
+                                            "value2".into()
                                         )
                                         .with_default_span()
                                     ),
@@ -862,7 +876,7 @@ mod tests {
                             ArithmeticOperator::Multiply
                         ),
                         right: Box::new(
-                            DatexExpressionData::Boolean(true)
+                            DatexExpressionData::Boolean(true.into())
                                 .with_default_span()
                         ),
                         ty: None,
@@ -942,14 +956,14 @@ mod tests {
                             .with_default_span()
                         ),
                         property: Box::new(
-                            DatexExpressionData::Text("myFunction".to_string())
+                            DatexExpressionData::Text("myFunction".into())
                                 .with_default_span()
                         ),
                     })
                     .with_default_span()
                 ),
                 arguments: vec![
-                    DatexExpressionData::Identifier("arg1".to_string())
+                    DatexExpressionData::Identifier("arg1".into())
                         .with_default_span(),
                 ],
             })
@@ -966,19 +980,19 @@ mod tests {
                     DatexExpressionData::Apply(Apply {
                         base: Box::new(
                             DatexExpressionData::Identifier(
-                                "myFunction".to_string()
+                                "myFunction".into()
                             )
                             .with_default_span()
                         ),
                         arguments: vec![
-                            DatexExpressionData::Identifier("arg1".to_string())
+                            DatexExpressionData::Identifier("arg1".into())
                                 .with_default_span(),
                         ],
                     })
                     .with_default_span()
                 ),
                 arguments: vec![
-                    DatexExpressionData::Identifier("arg2".to_string())
+                    DatexExpressionData::Identifier("arg2".into())
                         .with_default_span(),
                 ],
             })
@@ -999,6 +1013,7 @@ mod tests {
                     DatexExpressionData::Identifier("xy".to_string())
                         .with_default_span()
                 ),
+                injected_variable_count: None,
             })
         );
     }
@@ -1028,6 +1043,7 @@ mod tests {
                     })
                     .with_default_span()
                 ),
+                injected_variable_count: None,
             })
         );
     }
@@ -1059,6 +1075,7 @@ mod tests {
                     })
                     .with_default_span()
                 ),
+                injected_variable_count: None,
             })
         );
     }
@@ -1070,11 +1087,13 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 operator: BinaryOperator::Logical(LogicalOperator::And),
                 right: Box::new(
-                    DatexExpressionData::Boolean(false).with_default_span()
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
                 ty: None,
             })
@@ -1088,11 +1107,13 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 operator: BinaryOperator::Logical(LogicalOperator::Or),
                 right: Box::new(
-                    DatexExpressionData::Boolean(false).with_default_span()
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span()
                 ),
                 ty: None,
             })
@@ -1142,18 +1163,19 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
                 operator: BinaryOperator::Logical(LogicalOperator::Or),
                 right: Box::new(
                     DatexExpressionData::BinaryOperation(BinaryOperation {
                         left: Box::new(
-                            DatexExpressionData::Boolean(false)
+                            DatexExpressionData::Boolean(false.into())
                                 .with_default_span()
                         ),
                         operator: BinaryOperator::Logical(LogicalOperator::And),
                         right: Box::new(
-                            DatexExpressionData::Boolean(true)
+                            DatexExpressionData::Boolean(true.into())
                                 .with_default_span()
                         ),
                         ty: None,
@@ -1214,7 +1236,7 @@ mod tests {
         let expr = parse("&myVar");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CreateRef(CreateRef {
+            DatexExpressionData::GetRef(GetRef {
                 mutability: LocalReferenceMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
@@ -1229,8 +1251,8 @@ mod tests {
         let expr = parse("'myVar");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                mutability: PointerReferenceMutability::Immutable,
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                mutability: ReferenceMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
                         .with_default_span()
@@ -1244,7 +1266,7 @@ mod tests {
         let expr = parse("&mut myVar");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CreateRef(CreateRef {
+            DatexExpressionData::GetRef(GetRef {
                 mutability: LocalReferenceMutability::Mutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
@@ -1259,8 +1281,8 @@ mod tests {
         let expr = parse("'mut myVar");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                mutability: PointerReferenceMutability::Mutable,
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                mutability: ReferenceMutability::Mutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
                         .with_default_span()
@@ -1274,7 +1296,7 @@ mod tests {
         let expr = parse("&myObject.myProperty");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CreateRef(CreateRef {
+            DatexExpressionData::GetRef(GetRef {
                 mutability: LocalReferenceMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::PropertyAccess(PropertyAccess {
@@ -1285,7 +1307,7 @@ mod tests {
                             .with_default_span()
                         ),
                         property: Box::new(
-                            DatexExpressionData::Text("myProperty".to_string())
+                            DatexExpressionData::Text("myProperty".into())
                                 .with_default_span()
                         ),
                     })
@@ -1300,8 +1322,8 @@ mod tests {
         let expr = parse("'myObject.myProperty");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                mutability: PointerReferenceMutability::Immutable,
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                mutability: ReferenceMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::PropertyAccess(PropertyAccess {
                         base: Box::new(
@@ -1311,7 +1333,7 @@ mod tests {
                             .with_default_span()
                         ),
                         property: Box::new(
-                            DatexExpressionData::Text("myProperty".to_string())
+                            DatexExpressionData::Text("myProperty".into())
                                 .with_default_span()
                         ),
                     })
@@ -1326,10 +1348,10 @@ mod tests {
         let expr = parse("&mut &myVar");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CreateRef(CreateRef {
+            DatexExpressionData::GetRef(GetRef {
                 mutability: LocalReferenceMutability::Mutable,
                 expression: Box::new(
-                    DatexExpressionData::CreateRef(CreateRef {
+                    DatexExpressionData::GetRef(GetRef {
                         mutability: LocalReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
@@ -1349,11 +1371,11 @@ mod tests {
         let expr = parse("'mut 'myVar");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                mutability: PointerReferenceMutability::Mutable,
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                mutability: ReferenceMutability::Mutable,
                 expression: Box::new(
-                    DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                        mutability: PointerReferenceMutability::Immutable,
+                    DatexExpressionData::GetSharedRef(GetSharedRef {
+                        mutability: ReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()
@@ -1388,7 +1410,7 @@ mod tests {
             expr.data,
             DatexExpressionData::Unbox(Unbox {
                 expression: Box::new(
-                    DatexExpressionData::CreateRef(CreateRef {
+                    DatexExpressionData::GetRef(GetRef {
                         mutability: LocalReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
@@ -1410,8 +1432,8 @@ mod tests {
             expr.data,
             DatexExpressionData::Unbox(Unbox {
                 expression: Box::new(
-                    DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                        mutability: PointerReferenceMutability::Immutable,
+                    DatexExpressionData::GetSharedRef(GetSharedRef {
+                        mutability: ReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()
@@ -1488,9 +1510,10 @@ mod tests {
             DatexExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
                 name: "x".to_string(),
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );
@@ -1522,17 +1545,18 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::PropertyAssignment(PropertyAssignment {
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 base: Box::new(
                     DatexExpressionData::Identifier("obj".to_string())
                         .with_default_span()
                 ),
                 property: Box::new(
-                    DatexExpressionData::Text("prop".to_string())
+                    DatexExpressionData::Text("prop".into())
                         .with_default_span()
                 ),
                 assigned_expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );
@@ -1546,7 +1570,7 @@ mod tests {
             DatexExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
                 name: "x".to_string(),
-                operator: AssignmentOperator::AddAssign,
+                operator: Some(AssignmentOperator::AddAssign),
                 expression: Box::new(
                     DatexExpressionData::Integer(42.into()).with_default_span()
                 ),
@@ -1555,12 +1579,12 @@ mod tests {
     }
 
     #[test]
-    fn parse_slot_assignment() {
-        let expr = parse("#slot1 = 100");
+    fn parse_stack_assignment() {
+        let expr = parse("\\2 = 100");
         assert_eq!(
             expr.data,
-            DatexExpressionData::SlotAssignment(SlotAssignment {
-                slot: Slot::Named("slot1".to_string()),
+            DatexExpressionData::SlotAssignment(StackAssignment {
+                index: StackIndex(2),
                 expression: Box::new(
                     DatexExpressionData::Integer(100.into())
                         .with_default_span()
@@ -1575,7 +1599,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 unbox_expression: Box::new(
                     DatexExpressionData::Identifier("myRef".to_string())
                         .with_default_span()
@@ -1594,7 +1618,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 unbox_expression: Box::new(
                     DatexExpressionData::Unbox(Unbox {
                         expression: Box::new(
@@ -1895,7 +1919,8 @@ mod tests {
             DatexExpressionData::UnaryOperation(UnaryOperation {
                 operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
                 expression: Box::new(
-                    DatexExpressionData::Boolean(true).with_default_span()
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
                 ),
             })
         );
@@ -2031,24 +2056,24 @@ mod tests {
 
     #[test]
     fn parse_pointer_address_ref() {
-        let expr = parse("'$ABCDEF");
+        let expr = parse("'$ABCDEFABCE");
         assert_eq!(
             expr.data,
-            DatexExpressionData::GetSharedRef(GetSharedRef {
-                address: PointerAddress::try_from("ABCDEF").unwrap(),
-                mutability: PointerReferenceMutability::Immutable,
+            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                address: PointerAddress::try_from("ABCDEFABCE").unwrap(),
+                mutability: ReferenceMutability::Immutable,
             })
         );
     }
 
     #[test]
     fn parse_mutable_pointer_address_ref() {
-        let expr = parse("'mut $ABCDEF");
+        let expr = parse("'mut $ABCDEFABCE");
         assert_eq!(
             expr.data,
-            DatexExpressionData::GetSharedRef(GetSharedRef {
-                address: PointerAddress::try_from("ABCDEF").unwrap(),
-                mutability: PointerReferenceMutability::Mutable,
+            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                address: PointerAddress::try_from("ABCDEFABCE").unwrap(),
+                mutability: ReferenceMutability::Mutable,
             })
         );
     }

@@ -1,46 +1,42 @@
+//! This module contains the implementation of the runtime, which is the backbone of the DATEX system.
 use crate::{
-    network::com_hub::ComHub,
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     runtime::execution::ExecutionError,
-    values::{
-        core_values::endpoint::Endpoint, value_container::ValueContainer,
-    },
+    values::value_container::ValueContainer,
 };
 
 use crate::prelude::*;
-use core::{cell::RefCell, fmt::Debug, result::Result};
+use core::{fmt::Debug, ops::Deref, result::Result};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
-
 mod config;
-pub mod dif_interface;
 pub mod execution;
 mod incoming_sections;
 mod internal;
-pub mod memory;
+pub mod pointer_availability_lookup;
 mod runner;
 
+pub mod cache;
+pub mod pointer_address_provider;
+mod request_move;
 #[cfg(test)]
 pub mod test_utils;
 
-use self::memory::Memory;
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Runtime {
-    pub version: String,
-    pub internal: Rc<RuntimeInternal>,
+    internal: Rc<RuntimeInternal>,
 }
 
-impl Debug for Runtime {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Runtime")
-            .field("version", &self.version)
-            .finish()
+impl Deref for Runtime {
+    type Target = RuntimeInternal;
+
+    fn deref(&self) -> &Self::Target {
+        &self.internal
     }
 }
 
@@ -49,7 +45,6 @@ impl Debug for Runtime {
 impl Runtime {
     pub(crate) fn new(runtime_internal: RuntimeInternal) -> Runtime {
         Runtime {
-            version: VERSION.to_string(),
             internal: Rc::new(runtime_internal),
         }
     }
@@ -58,19 +53,8 @@ impl Runtime {
         Runtime::new(RuntimeInternal::stub())
     }
 
-    pub fn com_hub(&self) -> Rc<ComHub> {
-        self.internal.com_hub.clone()
-    }
-    pub fn endpoint(&self) -> Endpoint {
-        self.internal.endpoint.clone()
-    }
-
-    pub fn internal(&self) -> Rc<RuntimeInternal> {
+    fn internal(&self) -> Rc<RuntimeInternal> {
         Rc::clone(&self.internal)
-    }
-
-    pub fn memory(&self) -> &RefCell<Memory> {
-        &self.internal.memory
     }
 
     #[cfg(feature = "compiler")]
@@ -106,13 +90,13 @@ impl Runtime {
 
     pub async fn execute_dxb<'a>(
         &'a self,
-        dxb: Vec<u8>,
+        input: DXBWithSharedValues,
         execution_context: Option<&'a mut ExecutionContext>,
         end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb(
             self.internal(),
-            dxb,
+            input,
             execution_context,
             end_execution,
         )
@@ -121,13 +105,13 @@ impl Runtime {
 
     pub fn execute_dxb_sync(
         &self,
-        dxb: &[u8],
+        input: DXBWithSharedValues,
         execution_context: Option<&mut ExecutionContext>,
         end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb_sync(
             self.internal(),
-            dxb,
+            input,
             execution_context,
             end_execution,
         )
@@ -136,12 +120,12 @@ impl Runtime {
     async fn execute_remote(
         &self,
         remote_execution_context: &mut RemoteExecutionContext,
-        dxb: Vec<u8>,
+        input: DXBWithSharedValues,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_remote(
             self.internal(),
             remote_execution_context,
-            dxb,
+            input,
         )
         .await
     }

@@ -2,11 +2,11 @@ use crate::{
     network::com_interfaces::com_interface::properties::ComInterfaceProperties,
     prelude::*,
 };
-use core::time::Duration;
+use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Serialize, Deserialize)]
+
 pub struct SerialClientInterfaceSetupData {
     pub port_name: Option<String>,
     pub baud_rate: u32,
@@ -17,7 +17,7 @@ impl SerialClientInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "serial".to_string(),
             channel: "serial".to_string(),
-            round_trip_time: Duration::from_millis(40),
+            round_trip_time: 40,
             max_bandwidth: 100,
             ..ComInterfaceProperties::default()
         }

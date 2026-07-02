@@ -4,13 +4,18 @@ use core::hint::black_box;
 use criterion::{BenchmarkId, Criterion, criterion_group};
 
 use crate::{json, json::utils::*};
-use datex_core::compiler::{CompileOptions, compile_script};
+use datex_core::{
+    compiler::{CompileOptions, compile_script},
+    core_compiler::core_compilation_context::DXBWithSharedValues,
+    runtime::Runtime,
+};
 
 fn bench_json_file(c: &mut Criterion, file_path: &str) {
+    let runtime = Runtime::stub();
     // JSON benchmarks
     // JSON string to runtime value
     let json = get_json_test_string(file_path);
-    let (dxb, _) = compile_script(&json, CompileOptions::default())
+    let (dxb, _) = compile_script(&json, CompileOptions::default(), runtime)
         .expect("Failed to parse JSON string");
 
     // DATEX
@@ -74,7 +79,7 @@ fn bench_json_file(c: &mut Criterion, file_path: &str) {
         &dxb,
         |b, dxb| {
             b.iter(|| {
-                json::dxb_to_runtime_value(black_box(dxb));
+                json::dxb_to_runtime_value(black_box(dxb.to_vec()));
                 black_box(());
             })
         },

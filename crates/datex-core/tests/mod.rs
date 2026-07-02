@@ -24,4 +24,5 @@ pub mod parser;
 #[cfg(feature = "compiler")]
 pub mod execution;
 
+pub mod datex_structs_derive;
 pub mod network;

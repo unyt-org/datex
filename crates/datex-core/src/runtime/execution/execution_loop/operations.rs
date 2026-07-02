@@ -13,35 +13,40 @@ use crate::{
     },
     values::{
         core_values::range::Range,
-        value_container::{OwnedValueKey, ValueContainer},
+        value_container::{ValueContainer, value_key::ValueKey},
     },
 };
 use core::cell::RefCell;
 
-use crate::{prelude::*, runtime::memory::Memory};
+use crate::{
+    prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::base_shared_value_container::observers::TransceiverId,
+    types::{r#type::Type, type_match::TypeSatisfiesValueContainer},
+    value_updates::{
+        update_data::SetEntryUpdateData, update_handler::UpdateHandler,
+    },
+};
 
 pub fn set_property(
     target: &mut ValueContainer,
-    key: OwnedValueKey,
+    key: ValueKey,
     value: ValueContainer,
 ) -> Result<(), ExecutionError> {
     target
-        .try_set_property(
-            0, // TODO #644: set correct source id
-            None, key, value,
-        )
+        .try_set_entry(SetEntryUpdateData { key, value }, TransceiverId(0)) // TODO #644: set correct source id
         .map_err(ExecutionError::from)
 }
 
 pub fn handle_unary_shared_value_operation(
     operator: SharedValueUnaryOperator,
     value_container: ValueContainer,
-    _memory: &RefCell<Memory>,
+    _memory: &RefCell<SharedReferencesCache>,
 ) -> Result<ValueContainer, ExecutionError> {
     Ok(match operator {
         SharedValueUnaryOperator::Unbox => {
             if let ValueContainer::Shared(reference) = value_container {
-                reference.value_container()
+                reference.value_container().clone()
             } else {
                 return Err(ExecutionError::InvalidUnbox);
             }
@@ -72,7 +77,7 @@ pub fn handle_unary_arithmetic_operation(
 pub fn handle_unary_operation(
     operator: UnaryOperator,
     value_container: ValueContainer,
-    memory: &RefCell<Memory>,
+    memory: &RefCell<SharedReferencesCache>,
 ) -> Result<ValueContainer, ExecutionError> {
     match operator {
         UnaryOperator::Reference(reference) => {
@@ -127,8 +132,9 @@ pub fn handle_comparison_operation(
         }
         ComparisonOperator::Matches => {
             // TODO #407: Fix matches, rhs will always be a type, so actual_type() call is wrong
-            let v_type = rhs.actual_container_type(); // Type::try_from(value_container)?;
-            let val = v_type.value_matches(lhs);
+            let v_type = Type::try_from(rhs.clone())
+                .map_err(|_| ExecutionError::ExpectedTypeValue)?;
+            let val = v_type.satisfies_value_container(lhs);
             Ok(ValueContainer::from(val))
         }
         _ => {
@@ -142,7 +148,6 @@ pub fn handle_assignment_operation(
     lhs: &ValueContainer,
     rhs: ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
-    // apply operation to active value
     match operator {
         AssignmentOperator::AddAssign => Ok((lhs + &rhs)?),
         AssignmentOperator::SubtractAssign => Ok((lhs - &rhs)?),

@@ -1,22 +1,19 @@
-use crate::{
-    network::{
-        com_hub::{
-            ComHub, InterfacePriority,
-            errors::{ComInterfaceCreateError, InterfaceAddError},
-            managers::com_interface_manager::DynInterfaceImplementationFactoryFn,
-        },
-        com_interfaces::com_interface::{
-            ComInterfaceUUID,
-            factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory},
-        },
+use crate::network::{
+    com_hub::{
+        ComHub, InterfacePriority,
+        errors::{ComInterfaceCreateError, InterfaceAddError},
+        managers::com_interface_manager::DynInterfaceImplementationFactoryFn,
     },
-    values::value_container::ValueContainer,
+    com_interfaces::com_interface::{
+        ComInterfaceUUID,
+        factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory},
+    },
 };
 use log::info;
 
 use crate::{
     network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory,
-    prelude::*,
+    prelude::*, values::value::Value,
 };
 
 /// Interface management methods
@@ -68,7 +65,7 @@ impl ComHub {
     pub async fn create_interface(
         self: Rc<Self>,
         interface_type: &str,
-        setup_data: ValueContainer,
+        setup_data: Value,
         priority: InterfacePriority,
     ) -> Result<
         (
@@ -97,7 +94,7 @@ impl ComHub {
     pub async fn create_interface_sync(
         self: Rc<Self>,
         interface_type: &str,
-        setup_data: ValueContainer,
+        setup_data: Value,
         priority: InterfacePriority,
     ) -> Result<
         (
@@ -263,12 +260,12 @@ mod tests {
     }
 
     #[test]
-    fn test_add_interface_from_configuration() {
+    fn add_interface_from_configuration() {
         let _ = generate_test_com_hub_configuration();
     }
 
     #[tokio::test]
-    async fn test_remove_interface_from_configuration_before_init() {
+    async fn remove_interface_from_configuration_before_init() {
         let (com_hub, task_future, interface_uuid) =
             generate_test_com_hub_configuration();
 
@@ -293,7 +290,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_remove_interface_from_configuration_after_init() {
+    async fn remove_interface_from_configuration_after_init() {
         let (com_hub, task_future, interface_uuid) =
             generate_test_com_hub_configuration();
 
@@ -325,7 +322,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_remove_nonexistent_interface() {
+    async fn remove_nonexistent_interface() {
         let (incoming_sections_sender, _incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
         let (com_hub, _task_future) =
@@ -337,7 +334,7 @@ mod tests {
 
     #[tokio::test]
     #[cfg(feature = "std")]
-    async fn test_connected_interfaces() {
+    async fn connected_interfaces() {
         let (peer_a, peer_b, init_future) = get_coupled_com_hubs().await;
 
         // run task futures for 10ms to allow sockets to connect
@@ -360,7 +357,7 @@ mod tests {
 
     #[tokio::test]
     #[cfg(feature = "std")]
-    async fn test_interfaces_send_block() {
+    async fn interfaces_send_block() {
         run_with_coupled_com_hubs(|peer_a, mut peer_b| async move {
             // create block to send from A to B
             let block_a_to_b_body = [1, 2, 3];

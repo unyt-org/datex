@@ -1,9 +1,9 @@
-use crate::prelude::*;
-use core::{convert::TryInto, fmt::Write, iter::FromIterator};
+use crate::{core_compiler::core_compilation_context::ByteCursor, prelude::*};
+use binrw::io::Write;
+use core::{convert::TryInto, fmt::Write as FmtWrite, iter::FromIterator};
 use itertools::Itertools;
-
 /*
-read functions for primitive data types on a u8 array, also increments the index
+read functions for primitive data types on a U8 array, also increments the index
  */
 
 pub fn read_u8(buffer: &[u8], index: &mut usize) -> u8 {
@@ -102,8 +102,10 @@ pub fn write_u8(buffer: &mut [u8], index: &mut usize, val: u8) {
     buffer[*index] = val;
     *index += 1;
 }
-pub fn append_u8(buffer: &mut Vec<u8>, val: u8) {
-    buffer.extend_from_slice(&[val]);
+pub fn append_u8(cursor: &mut ByteCursor, val: u8) {
+    cursor
+        .write_all(&[val])
+        .expect("could not write u8 to buffer");
 }
 pub fn write_i8(buffer: &mut [u8], index: &mut usize, val: i8) {
     let bytes = val.to_le_bytes();
@@ -156,8 +158,10 @@ pub fn toggle_bit(buffer: &mut [u8], byte_index: usize, bit_position: u8) {
 //     }
 // }
 
-pub fn append_u16(buffer: &mut Vec<u8>, val: u16) {
-    buffer.extend_from_slice(&val.to_le_bytes());
+pub fn append_u16(buffer: &mut ByteCursor, val: u16) {
+    buffer
+        .write_all(&val.to_le_bytes())
+        .expect("could not write u16 to buffer");
 }
 pub fn write_i16(buffer: &mut [u8], index: &mut usize, val: i16) {
     let bytes = val.to_le_bytes();
@@ -166,12 +170,16 @@ pub fn write_i16(buffer: &mut [u8], index: &mut usize, val: i16) {
         *index += 1;
     }
 }
-pub fn append_i16(buffer: &mut Vec<u8>, val: i16) {
-    buffer.extend_from_slice(&val.to_le_bytes());
+pub fn append_i16(cursor: &mut ByteCursor, val: i16) {
+    cursor
+        .write_all(&val.to_le_bytes())
+        .expect("could not write i16 to buffer");
 }
 
-pub fn append_u32(buffer: &mut Vec<u8>, val: u32) {
-    buffer.extend_from_slice(&val.to_le_bytes());
+pub fn append_u32(cursor: &mut ByteCursor, val: u32) {
+    cursor
+        .write_all(&val.to_le_bytes())
+        .expect("could not write u32 to buffer");
 }
 pub fn write_i32(buffer: &mut [u8], index: &mut usize, val: i32) {
     let bytes = val.to_le_bytes();
@@ -180,8 +188,10 @@ pub fn write_i32(buffer: &mut [u8], index: &mut usize, val: i32) {
         *index += 1;
     }
 }
-pub fn append_i32(buffer: &mut Vec<u8>, val: i32) {
-    buffer.extend_from_slice(&val.to_le_bytes());
+pub fn append_i32(cursor: &mut ByteCursor, val: i32) {
+    cursor
+        .write_all(&val.to_le_bytes())
+        .expect("could not write i32 to buffer");
 }
 
 pub fn write_u64(buffer: &mut [u8], index: &mut usize, val: u64) {

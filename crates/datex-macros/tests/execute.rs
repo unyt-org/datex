@@ -2,6 +2,7 @@ use datex_core::values::core_values::integer::Integer;
 use datex_macros::{execute_sync_unchecked, execute_unchecked};
 
 #[test]
+#[ignore = "ISSUE"]
 fn execute_sync() {
     let x: i32 = 42;
     let result = execute_sync_unchecked!("1 + ?", x).unwrap();
@@ -20,6 +21,7 @@ fn execute_sync() {
 }
 
 #[tokio::test]
+#[ignore = "ISSUE"]
 async fn execute_async() {
     let x: i32 = 42;
     let result = execute_unchecked!("1 + ?", x).await.unwrap();

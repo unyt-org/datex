@@ -1,3 +1,4 @@
+//! The `prelude` module contains re-exports of commonly used types, traits, and functions from the alloc crate and other modules.
 pub use crate::collections::*;
 
 pub use alloc::{

@@ -7,20 +7,27 @@ use crate::{
             Union,
         },
     },
-    types::{
-        definition::TypeDefinition,
-        structural_type_definition::StructuralTypeDefinition,
-    },
+    types::literal_type_definition::LiteralTypeDefinition,
     values::{
-        core_value::CoreValue, core_values::r#type::Type, value::Value,
-        value_container::ValueContainer,
+        core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
 
 use crate::{
-    ast::expressions::{CallableDeclaration, CreateShared, CreateSharedRef},
-    libs::core::CoreLibPointerId,
+    ast::expressions::{
+        CallableDeclaration, CreateShared, GetSharedRef, TagExpression,
+    },
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
+    shared_values::SharedContainer,
+    types::{
+        r#type::Type,
+        type_definition::{
+            TypeDefinition, range::RangeTypeDefinition,
+            tagged_type::TaggedTypeDefinition,
+        },
+        type_definition_with_metadata::TypeDefinitionWithMetadata,
+    },
 };
 use alloc::format;
 
@@ -30,46 +37,54 @@ impl From<&ValueContainer> for DatexExpressionData {
     fn from(value: &ValueContainer) -> Self {
         match value {
             ValueContainer::Local(value) => value_to_datex_expression(value),
-            ValueContainer::Shared(shared) => {
-                let reference_mutability =
-                    shared.pointer().reference_mutability().cloned();
-                match reference_mutability {
-                    Some(reference_mutability) => {
-                        DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                            mutability: reference_mutability,
-                            expression: Box::new(
-                                DatexExpressionData::CreateShared(
-                                    CreateShared {
-                                        mutability: shared.mutability(),
-                                        expression: Box::new(
-                                            DatexExpressionData::from(
-                                                &shared.value_container(),
-                                            )
-                                            .with_default_span(),
-                                        ),
-                                    },
-                                )
-                                .with_default_span(),
-                            ),
-                        })
-                    }
-                    _ => DatexExpressionData::CreateShared(CreateShared {
-                        mutability: shared.mutability(),
+            ValueContainer::Shared(shared) => match shared {
+                SharedContainer::Referenced(referenced_container) => {
+                    DatexExpressionData::GetSharedRef(GetSharedRef {
+                        mutability: referenced_container.reference_mutability(),
+                        expression: Box::new(
+                            DatexExpressionData::CreateShared(CreateShared {
+                                mutability: referenced_container
+                                    .container_mutability(),
+                                expression: Box::new(
+                                    DatexExpressionData::from(
+                                        &*shared.value_container(),
+                                    )
+                                    .with_default_span(),
+                                ),
+                            })
+                            .with_default_span(),
+                        ),
+                    })
+                }
+                SharedContainer::Owned(owned_container) => {
+                    DatexExpressionData::CreateShared(CreateShared {
+                        mutability: owned_container.container_mutability(),
                         expression: Box::new(
                             DatexExpressionData::from(
-                                &shared.value_container(),
+                                &*owned_container.value_container(),
                             )
                             .with_default_span(),
                         ),
-                    }),
+                    })
                 }
-            }
+            },
         }
     }
 }
 
 fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
-    match &value.inner {
+    let core_value_expression = core_value_to_datex_expression(&value.inner);
+    if let Some(custom_type) = &value.custom_type {
+        type_cast_expression(core_value_expression, custom_type)
+    } else {
+        core_value_expression
+    }
+}
+
+fn core_value_to_datex_expression(
+    core_value: &CoreValue,
+) -> DatexExpressionData {
+    match &core_value {
         CoreValue::Integer(integer) => {
             DatexExpressionData::Integer(integer.clone())
         }
@@ -82,8 +97,10 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
         CoreValue::TypedDecimal(typed_decimal) => {
             DatexExpressionData::TypedDecimal(typed_decimal.clone())
         }
-        CoreValue::Boolean(boolean) => DatexExpressionData::Boolean(boolean.0),
-        CoreValue::Text(text) => DatexExpressionData::Text(text.0.clone()),
+        CoreValue::Boolean(boolean) => {
+            DatexExpressionData::Boolean(boolean.clone())
+        }
+        CoreValue::Text(text) => DatexExpressionData::Text(text.clone()),
 
         CoreValue::Range(range) => {
             DatexExpressionData::Range(RangeDeclaration {
@@ -162,57 +179,112 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
                         DatexExpressionData::NativeImplementationIndicator
                             .with_default_span(),
                     ),
+                    injected_variable_count: None,
                 },
             ))
+        }
+        CoreValue::NominalTypeDefinition(_) => {
+            todo!()
         }
     }
 }
 
-fn type_to_type_expression(type_value: &Type) -> TypeExpression {
-    match &type_value.type_definition {
-        TypeDefinition::Structural(struct_type) => match struct_type {
-            StructuralTypeDefinition::Integer(integer) => {
+fn type_cast_expression(
+    expression: DatexExpressionData,
+    target_type: &TypeDefinition,
+) -> DatexExpressionData {
+    // special handling for some type casts
+    match target_type {
+        // #SomeTag (...)
+        TypeDefinition::TaggedType(TaggedTypeDefinition {
+            tag,
+            ty: Option::None,
+        }) => DatexExpressionData::Tag(TagExpression {
+            tag: tag.clone(),
+            expression: Some(Box::new(expression.with_default_span())),
+        }),
+        // #SomeTag
+        TypeDefinition::TaggedType(TaggedTypeDefinition {
+            tag,
+            ty:
+                Some(box Type::Alias(TypeDefinitionWithMetadata {
+                    definition:
+                        TypeDefinition::CoreType(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Unit,
+                        )),
+                    ..
+                })),
+        }) => DatexExpressionData::Tag(TagExpression {
+            tag: tag.clone(),
+            expression: None,
+        }),
+        _ => todo!(),
+    }
+}
+
+fn type_to_type_expression(ty: &Type) -> TypeExpression {
+    match ty {
+        Type::Nominal(_container) => todo!(),
+        Type::Alias(_definition) => {
+            ty.with_collapsed_definition_with_metadata(|def| {
+                type_definition_to_type_expression(def)
+            })
+        }
+    }
+}
+
+fn type_definition_to_type_expression(
+    type_def_with_metadata: &TypeDefinitionWithMetadata,
+) -> TypeExpression {
+    // TODO: handle type metadata
+    structural_type_definition_to_type_expression(
+        &type_def_with_metadata.definition,
+    )
+}
+// FIXME can we make this consuming?
+fn structural_type_definition_to_type_expression(
+    type_definition: &TypeDefinition,
+) -> TypeExpression {
+    match type_definition {
+        TypeDefinition::Literal(struct_type) => match struct_type {
+            LiteralTypeDefinition::Integer(integer) => {
                 TypeExpressionData::Integer(integer.clone()).with_default_span()
             }
-            StructuralTypeDefinition::Text(text) => {
-                TypeExpressionData::Text(text.0.clone()).with_default_span()
+            LiteralTypeDefinition::Text(text) => {
+                TypeExpressionData::Text(text.clone()).with_default_span()
             }
-            StructuralTypeDefinition::Boolean(boolean) => {
-                TypeExpressionData::Boolean(boolean.0).with_default_span()
+            LiteralTypeDefinition::Boolean(boolean) => {
+                TypeExpressionData::Boolean(boolean.clone()).with_default_span()
             }
-            StructuralTypeDefinition::Decimal(decimal) => {
+            LiteralTypeDefinition::Decimal(decimal) => {
                 TypeExpressionData::Decimal(decimal.clone()).with_default_span()
             }
-            StructuralTypeDefinition::TypedInteger(typed_integer) => {
+            LiteralTypeDefinition::TypedInteger(typed_integer) => {
                 TypeExpressionData::TypedInteger(typed_integer.clone())
                     .with_default_span()
             }
-            StructuralTypeDefinition::TypedDecimal(typed_decimal) => {
+            LiteralTypeDefinition::TypedDecimal(typed_decimal) => {
                 TypeExpressionData::TypedDecimal(typed_decimal.clone())
                     .with_default_span()
             }
-            StructuralTypeDefinition::Endpoint(endpoint) => {
+            LiteralTypeDefinition::Endpoint(endpoint) => {
                 TypeExpressionData::Endpoint(endpoint.clone())
                     .with_default_span()
             }
-            StructuralTypeDefinition::Null => {
-                TypeExpressionData::Null.with_default_span()
-            }
-            StructuralTypeDefinition::Range((start_type, end_type)) => {
-                let x = type_to_type_expression(start_type);
-                let y = type_to_type_expression(end_type);
-                TypeExpressionData::Range(RangeTypeExpr {
-                    start: Box::new(x),
-                    end: Box::new(y),
-                })
-                .with_default_span()
-            }
-            _ => TypeExpressionData::Text(format!(
-                "[[STRUCTURAL TYPE {:?}]]",
-                struct_type
-            ))
+            _ => TypeExpressionData::Text(
+                format!("[[STRUCTURAL TYPE {:?}]]", struct_type).into(),
+            )
             .with_default_span(),
         },
+        TypeDefinition::Range(RangeTypeDefinition { start, end }) => {
+            let x = type_to_type_expression(start);
+            let y = type_to_type_expression(end);
+            TypeExpressionData::Range(RangeTypeExpr {
+                start: Box::new(x),
+                end: Box::new(y),
+            })
+            .with_default_span()
+        }
         TypeDefinition::Union(union_types) => TypeExpressionData::Union(Union(
             union_types
                 .iter()
@@ -229,22 +301,16 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
             ))
             .with_default_span()
         }
-        TypeDefinition::Unit => TypeExpressionData::Unit.with_default_span(),
-        TypeDefinition::SharedReference(type_reference) => {
-            // try to resolve to core lib value
-            if let Ok(core_lib_type) = CoreLibPointerId::try_from(
-                &type_reference.borrow().pointer.address(),
-            ) {
-                TypeExpressionData::Identifier(core_lib_type.to_string())
-                    .with_default_span()
-            } else {
-                todo!("#651 Handle non-core-lib type references in decompiler");
-            }
+        TypeDefinition::Shared(_type_reference) => {
+            todo!("#651 Handle type references in decompiler");
         }
-        _ => TypeExpressionData::Text(format!(
-            "[[TYPE {:?}]]",
-            type_value.type_definition
-        ))
+        TypeDefinition::CoreType(core_type) => {
+            TypeExpressionData::Identifier(core_type.to_string())
+                .with_default_span()
+        }
+        _ => TypeExpressionData::Text(
+            format!("[[TYPE {:?}]]", type_definition).into(),
+        )
         .with_default_span(),
     }
 }
@@ -268,16 +334,16 @@ mod tests {
         },
     };
 
-    use crate::{prelude::*, values::core_values};
+    use crate::prelude::*;
     #[test]
-    fn test_integer_to_ast() {
+    fn integer_to_ast() {
         let value = ValueContainer::from(Integer::from(42));
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Integer(Integer::from(42)));
     }
 
     #[test]
-    fn test_typed_integer_to_ast() {
+    fn typed_integer_to_ast() {
         let value = ValueContainer::from(TypedInteger::from(42i8));
         let ast = DatexExpressionData::from(&value);
         assert_eq!(
@@ -287,14 +353,14 @@ mod tests {
     }
 
     #[test]
-    fn test_decimal_to_ast() {
+    fn decimal_to_ast() {
         let value = ValueContainer::from(Decimal::from(1.23));
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Decimal(Decimal::from(1.23)));
     }
 
     #[test]
-    fn test_typed_decimal_to_ast() {
+    fn typed_decimal_to_ast() {
         let value = ValueContainer::from(TypedDecimal::from(2.71f32));
         let ast = DatexExpressionData::from(&value);
         assert_eq!(
@@ -304,28 +370,28 @@ mod tests {
     }
 
     #[test]
-    fn test_boolean_to_ast() {
+    fn boolean_to_ast() {
         let value = ValueContainer::from(true);
         let ast = DatexExpressionData::from(&value);
-        assert_eq!(ast, DatexExpressionData::Boolean(true));
+        assert_eq!(ast, DatexExpressionData::Boolean(true.into()));
     }
 
     #[test]
-    fn test_text_to_ast() {
+    fn text_to_ast() {
         let value = ValueContainer::from("Hello, World!".to_string());
         let ast = DatexExpressionData::from(&value);
-        assert_eq!(ast, DatexExpressionData::Text("Hello, World!".to_string()));
+        assert_eq!(ast, DatexExpressionData::Text("Hello, World!".into()));
     }
 
     #[test]
-    fn test_null_to_ast() {
+    fn null_to_ast() {
         let value = ValueContainer::Local(Value::null());
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Null);
     }
 
     #[test]
-    fn test_list_to_ast() {
+    fn list_to_ast() {
         let value = ValueContainer::from(vec![
             Integer::from(1),
             Integer::from(2),

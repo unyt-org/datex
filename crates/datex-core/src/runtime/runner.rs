@@ -4,11 +4,12 @@ use crate::{
     network::com_hub::ComHub,
     prelude::*,
     runtime::{
-        Runtime, RuntimeConfig, RuntimeInternal, VERSION, memory::Memory,
+        Runtime, RuntimeConfig, RuntimeInternal,
+        cache::shared_references_cache::SharedReferencesCache,
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     time::now_ms,
     utils::task_manager::TaskManager,
-    values::core_values::endpoint::Endpoint,
 };
 use async_select::select;
 use core::{cell::RefCell, pin::Pin};
@@ -29,7 +30,7 @@ impl RuntimeRunner {
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
     pub fn new(config: RuntimeConfig) -> RuntimeRunner {
-        let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);
+        let endpoint = config.endpoint.clone();
 
         let (task_manager, runtime_task_future) = TaskManager::create();
 
@@ -38,11 +39,15 @@ impl RuntimeRunner {
 
         let (com_hub, com_hub_task_future) =
             ComHub::create(endpoint.clone(), incoming_sections_sender);
-        let memory = RefCell::new(Memory::new(endpoint.clone()));
+        let memory = RefCell::new(SharedReferencesCache::default());
+        let pointer_address_provider = Rc::new(RefCell::new(
+            SelfOwnedPointerAddressProvider::new(endpoint.clone()),
+        ));
 
         let runtime = Runtime::new(RuntimeInternal::new(
             endpoint,
             memory,
+            pointer_address_provider,
             config,
             com_hub,
             task_manager,
@@ -121,6 +126,8 @@ impl RuntimeRunner {
     {
         let (init_ready_sender, init_ready_receiver) = oneshot::channel();
         let runtime = self.runtime.clone();
+        let version = runtime.version().to_string();
+
         let runtime_future = join(
             // initialize the runtime
             async move {
@@ -135,8 +142,7 @@ impl RuntimeRunner {
         let app_future = async move {
             // wait for runtime initialization to complete before starting app logic
             init_ready_receiver.await.unwrap();
-
-            info!("Runtime initialized - Version {VERSION} Time: {}", now_ms());
+            info!("Runtime initialized - Version {version} Time: {}", now_ms());
 
             app_logic(self.runtime).await
         };
@@ -150,7 +156,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_runtime_runner() {
+    async fn runtime_runner() {
         let runner = RuntimeRunner::new(RuntimeConfig::default());
         let mut runtime = None;
         runner

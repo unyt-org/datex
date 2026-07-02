@@ -10,7 +10,7 @@ authors = [
     "Norbert Brzezinski <norbert@unyt.org>",
 ]
 edition = "2024"
-license-file = "LICENSE"
+license-file = "../../LICENSE"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -33,6 +33,7 @@ codegen-units = 1
 panic = "abort"
 
 [dependencies]
+inventory = "0.3"
 
 # core dependencies
 strum = { version = "0.27.1", default-features = false, features = ["derive"] }
@@ -49,7 +50,7 @@ itertools = { version = "0.14.0", default-features = false, features = [
 binrw = { version = "0.15.0", default-features = false }
 modular-bitfield = "0.13.0"
 thiserror = { version = "2.0.11", default-features = false }
-url = { version = "2.5.7", default-features = false }
+url = { version = "2.5.8", default-features = false }
 num-traits = { version = "0.2.19", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
 log = { version = "0.4", default-features = false, features = ["serde"] }
@@ -79,13 +80,14 @@ serde_with = { version = "3.12.0", default-features = false, features = [
 serde_json = { version = "1.0.140", default-features = false, features = [
     "alloc",
 ] }
+serde-value = { version = "0.8.0", git = "https://github.com/unyt-org/serde-value" }
 serde-big-array = { version = "0.5.1" }
 async-select = "0.3.0"
 foldhash = { version = "0.2.0", default-features = false }
 cfg-if = "1.0.1"
 async-trait = "0.1.87"
 strum_macros = { version = "0.27.1" }
-datex-macros-internal = { path = "../datex-macros-internal", version = "0.0.1" }
+datex-macros-internal = { path = "../datex-macros-internal", version = "0.0.2" }
 
 # nostd-only dependencies (optional)
 hashbrown = { version = "0.16.0", features = ["serde"], optional = true }
@@ -106,6 +108,7 @@ internment = { version = "0.8.6", optional = true }
 # lsp dependencies (optional)
 realhydroper-lsp = { version = "0.22.0", default-features = false, features = [
     "proposed",
+    "runtime-agnostic",
 ], optional = true }
 
 
@@ -126,8 +129,7 @@ embassy-futures = { version = "0.1.2", optional = true, default-features = false
 # wasm dependencies (optional)
 web-time = { version = "1.1.0", optional = true }
 wasm-bindgen-futures = { version = "0.4.61", optional = true }
-tsify = { version = "0.5.6", features = ["js"], optional = true }
-wasm-bindgen = { version = "=0.2.112", optional = true }
+wasm-bindgen = { version = "=0.2.123", optional = true }
 gloo-timers = { version = "0.3.0", features = ["futures"], optional = true }
 
 # native dependencies (optional)
@@ -142,21 +144,15 @@ pretty = { version = "0.12.5", optional = true }
 logos = { version = "0.15.0", optional = true }
 
 # crypto facade crates (optional)
-datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.2" }
-datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.2", optional = true }
-datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.2", optional = true }
-datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.2", optional = true }
+datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.3" }
+datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.3", optional = true }
+datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.3", optional = true, default-features = false }
+datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.3", optional = true }
 
-
-# macro_utils dependencies (optional)
-quote = { version = "1.0", optional = true }
-syn = { version = "2.0", features = ["full"], optional = true }
-proc-macro2 = { version = "1.0", features = [
-    "span-locations",
-], optional = true }
 
 # webrtc features (optional)
 webrtc = { version = "0.13.0", optional = true }
+serde_repr = "0.1.20"
 
 
 ### dev dependencies (for benchmarks and tests)
@@ -166,6 +162,8 @@ json-syntax = "0.12.5"
 lazy_static = "1.4.0"
 ntest_timeout = "0.9.3"
 indoc = "2.0.6"
+test-case = "3.3.1"
+
 # enable native crypto for tests
 datex-crypto-native = { path = "../datex-crypto-native" }
 # enable tokio for tests
@@ -183,7 +181,7 @@ flexi_logger = { version = "0.31.8" }
 
 # When using the "std" feature, the "default" feature should not be enabled since
 # it includes no_std-specific dependencies
-default = ["no_std", "dep:async-timer"]
+default = ["no_std", "dep:async-timer", "disassembler"]
 
 no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
@@ -193,15 +191,16 @@ full = ["compiler", "decompiler"]
 ### features for specific targets #############################################
 
 # esp32 - no_std, embassy runtime
-target_esp32 = [
+target_esp_shared = [
     "no_std",
     "embassy_runtime",
     "dep:datex-crypto-esp32",
-    # FIXME: remove once crypto is fully implemented for esp32
-    "allow_unsigned_blocks",
     # FIXME: enable once crypto is fully implemented for esp32
-    # "crypto_enabled"
+    "allow_unsigned_blocks",
 ]
+target_esp32 = ["target_esp_shared", "datex-crypto-esp32/esp32"]
+target_esp32s3 = ["target_esp_shared", "datex-crypto-esp32/esp32s3"]
+target_esp32c2 = ["target_esp_shared", "datex-crypto-esp32/esp32c2"]
 
 # native - std, tokio runtime
 target_native = [
@@ -221,7 +220,6 @@ tokio_runtime = ["dep:tokio", "futures/std"]
 wasm_runtime = [
     "dep:wasm-bindgen-futures",
     "dep:gloo-timers",
-    "dep:tsify",
     "dep:wasm-bindgen",
     "dep:web-time",
     "dep:datex-crypto-web",
@@ -266,7 +264,6 @@ std = [
     "hex/std",
     "bytes/std",
     "ringmap/std",
-    "macro_utils",
 ]
 
 ### compiler-related features #################################################
@@ -280,19 +277,13 @@ compiler = ["ast", "parser", "dep:ariadne", "dep:pretty"]
 
 decompiler = ["ast"]
 
+disassembler = []
 
 ### LSP-related features ######################################################
 
-lsp = ["dep:realhydroper-lsp"]
-# lsp support
-lsp_tokio = ["lsp", "realhydroper-lsp/runtime-tokio"]
-# enable runtime-agnostic feature for realhydroper-lsp in wasm
-lsp_wasm = ["lsp", "realhydroper-lsp/runtime-agnostic"]
-
-
-### Utils for creating macros #################################################
-
-macro_utils = ["dep:quote", "dep:syn", "dep:proc-macro2"]
+lsp = ["dep:realhydroper-lsp", "compiler"]
+lsp_tokio = ["lsp"]
+lsp_wasm = ["lsp"]
 
 ### interface-related features ################################################
 

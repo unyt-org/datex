@@ -123,7 +123,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_receive_complete_block() {
+    async fn receive_complete_block() {
         let mut block_collector = BlockCollector {
             current_partial_block: Vec::new(),
             current_block_specified_length: None,
@@ -142,7 +142,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_receive_block_in_slices() {
+    async fn receive_block_in_slices() {
         let mut block_collector = BlockCollector {
             current_partial_block: Vec::new(),
             current_block_specified_length: None,
@@ -171,7 +171,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_receive_block_in_slices_first_smaller_than_header() {
+    async fn receive_block_in_slices_first_smaller_than_header() {
         let mut block_collector = BlockCollector {
             current_partial_block: Vec::new(),
             current_block_specified_length: None,
@@ -198,7 +198,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_receive_invalid_block() {
+    async fn receive_invalid_block() {
         let mut block_collector = BlockCollector {
             current_partial_block: Vec::new(),
             current_block_specified_length: None,

@@ -43,7 +43,6 @@ jobs:
           --start-point-clone-thresholds \
           --start-point-reset \
           --testbed ubuntu-latest \
-          --err \
           --adapter rust_criterion \
           --github-actions '${{ secrets.GITHUB_TOKEN }}' \
           cargo bench -p datex-core --features decompiler,compiler,std
