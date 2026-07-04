@@ -6,6 +6,8 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::values::core_values::endpoint::Endpoint;
+
 pub mod apply;
 pub mod equality;
 pub mod error;
@@ -30,6 +32,7 @@ pub struct Callable {
     pub name: Option<String>,
     pub signature: CallableTypeDefinition,
     pub body: CallableBody,
+    pub creator: Endpoint,
 }
 
 impl Callable {

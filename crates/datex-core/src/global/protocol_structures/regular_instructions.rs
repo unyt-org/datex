@@ -38,6 +38,7 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
+use crate::global::protocol_structures::instruction_data::ConfirmMoves;
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -151,8 +152,9 @@ pub enum RegularInstruction {
     SharedRef(SharedRef),
     SharedRefWithValue(SharedRefWithValue), // shared ref with current value (only if caller owns the pointer)
 
-    PerformMoves(PerformMoves),
-    Move(Move),
+    MoveWithValue(MoveWithValue),
+
+    ConfirmMoves(ConfirmMoves), // confirms moves from old origin to new, containing both addresses
 
     PushToStack,
     PushListToStack,
@@ -338,10 +340,10 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::SharedRefWithValue(_) => {
                 InstructionCode::SHARED_REF_WITH_VALUE
             }
-            RegularInstruction::PerformMoves(_) => {
-                InstructionCode::PERFORM_MOVES
+            RegularInstruction::MoveWithValue(_) => {
+                InstructionCode::MOVE_WITH_VALUE
             }
-            RegularInstruction::Move(_) => InstructionCode::MOVE,
+            RegularInstruction::ConfirmMoves(_) => InstructionCode::CONFIRM_MOVES,
             RegularInstruction::PushToStack => InstructionCode::PUSH_TO_STACK,
             RegularInstruction::PushListToStack => {
                 InstructionCode::PUSH_LIST_TO_STACK
@@ -539,6 +541,9 @@ impl RegularInstruction {
             }
 
             RegularInstruction::SharedRefWithValue(_) => {
+                NextExpectedInstructions::Regular(1)
+            }
+            RegularInstruction::MoveWithValue(_) => {
                 NextExpectedInstructions::Regular(1)
             }
             _ => NextExpectedInstructions::None,
@@ -811,12 +816,12 @@ impl RegularInstruction {
             InstructionCode::GET_CORE_LIB_VALUE => CoreLibIdIndex::read(reader)
                 .map(RegularInstruction::GetCoreLibValue),
 
-            InstructionCode::PERFORM_MOVES => {
-                PerformMoves::read(reader).map(RegularInstruction::PerformMoves)
+            InstructionCode::MOVE_WITH_VALUE => {
+                MoveWithValue::read(reader).map(RegularInstruction::MoveWithValue)
             }
 
-            InstructionCode::MOVE => {
-                Move::read(reader).map(RegularInstruction::Move)
+            InstructionCode::CONFIRM_MOVES => {
+                ConfirmMoves::read(reader).map(RegularInstruction::ConfirmMoves)
             }
 
             InstructionCode::MODIFY_STACK_VALUE => {
@@ -1025,14 +1030,15 @@ impl RegularInstruction {
                     shared_ref.container_mutability
                 )
             }
-            RegularInstruction::PerformMoves(perform_move) => {
+            RegularInstruction::MoveWithValue(move_with_value) => {
                 write!(
                     string,
-                    "[pointers: {}]",
-                    perform_move.pointers.iter().map(|(_mut, addr)| addr.to_string()).collect::<Vec<_>>().join(", ")
+                    "[mutability: {:?}, previous address: {}]",
+                    move_with_value.mutability,
+                    move_with_value.previous_address
                 )
             }
-            RegularInstruction::Move(mv) => {
+            RegularInstruction::ConfirmMoves(mv) => {
                 write!(
                     string,
                     "[pointer_count: {}, mappings: {:?}]",

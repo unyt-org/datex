@@ -360,7 +360,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                CloneExpression, DatexExpressionData, GetSharedRef,
+                CloneExpression, DatexExpressionData, DeriveSharedRef,
                 RootPropertyAccess, Statements, TagExpression, ValueAccessType,
             },
             spanned::Spanned,
@@ -515,7 +515,7 @@ mod tests {
         let expr = parse("'?");
         assert_eq!(
             expr.data,
-            DatexExpressionData::GetSharedRef(GetSharedRef {
+            DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                 expression: Box::new(
                     DatexExpressionData::Placeholder(
                         ValueAccessType::MoveOrCopy
@@ -532,7 +532,7 @@ mod tests {
         let expr = parse("'mut ?");
         assert_eq!(
             expr.data,
-            DatexExpressionData::GetSharedRef(GetSharedRef {
+            DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                 expression: Box::new(
                     DatexExpressionData::Placeholder(
                         ValueAccessType::MoveOrCopy

@@ -31,7 +31,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, DatexExpression, DatexExpressionData, GetRef,
+                BinaryOperation, DatexExpression, DatexExpressionData, DeriveRef,
                 Statements, ValueAccessType, VariableAccess,
             },
             type_expressions::{TypeExpression, TypeExpressionData},
@@ -99,7 +99,7 @@ mod tests {
         }
         fn visit_get_ref(
             &mut self,
-            create_ref: &mut GetRef,
+            create_ref: &mut DeriveRef,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::VisitChildren)

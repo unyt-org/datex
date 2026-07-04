@@ -29,7 +29,7 @@ use datex_core::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, CreateMut, CreateShared, DatexExpression,
-            DatexExpressionData, GenericInstantiation, GetRef, List, Map,
+            DatexExpressionData, GenericInstantiation, DeriveRef, List, Map,
             PropertyAccess, PropertyAssignment, RequestSharedRef,
             RootPropertyAccess, UnaryOperation, Unbox, ValueAccessType,
             VariableAssignment, VariableDeclaration, VariableKind,

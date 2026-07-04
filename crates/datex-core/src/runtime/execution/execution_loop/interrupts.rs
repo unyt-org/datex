@@ -35,7 +35,7 @@ pub enum ExternalExecutionInterrupt {
     /// Request to move a list of pointers from the current caller endpoint to the local endpoint
     RequestMove(Vec<(SharedContainerMutability, SelfOwnedPointerAddress)>),
     /// Move a list of pointers from the local endpoint to the caller
-    Move(Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>),
+    ConfirmMoves(Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>),
 }
 
 #[derive(Debug)]

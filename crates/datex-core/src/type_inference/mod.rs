@@ -18,7 +18,7 @@ use crate::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, CreateShared, DatexExpression, DatexExpressionData,
-            GenericInstantiation, GetRef, GetSharedRef, List, Map,
+            GenericInstantiation, DeriveRef, DeriveSharedRef, List, Map,
             PropertyAccess, PropertyAssignment, RangeDeclaration,
             RemoteExecution, RequestSharedRef, StackAssignment, Statements,
             TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
@@ -630,7 +630,7 @@ impl<'a> TypeInference<'a> {
 impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_get_ref(
         &mut self,
-        create_ref: &mut GetRef,
+        create_ref: &mut DeriveRef,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_expression(&mut create_ref.expression)?;
@@ -657,7 +657,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
     fn visit_get_shared_ref(
         &mut self,
-        get_shared_ref: &mut GetSharedRef,
+        get_shared_ref: &mut DeriveSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type =

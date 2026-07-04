@@ -5,7 +5,7 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
         CreateShared, DatexExpression, DatexExpressionData,
-        GenericInstantiation, GetRef, GetSharedRef, List, Map, PropertyAccess,
+        GenericInstantiation, DeriveRef, DeriveSharedRef, List, Map, PropertyAccess,
         PropertyAssignment, RemoteExecution, RequestSharedRef,
         RootPropertyAccess, StackAssignment, Statements, TagExpression,
         TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
@@ -132,10 +132,10 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                     &expr.span,
                 )
             }
-            DatexExpressionData::GetRef(get_ref) => {
+            DatexExpressionData::DeriveRef(get_ref) => {
                 self.visit_get_ref(get_ref, &expr.span)
             }
-            DatexExpressionData::GetSharedRef(get_shared_ref) => {
+            DatexExpressionData::DeriveSharedRef(get_shared_ref) => {
                 self.visit_get_shared_ref(get_shared_ref, &expr.span)
             }
             DatexExpressionData::CreateShared(create_shared) => {
@@ -503,7 +503,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit create reference expression
     fn visit_get_ref(
         &mut self,
-        create_ref: &mut GetRef,
+        create_ref: &mut DeriveRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
@@ -514,7 +514,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit create shared reference expression
     fn visit_get_shared_ref(
         &mut self,
-        get_shared_ref: &mut GetSharedRef,
+        get_shared_ref: &mut DeriveSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;

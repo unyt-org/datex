@@ -63,11 +63,10 @@ impl ReferencedSharedContainer {
     /// the [SharedContainerMutability] of the container is [SharedContainerMutability::Immutable]
     /// # Safety
     /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
-    pub(crate) unsafe fn try_new_external_from_base_container(
+    pub(crate) unsafe fn try_new_remote_from_base_container(
         container: BaseSharedValueContainer,
         address: RemotePointerAddress,
         reference_mutability: ReferenceMutability,
-        memory: &SharedReferencesCache,
     ) -> Result<Self, ()> {
         // invalid reference mutability
         if reference_mutability == ReferenceMutability::Mutable
@@ -79,8 +78,8 @@ impl ReferencedSharedContainer {
         Ok(ReferencedSharedContainer {
             inner: Rc::new(RefCell::new(SharedContainerInner::External(
                 unsafe {
-                    ExternalSharedContainer::create_external_shared_container(
-                        container, address, memory,
+                    ExternalSharedContainer::new(
+                        container, address,
                     )
                 },
             ))),
@@ -96,17 +95,15 @@ impl ReferencedSharedContainer {
     pub(crate) unsafe fn new_immutable_external_with_inferred_allowed_type(
         value_container: ValueContainer,
         address: RemotePointerAddress,
-        memory: &SharedReferencesCache,
     ) -> Self {
         unsafe {
-            ReferencedSharedContainer::try_new_external_from_base_container(
+            ReferencedSharedContainer::try_new_remote_from_base_container(
                 BaseSharedValueContainer::new_with_inferred_allowed_type(
                     value_container,
                     SharedContainerMutability::Immutable,
                 ),
                 address,
                 ReferenceMutability::Immutable,
-                memory,
             )
             .unwrap()
         }
@@ -125,10 +122,9 @@ impl ReferencedSharedContainer {
         address: RemotePointerAddress,
         mutability: SharedContainerMutability,
         allowed_type: TypeDefinition,
-        memory: &SharedReferencesCache,
     ) -> Result<Self, SharedValueCreationError> {
         Ok(unsafe {
-            ReferencedSharedContainer::try_new_external_from_base_container(
+            ReferencedSharedContainer::try_new_remote_from_base_container(
                 BaseSharedValueContainer::try_new(
                     value_container,
                     allowed_type,
@@ -136,7 +132,6 @@ impl ReferencedSharedContainer {
                 )?,
                 address,
                 ReferenceMutability::Immutable,
-                memory,
             )
             .unwrap()
         })

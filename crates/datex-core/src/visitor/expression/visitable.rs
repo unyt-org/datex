@@ -2,8 +2,8 @@ use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, Conditional, CreateMut, CreateShared,
-        DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
-        GetSharedRef, List, Map, PropertyAccess, PropertyAssignment,
+        DatexExpression, DatexExpressionData, GenericInstantiation, DeriveRef,
+        DeriveSharedRef, List, Map, PropertyAccess, PropertyAssignment,
         RangeDeclaration, RemoteExecution, StackAssignment, Statements,
         TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
@@ -265,7 +265,7 @@ impl<E> VisitableExpression<E> for CloneExpression {
     }
 }
 
-impl<E> VisitableExpression<E> for GetRef {
+impl<E> VisitableExpression<E> for DeriveRef {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -275,7 +275,7 @@ impl<E> VisitableExpression<E> for GetRef {
     }
 }
 
-impl<E> VisitableExpression<E> for GetSharedRef {
+impl<E> VisitableExpression<E> for DeriveSharedRef {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -352,10 +352,10 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::CallableDeclaration(function_declaration) => {
                 function_declaration.walk_children(visitor)
             }
-            DatexExpressionData::GetRef(create_ref) => {
+            DatexExpressionData::DeriveRef(create_ref) => {
                 create_ref.walk_children(visitor)
             }
-            DatexExpressionData::GetSharedRef(create_shared_ref) => {
+            DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
                 create_shared_ref.walk_children(visitor)
             }
             DatexExpressionData::CreateShared(create_ref) => {

@@ -19,7 +19,7 @@ use crate::{
     ast::{
         expressions::{
             BinaryOperation, CloneExpression, DatexExpression,
-            DatexExpressionData, GetRef, GetSharedRef, PropertyAssignment,
+            DatexExpressionData, DeriveRef, DeriveSharedRef, PropertyAssignment,
             RemoteExecution, RequestSharedRef, Statements, TypeDeclaration,
             TypeDeclarationKind, Unbox, UnboxAssignment, ValueAccessType,
             VariableAccess, VariableAssignment, VariableDeclaration,
@@ -553,7 +553,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
     fn visit_get_ref(
         &mut self,
-        create_ref: &mut GetRef,
+        create_ref: &mut DeriveRef,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         create_ref.walk_children(self)?;
@@ -773,7 +773,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
     fn visit_get_shared_ref(
         &mut self,
-        get_shared_ref: &mut GetSharedRef,
+        get_shared_ref: &mut DeriveSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         // if expression is an identifier, set access type to shared (mut)
@@ -938,7 +938,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                CreateShared, GetRef, GetSharedRef, Map, PropertyAccess,
+                CreateShared, DeriveRef, DeriveSharedRef, Map, PropertyAccess,
                 PropertyAssignment, RequestSharedRef, Unbox,
             },
             resolved_variable::ResolvedVariable,
@@ -1527,7 +1527,7 @@ mod tests {
                             kind: VariableKind::Const,
                             name: "x".to_string(),
                             init_expression: Box::new(
-                                DatexExpressionData::GetRef(GetRef {
+                                DatexExpressionData::DeriveRef(DeriveRef {
                                     mutability:
                                         LocalReferenceMutability::Immutable,
                                     expression: Box::new(
@@ -1577,7 +1577,7 @@ mod tests {
                             kind: VariableKind::Const,
                             name: "x".to_string(),
                             init_expression: Box::new(
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                                DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                                     mutability: ReferenceMutability::Immutable,
                                     expression: Box::new(
                                         DatexExpressionData::CreateShared(CreateShared {
@@ -2105,7 +2105,7 @@ mod tests {
                         }
                     )
                     .with_default_span(),
-                    DatexExpressionData::GetRef(GetRef {
+                    DatexExpressionData::DeriveRef(DeriveRef {
                         mutability: LocalReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::VariableAccess(
@@ -2156,7 +2156,7 @@ mod tests {
                         }
                     )
                     .with_default_span(),
-                    DatexExpressionData::GetRef(GetRef {
+                    DatexExpressionData::DeriveRef(DeriveRef {
                         mutability: LocalReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::PropertyAccess(

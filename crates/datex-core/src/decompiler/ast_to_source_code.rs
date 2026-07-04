@@ -545,7 +545,7 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Identifier(l) => l.to_string(),
             DatexExpressionData::Map(map) => self.map_to_source_code(map),
             DatexExpressionData::List(list) => self.list_to_source_code(list),
-            DatexExpressionData::GetRef(create_ref) => {
+            DatexExpressionData::DeriveRef(create_ref) => {
                 match &create_ref.mutability {
                     LocalReferenceMutability::Mutable => {
                         format!("&mut {}", self.format(&create_ref.expression))
@@ -555,7 +555,7 @@ impl AstToSourceCodeConverter {
                     }
                 }
             }
-            DatexExpressionData::GetSharedRef(create_shared_ref) => {
+            DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
                 match &create_shared_ref.mutability {
                     ReferenceMutability::Mutable => {
                         format!(

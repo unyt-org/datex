@@ -27,6 +27,7 @@ use core::{
     fmt::{Display, Formatter},
     result::Result,
 };
+use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
@@ -56,12 +57,14 @@ impl Value {
         name: Option<String>,
         signature: CallableTypeDefinition,
         body: CallableBody,
+        creator: Endpoint,
     ) -> Self {
         Value {
             inner: CoreValue::Callable(Callable {
                 name,
                 signature: signature.clone(),
                 body,
+                creator
             }),
             custom_type: Some(TypeDefinition::callable(signature)),
         }

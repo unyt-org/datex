@@ -1331,7 +1331,7 @@ fn compile_expression(
         }
 
         // refs
-        DatexExpressionData::GetRef(create_ref) => {
+        DatexExpressionData::DeriveRef(create_ref) => {
             compilation_context.mark_has_non_static_value();
             // TODO #764: handle lifetimes, mutability, correctly (in precompiler)
             // TODO #765: handle move/clone
@@ -1344,7 +1344,7 @@ fn compile_expression(
         }
 
         // shared refs
-        DatexExpressionData::GetSharedRef(create_shared_ref) => {
+        DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
             compilation_context.mark_has_non_static_value();
             compilation_context.append_instruction_code(
                 match create_shared_ref.mutability {

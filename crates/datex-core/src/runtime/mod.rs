@@ -19,7 +19,7 @@ mod runner;
 
 pub mod cache;
 pub mod pointer_address_provider;
-mod request_move;
+mod confirm_moves;
 #[cfg(test)]
 pub mod test_utils;
 

@@ -31,7 +31,7 @@ use crate::{
 
 use crate::{
     ast::expressions::{
-        CloneExpression, CreateShared, GetSharedRef, RequestSharedRef,
+        CloneExpression, CreateShared, DeriveSharedRef, RequestSharedRef,
         RootPropertyAccess, StackAssignment, TagExpression,
     },
     global::protocol_structures::{
@@ -49,6 +49,7 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
+use crate::ast::expressions::RemoteExecution;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -295,11 +296,11 @@ pub fn ast_from_bytecode(
                             DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                         }
 
-                        RegularInstruction::Move(_move_data) => {
+                        RegularInstruction::ConfirmMoves(_move_data) => {
                             DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                         }
 
-                        RegularInstruction::PerformMoves(_perform_move) => {
+                        RegularInstruction::MoveWithValue(_move_with_value) => {
                             DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                         }
 
@@ -315,14 +316,14 @@ pub fn ast_from_bytecode(
                         }
 
                         RegularInstruction::GetStackValueSharedRef(stack_index) => {
-                            DatexExpressionData::GetSharedRef(GetSharedRef {
+                            DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Immutable,
                                 expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
                             })
                         }
 
                         RegularInstruction::GetStackValueSharedRefMut(stack_index) => {
-                            DatexExpressionData::GetSharedRef(GetSharedRef {
+                            DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Mutable,
                                 expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
                             })
@@ -581,8 +582,8 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::GetSharedReference => {
                                 let expr = collected_results.pop_value_result();
-                                DatexExpressionData::GetSharedRef(
-                                    GetSharedRef {
+                                DatexExpressionData::DeriveSharedRef(
+                                    DeriveSharedRef {
                                         mutability: ReferenceMutability::Immutable,
                                         expression: Box::new(expr),
                                     },
@@ -831,6 +832,23 @@ pub fn ast_from_bytecode(
                                         assigned_expression: Box::new(value),
                                     },
                                 )
+                                .with_default_span()
+                                .into()
+                            }
+                            RegularInstruction::RemoteExecution(remote_execution_data) => {
+                                let receivers = collected_results.pop_value_result();
+
+                                let body = DatexExpressionData::Statements(Statements {
+                                    statements: vec![ast_from_bytecode(&remote_execution_data.body)?],
+                                    is_terminated: false,
+                                    unbounded: None,
+                                }).with_default_span();
+
+                                DatexExpressionData::RemoteExecution(RemoteExecution {
+                                    left: Box::new(receivers),
+                                    right: Box::new(body),
+                                    injected_variable_count: None,
+                                })
                                 .with_default_span()
                                 .into()
                             }

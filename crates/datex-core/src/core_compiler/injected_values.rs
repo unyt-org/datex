@@ -240,7 +240,7 @@ mod tests {
                     SharedInjectedValueType,
                 },
                 instruction_data::{
-                    InstructionBlockData, Int32Data, ListData, PerformMoves,
+                    InstructionBlockData, Int32Data, ListData, MoveWithValue,
                     SharedRefWithValue, ShortListData, StackIndex,
                     StatementsData, UInt32Data,
                 },
@@ -512,13 +512,14 @@ mod tests {
                             RegularInstruction::statements_with_children(
                                 false,
                                 instructions!(
-                                    RegularInstruction::PushListToStack,
-                                    RegularInstruction::PerformMoves(
-                                        PerformMoves {
-                                            pointer_count: 1,
-                                            pointers: vec![(0, owned_address)]
+                                    RegularInstruction::PushToStack,
+                                    RegularInstruction::MoveWithValue(
+                                        MoveWithValue {
+                                            mutability: SharedContainerMutability::Immutable,
+                                            previous_address: owned_address
                                         }
                                     ),
+                                    RegularInstruction::Int32(Int32Data(42)),
                                     RegularInstruction::list_with_children(
                                         instructions!(
                                             RegularInstruction::TakeStackValue(
@@ -613,12 +614,6 @@ mod tests {
                         // injected values preamble
                         RegularInstruction::PushListToStack,
                         RegularInstruction::statements_with_children(false, instructions!(
-                            RegularInstruction::PushListToStack,
-                            RegularInstruction::PerformMoves(PerformMoves {
-                                pointer_count: 1,
-                                pointers: vec![(0, shared_value1_address)]
-                            }),
-
                             RegularInstruction::PushToStack,
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: shared_value2_address,
@@ -627,9 +622,16 @@ mod tests {
                             }),
                             RegularInstruction::Int32(Int32Data(100)),
 
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability: SharedContainerMutability::Immutable,
+                                previous_address: shared_value1_address
+                            }),
+                            RegularInstruction::Int32(Int32Data(42)),
+
                             RegularInstruction::list_with_children(instructions!(
-                                RegularInstruction::TakeStackValue(StackIndex(0)),
                                 RegularInstruction::TakeStackValue(StackIndex(1)),
+                                RegularInstruction::TakeStackValue(StackIndex(0)),
                             )),
                         )),
 

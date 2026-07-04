@@ -55,29 +55,7 @@ impl OwnedSharedContainer {
             ))),
         }
     }
-
-    /// Tries to create a new [OwnedSharedContainer] with an initial [ValueContainer],
-    /// an allowed [TypeDefinition], a [SharedContainerMutability] and an [SelfOwnedPointerAddress].
-    ///
-    /// If the allowed type is not a superset of the [ValueContainer]'s allowed type,
-    /// an error is returned
-    pub fn try_new(
-        value_container: ValueContainer,
-        allowed_type: TypeDefinition,
-        mutability: SharedContainerMutability,
-        address: SelfOwnedPointerAddress,
-    ) -> Result<Self, SharedValueCreationError> {
-        Ok(OwnedSharedContainer::new_from_self_owned_container(
-            SelfOwnedSharedContainer::new(
-                BaseSharedValueContainer::try_new(
-                    value_container,
-                    allowed_type,
-                    mutability,
-                )?,
-                address,
-            ),
-        ))
-    }
+    
 
     /// Creates a new [OwnedSharedContainer] with an initial [ValueContainer],
     /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].
@@ -110,13 +88,15 @@ impl OwnedSharedContainer {
         address: SelfOwnedPointerAddress,
     ) -> Self {
         OwnedSharedContainer::new_from_self_owned_container(
-            SelfOwnedSharedContainer::new(
-                BaseSharedValueContainer::new_with_inferred_allowed_type(
-                    value_container,
-                    mutability,
-                ),
-                address,
-            ),
+            unsafe {
+                SelfOwnedSharedContainer::new_with_address(
+                    BaseSharedValueContainer::new_with_inferred_allowed_type(
+                        value_container,
+                        mutability,
+                    ),
+                    address,
+                )
+            },
         )
     }
 
@@ -259,23 +239,24 @@ impl OwnedSharedContainer {
     pub unsafe fn move_to_remote(
         self,
         remote_address: RemotePointerAddress,
-        memory: &SharedReferencesCache,
     ) {
         let mut inner = self.inner_mut();
         // replace previous with null value
         // FIXME: find a more efficient way to do this enum variant swap
         let previous = mem::replace(
             &mut *inner,
-            SharedContainerInner::EndpointOwned(SelfOwnedSharedContainer::new(
-                BaseSharedValueContainer::null(),
-                SelfOwnedPointerAddress([0; 5]),
-            )),
+            SharedContainerInner::EndpointOwned(unsafe {
+                SelfOwnedSharedContainer::new_with_address(
+                    BaseSharedValueContainer::null(),
+                    SelfOwnedPointerAddress([0; 5]),
+                )
+            }),
         );
 
         *inner = match previous {
             SharedContainerInner::EndpointOwned(owned) => {
                 SharedContainerInner::External(unsafe {
-                    owned.convert_to_external_container(remote_address, memory)
+                    owned.convert_to_external_container(remote_address)
                 })
             }
             _ => unreachable!(

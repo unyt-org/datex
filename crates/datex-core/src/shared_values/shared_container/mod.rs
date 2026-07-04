@@ -38,7 +38,11 @@ use core::{
     fmt::{Display, Formatter},
     hash::{Hash, Hasher},
 };
+use core::mem;
 use serde::Serializer;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::shared_values::{RemotePointerAddress, SelfOwnedSharedContainer};
+use crate::values::core_value::CoreValue;
 
 pub mod apply;
 pub mod serde_dif;
@@ -54,6 +58,7 @@ pub enum SharedContainer {
 }
 
 impl SharedContainer {
+    
     /// Creates a new owned [SharedContainer] with an initial [ValueContainer],
     /// a [SharedContainerMutability], and a [SelfOwnedPointerAddressProvider].
     ///
@@ -321,6 +326,39 @@ impl SharedContainer {
             }
         }
     }
+    
+    /// Downgrades an owned shared container to a referenced shared container.
+    /// If the shared container is already a referenced shared container, it will just be returned.
+    /// If the shared container is owned, it will be replaced with a new referenced shared container pointing to the same inner value
+    /// and the original owned shared container will be returned.
+    pub fn downgrade_to_reference(&mut self) -> SharedContainer {
+        match self {
+            SharedContainer::Owned(_) => {
+                // replace previous with null value
+                // FIXME: find a more efficient way to do this enum variant swap
+                let previous = mem::replace(
+                    &mut *self,
+                    unsafe {
+                        SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
+                            CoreValue::Null,
+                            SharedContainerMutability::Immutable,
+                            SelfOwnedPointerAddress::new([0; 5])
+                        )
+                    }
+                );
+
+                // create a new referenced shared container and assign to self
+                *self = previous.clone();
+
+                // return original, potentially owned shared container
+                previous
+            }
+            SharedContainer::Referenced(referenced) => {
+                SharedContainer::Referenced(referenced.clone())
+            }
+        }
+    } 
+    
 }
 
 /// Custom clone implementation for [SharedContainer].

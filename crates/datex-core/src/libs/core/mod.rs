@@ -31,6 +31,7 @@ use crate::{
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
+use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
@@ -54,6 +55,7 @@ impl Default for CoreLibraryValues {
                     yeet_type: None,
                 },
                 CallableBody::Native(Self::print_impl),
+                Endpoint::LOCAL,
             ),
             panic: Value::callable(
                 Some("panic".to_string()),
@@ -68,6 +70,7 @@ impl Default for CoreLibraryValues {
                     yeet_type: None,
                 },
                 CallableBody::CoreStub(CoreStub::Panic),
+                Endpoint::LOCAL,
             ),
         }
     }

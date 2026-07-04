@@ -1,15 +1,16 @@
 use crate::{
     core_compiler::value_compiler::append_regular_instruction,
     global::protocol_structures::{
-        instruction_data::Move, regular_instructions::RegularInstruction,
+        regular_instructions::RegularInstruction,
     },
     prelude::*,
     shared_values::SelfOwnedPointerAddress,
 };
 use binrw::io::Cursor;
+use crate::global::protocol_structures::instruction_data::ConfirmMoves;
 
-/// Compiles a MOVE instruction with a list of pointer mappings
-pub fn compile_request_move(
+/// Compiles a CONFIRM_MOVES instruction with a list of pointer mappings
+pub fn compile_request_moves(
     mappings: Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>,
 ) -> Vec<u8> {
     let mut cursor =
@@ -17,7 +18,7 @@ pub fn compile_request_move(
 
     append_regular_instruction(
         &mut cursor,
-        RegularInstruction::Move(Move {
+        RegularInstruction::ConfirmMoves(ConfirmMoves {
             pointer_count: mappings.len() as u32,
             address_mappings: mappings,
         }),
@@ -34,8 +35,8 @@ mod tests {
     #[test]
     fn compile_request_empty_move() {
         assert_eq!(
-            compile_request_move(vec![]),
-            vec![InstructionCode::MOVE as u8, 0, 0, 0, 0]
+            compile_request_moves(vec![]),
+            vec![InstructionCode::CONFIRM_MOVES as u8, 0, 0, 0, 0]
         );
     }
 
@@ -52,9 +53,9 @@ mod tests {
             ),
         ];
         assert_eq!(
-            compile_request_move(mappings),
+            compile_request_moves(mappings),
             vec![
-                InstructionCode::MOVE as u8,
+                InstructionCode::CONFIRM_MOVES as u8,
                 2,
                 0,
                 0,

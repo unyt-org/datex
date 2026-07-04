@@ -18,17 +18,10 @@ impl ExternalSharedContainer {
     /// Create a new [ExternalSharedContainer] with a given [RemotePointerAddress].
     /// # Safety
     /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
-    pub unsafe fn create_external_shared_container(
+    pub unsafe fn new(
         shared_value_container: BaseSharedValueContainer,
         address: RemotePointerAddress,
-        memory: &SharedReferencesCache,
     ) -> ExternalSharedContainer {
-        if memory.has_reference(&PointerAddress::Remote(address.clone())) {
-            panic!(
-                "Cannot create ExternalSharedContainer with address that already exists in memory"
-            );
-        }
-
         ExternalSharedContainer {
             value: shared_value_container,
             address,

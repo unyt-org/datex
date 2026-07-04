@@ -15,7 +15,7 @@ use crate::{
 
 use crate::{
     ast::expressions::{
-        CallableDeclaration, CreateShared, GetSharedRef, TagExpression,
+        CallableDeclaration, CreateShared, DeriveSharedRef, TagExpression,
     },
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
@@ -39,7 +39,7 @@ impl From<&ValueContainer> for DatexExpressionData {
             ValueContainer::Local(value) => value_to_datex_expression(value),
             ValueContainer::Shared(shared) => match shared {
                 SharedContainer::Referenced(referenced_container) => {
-                    DatexExpressionData::GetSharedRef(GetSharedRef {
+                    DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                         mutability: referenced_container.reference_mutability(),
                         expression: Box::new(
                             DatexExpressionData::CreateShared(CreateShared {

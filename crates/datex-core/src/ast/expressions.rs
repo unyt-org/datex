@@ -156,10 +156,10 @@ pub enum DatexExpressionData {
     /// Create a new shared container
     CreateShared(CreateShared),
     /// Create a new reference
-    GetRef(GetRef),
+    DeriveRef(DeriveRef),
 
-    /// Get a new shared reference
-    GetSharedRef(GetSharedRef),
+    /// Derive a new shared reference
+    DeriveSharedRef(DeriveSharedRef),
 
     /// Creates a new mutable value
     CreateMut(CreateMut),
@@ -603,7 +603,7 @@ pub struct CloneExpression {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct GetRef {
+pub struct DeriveRef {
     pub mutability: LocalReferenceMutability,
     pub expression: Box<DatexExpression>,
 }
@@ -615,7 +615,7 @@ pub struct CreateShared {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct GetSharedRef {
+pub struct DeriveSharedRef {
     pub mutability: ReferenceMutability,
     pub expression: Box<DatexExpression>,
 }
