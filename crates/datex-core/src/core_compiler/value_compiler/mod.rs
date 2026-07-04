@@ -7,12 +7,13 @@ use crate::{
     },
     global::{
         instruction_codes::InstructionCode,
-        protocol_structures::instruction_data::TextData,
+        protocol_structures::instruction_data::{InstantData, TextData},
     },
     utils::buffers::{append_i16, append_i32, append_u8},
     values::{
         core_value::CoreValue,
         core_values::{
+            Instant,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
@@ -419,6 +420,13 @@ pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) {
     };
 
     append_regular_instruction(cursor, instruction);
+}
+
+pub fn append_instant(cursor: &mut ByteCursor, instant: &Instant) {
+    append_regular_instruction(
+        cursor,
+        RegularInstruction::Instant(InstantData(instant.0)),
+    );
 }
 
 /// Appends a typed decimal with explicit type casts

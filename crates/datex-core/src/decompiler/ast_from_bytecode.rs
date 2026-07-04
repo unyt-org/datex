@@ -160,6 +160,13 @@ pub fn ast_from_bytecode(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
+                        RegularInstruction::Instant(instant_data) => {
+                            DatexExpressionData::DateTime(
+                                crate::values::core_values::time::Instant(
+                                    instant_data.0,
+                                ),
+                            )
+                        }
                         RegularInstruction::Int64(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
