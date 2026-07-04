@@ -150,7 +150,7 @@ fn compile_injected_values_with_context(
     );
 
     for value_container in injected_values {
-        compilation_context.visit_value_container(value_container);
+        compilation_context.visit_value_container(value_container, None);
     }
 }
 
@@ -206,6 +206,7 @@ fn append_referenced_shared_container(
         );
         compilation_context.visit_value_container(
             referenced_container.value_container().clone(),
+            None
         );
     } else {
         append_regular_instruction(

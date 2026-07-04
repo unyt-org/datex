@@ -55,6 +55,8 @@ use crate::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
+use crate::core_compiler::value_visitor::{ParentAccessor, ParentContext};
+use crate::values::value_container::value_key::ValueKey;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -88,7 +90,7 @@ pub fn compile_value_container<'a>(
 ) -> DXBWithSharedValues {
     let mut context =
         CoreCompilationContext::new(Vec::with_capacity(256), compile_input);
-    context.visit_value_container(value_container);
+    context.visit_value_container(value_container, None);
     context.into_dxb_with_shared_values()
 }
 
@@ -153,6 +155,7 @@ pub fn append_local_pointer_address(
 pub fn append_value<T: BufferProvider + ValueVisitor>(
     context: &mut T,
     value: Value,
+    parent_context: Option<ParentContext>,
 ) {
     // append non-default type information
     if let Some(custom_type) = &value.custom_type {
@@ -260,9 +263,9 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                     );
                 }
             }
-
-            for item in val {
-                context.visit_value_container(item);
+            
+            for (index, item) in val.into_iter().enumerate() {
+                context.visit_value_container(item, parent_context.clone().map(|parent_context| parent_context.clone().with_accessor(ValueKey::from(index as u32))));
             }
         }
         CoreValue::Map(val) => {
@@ -289,6 +292,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                     context,
                     ValueContainer::from(key),
                     value,
+                    parent_context.clone(),
                 );
             }
         }
@@ -297,8 +301,8 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                 context.cursor_mut(),
                 RegularInstruction::Range,
             );
-            context.visit_value_container(*range.start);
-            context.visit_value_container(*range.end);
+            context.visit_value_container(*range.start, None);
+            context.visit_value_container(*range.end, None);
         }
         CoreValue::NominalTypeDefinition(_) => {
             todo!()
@@ -326,7 +330,7 @@ pub fn append_apply<T: BufferProvider + ValueVisitor>(
         }),
     );
     for arg in args {
-        context.visit_value_container(arg);
+        context.visit_value_container(arg, None);
     }
     append_regular_instruction(context.cursor_mut(), callee);
 }
@@ -553,7 +557,10 @@ pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
     context: &mut T,
     key: ValueContainer,
     value: ValueContainer,
+    parent_context: Option<ParentContext>,
 ) {
+    let key_clone = key.clone();
+
     // insert key
     match key {
         // if text, append_key_string, else dynamic
@@ -568,11 +575,11 @@ pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
                 context.cursor_mut(),
                 RegularInstruction::KeyValueDynamic,
             );
-            context.visit_value_container(key);
+            context.visit_value_container(key, parent_context.clone().map(|parent_context| parent_context.with_accessor(ParentAccessor::KeyValue)));
         }
     }
     // insert value
-    context.visit_value_container(value)
+    context.visit_value_container(value, parent_context.map(|parent_context| parent_context.with_accessor(ValueKey::Value(key_clone))));
 }
 
 /// Appends a key string for map entries, optimizing for short text keys
@@ -752,7 +759,7 @@ mod tests {
         let shared_container = ValueContainer::Shared(owned_shared);
         let mut context = core_compilation_context();
 
-        context.visit_value_container(shared_container);
+        context.visit_value_container(shared_container, None);
 
         // The address should now be registered in the shared value tracking
         assert_matches!(
@@ -832,7 +839,7 @@ mod tests {
 
         let shared_container = ValueContainer::Shared(outer_shared);
         let mut context = core_compilation_context();
-        context.visit_value_container(shared_container);
+        context.visit_value_container(shared_container, None);
 
         assert_matches!(
             context
@@ -941,7 +948,7 @@ mod tests {
 
         let shared_container = ValueContainer::Shared(outer_shared);
         let mut context = core_compilation_context();
-        context.visit_value_container(shared_container);
+        context.visit_value_container(shared_container, None);
 
         assert_matches!(
             context
@@ -987,7 +994,7 @@ mod tests {
                             previous_address: outer_pointer_address,
                         }),
                         RegularInstruction::TakeStackValue(StackIndex(0)),
-                    
+
                         RegularInstruction::list_with_children(instructions!(
                             RegularInstruction::TakeStackValue(StackIndex(1)),
                         )),
@@ -1015,7 +1022,7 @@ mod tests {
             ValueContainer::Shared(reference.clone());
         let mut context = core_compilation_context();
 
-        context.visit_value_container(shared_container);
+        context.visit_value_container(shared_container, None);
 
         assert_matches!(
             context
@@ -1086,7 +1093,7 @@ mod tests {
             .into(),
         );
         let mut context = core_compilation_context();
-        context.visit_value_container(local);
+        context.visit_value_container(local, None);
 
         assert_matches!(
             context

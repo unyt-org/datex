@@ -24,6 +24,7 @@ use crate::{
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
 use binrw::io::Write;
+use crate::core_compiler::value_visitor::ParentContext;
 
 #[derive(Debug)]
 enum VisitedValue {
@@ -31,12 +32,13 @@ enum VisitedValue {
     Inserted { stack_index: StackIndex },
     /// Indicates that the shared container is referenced by one or multiple shared containers that were already inserted
     Required {
-        partial_instantiations: Vec<DependantPartialInstantiations>,
+        parent_contexts: Vec<ParentContext>,
     },
 }
 
 #[derive(Debug)]
 struct DependantPartialInstantiations {
+    /// Index of the parent on which the value must be assigned
     target_index: StackIndex,
     assigned_property: ValueKey, // TODO: also support direct ref ("newtype" struct) assignments
 }
@@ -53,23 +55,31 @@ impl BufferProvider for PreambleContext<'_> {
         self.cursor
     }
 }
+// var x = shared {a: {b: null}};
+// x.a.b = x; /// #0.a.b = x;
 
 impl ValueVisitor for PreambleContext<'_> {
-    fn visit_value_container(&mut self, value_container: ValueContainer) {
+    fn visit_value_container(&mut self, value_container: ValueContainer, parent_context: Option<ParentContext>) {
         match value_container {
-            ValueContainer::Local(value) => append_value(self, value),
+            ValueContainer::Local(value) => append_value(self, value, parent_context),
             ValueContainer::Shared(shared_container) => {
+                let reference = SharedContainer::Referenced(shared_container.derive_reference_with_max_mutability());
                 match self.visited_values.get_mut(
-                    &SharedContainer::Referenced(shared_container.derive_reference_with_max_mutability()),
+                    &reference,
                 ) {
                     // shared container was not yet inserted, keep track as required dependency
                     None => {
-                        todo!();
+                        self.visited_values.insert(
+                            reference,
+                            VisitedValue::Required {
+                                parent_contexts: vec![parent_context.expect("no parent context")],
+                            }
+                        );
                     }
                     Some(VisitedValue::Required {
-                        partial_instantiations: _,
+                             parent_contexts: partial_instantiations,
                     }) => {
-                        todo!()
+                        partial_instantiations.push(parent_context.expect("no parent context"));
                     }
                     // shared container was already inserted, use stack value
                     Some(VisitedValue::Inserted { stack_index }) => {
@@ -204,17 +214,15 @@ fn append_injected_value(
         ),
         // value is required by other shared container that was already inserted,
         // first push value, then init missing partial instantiations
-        Some(VisitedValue::Required {
-            partial_instantiations: _,
-        }) => {
+        Some(VisitedValue::Required { parent_contexts}) => {
+            // once instantiated, also init missing partial instantiations
+            //panic!("parent contexts: {:#?}", parent_contexts);
             // first push the value
             push_injected_container(
                 context,
                 container,
                 metadata.is_known(),
-            );
-            // once instantiated, also init missing partial instantiations
-            todo!()
+            )
         }
         // this should never happen since all shared values are registered in tracked_values
         // exactly once
@@ -270,10 +278,22 @@ fn append_move_with_value(
         }),
     );
 
-    // TODO: no clone?
-    context.visit_value_container(
-        owned_container.value_container().clone()
-    );
+    let inner = owned_container.value_container().clone();
+    match inner {
+        ValueContainer::Local(value) => {
+            append_value(
+                context,
+                value,
+                Some(ParentContext::new(SharedContainer::Referenced(owned_container.derive_with_max_mutability())))
+            )
+        }
+        container @ ValueContainer::Shared(_) => {
+            context.visit_value_container(
+                owned_container.value_container().clone(),
+                Some(ParentContext::new(SharedContainer::Referenced(owned_container.derive_with_max_mutability()))),
+            );
+        }
+    }
 }
 
 fn append_referenced_shared_container(
@@ -325,6 +345,7 @@ fn append_referenced_shared_container_with_value(
             // TODO: no clone?
             context.visit_value_container(
                 referenced_container.value_container().clone(),
+                None,
             );
         }
         // insert without value for non self owned references

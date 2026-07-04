@@ -672,18 +672,21 @@ fn compile_expression(
                             append_value(
                                 compilation_context.core_context(),
                                 value,
+                                None,
                             );
                         }
                         ValueAccessType::Clone => {
                             append_value(
                                 compilation_context.core_context(),
                                 value,
+                                None,
                             );
                         }
                         ValueAccessType::Borrow => {
                             append_value(
                                 compilation_context.core_context(),
                                 value,
+                                None,
                             );
                         }
                     },
@@ -722,6 +725,7 @@ fn compile_expression(
                                         append_value(
                                             compilation_context.core_context(),
                                             value,
+                                            None,
                                         );
                                     }
                                     ValueContainer::Shared(shared_container) => {
