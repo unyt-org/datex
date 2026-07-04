@@ -19,7 +19,7 @@ use crate::{
         lexer::{SpannedToken, Token},
     },
     prelude::*,
-    values::core_values::error::NumbersError,
+    values::core_values::error::NumberParseError,
 };
 
 static UNARY_BP: u8 = 19; // less binding power than variant access and property access, but more than all other infix operators
@@ -142,7 +142,7 @@ impl Parser {
                         Err(_e) => {
                             return Err(SpannedParserError {
                                 error: ParserError::NumberParseError(
-                                    NumbersError::OutOfRange,
+                                    NumberParseError::OutOfRange,
                                 ),
                                 span: rhs.span.clone(),
                             });

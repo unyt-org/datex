@@ -25,7 +25,7 @@ use crate::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
     types::type_definition_with_metadata::LocalReferenceMutability,
-    values::core_values::error::NumbersError,
+    values::core_values::error::NumberParseError,
 };
 
 pub static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
@@ -376,7 +376,7 @@ impl Parser {
                         Err(_e) => {
                             return Err(SpannedParserError {
                                 error: ParserError::NumberParseError(
-                                    NumbersError::OutOfRange,
+                                    NumberParseError::OutOfRange,
                                 ),
                                 span: rhs.span.clone(),
                             });
