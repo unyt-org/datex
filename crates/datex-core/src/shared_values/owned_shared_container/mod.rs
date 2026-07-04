@@ -1,4 +1,5 @@
 pub mod datex_proxy;
+mod clone_unsafe;
 
 use crate::{
     runtime::{
@@ -28,6 +29,7 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
+use crate::shared_values::SharedContainer;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -98,15 +100,6 @@ impl OwnedSharedContainer {
                 )
             },
         )
-    }
-
-    /// Creates a new [OwnedSharedContainer] with the same inner value as the current one.
-    /// # Safety
-    /// The caller must ensure that the reference on the original self is not used later
-    pub unsafe fn clone_unsafe(&self) -> Self {
-        OwnedSharedContainer {
-            inner: self.inner.clone(),
-        }
     }
 
     pub fn inner(&self) -> Ref<'_, SharedContainerInner> {
@@ -230,6 +223,17 @@ impl OwnedSharedContainer {
     pub fn derive_with_max_mutability(&self) -> ReferencedSharedContainer {
         self.try_derive_mutable_reference()
             .unwrap_or_else(|_| self.derive_immutable_reference())
+    }
+    
+    /// Clones the shared container as a mutable reference if possible,
+    /// otherwise as an immutable reference, and sets the move indicator on the cloned reference
+    pub fn clone_with_move_indicator(&self) -> ReferencedSharedContainer {
+        let mut reference = self.derive_with_max_mutability();
+        unsafe {
+            // SAFETY: since this is an OwnedSharedContainer, it always has an owned address
+            reference.set_move_indicator();
+        }
+        reference
     }
 
     /// Moves an owned shared container by converting it to a [ReferencedSharedContainer] with a [RemotePointerAddress] pointing to the given remote address.

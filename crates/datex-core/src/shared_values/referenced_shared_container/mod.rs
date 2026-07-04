@@ -32,6 +32,8 @@ pub struct ReferencedSharedContainer {
     inner: Rc<RefCell<SharedContainerInner>>,
     /// The mutability of the reference (either `'mut shared X` or `'shared X`)
     reference_mutability: ReferenceMutability,
+    /// Field used internally to indicate that this reference should be treated as a move in the context of the compiler
+    move_indicator: bool,
 }
 
 impl ReferencedSharedContainer {
@@ -45,6 +47,7 @@ impl ReferencedSharedContainer {
         ReferencedSharedContainer {
             inner,
             reference_mutability: ReferenceMutability::Mutable,
+            move_indicator: false,
         }
     }
 
@@ -55,6 +58,7 @@ impl ReferencedSharedContainer {
         ReferencedSharedContainer {
             inner,
             reference_mutability: ReferenceMutability::Immutable,
+            move_indicator: false,
         }
     }
 
@@ -84,6 +88,7 @@ impl ReferencedSharedContainer {
                 },
             ))),
             reference_mutability,
+            move_indicator: false,
         })
     }
 
@@ -207,6 +212,7 @@ impl ReferencedSharedContainer {
         ReferencedSharedContainer {
             inner: self.inner.clone(),
             reference_mutability: ReferenceMutability::Immutable,
+            move_indicator: false,
         }
     }
 
@@ -232,6 +238,25 @@ impl ReferencedSharedContainer {
     /// Returns the [ReferenceMutability] of this reference
     pub fn reference_mutability(&self) -> ReferenceMutability {
         self.reference_mutability
+    }
+
+    /// Sets the move indicator flag that signals that this should be treated as a move in the context
+    /// of the compiler
+    /// Note: this should only be set on containers with an owned address
+    pub(super) unsafe fn set_move_indicator(&mut self) {
+        self.move_indicator = true;
+    }
+
+    /// Returns true if the move indicator is set
+    pub fn treat_as_move(&self) -> bool {
+        self.move_indicator
+    }
+    
+    pub unsafe fn change_address(&self, new_address: PointerAddress) {
+        assert_eq!(self.move_indicator, false);
+        unsafe {
+            self.inner_mut().change_address(new_address)
+        }
     }
 }
 

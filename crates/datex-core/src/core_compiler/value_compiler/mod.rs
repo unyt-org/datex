@@ -878,7 +878,7 @@ mod tests {
                     RegularInstruction::statements_with_children(false, instructions!(
                         RegularInstruction::PushToStack,
                         RegularInstruction::MoveWithValue(MoveWithValue {
-                            mutability: SharedContainerMutability::Immutable,
+                            mutability: SharedContainerMutability::Mutable,
                             previous_address: inner_pointer_address_b,
                         }),
                         RegularInstruction::Int32(Int32Data(2)),

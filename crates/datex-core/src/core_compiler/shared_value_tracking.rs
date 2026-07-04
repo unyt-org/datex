@@ -117,24 +117,22 @@ impl<'a> SharedValueTracking<'a> {
             shared_container,
             &mut HashSet::new(),
         );
-        let tracked_value =
-            self.tracked_values.get_mut(&shared_container_clone).unwrap();
+
 
         // ensure tracked value is a top level tracked value with stack index
-        match tracked_value {
+        match self.tracked_values.get(&shared_container_clone).unwrap() {
             TrackedValueMetadata::Child {
                 is_known,
                 ..
             } => {
                 let is_known = *is_known;
                 let index = self.get_next_stack_index();
-                self.tracked_values.insert(
-                    shared_container_clone,
-                    TrackedValueMetadata::Root {
-                        index,
-                        is_known,
-                    },
-                );
+                let tracked_value =
+                    self.tracked_values.get_mut(&shared_container_clone).unwrap();
+                *tracked_value = TrackedValueMetadata::Root {
+                    index,
+                    is_known,
+                };
                 index
             }
             // already a top level value, do nothing
@@ -154,9 +152,9 @@ impl<'a> SharedValueTracking<'a> {
                     .pointer_availability_lookup
                     .is_available_for_all_endpoints(self.receivers, &container.pointer_address());
 
+            let parent_moved = container.treat_as_move();
             let container_clone = container.clone();
 
-            // store container in referenced_values
             self.tracked_values.insert(
                 container,
                 TrackedValueMetadata::Child {
@@ -170,23 +168,13 @@ impl<'a> SharedValueTracking<'a> {
                 let mut inner_container = container_clone.value_container_mut();
                 match inner_container.deref_mut() {
                     ValueContainer::Shared(inner_shared) => {
-                        self.register_shared_value_with_parents(
-                            // Note we can convert to a ref here since the parent
-                            // was already a ref, so the child can never be owned
-                            inner_shared.downgrade_to_reference(),
-                            parents,
-                        );
+                        self.register_child(parent_moved, inner_shared, parents);
                     }
                     _ => {
                         inner_container.with_collapsed_value_mut(|value| {
                             for child in value.iter_children_mut() {
                                 if let ValueContainer::Shared(child) = child {
-                                    self.register_shared_value_with_parents(
-                                        // Note we can convert to a ref here since the parent
-                                        // was already a ref, so the child can never be owned
-                                        child.downgrade_to_reference(),
-                                        parents,
-                                    );
+                                    self.register_child(parent_moved, child, parents);
                                 }
                             }
                         });
@@ -195,6 +183,32 @@ impl<'a> SharedValueTracking<'a> {
 
                 parents.remove(&container_clone);
             }
+        }
+    }
+
+    fn register_child(
+        &mut self,
+        parent_moved: bool,
+        child: &mut SharedContainer,
+        parents: &mut HashSet<SharedContainer>
+    ) {
+        // If the parent is moved and the child is owned, we must also move the child
+        // if parent is not moved, the child is also not moved, even if it is owned by the parent
+        if parent_moved {
+            self.register_shared_value_with_parents(
+                // Note we can convert to a ref here since the parent
+                // was already a ref, so the child can never be owned
+                child.downgrade_to_reference(),
+                parents
+            );
+        }
+        else {
+            self.register_shared_value_with_parents(
+                // Note we can convert to a ref here since the parent
+                // was already a ref, so the child can never be owned
+                child.clone(),
+                parents
+            );
         }
     }
 

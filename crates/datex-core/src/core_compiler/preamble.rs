@@ -73,10 +73,18 @@ impl ValueVisitor for PreambleContext<'_> {
                     }
                     // shared container was already inserted, use stack value
                     Some(VisitedValue::Inserted { stack_index }) => {
-                        append_regular_instruction(
-                            self.cursor,
-                            RegularInstruction::BorrowStackValue(*stack_index),
-                        );
+                        if shared_container.treat_as_move() {
+                            append_regular_instruction(
+                                self.cursor,
+                                RegularInstruction::TakeStackValue(*stack_index),
+                            );
+                        }
+                        else {
+                            append_regular_instruction(
+                                self.cursor,
+                                RegularInstruction::BorrowStackValue(*stack_index),
+                            );
+                        }
                     }
                 }
             }
@@ -264,7 +272,7 @@ fn append_move_with_value(
 
     // TODO: no clone?
     context.visit_value_container(
-        owned_container.value_container().clone(),
+        owned_container.value_container().clone()
     );
 }
 

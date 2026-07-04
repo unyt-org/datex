@@ -56,8 +56,8 @@ impl SharedContainerInner {
     /// Change the inner [PointerAddress] to a new one, potentially changing the type of the container.
     /// # Safety
     /// The caller must ensure that the new [PointerAddress] is not already used by another shared container
-    pub unsafe fn change_address(
-        &mut self, 
+    pub(super) unsafe fn change_address(
+        &mut self,
         new_address: PointerAddress
     ) {
         let previous = mem::replace(

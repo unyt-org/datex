@@ -684,7 +684,7 @@ impl RuntimeInternal {
                 {
                     // Note: safe because we checked before if address is already in memory
                     unsafe {
-                        reference.inner_mut().change_address(new_address);
+                        reference.change_address(new_address);
                     }
                 } else {
                     return Err(ExecutionError::InvalidMove);

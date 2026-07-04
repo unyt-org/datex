@@ -58,7 +58,7 @@ pub enum SharedContainer {
 }
 
 impl SharedContainer {
-    
+
     /// Creates a new owned [SharedContainer] with an initial [ValueContainer],
     /// a [SharedContainerMutability], and a [SelfOwnedPointerAddressProvider].
     ///
@@ -97,20 +97,6 @@ impl SharedContainer {
                 address,
             )
         })
-    }
-
-    /// Creates a new owned [SharedContainer] with the same contents.
-    /// # Safety
-    /// The caller must be sure, that the reference on the original self is not used later.
-    pub unsafe fn clone_unsafe(&self) -> Self {
-        match self {
-            SharedContainer::Owned(owned) => {
-                SharedContainer::Owned(unsafe { owned.clone_unsafe() })
-            }
-            SharedContainer::Referenced(referenced) => {
-                SharedContainer::Referenced(referenced.clone())
-            }
-        }
     }
 
     pub fn inner(&self) -> Ref<'_, SharedContainerInner> {
@@ -326,11 +312,12 @@ impl SharedContainer {
             }
         }
     }
-    
+
     /// Downgrades an owned shared container to a referenced shared container.
     /// If the shared container is already a referenced shared container, it will just be returned.
     /// If the shared container is owned, it will be replaced with a new referenced shared container pointing to the same inner value
     /// and the original owned shared container will be returned.
+    /// Also sets the move indicator on the original owned shared container, so that we know it should be treated as moved.
     pub fn downgrade_to_reference(&mut self) -> SharedContainer {
         match self {
             SharedContainer::Owned(_) => {
@@ -348,7 +335,7 @@ impl SharedContainer {
                 );
 
                 // create a new referenced shared container and assign to self
-                *self = previous.clone();
+                *self = previous.clone_with_move_indicator_if_owned();
 
                 // return original, potentially owned shared container
                 previous
@@ -357,8 +344,27 @@ impl SharedContainer {
                 SharedContainer::Referenced(referenced.clone())
             }
         }
-    } 
-    
+    }
+
+    /// Clones the shared container with the move indicator if it is an [OwnedSharedContainer],
+    /// otherwise as a normal reference
+    pub fn clone_with_move_indicator_if_owned(&self) -> SharedContainer {
+        SharedContainer::Referenced(
+            match self {
+                SharedContainer::Owned(owned) => owned.clone_with_move_indicator(),
+                SharedContainer::Referenced(referenced) => referenced.clone(),
+            }
+        )
+    }
+
+    /// Returns true if the shared container is an [OwnedSharedContainer] or a [ReferencedSharedContainer] that is marked as moved.
+    pub fn treat_as_move(&self) -> bool {
+        match self {
+            SharedContainer::Owned(owned) => true,
+            SharedContainer::Referenced(referenced) => referenced.treat_as_move(),
+        }
+    }
+
 }
 
 /// Custom clone implementation for [SharedContainer].
@@ -392,6 +398,7 @@ impl Display for SharedContainer {
 
 pub mod datex_proxy;
 pub mod equality;
+pub mod clone_unsafe;
 
 impl From<OwnedSharedContainer> for SharedContainer {
     fn from(value: OwnedSharedContainer) -> Self {

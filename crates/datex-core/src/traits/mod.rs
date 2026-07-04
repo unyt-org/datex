@@ -4,3 +4,4 @@ pub mod child_iterator;
 pub mod identity;
 pub mod structural_eq;
 pub mod value_eq;
+pub mod clone_unsafe;
