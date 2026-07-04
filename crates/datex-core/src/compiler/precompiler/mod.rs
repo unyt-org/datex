@@ -893,7 +893,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     fn visit_comparison_operation(
         &mut self,
         comparison_operation: &mut crate::ast::expressions::ComparisonOperation,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         self.visit_datex_expression(&mut comparison_operation.left)?;
         self.visit_datex_expression(&mut comparison_operation.right)?;
