@@ -32,6 +32,7 @@ pub struct ReferencedSharedContainer {
     inner: Rc<RefCell<SharedContainerInner>>,
     /// The mutability of the reference (either `'mut shared X` or `'shared X`)
     reference_mutability: ReferenceMutability,
+    container_mutability: SharedContainerMutability,
     /// Field used internally to indicate that this reference should be treated as a move in the context of the compiler
     move_indicator: bool,
 }
@@ -44,9 +45,12 @@ impl ReferencedSharedContainer {
     pub(crate) fn new_mutable_unchecked(
         inner: Rc<RefCell<SharedContainerInner>>,
     ) -> Self {
+        let container_mutability = inner.borrow().base_shared_container().mutability().clone();
+
         ReferencedSharedContainer {
             inner,
             reference_mutability: ReferenceMutability::Mutable,
+            container_mutability,
             move_indicator: false,
         }
     }
@@ -55,9 +59,12 @@ impl ReferencedSharedContainer {
     pub(crate) fn new_immutable(
         inner: Rc<RefCell<SharedContainerInner>>,
     ) -> Self {
+        let container_mutability = inner.borrow().base_shared_container().mutability().clone();
+
         ReferencedSharedContainer {
             inner,
             reference_mutability: ReferenceMutability::Immutable,
+            container_mutability,
             move_indicator: false,
         }
     }
@@ -72,6 +79,7 @@ impl ReferencedSharedContainer {
         address: RemotePointerAddress,
         reference_mutability: ReferenceMutability,
     ) -> Result<Self, ()> {
+        let container_mutability = container.mutability().clone();
         // invalid reference mutability
         if reference_mutability == ReferenceMutability::Mutable
             && *container.mutability() == SharedContainerMutability::Immutable
@@ -88,6 +96,7 @@ impl ReferencedSharedContainer {
                 },
             ))),
             reference_mutability,
+            container_mutability,
             move_indicator: false,
         })
     }
@@ -204,7 +213,7 @@ impl ReferencedSharedContainer {
 
     /// Get the [SharedContainerMutability] of the inner [SelfOwnedSharedContainer].
     pub fn container_mutability(&self) -> SharedContainerMutability {
-        *self.inner().base_shared_container().mutability()
+        self.container_mutability
     }
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as self.
@@ -212,6 +221,7 @@ impl ReferencedSharedContainer {
         ReferencedSharedContainer {
             inner: self.inner.clone(),
             reference_mutability: ReferenceMutability::Immutable,
+            container_mutability: self.container_mutability(),
             move_indicator: false,
         }
     }
@@ -240,6 +250,10 @@ impl ReferencedSharedContainer {
         self.reference_mutability
     }
 
+    pub fn is_borrowed(&self) -> bool {
+        !self.inner.try_borrow_mut().is_ok()
+    }
+
     /// Sets the move indicator flag that signals that this should be treated as a move in the context
     /// of the compiler
     /// Note: this should only be set on containers with an owned address
@@ -251,12 +265,22 @@ impl ReferencedSharedContainer {
     pub fn treat_as_move(&self) -> bool {
         self.move_indicator
     }
-    
+
     pub unsafe fn change_address(&self, new_address: PointerAddress) {
         assert_eq!(self.move_indicator, false);
         unsafe {
             self.inner_mut().change_address(new_address)
         }
+    }
+
+    pub fn to_string_omit_content(&self) -> String {
+        format!(
+            "{}(...)",
+            match self.reference_mutability {
+                ReferenceMutability::Immutable => "'",
+                ReferenceMutability::Mutable => "'mut ",
+            },
+        )
     }
 }
 

@@ -44,6 +44,8 @@ use crate::shared_values::SharedContainer;
 pub struct OwnedSharedContainer {
     /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
     inner: Rc<RefCell<SharedContainerInner>>,
+    /// This reflects the container mutability of the inner container, which is guaranteed to stay the same
+    container_mutability: SharedContainerMutability,
 }
 
 impl OwnedSharedContainer {
@@ -51,10 +53,12 @@ impl OwnedSharedContainer {
     pub fn new_from_self_owned_container(
         container: SelfOwnedSharedContainer,
     ) -> Self {
+        let container_mutability = container.value().mutability().clone();
         OwnedSharedContainer {
             inner: Rc::new(RefCell::new(SharedContainerInner::EndpointOwned(
                 container,
             ))),
+            container_mutability,
         }
     }
     
@@ -107,6 +111,10 @@ impl OwnedSharedContainer {
     }
     pub fn inner_mut(&self) -> RefMut<'_, SharedContainerInner> {
         self.inner.borrow_mut()
+    }
+
+    pub fn is_borrowed(&self) -> bool {
+       !self.inner.try_borrow_mut().is_ok()
     }
 
     /// Gets a [Ref] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
@@ -191,9 +199,9 @@ impl OwnedSharedContainer {
         })
     }
 
-    /// Get the [SharedContainerMutability] of the inner [SelfOwnedSharedContainer].
+    /// Get the [SharedContainerMutability] of the container
     pub fn container_mutability(&self) -> SharedContainerMutability {
-        *self.as_self_owned_shared_container().value().mutability()
+        self.container_mutability.clone()
     }
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
@@ -224,7 +232,7 @@ impl OwnedSharedContainer {
         self.try_derive_mutable_reference()
             .unwrap_or_else(|_| self.derive_immutable_reference())
     }
-    
+
     /// Clones the shared container as a mutable reference if possible,
     /// otherwise as an immutable reference, and sets the move indicator on the cloned reference
     pub fn clone_with_move_indicator(&self) -> ReferencedSharedContainer {
@@ -272,6 +280,10 @@ impl OwnedSharedContainer {
     /// Checks if the owned container can be mutated by the local endpoint
     pub(crate) fn can_mutate(&self) -> bool {
         self.container_mutability() == SharedContainerMutability::Mutable
+    }
+
+    pub fn to_string_omit_content(&self) -> String {
+        "(...)".to_string()
     }
 }
 

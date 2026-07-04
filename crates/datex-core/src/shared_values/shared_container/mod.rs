@@ -208,6 +208,13 @@ impl SharedContainer {
         self.base_shared_container().with_collapsed_value(f)
     }
 
+    pub fn is_borrowed(&self) -> bool {
+        match self {
+            SharedContainer::Owned(owned) => owned.is_borrowed(),
+            SharedContainer::Referenced(referenced) => referenced.is_borrowed(),
+        }
+    }
+
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
@@ -362,6 +369,15 @@ impl SharedContainer {
         match self {
             SharedContainer::Owned(owned) => true,
             SharedContainer::Referenced(referenced) => referenced.treat_as_move(),
+        }
+    }
+    
+    pub fn to_string_omit_content(&self) -> String {
+        match self {
+            SharedContainer::Owned(owned) => owned.to_string_omit_content(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.to_string_omit_content()
+            }
         }
     }
 
