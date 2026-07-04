@@ -99,6 +99,7 @@ use core::ops::DerefMut;
 use log::info;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::runtime::cache::shared_values_cache::{CacheValueRetrievalError, ValueNotFoundInCacheError};
+use crate::runtime::execution::execution_loop::interrupts::InterruptResult;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -258,6 +259,9 @@ pub fn execution_loop(
                     }
                     ExecutionInterrupt::SetActiveValue(value) => {
                         active_value = value;
+                    }
+                    ExecutionInterrupt::TakeActiveValue => {
+                        interrupt_provider.provide_result(InterruptResult::ResolvedValue(active_value.take()));
                     }
                 },
                 Err(err) => {
@@ -1422,7 +1426,11 @@ pub fn inner_execution_loop(
                                         } else {
                                             match collected_result {
                                                 Some(CollectedExecutionResult::Value(val)) => val.into(),
-                                                None => CollectedExecutionResult::Value(None),
+                                                None => {
+                                                    // if no last result, it might have been moved to the active value, try to get back
+                                                    let active_value = interrupt_with_maybe_value!(interrupt_provider, ExecutionInterrupt::TakeActiveValue);
+                                                    CollectedExecutionResult::Value(active_value.map(RuntimeValue::ValueContainer))
+                                                },
                                                 _ => unreachable!(),
                                             }
                                         }
@@ -1589,25 +1597,23 @@ pub fn inner_execution_loop(
             // if in unbounded statements, propagate active value via interrupt
             if let Some(ResultCollector::LastUnbounded(
                 LastUnboundedResultCollector {
-                    last_result: last_result @ Some(_),
+                    last_result,
                     ..
                 },
             )) = collector.last_mut()
+                && let Some(CollectedExecutionResult::Value(mut last_result)) = last_result.take()
             {
-                *last_result = None;
-
-                if let Some(CollectedExecutionResult::Value(last_result)) = last_result {
-                    let active_value = yield_unwrap!(
+                let active_value = yield_unwrap!(
                         last_result
                             .take()
                             .map(|v| v.into_value_container(&mut state))
                             .transpose()
                     );
-                    interrupt!(
-                        interrupt_provider,
-                        ExecutionInterrupt::SetActiveValue(active_value)
-                    );
-                }
+                println!("active value {:?}", active_value);
+                interrupt!(
+                    interrupt_provider,
+                    ExecutionInterrupt::SetActiveValue(active_value)
+                );
                 // TODO: handle other CollectedExecutionResults
             }
         }

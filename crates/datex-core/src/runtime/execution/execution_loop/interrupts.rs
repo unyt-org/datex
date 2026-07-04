@@ -12,11 +12,13 @@ use crate::{
     },
     values::core_values::endpoint::Endpoint,
 };
+use crate::shared_values::SharedContainer;
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {
     // used for intermediate results in unbounded scopes
     SetActiveValue(Option<ValueContainer>),
+    TakeActiveValue,
     /// yields an external interrupt to be handled by the execution loop caller (for I/O operations, pointer resolution, remote execution, etc.)
     External(ExternalExecutionInterrupt),
 }
