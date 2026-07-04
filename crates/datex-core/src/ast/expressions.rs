@@ -23,7 +23,7 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
-            self,
+            self, Instant,
             boolean::Boolean,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,

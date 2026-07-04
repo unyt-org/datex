@@ -7,8 +7,8 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstructionBlockData, Int8Data, Int16Data,
-                Int32Data, Int64Data, Int128Data, ListData, MapData,
+                FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
+                Int16Data, Int32Data, Int64Data, Int128Data, ListData, MapData,
                 ModifySharedContainerValue, ModifyStackValue, Move,
                 PerformMoves, SharedRef, SharedRefWithValue, ShortListData,
                 ShortMapData, ShortStatementsData, ShortTextData, StackIndex,
@@ -25,6 +25,7 @@ use crate::{
         PointerAddress, RemotePointerAddress, SelfOwnedPointerAddress,
     },
     values::core_values::{
+        Instant,
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
         integer::Integer,

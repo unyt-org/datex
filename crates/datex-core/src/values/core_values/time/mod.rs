@@ -32,7 +32,6 @@ impl Instant {
     /// converting from iso into Instant(i128)
     pub fn instant_from_iso(s: &str) -> Self {
         let dt = s.parse::<DateTime<Utc>>().expect("Invalid ISO format");
-
         Self(dt.timestamp_millis() as i128)
     }
 
@@ -40,7 +39,7 @@ impl Instant {
     /// Return difference between now and other Instant in 'ms'
     /// Return time is always positive
     pub fn difference_between_now(self) -> u64 {
-        (self.0 - Instant::now().0).abs() as u64
+        (self.0 - Instant::now().0).unsigned_abs() as u64
     }
 
     /// Add duration (in milliseconds)
