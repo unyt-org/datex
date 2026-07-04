@@ -551,56 +551,40 @@ impl<'a> Iterator for MapMutIterator<'a> {
     }
 }
 
-pub struct IntoMapIterator {
-    map: Map,
-    index: usize,
+pub enum IntoMapIterator {
+    Dynamic(indexmap::map::IntoIter<ValueContainer, ValueContainer>),
+    Fixed(vec::IntoIter<(ValueContainer, ValueContainer)>),
+    Structural(vec::IntoIter<(String, ValueContainer)>),
 }
 
 impl Iterator for IntoMapIterator {
     type Item = (MapKey, ValueContainer);
 
     fn next(&mut self) -> Option<Self::Item> {
-        // TODO #332: optimize to avoid cloning keys and values
-        match &self.map {
-            Map::Dynamic(map) => {
-                let item = map.iter().nth(self.index);
-                self.index += 1;
-                item.map(|(k, v)| {
-                    let key = match k {
-                        ValueContainer::Local(Value {
-                            inner: CoreValue::Text(text),
-                            ..
-                        }) => MapKey::Text(text.0.clone()),
-                        _ => MapKey::Value(k.clone()),
-                    };
-                    (key, v.clone())
-                })
-            }
-            Map::Structural(vec) => {
-                if self.index < vec.len() {
-                    let item = &vec[self.index];
-                    self.index += 1;
-                    let key = match &item.0 {
-                        ValueContainer::Local(Value {
-                            inner: CoreValue::Text(text),
-                            ..
-                        }) => MapKey::Text(text.0.clone()),
-                        _ => MapKey::Value(item.0.clone()),
-                    };
-                    Some((key, item.1.clone()))
-                } else {
-                    None
-                }
-            }
-            Map::StructuralWithStringKeys(vec) => {
-                if self.index < vec.len() {
-                    let item = &vec[self.index];
-                    self.index += 1;
-                    Some((MapKey::Text(item.0.clone()), item.1.clone()))
-                } else {
-                    None
-                }
-            }
+        match self {
+            IntoMapIterator::Dynamic(iter) => iter.next().map(|(k, v)| {
+                let key = match k {
+                    ValueContainer::Local(Value {
+                      inner: CoreValue::Text(text),
+                      ..
+                    }) => MapKey::Text(text.0),
+                    _ => MapKey::Value(k),
+                };
+                (key, v)
+            }),
+            IntoMapIterator::Fixed(iter) => iter.next().map(|(k, v)| {
+                let key = match k {
+                    ValueContainer::Local(Value {
+                      inner: CoreValue::Text(text),
+                      ..
+                    }) => MapKey::Text(text.0),
+                    _ => MapKey::Value(k),
+                };
+                (key, v)
+            }),
+            IntoMapIterator::Structural(iter) => iter
+                .next()
+                .map(|(k, v)| (MapKey::Text(k), v)),
         }
     }
 }
@@ -642,9 +626,12 @@ impl IntoIterator for Map {
     type IntoIter = IntoMapIterator;
 
     fn into_iter(self) -> Self::IntoIter {
-        IntoMapIterator {
-            map: self,
-            index: 0,
+        match self {
+            Map::Dynamic(map) => IntoMapIterator::Dynamic(map.into_iter()),
+            Map::Structural(vec) => IntoMapIterator::Fixed(vec.into_iter()),
+            Map::StructuralWithStringKeys(vec) => {
+                IntoMapIterator::Structural(vec.into_iter())
+            }
         }
     }
 }

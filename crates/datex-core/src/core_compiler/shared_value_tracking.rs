@@ -164,7 +164,7 @@ impl<'a> SharedValueTracking<'a> {
 
             // If the address is not already being visited, we want to register all children
             // with the whole tree of their direct and indirect parents
-            if parents.insert(container_clone.clone()) && !is_known {
+            if parents.insert(container_clone.clone()) && (!is_known || parent_moved) {
                 let mut inner_container = container_clone.value_container_mut();
                 match inner_container.deref_mut() {
                     ValueContainer::Shared(inner_shared) => {
@@ -378,7 +378,7 @@ use super::*;
     }
 
     #[test]
-    fn direct_shared_child() {
+    fn direct_shared_child_list() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
         // child
@@ -404,6 +404,37 @@ use super::*;
 
         assert_top_level(&tracking, &parent, StackIndex(0));
         assert_child(&tracking, &child);
+    }
+
+    #[test]
+    fn direct_shared_child() {
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+
+        // child
+        let (child, _) = owned_shared(
+            address_provider,
+            42,
+            SharedContainerMutability::Immutable,
+        );
+
+        let child_clone = child.clone();
+
+        // parent = shared child
+        let (parent, _) = owned_shared(
+            address_provider,
+            ValueContainer::Shared(child),
+            SharedContainerMutability::Immutable,
+        );
+        let parent_clone = parent.clone();
+
+        let mut tracking = tracking();
+        let parent_index = tracking.register_shared_value(parent);
+
+        assert_eq!(parent_index, StackIndex(0));
+        assert_eq!(tracking.tracked_values.len(), 2);
+
+        assert_top_level(&tracking, &parent_clone, StackIndex(0));
+        assert_child(&tracking, &child_clone);
     }
 
     #[test]

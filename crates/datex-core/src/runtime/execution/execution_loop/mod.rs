@@ -1609,7 +1609,6 @@ pub fn inner_execution_loop(
                             .map(|v| v.into_value_container(&mut state))
                             .transpose()
                     );
-                println!("active value {:?}", active_value);
                 interrupt!(
                     interrupt_provider,
                     ExecutionInterrupt::SetActiveValue(active_value)

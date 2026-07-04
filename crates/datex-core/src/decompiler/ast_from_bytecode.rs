@@ -49,7 +49,7 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
-use crate::ast::expressions::RemoteExecution;
+use crate::ast::expressions::{RemoteExecution, UnboxAssignment};
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -591,6 +591,27 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
+                            RegularInstruction::GetSharedReferenceMut => {
+                                let expr = collected_results.pop_value_result();
+                                DatexExpressionData::DeriveSharedRef(
+                                    DeriveSharedRef {
+                                        mutability: ReferenceMutability::Mutable,
+                                        expression: Box::new(expr),
+                                    },
+                                )
+                                    .with_default_span()
+                                    .into()
+                            }
+                            RegularInstruction::SetSharedContainerValue => {
+                                DatexExpressionData::UnboxAssignment(UnboxAssignment {
+                                    assigned_expression: Box::new(collected_results.pop_value_result()),
+                                    operator: None,
+                                    unbox_expression: Box::new(collected_results.pop_value_result()),
+                                })
+                                    .with_default_span()
+                                    .into()
+                            }
+
                             RegularInstruction::UnaryMinus
                             | RegularInstruction::UnaryPlus
                             | RegularInstruction::BitwiseNot
