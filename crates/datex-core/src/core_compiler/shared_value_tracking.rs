@@ -1,5 +1,5 @@
 use core::hash::Hash;
-use std::ops::DerefMut;
+use core::ops::DerefMut;
 use crate::{
     global::protocol_structures::instruction_data::StackIndex,
     prelude::*,
@@ -192,7 +192,7 @@ impl<'a> SharedValueTracking<'a> {
                         });
                     }
                 }
-                
+
                 parents.remove(&container_clone);
             }
         }

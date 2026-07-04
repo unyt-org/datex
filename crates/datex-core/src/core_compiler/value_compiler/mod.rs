@@ -877,6 +877,13 @@ mod tests {
                     RegularInstruction::PushListToStack,
                     RegularInstruction::statements_with_children(false, instructions!(
                         RegularInstruction::PushToStack,
+                        RegularInstruction::MoveWithValue(MoveWithValue {
+                            mutability: SharedContainerMutability::Immutable,
+                            previous_address: inner_pointer_address_b,
+                        }),
+                        RegularInstruction::Int32(Int32Data(2)),
+
+                        RegularInstruction::PushToStack,
                         RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                             address: inner_pointer_address_a,
                             ref_mutability: ReferenceMutability::Mutable,
@@ -887,22 +894,16 @@ mod tests {
                         RegularInstruction::PushToStack,
                         RegularInstruction::MoveWithValue(MoveWithValue {
                             mutability: SharedContainerMutability::Immutable,
-                            previous_address: inner_pointer_address_b,
-                        }),
-                        RegularInstruction::Int32(Int32Data(2)),
-
-                        RegularInstruction::PushToStack,
-                        RegularInstruction::MoveWithValue(MoveWithValue {
-                            mutability: SharedContainerMutability::Immutable,
                             previous_address: outer_pointer_address,
                         }),
                         RegularInstruction::list_with_children(instructions!(
-                            RegularInstruction::BorrowStackValue(StackIndex(0)),
-                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                            RegularInstruction::BorrowStackValue(StackIndex(1)),
+                            RegularInstruction::TakeStackValue(StackIndex(0)),
                         )),
 
-                        RegularInstruction::list(1),
-                        RegularInstruction::TakeStackValue(StackIndex(1)),
+                        RegularInstruction::list_with_children(instructions!(
+                            RegularInstruction::TakeStackValue(StackIndex(2)),
+                        )),
                     )),
                     RegularInstruction::TakeStackValue(StackIndex(0)),
                 )),

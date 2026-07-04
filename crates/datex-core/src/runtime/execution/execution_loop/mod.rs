@@ -1589,23 +1589,26 @@ pub fn inner_execution_loop(
             // if in unbounded statements, propagate active value via interrupt
             if let Some(ResultCollector::LastUnbounded(
                 LastUnboundedResultCollector {
-                    last_result:
-                        Some(CollectedExecutionResult::Value(last_result)),
+                    last_result: last_result @ Some(_),
                     ..
                 },
             )) = collector.last_mut()
             {
-                let active_value = yield_unwrap!(
-                    last_result
-                        .take()
-                        .map(|v| v.into_value_container(&mut state))
-                        .transpose()
-                );
+                *last_result = None;
 
-                interrupt!(
-                    interrupt_provider,
-                    ExecutionInterrupt::SetActiveValue(active_value)
-                );
+                if let Some(CollectedExecutionResult::Value(last_result)) = last_result {
+                    let active_value = yield_unwrap!(
+                        last_result
+                            .take()
+                            .map(|v| v.into_value_container(&mut state))
+                            .transpose()
+                    );
+                    interrupt!(
+                        interrupt_provider,
+                        ExecutionInterrupt::SetActiveValue(active_value)
+                    );
+                }
+                // TODO: handle other CollectedExecutionResults
             }
         }
 
