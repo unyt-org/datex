@@ -1083,21 +1083,23 @@ mod tests {
                                         SharedContainerMutability::Mutable,
                                 }
                             )
-                            .with_children(instructions!(
-                                RegularInstruction::ShortMap(ShortMapData {
-                                    element_count: 1
-                                })
-                                .with_children(instructions!(
-                                    RegularInstruction::KeyValueShortText(
-                                        ShortTextData("a".to_string())
+                            .with_children(
+                                instructions!(
+                                    RegularInstruction::ShortMap(
+                                        ShortMapData { element_count: 1 }
                                     )
                                     .with_children(instructions!(
+                                        RegularInstruction::KeyValueShortText(
+                                            ShortTextData("a".to_string())
+                                        )
+                                        .with_children(instructions!(
                                         RegularInstruction::BorrowStackValue(
                                             StackIndex(1)
                                         )
                                     ))
-                                ))
-                            )),
+                                    ))
+                                )
+                            ),
                             RegularInstruction::SetPropertyDynamic
                                 .with_children(instructions!(
                                     RegularInstruction::ShortText(

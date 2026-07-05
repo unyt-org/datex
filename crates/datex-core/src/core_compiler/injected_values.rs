@@ -525,7 +525,6 @@ mod tests {
                                     RegularInstruction::Int32(Int32Data(42)),
                                     RegularInstruction::PushToStack,
                                     RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
-                                    
                                     RegularInstruction::list_with_children(
                                         instructions!(
                                             RegularInstruction::TakeStackValue(
