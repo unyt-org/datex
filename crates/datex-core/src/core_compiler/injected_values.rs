@@ -521,6 +521,10 @@ mod tests {
                                         }
                                     ),
                                     RegularInstruction::Int32(Int32Data(42)),
+                                    
+                                    RegularInstruction::PushToStack,
+                                    RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
+                                    
                                     RegularInstruction::list_with_children(
                                         instructions!(
                                             RegularInstruction::TakeStackValue(
@@ -629,6 +633,9 @@ mod tests {
                                 previous_address: shared_value1_address
                             }),
                             RegularInstruction::Int32(Int32Data(42)),
+
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::GetStackValueSharedRef(StackIndex(1)),
 
                             RegularInstruction::list_with_children(instructions!(
                                 RegularInstruction::TakeStackValue(StackIndex(1)),

@@ -423,11 +423,10 @@ fn push_injected_container(
         SharedContainer::Owned(owned_container) => {
             append_move_with_value(context, owned_container);
 
-            if metadata.has_multiple_accesses() {
-                // add additional reference if container is used more than once
-                append_additional_reference(context, owned_container, index);
-                *statements_count += 1;
-            }
+            // add additional reference so that container can later still be accessed
+            // TODO: optimize this, only include if actually needed later
+            append_additional_reference(context, owned_container, index);
+            *statements_count += 1;
         }
         SharedContainer::Referenced(referenced_container) => {
             if !metadata.is_known() {
@@ -722,7 +721,6 @@ mod tests {
                 TrackedValueMetadata::Root {
                     index: StackIndex(0),
                     is_known: false,
-                    has_multiple_accesses: false,
                 },
             )],
             vec![RegularInstruction::statements_with_children(
@@ -783,7 +781,6 @@ mod tests {
                 TrackedValueMetadata::Root {
                     index: StackIndex(0),
                     is_known: false,
-                    has_multiple_accesses: false,
                 },
             )],
             vec![RegularInstruction::statements_with_children(
@@ -809,12 +806,16 @@ mod tests {
                                     ))
                                 )
                             ),
+
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::GetStackValueSharedRefMut(StackIndex(0)),
+
                             RegularInstruction::SetPropertyIndex(UInt32Data(0)).with_children(
                                 instructions!(
                                     RegularInstruction::BorrowStackValue(
-                                        StackIndex(0)
+                                        StackIndex(1)
                                     ),
-                                    RegularInstruction::BorrowStackValue(StackIndex(0))
+                                    RegularInstruction::BorrowStackValue(StackIndex(1))
                                 )
                             ),
                             RegularInstruction::list_with_children(
@@ -860,7 +861,6 @@ mod tests {
                 TrackedValueMetadata::Root {
                     index: StackIndex(0),
                     is_known: false,
-                    has_multiple_accesses: true,
                 },
             )],
             vec![RegularInstruction::statements_with_children(
@@ -970,14 +970,12 @@ mod tests {
                     SharedContainer::Referenced(owned_container_c.derive_with_max_mutability()),
                     TrackedValueMetadata::Child {
                         is_known: false,
-                        has_multiple_accesses: false,
                     },
                 ),
                 (
                     SharedContainer::Referenced(owned_container_b.derive_with_max_mutability()),
                     TrackedValueMetadata::Child {
                         is_known: false,
-                        has_multiple_accesses: false,
                     },
                 ),
                 (
@@ -985,7 +983,6 @@ mod tests {
                     TrackedValueMetadata::Root {
                         index: StackIndex(0),
                         is_known: false,
-                        has_multiple_accesses: true,
                     },
                 )
             ],

@@ -23,13 +23,10 @@ pub enum TrackedValueMetadata {
         index: StackIndex,
         /// if the pointer of this container is already known for to be available on all receivers
         is_known: bool,
-        has_multiple_accesses: bool,
     },
     Child {
         /// if the pointer of this container is already known for to be available on all receivers
         is_known: bool,
-        /// set to true if this child is referenced multiple times
-        has_multiple_accesses: bool,
     },
 }
 
@@ -38,20 +35,6 @@ impl TrackedValueMetadata {
         match self {
             TrackedValueMetadata::Root { is_known, .. } => *is_known,
             TrackedValueMetadata::Child { is_known, .. } => *is_known,
-        }
-    }
-
-    pub fn has_multiple_accesses(&self) -> bool {
-        match self {
-            TrackedValueMetadata::Root { has_multiple_accesses, .. } => *has_multiple_accesses,
-            TrackedValueMetadata::Child { has_multiple_accesses, .. } => *has_multiple_accesses,
-        }
-    }
-
-    pub fn set_has_multiple_accesses(&mut self) {
-        match self {
-            TrackedValueMetadata::Root { has_multiple_accesses, .. } => *has_multiple_accesses = true,
-            TrackedValueMetadata::Child { has_multiple_accesses, .. } => *has_multiple_accesses = true,
         }
     }
 }
@@ -108,26 +91,19 @@ impl<'a> SharedValueTracking<'a> {
     /// Updates the tracked value for a shared container if the new container has higher ownership than the existing one
     /// Returns the passed container if it was not yet in the tracked values
     fn update_container_ownership_if_exists(&mut self, container: SharedContainer) -> Option<SharedContainer> {
-        if let Some((existing, metadata)) = self.tracked_values.get_key_value_mut(&container) {
-            // mark as multiple access if the container is accessed as move
-            metadata.set_has_multiple_accesses();
-
-            if container.ownership() <= existing.ownership() {
-                return None;
+        if let Some((existing, _)) = self.tracked_values.get_key_value(&container) {
+            if container.ownership() > existing.ownership() {
+                let index = self.tracked_values.get_index_of(&container).unwrap();
+                self.tracked_values.replace_index(
+                    index,
+                    container,
+                ).unwrap();
             }
-            // handle replace of container below to update ownership ->
+            None
         }
         else {
-            return Some(container)
-        };
-
-        let index = self.tracked_values.get_index_of(&container).unwrap();
-        self.tracked_values.replace_index(
-            index,
-            container,
-        ).unwrap();
-
-        None
+            Some(container)
+        }
     }
 
     /// Registers a new shared value. Returns a stack index that can be used to access this value
@@ -147,18 +123,15 @@ impl<'a> SharedValueTracking<'a> {
         match self.tracked_values.get(&shared_container_clone).unwrap() {
             TrackedValueMetadata::Child {
                 is_known,
-                has_multiple_accesses,
                 ..
             } => {
                 let is_known = *is_known;
-                let has_multiple_accesses = *has_multiple_accesses;
                 let index = self.get_next_stack_index();
                 let tracked_value =
                     self.tracked_values.get_mut(&shared_container_clone).unwrap();
                 *tracked_value = TrackedValueMetadata::Root {
                     index,
                     is_known,
-                    has_multiple_accesses,
                 };
                 index
             }
@@ -186,7 +159,6 @@ impl<'a> SharedValueTracking<'a> {
                 container,
                 TrackedValueMetadata::Child {
                     is_known,
-                    has_multiple_accesses: false,
                 },
             );
 
