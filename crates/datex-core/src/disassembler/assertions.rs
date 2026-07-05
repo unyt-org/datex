@@ -1,3 +1,5 @@
+use log::info;
+
 use crate::{
     disassembler::{
         InstructionTree, disassemble_body, disassemble_body_to_string,
@@ -82,13 +84,19 @@ pub fn assert_instruction_lists_eq(
     }
 }
 
+/// Resolves the instructions from a DXB byte slice, panicking if there is an error
+/// This is called by the [assert_regular_instructions_equal!] macro to resolve the instructions from the DXB and compare them to the expected instructions
 pub fn resolve_instructions(dxb: &[u8]) -> Vec<Instruction> {
     let (instructions, err) = disassemble_body(
         dxb,
         NestedInstructionResolutionStrategy::ResolveNestedScopesFlat,
     );
     if let Some(err) = err {
-        panic!("Parser error: {}", err);
+        panic!(
+            "Disassembly error: {}:\n{}",
+            err,
+            disassemble_body_to_string(dxb, DisassemblerOptions::default())
+        );
     }
     instructions.flatten()
 }

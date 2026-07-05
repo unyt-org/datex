@@ -3,11 +3,9 @@ use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::ByteCursor,
-        shared_value_tracking::{
-            TrackedValueMetadata, TrackedValueCollection,
-        },
+        shared_value_tracking::{TrackedValueCollection, TrackedValueMetadata},
         value_compiler::{append_regular_instruction, append_value},
-        value_visitor::ValueVisitor,
+        value_visitor::{ParentContext, ValueVisitor},
     },
     global::protocol_structures::{
         instruction_data::{
@@ -18,22 +16,19 @@ use crate::{
     prelude::*,
     shared_values::{
         OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
-        SharedContainer, SharedContainerMutability,
+        SharedContainer,
     },
     types::r#type::Type,
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
 use binrw::io::Write;
-use crate::core_compiler::value_visitor::ParentContext;
 
 #[derive(Debug)]
 enum VisitedValue {
     /// Indicates that the shared container was already inserted and is available at the given stack index
     Inserted { stack_index: StackIndex },
     /// Indicates that the shared container is referenced by one or multiple shared containers that were already inserted
-    Required {
-        parent_contexts: Vec<ParentContext>,
-    },
+    Required { parent_contexts: Vec<ParentContext> },
 }
 
 #[derive(Debug)]
@@ -59,27 +54,36 @@ impl BufferProvider for PreambleContext<'_> {
 // x.a.b = x; /// #0.a.b = x;
 
 impl ValueVisitor for PreambleContext<'_> {
-    fn visit_value_container(&mut self, value_container: ValueContainer, parent_context: Option<ParentContext>) {
+    fn visit_value_container(
+        &mut self,
+        value_container: ValueContainer,
+        parent_context: Option<ParentContext>,
+    ) {
         match value_container {
-            ValueContainer::Local(value) => append_value(self, value, parent_context),
+            ValueContainer::Local(value) => {
+                append_value(self, value, parent_context)
+            }
             ValueContainer::Shared(shared_container) => {
                 let parent_context = parent_context.expect("no parent context");
-                println!("visit with context {:?}: {}", parent_context.accessors, parent_context.parent);
-                let reference = SharedContainer::Referenced(shared_container.derive_reference_with_max_mutability());
-                match self.visited_values.get_mut(
-                    &reference,
-                ) {
+                println!(
+                    "visit with context {:?}: {}",
+                    parent_context.accessors, parent_context.parent
+                );
+                let reference = SharedContainer::Referenced(
+                    shared_container.derive_reference_with_max_mutability(),
+                );
+                match self.visited_values.get_mut(&reference) {
                     // shared container was not yet inserted, keep track as required dependency
                     None => {
                         self.visited_values.insert(
                             reference,
                             VisitedValue::Required {
                                 parent_contexts: vec![parent_context],
-                            }
+                            },
                         );
                     }
                     Some(VisitedValue::Required {
-                             parent_contexts: partial_instantiations,
+                        parent_contexts: partial_instantiations,
                     }) => {
                         partial_instantiations.push(parent_context);
                     }
@@ -88,13 +92,16 @@ impl ValueVisitor for PreambleContext<'_> {
                         if shared_container.treat_as_move() {
                             append_regular_instruction(
                                 self.cursor,
-                                RegularInstruction::TakeStackValue(*stack_index),
+                                RegularInstruction::TakeStackValue(
+                                    *stack_index,
+                                ),
                             );
-                        }
-                        else {
+                        } else {
                             append_regular_instruction(
                                 self.cursor,
-                                RegularInstruction::BorrowStackValue(*stack_index),
+                                RegularInstruction::BorrowStackValue(
+                                    *stack_index,
+                                ),
                             );
                         }
                     }
@@ -151,10 +158,7 @@ pub(super) fn append_injected_values_preamble(
     // statements (injected values [n] + short list [1])
     append_regular_instruction(
         context.cursor,
-        RegularInstruction::statements(
-            1 + tracked_values.len() as u32,
-            false,
-        ),
+        RegularInstruction::statements(1 + tracked_values.len() as u32, false),
     );
 
     let mut root_container_stack_indices: Vec<Option<StackIndex>> =
@@ -209,22 +213,16 @@ fn append_injected_value(
 ) -> StackIndex {
     match context.visited_values.get(container) {
         // value was not yet required or inserted, just add compilation to push new to stack
-        None => push_injected_container(
-            context,
-            container,
-            metadata.is_known(),
-        ),
+        None => {
+            push_injected_container(context, container, metadata.is_known())
+        }
         // value is required by other shared container that was already inserted,
         // first push value, then init missing partial instantiations
-        Some(VisitedValue::Required { parent_contexts}) => {
+        Some(VisitedValue::Required { parent_contexts }) => {
             // once instantiated, also init missing partial instantiations
             panic!("parent contexts: {:#?}", parent_contexts);
             // first push the value
-            push_injected_container(
-                context,
-                container,
-                metadata.is_known(),
-            )
+            push_injected_container(context, container, metadata.is_known())
         }
         // this should never happen since all shared values are registered in tracked_values
         // exactly once
@@ -251,9 +249,15 @@ fn push_injected_container(
         }
         SharedContainer::Referenced(referenced_container) => {
             if !is_known {
-                append_referenced_shared_container_with_value(context, referenced_container);
+                append_referenced_shared_container_with_value(
+                    context,
+                    referenced_container,
+                );
             } else {
-                append_referenced_shared_container(context, referenced_container);
+                append_referenced_shared_container(
+                    context,
+                    referenced_container,
+                );
             }
         }
     }
@@ -282,17 +286,19 @@ fn append_move_with_value(
 
     let inner = owned_container.value_container().clone();
     match inner {
-        ValueContainer::Local(value) => {
-            append_value(
-                context,
-                value,
-                Some(ParentContext::new(SharedContainer::Referenced(owned_container.derive_with_max_mutability())))
-            )
-        }
+        ValueContainer::Local(value) => append_value(
+            context,
+            value,
+            Some(ParentContext::new(SharedContainer::Referenced(
+                owned_container.derive_with_max_mutability(),
+            ))),
+        ),
         container @ ValueContainer::Shared(_) => {
             context.visit_value_container(
                 owned_container.value_container().clone(),
-                Some(ParentContext::new(SharedContainer::Referenced(owned_container.derive_with_max_mutability()))),
+                Some(ParentContext::new(SharedContainer::Referenced(
+                    owned_container.derive_with_max_mutability(),
+                ))),
             );
         }
     }
@@ -368,28 +374,36 @@ fn append_referenced_shared_container_with_value(
 #[cfg(test)]
 #[cfg(feature = "disassembler")]
 mod tests {
-    use crate::{assert_regular_instructions_equal, core_compiler::{
-        core_compilation_context::ByteCursor,
-        preamble::append_injected_values_preamble,
-        shared_value_tracking::{
-            TrackedValueMetadata, TrackedValueCollection,
+    use crate::{
+        assert_regular_instructions_equal,
+        core_compiler::{
+            core_compilation_context::ByteCursor,
+            preamble::append_injected_values_preamble,
+            shared_value_tracking::{
+                TrackedValueCollection, TrackedValueMetadata,
+            },
+            value_compiler::append_regular_instruction,
         },
-        value_compiler::append_regular_instruction,
-    }, global::protocol_structures::{
-        instruction_data::{
-            Int32Data, ListData, SharedRefWithValue, ShortListData,
-            StackIndex,
+        disassembler::{InstructionTree, print_disassembled},
+        global::protocol_structures::{
+            instruction_data::{
+                Int32Data, ListData, SharedRefWithValue, ShortListData,
+                StackIndex,
+            },
+            instructions::Instruction,
+            regular_instructions::RegularInstruction,
         },
-        regular_instructions::RegularInstruction,
-    }, instructions, prelude::*, runtime::pointer_address_provider::SelfOwnedPointerAddressProvider, shared_values::{
-        OwnedSharedContainer, PointerAddress, ReferenceMutability,
-        ReferencedSharedContainer, SelfOwnedPointerAddress,
-        SelfOwnedSharedContainer, SharedContainer,
-        SharedContainerMutability, SharedContainerOwnership,
-    }, values::value_container::ValueContainer};
-    use crate::disassembler::{print_disassembled, InstructionTree};
-    use crate::global::protocol_structures::instructions::Instruction;
-    use crate::values::core_values::list::List;
+        instructions,
+        prelude::*,
+        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+        shared_values::{
+            OwnedSharedContainer, PointerAddress, ReferenceMutability,
+            ReferencedSharedContainer, SelfOwnedPointerAddress,
+            SelfOwnedSharedContainer, SharedContainer,
+            SharedContainerMutability, SharedContainerOwnership,
+        },
+        values::{core_values::list::List, value_container::ValueContainer},
+    };
 
     fn assert_preamble_instructions(
         tracked_values: Vec<(SharedContainer, TrackedValueMetadata)>,
@@ -401,7 +415,9 @@ mod tests {
 
         let root_count = tracked_values
             .iter()
-            .filter(|(_, metadata)| matches!(metadata, TrackedValueMetadata::Root { .. }))
+            .filter(|(_, metadata)| {
+                matches!(metadata, TrackedValueMetadata::Root { .. })
+            })
             .count();
 
         let collection = TrackedValueCollection {
@@ -487,10 +503,7 @@ mod tests {
 
     #[test]
     fn preamble_no_injected_values() {
-        assert_preamble_instructions(
-            vec![],
-            vec![RegularInstruction::Null],
-        );
+        assert_preamble_instructions(vec![], vec![RegularInstruction::Null]);
     }
 
     #[test]
@@ -504,40 +517,50 @@ mod tests {
         );
 
         assert_preamble_instructions(
-            vec![
-                (
-                    SharedContainer::Referenced(reference),
-                    TrackedValueMetadata::Root {
-                        index: StackIndex(0),
-                        is_known: false,
-                    }
-                )
-            ],
-            vec![
-                RegularInstruction::statements(2, false),
-                // preamble
-                RegularInstruction::PushListToStack,
-                RegularInstruction::statements(2, false),
-                // ref
-                RegularInstruction::PushToStack,
-                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                    address: address.into(),
-                    ref_mutability: ReferenceMutability::Immutable,
-                    container_mutability: SharedContainerMutability::Immutable,
-                }),
-                RegularInstruction::Int32(Int32Data(42)),
-                RegularInstruction::ShortList(ShortListData {
-                    element_count: 1,
-                }),
-                RegularInstruction::TakeStackValue(StackIndex(0)),
-                // body
-                RegularInstruction::Null,
-            ],
+            vec![(
+                SharedContainer::Referenced(reference),
+                TrackedValueMetadata::Root {
+                    index: StackIndex(0),
+                    is_known: false,
+                },
+            )],
+            vec![RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // preamble
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(
+                                SharedRefWithValue {
+                                    address,
+                                    ref_mutability:
+                                        ReferenceMutability::Immutable,
+                                    container_mutability:
+                                        SharedContainerMutability::Immutable,
+                                }
+                            ),
+                            RegularInstruction::Int32(Int32Data(42)),
+                            RegularInstruction::ShortList(ShortListData {
+                                element_count: 1,
+                            }),
+                            RegularInstruction::TakeStackValue(StackIndex(0)),
+                        )
+                    ),
+                    // body
+                    RegularInstruction::Null,
+                ),
+            )],
         );
     }
 
     #[test]
     fn preamble_single_recursive_ref() {
+        // shared mut a = [];
+        // a.push('a);
+
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
         let (owned, address) = generate_shared_owned_value(
             address_provider,
@@ -555,20 +578,17 @@ mod tests {
         }
 
         assert_preamble_instructions(
-            vec![
-                (
-                    owned_container,
-                    TrackedValueMetadata::Root {
-                        index: StackIndex(0),
-                        is_known: false,
-                    }
-                )
-            ],
-            vec![
-                RegularInstruction::statements_with_children(false, instructions!(
-
-                ))
-            ],
+            vec![(
+                owned_container,
+                TrackedValueMetadata::Root {
+                    index: StackIndex(0),
+                    is_known: false,
+                },
+            )],
+            vec![RegularInstruction::statements_with_children(
+                false,
+                instructions!(),
+            )],
         );
     }
 }

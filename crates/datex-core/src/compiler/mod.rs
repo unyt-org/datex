@@ -2718,20 +2718,26 @@ pub mod tests {
         print_disassembled(&res);
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(5, true),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(1)),
-                RegularInstruction::statements(3, true),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(2)),
-                RegularInstruction::CloneStackValue(StackIndex(0)),
-                RegularInstruction::TakeStackValue(StackIndex(1)),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(3)),
-                RegularInstruction::TakeStackValue(StackIndex(0)),
-                RegularInstruction::TakeStackValue(StackIndex(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                true,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstruction::statements_with_children(
+                        true,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::UInt8(UInt8Data(2)),
+                            RegularInstruction::CloneStackValue(StackIndex(0)),
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                        )
+                    ),
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(3)),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                    RegularInstruction::TakeStackValue(StackIndex(1)),
+                )
+            ),)
         );
     }
 
@@ -2826,28 +2832,32 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: 5,
-                        injected_variable_count: 1,
-                        // FIXME should be local
-                        injected_values: vec![InjectedValueDeclaration {
-                            index: StackIndex(0),
-                            ty: InjectedValueType::Shared(
-                                SharedInjectedValueType::Move
-                            )
-                        }],
-                        body: vec![Instruction::Regular(
-                            RegularInstruction::TakeStackValue(StackIndex(0))
-                        ),]
-                    }
-                ),
-                RegularInstruction::UInt8(UInt8Data(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::_RemoteExecutionDebugFlat(
+                        InstructionBlockDataDebugFlat {
+                            length: 5,
+                            injected_variable_count: 1,
+                            // FIXME should be local
+                            injected_values: vec![InjectedValueDeclaration {
+                                index: StackIndex(0),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Move
+                                )
+                            }],
+                            body: vec![Instruction::Regular(
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    0
+                                ))
+                            ),]
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )
+            ),)
         );
     }
 
@@ -2862,28 +2872,32 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::CreateShared,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: 5,
-                        injected_variable_count: 1,
-                        injected_values: vec![InjectedValueDeclaration {
-                            index: StackIndex(0),
-                            ty: InjectedValueType::Shared(
-                                SharedInjectedValueType::Move
-                            )
-                        }],
-                        body: vec![Instruction::Regular(
-                            RegularInstruction::TakeStackValue(StackIndex(0))
-                        ),],
-                    }
-                ),
-                RegularInstruction::UInt8(UInt8Data(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::CreateShared,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::_RemoteExecutionDebugFlat(
+                        InstructionBlockDataDebugFlat {
+                            length: 5,
+                            injected_variable_count: 1,
+                            injected_values: vec![InjectedValueDeclaration {
+                                index: StackIndex(0),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Move
+                                )
+                            }],
+                            body: vec![Instruction::Regular(
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    0
+                                ))
+                            ),],
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )
+            ),)
         )
     }
 
@@ -2896,30 +2910,32 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::CreateShared,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: 5,
-                        injected_variable_count: 1,
-                        injected_values: vec![InjectedValueDeclaration {
-                            index: StackIndex(0),
-                            ty: InjectedValueType::Shared(
-                                SharedInjectedValueType::Ref
-                            )
-                        }],
-                        body: vec![Instruction::Regular(
-                            RegularInstruction::GetStackValueSharedRef(
-                                StackIndex(0)
-                            )
-                        ),],
-                    }
-                ),
-                RegularInstruction::UInt8(UInt8Data(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::CreateShared,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::_RemoteExecutionDebugFlat(
+                        InstructionBlockDataDebugFlat {
+                            length: 5,
+                            injected_variable_count: 1,
+                            injected_values: vec![InjectedValueDeclaration {
+                                index: StackIndex(0),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Ref
+                                )
+                            }],
+                            body: vec![Instruction::Regular(
+                                RegularInstruction::GetStackValueSharedRef(
+                                    StackIndex(0)
+                                )
+                            ),],
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )
+            ),)
         )
     }
 
@@ -2976,48 +2992,50 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(3, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(69)),
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: 11,
-                        injected_variable_count: 2,
-                        injected_values: vec![
-                            // FIXME should be local
-                            InjectedValueDeclaration {
-                                index: StackIndex(0),
-                                ty: InjectedValueType::Shared(
-                                    SharedInjectedValueType::Move
-                                )
-                            },
-                            InjectedValueDeclaration {
-                                index: StackIndex(1),
-                                ty: InjectedValueType::Shared(
-                                    SharedInjectedValueType::Move
-                                )
-                            },
-                        ],
-                        body: vec![
-                            Instruction::Regular(RegularInstruction::Add),
-                            Instruction::Regular(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    0
-                                ))
-                            ),
-                            Instruction::Regular(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    1
-                                ))
-                            ),
-                        ],
-                    }
-                ),
-                RegularInstruction::UInt8(UInt8Data(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(69)),
+                    RegularInstruction::_RemoteExecutionDebugFlat(
+                        InstructionBlockDataDebugFlat {
+                            length: 11,
+                            injected_variable_count: 2,
+                            injected_values: vec![
+                                // FIXME should be local
+                                InjectedValueDeclaration {
+                                    index: StackIndex(0),
+                                    ty: InjectedValueType::Shared(
+                                        SharedInjectedValueType::Move
+                                    )
+                                },
+                                InjectedValueDeclaration {
+                                    index: StackIndex(1),
+                                    ty: InjectedValueType::Shared(
+                                        SharedInjectedValueType::Move
+                                    )
+                                },
+                            ],
+                            body: vec![
+                                Instruction::Regular(RegularInstruction::Add),
+                                Instruction::Regular(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    )
+                                ),
+                                Instruction::Regular(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(1)
+                                    )
+                                ),
+                            ],
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )
+            ),)
         );
     }
 
@@ -3031,51 +3049,45 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(3, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(69)),
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: 17,
-                        injected_variable_count: 1,
-                        injected_values: vec![
-                            // FIXME should be local
-                            InjectedValueDeclaration {
-                                index: StackIndex(1),
-                                ty: InjectedValueType::Shared(
-                                    SharedInjectedValueType::Move
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(69)),
+                    RegularInstruction::_RemoteExecutionDebugTree(
+                        InstructionBlockDataDebugTree {
+                            length: 17,
+                            injected_variable_count: 1,
+                            injected_values: vec![
+                                // FIXME should be local
+                                InjectedValueDeclaration {
+                                    index: StackIndex(1),
+                                    ty: InjectedValueType::Shared(
+                                        SharedInjectedValueType::Move
+                                    )
+                                },
+                            ],
+                            body: RegularInstruction::statements_with_children(
+                                false,
+                                instructions!(
+                                    RegularInstruction::PushToStack,
+                                    RegularInstruction::UInt8(UInt8Data(5)),
+                                    RegularInstruction::Add,
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    ),
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(1)
+                                    ),
                                 )
-                            },
-                        ],
-                        body: vec![
-                            Instruction::Regular(
-                                RegularInstruction::statements(2, false)
                             ),
-                            Instruction::Regular(
-                                RegularInstruction::PushToStack
-                            ),
-                            Instruction::Regular(RegularInstruction::UInt8(
-                                UInt8Data(5)
-                            )),
-                            Instruction::Regular(RegularInstruction::Add),
-                            Instruction::Regular(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    1
-                                ))
-                            ),
-                            Instruction::Regular(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    0
-                                ))
-                            ),
-                        ],
-                    }
-                ),
-                RegularInstruction::UInt8(UInt8Data(1)),
-            )
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )
+            ),)
         );
     }
 
@@ -3737,19 +3749,33 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            (
-                RegularInstruction::statements(4, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::statements(1, true),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(43)),
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(43)),
-                RegularInstruction::TakeStackValue(StackIndex(1)),
-                RegularInstruction::TakeStackValue(StackIndex(0))
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // var x = 42u8
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    // var x = 43u8;
+                    RegularInstruction::statements_with_children(
+                        true,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::UInt8(UInt8Data(43)),
+                        )
+                    ),
+                    // var y = 43u8; y
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::UInt8(UInt8Data(43)),
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                        )
+                    ),
+                    // x
+                    RegularInstruction::TakeStackValue(StackIndex(0))
+                )
+            ),)
         );
     }
 
@@ -3759,21 +3785,31 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            (
-                RegularInstruction::statements(3, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(1)),
-                RegularInstruction::PushToStack,
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(2)),
-                RegularInstruction::TakeStackValue(StackIndex(1)),
-                RegularInstruction::ShortList(ShortListData {
-                    element_count: 2
-                }),
-                RegularInstruction::TakeStackValue(StackIndex(0)),
-                RegularInstruction::TakeStackValue(StackIndex(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // var x = 1u8
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                    // var y =
+                    RegularInstruction::PushToStack,
+                    // (var x = 2u8; x)
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::UInt8(UInt8Data(2)),
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                        )
+                    ),
+                    // [x, y]
+                    RegularInstruction::ShortList(ShortListData {
+                        element_count: 2
+                    }),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                    RegularInstruction::TakeStackValue(StackIndex(1)),
+                )
+            ),)
         )
     }
 }
