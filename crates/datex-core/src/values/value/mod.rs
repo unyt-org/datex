@@ -22,7 +22,9 @@ pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;
 
-use crate::shared_values::errors::AccessError;
+use crate::{
+    shared_values::errors::AccessError, values::core_values::endpoint::Endpoint,
+};
 use core::{
     fmt::{Display, Formatter},
     result::Result,
@@ -56,12 +58,14 @@ impl Value {
         name: Option<String>,
         signature: CallableTypeDefinition,
         body: CallableBody,
+        creator: Endpoint,
     ) -> Self {
         Value {
             inner: CoreValue::Callable(Callable {
                 name,
                 signature: signature.clone(),
                 body,
+                creator,
             }),
             custom_type: Some(TypeDefinition::callable(signature)),
         }
@@ -315,14 +319,14 @@ where
 mod tests {
     use super::*;
     use crate::{
-        assert_structural_eq, datex_list,
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
+        traits::structural_eq::assert_structural_eq,
         types::{r#type::Type, type_definition::impl_type::ImplTypeDefinition},
         values::core_values::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
-            list::List,
+            list::{List, datex_list},
         },
     };
     use core::str::FromStr;

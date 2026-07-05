@@ -6,7 +6,6 @@ use crate::{
     parser::{Parser, SpannedParserError, lexer::Token},
 };
 
-use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_if_else(
         &mut self,
@@ -20,14 +19,14 @@ impl Parser {
             && token.token == Token::Else
         {
             self.advance()?;
-            Some(Box::new(self.parse_parenthesized_statements_or_if_else()?))
+            Some(self.parse_parenthesized_statements_or_if_else()?)
         } else {
             None
         };
 
         Ok(DatexExpressionData::Conditional(Conditional {
-            condition: Box::new(condition),
-            then_branch: Box::new(then_branch),
+            condition: (condition),
+            then_branch: (then_branch),
             else_branch,
         })
         .with_span(start..self.get_current_source_position()))
@@ -60,15 +59,12 @@ mod tests {
     fn parse_single_if() {
         let expr = parse("if (true) (42)");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Conditional(Conditional {
-                condition: Box::new(
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
-                then_branch: Box::new(
-                    DatexExpressionData::Integer(42.into()).with_default_span()
-                ),
+            expr.data(),
+            &DatexExpressionData::Conditional(Conditional {
+                condition: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
+                then_branch: (DatexExpressionData::Integer(42.into())
+                    .with_default_span()),
                 else_branch: None,
             })
         )
@@ -78,18 +74,16 @@ mod tests {
     fn parse_if_else() {
         let expr = parse("if (false) (0) else (1)");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Conditional(Conditional {
-                condition: Box::new(
-                    DatexExpressionData::Boolean(false.into())
-                        .with_default_span()
+            expr.data(),
+            &DatexExpressionData::Conditional(Conditional {
+                condition: (DatexExpressionData::Boolean(false.into())
+                    .with_default_span()),
+                then_branch: (DatexExpressionData::Integer(0.into())
+                    .with_default_span()),
+                else_branch: Some(
+                    (DatexExpressionData::Integer(1.into())
+                        .with_default_span())
                 ),
-                then_branch: Box::new(
-                    DatexExpressionData::Integer(0.into()).with_default_span()
-                ),
-                else_branch: Some(Box::new(
-                    DatexExpressionData::Integer(1.into()).with_default_span()
-                )),
             })
         )
     }
@@ -98,32 +92,25 @@ mod tests {
     fn parse_nested_if_else() {
         let expr = parse("if (true) (1) else if (false) (2) else (3)");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Conditional(Conditional {
-                condition: Box::new(
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
-                then_branch: Box::new(
-                    DatexExpressionData::Integer(1.into()).with_default_span()
-                ),
-                else_branch: Some(Box::new(
-                    DatexExpressionData::Conditional(Conditional {
-                        condition: Box::new(
-                            DatexExpressionData::Boolean(false.into())
-                                .with_default_span()
+            expr.data(),
+            &DatexExpressionData::Conditional(Conditional {
+                condition: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
+                then_branch: (DatexExpressionData::Integer(1.into())
+                    .with_default_span()),
+                else_branch: Some(
+                    (DatexExpressionData::Conditional(Conditional {
+                        condition: (DatexExpressionData::Boolean(false.into())
+                            .with_default_span()),
+                        then_branch: (DatexExpressionData::Integer(2.into())
+                            .with_default_span()),
+                        else_branch: Some(
+                            (DatexExpressionData::Integer(3.into())
+                                .with_default_span())
                         ),
-                        then_branch: Box::new(
-                            DatexExpressionData::Integer(2.into())
-                                .with_default_span()
-                        ),
-                        else_branch: Some(Box::new(
-                            DatexExpressionData::Integer(3.into())
-                                .with_default_span()
-                        )),
                     })
-                    .with_default_span()
-                )),
+                    .with_default_span())
+                ),
             })
         )
     }

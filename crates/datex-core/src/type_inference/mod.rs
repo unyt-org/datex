@@ -18,7 +18,7 @@ use crate::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, CreateShared, DatexExpression, DatexExpressionData,
-            GenericInstantiation, GetRef, GetSharedRef, List, Map,
+            DeriveRef, DeriveSharedRef, GenericInstantiation, List, Map,
             PropertyAccess, PropertyAssignment, RangeDeclaration,
             RemoteExecution, RequestSharedRef, StackAssignment, Statements,
             TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
@@ -630,7 +630,7 @@ impl<'a> TypeInference<'a> {
 impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_get_ref(
         &mut self,
-        create_ref: &mut GetRef,
+        create_ref: &mut DeriveRef,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_expression(&mut create_ref.expression)?;
@@ -657,7 +657,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
     fn visit_get_shared_ref(
         &mut self,
-        get_shared_ref: &mut GetSharedRef,
+        get_shared_ref: &mut DeriveSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type =
@@ -2581,10 +2581,10 @@ mod tests {
                 kind: VariableKind::Const,
                 name: "x".to_string(),
                 type_annotation: None,
-                init_expression: Box::new(
-                    DatexExpressionData::Integer(Integer::from(10))
-                        .with_default_span(),
-                ),
+                init_expression: (DatexExpressionData::Integer(Integer::from(
+                    10,
+                ))
+                .with_default_span()),
             })
             .with_default_span();
 
@@ -2609,14 +2609,10 @@ mod tests {
         // integer - integer = integer
         let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: Box::new(
-                DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span(),
-            ),
-            right: Box::new(
-                DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span(),
-            ),
+            left: (DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span()),
+            right: (DatexExpressionData::Integer(Integer::from(2))
+                .with_default_span()),
             ty: None,
         })
         .with_default_span();
@@ -2626,14 +2622,10 @@ mod tests {
         // decimal + decimal = decimal
         let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: Box::new(
-                DatexExpressionData::Decimal(Decimal::from(1.0))
-                    .with_default_span(),
-            ),
-            right: Box::new(
-                DatexExpressionData::Decimal(Decimal::from(2.0))
-                    .with_default_span(),
-            ),
+            left: (DatexExpressionData::Decimal(Decimal::from(1.0))
+                .with_default_span()),
+            right: (DatexExpressionData::Decimal(Decimal::from(2.0))
+                .with_default_span()),
             ty: None,
         })
         .with_default_span();
@@ -2642,14 +2634,10 @@ mod tests {
         // integer + decimal = type error
         let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: Box::new(
-                DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span(),
-            ),
-            right: Box::new(
-                DatexExpressionData::Decimal(Decimal::from(2.0))
-                    .with_default_span(),
-            ),
+            left: (DatexExpressionData::Integer(Integer::from(1))
+                .with_default_span()),
+            right: (DatexExpressionData::Decimal(Decimal::from(2.0))
+                .with_default_span()),
             ty: None,
         })
         .with_default_span();

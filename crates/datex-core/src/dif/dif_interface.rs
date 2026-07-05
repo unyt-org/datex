@@ -17,6 +17,7 @@ use crate::{
                 TransceiverId,
             },
         },
+        shared_container_common::SharedContainerCommon,
     },
     traits::apply::{Apply, ApplyError},
     value_updates::{
@@ -92,15 +93,16 @@ impl DIFInterface {
         &mut self,
         value: BaseSharedValueContainer,
     ) -> SelfOwnedPointerAddress {
-        let pointer_address = self
-            .address_provider
-            .borrow_mut()
-            .get_new_self_owned_address();
-        self.cache.store_shared_container(SharedContainer::Owned(
-            OwnedSharedContainer::new_from_self_owned_container(
-                SelfOwnedSharedContainer::new(value, pointer_address.clone()),
+        let container = OwnedSharedContainer::new_from_self_owned_container(
+            SelfOwnedSharedContainer::new(
+                value,
+                &mut self.address_provider.borrow_mut(),
             ),
-        ));
+        );
+
+        let pointer_address = container.pointer_address().clone();
+        self.cache
+            .store_shared_container(SharedContainer::Owned(container));
         pointer_address
     }
 

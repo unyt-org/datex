@@ -1,13 +1,15 @@
+mod common;
 pub mod datex_proxy;
 
 use crate::{
-    runtime::cache::shared_references_cache::SharedReferencesCache,
+    prelude::*,
     shared_values::{
         ExternalSharedContainer, PointerAddress, ReferenceMutability,
         RemotePointerAddress, SharedContainerInner, SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
         errors::{SharedValueCreationError, UnexpectedImmutableReferenceError},
         internal_traits::_ExposeRcInternal,
+        shared_container_common::SharedContainerCommon,
     },
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
@@ -17,7 +19,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{
-    cell::{Ref, RefCell, RefMut},
+    cell::RefCell,
     fmt::Display,
     hash::{Hash, Hasher},
 };
@@ -32,6 +34,9 @@ pub struct ReferencedSharedContainer {
     inner: Rc<RefCell<SharedContainerInner>>,
     /// The mutability of the reference (either `'mut shared X` or `'shared X`)
     reference_mutability: ReferenceMutability,
+    container_mutability: SharedContainerMutability,
+    /// Field used internally to indicate that this reference should be treated as a move in the context of the compiler
+    move_indicator: bool,
 }
 
 impl ReferencedSharedContainer {
@@ -42,9 +47,14 @@ impl ReferencedSharedContainer {
     pub(crate) fn new_mutable_unchecked(
         inner: Rc<RefCell<SharedContainerInner>>,
     ) -> Self {
+        let container_mutability =
+            *inner.borrow().base_shared_container().mutability();
+
         ReferencedSharedContainer {
             inner,
             reference_mutability: ReferenceMutability::Mutable,
+            container_mutability,
+            move_indicator: false,
         }
     }
 
@@ -52,9 +62,14 @@ impl ReferencedSharedContainer {
     pub(crate) fn new_immutable(
         inner: Rc<RefCell<SharedContainerInner>>,
     ) -> Self {
+        let container_mutability =
+            *inner.borrow().base_shared_container().mutability();
+
         ReferencedSharedContainer {
             inner,
             reference_mutability: ReferenceMutability::Immutable,
+            container_mutability,
+            move_indicator: false,
         }
     }
 
@@ -63,12 +78,12 @@ impl ReferencedSharedContainer {
     /// the [SharedContainerMutability] of the container is [SharedContainerMutability::Immutable]
     /// # Safety
     /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
-    pub(crate) unsafe fn try_new_external_from_base_container(
+    pub(crate) unsafe fn try_new_remote_from_base_container(
         container: BaseSharedValueContainer,
         address: RemotePointerAddress,
         reference_mutability: ReferenceMutability,
-        memory: &SharedReferencesCache,
     ) -> Result<Self, ()> {
+        let container_mutability = *container.mutability();
         // invalid reference mutability
         if reference_mutability == ReferenceMutability::Mutable
             && *container.mutability() == SharedContainerMutability::Immutable
@@ -78,13 +93,11 @@ impl ReferencedSharedContainer {
 
         Ok(ReferencedSharedContainer {
             inner: Rc::new(RefCell::new(SharedContainerInner::External(
-                unsafe {
-                    ExternalSharedContainer::create_external_shared_container(
-                        container, address, memory,
-                    )
-                },
+                unsafe { ExternalSharedContainer::new(container, address) },
             ))),
             reference_mutability,
+            container_mutability,
+            move_indicator: false,
         })
     }
 
@@ -96,17 +109,15 @@ impl ReferencedSharedContainer {
     pub(crate) unsafe fn new_immutable_external_with_inferred_allowed_type(
         value_container: ValueContainer,
         address: RemotePointerAddress,
-        memory: &SharedReferencesCache,
     ) -> Self {
         unsafe {
-            ReferencedSharedContainer::try_new_external_from_base_container(
+            ReferencedSharedContainer::try_new_remote_from_base_container(
                 BaseSharedValueContainer::new_with_inferred_allowed_type(
                     value_container,
                     SharedContainerMutability::Immutable,
                 ),
                 address,
                 ReferenceMutability::Immutable,
-                memory,
             )
             .unwrap()
         }
@@ -125,10 +136,9 @@ impl ReferencedSharedContainer {
         address: RemotePointerAddress,
         mutability: SharedContainerMutability,
         allowed_type: TypeDefinition,
-        memory: &SharedReferencesCache,
     ) -> Result<Self, SharedValueCreationError> {
         Ok(unsafe {
-            ReferencedSharedContainer::try_new_external_from_base_container(
+            ReferencedSharedContainer::try_new_remote_from_base_container(
                 BaseSharedValueContainer::try_new(
                     value_container,
                     allowed_type,
@@ -136,42 +146,8 @@ impl ReferencedSharedContainer {
                 )?,
                 address,
                 ReferenceMutability::Immutable,
-                memory,
             )
             .unwrap()
-        })
-    }
-
-    pub fn inner(&self) -> Ref<'_, SharedContainerInner> {
-        self.inner.borrow()
-    }
-    pub fn inner_mut(&self) -> RefMut<'_, SharedContainerInner> {
-        self.inner.borrow_mut()
-    }
-
-    /// Gets a [Ref] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
-    pub fn base_shared_container(&self) -> Ref<'_, BaseSharedValueContainer> {
-        Ref::map(self.inner(), |inner| inner.base_shared_container())
-    }
-
-    /// Gets a [RefMut] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
-    pub fn base_shared_container_mut(
-        &self,
-    ) -> RefMut<'_, BaseSharedValueContainer> {
-        RefMut::map(self.inner_mut(), |inner| inner.base_shared_container_mut())
-    }
-
-    /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
-    pub fn value_container(&self) -> Ref<'_, ValueContainer> {
-        Ref::map(self.base_shared_container(), |base_shared_container| {
-            base_shared_container.value_container()
-        })
-    }
-
-    /// Gets a [RefMut] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
-    pub fn value_container_mut(&self) -> RefMut<'_, ValueContainer> {
-        RefMut::map(self.base_shared_container_mut(), |base_shared_container| {
-            base_shared_container.value_container_mut()
         })
     }
 
@@ -190,21 +166,9 @@ impl ReferencedSharedContainer {
         self.inner().base_shared_container().with_collapsed_value(f)
     }
 
-    /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<'_, TypeDefinition> {
-        Ref::map(self.base_shared_container(), |base_shared_container| {
-            base_shared_container.allowed_type()
-        })
-    }
-
     /// Get the inner [PointerAddress].
     pub fn pointer_address(&self) -> PointerAddress {
         self.inner().pointer_address()
-    }
-
-    /// Get the [SharedContainerMutability] of the inner [SelfOwnedSharedContainer].
-    pub fn container_mutability(&self) -> SharedContainerMutability {
-        *self.inner().base_shared_container().mutability()
     }
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as self.
@@ -212,6 +176,8 @@ impl ReferencedSharedContainer {
         ReferencedSharedContainer {
             inner: self.inner.clone(),
             reference_mutability: ReferenceMutability::Immutable,
+            container_mutability: self.container_mutability(),
+            move_indicator: false,
         }
     }
 
@@ -229,14 +195,36 @@ impl ReferencedSharedContainer {
         }
     }
 
-    /// Checks if the reference can be mutated by the local endpoint
-    pub(crate) fn can_mutate(&self) -> bool {
-        self.reference_mutability == ReferenceMutability::Mutable
-    }
-
     /// Returns the [ReferenceMutability] of this reference
     pub fn reference_mutability(&self) -> ReferenceMutability {
         self.reference_mutability
+    }
+
+    /// Sets the move indicator flag that signals that this should be treated as a move in the context
+    /// of the compiler
+    /// Note: this should only be set on containers with an owned address
+    pub(super) unsafe fn set_move_indicator(&mut self) {
+        self.move_indicator = true;
+    }
+
+    /// Returns true if the move indicator is set
+    pub fn treat_as_move(&self) -> bool {
+        self.move_indicator
+    }
+
+    pub unsafe fn change_address(&self, new_address: PointerAddress) {
+        assert!(!self.move_indicator);
+        unsafe { self.inner_mut().change_address(new_address) }
+    }
+
+    pub fn to_string_omit_content(&self) -> String {
+        format!(
+            "{}(...)",
+            match self.reference_mutability {
+                ReferenceMutability::Immutable => "'",
+                ReferenceMutability::Mutable => "'mut ",
+            },
+        )
     }
 }
 

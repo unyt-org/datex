@@ -17,6 +17,7 @@ use crate::{
 pub enum ExecutionInterrupt {
     // used for intermediate results in unbounded scopes
     SetActiveValue(Option<ValueContainer>),
+    TakeActiveValue,
     /// yields an external interrupt to be handled by the execution loop caller (for I/O operations, pointer resolution, remote execution, etc.)
     External(ExternalExecutionInterrupt),
 }
@@ -35,7 +36,7 @@ pub enum ExternalExecutionInterrupt {
     /// Request to move a list of pointers from the current caller endpoint to the local endpoint
     RequestMove(Vec<(SharedContainerMutability, SelfOwnedPointerAddress)>),
     /// Move a list of pointers from the local endpoint to the caller
-    Move(Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>),
+    ConfirmMoves(Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>),
 }
 
 #[derive(Debug)]

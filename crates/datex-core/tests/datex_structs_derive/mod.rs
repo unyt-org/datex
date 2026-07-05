@@ -1,6 +1,5 @@
 use core::assert_matches;
 use datex_core::{
-    assert_structural_eq,
     datex_proxy::{DatexProxyTypes, DatexValueContainerProxy},
     prelude::*,
     values::{
@@ -62,6 +61,7 @@ use datex_core::{
         OwnedSharedContainer, PointerAddress, SharedContainer,
         SharedContainerMutability,
     },
+    traits::structural_eq::assert_structural_eq,
     types::{
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,

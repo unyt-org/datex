@@ -31,8 +31,9 @@ use crate::{
 
 use crate::{
     ast::expressions::{
-        CloneExpression, CreateShared, GetSharedRef, RequestSharedRef,
-        RootPropertyAccess, StackAssignment, TagExpression,
+        CloneExpression, CreateShared, DeriveSharedRef, RemoteExecution,
+        RequestSharedRef, RootPropertyAccess, StackAssignment, TagExpression,
+        UnboxAssignment,
     },
     global::protocol_structures::{
         instruction_data::{
@@ -295,17 +296,17 @@ pub fn ast_from_bytecode(
                             DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                         }
 
-                        RegularInstruction::Move(_move_data) => {
+                        RegularInstruction::ConfirmMoves(_move_data) => {
                             DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                         }
 
-                        RegularInstruction::PerformMoves(_perform_move) => {
+                        RegularInstruction::MoveWithValue(_move_with_value) => {
                             DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                         }
 
                         RegularInstruction::CloneStackValue(stack_index) => {
                             DatexExpressionData::Clone(CloneExpression {
-                                expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
+                                expression: (DatexExpressionData::StackIndex(stack_index).with_default_span())
                             })
                         }
 
@@ -315,16 +316,16 @@ pub fn ast_from_bytecode(
                         }
 
                         RegularInstruction::GetStackValueSharedRef(stack_index) => {
-                            DatexExpressionData::GetSharedRef(GetSharedRef {
+                            DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Immutable,
-                                expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
+                                expression: (DatexExpressionData::StackIndex(stack_index).with_default_span())
                             })
                         }
 
                         RegularInstruction::GetStackValueSharedRefMut(stack_index) => {
-                            DatexExpressionData::GetSharedRef(GetSharedRef {
+                            DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Mutable,
-                                expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
+                                expression: (DatexExpressionData::StackIndex(stack_index).with_default_span())
                             })
                         }
 
@@ -548,8 +549,8 @@ pub fn ast_from_bytecode(
                                         operator: BinaryOperator::from(
                                             &regular_instruction,
                                         ),
-                                        left: Box::new(left),
-                                        right: Box::new(right),
+                                        left: (left),
+                                        right: (right),
                                         ty: None,
                                     },
                                 )
@@ -572,7 +573,7 @@ pub fn ast_from_bytecode(
                                             }
                                             _ => unreachable!(),
                                         },
-                                        expression: Box::new(expr),
+                                        expression: (expr),
                                     },
                                 )
                                     .with_default_span()
@@ -581,15 +582,36 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::GetSharedReference => {
                                 let expr = collected_results.pop_value_result();
-                                DatexExpressionData::GetSharedRef(
-                                    GetSharedRef {
+                                DatexExpressionData::DeriveSharedRef(
+                                    DeriveSharedRef {
                                         mutability: ReferenceMutability::Immutable,
-                                        expression: Box::new(expr),
+                                        expression: (expr),
                                     },
                                 )
                                     .with_default_span()
                                     .into()
                             }
+                            RegularInstruction::GetSharedReferenceMut => {
+                                let expr = collected_results.pop_value_result();
+                                DatexExpressionData::DeriveSharedRef(
+                                    DeriveSharedRef {
+                                        mutability: ReferenceMutability::Mutable,
+                                        expression: (expr),
+                                    },
+                                )
+                                    .with_default_span()
+                                    .into()
+                            }
+                            RegularInstruction::SetSharedContainerValue => {
+                                DatexExpressionData::UnboxAssignment(UnboxAssignment {
+                                    assigned_expression: (collected_results.pop_value_result()),
+                                    operator: None,
+                                    unbox_expression: (collected_results.pop_value_result()),
+                                })
+                                    .with_default_span()
+                                    .into()
+                            }
+
                             RegularInstruction::UnaryMinus
                             | RegularInstruction::UnaryPlus
                             | RegularInstruction::BitwiseNot
@@ -600,7 +622,7 @@ pub fn ast_from_bytecode(
                                         operator: UnaryOperator::from(
                                             &regular_instruction,
                                         ),
-                                        expression: Box::new(expr),
+                                        expression: (expr),
                                     },
                                 )
                                 .with_default_span()
@@ -612,11 +634,11 @@ pub fn ast_from_bytecode(
                                 let expr_type =
                                     collected_results.pop_type_result();
                                 DatexExpressionData::Apply(Apply {
-                                    base: Box::new(
+                                    base: (
                                         DatexExpressionData::TypeExpression(
                                             expr_type,
                                         )
-                                        .with_default_span(),
+                                        .with_default_span()
                                     ),
                                     arguments: vec![expr],
                                 })
@@ -656,7 +678,7 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::SlotAssignment(
                                     StackAssignment {
                                         index: StackIndex(0), // FIXME: push
-                                        expression: Box::new(expr),
+                                        expression: (expr),
                                     }
                                 )
                                 .with_default_span()
@@ -668,7 +690,7 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::SlotAssignment(
                                     StackAssignment {
                                         index: StackIndex(0), // FIXME: push_multiple \0..\10 = x
-                                        expression: Box::new(expr),
+                                        expression: (expr),
                                     }
                                 )
                                     .with_default_span()
@@ -685,7 +707,7 @@ pub fn ast_from_bytecode(
                                             slot_address.0
                                         ),
                                         operator: None,
-                                        expression: Box::new(expr),
+                                        expression: (expr),
                                     },
                                 )
                                 .with_default_span()
@@ -697,7 +719,7 @@ pub fn ast_from_bytecode(
                                 is_empty
                             }) => {
                                 assert!(!is_empty);
-                                let expression = Some(Box::new(collected_results.pop_value_result()));
+                                let expression = Some(collected_results.pop_value_result());
 
                                 DatexExpressionData::Tag(TagExpression {
                                     tag,
@@ -714,7 +736,7 @@ pub fn ast_from_bytecode(
                                 let base =
                                     arguments.remove(arguments.len() - 1);
                                 DatexExpressionData::Apply(Apply {
-                                    base: Box::new(base),
+                                    base: (base),
                                     arguments,
                                 })
                                 .with_default_span()
@@ -729,13 +751,13 @@ pub fn ast_from_bytecode(
                                 let base = collected_results.pop_value_result();
                                 DatexExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
-                                        base: Box::new(base),
-                                        property: Box::new(
+                                        base: (base),
+                                        property: (
                                             DatexExpressionData::Integer(
                                                 Integer::from(index_data.0),
                                             )
-                                            .with_default_span(),
-                                        ),
+                                            .with_default_span()
+                                        )
                                     },
                                 )
                                 .with_default_span()
@@ -746,13 +768,13 @@ pub fn ast_from_bytecode(
                                 let base = collected_results.pop_value_result();
                                 DatexExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
-                                        base: Box::new(base),
-                                        property: Box::new(
+                                        base: (base),
+                                        property: (
                                             DatexExpressionData::Text(
                                                 text_data.0.into(),
                                             )
-                                            .with_default_span(),
-                                        ),
+                                            .with_default_span()
+                                        )
                                     },
                                 )
                                 .with_default_span()
@@ -765,8 +787,8 @@ pub fn ast_from_bytecode(
                                     collected_results.pop_value_result();
                                 DatexExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
-                                        base: Box::new(base),
-                                        property: Box::new(property),
+                                        base: (base),
+                                        property: (property),
                                     },
                                 )
                                 .with_default_span()
@@ -781,15 +803,15 @@ pub fn ast_from_bytecode(
                                     collected_results.pop_value_result();
                                 DatexExpressionData::PropertyAssignment(
                                     PropertyAssignment {
-                                        base: Box::new(base),
-                                        property: Box::new(
+                                        base: (base),
+                                        property: (
                                             DatexExpressionData::Integer(
                                                 Integer::from(index_data.0),
                                             )
-                                            .with_default_span(),
+                                            .with_default_span()
                                         ),
                                         operator: None,
-                                        assigned_expression: Box::new(value),
+                                        assigned_expression: (value),
                                     },
                                 )
                                 .with_default_span()
@@ -802,15 +824,15 @@ pub fn ast_from_bytecode(
                                     collected_results.pop_value_result();
                                 DatexExpressionData::PropertyAssignment(
                                     PropertyAssignment {
-                                        base: Box::new(base),
-                                        property: Box::new(
+                                        base: (base),
+                                        property: (
                                             DatexExpressionData::Text(
                                                 text_data.0.into(),
                                             )
-                                            .with_default_span(),
+                                            .with_default_span()
                                         ),
                                         operator: None,
-                                        assigned_expression: Box::new(value),
+                                        assigned_expression: (value),
                                     },
                                 )
                                 .with_default_span()
@@ -825,12 +847,29 @@ pub fn ast_from_bytecode(
                                     collected_results.pop_value_result();
                                 DatexExpressionData::PropertyAssignment(
                                     PropertyAssignment {
-                                        base: Box::new(base),
-                                        property: Box::new(property),
+                                        base: (base),
+                                        property: (property),
                                         operator: None,
-                                        assigned_expression: Box::new(value),
+                                        assigned_expression: (value),
                                     },
                                 )
+                                .with_default_span()
+                                .into()
+                            }
+                            RegularInstruction::RemoteExecution(remote_execution_data) => {
+                                let receivers = collected_results.pop_value_result();
+
+                                let body = DatexExpressionData::Statements(Statements {
+                                    statements: vec![ast_from_bytecode(&remote_execution_data.body)?],
+                                    is_terminated: false,
+                                    unbounded: None,
+                                }).with_default_span();
+
+                                DatexExpressionData::RemoteExecution(RemoteExecution {
+                                    left: (receivers),
+                                    right: (body),
+                                    injected_variable_count: None,
+                                })
                                 .with_default_span()
                                 .into()
                             }
@@ -1038,18 +1077,14 @@ mod tests {
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Add
                     ),
-                    left: Box::new(
-                        DatexExpressionData::TypedInteger(TypedInteger::from(
-                            3u8
-                        ))
-                        .with_default_span()
-                    ),
-                    right: Box::new(
-                        DatexExpressionData::TypedInteger(TypedInteger::from(
-                            4u8
-                        ))
-                        .with_default_span()
-                    ),
+                    left: (DatexExpressionData::TypedInteger(
+                        TypedInteger::from(3u8)
+                    )
+                    .with_default_span()),
+                    right: (DatexExpressionData::TypedInteger(
+                        TypedInteger::from(4u8)
+                    )
+                    .with_default_span()),
                     ty: None
                 })
                 .with_default_span(),
@@ -1075,7 +1110,7 @@ mod tests {
     //     assert_eq!(
     //         ast,
     //         DatexExpressionData::Apply(Apply {
-    //             base: Box::new(
+    //             base: (
     //                 DatexExpressionData::TypeExpression(
     //                     TypeExpressionData::Text("OK".to_string())
     //                         .with_default_span()
@@ -1137,7 +1172,7 @@ mod tests {
     //     assert_eq!(
     //         ast,
     //         DatexExpressionData::Apply(Apply {
-    //             base: Box::new(
+    //             base: (
     //                 DatexExpressionData::Text("test".to_string())
     //                     .with_default_span()
     //             ),
@@ -1163,7 +1198,7 @@ mod tests {
     //     assert_eq!(
     //         ast,
     //         DatexExpressionData::Apply(Apply {
-    //             base: Box::new(
+    //             base: (
     //                 DatexExpressionData::Text("sin".to_string())
     //                     .with_default_span()
     //             ),
@@ -1196,7 +1231,7 @@ mod tests {
     //     assert_eq!(
     //         ast,
     //         DatexExpressionData::Apply(Apply {
-    //             base: Box::new(
+    //             base: (
     //                 DatexExpressionData::Text("add".to_string())
     //                     .with_default_span()
     //             ),
@@ -1227,11 +1262,11 @@ mod tests {
     //     assert_eq!(
     //         ast.data,
     //         DatexExpressionData::PropertyAccess(PropertyAccess {
-    //             base: Box::new(
+    //             base: (
     //                 DatexExpressionData::TypedInteger(TypedInteger::from(42u8))
     //                     .with_default_span()
     //             ),
-    //             property: Box::new(
+    //             property: (
     //                 DatexExpressionData::Text("abc".to_string())
     //                     .with_default_span()
     //             ),
@@ -1258,18 +1293,18 @@ mod tests {
     //     assert_eq!(
     //         ast.data,
     //         DatexExpressionData::PropertyAssignment(PropertyAssignment {
-    //             base: Box::new(
+    //             base: (
     //                 DatexExpressionData::TypedInteger(TypedInteger::from(
     //                     200u8
     //                 ))
     //                 .with_default_span()
     //             ),
-    //             property: Box::new(
+    //             property: (
     //                 DatexExpressionData::Text("xyz".to_string())
     //                     .with_default_span()
     //             ),
     //             operator: None,
-    //             assigned_expression: Box::new(
+    //             assigned_expression: (
     //                 DatexExpressionData::TypedInteger(TypedInteger::from(
     //                     100u8
     //                 ))
@@ -1295,11 +1330,11 @@ mod tests {
     //     assert_eq!(
     //         ast.data,
     //         DatexExpressionData::PropertyAccess(PropertyAccess {
-    //             base: Box::new(
+    //             base: (
     //                 DatexExpressionData::TypedInteger(TypedInteger::from(42u8))
     //                     .with_default_span()
     //             ),
-    //             property: Box::new(
+    //             property: (
     //                 DatexExpressionData::Integer(Integer::from(5u8))
     //                     .with_default_span()
     //             ),
@@ -1326,18 +1361,18 @@ mod tests {
     //     assert_eq!(
     //         ast.data,
     //         DatexExpressionData::PropertyAssignment(PropertyAssignment {
-    //             base: Box::new(
+    //             base: (
     //                 DatexExpressionData::TypedInteger(TypedInteger::from(
     //                     250u8
     //                 ))
     //                 .with_default_span()
     //             ),
-    //             property: Box::new(
+    //             property: (
     //                 DatexExpressionData::Integer(Integer::from(10u8))
     //                     .with_default_span()
     //             ),
     //             operator: None,
-    //             assigned_expression: Box::new(
+    //             assigned_expression: (
     //                 DatexExpressionData::TypedInteger(TypedInteger::from(
     //                     150u8
     //                 ))
@@ -1366,11 +1401,11 @@ mod tests {
     //     assert_eq!(
     //         ast.data,
     //         DatexExpressionData::PropertyAccess(PropertyAccess {
-    //             base: Box::new(
+    //             base: (
     //                 DatexExpressionData::TypedInteger(TypedInteger::from(42u8))
     //                     .with_default_span()
     //             ),
-    //             property: Box::new(
+    //             property: (
     //                 DatexExpressionData::Text("name".to_string())
     //                     .with_default_span()
     //             ),
@@ -1399,18 +1434,18 @@ mod tests {
     //     assert_eq!(
     //         ast.data,
     //         DatexExpressionData::PropertyAssignment(PropertyAssignment {
-    //             base: Box::new(
+    //             base: (
     //                 DatexExpressionData::TypedInteger(TypedInteger::from(
     //                     100u8
     //                 ))
     //                 .with_default_span()
     //             ),
-    //             property: Box::new(
+    //             property: (
     //                 DatexExpressionData::Text("age".to_string())
     //                     .with_default_span()
     //             ),
     //             operator: None,
-    //             assigned_expression: Box::new(
+    //             assigned_expression: (
     //                 DatexExpressionData::TypedInteger(TypedInteger::from(30u8))
     //                     .with_default_span(),
     //             ),
