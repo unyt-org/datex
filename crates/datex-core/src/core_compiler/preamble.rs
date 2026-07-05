@@ -860,7 +860,114 @@ mod tests {
                                                 ShortMapData { element_count: 1 }
                                             )
                                             .with_children(instructions!(
-                                                RegularInstruction::KeyValueShortText(ShortTextData("a".to_string())).with_children(
+                                                RegularInstruction::KeyValueShortText(ShortTextData("b".to_string())).with_children(
+                                                    instructions!(
+                                                        RegularInstruction::Null
+                                                    )
+                                                )
+                                            ))
+                                        )
+                                    ),
+
+                                ))
+                            )),
+                            RegularInstruction::SetPropertyDynamic.with_children(
+                                instructions!(
+                                    RegularInstruction::ShortText(ShortTextData("b".to_string())),
+                                    RegularInstruction::BorrowStackValue(StackIndex(0)),
+                                    RegularInstruction::GetPropertyDynamic.with_children(
+                                        instructions!(
+                                            RegularInstruction::ShortText(ShortTextData("a".to_string())),
+                                            RegularInstruction::BorrowStackValue(StackIndex(0))
+                                        )
+                                    )
+                                )
+                            ),
+                            RegularInstruction::list_with_children(
+                                instructions!(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    )
+                                )
+                            )
+                        )
+                    ),
+                    // body
+                    RegularInstruction::Null
+                ),
+            )],
+        );
+    }
+
+    #[test]
+    fn preamble_triple_ref() {
+        // var a = shared {b: null};
+        // var b = shared {c: null};
+        // a.b = 'b;
+        // var c = shared {a: a};
+        // b.c = c;
+
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+        let (owned_container_a, address) = generate_shared_owned_value(
+            address_provider,
+            ValueContainer::Local(Map::default().into()),
+            SharedContainerMutability::Mutable,
+        );
+        let (owned_container_b, address) = generate_shared_owned_value(
+            address_provider,
+            ValueContainer::Local(Map::default().into()),
+            SharedContainerMutability::Mutable,
+        );
+        let (owned_container_c, address) = generate_shared_owned_value(
+            address_provider,
+            ValueContainer::Local(Map::from(vec![(ValueContainer::from("a"), ValueContainer::Shared(SharedContainer::Referenced(owned_container_a.derive_with_max_mutability())))]).into()),
+            SharedContainerMutability::Mutable,
+        );
+        // set a.b = b;
+        {
+            let mut container_mut = owned_container_a.value_container_mut();
+            let map = container_mut.try_as_mut::<Map>().unwrap();
+            map.set("b", ValueContainer::Shared(SharedContainer::Referenced(owned_container_b.derive_with_max_mutability())));
+        }
+        // set b.c = c;
+        {
+            let mut container_mut = owned_container_b.value_container_mut();
+            let map = container_mut.try_as_mut::<Map>().unwrap();
+            map.set("c", ValueContainer::Shared(SharedContainer::Referenced(owned_container_c.derive_with_max_mutability())));
+        }
+        
+        assert_preamble_instructions(
+            vec![
+                (
+                    SharedContainer::Owned(owned_container_a),
+                    TrackedValueMetadata::Root {
+                        index: StackIndex(0),
+                        is_known: false,
+                    },
+                ),
+            ],
+            vec![RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // preamble
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability: SharedContainerMutability::Mutable,
+                                previous_address: address.clone(),
+                            })
+                            .with_children(instructions!(
+                                RegularInstruction::ShortMap(ShortMapData { element_count: 1 }).with_children(instructions!(
+                                    RegularInstruction::KeyValueShortText(ShortTextData("a".to_string())).with_children(
+                                        instructions!(
+                                             RegularInstruction::ShortMap(
+                                                ShortMapData { element_count: 1 }
+                                            )
+                                            .with_children(instructions!(
+                                                RegularInstruction::KeyValueShortText(ShortTextData("b".to_string())).with_children(
                                                     instructions!(
                                                         RegularInstruction::Null
                                                     )

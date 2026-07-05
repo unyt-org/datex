@@ -1,6 +1,5 @@
 use core::assert_matches;
 use datex_core::{
-    assert_structural_eq,
     datex_proxy::{DatexProxyTypes, DatexValueContainerProxy},
     prelude::*,
     values::{
@@ -76,6 +75,7 @@ use datex_core::{
     },
 };
 use test_case::test_case;
+use datex_core::traits::structural_eq::assert_structural_eq;
 
 #[test_case(
     Example {

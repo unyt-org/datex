@@ -1,6 +1,5 @@
 use alloc::rc::Rc;
 use datex_core::{
-    assert_structural_eq,
     compiler::{CompileOptions, compile_script},
     core_compiler::core_compilation_context::DXBWithSharedValues,
     decompiler::{
@@ -25,6 +24,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use json_syntax::Parse;
 use std::path::PathBuf;
+use datex_core::traits::structural_eq::assert_structural_eq;
 
 fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
     match json {
