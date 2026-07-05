@@ -658,7 +658,6 @@ mod tests {
 
     use super::*;
     use crate::{
-        assert_regular_instructions_equal,
         core_compiler::{
             core_compilation_context::default_core_compilation_context,
             shared_value_tracking::TrackedValueMetadata,
@@ -667,7 +666,6 @@ mod tests {
         global::protocol_structures::instruction_data::{
             MoveWithValue, SharedRefWithValue, ShortListData, StackIndex,
         },
-        instructions,
         runtime::{
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
@@ -677,6 +675,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::info;
+    use crate::disassembler::assertions::{assert_regular_instructions_equal, instructions};
 
     fn compile_value_assert_instructions(
         value: Value,

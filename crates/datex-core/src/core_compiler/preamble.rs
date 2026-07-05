@@ -27,6 +27,7 @@ use crate::{
 };
 use binrw::io::Write;
 use crate::decompiler::{decompile_value, DecompileOptions};
+use crate::global::protocol_structures::instruction_data::ShortTextData;
 use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 #[derive(Debug)]
@@ -98,11 +99,6 @@ impl ValueVisitor for PreambleContext<'_> {
                     // shared container has already been inserted, use stack value
                     // depending on the move flag, we either take the value or borrow it
                     Some(VisitedValue::Inserted { stack_index }) => {
-                        // append_regular_instruction(
-                        //     self.cursor,
-                        //     RegularInstruction::PushToStack,
-                        // );
-
                         if shared_container.treat_as_move() {
                             append_regular_instruction(
                                 self.cursor,
@@ -170,7 +166,7 @@ pub(super) fn append_injected_values_preamble(
             let (index, patch_count) =
                 append_injected_value(context, &tracked_value, &metadata);
 
-            // push + set propetyr instruction
+            // push + set property instruction
             inner_statement_count += 1 + patch_count;
 
             if let TrackedValueMetadata::Root {
@@ -312,24 +308,45 @@ fn append_injected_value(
             parent, parent_stack_index, assigned_property
         );
         match assigned_property {
-            ParentAccessor::ValueKey(ValueKey::Index(index)) => {
-                append_regular_instruction(
-                    context.cursor_mut(),
-                    RegularInstruction::SetPropertyIndex(UInt32Data(
-                        index as u32,
-                    )),
-                );
-                // first target, or first instru?
-                append_regular_instruction(
-                    context.cursor,
-                    RegularInstruction::BorrowStackValue(
-                        parent_stack_index,
-                    ),
-                );
-                append_property_target(context, parent_stack_index, accessors);
+            ParentAccessor::ValueKey(key) => {
+                match key {
+                    ValueKey::Index(index) => {
+                        append_regular_instruction(
+                            context.cursor_mut(),
+                            RegularInstruction::SetPropertyIndex(UInt32Data(
+                                index as u32,
+                            )),
+                        );
+                    }
+                    ValueKey::Text(text) => {
+                        append_regular_instruction(
+                            context.cursor_mut(),
+                            RegularInstruction::SetPropertyText(ShortTextData(text)),
+                        );
+                    }
+                    ValueKey::Value(value) => {
+                        append_regular_instruction(
+                            context.cursor_mut(),
+                            RegularInstruction::SetPropertyDynamic,
+                        );
+                        context.visit_value_container(
+                            value,
+                            None
+                        );
+                    }
+                }
             }
             _ => todo!(),
         }
+
+        // first target, or first instru?
+        append_regular_instruction(
+            context.cursor,
+            RegularInstruction::BorrowStackValue(
+                parent_stack_index,
+            ),
+        );
+        append_property_target(context, parent_stack_index, accessors);
     }
 
     (index, patch_count)
@@ -338,11 +355,11 @@ fn append_injected_value(
 fn append_property_target(
     context: &mut PreambleContext,
     parent_stack_index: StackIndex,
-    accessors: Vec<ParentAccessor>,
+    mut accessors: Vec<ParentAccessor>,
 ) {
     // this is the last accessor, we can now set the property on the parent stack value
     // if there are more accessors, we will recurse below
-    let Some((accessor, remaining)) = accessors.split_last() else {
+    let Some(accessor) = accessors.pop() else {
         append_regular_instruction(
             context.cursor,
             RegularInstruction::BorrowStackValue(parent_stack_index),
@@ -351,23 +368,46 @@ fn append_property_target(
     };
 
     match accessor {
-        ParentAccessor::ValueKey(ValueKey::Index(property)) => {
-            append_regular_instruction(
-                context.cursor,
-                RegularInstruction::GetPropertyIndex(UInt32Data(
-                    *property as u32,
-                )),
-            );
-            append_property_target(
-                context,
-                parent_stack_index,
-                remaining.to_vec(),
-            );
+        ParentAccessor::ValueKey(key) => {
+            match key {
+                ValueKey::Index(property) => {
+                    append_regular_instruction(
+                        context.cursor,
+                        RegularInstruction::GetPropertyIndex(UInt32Data(
+                            property as u32,
+                        )),
+                    );
+                }
+                ValueKey::Text(property) => {
+                    append_regular_instruction(
+                        context.cursor,
+                        RegularInstruction::GetPropertyText(ShortTextData(
+                            property,
+                        )),
+                    );
+                }
+                ValueKey::Value(value) => {
+                    append_regular_instruction(
+                        context.cursor,
+                        RegularInstruction::GetPropertyDynamic,
+                    );
+                    context.visit_value_container(
+                        value,
+                        None
+                    );
+                }
+            }
         }
         _ => {
             todo!("Dynamic deferred property access");
         }
     }
+
+    append_property_target(
+        context,
+        parent_stack_index,
+        accessors,
+    );
 }
 
 fn push_injected_container(
@@ -491,7 +531,9 @@ fn append_referenced_shared_container_with_value(
             // TODO: no clone?
             context.visit_value_container(
                 referenced_container.value_container().clone(),
-                None,
+                Some(ParentContext::new(SharedContainer::Referenced(
+                    referenced_container.clone(),
+                ))),
             );
         }
         // insert without value for non self owned references
@@ -513,7 +555,6 @@ fn append_referenced_shared_container_with_value(
 #[cfg(feature = "disassembler")]
 mod tests {
     use crate::{
-        assert_regular_instructions_equal,
         core_compiler::{
             core_compilation_context::ByteCursor,
             preamble::append_injected_values_preamble,
@@ -531,7 +572,6 @@ mod tests {
             instructions::Instruction,
             regular_instructions::RegularInstruction,
         },
-        instructions,
         prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
@@ -542,7 +582,10 @@ mod tests {
         },
         values::{core_values::list::List, value_container::ValueContainer},
     };
+    use crate::disassembler::assertions::{assert_regular_instructions_equal, instructions};
+    use crate::global::protocol_structures::instruction_data::{ShortMapData, ShortTextData};
     use crate::shared_values::shared_container_common::SharedContainerCommon;
+    use crate::values::core_values::map::Map;
 
     fn assert_preamble_instructions(
         tracked_values: Vec<(SharedContainer, TrackedValueMetadata)>,
@@ -679,10 +722,9 @@ mod tests {
                                 }
                             ),
                             RegularInstruction::Int32(Int32Data(42)),
-                            RegularInstruction::ShortList(ShortListData {
-                                element_count: 1,
-                            }),
-                            RegularInstruction::TakeStackValue(StackIndex(0)),
+                            RegularInstruction::list_with_children(instructions!(
+                                RegularInstruction::TakeStackValue(StackIndex(0))
+                            )),
                         )
                     ),
                     // body
@@ -694,8 +736,8 @@ mod tests {
 
     #[test]
     fn preamble_single_recursive_ref() {
-        // shared mut a = [];
-        // a.push('a);
+        // var a = shared mut [];
+        // a.0 = 'a;
 
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
         let (owned, address) = generate_shared_owned_value(
@@ -707,10 +749,10 @@ mod tests {
 
         // self referencing list
         {
-            let cloned_owned = owned_container.clone();
+            let container_ref = SharedContainer::Referenced(owned_container.derive_reference_with_max_mutability());
             let mut container_mut = owned_container.value_container_mut();
             let list = container_mut.try_as_mut::<List>().unwrap();
-            list.push(ValueContainer::Shared(cloned_owned));
+            list.push(ValueContainer::Shared(container_ref));
         }
 
         assert_preamble_instructions(
@@ -752,13 +794,102 @@ mod tests {
                                     RegularInstruction::BorrowStackValue(StackIndex(0))
                                 )
                             ),
-                            RegularInstruction::ShortList(ShortListData { element_count: 1 }).with_children(
+                            RegularInstruction::list_with_children(
                                 instructions!(
                                     RegularInstruction::TakeStackValue(
                                         StackIndex(0)
                                     )
                                 )
                             ),
+                        )
+                    ),
+                    // body
+                    RegularInstruction::Null
+                ),
+            )],
+        );
+    }
+
+    #[test]
+    fn preamble_nested_recursive_ref() {
+        // var x = shared {a: {b: null}};
+        // x.a.b = 'x;
+
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+        let (owned, address) = generate_shared_owned_value(
+            address_provider,
+            ValueContainer::Local(Map::default().into()),
+            SharedContainerMutability::Mutable,
+        );
+        let owned_container = SharedContainer::Owned(owned);
+
+        // self referencing map
+        {
+            let container_ref = SharedContainer::Referenced(owned_container.derive_reference_with_max_mutability());
+            let mut container_mut = owned_container.value_container_mut();
+            let map = container_mut.try_as_mut::<Map>().unwrap();
+            map.set("a", Map::from(vec![(ValueContainer::from("b"), ValueContainer::Shared(container_ref))]));
+        }
+
+        assert_preamble_instructions(
+            vec![(
+                owned_container,
+                TrackedValueMetadata::Root {
+                    index: StackIndex(0),
+                    is_known: false,
+                },
+            )],
+            vec![RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // preamble
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability: SharedContainerMutability::Mutable,
+                                previous_address: address.clone(),
+                            })
+                            .with_children(instructions!(
+                                RegularInstruction::ShortMap(ShortMapData { element_count: 1 }).with_children(instructions!(
+                                    RegularInstruction::KeyValueShortText(ShortTextData("a".to_string())).with_children(
+                                        instructions!(
+                                             RegularInstruction::ShortMap(
+                                                ShortMapData { element_count: 1 }
+                                            )
+                                            .with_children(instructions!(
+                                                RegularInstruction::KeyValueShortText(ShortTextData("a".to_string())).with_children(
+                                                    instructions!(
+                                                        RegularInstruction::Null
+                                                    )
+                                                )
+                                            ))
+                                        )
+                                    ),
+
+                                ))
+                            )),
+                            RegularInstruction::SetPropertyDynamic.with_children(
+                                instructions!(
+                                    RegularInstruction::ShortText(ShortTextData("b".to_string())),
+                                    RegularInstruction::BorrowStackValue(StackIndex(0)),
+                                    RegularInstruction::GetPropertyDynamic.with_children(
+                                        instructions!(
+                                            RegularInstruction::ShortText(ShortTextData("a".to_string())),
+                                            RegularInstruction::BorrowStackValue(StackIndex(0))
+                                        )
+                                    )
+                                )
+                            ),
+                            RegularInstruction::list_with_children(
+                                instructions!(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    )
+                                )
+                            )
                         )
                     ),
                     // body

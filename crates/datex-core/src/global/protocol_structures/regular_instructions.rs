@@ -90,7 +90,7 @@ pub enum RegularInstruction {
     List(ListData),
     ShortList(ShortListData),
     Map(MapData),
-    ShortMap(MapData),
+    ShortMap(ShortMapData),
 
     KeyValueDynamic,
     KeyValueShortText(ShortTextData),
@@ -415,8 +415,11 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(list.element_count)
             } // list elements
 
-            RegularInstruction::ShortMap(map)
-            | RegularInstruction::Map(map) => {
+            RegularInstruction::ShortMap(map) => {
+                NextExpectedInstructions::Regular(map.element_count as u32)
+            } // map entries
+
+            RegularInstruction::Map(map) => {
                 NextExpectedInstructions::Regular(map.element_count)
             } // map entries
 
@@ -642,11 +645,8 @@ impl RegularInstruction {
             InstructionCode::MAP => {
                 MapData::read(reader).map(RegularInstruction::Map)
             }
-            InstructionCode::SHORT_MAP => ShortMapData::read(reader)
-                .map(|map| MapData {
-                    element_count: map.element_count as u32,
-                })
-                .map(RegularInstruction::ShortMap),
+            InstructionCode::SHORT_MAP => 
+                ShortMapData::read(reader).map(RegularInstruction::ShortMap),
 
             InstructionCode::STATEMENTS => {
                 StatementsData::read(reader).map(RegularInstruction::Statements)

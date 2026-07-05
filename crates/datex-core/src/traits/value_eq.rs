@@ -3,8 +3,7 @@ pub trait ValueEq {
     fn value_eq(&self, other: &Self) -> bool;
 }
 
-#[macro_export]
-macro_rules! assert_value_eq {
+pub macro assert_value_eq {
     ($left_val:expr, $right_val:expr $(,)?) => {
         if !$left_val.value_eq(&$right_val) {
             core::panic!(
@@ -12,5 +11,5 @@ macro_rules! assert_value_eq {
                 $left_val, $right_val
             );
         }
-    };
+    }
 }

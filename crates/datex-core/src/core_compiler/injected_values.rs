@@ -228,7 +228,6 @@ fn append_referenced_shared_container(
 #[cfg(feature = "disassembler")]
 mod tests {
     use crate::{
-        assert_regular_instructions_equal,
         core_compiler::{
             self,
             core_compilation_context::{CompileInput, DXBWithSharedValues},
@@ -249,7 +248,6 @@ mod tests {
                 regular_instructions::RegularInstruction,
             },
         },
-        instructions,
         prelude::*,
         runtime::{
             pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -263,6 +261,7 @@ mod tests {
             core_values::endpoint::Endpoint, value_container::ValueContainer,
         },
     };
+    use crate::disassembler::assertions::{assert_regular_instructions_equal, instructions};
 
     fn compile_injected_values_test_with_receivers(
         instruction_block_data: InstructionBlockData,

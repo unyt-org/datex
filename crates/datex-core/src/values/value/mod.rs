@@ -318,7 +318,6 @@ where
 mod tests {
     use super::*;
     use crate::{
-        assert_structural_eq, datex_list,
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
         types::{r#type::Type, type_definition::impl_type::ImplTypeDefinition},
@@ -330,6 +329,8 @@ mod tests {
     };
     use core::str::FromStr;
     use log::info;
+    use crate::traits::structural_eq::assert_structural_eq;
+    use crate::values::core_values::list::datex_list;
 
     #[test]
     fn endpoint() {

@@ -367,7 +367,6 @@ impl From<f64> for TypedDecimal {
 #[cfg(test)]
 mod tests {
     use crate::{
-        assert_structural_eq, assert_value_eq,
         prelude::*,
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
         values::core_values::{
@@ -380,6 +379,8 @@ mod tests {
     };
     use core::assert_matches;
     use ordered_float::OrderedFloat;
+    use crate::traits::structural_eq::assert_structural_eq;
+    use crate::traits::value_eq::assert_value_eq;
 
     #[test]
     fn zero_sign() {

@@ -1,5 +1,3 @@
-use log::info;
-
 use crate::{
     disassembler::{
         InstructionTree, disassemble_body, disassemble_body_to_string,
@@ -16,8 +14,7 @@ use crate::{
 };
 use core::slice::Iter;
 
-#[macro_export]
-macro_rules! assert_instructions_equal {
+pub macro assert_instructions_equal {
     ($dxb:expr, $expected:expr) => {{
         use $crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
         use $crate::disassembler::disassemble_body;
@@ -33,8 +30,7 @@ macro_rules! assert_instructions_equal {
     }}
 }
 
-#[macro_export]
-macro_rules! assert_regular_instructions_equal {
+pub macro assert_regular_instructions_equal {
     ($dxb:expr, ($($expr:expr),* $(,)?)) => {{
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
         use $crate::disassembler::{InstructionTree};
@@ -46,7 +42,7 @@ macro_rules! assert_regular_instructions_equal {
             InstructionTree::<Instruction>::from(vec![$(InstructionTree::<Instruction>::from($expr),)*]).flatten_instructions(),
             dxb,
         );
-    }};
+    }},
     ($dxb:expr, $vec:expr $(,)?) => {{
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
         use $crate::disassembler::{InstructionTree};
@@ -189,9 +185,8 @@ impl RegularInstruction {
     }
 }
 
-#[macro_export]
-macro_rules! instructions {
+pub macro instructions {
     ($($expr:expr),* $(,)?) => {vec![
         $($expr.into(),)*
-    ]};
+    ]}
 }

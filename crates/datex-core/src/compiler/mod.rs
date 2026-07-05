@@ -1582,23 +1582,14 @@ pub mod tests {
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
 
-    use crate::{
-        compiler::scope::CompilationScope,
-        core_compiler::core_compilation_context::{
-            CompileInput, DXBWithSharedValues, default_compile_input,
-        },
-        global::{
-            instruction_codes::InstructionCode,
-            protocol_structures::type_instructions::TypeInstruction,
-        },
-        instructions,
-        runtime::execution::context::ExecutionMode,
-        types::literal_type_definition::LiteralTypeDefinition,
-        values::value_container::ValueContainer,
-    };
+    use crate::{compiler::scope::CompilationScope, core_compiler::core_compilation_context::{
+        CompileInput, DXBWithSharedValues, default_compile_input,
+    }, global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::type_instructions::TypeInstruction,
+    }, runtime::execution::context::ExecutionMode, types::literal_type_definition::LiteralTypeDefinition, values::value_container::ValueContainer};
 
     use crate::{
-        assert_instructions_equal, assert_regular_instructions_equal,
         global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat,
     };
 
@@ -1633,6 +1624,8 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+    use crate::disassembler::assertions::{assert_instructions_equal, assert_regular_instructions_equal, instructions};
+    use crate::global::protocol_structures::instruction_data::ShortMapData;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
@@ -2328,7 +2321,7 @@ pub mod tests {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::ShortMap(MapData { element_count: 1 }),
+                RegularInstruction::ShortMap(ShortMapData { element_count: 1 }),
                 RegularInstruction::KeyValueShortText(ShortTextData(
                     "a".to_string()
                 )),

@@ -1,4 +1,4 @@
-use std::cell::{Ref, RefMut};
+use core::cell::{Ref, RefMut};
 use crate::shared_values::{SharedContainerInner, SharedContainerMutability, SharedContainerOwnership};
 use crate::shared_values::base_shared_value_container::BaseSharedValueContainer;
 use crate::types::type_definition::TypeDefinition;

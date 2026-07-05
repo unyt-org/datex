@@ -3,8 +3,7 @@ pub trait StructuralEq {
     fn structural_eq(&self, other: &Self) -> bool;
 }
 
-#[macro_export]
-macro_rules! assert_structural_eq {
+pub macro assert_structural_eq {
     ($left_val:expr, $right_val:expr $(,)?) => {{
         use $crate::traits::structural_eq::StructuralEq as _;
 
@@ -19,7 +18,7 @@ macro_rules! assert_structural_eq {
                 }
             }
         }
-    }};
+    }}
 }
 impl<T: StructuralEq> StructuralEq for Option<T> {
     fn structural_eq(&self, other: &Self) -> bool {

@@ -21,7 +21,6 @@ mod tests {
     use binrw::BinRead;
 
     use crate::{
-        assert_instructions_equal,
         core_compiler::{
             core_compilation_context::{
                 ByteCursor, default_compile_input,
@@ -48,6 +47,7 @@ mod tests {
         },
         values::{core_value::CoreValue, value::Value},
     };
+    use crate::disassembler::assertions::assert_instructions_equal;
 
     fn assert_type_instructions(
         ty: Type,
