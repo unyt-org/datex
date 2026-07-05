@@ -27,6 +27,7 @@ use crate::{
         update_data::SetEntryUpdateData, update_handler::UpdateHandler,
     },
 };
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 pub fn set_property(
     target: &mut ValueContainer,

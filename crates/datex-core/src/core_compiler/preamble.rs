@@ -26,6 +26,8 @@ use crate::{
     },
 };
 use binrw::io::Write;
+use crate::decompiler::{decompile_value, DecompileOptions};
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 #[derive(Debug)]
 enum VisitedValue {
@@ -62,10 +64,10 @@ impl ValueVisitor for PreambleContext<'_> {
             }
             ValueContainer::Shared(shared_container) => {
                 let parent_context = parent_context.expect("no parent context");
-                println!(
-                    "visit with context {:?}: {}",
-                    parent_context.accessors, parent_context.parent
-                );
+                println!("visit with context {:?}: {}", parent_context.accessors, decompile_value(
+                    &ValueContainer::Shared(parent_context.parent.clone()),
+                    DecompileOptions::default(),
+                ));
                 let key = tracking_key(&shared_container);
 
                 match self.visited_values.get_mut(&key) {
@@ -541,6 +543,7 @@ mod tests {
         },
         values::{core_values::list::List, value_container::ValueContainer},
     };
+    use crate::shared_values::shared_container_common::SharedContainerCommon;
 
     fn assert_preamble_instructions(
         tracked_values: Vec<(SharedContainer, TrackedValueMetadata)>,

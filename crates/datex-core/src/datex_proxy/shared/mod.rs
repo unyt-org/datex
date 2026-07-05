@@ -4,6 +4,7 @@ use crate::{
     datex_proxy::{DatexValueContainerProxy, TryFromDatexValueError},
     shared_values::SharedContainer,
 };
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 pub struct Shared<T: DatexValueContainerProxy> {
     value: T,

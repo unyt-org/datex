@@ -13,6 +13,7 @@ mod self_owned_shared_container;
 mod shared_container;
 mod shared_container_inner;
 mod shared_container_mutability;
+pub(crate) mod shared_container_common;
 
 pub use external_shared_container::*;
 pub use owned_shared_container::*;

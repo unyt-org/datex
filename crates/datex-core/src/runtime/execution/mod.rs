@@ -274,6 +274,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
+    use crate::shared_values::shared_container_common::SharedContainerCommon;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -747,7 +748,7 @@ mod tests {
             "const x = 'mut shared mut 42; x",
         );
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
-            container.container_mutability().clone() == SharedContainerMutability::Mutable &&
+            container.container_mutability() == SharedContainerMutability::Mutable &&
             container.reference_mutability() == ReferenceMutability::Mutable
         );
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
@@ -759,7 +760,7 @@ mod tests {
             "const x = 'shared mut 42; x",
         );
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
-            container.container_mutability().clone() == SharedContainerMutability::Mutable &&
+            container.container_mutability() == SharedContainerMutability::Mutable &&
             container.reference_mutability() == ReferenceMutability::Immutable
         );
 

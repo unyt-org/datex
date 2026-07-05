@@ -74,6 +74,7 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 pub mod context;
 pub mod error;

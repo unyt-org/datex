@@ -1,5 +1,6 @@
 pub mod datex_proxy;
 mod clone_unsafe;
+mod common;
 
 use crate::{
     runtime::{
@@ -29,6 +30,7 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 use crate::shared_values::SharedContainer;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
@@ -106,50 +108,6 @@ impl OwnedSharedContainer {
         )
     }
 
-    pub fn inner(&self) -> Ref<'_, SharedContainerInner> {
-        self.inner.borrow()
-    }
-    pub fn inner_mut(&self) -> RefMut<'_, SharedContainerInner> {
-        self.inner.borrow_mut()
-    }
-
-    pub fn is_borrowed(&self) -> bool {
-       !self.inner.try_borrow_mut().is_ok()
-    }
-
-    /// Gets a [Ref] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
-    pub fn base_shared_container(&self) -> Ref<'_, BaseSharedValueContainer> {
-        Ref::map(self.inner(), |inner| inner.base_shared_container())
-    }
-
-    /// Gets a [RefMut] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
-    pub fn base_shared_container_mut(
-        &self,
-    ) -> RefMut<'_, BaseSharedValueContainer> {
-        RefMut::map(self.inner_mut(), |inner| inner.base_shared_container_mut())
-    }
-
-    /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
-    pub fn value_container(&self) -> Ref<'_, ValueContainer> {
-        Ref::map(self.base_shared_container(), |base_shared_container| {
-            base_shared_container.value_container()
-        })
-    }
-
-    /// Gets a [Ref] to the currently assigned allowed [Type] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<'_, TypeDefinition> {
-        Ref::map(self.base_shared_container(), |base_shared_container| {
-            base_shared_container.allowed_type()
-        })
-    }
-
-    /// Gets a [RefMut] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
-    pub fn value_container_mut(&self) -> RefMut<'_, ValueContainer> {
-        RefMut::map(self.base_shared_container_mut(), |base_shared_container| {
-            base_shared_container.value_container_mut()
-        })
-    }
-
     /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
     pub fn with_collapsed_value_mut<R>(
         &self,
@@ -199,10 +157,6 @@ impl OwnedSharedContainer {
         })
     }
 
-    /// Get the [SharedContainerMutability] of the container
-    pub fn container_mutability(&self) -> SharedContainerMutability {
-        self.container_mutability.clone()
-    }
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
     pub fn derive_immutable_reference(&self) -> ReferencedSharedContainer {
@@ -275,11 +229,6 @@ impl OwnedSharedContainer {
                 "OwnedSharedContainer must contain an EndpointOwned inner value"
             ),
         };
-    }
-
-    /// Checks if the owned container can be mutated by the local endpoint
-    pub(crate) fn can_mutate(&self) -> bool {
-        self.container_mutability() == SharedContainerMutability::Mutable
     }
 
     pub fn to_string_omit_content(&self) -> String {

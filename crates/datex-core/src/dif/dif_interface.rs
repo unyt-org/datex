@@ -26,6 +26,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
@@ -98,7 +99,7 @@ impl DIFInterface {
                 .borrow_mut()
             ),
         );
-        
+
         let pointer_address = container.pointer_address().clone();
         self.cache.store_shared_container(SharedContainer::Owned(container));
         pointer_address

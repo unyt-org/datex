@@ -27,6 +27,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use binrw::io::Write;
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 /// Compiles injected values into a DXB buffer with shared values
 ///

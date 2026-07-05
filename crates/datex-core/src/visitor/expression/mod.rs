@@ -217,6 +217,11 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
                 self.visit_get_core_lib_id(core_lib_id, &expr.span)
             }
+            DatexExpressionData::OmitRecursive => {
+                unreachable!(
+                    "Omit expressions should not be visited"
+                )
+            }
         };
 
         let action = match visit_result {

@@ -406,6 +406,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::Tag(tag) => tag.walk_children(visitor),
 
             DatexExpressionData::Noop
+            | DatexExpressionData::OmitRecursive
             | DatexExpressionData::NativeImplementationIndicator
             | DatexExpressionData::VariantAccess(_)
             | DatexExpressionData::VariableAccess(_)

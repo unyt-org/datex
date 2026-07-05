@@ -30,6 +30,7 @@ use crate::{
     },
 };
 use alloc::format;
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -41,34 +42,28 @@ impl From<&ValueContainer> for DatexExpressionData {
                 SharedContainer::Referenced(referenced_container) => {
                     DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                         mutability: referenced_container.reference_mutability(),
-                        expression: Box::new(
-                            DatexExpressionData::CreateShared(CreateShared {
-                                mutability: referenced_container
-                                    .container_mutability(),
-                                expression: Box::new(
-                                    DatexExpressionData::from(
-                                        &*shared.value_container(),
-                                    )
-                                    .with_default_span(),
-                                ),
-                            })
-                            .with_default_span(),
-                        ),
+                        expression: Box::new(create_shared(referenced_container).with_default_span()),
                     })
                 }
-                SharedContainer::Owned(owned_container) => {
-                    DatexExpressionData::CreateShared(CreateShared {
-                        mutability: owned_container.container_mutability(),
-                        expression: Box::new(
-                            DatexExpressionData::from(
-                                &*owned_container.value_container(),
-                            )
-                            .with_default_span(),
-                        ),
-                    })
-                }
+                SharedContainer::Owned(owned_container) => create_shared(owned_container),
             },
         }
+    }
+}
+
+fn create_shared(shared_container: &impl SharedContainerCommon) -> DatexExpressionData {
+    if shared_container.is_borrowed() {
+        DatexExpressionData::OmitRecursive
+    }
+    else {
+        DatexExpressionData::CreateShared(CreateShared {
+            mutability: shared_container.container_mutability(),
+            expression: Box::new(
+                DatexExpressionData::from(
+                    &*shared_container.value_container(),
+                ).with_default_span(),
+            ),
+        })
     }
 }
 

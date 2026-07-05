@@ -42,6 +42,7 @@ use core::mem;
 use serde::Serializer;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::shared_values::{RemotePointerAddress, SelfOwnedSharedContainer};
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 use crate::values::core_value::CoreValue;
 
 pub mod apply;
@@ -98,31 +99,7 @@ impl SharedContainer {
             )
         })
     }
-
-    pub fn inner(&self) -> Ref<'_, SharedContainerInner> {
-        match self {
-            SharedContainer::Owned(owned) => owned.inner(),
-            SharedContainer::Referenced(referenced) => referenced.inner(),
-        }
-    }
-
-    pub fn inner_mut(&self) -> RefMut<'_, SharedContainerInner> {
-        match self {
-            SharedContainer::Owned(owned) => owned.inner_mut(),
-            SharedContainer::Referenced(referenced) => referenced.inner_mut(),
-        }
-    }
-
-    /// Gets a [Ref] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
-    pub fn base_shared_container(&self) -> Ref<'_, BaseSharedValueContainer> {
-        match self {
-            SharedContainer::Owned(owned) => owned.base_shared_container(),
-            SharedContainer::Referenced(referenced) => {
-                referenced.base_shared_container()
-            }
-        }
-    }
-
+    
     /// Adds an observer to this shared container that will be notified on value changes.
     pub fn observe(
         &self,
@@ -138,61 +115,10 @@ impl SharedContainer {
         self.base_shared_container_mut().unobserve(observer_id)
     }
 
-    /// Gets a [RefMut] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
-    pub fn base_shared_container_mut(
-        &self,
-    ) -> RefMut<'_, BaseSharedValueContainer> {
-        match self {
-            SharedContainer::Owned(owned) => owned.base_shared_container_mut(),
-            SharedContainer::Referenced(referenced) => {
-                referenced.base_shared_container_mut()
-            }
-        }
-    }
-
-    /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
-    pub fn value_container(&self) -> Ref<'_, ValueContainer> {
-        match self {
-            SharedContainer::Owned(owned) => owned.value_container(),
-            SharedContainer::Referenced(referenced) => {
-                referenced.value_container()
-            }
-        }
-    }
-
-    /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<'_, TypeDefinition> {
-        match self {
-            SharedContainer::Owned(owned) => owned.allowed_type(),
-            SharedContainer::Referenced(referenced) => {
-                referenced.allowed_type()
-            }
-        }
-    }
-
+    
     /// Gets the current actual [TypeDefinition] of the collapsed inner [Value]
     pub fn actual_type(&self) -> TypeDefinition {
         self.with_collapsed_value(|value| value.actual_type())
-    }
-
-    /// Gets a [RefMut] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
-    pub fn value_container_mut(&self) -> RefMut<'_, ValueContainer> {
-        match self {
-            SharedContainer::Owned(owned) => owned.value_container_mut(),
-            SharedContainer::Referenced(referenced) => {
-                referenced.value_container_mut()
-            }
-        }
-    }
-
-    /// Get the [SharedContainerMutability] of the inner container.
-    pub fn container_mutability(&self) -> SharedContainerMutability {
-        match self {
-            SharedContainer::Owned(owned) => owned.container_mutability(),
-            SharedContainer::Referenced(referenced) => {
-                referenced.container_mutability()
-            }
-        }
     }
 
     /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
@@ -206,13 +132,6 @@ impl SharedContainer {
     /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
     pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
         self.base_shared_container().with_collapsed_value(f)
-    }
-
-    pub fn is_borrowed(&self) -> bool {
-        match self {
-            SharedContainer::Owned(owned) => owned.is_borrowed(),
-            SharedContainer::Referenced(referenced) => referenced.is_borrowed(),
-        }
     }
 
     pub fn try_get_property<'a>(
@@ -300,25 +219,6 @@ impl SharedContainer {
             .unwrap_or_else(|_| self.derive_immutable_reference())
     }
 
-    /// Checks if the shared container can be mutated by the local endpoint
-    pub fn can_mutate(&self) -> bool {
-        match self {
-            SharedContainer::Owned(owned) => owned.can_mutate(),
-            SharedContainer::Referenced(referenced) => referenced.can_mutate(),
-        }
-    }
-
-    /// Returns the [SharedContainerOwnership] of this shared container
-    pub fn ownership(&self) -> SharedContainerOwnership {
-        match self {
-            SharedContainer::Owned(_owned) => SharedContainerOwnership::Owned,
-            SharedContainer::Referenced(referenced) => {
-                SharedContainerOwnership::Referenced(
-                    referenced.reference_mutability(),
-                )
-            }
-        }
-    }
 
     /// Downgrades an owned shared container to a referenced shared container.
     /// If the shared container is already a referenced shared container, it will just be returned.
@@ -371,7 +271,7 @@ impl SharedContainer {
             SharedContainer::Referenced(referenced) => referenced.treat_as_move(),
         }
     }
-    
+
     pub fn to_string_omit_content(&self) -> String {
         match self {
             SharedContainer::Owned(owned) => owned.to_string_omit_content(),
@@ -415,6 +315,7 @@ impl Display for SharedContainer {
 pub mod datex_proxy;
 pub mod equality;
 pub mod clone_unsafe;
+mod common;
 
 impl From<OwnedSharedContainer> for SharedContainer {
     fn from(value: OwnedSharedContainer) -> Self {

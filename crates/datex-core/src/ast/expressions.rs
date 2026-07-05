@@ -90,6 +90,10 @@ pub enum DatexExpressionData {
 
     /// null
     Null,
+
+    /// (...)
+    OmitRecursive,
+    
     /// Boolean (true or false)
     Boolean(Boolean),
     /// Text, e.g "Hello, world!"

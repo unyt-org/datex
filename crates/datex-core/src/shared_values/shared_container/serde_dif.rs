@@ -13,6 +13,7 @@ use alloc::format;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 use crate::traits::clone_unsafe::CloneUnsafe;
 
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
