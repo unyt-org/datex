@@ -5,11 +5,12 @@ use crate::{
         core_compilation_context::ByteCursor,
         shared_value_tracking::{TrackedValueCollection, TrackedValueMetadata},
         value_compiler::{append_regular_instruction, append_value},
-        value_visitor::{ParentContext, ValueVisitor},
+        value_visitor::{ParentAccessor, ParentContext, ValueVisitor},
     },
     global::protocol_structures::{
         instruction_data::{
             MoveWithValue, SharedRef, SharedRefWithValue, StackIndex,
+            UInt32Data,
         },
         regular_instructions::RegularInstruction,
     },
@@ -19,7 +20,10 @@ use crate::{
         SharedContainer,
     },
     types::r#type::Type,
-    values::value_container::{ValueContainer, value_key::ValueKey},
+    values::{
+        value::Value,
+        value_container::{ValueContainer, value_key::ValueKey},
+    },
 };
 use binrw::io::Write;
 
@@ -29,13 +33,6 @@ enum VisitedValue {
     Inserted { stack_index: StackIndex },
     /// Indicates that the shared container is referenced by one or multiple shared containers that were already inserted
     Required { parent_contexts: Vec<ParentContext> },
-}
-
-#[derive(Debug)]
-struct DependantPartialInstantiations {
-    /// Index of the parent on which the value must be assigned
-    target_index: StackIndex,
-    assigned_property: ValueKey, // TODO: also support direct ref ("newtype" struct) assignments
 }
 
 #[derive(Debug)]
@@ -69,26 +66,41 @@ impl ValueVisitor for PreambleContext<'_> {
                     "visit with context {:?}: {}",
                     parent_context.accessors, parent_context.parent
                 );
-                let reference = SharedContainer::Referenced(
-                    shared_container.derive_reference_with_max_mutability(),
-                );
-                match self.visited_values.get_mut(&reference) {
+                let key = tracking_key(&shared_container);
+
+                match self.visited_values.get_mut(&key) {
                     // shared container was not yet inserted, keep track as required dependency
                     None => {
                         self.visited_values.insert(
-                            reference,
+                            key,
                             VisitedValue::Required {
                                 parent_contexts: vec![parent_context],
                             },
+                        );
+                        // placeholder, will be later replaced via setter
+                        append_regular_instruction(
+                            self.cursor,
+                            RegularInstruction::Null,
                         );
                     }
                     Some(VisitedValue::Required {
                         parent_contexts: partial_instantiations,
                     }) => {
                         partial_instantiations.push(parent_context);
+                        // placeholder, will be later replaced via setter
+                        append_regular_instruction(
+                            self.cursor,
+                            RegularInstruction::Null,
+                        );
                     }
-                    // shared container was already inserted, use stack value
+                    // shared container has already been inserted, use stack value
+                    // depemnding on the move flag, we either take the value or borrow it
                     Some(VisitedValue::Inserted { stack_index }) => {
+                        // append_regular_instruction(
+                        //     self.cursor,
+                        //     RegularInstruction::PushToStack,
+                        // );
+
                         if shared_container.treat_as_move() {
                             append_regular_instruction(
                                 self.cursor,
@@ -132,102 +144,227 @@ pub(super) fn append_injected_values_preamble(
         return (body, vec![]);
     }
 
-    let mut byte_cursor = ByteCursor::new(vec![]);
     let tracked_values = collection.tracked_values;
+    let mut inner_cursor = ByteCursor::new(vec![]);
 
-    let context = &mut PreambleContext {
-        cursor: &mut byte_cursor,
-        visited_values: HashMap::new(),
-        current_stack_index: StackIndex(0),
-    };
     let mut root_containers =
         Vec::<SharedContainer>::with_capacity(collection.root_count);
-
-    // statements (preamble + body) start
-    append_regular_instruction(
-        context.cursor,
-        RegularInstruction::statements(2, false),
-    );
-
-    // spread preamble injected value
-    append_regular_instruction(
-        context.cursor,
-        RegularInstruction::PushListToStack,
-    );
-
-    // statements (injected values [n] + short list [1])
-    append_regular_instruction(
-        context.cursor,
-        RegularInstruction::statements(1 + tracked_values.len() as u32, false),
-    );
-
     let mut root_container_stack_indices: Vec<Option<StackIndex>> =
         vec![None; collection.root_count];
 
-    // loop over all injected values
-    for (tracked_value, metadata) in tracked_values.into_iter().rev() {
-        let index = append_injected_value(context, &tracked_value, &metadata);
-        if let TrackedValueMetadata::Root {
-            index: root_stack_index,
-            ..
-        } = metadata
-        {
-            // if it is a root tracked value, register in the root container list
-            root_container_stack_indices[root_stack_index.0 as usize] =
-                Some(index);
-            root_containers.push(tracked_value);
+    // This keeps track of the number of inner statements of the preamble.
+    // The count is the number of all stack values, plus the number of patches per stack value applied, plus one for the list return
+    let mut inner_statement_count = 0u32;
+
+    {
+        let context = &mut PreambleContext {
+            cursor: &mut inner_cursor,
+            visited_values: HashMap::new(),
+            current_stack_index: StackIndex(0),
+        };
+
+        // loop through the tracked values in reverse order (as optimization)
+        for (tracked_value, metadata) in tracked_values.into_iter().rev() {
+            let (index, patch_count) =
+                append_injected_value(context, &tracked_value, &metadata);
+
+            // push + set propetyr instruction
+            inner_statement_count += 1 + patch_count;
+
+            if let TrackedValueMetadata::Root {
+                index: root_stack_index,
+                ..
+            } = metadata
+            {
+                // if it is a root tracked value, register in the root container list
+                root_container_stack_indices[root_stack_index.0 as usize] =
+                    Some(index);
+                root_containers.push(tracked_value);
+            }
         }
-    }
 
-    // asserting that root stack index keys are a contiguous list of 0-n -> inner stack indices
-    let root_container_stack_indices_sorted = root_container_stack_indices
-        .iter()
-        .map(|opt| opt.expect("Root stack index should have been registered"))
-        .collect::<Vec<_>>();
+        // asserting that root stack index keys are a contiguous list of 0-n -> inner stack indices
+        let root_container_stack_indices_sorted = root_container_stack_indices
+            .iter()
+            .map(|index| {
+                index.expect("Root stack index should have been registered")
+            })
+            .collect::<Vec<_>>();
 
-    // append [#0,...#x]
-    append_regular_instruction(
-        context.cursor,
-        RegularInstruction::list(
-            root_container_stack_indices_sorted.len() as u32
-        ),
-    );
-
-    for stack_index in root_container_stack_indices_sorted.iter() {
+        // Final root list
         append_regular_instruction(
             context.cursor,
-            RegularInstruction::TakeStackValue(*stack_index),
+            RegularInstruction::list(
+                root_container_stack_indices_sorted.len() as u32
+            ),
         );
+
+        // insert all root stack values into the list, which is the final value of the preamble
+        // append [#0,...#x]
+        for stack_index in root_container_stack_indices_sorted {
+            append_regular_instruction(
+                context.cursor,
+                RegularInstruction::TakeStackValue(stack_index),
+            );
+        }
+
+        // The final root list is also one inner statement.
+        inner_statement_count += 1;
     }
+    let mut byte_cursor = ByteCursor::new(vec![]);
+
+    // statements (preamble + body) start
+    append_regular_instruction(
+        &mut byte_cursor,
+        RegularInstruction::statements(2, false),
+    );
+
+    // the preamble pushes a list of the root shared containers to the stack
+    append_regular_instruction(
+        &mut byte_cursor,
+        RegularInstruction::PushListToStack,
+    );
+
+    // the inner preamble statements, which push the shared containers to the stack
+    // and apply the patches
+    append_regular_instruction(
+        &mut byte_cursor,
+        RegularInstruction::statements(inner_statement_count, false),
+    );
+    // the inner preamble content, which pushes the shared containers to the stack and applies the patches
+    byte_cursor.write_all(&inner_cursor.into_inner()).unwrap();
 
     // append body
-    context.cursor.write_all(&body).unwrap();
-
+    byte_cursor.write_all(&body).unwrap();
     (byte_cursor.into_inner(), root_containers)
+}
+
+fn tracking_key(container: &SharedContainer) -> SharedContainer {
+    SharedContainer::Referenced(
+        container.derive_reference_with_max_mutability(),
+    )
 }
 
 fn append_injected_value(
     context: &mut PreambleContext,
     container: &SharedContainer,
     metadata: &TrackedValueMetadata,
-) -> StackIndex {
-    match context.visited_values.get(container) {
-        // value was not yet required or inserted, just add compilation to push new to stack
-        None => {
-            push_injected_container(context, container, metadata.is_known())
-        }
-        // value is required by other shared container that was already inserted,
-        // first push value, then init missing partial instantiations
-        Some(VisitedValue::Required { parent_contexts }) => {
-            // once instantiated, also init missing partial instantiations
-            panic!("parent contexts: {:#?}", parent_contexts);
-            // first push the value
-            push_injected_container(context, container, metadata.is_known())
-        }
-        // this should never happen since all shared values are registered in tracked_values
-        // exactly once
+) -> (StackIndex, u32) /* the patches count to calc statement count */ {
+    let key = tracking_key(container);
+
+    let existing_parent_contexts = match context.visited_values.remove(&key) {
+        None => Vec::new(),
+        Some(VisitedValue::Required { parent_contexts }) => parent_contexts,
         Some(VisitedValue::Inserted { .. }) => {
-            unreachable!("Shared container already inserted");
+            unreachable!("Shared container already inserted")
+        }
+    };
+
+    context.visited_values.insert(
+        key.clone(),
+        VisitedValue::Required {
+            parent_contexts: existing_parent_contexts,
+        },
+    );
+
+    let index =
+        push_injected_container(context, container, metadata.is_known());
+
+    let pending_contexts = match context.visited_values.remove(&key) {
+        Some(VisitedValue::Required { parent_contexts }) => parent_contexts,
+        Some(VisitedValue::Inserted { .. }) => {
+            unreachable!("Container was marked inserted while still compiling")
+        }
+        None => {
+            unreachable!(
+                "Required tracking entry disappeared during compilation"
+            )
+        }
+    };
+
+    context
+        .visited_values
+        .insert(key, VisitedValue::Inserted { stack_index: index });
+    let patch_count = pending_contexts.len() as u32;
+
+    for parent_context in pending_contexts {
+        let ParentContext {
+            parent,
+            mut accessors,
+        } = parent_context;
+        let parent_key = tracking_key(&parent);
+
+        let assigned_property = accessors.pop().expect("FIXME");
+
+        let parent_stack_index = match context.visited_values.get(&parent_key) {
+            Some(VisitedValue::Inserted { stack_index }) => *stack_index,
+            Some(VisitedValue::Required { .. }) => {
+                unreachable!("Deferred assignment parent is not inserted yet");
+            }
+            None => {
+                unreachable!("Deferred assignment parent was not registered");
+            }
+        };
+        println!(
+            "deferred assignment: parent {} at stack index {:?}, assigned property {}",
+            parent, parent_stack_index, assigned_property
+        );
+        match assigned_property {
+            ParentAccessor::ValueKey(ValueKey::Index(index)) => {
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::SetPropertyIndex(UInt32Data(
+                        index as u32,
+                    )),
+                );
+                // first target, or first instru?
+                append_regular_instruction(
+                    context.cursor,
+                    RegularInstruction::GetStackValueSharedRefMut(
+                        // FIXME is it really mut?
+                        parent_stack_index,
+                    ),
+                );
+                append_property_target(context, parent_stack_index, accessors);
+            }
+            _ => todo!(),
+        }
+    }
+
+    (index, patch_count)
+}
+
+fn append_property_target(
+    context: &mut PreambleContext,
+    parent_stack_index: StackIndex,
+    accessors: Vec<ParentAccessor>,
+) {
+    // this is the last accessor, we can now set the property on the parent stack value
+    // if there are more accessors, we will recurse below
+    let Some((accessor, remaining)) = accessors.split_last() else {
+        append_regular_instruction(
+            context.cursor,
+            RegularInstruction::BorrowStackValue(parent_stack_index),
+        );
+        return;
+    };
+
+    match accessor {
+        ParentAccessor::ValueKey(ValueKey::Index(property)) => {
+            append_regular_instruction(
+                context.cursor,
+                RegularInstruction::GetPropertyIndex(UInt32Data(
+                    *property as u32,
+                )),
+            );
+            append_property_target(
+                context,
+                parent_stack_index,
+                remaining.to_vec(),
+            );
+        }
+        _ => {
+            todo!("Dynamic deferred property access");
         }
     }
 }
@@ -242,6 +379,12 @@ fn push_injected_container(
 
     // append push to stack
     append_regular_instruction(context.cursor, RegularInstruction::PushToStack);
+
+    // register as inserted value
+    // context.visited_values.insert(
+    //     container_clone,
+    //     VisitedValue::Inserted { stack_index: index },
+    // );
 
     match container {
         SharedContainer::Owned(owned_container) => {
@@ -261,12 +404,6 @@ fn push_injected_container(
             }
         }
     }
-
-    // register as inserted value
-    context.visited_values.insert(
-        container_clone,
-        VisitedValue::Inserted { stack_index: index },
-    );
 
     index
 }
@@ -387,8 +524,8 @@ mod tests {
         disassembler::{InstructionTree, print_disassembled},
         global::protocol_structures::{
             instruction_data::{
-                Int32Data, ListData, SharedRefWithValue, ShortListData,
-                StackIndex,
+                Int32Data, ListData, MoveWithValue, SharedRefWithValue,
+                ShortListData, StackIndex, UInt32Data,
             },
             instructions::Instruction,
             regular_instructions::RegularInstruction,
@@ -487,15 +624,12 @@ mod tests {
             _ => unreachable!(),
         };
 
-        match ownership {
-            SharedContainerOwnership::Referenced(mutability) => {
-                shared_container = SharedContainer::Referenced(
-                    shared_container
-                        .try_derive_reference_with_mutability(mutability)
-                        .unwrap(),
-                );
-            }
-            _ => {}
+        if let SharedContainerOwnership::Referenced(mutability) = ownership {
+            shared_container = SharedContainer::Referenced(
+                shared_container
+                    .try_derive_reference_with_mutability(mutability)
+                    .unwrap(),
+            );
         };
 
         (shared_container, address)
@@ -587,7 +721,47 @@ mod tests {
             )],
             vec![RegularInstruction::statements_with_children(
                 false,
-                instructions!(),
+                instructions!(
+                    // preamble
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability: SharedContainerMutability::Mutable,
+                                previous_address: address.clone(),
+                            })
+                            .with_children(
+                                instructions!(
+                                    RegularInstruction::ShortList(
+                                        ShortListData { element_count: 1 }
+                                    )
+                                    .with_children(instructions!(
+                                        RegularInstruction::Null
+                                    ))
+                                )
+                            ),
+                            RegularInstruction::SetPropertyIndex(UInt32Data(0)).with_children(
+                                instructions!(
+                                    RegularInstruction::GetStackValueSharedRefMut(
+                                        StackIndex(0)
+                                    ),
+                                    RegularInstruction::BorrowStackValue(StackIndex(0))
+                                )
+                            ),
+                            RegularInstruction::ShortList(ShortListData { element_count: 1 }).with_children(
+                                instructions!(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    )
+                                )
+                            ),
+                        )
+                    ),
+                    // body
+                    RegularInstruction::Null
+                ),
             )],
         );
     }
