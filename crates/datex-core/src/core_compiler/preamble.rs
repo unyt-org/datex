@@ -96,7 +96,7 @@ impl ValueVisitor for PreambleContext<'_> {
                         );
                     }
                     // shared container has already been inserted, use stack value
-                    // depemnding on the move flag, we either take the value or borrow it
+                    // depending on the move flag, we either take the value or borrow it
                     Some(VisitedValue::Inserted { stack_index }) => {
                         // append_regular_instruction(
                         //     self.cursor,
@@ -322,8 +322,7 @@ fn append_injected_value(
                 // first target, or first instru?
                 append_regular_instruction(
                     context.cursor,
-                    RegularInstruction::GetStackValueSharedRefMut(
-                        // FIXME is it really mut?
+                    RegularInstruction::BorrowStackValue(
                         parent_stack_index,
                     ),
                 );
@@ -747,7 +746,7 @@ mod tests {
                             ),
                             RegularInstruction::SetPropertyIndex(UInt32Data(0)).with_children(
                                 instructions!(
-                                    RegularInstruction::GetStackValueSharedRefMut(
+                                    RegularInstruction::BorrowStackValue(
                                         StackIndex(0)
                                     ),
                                     RegularInstruction::BorrowStackValue(StackIndex(0))

@@ -440,9 +440,13 @@ fn get_inner_instructions_as_detailed_tree(
 ) -> Option<DetailedInstructionTree> {
     match instruction {
         Instruction::Regular(
-            RegularInstruction::_RemoteExecutionDebugFlat(_data),
+            RegularInstruction::_RemoteExecutionDebugFlat(data),
         ) => {
-            unreachable!()
+            let (tree, err) = get_instruction_tree_from_list(data.body.clone());
+            if let Some(err) = err {
+                panic!("{}", err);
+            }
+            Some(instruction_tree_to_detailed_tree(tree))
         }
         Instruction::Regular(
             RegularInstruction::_RemoteExecutionDebugTree(data),

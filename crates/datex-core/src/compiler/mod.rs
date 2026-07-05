@@ -3077,10 +3077,10 @@ pub mod tests {
                                     RegularInstruction::UInt8(UInt8Data(5)),
                                     RegularInstruction::Add,
                                     RegularInstruction::TakeStackValue(
-                                        StackIndex(0)
+                                        StackIndex(1)
                                     ),
                                     RegularInstruction::TakeStackValue(
-                                        StackIndex(1)
+                                        StackIndex(0)
                                     ),
                                 )
                             ),
