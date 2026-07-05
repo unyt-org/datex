@@ -2,11 +2,10 @@ use crate::{
     prelude::*,
     types::type_definition::callable::CallableTypeDefinition,
     values::{
-        core_values::callable::error::CallableError,
+        core_values::{callable::error::CallableError, endpoint::Endpoint},
         value_container::ValueContainer,
     },
 };
-use crate::values::core_values::endpoint::Endpoint;
 
 pub mod apply;
 pub mod equality;

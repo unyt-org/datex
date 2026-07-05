@@ -23,8 +23,7 @@ use core::{
 mod child_iterator;
 pub mod serde_dif;
 
-use indexmap::IndexMap;
-use indexmap::map::MutableKeys;
+use indexmap::{IndexMap, map::MutableKeys};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Map {
@@ -419,7 +418,9 @@ impl Display for BorrowedMutMapKey<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             // TODO #331: escape string
-            BorrowedMutMapKey::Text(string) => core::write!(f, "\"{}\"", string),
+            BorrowedMutMapKey::Text(string) => {
+                core::write!(f, "\"{}\"", string)
+            }
             BorrowedMutMapKey::Value(value) => core::write!(f, "{value}"),
         }
     }
@@ -544,9 +545,9 @@ impl<'a> Iterator for MapMutIterator<'a> {
                 };
                 (key, v)
             }),
-            MapMutIterator::Structural(iter) => iter
-                .next()
-                .map(|(k, v)| (BorrowedMutMapKey::Text(k), v)),
+            MapMutIterator::Structural(iter) => {
+                iter.next().map(|(k, v)| (BorrowedMutMapKey::Text(k), v))
+            }
         }
     }
 }
@@ -565,8 +566,8 @@ impl Iterator for IntoMapIterator {
             IntoMapIterator::Dynamic(iter) => iter.next().map(|(k, v)| {
                 let key = match k {
                     ValueContainer::Local(Value {
-                      inner: CoreValue::Text(text),
-                      ..
+                        inner: CoreValue::Text(text),
+                        ..
                     }) => MapKey::Text(text.0),
                     _ => MapKey::Value(k),
                 };
@@ -575,16 +576,16 @@ impl Iterator for IntoMapIterator {
             IntoMapIterator::Fixed(iter) => iter.next().map(|(k, v)| {
                 let key = match k {
                     ValueContainer::Local(Value {
-                      inner: CoreValue::Text(text),
-                      ..
+                        inner: CoreValue::Text(text),
+                        ..
                     }) => MapKey::Text(text.0),
                     _ => MapKey::Value(k),
                 };
                 (key, v)
             }),
-            IntoMapIterator::Structural(iter) => iter
-                .next()
-                .map(|(k, v)| (MapKey::Text(k), v)),
+            IntoMapIterator::Structural(iter) => {
+                iter.next().map(|(k, v)| (MapKey::Text(k), v))
+            }
         }
     }
 }

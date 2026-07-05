@@ -1,9 +1,10 @@
 use crate::{
-    shared_values::SharedContainer,
+    shared_values::{
+        SharedContainer, shared_container_common::SharedContainerCommon,
+    },
     traits::apply::{Apply, ApplyError},
     values::value_container::ValueContainer,
 };
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 impl Apply for SharedContainer {
     fn try_apply(

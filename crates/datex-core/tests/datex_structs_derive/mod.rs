@@ -61,6 +61,7 @@ use datex_core::{
         OwnedSharedContainer, PointerAddress, SharedContainer,
         SharedContainerMutability,
     },
+    traits::structural_eq::assert_structural_eq,
     types::{
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
@@ -75,7 +76,6 @@ use datex_core::{
     },
 };
 use test_case::test_case;
-use datex_core::traits::structural_eq::assert_structural_eq;
 
 #[test_case(
     Example {

@@ -1,12 +1,14 @@
 use crate::{
-    shared_values::{SharedContainer, internal_traits::_ExposeRcInternal},
+    shared_values::{
+        SharedContainer, internal_traits::_ExposeRcInternal,
+        shared_container_common::SharedContainerCommon,
+    },
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
 };
 use alloc::rc::Rc;
 use core::hash::{Hash, Hasher};
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 impl Eq for SharedContainer {}
 

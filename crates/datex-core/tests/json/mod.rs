@@ -12,7 +12,7 @@ use datex_core::{
             execution_input::ExecutionCallerMetadata,
         },
     },
-    traits::structural_eq::StructuralEq,
+    traits::structural_eq::{StructuralEq, assert_structural_eq},
     values::{
         core_value::CoreValue,
         core_values::{decimal::Decimal, integer::Integer, map::Map},
@@ -24,7 +24,6 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use json_syntax::Parse;
 use std::path::PathBuf;
-use datex_core::traits::structural_eq::assert_structural_eq;
 
 fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
     match json {

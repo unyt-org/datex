@@ -1,5 +1,3 @@
-use crate::shared_values::{SharedContainer};
-
 /// Creates a new value with the same contents.
 /// This is used to allow exact clones of [SharedContainer]s, preserving ownership even for owned containers.
 /// # Safety

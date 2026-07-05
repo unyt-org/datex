@@ -58,6 +58,7 @@ use crate::{
     runtime::{Runtime, execution::context::ExecutionMode},
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
+        shared_container_common::SharedContainerCommon,
     },
     time::Instant as TimingInstant,
     utils::buffers::{append_u8, append_u16, append_u32},
@@ -74,7 +75,6 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 pub mod context;
 pub mod error;
@@ -616,7 +616,7 @@ fn compile_expression(
             for item in list.items {
                 scope = compile_expression(
                     compilation_context,
-                    RichAst::new((item), &metadata),
+                    RichAst::new(item, &metadata),
                     CompileMetadata::default(),
                     scope,
                 )?;
@@ -806,7 +806,7 @@ fn compile_expression(
                 for statement in statements.into_iter() {
                     child_scope = compile_expression(
                         compilation_context,
-                        RichAst::new((statement), &metadata),
+                        RichAst::new(statement, &metadata),
                         CompileMetadata::default(),
                         child_scope,
                     )?;
@@ -932,7 +932,7 @@ fn compile_expression(
             for argument in apply.arguments.iter() {
                 scope = compile_expression(
                     compilation_context,
-                    RichAst::new((argument.clone()), &metadata),
+                    RichAst::new(argument.clone(), &metadata),
                     CompileMetadata::default(),
                     scope,
                 )?;
@@ -1489,7 +1489,7 @@ fn compile_key_value_entry(
                 .append_instruction_code(InstructionCode::KEY_VALUE_DYNAMIC);
             scope = compile_expression(
                 compilation_context,
-                RichAst::new((key), metadata),
+                RichAst::new(key, metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1498,7 +1498,7 @@ fn compile_key_value_entry(
     // insert value
     scope = compile_expression(
         compilation_context,
-        RichAst::new((value), metadata),
+        RichAst::new(value, metadata),
         CompileMetadata::default(),
         scope,
     )?;
@@ -1582,20 +1582,31 @@ pub mod tests {
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
 
-    use crate::{compiler::scope::CompilationScope, core_compiler::core_compilation_context::{
-        CompileInput, DXBWithSharedValues, default_compile_input,
-    }, global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::type_instructions::TypeInstruction,
-    }, runtime::execution::context::ExecutionMode, types::literal_type_definition::LiteralTypeDefinition, values::value_container::ValueContainer};
-
     use crate::{
-        global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat,
+        compiler::scope::CompilationScope,
+        core_compiler::core_compilation_context::{
+            CompileInput, DXBWithSharedValues, default_compile_input,
+        },
+        global::{
+            instruction_codes::InstructionCode,
+            protocol_structures::type_instructions::TypeInstruction,
+        },
+        runtime::execution::context::ExecutionMode,
+        types::literal_type_definition::LiteralTypeDefinition,
+        values::value_container::ValueContainer,
     };
+
+    use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
 
     use crate::{
         compiler::error::CompilerError,
-        disassembler::print_disassembled,
+        disassembler::{
+            assertions::{
+                assert_instructions_equal, assert_regular_instructions_equal,
+                instructions,
+            },
+            print_disassembled,
+        },
         global::{
             protocol_structures::{
                 injected_values::{
@@ -1604,8 +1615,9 @@ pub mod tests {
                 },
                 instruction_data::{
                     InstructionBlockData, InstructionBlockDataDebugTree,
-                    ListData, MapData, ShortListData, ShortTextData,
-                    StackIndex, StatementsData, TaggedValue, UInt8Data,
+                    ListData, MapData, ShortListData, ShortMapData,
+                    ShortTextData, StackIndex, StatementsData, TaggedValue,
+                    UInt8Data,
                 },
                 instructions::Instruction,
                 regular_instructions::RegularInstruction,
@@ -1624,8 +1636,6 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::disassembler::assertions::{assert_instructions_equal, assert_regular_instructions_equal, instructions};
-    use crate::global::protocol_structures::instruction_data::ShortMapData;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(

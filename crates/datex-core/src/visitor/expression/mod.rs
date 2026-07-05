@@ -4,8 +4,8 @@ use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
-        CreateShared, DatexExpression, DatexExpressionData,
-        GenericInstantiation, DeriveRef, DeriveSharedRef, List, Map, PropertyAccess,
+        CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
+        DeriveSharedRef, GenericInstantiation, List, Map, PropertyAccess,
         PropertyAssignment, RemoteExecution, RequestSharedRef,
         RootPropertyAccess, StackAssignment, Statements, TagExpression,
         TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
@@ -218,9 +218,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                 self.visit_get_core_lib_id(core_lib_id, &expr.span)
             }
             DatexExpressionData::OmitRecursive => {
-                unreachable!(
-                    "Omit expressions should not be visited"
-                )
+                unreachable!("Omit expressions should not be visited")
             }
         };
 
@@ -240,7 +238,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             VisitAction::SkipChildren => Ok(()),
             VisitAction::ToNoop => {
-                expr.data = Box::new(DatexExpressionData::Noop);
+                *expr.data = DatexExpressionData::Noop;
                 Ok(())
             }
             VisitAction::VisitChildren => {

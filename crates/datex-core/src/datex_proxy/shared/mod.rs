@@ -2,9 +2,10 @@ pub mod datex_proxy;
 
 use crate::{
     datex_proxy::{DatexValueContainerProxy, TryFromDatexValueError},
-    shared_values::SharedContainer,
+    shared_values::{
+        SharedContainer, shared_container_common::SharedContainerCommon,
+    },
 };
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 pub struct Shared<T: DatexValueContainerProxy> {
     value: T,

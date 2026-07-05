@@ -88,10 +88,8 @@ mod tests {
                 kind: VariableKind::Var,
                 name: "myVar".to_string(),
                 type_annotation: None,
-                init_expression: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                init_expression: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
             })
         );
     }
@@ -106,10 +104,8 @@ mod tests {
                 kind: VariableKind::Const,
                 name: "myConst".to_string(),
                 type_annotation: None,
-                init_expression: (
-                    DatexExpressionData::Boolean(false.into())
-                        .with_default_span()
-                ),
+                init_expression: (DatexExpressionData::Boolean(false.into())
+                    .with_default_span()),
             })
         );
     }
@@ -127,10 +123,8 @@ mod tests {
                     TypeExpressionData::Identifier("boolean".to_string())
                         .with_default_span()
                 ),
-                init_expression: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                init_expression: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
             })
         );
     }
@@ -153,10 +147,8 @@ mod tests {
                     ]))
                     .with_default_span()
                 ),
-                init_expression: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                init_expression: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
             })
         );
     }

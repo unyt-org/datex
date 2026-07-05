@@ -1,9 +1,5 @@
-use crate::{
-    runtime::cache::shared_references_cache::SharedReferencesCache,
-    shared_values::{
-        PointerAddress, RemotePointerAddress,
-        base_shared_value_container::BaseSharedValueContainer,
-    },
+use crate::shared_values::{
+    RemotePointerAddress, base_shared_value_container::BaseSharedValueContainer,
 };
 
 /// A shared container with an external pointer

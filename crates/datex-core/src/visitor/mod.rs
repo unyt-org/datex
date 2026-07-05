@@ -31,8 +31,8 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, DatexExpression, DatexExpressionData, DeriveRef,
-                Statements, ValueAccessType, VariableAccess,
+                BinaryOperation, DatexExpression, DatexExpressionData,
+                DeriveRef, Statements, ValueAccessType, VariableAccess,
             },
             type_expressions::{TypeExpression, TypeExpressionData},
         },
@@ -111,11 +111,13 @@ mod tests {
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::Replace(DatexExpression {
-                data: Box::new(DatexExpressionData::VariableAccess(VariableAccess {
-                    id: 0,
-                    name: identifier.clone(),
-                    access_type: ValueAccessType::MoveOrCopy,
-                })),
+                data: Box::new(DatexExpressionData::VariableAccess(
+                    VariableAccess {
+                        id: 0,
+                        name: identifier.clone(),
+                        access_type: ValueAccessType::MoveOrCopy,
+                    },
+                )),
                 span: span.clone(),
                 ty: None,
             }))
@@ -159,16 +161,20 @@ mod tests {
                                 ArithmeticOperator::Add,
                             ),
                             left: (DatexExpression {
-                                data: Box::new(DatexExpressionData::Identifier(
-                                    "x".to_string(),
-                                )),
+                                data: Box::new(
+                                    DatexExpressionData::Identifier(
+                                        "x".to_string(),
+                                    ),
+                                ),
                                 span: 0..1,
                                 ty: None,
                             }),
                             right: (DatexExpression {
-                                data: Box::new(DatexExpressionData::Identifier(
-                                    "y".to_string(),
-                                )),
+                                data: Box::new(
+                                    DatexExpressionData::Identifier(
+                                        "y".to_string(),
+                                    ),
+                                ),
                                 span: 2..3,
                                 ty: None,
                             }),

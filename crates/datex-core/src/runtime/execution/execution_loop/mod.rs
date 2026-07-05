@@ -36,25 +36,33 @@ use crate::{
     },
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
-    runtime::execution::{
-        ExecutionError, InvalidProgramError,
-        execution_loop::{
-            internal_slots::{get_root_property, get_stack_value},
-            interrupts::{
-                ExecutionInterrupt, ExternalExecutionInterrupt,
-                InterruptProvider,
+    runtime::{
+        cache::{
+            shared_references_cache::SharedReferencesCache,
+            shared_values_cache::{
+                CacheValueRetrievalError, ValueNotFoundInCacheError,
             },
-            operations::{
-                handle_assignment_operation, handle_binary_operation,
-                handle_comparison_operation, handle_unary_operation,
-                set_property,
-            },
-            runtime_value::RuntimeValue,
-            state::RuntimeExecutionState,
         },
-        macros::{
-            interrupt, interrupt_with_maybe_value, interrupt_with_value,
-            interrupt_with_values, yield_unwrap,
+        execution::{
+            ExecutionError, InvalidProgramError,
+            execution_loop::{
+                internal_slots::{get_root_property, get_stack_value},
+                interrupts::{
+                    ExecutionInterrupt, ExternalExecutionInterrupt,
+                    InterruptProvider, InterruptResult,
+                },
+                operations::{
+                    handle_assignment_operation, handle_binary_operation,
+                    handle_comparison_operation, handle_unary_operation,
+                    set_property,
+                },
+                runtime_value::RuntimeValue,
+                state::RuntimeExecutionState,
+            },
+            macros::{
+                interrupt, interrupt_with_maybe_value, interrupt_with_value,
+                yield_unwrap,
+            },
         },
     },
     shared_values::{
@@ -95,12 +103,7 @@ use crate::{
     },
 };
 use alloc::rc::Rc;
-use core::cell::RefCell;
-use core::ops::DerefMut;
-use log::info;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::runtime::cache::shared_values_cache::{CacheValueRetrievalError, ValueNotFoundInCacheError};
-use crate::runtime::execution::execution_loop::interrupts::InterruptResult;
+use core::{cell::RefCell, ops::DerefMut};
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -262,7 +265,9 @@ pub fn execution_loop(
                         active_value = value;
                     }
                     ExecutionInterrupt::TakeActiveValue => {
-                        interrupt_provider.provide_result(InterruptResult::ResolvedValue(active_value.take()));
+                        interrupt_provider.provide_result(
+                            InterruptResult::ResolvedValue(active_value.take()),
+                        );
                     }
                 },
                 Err(err) => {
@@ -1464,7 +1469,7 @@ pub fn inner_execution_loop(
                                                 yield_unwrap!(
                                                     create_new_reference_from_value(
                                                         &PointerAddress::SelfOwned(shared_ref.address),
-                                                        &mut *state.runtime.memory().borrow_mut(),
+                                                        &mut state.runtime.memory().borrow_mut(),
                                                         value,
                                                         shared_ref.container_mutability,
                                                         shared_ref.ref_mutability
@@ -1480,7 +1485,7 @@ pub fn inner_execution_loop(
                                         yield_unwrap!(
                                             create_new_reference_from_value(
                                                 &pointer_address,
-                                                &mut *state.runtime.memory().borrow_mut(),
+                                                &mut state.runtime.memory().borrow_mut(),
                                                 value,
                                                 shared_ref.container_mutability,
                                                 shared_ref.ref_mutability
@@ -1597,19 +1602,17 @@ pub fn inner_execution_loop(
 
             // if in unbounded statements, propagate active value via interrupt
             if let Some(ResultCollector::LastUnbounded(
-                LastUnboundedResultCollector {
-                    last_result,
-                    ..
-                },
+                LastUnboundedResultCollector { last_result, .. },
             )) = collector.last_mut()
-                && let Some(CollectedExecutionResult::Value(mut last_result)) = last_result.take()
+                && let Some(CollectedExecutionResult::Value(mut last_result)) =
+                    last_result.take()
             {
                 let active_value = yield_unwrap!(
-                        last_result
-                            .take()
-                            .map(|v| v.into_value_container(&mut state))
-                            .transpose()
-                    );
+                    last_result
+                        .take()
+                        .map(|v| v.into_value_container(&mut state))
+                        .transpose()
+                );
                 interrupt!(
                     interrupt_provider,
                     ExecutionInterrupt::SetActiveValue(active_value)
@@ -1644,13 +1647,17 @@ fn create_new_reference_from_value(
     container_mutability: SharedContainerMutability,
     ref_mutability: ReferenceMutability,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
-
-    if let Some(reference)  = memory.get_reference(pointer_address) {
-        return Ok(reference.clone())
+    if let Some(reference) = memory.get_reference(pointer_address) {
+        return Ok(reference.clone());
     }
     match pointer_address {
         // if self owned was not already in memory, we can't resolve it
-        PointerAddress::SelfOwned(_) => Err(CacheValueRetrievalError::ValueNotFoundInCache(ValueNotFoundInCacheError).into()),
+        PointerAddress::SelfOwned(_) => {
+            Err(CacheValueRetrievalError::ValueNotFoundInCache(
+                ValueNotFoundInCacheError,
+            )
+            .into())
+        }
         PointerAddress::Remote(remote_address) => {
             let base = BaseSharedValueContainer::try_new(
                 value,
@@ -1659,12 +1666,16 @@ fn create_new_reference_from_value(
             )?;
 
             // Note: safe because we checked if the address already exists in memory before
-            unsafe {ReferencedSharedContainer::try_new_remote_from_base_container(
-                base,
-                remote_address.clone(),
-                ref_mutability,
-            )}.map_err(|_err| ExecutionError::InvalidSharedValueType)
-    }}
+            unsafe {
+                ReferencedSharedContainer::try_new_remote_from_base_container(
+                    base,
+                    remote_address.clone(),
+                    ref_mutability,
+                )
+            }
+            .map_err(|_err| ExecutionError::InvalidSharedValueType)
+        }
+    }
 }
 
 fn resolve_cache_value(

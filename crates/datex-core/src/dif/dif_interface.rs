@@ -17,6 +17,7 @@ use crate::{
                 TransceiverId,
             },
         },
+        shared_container_common::SharedContainerCommon,
     },
     traits::apply::{Apply, ApplyError},
     value_updates::{
@@ -26,7 +27,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
@@ -92,16 +92,17 @@ impl DIFInterface {
     pub fn create_pointer(
         &mut self,
         value: BaseSharedValueContainer,
-    ) -> SelfOwnedPointerAddress {;
-        let container =  OwnedSharedContainer::new_from_self_owned_container(
-            SelfOwnedSharedContainer::new(value, &mut *self
-                .address_provider
-                .borrow_mut()
+    ) -> SelfOwnedPointerAddress {
+        let container = OwnedSharedContainer::new_from_self_owned_container(
+            SelfOwnedSharedContainer::new(
+                value,
+                &mut self.address_provider.borrow_mut(),
             ),
         );
 
         let pointer_address = container.pointer_address().clone();
-        self.cache.store_shared_container(SharedContainer::Owned(container));
+        self.cache
+            .store_shared_container(SharedContainer::Owned(container));
         pointer_address
     }
 

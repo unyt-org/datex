@@ -1,11 +1,10 @@
 use crate::{
-    runtime::cache::shared_references_cache::SharedReferencesCache,
+    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
         ExternalSharedContainer, RemotePointerAddress, SelfOwnedPointerAddress,
         base_shared_value_container::BaseSharedValueContainer,
     },
 };
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 /// A shared container with a pointer address owned by the local endpoint
 #[derive(Debug)]
@@ -24,10 +23,10 @@ impl SelfOwnedSharedContainer {
     ) -> Self {
         SelfOwnedSharedContainer {
             value: shared_value_container,
-            address: self_owned_pointer_address_provider.get_new_self_owned_address(),
+            address: self_owned_pointer_address_provider
+                .get_new_self_owned_address(),
         }
     }
-
 
     /// Creates a new [SelfOwnedSharedContainer]
     pub unsafe fn new_with_address(
@@ -66,11 +65,6 @@ impl SelfOwnedSharedContainer {
         self,
         remote_address: RemotePointerAddress,
     ) -> ExternalSharedContainer {
-        unsafe {
-            ExternalSharedContainer::new(
-                self.value,
-                remote_address,
-            )
-        }
+        unsafe { ExternalSharedContainer::new(self.value, remote_address) }
     }
 }

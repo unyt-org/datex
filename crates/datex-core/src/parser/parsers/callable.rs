@@ -116,14 +116,12 @@ mod tests {
                     rest_parameter: None,
                     return_type: None,
                     yeet_type: None,
-                    body: (
-                        DatexExpressionData::Statements(Statements {
-                            statements: vec![],
-                            is_terminated: false,
-                            unbounded: None,
-                        })
-                        .with_default_span()
-                    ),
+                    body: (DatexExpressionData::Statements(Statements {
+                        statements: vec![],
+                        is_terminated: false,
+                        unbounded: None,
+                    })
+                    .with_default_span()),
                     injected_variable_count: None,
                 }
             ))
@@ -143,14 +141,12 @@ mod tests {
                     rest_parameter: None,
                     return_type: None,
                     yeet_type: None,
-                    body: (
-                        DatexExpressionData::Statements(Statements {
-                            statements: vec![],
-                            is_terminated: false,
-                            unbounded: None,
-                        })
-                        .with_default_span()
-                    ),
+                    body: (DatexExpressionData::Statements(Statements {
+                        statements: vec![],
+                        is_terminated: false,
+                        unbounded: None,
+                    })
+                    .with_default_span()),
                     injected_variable_count: None,
                 }
             ))
@@ -188,14 +184,12 @@ mod tests {
                             .with_default_span()
                     ),
                     yeet_type: None,
-                    body: (
-                        DatexExpressionData::Statements(Statements {
-                            statements: vec![],
-                            is_terminated: false,
-                            unbounded: None,
-                        })
-                        .with_default_span()
-                    ),
+                    body: (DatexExpressionData::Statements(Statements {
+                        statements: vec![],
+                        is_terminated: false,
+                        unbounded: None,
+                    })
+                    .with_default_span()),
                     injected_variable_count: None,
                 }
             ))
@@ -223,25 +217,21 @@ mod tests {
                             .with_default_span()
                     ),
                     yeet_type: None,
-                    body: (
-                        DatexExpressionData::BinaryOperation(BinaryOperation {
-                            left: (
-                                DatexExpressionData::Text("Hello, ".into())
-                                    .with_default_span()
-                            ),
+                    body: (DatexExpressionData::BinaryOperation(
+                        BinaryOperation {
+                            left: (DatexExpressionData::Text("Hello, ".into())
+                                .with_default_span()),
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add
                             ),
-                            right: (
-                                DatexExpressionData::Identifier(
-                                    "name".to_string()
-                                )
-                                .with_default_span()
-                            ),
+                            right: (DatexExpressionData::Identifier(
+                                "name".to_string()
+                            )
+                            .with_default_span()),
                             ty: None,
-                        })
-                        .with_default_span()
-                    ),
+                        }
+                    )
+                    .with_default_span()),
                     injected_variable_count: None,
                 }
             ))

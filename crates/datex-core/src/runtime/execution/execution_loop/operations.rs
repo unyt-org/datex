@@ -21,13 +21,15 @@ use core::cell::RefCell;
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    shared_values::base_shared_value_container::observers::TransceiverId,
+    shared_values::{
+        base_shared_value_container::observers::TransceiverId,
+        shared_container_common::SharedContainerCommon,
+    },
     types::{r#type::Type, type_match::TypeSatisfiesValueContainer},
     value_updates::{
         update_data::SetEntryUpdateData, update_handler::UpdateHandler,
     },
 };
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 pub fn set_property(
     target: &mut ValueContainer,

@@ -23,11 +23,11 @@ use crate::{
     prelude::*,
     shared_values::{
         PointerAddress, ReferencedSharedContainer, SharedContainer,
+        shared_container_common::SharedContainerCommon,
     },
     values::value_container::ValueContainer,
 };
 use binrw::io::Write;
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 /// Compiles injected values into a DXB buffer with shared values
 ///
@@ -207,7 +207,7 @@ fn append_referenced_shared_container(
         );
         compilation_context.visit_value_container(
             referenced_container.value_container().clone(),
-            None
+            None,
         );
     } else {
         append_regular_instruction(
@@ -232,6 +232,9 @@ mod tests {
             self,
             core_compilation_context::{CompileInput, DXBWithSharedValues},
             value_compiler::InjectedValueValidationError,
+        },
+        disassembler::assertions::{
+            assert_regular_instructions_equal, instructions,
         },
         global::{
             instruction_codes::InstructionCode,
@@ -261,7 +264,6 @@ mod tests {
             core_values::endpoint::Endpoint, value_container::ValueContainer,
         },
     };
-    use crate::disassembler::assertions::{assert_regular_instructions_equal, instructions};
 
     fn compile_injected_values_test_with_receivers(
         instruction_block_data: InstructionBlockData,
@@ -521,7 +523,6 @@ mod tests {
                                         }
                                     ),
                                     RegularInstruction::Int32(Int32Data(42)),
-                                    
                                     RegularInstruction::PushToStack,
                                     RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
                                     

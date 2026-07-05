@@ -1,14 +1,19 @@
+use crate::{
+    shared_values::{
+        OwnedSharedContainer, SharedContainerInner, SharedContainerMutability,
+        SharedContainerOwnership,
+        base_shared_value_container::BaseSharedValueContainer,
+        shared_container_common::SharedContainerCommon,
+    },
+    types::type_definition::TypeDefinition,
+    values::value_container::ValueContainer,
+};
 use core::cell::{Ref, RefMut};
-use crate::shared_values::{OwnedSharedContainer, SharedContainerInner, SharedContainerMutability, SharedContainerOwnership};
-use crate::shared_values::base_shared_value_container::BaseSharedValueContainer;
-use crate::shared_values::shared_container_common::SharedContainerCommon;
-use crate::types::type_definition::TypeDefinition;
-use crate::values::value_container::ValueContainer;
 
 impl SharedContainerCommon for OwnedSharedContainer {
     /// Get the [SharedContainerMutability] of the container
     fn container_mutability(&self) -> SharedContainerMutability {
-        self.container_mutability.clone()
+        self.container_mutability
     }
     /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
     fn value_container(&self) -> Ref<'_, ValueContainer> {

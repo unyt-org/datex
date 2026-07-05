@@ -6,7 +6,6 @@ use crate::{
         spanned::Spanned,
     },
     parser::{Parser, SpannedParserError, lexer::Token},
-    prelude::*,
 };
 impl Parser {
     pub(crate) fn parse_compile_expression(
@@ -46,14 +45,12 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Compile(CompileExpression {
-                expression:
-                    DatexExpressionData::Statements(Statements {
-                        statements: vec![],
-                        is_terminated: false,
-                        unbounded: None,
-                    })
-                    .with_default_span()
-
+                expression: DatexExpressionData::Statements(Statements {
+                    statements: vec![],
+                    is_terminated: false,
+                    unbounded: None,
+                })
+                .with_default_span()
             })
         );
     }
@@ -64,23 +61,19 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Compile(CompileExpression {
-                expression: (
-                    DatexExpressionData::BinaryOperation(BinaryOperation {
-                        left: (
-                            DatexExpressionData::Integer(Integer::from(1))
-                                .with_default_span()
-                        ),
+                expression: (DatexExpressionData::BinaryOperation(
+                    BinaryOperation {
+                        left: (DatexExpressionData::Integer(Integer::from(1))
+                            .with_default_span()),
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        right: (
-                            DatexExpressionData::Integer(Integer::from(2))
-                                .with_default_span()
-                        ),
+                        right: (DatexExpressionData::Integer(Integer::from(2))
+                            .with_default_span()),
                         ty: None,
-                    })
-                    .with_default_span()
+                    }
                 )
+                .with_default_span())
             })
         );
     }
@@ -91,10 +84,8 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Compile(CompileExpression {
-                expression: (
-                    DatexExpressionData::Integer(Integer::from(42))
-                        .with_default_span()
-                )
+                expression: (DatexExpressionData::Integer(Integer::from(42))
+                    .with_default_span())
             })
         );
     }

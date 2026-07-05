@@ -14,7 +14,9 @@ impl<'a> ChildIterator<'a> for List {
         }
     }
 
-    fn iter_children_mut(&'a mut self) -> impl Iterator<Item=&'a mut ValueContainer> + 'a {
+    fn iter_children_mut(
+        &'a mut self,
+    ) -> impl Iterator<Item = &'a mut ValueContainer> + 'a {
         gen {
             for value in self.iter_mut() {
                 yield value;

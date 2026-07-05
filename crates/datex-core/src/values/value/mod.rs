@@ -22,12 +22,13 @@ pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;
 
-use crate::shared_values::errors::AccessError;
+use crate::{
+    shared_values::errors::AccessError, values::core_values::endpoint::Endpoint,
+};
 use core::{
     fmt::{Display, Formatter},
     result::Result,
 };
-use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
@@ -64,7 +65,7 @@ impl Value {
                 name,
                 signature: signature.clone(),
                 body,
-                creator
+                creator,
             }),
             custom_type: Some(TypeDefinition::callable(signature)),
         }
@@ -320,17 +321,16 @@ mod tests {
     use crate::{
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
+        traits::structural_eq::assert_structural_eq,
         types::{r#type::Type, type_definition::impl_type::ImplTypeDefinition},
         values::core_values::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
-            list::List,
+            list::{List, datex_list},
         },
     };
     use core::str::FromStr;
     use log::info;
-    use crate::traits::structural_eq::assert_structural_eq;
-    use crate::values::core_values::list::datex_list;
 
     #[test]
     fn endpoint() {

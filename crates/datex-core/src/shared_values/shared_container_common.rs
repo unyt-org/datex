@@ -1,8 +1,13 @@
+use crate::{
+    shared_values::{
+        SharedContainerInner, SharedContainerMutability,
+        SharedContainerOwnership,
+        base_shared_value_container::BaseSharedValueContainer,
+    },
+    types::type_definition::TypeDefinition,
+    values::value_container::ValueContainer,
+};
 use core::cell::{Ref, RefMut};
-use crate::shared_values::{SharedContainerInner, SharedContainerMutability, SharedContainerOwnership};
-use crate::shared_values::base_shared_value_container::BaseSharedValueContainer;
-use crate::types::type_definition::TypeDefinition;
-use crate::values::value_container::ValueContainer;
 
 pub trait SharedContainerCommon {
     /// Get the [SharedContainerMutability] of the container
@@ -30,9 +35,8 @@ pub trait SharedContainerCommon {
     fn base_shared_container(&self) -> Ref<'_, BaseSharedValueContainer>;
 
     /// Gets a [RefMut] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
-    fn base_shared_container_mut(
-        &self,
-    ) -> RefMut<'_, BaseSharedValueContainer>;
+    fn base_shared_container_mut(&self)
+    -> RefMut<'_, BaseSharedValueContainer>;
 
     /// Returns the [SharedContainerOwnership] of this shared container
     fn ownership(&self) -> SharedContainerOwnership;

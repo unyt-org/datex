@@ -1,26 +1,22 @@
-pub mod datex_proxy;
 mod clone_unsafe;
 mod common;
+pub mod datex_proxy;
 
 use crate::{
-    runtime::{
-        cache::shared_references_cache::SharedReferencesCache,
-        pointer_address_provider::SelfOwnedPointerAddressProvider,
-    },
+    prelude::*,
+    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
         ReferencedSharedContainer, RemotePointerAddress,
         SelfOwnedPointerAddress, SelfOwnedSharedContainer,
         SharedContainerInner, SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
-        errors::{
-            SharedValueCreationError, UnexpectedImmutableSharedContainerError,
-        },
+        errors::UnexpectedImmutableSharedContainerError,
         internal_traits::_ExposeRcInternal,
+        shared_container_common::SharedContainerCommon,
     },
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    types::type_definition::TypeDefinition,
     values::{value::Value, value_container::ValueContainer},
 };
 use alloc::rc::Rc;
@@ -30,9 +26,6 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
-use crate::shared_values::shared_container_common::SharedContainerCommon;
-use crate::shared_values::SharedContainer;
-use crate::prelude::*;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -56,7 +49,7 @@ impl OwnedSharedContainer {
     pub fn new_from_self_owned_container(
         container: SelfOwnedSharedContainer,
     ) -> Self {
-        let container_mutability = container.value().mutability().clone();
+        let container_mutability = *container.value().mutability();
         OwnedSharedContainer {
             inner: Rc::new(RefCell::new(SharedContainerInner::EndpointOwned(
                 container,
@@ -64,7 +57,6 @@ impl OwnedSharedContainer {
             container_mutability,
         }
     }
-    
 
     /// Creates a new [OwnedSharedContainer] with an initial [ValueContainer],
     /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].
@@ -96,17 +88,15 @@ impl OwnedSharedContainer {
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
     ) -> Self {
-        OwnedSharedContainer::new_from_self_owned_container(
-            unsafe {
-                SelfOwnedSharedContainer::new_with_address(
-                    BaseSharedValueContainer::new_with_inferred_allowed_type(
-                        value_container,
-                        mutability,
-                    ),
-                    address,
-                )
-            },
-        )
+        OwnedSharedContainer::new_from_self_owned_container(unsafe {
+            SelfOwnedSharedContainer::new_with_address(
+                BaseSharedValueContainer::new_with_inferred_allowed_type(
+                    value_container,
+                    mutability,
+                ),
+                address,
+            )
+        })
     }
 
     /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
@@ -158,7 +148,6 @@ impl OwnedSharedContainer {
         })
     }
 
-
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
     pub fn derive_immutable_reference(&self) -> ReferencedSharedContainer {
         ReferencedSharedContainer::new_immutable(self.inner.clone())
@@ -203,10 +192,7 @@ impl OwnedSharedContainer {
     /// Drops the original owned shared container
     /// # Safety
     /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
-    pub unsafe fn move_to_remote(
-        self,
-        remote_address: RemotePointerAddress,
-    ) {
+    pub unsafe fn move_to_remote(self, remote_address: RemotePointerAddress) {
         let mut inner = self.inner_mut();
         // replace previous with null value
         // FIXME: find a more efficient way to do this enum variant swap

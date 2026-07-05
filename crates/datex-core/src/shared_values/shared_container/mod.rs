@@ -6,7 +6,6 @@ use crate::{
         OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
         SelfOwnedPointerAddress, SharedContainerInner,
         SharedContainerMutability, SharedContainerOwnership,
-        base_shared_value_container::BaseSharedValueContainer,
         errors::{
             AccessError, UnexpectedImmutableReferenceError,
             UnexpectedSharedContainerOwnershipError,
@@ -24,28 +23,25 @@ use crate::{
 };
 pub mod identity;
 use crate::{
+    prelude::*,
     shared_values::{
         ReferenceMutability,
         base_shared_value_container::observers::{
             Observer, ObserverError, ObserverId,
         },
+        shared_container_common::SharedContainerCommon,
     },
     types::type_definition::TypeDefinition,
+    values::core_value::CoreValue,
 };
 use alloc::rc::Rc;
 use core::{
-    cell::{Ref, RefCell, RefMut},
-    fmt::{Display, Formatter},
+    cell::RefCell,
+    fmt::{Debug, Display, Formatter},
     hash::{Hash, Hasher},
+    mem,
 };
-use core::fmt::Debug;
-use core::mem;
 use serde::Serializer;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::shared_values::{RemotePointerAddress, SelfOwnedSharedContainer};
-use crate::shared_values::shared_container_common::SharedContainerCommon;
-use crate::values::core_value::CoreValue;
-use crate::prelude::*;
 
 pub mod apply;
 pub mod serde_dif;
@@ -66,15 +62,18 @@ impl Debug for SharedContainer {
             f.write_str("(...)")
         } else {
             match self {
-                SharedContainer::Owned(owned) => f.debug_tuple("SharedContainer").field(owned).finish(),
-                SharedContainer::Referenced(reference) => f.debug_tuple("SharedContainer").field(reference).finish(),
+                SharedContainer::Owned(owned) => {
+                    f.debug_tuple("SharedContainer").field(owned).finish()
+                }
+                SharedContainer::Referenced(reference) => {
+                    f.debug_tuple("SharedContainer").field(reference).finish()
+                }
             }
         }
     }
 }
 
 impl SharedContainer {
-
     /// Creates a new owned [SharedContainer] with an initial [ValueContainer],
     /// a [SharedContainerMutability], and a [SelfOwnedPointerAddressProvider].
     ///
@@ -114,7 +113,7 @@ impl SharedContainer {
             )
         })
     }
-    
+
     /// Adds an observer to this shared container that will be notified on value changes.
     pub fn observe(
         &self,
@@ -130,7 +129,6 @@ impl SharedContainer {
         self.base_shared_container_mut().unobserve(observer_id)
     }
 
-    
     /// Gets the current actual [TypeDefinition] of the collapsed inner [Value]
     pub fn actual_type(&self) -> TypeDefinition {
         self.with_collapsed_value(|value| value.actual_type())
@@ -234,7 +232,6 @@ impl SharedContainer {
             .unwrap_or_else(|_| self.derive_immutable_reference())
     }
 
-
     /// Downgrades an owned shared container to a referenced shared container.
     /// If the shared container is already a referenced shared container, it will just be returned.
     /// If the shared container is owned, it will be replaced with a new referenced shared container pointing to the same inner value
@@ -245,16 +242,13 @@ impl SharedContainer {
             SharedContainer::Owned(_) => {
                 // replace previous with null value
                 // FIXME: find a more efficient way to do this enum variant swap
-                let previous = mem::replace(
-                    &mut *self,
-                    unsafe {
-                        SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
-                            CoreValue::Null,
-                            SharedContainerMutability::Immutable,
-                            SelfOwnedPointerAddress::new([0; 5])
-                        )
-                    }
-                );
+                let previous = mem::replace(&mut *self, unsafe {
+                    SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
+                        CoreValue::Null,
+                        SharedContainerMutability::Immutable,
+                        SelfOwnedPointerAddress::new([0; 5]),
+                    )
+                });
 
                 // create a new referenced shared container and assign to self
                 *self = previous.clone_with_move_indicator_if_owned();
@@ -271,19 +265,19 @@ impl SharedContainer {
     /// Clones the shared container with the move indicator if it is an [OwnedSharedContainer],
     /// otherwise as a normal reference
     pub fn clone_with_move_indicator_if_owned(&self) -> SharedContainer {
-        SharedContainer::Referenced(
-            match self {
-                SharedContainer::Owned(owned) => owned.clone_with_move_indicator(),
-                SharedContainer::Referenced(referenced) => referenced.clone(),
-            }
-        )
+        SharedContainer::Referenced(match self {
+            SharedContainer::Owned(owned) => owned.clone_with_move_indicator(),
+            SharedContainer::Referenced(referenced) => referenced.clone(),
+        })
     }
 
     /// Returns true if the shared container is an [OwnedSharedContainer] or a [ReferencedSharedContainer] that is marked as moved.
     pub fn treat_as_move(&self) -> bool {
         match self {
-            SharedContainer::Owned(owned) => true,
-            SharedContainer::Referenced(referenced) => referenced.treat_as_move(),
+            SharedContainer::Owned(_owned) => true,
+            SharedContainer::Referenced(referenced) => {
+                referenced.treat_as_move()
+            }
         }
     }
 
@@ -295,7 +289,6 @@ impl SharedContainer {
             }
         }
     }
-
 }
 
 /// Custom clone implementation for [SharedContainer].
@@ -327,10 +320,10 @@ impl Display for SharedContainer {
     }
 }
 
-pub mod datex_proxy;
-pub mod equality;
 pub mod clone_unsafe;
 mod common;
+pub mod datex_proxy;
+pub mod equality;
 
 impl From<OwnedSharedContainer> for SharedContainer {
     fn from(value: OwnedSharedContainer) -> Self {

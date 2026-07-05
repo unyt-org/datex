@@ -1,14 +1,15 @@
-pub mod datex_proxy;
 mod common;
+pub mod datex_proxy;
 
 use crate::{
-    runtime::cache::shared_references_cache::SharedReferencesCache,
+    prelude::*,
     shared_values::{
         ExternalSharedContainer, PointerAddress, ReferenceMutability,
         RemotePointerAddress, SharedContainerInner, SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
         errors::{SharedValueCreationError, UnexpectedImmutableReferenceError},
         internal_traits::_ExposeRcInternal,
+        shared_container_common::SharedContainerCommon,
     },
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
@@ -18,12 +19,10 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{
-    cell::{Ref, RefCell, RefMut},
+    cell::RefCell,
     fmt::Display,
     hash::{Hash, Hasher},
 };
-use crate::shared_values::shared_container_common::SharedContainerCommon;
-use crate::prelude::*;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -48,7 +47,8 @@ impl ReferencedSharedContainer {
     pub(crate) fn new_mutable_unchecked(
         inner: Rc<RefCell<SharedContainerInner>>,
     ) -> Self {
-        let container_mutability = inner.borrow().base_shared_container().mutability().clone();
+        let container_mutability =
+            *inner.borrow().base_shared_container().mutability();
 
         ReferencedSharedContainer {
             inner,
@@ -62,7 +62,8 @@ impl ReferencedSharedContainer {
     pub(crate) fn new_immutable(
         inner: Rc<RefCell<SharedContainerInner>>,
     ) -> Self {
-        let container_mutability = inner.borrow().base_shared_container().mutability().clone();
+        let container_mutability =
+            *inner.borrow().base_shared_container().mutability();
 
         ReferencedSharedContainer {
             inner,
@@ -82,7 +83,7 @@ impl ReferencedSharedContainer {
         address: RemotePointerAddress,
         reference_mutability: ReferenceMutability,
     ) -> Result<Self, ()> {
-        let container_mutability = container.mutability().clone();
+        let container_mutability = *container.mutability();
         // invalid reference mutability
         if reference_mutability == ReferenceMutability::Mutable
             && *container.mutability() == SharedContainerMutability::Immutable
@@ -92,11 +93,7 @@ impl ReferencedSharedContainer {
 
         Ok(ReferencedSharedContainer {
             inner: Rc::new(RefCell::new(SharedContainerInner::External(
-                unsafe {
-                    ExternalSharedContainer::new(
-                        container, address,
-                    )
-                },
+                unsafe { ExternalSharedContainer::new(container, address) },
             ))),
             reference_mutability,
             container_mutability,
@@ -154,7 +151,6 @@ impl ReferencedSharedContainer {
         })
     }
 
-
     /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
     pub fn with_collapsed_value_mut<R>(
         &self,
@@ -174,7 +170,6 @@ impl ReferencedSharedContainer {
     pub fn pointer_address(&self) -> PointerAddress {
         self.inner().pointer_address()
     }
-
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as self.
     pub fn derive_immutable_reference(&self) -> ReferencedSharedContainer {
@@ -205,7 +200,6 @@ impl ReferencedSharedContainer {
         self.reference_mutability
     }
 
-
     /// Sets the move indicator flag that signals that this should be treated as a move in the context
     /// of the compiler
     /// Note: this should only be set on containers with an owned address
@@ -219,10 +213,8 @@ impl ReferencedSharedContainer {
     }
 
     pub unsafe fn change_address(&self, new_address: PointerAddress) {
-        assert_eq!(self.move_indicator, false);
-        unsafe {
-            self.inner_mut().change_address(new_address)
-        }
+        assert!(!self.move_indicator);
+        unsafe { self.inner_mut().change_address(new_address) }
     }
 
     pub fn to_string_omit_content(&self) -> String {

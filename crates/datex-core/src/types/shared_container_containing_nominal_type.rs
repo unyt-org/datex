@@ -1,6 +1,9 @@
 use crate::{
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-    shared_values::{SharedContainer, SharedContainerMutability},
+    shared_values::{
+        SharedContainer, SharedContainerMutability,
+        shared_container_common::SharedContainerCommon,
+    },
     types::{
         nominal_type_definition::NominalTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
@@ -9,7 +12,6 @@ use crate::{
     values::{core_value::CoreValue, value_container::ValueContainer},
 };
 use core::ops::Deref;
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SharedContainerContainingNominalType(SharedContainer);

@@ -30,6 +30,7 @@ mod tests {
             to_instructions::ToInstructions,
             value_compiler::compile_value,
         },
+        disassembler::assertions::assert_instructions_equal,
         global::protocol_structures::{
             instructions::Instruction,
             regular_instructions::RegularInstruction,
@@ -47,7 +48,6 @@ mod tests {
         },
         values::{core_value::CoreValue, value::Value},
     };
-    use crate::disassembler::assertions::assert_instructions_equal;
 
     fn assert_type_instructions(
         ty: Type,

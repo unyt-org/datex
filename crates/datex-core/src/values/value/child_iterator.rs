@@ -8,7 +8,9 @@ impl<'a> ChildIterator<'a> for Value {
         self.inner.iter_children()
     }
 
-    fn iter_children_mut(&mut self) -> impl Iterator<Item = &mut ValueContainer> {
+    fn iter_children_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut ValueContainer> {
         self.inner.iter_children_mut()
     }
 }

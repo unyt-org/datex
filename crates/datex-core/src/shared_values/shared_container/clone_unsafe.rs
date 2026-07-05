@@ -1,5 +1,6 @@
-use crate::shared_values::{OwnedSharedContainer, SharedContainer};
-use crate::traits::clone_unsafe::CloneUnsafe;
+use crate::{
+    shared_values::SharedContainer, traits::clone_unsafe::CloneUnsafe,
+};
 
 impl CloneUnsafe for SharedContainer {
     /// Creates a new owned [SharedContainer] with the same contents.

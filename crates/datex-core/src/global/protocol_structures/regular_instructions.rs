@@ -6,14 +6,15 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
-                Int16Data, Int32Data, Int64Data, Int128Data, ListData, MapData,
-                ModifySharedContainerValue, ModifyStackValue, Move,
-                PerformMoves, SharedRef, SharedRefWithValue, ShortListData,
-                ShortMapData, ShortStatementsData, ShortTextData, StackIndex,
-                StatementsData, TaggedValue, TextData, UInt8Data, UInt16Data,
-                UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
+                ApplyData, ConfirmMoves, Float32Data, Float64Data,
+                FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData,
+                Int8Data, Int16Data, Int32Data, Int64Data, Int128Data,
+                ListData, MapData, ModifySharedContainerValue, InstantData,
+                ModifyStackValue, MoveWithValue, SharedRef, SharedRefWithValue,
+                ShortListData, ShortMapData, ShortStatementsData,
+                ShortTextData, StackIndex, StatementsData, TaggedValue,
+                TextData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
+                UInt128Data, UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -38,7 +39,6 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-use crate::global::protocol_structures::instruction_data::ConfirmMoves;
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -343,7 +343,9 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::MoveWithValue(_) => {
                 InstructionCode::MOVE_WITH_VALUE
             }
-            RegularInstruction::ConfirmMoves(_) => InstructionCode::CONFIRM_MOVES,
+            RegularInstruction::ConfirmMoves(_) => {
+                InstructionCode::CONFIRM_MOVES
+            }
             RegularInstruction::PushToStack => InstructionCode::PUSH_TO_STACK,
             RegularInstruction::PushListToStack => {
                 InstructionCode::PUSH_LIST_TO_STACK
@@ -645,8 +647,9 @@ impl RegularInstruction {
             InstructionCode::MAP => {
                 MapData::read(reader).map(RegularInstruction::Map)
             }
-            InstructionCode::SHORT_MAP => 
-                ShortMapData::read(reader).map(RegularInstruction::ShortMap),
+            InstructionCode::SHORT_MAP => {
+                ShortMapData::read(reader).map(RegularInstruction::ShortMap)
+            }
 
             InstructionCode::STATEMENTS => {
                 StatementsData::read(reader).map(RegularInstruction::Statements)
@@ -816,9 +819,8 @@ impl RegularInstruction {
             InstructionCode::GET_CORE_LIB_VALUE => CoreLibIdIndex::read(reader)
                 .map(RegularInstruction::GetCoreLibValue),
 
-            InstructionCode::MOVE_WITH_VALUE => {
-                MoveWithValue::read(reader).map(RegularInstruction::MoveWithValue)
-            }
+            InstructionCode::MOVE_WITH_VALUE => MoveWithValue::read(reader)
+                .map(RegularInstruction::MoveWithValue),
 
             InstructionCode::CONFIRM_MOVES => {
                 ConfirmMoves::read(reader).map(RegularInstruction::ConfirmMoves)

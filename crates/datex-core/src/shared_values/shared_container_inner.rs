@@ -1,5 +1,9 @@
+use crate::shared_values::{
+    ExternalSharedContainer, SelfOwnedPointerAddress, SelfOwnedSharedContainer,
+    base_shared_value_container::BaseSharedValueContainer,
+    pointer_address::PointerAddress,
+};
 use core::mem;
-use crate::shared_values::{ExternalSharedContainer, SelfOwnedSharedContainer, base_shared_value_container::BaseSharedValueContainer, pointer_address::PointerAddress, SelfOwnedPointerAddress};
 
 /// Wrapper containing either an [SelfOwnedSharedContainer] or an [ExternalSharedContainer].
 #[derive(Debug)]
@@ -58,7 +62,7 @@ impl SharedContainerInner {
     /// The caller must ensure that the new [PointerAddress] is not already used by another shared container
     pub(super) unsafe fn change_address(
         &mut self,
-        new_address: PointerAddress
+        new_address: PointerAddress,
     ) {
         let previous = mem::replace(
             &mut *self,

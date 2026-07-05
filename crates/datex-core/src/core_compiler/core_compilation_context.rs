@@ -6,7 +6,7 @@ use crate::{
         to_instructions::ToInstructions,
         type_compiler::append_type_instruction,
         value_compiler::{append_shared_container_from_stack, append_value},
-        value_visitor::ValueVisitor,
+        value_visitor::{ParentContext, ValueVisitor},
     },
     prelude::*,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
@@ -17,7 +17,6 @@ use crate::{
     },
 };
 use binrw::io::Cursor;
-use crate::core_compiler::value_visitor::ParentContext;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 
@@ -120,10 +119,16 @@ impl ValueVisitor for CoreCompilationContext<'_> {
     /// Appends a value container.
     /// For local values, the value is just serialized
     /// For shared values, the container is registered in the context shared value tracking
-    fn visit_value_container(&mut self, value_container: ValueContainer, parent_context: Option<ParentContext>) {
+    fn visit_value_container(
+        &mut self,
+        value_container: ValueContainer,
+        parent_context: Option<ParentContext>,
+    ) {
         // TODO can we pass value container by reference?
         match value_container {
-            ValueContainer::Local(value) => append_value(self, value, parent_context),
+            ValueContainer::Local(value) => {
+                append_value(self, value, parent_context)
+            }
             ValueContainer::Shared(reference) => {
                 append_shared_container_from_stack(self, reference);
             }

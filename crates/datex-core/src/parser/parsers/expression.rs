@@ -3,7 +3,7 @@ use crate::{
         expressions::{
             Apply, BinaryOperation, CloneExpression, ComparisonOperation,
             CreateMut, CreateShared, DatexExpression, DatexExpressionData,
-            GenericInstantiation, DeriveRef, DeriveSharedRef, PropertyAccess,
+            DeriveRef, DeriveSharedRef, GenericInstantiation, PropertyAccess,
             PropertyAssignment, RangeDeclaration, RemoteExecution,
             RequestSharedRef, StackAssignment, UnaryOperation, Unbox,
             UnboxAssignment, VariableAssignment,
@@ -574,10 +574,8 @@ impl Parser {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(DatexExpressionData::Unbox(Unbox {
-                    expression: (rhs),
-                })
-                .with_span(span))
+                Ok(DatexExpressionData::Unbox(Unbox { expression: (rhs) })
+                    .with_span(span))
             }
 
             // everything else is an atom
@@ -655,8 +653,8 @@ mod tests {
         ast::{
             expressions::{
                 Apply, BinaryOperation, ComparisonOperation, CreateMut,
-                CreateShared, DatexExpressionData, GenericInstantiation,
-                DeriveRef, DeriveSharedRef, PropertyAccess, PropertyAssignment,
+                CreateShared, DatexExpressionData, DeriveRef, DeriveSharedRef,
+                GenericInstantiation, PropertyAccess, PropertyAssignment,
                 RemoteExecution, RequestSharedRef, StackAssignment, Statements,
                 UnaryOperation, Unbox, UnboxAssignment, VariableAssignment,
             },
@@ -690,15 +688,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                right: (
-                    DatexExpressionData::Boolean(false.into())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Boolean(false.into())
+                    .with_default_span()),
                 ty: None,
             })
         );
@@ -710,27 +704,21 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                right: (
-                    DatexExpressionData::BinaryOperation(BinaryOperation {
-                        left: (
-                            DatexExpressionData::Boolean(false.into())
-                                .with_default_span()
-                        ),
+                right: (DatexExpressionData::BinaryOperation(
+                    BinaryOperation {
+                        left: (DatexExpressionData::Boolean(false.into())
+                            .with_default_span()),
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Multiply
                         ),
-                        right: (
-                            DatexExpressionData::Null.with_default_span()
-                        ),
+                        right: (DatexExpressionData::Null.with_default_span()),
                         ty: None,
-                    })
-                    .with_default_span()
-                ),
+                    }
+                )
+                .with_default_span()),
                 ty: None,
             })
         );
@@ -745,10 +733,8 @@ mod tests {
                 operator: UnaryOperator::Arithmetic(
                     ArithmeticUnaryOperator::Minus
                 ),
-                expression: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
             })
         );
     }
@@ -759,14 +745,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (
-                    DatexExpressionData::Identifier("myObject".to_string())
-                        .with_default_span()
-                ),
-                property: (
-                    DatexExpressionData::Text("myProperty".into())
-                        .with_default_span()
-                ),
+                base: (DatexExpressionData::Identifier("myObject".to_string())
+                    .with_default_span()),
+                property: (DatexExpressionData::Text("myProperty".into())
+                    .with_default_span()),
             })
         );
     }
@@ -777,13 +759,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (
-                    DatexExpressionData::Identifier("myObject".to_string())
-                        .with_default_span()
-                ),
-                property: (
-                    DatexExpressionData::Text("if".into()).with_default_span()
-                ),
+                base: (DatexExpressionData::Identifier("myObject".to_string())
+                    .with_default_span()),
+                property: (DatexExpressionData::Text("if".into())
+                    .with_default_span()),
             })
         );
     }
@@ -794,25 +773,17 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: (
-                    DatexExpressionData::PropertyAccess(PropertyAccess {
-                        base: (
-                            DatexExpressionData::Identifier(
-                                "myObject".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                        property: (
-                            DatexExpressionData::Text("innerObject".into())
-                                .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
-                property: (
-                    DatexExpressionData::Text("myProperty".into())
-                        .with_default_span()
-                ),
+                base: (DatexExpressionData::PropertyAccess(PropertyAccess {
+                    base: (DatexExpressionData::Identifier(
+                        "myObject".to_string()
+                    )
+                    .with_default_span()),
+                    property: (DatexExpressionData::Text("innerObject".into())
+                        .with_default_span()),
+                })
+                .with_default_span()),
+                property: (DatexExpressionData::Text("myProperty".into())
+                    .with_default_span()),
             })
         );
     }
@@ -823,66 +794,50 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::UnaryOperation(UnaryOperation {
-                        operator: UnaryOperator::Arithmetic(
-                            ArithmeticUnaryOperator::Minus
-                        ),
-                        expression: (
-                            DatexExpressionData::PropertyAccess(
-                                PropertyAccess {
-                                    base: (
-                                        DatexExpressionData::Identifier(
-                                            "myObject".to_string()
-                                        )
-                                        .with_default_span()
-                                    ),
-                                    property: (
-                                        DatexExpressionData::Text(
-                                            "value1".into()
-                                        )
-                                        .with_default_span()
-                                    ),
-                                }
+                left: (DatexExpressionData::UnaryOperation(UnaryOperation {
+                    operator: UnaryOperator::Arithmetic(
+                        ArithmeticUnaryOperator::Minus
+                    ),
+                    expression: (DatexExpressionData::PropertyAccess(
+                        PropertyAccess {
+                            base: (DatexExpressionData::Identifier(
+                                "myObject".to_string()
                             )
-                            .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                            .with_default_span()),
+                            property: (DatexExpressionData::Text(
+                                "value1".into()
+                            )
+                            .with_default_span()),
+                        }
+                    )
+                    .with_default_span()),
+                })
+                .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                right: (
-                    DatexExpressionData::BinaryOperation(BinaryOperation {
-                        left: (
-                            DatexExpressionData::PropertyAccess(
-                                PropertyAccess {
-                                    base: (
-                                        DatexExpressionData::Identifier(
-                                            "myObject".to_string()
-                                        )
-                                        .with_default_span()
-                                    ),
-                                    property: (
-                                        DatexExpressionData::Text(
-                                            "value2".into()
-                                        )
-                                        .with_default_span()
-                                    ),
-                                }
-                            )
-                            .with_default_span()
-                        ),
+                right: (DatexExpressionData::BinaryOperation(
+                    BinaryOperation {
+                        left: (DatexExpressionData::PropertyAccess(
+                            PropertyAccess {
+                                base: (DatexExpressionData::Identifier(
+                                    "myObject".to_string()
+                                )
+                                .with_default_span()),
+                                property: (DatexExpressionData::Text(
+                                    "value2".into()
+                                )
+                                .with_default_span()),
+                            }
+                        )
+                        .with_default_span()),
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Multiply
                         ),
-                        right: (
-                            DatexExpressionData::Boolean(true.into())
-                                .with_default_span()
-                        ),
+                        right: (DatexExpressionData::Boolean(true.into())
+                            .with_default_span()),
                         ty: None,
-                    })
-                    .with_default_span()
-                ),
+                    }
+                )
+                .with_default_span()),
                 ty: None,
             })
         );
@@ -894,10 +849,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Apply(Apply {
-                base: (
-                    DatexExpressionData::Identifier("myFunction".to_string())
-                        .with_default_span()
-                ),
+                base: (DatexExpressionData::Identifier(
+                    "myFunction".to_string()
+                )
+                .with_default_span()),
                 arguments: vec![
                     DatexExpressionData::Identifier("arg1".to_string())
                         .with_default_span(),
@@ -914,10 +869,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Apply(Apply {
-                base: (
-                    DatexExpressionData::Identifier("myFunction".to_string())
-                        .with_default_span()
-                ),
+                base: (DatexExpressionData::Identifier(
+                    "myFunction".to_string()
+                )
+                .with_default_span()),
                 arguments: vec![],
             })
         );
@@ -929,10 +884,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Apply(Apply {
-                base: (
-                    DatexExpressionData::Identifier("myFunction".to_string())
-                        .with_default_span()
-                ),
+                base: (DatexExpressionData::Identifier(
+                    "myFunction".to_string()
+                )
+                .with_default_span()),
                 arguments: vec![
                     DatexExpressionData::Identifier("arg1".to_string())
                         .with_default_span(),
@@ -947,21 +902,15 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Apply(Apply {
-                base: (
-                    DatexExpressionData::PropertyAccess(PropertyAccess {
-                        base: (
-                            DatexExpressionData::Identifier(
-                                "myObject".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                        property: (
-                            DatexExpressionData::Text("myFunction".into())
-                                .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                base: (DatexExpressionData::PropertyAccess(PropertyAccess {
+                    base: (DatexExpressionData::Identifier(
+                        "myObject".to_string()
+                    )
+                    .with_default_span()),
+                    property: (DatexExpressionData::Text("myFunction".into())
+                        .with_default_span()),
+                })
+                .with_default_span()),
                 arguments: vec![
                     DatexExpressionData::Identifier("arg1".into())
                         .with_default_span(),
@@ -976,21 +925,17 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Apply(Apply {
-                base: (
-                    DatexExpressionData::Apply(Apply {
-                        base: (
-                            DatexExpressionData::Identifier(
-                                "myFunction".into()
-                            )
-                            .with_default_span()
-                        ),
-                        arguments: vec![
-                            DatexExpressionData::Identifier("arg1".into())
-                                .with_default_span(),
-                        ],
-                    })
-                    .with_default_span()
-                ),
+                base: (DatexExpressionData::Apply(Apply {
+                    base: (DatexExpressionData::Identifier(
+                        "myFunction".into()
+                    )
+                    .with_default_span()),
+                    arguments: vec![
+                        DatexExpressionData::Identifier("arg1".into())
+                            .with_default_span(),
+                    ],
+                })
+                .with_default_span()),
                 arguments: vec![
                     DatexExpressionData::Identifier("arg2".into())
                         .with_default_span(),
@@ -1005,14 +950,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::RemoteExecution(RemoteExecution {
-                left: (
-                    DatexExpressionData::Identifier("endpoint".to_string())
-                        .with_default_span()
-                ),
-                right: (
-                    DatexExpressionData::Identifier("xy".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("endpoint".to_string())
+                    .with_default_span()),
+                right: (DatexExpressionData::Identifier("xy".to_string())
+                    .with_default_span()),
                 injected_variable_count: None,
             })
         );
@@ -1024,25 +965,19 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::RemoteExecution(RemoteExecution {
-                left: (
-                    DatexExpressionData::Identifier("endpoint".to_string())
-                        .with_default_span()
-                ),
-                right: (
-                    DatexExpressionData::Apply(Apply {
-                        base: (
-                            DatexExpressionData::Identifier(
-                                "remoteFunction".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                        arguments: vec![
-                            DatexExpressionData::Identifier("arg1".to_string())
-                                .with_default_span(),
-                        ],
-                    })
-                    .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("endpoint".to_string())
+                    .with_default_span()),
+                right: (DatexExpressionData::Apply(Apply {
+                    base: (DatexExpressionData::Identifier(
+                        "remoteFunction".to_string()
+                    )
+                    .with_default_span()),
+                    arguments: vec![
+                        DatexExpressionData::Identifier("arg1".to_string())
+                            .with_default_span(),
+                    ],
+                })
+                .with_default_span()),
                 injected_variable_count: None,
             })
         );
@@ -1054,27 +989,23 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::RemoteExecution(RemoteExecution {
-                left: (
-                    DatexExpressionData::Identifier("endpoint".to_string())
-                        .with_default_span()
-                ),
-                right: (
-                    DatexExpressionData::Statements(Statements {
-                        statements: vec![
-                            DatexExpressionData::Identifier(
-                                "statement1".to_string()
-                            )
-                            .with_default_span(),
-                            DatexExpressionData::Identifier(
-                                "statement2".to_string()
-                            )
-                            .with_default_span(),
-                        ],
-                        is_terminated: false,
-                        unbounded: None,
-                    })
-                    .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("endpoint".to_string())
+                    .with_default_span()),
+                right: (DatexExpressionData::Statements(Statements {
+                    statements: vec![
+                        DatexExpressionData::Identifier(
+                            "statement1".to_string()
+                        )
+                        .with_default_span(),
+                        DatexExpressionData::Identifier(
+                            "statement2".to_string()
+                        )
+                        .with_default_span(),
+                    ],
+                    is_terminated: false,
+                    unbounded: None,
+                })
+                .with_default_span()),
                 injected_variable_count: None,
             })
         );
@@ -1086,15 +1017,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
                 operator: BinaryOperator::Logical(LogicalOperator::And),
-                right: (
-                    DatexExpressionData::Boolean(false.into())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Boolean(false.into())
+                    .with_default_span()),
                 ty: None,
             })
         );
@@ -1106,15 +1033,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
                 operator: BinaryOperator::Logical(LogicalOperator::Or),
-                right: (
-                    DatexExpressionData::Boolean(false.into())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Boolean(false.into())
+                    .with_default_span()),
                 ty: None,
             })
         );
@@ -1126,13 +1049,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::Integer(1.into()).with_default_span()
-                ),
+                left: (DatexExpressionData::Integer(1.into())
+                    .with_default_span()),
                 operator: BinaryOperator::Bitwise(BitwiseOperator::And),
-                right: (
-                    DatexExpressionData::Integer(2.into()).with_default_span()
-                ),
+                right: (DatexExpressionData::Integer(2.into())
+                    .with_default_span()),
                 ty: None,
             })
         );
@@ -1144,13 +1065,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::Integer(1.into()).with_default_span()
-                ),
+                left: (DatexExpressionData::Integer(1.into())
+                    .with_default_span()),
                 operator: BinaryOperator::Bitwise(BitwiseOperator::Or),
-                right: (
-                    DatexExpressionData::Integer(2.into()).with_default_span()
-                ),
+                right: (DatexExpressionData::Integer(2.into())
+                    .with_default_span()),
                 ty: None,
             })
         );
@@ -1162,26 +1081,20 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
                 operator: BinaryOperator::Logical(LogicalOperator::Or),
-                right: (
-                    DatexExpressionData::BinaryOperation(BinaryOperation {
-                        left: (
-                            DatexExpressionData::Boolean(false.into())
-                                .with_default_span()
-                        ),
+                right: (DatexExpressionData::BinaryOperation(
+                    BinaryOperation {
+                        left: (DatexExpressionData::Boolean(false.into())
+                            .with_default_span()),
                         operator: BinaryOperator::Logical(LogicalOperator::And),
-                        right: (
-                            DatexExpressionData::Boolean(true.into())
-                                .with_default_span()
-                        ),
+                        right: (DatexExpressionData::Boolean(true.into())
+                            .with_default_span()),
                         ty: None,
-                    })
-                    .with_default_span()
-                ),
+                    }
+                )
+                .with_default_span()),
                 ty: None,
             })
         );
@@ -1194,10 +1107,10 @@ mod tests {
             expr.data(),
             &DatexExpressionData::CreateShared(CreateShared {
                 mutability: SharedContainerMutability::Immutable,
-                expression: (
-                    DatexExpressionData::Identifier("myVar".to_string())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Identifier(
+                    "myVar".to_string()
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1208,10 +1121,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::CreateMut(CreateMut {
-                expression: (
-                    DatexExpressionData::Identifier("myVar".to_string())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Identifier(
+                    "myVar".to_string()
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1223,10 +1136,10 @@ mod tests {
             expr.data(),
             &DatexExpressionData::CreateShared(CreateShared {
                 mutability: SharedContainerMutability::Mutable,
-                expression: (
-                    DatexExpressionData::Identifier("myVar".to_string())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Identifier(
+                    "myVar".to_string()
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1238,10 +1151,10 @@ mod tests {
             expr.data(),
             &DatexExpressionData::DeriveRef(DeriveRef {
                 mutability: LocalReferenceMutability::Immutable,
-                expression: (
-                    DatexExpressionData::Identifier("myVar".to_string())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Identifier(
+                    "myVar".to_string()
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1253,10 +1166,10 @@ mod tests {
             expr.data(),
             &DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                 mutability: ReferenceMutability::Immutable,
-                expression: (
-                    DatexExpressionData::Identifier("myVar".to_string())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Identifier(
+                    "myVar".to_string()
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1268,10 +1181,10 @@ mod tests {
             expr.data(),
             &DatexExpressionData::DeriveRef(DeriveRef {
                 mutability: LocalReferenceMutability::Mutable,
-                expression: (
-                    DatexExpressionData::Identifier("myVar".to_string())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Identifier(
+                    "myVar".to_string()
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1283,10 +1196,10 @@ mod tests {
             expr.data(),
             &DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                 mutability: ReferenceMutability::Mutable,
-                expression: (
-                    DatexExpressionData::Identifier("myVar".to_string())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Identifier(
+                    "myVar".to_string()
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1298,21 +1211,19 @@ mod tests {
             expr.data(),
             &DatexExpressionData::DeriveRef(DeriveRef {
                 mutability: LocalReferenceMutability::Immutable,
-                expression: (
-                    DatexExpressionData::PropertyAccess(PropertyAccess {
-                        base: (
-                            DatexExpressionData::Identifier(
-                                "myObject".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                        property: (
-                            DatexExpressionData::Text("myProperty".into())
-                                .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                expression: (DatexExpressionData::PropertyAccess(
+                    PropertyAccess {
+                        base: (DatexExpressionData::Identifier(
+                            "myObject".to_string()
+                        )
+                        .with_default_span()),
+                        property: (DatexExpressionData::Text(
+                            "myProperty".into()
+                        )
+                        .with_default_span()),
+                    }
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1324,21 +1235,19 @@ mod tests {
             expr.data(),
             &DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                 mutability: ReferenceMutability::Immutable,
-                expression: (
-                    DatexExpressionData::PropertyAccess(PropertyAccess {
-                        base: (
-                            DatexExpressionData::Identifier(
-                                "myObject".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                        property: (
-                            DatexExpressionData::Text("myProperty".into())
-                                .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                expression: (DatexExpressionData::PropertyAccess(
+                    PropertyAccess {
+                        base: (DatexExpressionData::Identifier(
+                            "myObject".to_string()
+                        )
+                        .with_default_span()),
+                        property: (DatexExpressionData::Text(
+                            "myProperty".into()
+                        )
+                        .with_default_span()),
+                    }
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1350,18 +1259,14 @@ mod tests {
             expr.data(),
             &DatexExpressionData::DeriveRef(DeriveRef {
                 mutability: LocalReferenceMutability::Mutable,
-                expression: (
-                    DatexExpressionData::DeriveRef(DeriveRef {
-                        mutability: LocalReferenceMutability::Immutable,
-                        expression: (
-                            DatexExpressionData::Identifier(
-                                "myVar".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                expression: (DatexExpressionData::DeriveRef(DeriveRef {
+                    mutability: LocalReferenceMutability::Immutable,
+                    expression: (DatexExpressionData::Identifier(
+                        "myVar".to_string()
+                    )
+                    .with_default_span()),
+                })
+                .with_default_span()),
             })
         );
     }
@@ -1373,18 +1278,16 @@ mod tests {
             expr.data(),
             &DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                 mutability: ReferenceMutability::Mutable,
-                expression: (
-                    DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
+                expression: (DatexExpressionData::DeriveSharedRef(
+                    DeriveSharedRef {
                         mutability: ReferenceMutability::Immutable,
-                        expression: (
-                            DatexExpressionData::Identifier(
-                                "myVar".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                        expression: (DatexExpressionData::Identifier(
+                            "myVar".to_string()
+                        )
+                        .with_default_span()),
+                    }
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1395,10 +1298,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Unbox(Unbox {
-                expression: (
-                    DatexExpressionData::Identifier("myRef".to_string())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Identifier(
+                    "myRef".to_string()
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1409,18 +1312,14 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Unbox(Unbox {
-                expression: (
-                    DatexExpressionData::DeriveRef(DeriveRef {
-                        mutability: LocalReferenceMutability::Immutable,
-                        expression: (
-                            DatexExpressionData::Identifier(
-                                "myVar".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                expression: (DatexExpressionData::DeriveRef(DeriveRef {
+                    mutability: LocalReferenceMutability::Immutable,
+                    expression: (DatexExpressionData::Identifier(
+                        "myVar".to_string()
+                    )
+                    .with_default_span()),
+                })
+                .with_default_span()),
             })
         );
     }
@@ -1431,18 +1330,16 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Unbox(Unbox {
-                expression: (
-                    DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
+                expression: (DatexExpressionData::DeriveSharedRef(
+                    DeriveSharedRef {
                         mutability: ReferenceMutability::Immutable,
-                        expression: (
-                            DatexExpressionData::Identifier(
-                                "myVar".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                        expression: (DatexExpressionData::Identifier(
+                            "myVar".to_string()
+                        )
+                        .with_default_span()),
+                    }
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1453,17 +1350,13 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Unbox(Unbox {
-                expression: (
-                    DatexExpressionData::Unbox(Unbox {
-                        expression: (
-                            DatexExpressionData::Identifier(
-                                "myRef".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                expression: (DatexExpressionData::Unbox(Unbox {
+                    expression: (DatexExpressionData::Identifier(
+                        "myRef".to_string()
+                    )
+                    .with_default_span()),
+                })
+                .with_default_span()),
             })
         );
     }
@@ -1474,29 +1367,21 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::Unbox(Unbox {
-                        expression: (
-                            DatexExpressionData::Identifier(
-                                "myRef".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                left: (DatexExpressionData::Unbox(Unbox {
+                    expression: (DatexExpressionData::Identifier(
+                        "myRef".to_string()
+                    )
+                    .with_default_span()),
+                })
+                .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-                right: (
-                    DatexExpressionData::Unbox(Unbox {
-                        expression: (
-                            DatexExpressionData::Identifier(
-                                "myRef2".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
+                right: (DatexExpressionData::Unbox(Unbox {
+                    expression: (DatexExpressionData::Identifier(
+                        "myRef2".to_string()
+                    )
+                    .with_default_span()),
+                })
+                .with_default_span()),
                 ty: None,
             })
         );
@@ -1511,10 +1396,8 @@ mod tests {
                 id: None,
                 name: "x".to_string(),
                 operator: None,
-                expression: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
             })
         );
     }
@@ -1546,18 +1429,14 @@ mod tests {
             expr.data(),
             &DatexExpressionData::PropertyAssignment(PropertyAssignment {
                 operator: None,
-                base: (
-                    DatexExpressionData::Identifier("obj".to_string())
-                        .with_default_span()
-                ),
-                property: (
-                    DatexExpressionData::Text("prop".into())
-                        .with_default_span()
-                ),
-                assigned_expression: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                base: (DatexExpressionData::Identifier("obj".to_string())
+                    .with_default_span()),
+                property: (DatexExpressionData::Text("prop".into())
+                    .with_default_span()),
+                assigned_expression: (DatexExpressionData::Boolean(
+                    true.into()
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1571,9 +1450,8 @@ mod tests {
                 id: None,
                 name: "x".to_string(),
                 operator: Some(AssignmentOperator::AddAssign),
-                expression: (
-                    DatexExpressionData::Integer(42.into()).with_default_span()
-                ),
+                expression: (DatexExpressionData::Integer(42.into())
+                    .with_default_span()),
             })
         );
     }
@@ -1585,10 +1463,8 @@ mod tests {
             expr.data(),
             &DatexExpressionData::SlotAssignment(StackAssignment {
                 index: StackIndex(2),
-                expression: (
-                    DatexExpressionData::Integer(100.into())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Integer(100.into())
+                    .with_default_span()),
             })
         );
     }
@@ -1600,14 +1476,12 @@ mod tests {
             expr.data(),
             &DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: None,
-                unbox_expression: (
-                    DatexExpressionData::Identifier("myRef".to_string())
-                        .with_default_span()
-                ),
-                assigned_expression: (
-                    DatexExpressionData::Integer(200.into())
-                        .with_default_span()
-                ),
+                unbox_expression: (DatexExpressionData::Identifier(
+                    "myRef".to_string()
+                )
+                .with_default_span()),
+                assigned_expression: (DatexExpressionData::Integer(200.into())
+                    .with_default_span()),
             })
         );
     }
@@ -1619,21 +1493,15 @@ mod tests {
             expr.data(),
             &DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: None,
-                unbox_expression: (
-                    DatexExpressionData::Unbox(Unbox {
-                        expression: (
-                            DatexExpressionData::Identifier(
-                                "myRef".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
-                ),
-                assigned_expression: (
-                    DatexExpressionData::Integer(300.into())
-                        .with_default_span()
-                ),
+                unbox_expression: (DatexExpressionData::Unbox(Unbox {
+                    expression: (DatexExpressionData::Identifier(
+                        "myRef".to_string()
+                    )
+                    .with_default_span()),
+                })
+                .with_default_span()),
+                assigned_expression: (DatexExpressionData::Integer(300.into())
+                    .with_default_span()),
             })
         );
     }
@@ -1644,15 +1512,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (
-                    DatexExpressionData::Identifier("a".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span()),
                 operator: ComparisonOperator::StructuralEqual,
-                right: (
-                    DatexExpressionData::Identifier("b".to_string())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1663,15 +1527,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (
-                    DatexExpressionData::Identifier("a".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span()),
                 operator: ComparisonOperator::Is,
-                right: (
-                    DatexExpressionData::Identifier("b".to_string())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1682,15 +1542,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (
-                    DatexExpressionData::Identifier("a".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span()),
                 operator: ComparisonOperator::Equal,
-                right: (
-                    DatexExpressionData::Identifier("b".to_string())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1701,15 +1557,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (
-                    DatexExpressionData::Identifier("a".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span()),
                 operator: ComparisonOperator::NotStructuralEqual,
-                right: (
-                    DatexExpressionData::Identifier("b".to_string())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1720,15 +1572,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (
-                    DatexExpressionData::Identifier("a".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span()),
                 operator: ComparisonOperator::NotEqual,
-                right: (
-                    DatexExpressionData::Identifier("b".to_string())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1739,15 +1587,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (
-                    DatexExpressionData::Identifier("a".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span()),
                 operator: ComparisonOperator::LessThan,
-                right: (
-                    DatexExpressionData::Identifier("b".to_string())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1758,10 +1602,8 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::GenericInstantiation(GenericInstantiation {
-                base: (
-                    DatexExpressionData::Identifier("MyType".to_string())
-                        .with_default_span()
-                ),
+                base: (DatexExpressionData::Identifier("MyType".to_string())
+                    .with_default_span()),
                 generic_arguments: vec![
                     TypeExpressionData::Identifier("Arg1".to_string())
                         .with_default_span(),
@@ -1776,10 +1618,8 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::GenericInstantiation(GenericInstantiation {
-                base: (
-                    DatexExpressionData::Identifier("MyType".to_string())
-                        .with_default_span()
-                ),
+                base: (DatexExpressionData::Identifier("MyType".to_string())
+                    .with_default_span()),
                 generic_arguments: vec![
                     TypeExpressionData::Identifier("Arg1".to_string())
                         .with_default_span(),
@@ -1796,25 +1636,19 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Apply(Apply {
-                base: (
-                    DatexExpressionData::GenericInstantiation(
-                        GenericInstantiation {
-                            base: (
-                                DatexExpressionData::Identifier(
-                                    "MyType".to_string()
-                                )
-                                .with_default_span()
-                            ),
-                            generic_arguments: vec![
-                                TypeExpressionData::Identifier(
-                                    "Arg1".to_string()
-                                )
+                base: (DatexExpressionData::GenericInstantiation(
+                    GenericInstantiation {
+                        base: (DatexExpressionData::Identifier(
+                            "MyType".to_string()
+                        )
+                        .with_default_span()),
+                        generic_arguments: vec![
+                            TypeExpressionData::Identifier("Arg1".to_string())
                                 .with_default_span(),
-                            ],
-                        }
-                    )
-                    .with_default_span()
-                ),
+                        ],
+                    }
+                )
+                .with_default_span()),
                 arguments: vec![
                     DatexExpressionData::Integer(42.into()).with_default_span(),
                 ],
@@ -1828,15 +1662,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (
-                    DatexExpressionData::Identifier("a".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span()),
                 operator: ComparisonOperator::GreaterThan,
-                right: (
-                    DatexExpressionData::Identifier("b".to_string())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1847,15 +1677,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (
-                    DatexExpressionData::Identifier("a".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span()),
                 operator: ComparisonOperator::LessThanOrEqual,
-                right: (
-                    DatexExpressionData::Identifier("b".to_string())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1866,15 +1692,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (
-                    DatexExpressionData::Identifier("a".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span()),
                 operator: ComparisonOperator::GreaterThanOrEqual,
-                right: (
-                    DatexExpressionData::Identifier("b".to_string())
-                        .with_default_span()
-                ),
+                right: (DatexExpressionData::Identifier("b".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1885,28 +1707,26 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
-                left: (
-                    DatexExpressionData::Identifier("a".to_string())
-                        .with_default_span()
-                ),
+                left: (DatexExpressionData::Identifier("a".to_string())
+                    .with_default_span()),
                 operator: ComparisonOperator::StructuralEqual,
-                right: (
-                    DatexExpressionData::BinaryOperation(BinaryOperation {
-                        left: (
-                            DatexExpressionData::Identifier("b".to_string())
-                                .with_default_span()
-                        ),
+                right: (DatexExpressionData::BinaryOperation(
+                    BinaryOperation {
+                        left: (DatexExpressionData::Identifier(
+                            "b".to_string()
+                        )
+                        .with_default_span()),
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        right: (
-                            DatexExpressionData::Identifier("c".to_string())
-                                .with_default_span()
-                        ),
+                        right: (DatexExpressionData::Identifier(
+                            "c".to_string()
+                        )
+                        .with_default_span()),
                         ty: None,
-                    })
-                    .with_default_span()
-                ),
+                    }
+                )
+                .with_default_span()),
             })
         );
     }
@@ -1918,10 +1738,8 @@ mod tests {
             expr.data(),
             &DatexExpressionData::UnaryOperation(UnaryOperation {
                 operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
-                expression: (
-                    DatexExpressionData::Boolean(true.into())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Boolean(true.into())
+                    .with_default_span()),
             })
         );
     }
@@ -1941,10 +1759,8 @@ mod tests {
                 operator: UnaryOperator::Arithmetic(
                     ArithmeticUnaryOperator::Plus
                 ),
-                expression: (
-                    DatexExpressionData::Identifier("x".to_string())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Identifier("x".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1964,10 +1780,8 @@ mod tests {
                 operator: UnaryOperator::Arithmetic(
                     ArithmeticUnaryOperator::Minus
                 ),
-                expression: (
-                    DatexExpressionData::Identifier("x".to_string())
-                        .with_default_span()
-                ),
+                expression: (DatexExpressionData::Identifier("x".to_string())
+                    .with_default_span()),
             })
         );
     }
@@ -1978,13 +1792,11 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::Integer(2.into()).with_default_span()
-                ),
+                left: (DatexExpressionData::Integer(2.into())
+                    .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Power),
-                right: (
-                    DatexExpressionData::Integer(3.into()).with_default_span()
-                ),
+                right: (DatexExpressionData::Integer(3.into())
+                    .with_default_span()),
                 ty: None,
             })
         );
@@ -1996,27 +1808,22 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::Integer(2.into()).with_default_span()
-                ),
+                left: (DatexExpressionData::Integer(2.into())
+                    .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Power),
-                right: (
-                    DatexExpressionData::BinaryOperation(BinaryOperation {
-                        left: (
-                            DatexExpressionData::Integer(3.into())
-                                .with_default_span()
-                        ),
+                right: (DatexExpressionData::BinaryOperation(
+                    BinaryOperation {
+                        left: (DatexExpressionData::Integer(3.into())
+                            .with_default_span()),
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Power
                         ),
-                        right: (
-                            DatexExpressionData::Integer(4.into())
-                                .with_default_span()
-                        ),
+                        right: (DatexExpressionData::Integer(4.into())
+                            .with_default_span()),
                         ty: None,
-                    })
-                    .with_default_span()
-                ),
+                    }
+                )
+                .with_default_span()),
                 ty: None,
             })
         );
@@ -2028,27 +1835,20 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::BinaryOperation(BinaryOperation {
-                left: (
-                    DatexExpressionData::BinaryOperation(BinaryOperation {
-                        left: (
-                            DatexExpressionData::Integer(2.into())
-                                .with_default_span()
-                        ),
-                        operator: BinaryOperator::Arithmetic(
-                            ArithmeticOperator::Power
-                        ),
-                        right: (
-                            DatexExpressionData::Integer(3.into())
-                                .with_default_span()
-                        ),
-                        ty: None,
-                    })
-                    .with_default_span()
-                ),
+                left: (DatexExpressionData::BinaryOperation(BinaryOperation {
+                    left: (DatexExpressionData::Integer(2.into())
+                        .with_default_span()),
+                    operator: BinaryOperator::Arithmetic(
+                        ArithmeticOperator::Power
+                    ),
+                    right: (DatexExpressionData::Integer(3.into())
+                        .with_default_span()),
+                    ty: None,
+                })
+                .with_default_span()),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Power),
-                right: (
-                    DatexExpressionData::Integer(4.into()).with_default_span()
-                ),
+                right: (DatexExpressionData::Integer(4.into())
+                    .with_default_span()),
                 ty: None,
             })
         );

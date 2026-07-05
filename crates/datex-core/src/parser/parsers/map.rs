@@ -136,19 +136,15 @@ mod tests {
                     ),
                     (
                         DatexExpressionData::BinaryOperation(BinaryOperation {
-                            left: (
-                                DatexExpressionData::Identifier(
-                                    "y".to_string()
-                                )
-                                .with_default_span()
-                            ),
+                            left: (DatexExpressionData::Identifier(
+                                "y".to_string()
+                            )
+                            .with_default_span()),
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add
                             ),
-                            right: (
-                                DatexExpressionData::Boolean(true.into())
-                                    .with_default_span()
-                            ),
+                            right: (DatexExpressionData::Boolean(true.into())
+                                .with_default_span()),
                             ty: None,
                         })
                         .with_default_span(),

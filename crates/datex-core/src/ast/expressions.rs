@@ -57,10 +57,7 @@ impl Default for DatexExpression {
     }
 }
 impl DatexExpression {
-    pub fn new(
-        data: DatexExpressionData,
-        span: ops::Range<usize>,
-    ) -> Self {
+    pub fn new(data: DatexExpressionData, span: ops::Range<usize>) -> Self {
         DatexExpression {
             data: Box::new(data),
             span,
@@ -109,7 +106,7 @@ pub enum DatexExpressionData {
 
     /// (...)
     OmitRecursive,
-    
+
     /// Boolean (true or false)
     Boolean(Boolean),
     /// Text, e.g "Hello, world!"
@@ -240,10 +237,7 @@ pub enum DatexExpressionData {
 impl Spanned for DatexExpressionData {
     type Output = DatexExpression;
 
-    fn with_span<T: Into<ops::Range<usize>>>(
-        self,
-        span: T,
-    ) -> Self::Output {
+    fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
         DatexExpression {
             data: Box::new(self),
             span: span.into(),
@@ -263,10 +257,7 @@ impl Spanned for DatexExpressionData {
 impl Spanned for Box<DatexExpressionData> {
     type Output = DatexExpression;
 
-    fn with_span<T: Into<ops::Range<usize>>>(
-        self,
-        span: T,
-    ) -> Self::Output {
+    fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
         DatexExpression {
             data: self,
             span: span.into(),

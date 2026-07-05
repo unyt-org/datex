@@ -26,12 +26,11 @@ pub mod value_id;
 use crate::{
     prelude::*,
     types::{r#type::Type, type_definition::callable::CallableKind},
-    values::core_values::callable::CoreStub,
+    values::core_values::{callable::CoreStub, endpoint::Endpoint},
 };
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {

@@ -18,8 +18,8 @@ pub mod pointer_availability_lookup;
 mod runner;
 
 pub mod cache;
-pub mod pointer_address_provider;
 mod confirm_moves;
+pub mod pointer_address_provider;
 #[cfg(test)]
 pub mod test_utils;
 

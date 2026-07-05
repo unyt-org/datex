@@ -1,9 +1,14 @@
+use crate::{
+    shared_values::{
+        ReferenceMutability, ReferencedSharedContainer, SharedContainerInner,
+        SharedContainerMutability, SharedContainerOwnership,
+        base_shared_value_container::BaseSharedValueContainer,
+        shared_container_common::SharedContainerCommon,
+    },
+    types::type_definition::TypeDefinition,
+    values::value_container::ValueContainer,
+};
 use core::cell::{Ref, RefMut};
-use crate::shared_values::{ReferenceMutability, ReferencedSharedContainer, SharedContainerInner, SharedContainerMutability, SharedContainerOwnership};
-use crate::shared_values::base_shared_value_container::BaseSharedValueContainer;
-use crate::shared_values::shared_container_common::SharedContainerCommon;
-use crate::types::type_definition::TypeDefinition;
-use crate::values::value_container::ValueContainer;
 
 impl SharedContainerCommon for ReferencedSharedContainer {
     /// Get the [SharedContainerMutability] of the inner [SelfOwnedSharedContainer].
@@ -43,7 +48,6 @@ impl SharedContainerCommon for ReferencedSharedContainer {
     fn inner(&self) -> Ref<'_, SharedContainerInner> {
         self.inner.borrow()
     }
-
 
     fn inner_mut(&self) -> RefMut<'_, SharedContainerInner> {
         self.inner.borrow_mut()

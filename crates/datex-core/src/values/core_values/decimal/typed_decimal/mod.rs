@@ -368,7 +368,10 @@ impl From<f64> for TypedDecimal {
 mod tests {
     use crate::{
         prelude::*,
-        traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+        traits::{
+            structural_eq::{StructuralEq, assert_structural_eq},
+            value_eq::{ValueEq, assert_value_eq},
+        },
         values::core_values::{
             decimal::{
                 Decimal,
@@ -379,8 +382,6 @@ mod tests {
     };
     use core::assert_matches;
     use ordered_float::OrderedFloat;
-    use crate::traits::structural_eq::assert_structural_eq;
-    use crate::traits::value_eq::assert_value_eq;
 
     #[test]
     fn zero_sign() {

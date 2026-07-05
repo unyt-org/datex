@@ -104,8 +104,8 @@ mod tests {
             expr.data(),
             &DatexExpressionData::Tag(TagExpression {
                 tag: "MyTag".to_string(),
-                expression: Some((
-                    DatexExpressionData::Map(Map {
+                expression: Some(
+                    (DatexExpressionData::Map(Map {
                         entries: vec![(
                             DatexExpressionData::Text("a".into())
                                 .with_default_span(),
@@ -115,8 +115,8 @@ mod tests {
                             .with_default_span(),
                         )]
                     })
-                    .with_default_span()
-                ))
+                    .with_default_span())
+                )
             })
         );
     }
@@ -128,8 +128,8 @@ mod tests {
             expr.data(),
             &DatexExpressionData::Tag(TagExpression {
                 tag: "MyTag".to_string(),
-                expression: Some((
-                    DatexExpressionData::List(List {
+                expression: Some(
+                    (DatexExpressionData::List(List {
                         items: vec![
                             DatexExpressionData::Boolean(true.into())
                                 .with_default_span(),
@@ -137,8 +137,8 @@ mod tests {
                                 .with_default_span(),
                         ]
                     })
-                    .with_default_span()
-                ))
+                    .with_default_span())
+                )
             })
         );
     }
@@ -150,10 +150,10 @@ mod tests {
             expr.data(),
             &DatexExpressionData::Tag(TagExpression {
                 tag: "MyTag".to_string(),
-                expression: Some((
-                    DatexExpressionData::TypedInteger(TypedInteger::U8(42))
-                        .with_default_span()
-                ))
+                expression: Some(
+                    (DatexExpressionData::TypedInteger(TypedInteger::U8(42))
+                        .with_default_span())
+                )
             })
         );
     }
@@ -168,8 +168,8 @@ mod tests {
                 items: vec![
                     DatexExpressionData::Tag(TagExpression {
                         tag: "Tag1".to_string(),
-                        expression: Some((
-                            DatexExpressionData::Map(Map {
+                        expression: Some(
+                            (DatexExpressionData::Map(Map {
                                 entries: vec![(
                                     DatexExpressionData::Text("a".into())
                                         .with_default_span(),
@@ -179,8 +179,8 @@ mod tests {
                                     .with_default_span(),
                                 )]
                             })
-                            .with_default_span()
-                        ))
+                            .with_default_span())
+                        )
                     })
                     .with_default_span(),
                     DatexExpressionData::Tag(TagExpression {
@@ -190,12 +190,12 @@ mod tests {
                     .with_default_span(),
                     DatexExpressionData::Tag(TagExpression {
                         tag: "Tag3".to_string(),
-                        expression: Some((
-                            DatexExpressionData::TypedInteger(
+                        expression: Some(
+                            (DatexExpressionData::TypedInteger(
                                 TypedInteger::U8(42)
                             )
-                            .with_default_span()
-                        ))
+                            .with_default_span())
+                        )
                     })
                     .with_default_span(),
                 ]
@@ -210,22 +210,18 @@ mod tests {
             expr.data(),
             &DatexExpressionData::ComparisonOperation(ComparisonOperation {
                 operator: ComparisonOperator::StructuralEqual,
-                left: (
-                    DatexExpressionData::Tag(TagExpression {
-                        tag: "Test".to_string(),
-                        expression: Some((
-                            DatexExpressionData::TypedInteger(
-                                TypedInteger::U8(4)
-                            )
-                            .with_default_span()
+                left: (DatexExpressionData::Tag(TagExpression {
+                    tag: "Test".to_string(),
+                    expression: Some(
+                        (DatexExpressionData::TypedInteger(TypedInteger::U8(
+                            4
                         ))
-                    })
-                    .with_default_span()
-                ),
-                right: (
-                    DatexExpressionData::TypedInteger(TypedInteger::U8(4))
-                        .with_default_span()
-                ),
+                        .with_default_span())
+                    )
+                })
+                .with_default_span()),
+                right: (DatexExpressionData::TypedInteger(TypedInteger::U8(4))
+                    .with_default_span()),
             })
         );
     }

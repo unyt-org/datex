@@ -27,7 +27,9 @@ impl<'a> ChildIterator<'a> for CoreValue {
         }
     }
 
-    fn iter_children_mut(&'a mut self) -> impl Iterator<Item=&'a mut ValueContainer> + 'a {
+    fn iter_children_mut(
+        &'a mut self,
+    ) -> impl Iterator<Item = &'a mut ValueContainer> + 'a {
         gen move {
             match self {
                 CoreValue::Map(map) => {

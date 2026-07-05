@@ -19,11 +19,11 @@ use crate::{
     ast::{
         expressions::{
             BinaryOperation, CloneExpression, DatexExpression,
-            DatexExpressionData, DeriveRef, DeriveSharedRef, PropertyAssignment,
-            RemoteExecution, RequestSharedRef, Statements, TypeDeclaration,
-            TypeDeclarationKind, Unbox, UnboxAssignment, ValueAccessType,
-            VariableAccess, VariableAssignment, VariableDeclaration,
-            VariableKind, VariantAccess,
+            DatexExpressionData, DeriveRef, DeriveSharedRef,
+            PropertyAssignment, RemoteExecution, RequestSharedRef, Statements,
+            TypeDeclaration, TypeDeclarationKind, Unbox, UnboxAssignment,
+            ValueAccessType, VariableAccess, VariableAssignment,
+            VariableDeclaration, VariableKind, VariantAccess,
         },
         resolved_variable::ResolvedVariable,
         spanned::Spanned,
@@ -803,7 +803,8 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         // if expression is an identifier, set access type to clone
-        if let DatexExpressionData::Identifier(name) = &clone.expression.data() {
+        if let DatexExpressionData::Identifier(name) = &clone.expression.data()
+        {
             self.visit_identifier_with_access_type(
                 name,
                 span,
@@ -829,7 +830,8 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         // if expression is an identifier, set access type to clone
-        if let DatexExpressionData::Identifier(name) = &unbox.expression.data() {
+        if let DatexExpressionData::Identifier(name) = &unbox.expression.data()
+        {
             let expression = self.get_identifier_with_access_type(
                 name,
                 unbox.expression.span(),
@@ -837,10 +839,8 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             )?;
             match expression {
                 Some(expression) => Ok(VisitAction::ReplaceRecurse(
-                    DatexExpressionData::Unbox(Unbox {
-                        expression,
-                    })
-                    .with_span(span.clone()),
+                    DatexExpressionData::Unbox(Unbox { expression })
+                        .with_span(span.clone()),
                 )),
                 None => Ok(VisitAction::SkipChildren),
             }
@@ -1112,14 +1112,16 @@ mod tests {
         assert_matches!(
             result,
             Ok(RichAst {
-                ast: DatexExpression {
-                    data: box DatexExpressionData::ResolveCoreLibId(
-                        CoreLibId::Type(CoreLibTypeId::Base(
-                            CoreLibBaseTypeId::Boolean
-                        ))
-                    ),
-                    ..
-                },
+                ast:
+                    DatexExpression {
+                        data:
+                            box DatexExpressionData::ResolveCoreLibId(
+                                CoreLibId::Type(CoreLibTypeId::Base(
+                                    CoreLibBaseTypeId::Boolean,
+                                )),
+                            ),
+                        ..
+                    },
                 ..
             })
         );
@@ -1127,14 +1129,16 @@ mod tests {
         assert_matches!(
             result,
             Ok(RichAst {
-                ast: DatexExpression {
-                    data: box DatexExpressionData::ResolveCoreLibId(
-                        CoreLibId::Type(CoreLibTypeId::Base(
-                            CoreLibBaseTypeId::Integer
-                        ))
-                    ),
-                    ..
-                },
+                ast:
+                    DatexExpression {
+                        data:
+                            box DatexExpressionData::ResolveCoreLibId(
+                                CoreLibId::Type(CoreLibTypeId::Base(
+                                    CoreLibBaseTypeId::Integer,
+                                )),
+                            ),
+                        ..
+                    },
                 ..
             })
         );
@@ -1237,70 +1241,64 @@ mod tests {
         );
 
         // value shall be interpreted as division
-        let result = parse_and_precompile("var a = 42; var b = 69; a/b").unwrap();
-        let statements = if let DatexExpressionData::Statements(stmts) =
-            result.ast.data()
-        {
-            stmts
-        } else {
-            core::panic!("Expected statements");
-        };
+        let result =
+            parse_and_precompile("var a = 42; var b = 69; a/b").unwrap();
+        let statements =
+            if let DatexExpressionData::Statements(stmts) = result.ast.data() {
+                stmts
+            } else {
+                core::panic!("Expected statements");
+            };
         assert_eq!(
             *statements.statements.get(2).unwrap(),
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(
                     ArithmeticOperator::Divide
                 ),
-                left: (
-                    DatexExpressionData::VariableAccess(VariableAccess {
-                        id: 0,
-                        name: "a".to_string(),
-                        access_type: ValueAccessType::MoveOrCopy,
-                    })
-                    .with_default_span()
-                ),
-                right: (
-                    DatexExpressionData::VariableAccess(VariableAccess {
-                        id: 1,
-                        name: "b".to_string(),
-                        access_type: ValueAccessType::MoveOrCopy,
-                    })
-                    .with_default_span()
-                ),
+                left: (DatexExpressionData::VariableAccess(VariableAccess {
+                    id: 0,
+                    name: "a".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
+                })
+                .with_default_span()),
+                right: (DatexExpressionData::VariableAccess(VariableAccess {
+                    id: 1,
+                    name: "b".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
+                })
+                .with_default_span()),
                 ty: None
             })
             .with_default_span()
         );
 
         // type with value should be interpreted as division
-        let result = parse_and_precompile("var a = 10; type b = 42; a/b").unwrap();
-        let statements = if let DatexExpressionData::Statements(stmts) =
-            result.ast.data()
-        {
-            stmts
-        } else {
-            core::panic!("Expected statements");
-        };
+        let result =
+            parse_and_precompile("var a = 10; type b = 42; a/b").unwrap();
+        let statements =
+            if let DatexExpressionData::Statements(stmts) = result.ast.data() {
+                stmts
+            } else {
+                core::panic!("Expected statements");
+            };
         assert_eq!(
             *statements.statements.get(2).unwrap(),
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator: BinaryOperator::Arithmetic(
                     ArithmeticOperator::Divide
                 ),
-                left:
-                    DatexExpressionData::VariableAccess(VariableAccess {
-                        id: 1,
-                        name: "a".to_string(),
-                        access_type: ValueAccessType::MoveOrCopy,
-                    })
-                    .with_default_span(),
-                right:
-                    DatexExpressionData::VariableAccess(VariableAccess {
-                        id: 0,
-                        name: "b".to_string(),
-                        access_type: ValueAccessType::MoveOrCopy,
-                    })
-                    .with_default_span(),
+                left: DatexExpressionData::VariableAccess(VariableAccess {
+                    id: 1,
+                    name: "a".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
+                })
+                .with_default_span(),
+                right: DatexExpressionData::VariableAccess(VariableAccess {
+                    id: 0,
+                    name: "b".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
+                })
+                .with_default_span(),
                 ty: None
             })
             .with_default_span()
@@ -1329,14 +1327,14 @@ mod tests {
                     kind: VariableKind::Var,
                     name: "x".to_string(),
                     // must refer to variable id 0
-                    init_expression: (
-                        DatexExpressionData::VariableAccess(VariableAccess {
+                    init_expression: (DatexExpressionData::VariableAccess(
+                        VariableAccess {
                             id: 0,
                             name: "MyInt".to_string(),
                             access_type: ValueAccessType::MoveOrCopy,
-                        })
-                        .with_default_span()
-                    ),
+                        }
+                    )
+                    .with_default_span()),
                     type_annotation: None,
                 })
                 .with_default_span(),
@@ -1358,14 +1356,14 @@ mod tests {
                     kind: VariableKind::Var,
                     name: "x".to_string(),
                     // must refer to variable id 0
-                    init_expression: (
-                        DatexExpressionData::VariableAccess(VariableAccess {
+                    init_expression: (DatexExpressionData::VariableAccess(
+                        VariableAccess {
                             id: 0,
                             name: "MyInt".to_string(),
                             access_type: ValueAccessType::MoveOrCopy,
-                        })
-                        .with_default_span()
-                    ),
+                        }
+                    )
+                    .with_default_span()),
                     type_annotation: None,
                 })
                 .with_default_span(),
@@ -1522,34 +1520,30 @@ mod tests {
                             id: Some(0),
                             kind: VariableKind::Const,
                             name: "x".to_string(),
-                            init_expression: (
-                                DatexExpressionData::DeriveRef(DeriveRef {
+                            init_expression: (DatexExpressionData::DeriveRef(
+                                DeriveRef {
                                     mutability:
                                         LocalReferenceMutability::Immutable,
-                                    expression: (
-                                        DatexExpressionData::Integer(
-                                            Integer::from(42)
-                                        )
-                                        .with_default_span()
+                                    expression: (DatexExpressionData::Integer(
+                                        Integer::from(42)
                                     )
-                                })
-                                .with_default_span()
-                            ),
+                                    .with_default_span())
+                                }
+                            )
+                            .with_default_span()),
                             type_annotation: None,
                         }
                     )
                     .with_default_span(),
                     DatexExpressionData::Unbox(Unbox {
-                        expression: (
-                            DatexExpressionData::VariableAccess(
-                                VariableAccess {
-                                    id: 0,
-                                    name: "x".to_string(),
-                                    access_type: ValueAccessType::Borrow,
-                                }
-                            )
-                            .with_default_span()
+                        expression: (DatexExpressionData::VariableAccess(
+                            VariableAccess {
+                                id: 0,
+                                name: "x".to_string(),
+                                access_type: ValueAccessType::Borrow,
+                            }
                         )
+                        .with_default_span())
                     })
                     .with_default_span(),
                 ]
@@ -1695,10 +1689,10 @@ mod tests {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: (
-                                DatexExpressionData::Integer(Integer::from(42))
-                                    .with_default_span()
-                            ),
+                            init_expression: (DatexExpressionData::Integer(
+                                Integer::from(42)
+                            )
+                            .with_default_span()),
                             type_annotation: None,
                         }
                     )
@@ -1729,10 +1723,10 @@ mod tests {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: (
-                                DatexExpressionData::Integer(Integer::from(42))
-                                    .with_default_span()
-                            ),
+                            init_expression: (DatexExpressionData::Integer(
+                                Integer::from(42)
+                            )
+                            .with_default_span()),
                             type_annotation: None,
                         }
                     )
@@ -1763,10 +1757,10 @@ mod tests {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: (
-                                DatexExpressionData::Integer(Integer::from(42))
-                                    .with_default_span()
-                            ),
+                            init_expression: (DatexExpressionData::Integer(
+                                Integer::from(42)
+                            )
+                            .with_default_span()),
                             type_annotation: None,
                         }
                     )
@@ -1797,24 +1791,23 @@ mod tests {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: (
-                                DatexExpressionData::Integer(Integer::from(42))
-                                    .with_default_span()
-                            ),
+                            init_expression: (DatexExpressionData::Integer(
+                                Integer::from(42)
+                            )
+                            .with_default_span()),
                             type_annotation: None,
                         }
                     )
                     .with_default_span(),
                     DatexExpressionData::Unbox(Unbox {
-                        expression:
-                            DatexExpressionData::VariableAccess(
-                                VariableAccess {
-                                    id: 0,
-                                    name: "x".to_string(),
-                                    access_type: ValueAccessType::Borrow,
-                                }
-                            )
-                            .with_default_span()
+                        expression: DatexExpressionData::VariableAccess(
+                            VariableAccess {
+                                id: 0,
+                                name: "x".to_string(),
+                                access_type: ValueAccessType::Borrow,
+                            }
+                        )
+                        .with_default_span()
                     })
                     .with_default_span(),
                 ]
@@ -1832,21 +1825,17 @@ mod tests {
             rich_ast.ast.data(),
             &DatexExpressionData::Statements(Statements::new_terminated(vec![
                 DatexExpressionData::RemoteExecution(RemoteExecution {
-                    left: (
-                        DatexExpressionData::Endpoint(
-                            Endpoint::from_str("@example").unwrap()
-                        )
-                        .with_default_span()
-                    ),
-                    right: (
-                        DatexExpressionData::Statements(
-                            Statements::new_terminated(vec![
-                                DatexExpressionData::Integer(Integer::from(1))
-                                    .with_default_span()
-                            ])
-                        )
-                        .with_default_span()
-                    ),
+                    left: (DatexExpressionData::Endpoint(
+                        Endpoint::from_str("@example").unwrap()
+                    )
+                    .with_default_span()),
+                    right: (DatexExpressionData::Statements(
+                        Statements::new_terminated(vec![
+                            DatexExpressionData::Integer(Integer::from(1))
+                                .with_default_span()
+                        ])
+                    )
+                    .with_default_span()),
                     injected_variable_count: Some(0),
                 })
                 .with_default_span()
@@ -1865,18 +1854,16 @@ mod tests {
                 vec![
                     DatexExpressionData::RemoteExecution(RemoteExecution {
                         left: DatexExpressionData::Endpoint(
-                                Endpoint::from_str("@example").unwrap()
-                            )
-                            .with_default_span(),
+                            Endpoint::from_str("@example").unwrap()
+                        )
+                        .with_default_span(),
                         right: DatexExpressionData::Statements(
-                                Statements::new_terminated(vec![
-                                    DatexExpressionData::Integer(
-                                        Integer::from(1)
-                                    )
+                            Statements::new_terminated(vec![
+                                DatexExpressionData::Integer(Integer::from(1))
                                     .with_default_span()
-                                ])
-                            )
-                            .with_default_span(),
+                            ])
+                        )
+                        .with_default_span(),
                         injected_variable_count: Some(0),
                     })
                     .with_default_span(),
@@ -1897,18 +1884,18 @@ mod tests {
             &DatexExpressionData::Statements(Statements::new_terminated(vec![
                 DatexExpressionData::RemoteExecution(RemoteExecution {
                     left: DatexExpressionData::Endpoint(
-                            Endpoint::from_str("@example").unwrap()
-                        )
-                        .with_default_span(),
+                        Endpoint::from_str("@example").unwrap()
+                    )
+                    .with_default_span(),
                     right: DatexExpressionData::Statements(
-                            Statements::new_terminated(vec![
-                                DatexExpressionData::Integer(Integer::from(1))
-                                    .with_default_span(),
-                                DatexExpressionData::Integer(Integer::from(2))
-                                    .with_default_span(),
-                            ],)
-                        )
-                        .with_default_span(),
+                        Statements::new_terminated(vec![
+                            DatexExpressionData::Integer(Integer::from(1))
+                                .with_default_span(),
+                            DatexExpressionData::Integer(Integer::from(2))
+                                .with_default_span(),
+                        ],)
+                    )
+                    .with_default_span(),
                     injected_variable_count: Some(0),
                 })
                 .with_default_span()
@@ -1930,25 +1917,27 @@ mod tests {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: DatexExpressionData::Integer(Integer::from(10))
-                                .with_default_span(),
+                            init_expression: DatexExpressionData::Integer(
+                                Integer::from(10)
+                            )
+                            .with_default_span(),
                             type_annotation: None,
                         }
                     )
                     .with_default_span(),
                     DatexExpressionData::RemoteExecution(RemoteExecution {
                         left: DatexExpressionData::Endpoint(
-                                Endpoint::from_str("@example").unwrap()
-                            )
-                            .with_default_span(),
+                            Endpoint::from_str("@example").unwrap()
+                        )
+                        .with_default_span(),
                         right: DatexExpressionData::VariableAccess(
-                                VariableAccess {
-                                    id: 0,
-                                    name: "x".to_string(),
-                                    access_type: ValueAccessType::MoveOrCopy,
-                                }
-                            )
-                            .with_default_span(),
+                            VariableAccess {
+                                id: 0,
+                                name: "x".to_string(),
+                                access_type: ValueAccessType::MoveOrCopy,
+                            }
+                        )
+                        .with_default_span(),
                         injected_variable_count: Some(1),
                     })
                     .with_default_span(),
@@ -1969,36 +1958,56 @@ mod tests {
                     id: Some(0),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
-                    init_expression: DatexExpressionData::Integer(Integer::from(10))
-                        .with_default_span(),
+                    init_expression: DatexExpressionData::Integer(
+                        Integer::from(10)
+                    )
+                    .with_default_span(),
                     type_annotation: None,
                 })
-                    .with_default_span(),
+                .with_default_span(),
                 DatexExpressionData::RemoteExecution(RemoteExecution {
-                    left: DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span(),
-                    right: DatexExpressionData::Statements(Statements::new_terminated(
-                        vec![
-                            DatexExpressionData::VariableAccess(VariableAccess {
-                                id: 0,
-                                name: "x".to_string(),
-                                access_type: ValueAccessType::MoveOrCopy,
-                            }).with_default_span(),
-                            DatexExpressionData::BinaryOperation(BinaryOperation {
-                                operator: BinaryOperator::Arithmetic(
-                                    ArithmeticOperator::Add
-                                ),
-                                left: DatexExpressionData::VariableAccess(VariableAccess {
+                    left: DatexExpressionData::Endpoint(
+                        Endpoint::from_str("@example").unwrap()
+                    )
+                    .with_default_span(),
+                    right: DatexExpressionData::Statements(
+                        Statements::new_terminated(vec![
+                            DatexExpressionData::VariableAccess(
+                                VariableAccess {
                                     id: 0,
                                     name: "x".to_string(),
                                     access_type: ValueAccessType::MoveOrCopy,
-                                }).with_default_span(),
-                                right: DatexExpressionData::Integer(Integer::from(1)).with_default_span(),
-                                ty: None
-                            }).with_default_span(),
-                        ],
-                    )).with_default_span(),
+                                }
+                            )
+                            .with_default_span(),
+                            DatexExpressionData::BinaryOperation(
+                                BinaryOperation {
+                                    operator: BinaryOperator::Arithmetic(
+                                        ArithmeticOperator::Add
+                                    ),
+                                    left: DatexExpressionData::VariableAccess(
+                                        VariableAccess {
+                                            id: 0,
+                                            name: "x".to_string(),
+                                            access_type:
+                                                ValueAccessType::MoveOrCopy,
+                                        }
+                                    )
+                                    .with_default_span(),
+                                    right: DatexExpressionData::Integer(
+                                        Integer::from(1)
+                                    )
+                                    .with_default_span(),
+                                    ty: None
+                                }
+                            )
+                            .with_default_span(),
+                        ],)
+                    )
+                    .with_default_span(),
                     injected_variable_count: Some(1),
-                }).with_default_span(),
+                })
+                .with_default_span(),
             ]))
         )
     }
@@ -2075,26 +2084,24 @@ mod tests {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: (
-                                DatexExpressionData::Integer(Integer::from(42))
-                                    .with_default_span()
-                            ),
+                            init_expression: (DatexExpressionData::Integer(
+                                Integer::from(42)
+                            )
+                            .with_default_span()),
                             type_annotation: None,
                         }
                     )
                     .with_default_span(),
                     DatexExpressionData::DeriveRef(DeriveRef {
                         mutability: LocalReferenceMutability::Immutable,
-                        expression: (
-                            DatexExpressionData::VariableAccess(
-                                VariableAccess {
-                                    id: 0,
-                                    name: "x".to_string(),
-                                    access_type: ValueAccessType::Borrow,
-                                }
-                            )
-                            .with_default_span()
+                        expression: (DatexExpressionData::VariableAccess(
+                            VariableAccess {
+                                id: 0,
+                                name: "x".to_string(),
+                                access_type: ValueAccessType::Borrow,
+                            }
                         )
+                        .with_default_span())
                     })
                     .with_default_span(),
                 ]
@@ -2117,47 +2124,40 @@ mod tests {
                             id: Some(0),
                             kind: VariableKind::Var,
                             name: "x".to_string(),
-                            init_expression: (
-                                DatexExpressionData::Map(Map {
-                                    entries: vec![(
-                                        DatexExpressionData::Text("a".into())
-                                            .with_default_span(),
-                                        DatexExpressionData::Integer(
-                                            Integer::from(42)
-                                        )
-                                        .with_default_span()
-                                    )],
-                                })
-                                .with_default_span()
-                            ),
+                            init_expression: (DatexExpressionData::Map(Map {
+                                entries: vec![(
+                                    DatexExpressionData::Text("a".into())
+                                        .with_default_span(),
+                                    DatexExpressionData::Integer(
+                                        Integer::from(42)
+                                    )
+                                    .with_default_span()
+                                )],
+                            })
+                            .with_default_span()),
                             type_annotation: None,
                         }
                     )
                     .with_default_span(),
                     DatexExpressionData::DeriveRef(DeriveRef {
                         mutability: LocalReferenceMutability::Immutable,
-                        expression: (
-                            DatexExpressionData::PropertyAccess(
-                                PropertyAccess {
-                                    base: (
-                                        DatexExpressionData::VariableAccess(
-                                            VariableAccess {
-                                                id: 0,
-                                                name: "x".to_string(),
-                                                access_type:
-                                                    ValueAccessType::Borrow,
-                                            }
-                                        )
-                                        .with_default_span()
-                                    ),
-                                    property: (
-                                        DatexExpressionData::Text("a".into())
-                                            .with_default_span()
-                                    ),
-                                }
-                            )
-                            .with_default_span()
+                        expression: (DatexExpressionData::PropertyAccess(
+                            PropertyAccess {
+                                base: (DatexExpressionData::VariableAccess(
+                                    VariableAccess {
+                                        id: 0,
+                                        name: "x".to_string(),
+                                        access_type: ValueAccessType::Borrow,
+                                    }
+                                )
+                                .with_default_span()),
+                                property: (DatexExpressionData::Text(
+                                    "a".into()
+                                )
+                                .with_default_span()),
+                            }
                         )
+                        .with_default_span())
                     })
                     .with_default_span(),
                 ]
@@ -2179,38 +2179,34 @@ mod tests {
                     id: Some(0),
                     kind: VariableKind::Var,
                     name: "x".to_string(),
-                    init_expression: (
-                        DatexExpressionData::Map(Map {
-                            entries: vec![(
-                                DatexExpressionData::Text("a".into())
-                                    .with_default_span(),
-                                DatexExpressionData::Integer(Integer::from(42))
-                                    .with_default_span()
-                            )],
-                        })
-                        .with_default_span()
-                    ),
+                    init_expression: (DatexExpressionData::Map(Map {
+                        entries: vec![(
+                            DatexExpressionData::Text("a".into())
+                                .with_default_span(),
+                            DatexExpressionData::Integer(Integer::from(42))
+                                .with_default_span()
+                        )],
+                    })
+                    .with_default_span()),
                     type_annotation: None,
                 })
                 .with_default_span(),
                 DatexExpressionData::PropertyAssignment(PropertyAssignment {
                     operator: None,
-                    base: (
-                        DatexExpressionData::VariableAccess(VariableAccess {
+                    base: (DatexExpressionData::VariableAccess(
+                        VariableAccess {
                             id: 0,
                             name: "x".to_string(),
                             access_type: ValueAccessType::Borrow,
-                        })
-                        .with_default_span()
-                    ),
-                    property: (
-                        DatexExpressionData::Text("a".into())
-                            .with_default_span()
-                    ),
-                    assigned_expression: (
-                        DatexExpressionData::Integer(Integer::from(43))
-                            .with_default_span()
-                    ),
+                        }
+                    )
+                    .with_default_span()),
+                    property: (DatexExpressionData::Text("a".into())
+                        .with_default_span()),
+                    assigned_expression: (DatexExpressionData::Integer(
+                        Integer::from(43)
+                    )
+                    .with_default_span()),
                 })
                 .with_default_span(),
             ]))
@@ -2224,14 +2220,14 @@ mod tests {
                 var a = 0;
                 a==(a+a)
             ",
-        ).unwrap();
-        let statements = if let DatexExpressionData::Statements(stmts) =
-            result.ast.data()
-        {
-            stmts
-        } else {
-            core::panic!("Expected statements");
-        };
+        )
+        .unwrap();
+        let statements =
+            if let DatexExpressionData::Statements(stmts) = result.ast.data() {
+                stmts
+            } else {
+                core::panic!("Expected statements");
+            };
         assert_eq!(
                 *statements.statements.get(1).unwrap(),
                 DatexExpressionData::ComparisonOperation(ComparisonOperation {

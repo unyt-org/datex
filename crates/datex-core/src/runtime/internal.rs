@@ -27,6 +27,7 @@ use crate::{
     runtime::{
         Runtime, RuntimeConfig, RuntimeConfigInterface,
         cache::shared_references_cache::SharedReferencesCache,
+        confirm_moves::compile_request_moves,
         execution::{
             ExecutionError, InvalidProgramError,
             context::{
@@ -37,7 +38,6 @@ use crate::{
         },
         pointer_address_provider::SelfOwnedPointerAddressProvider,
         pointer_availability_lookup::PointerAvailabilityLookup,
-        confirm_moves::compile_request_moves,
     },
     shared_values::{
         OwnedSharedContainer, PointerAddress, RemotePointerAddress,
@@ -578,7 +578,7 @@ impl RuntimeInternal {
             panic!("endpoints must not be empty");
         }
 
-        for shared_container in shared_containers {
+        for _shared_container in shared_containers {
             // TODO: Subscribe
         }
 
@@ -627,10 +627,9 @@ impl RuntimeInternal {
             .await?;
 
         /**
-        * MOVE $abab [1,2,#3] // {mut}
-        * CONFIRM_MOVES [$a -> $b, ...]
-        **/
-
+         * MOVE $abab [1,2,#3] // {mut}
+         * CONFIRM_MOVES [$a -> $b, ...]
+         */
         // moved values should be list
         match moved_values {
             Some(ValueContainer::Local(Value {
@@ -670,8 +669,10 @@ impl RuntimeInternal {
     ) -> Result<(), ExecutionError> {
         pointer_mapping
             .into_iter()
-            .map(|(original_address, new)| {
-                let new_address = PointerAddress::Remote(RemotePointerAddress::for_endpoint(from_endpoint, &new));
+            .try_for_each(|(original_address, new)| {
+                let new_address = PointerAddress::Remote(
+                    RemotePointerAddress::for_endpoint(from_endpoint, &new),
+                );
 
                 // not allowed if new pointer address already in memory
                 if memory.has_reference(&new_address) {
@@ -692,7 +693,6 @@ impl RuntimeInternal {
 
                 Ok(())
             })
-            .collect::<Result<(), ExecutionError>>()
     }
 
     pub fn get_env(&self) -> HashMap<String, String> {

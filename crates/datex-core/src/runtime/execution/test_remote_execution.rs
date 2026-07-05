@@ -8,6 +8,7 @@ use crate::{
     },
     shared_values::{
         PointerAddress, SharedContainer, SharedContainerMutability,
+        shared_container_common::SharedContainerCommon,
     },
     values::{
         core_values::{
@@ -18,7 +19,6 @@ use crate::{
 };
 use core::assert_matches;
 use log::info;
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 #[tokio::test]
 #[cfg(feature = "compiler")]

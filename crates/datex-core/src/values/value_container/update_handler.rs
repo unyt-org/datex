@@ -1,6 +1,9 @@
 use crate::{
     prelude::*,
-    shared_values::base_shared_value_container::observers::TransceiverId,
+    shared_values::{
+        base_shared_value_container::observers::TransceiverId,
+        shared_container_common::SharedContainerCommon,
+    },
     value_updates::{
         errors::UpdateError,
         update_data::{
@@ -12,7 +15,6 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::result::Result;
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 impl UpdateHandler for ValueContainer {
     fn try_set_entry(

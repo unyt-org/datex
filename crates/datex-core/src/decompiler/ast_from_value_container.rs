@@ -19,7 +19,9 @@ use crate::{
     },
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
-    shared_values::SharedContainer,
+    shared_values::{
+        SharedContainer, shared_container_common::SharedContainerCommon,
+    },
     types::{
         r#type::Type,
         type_definition::{
@@ -30,7 +32,6 @@ use crate::{
     },
 };
 use alloc::format;
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -42,27 +43,30 @@ impl From<&ValueContainer> for DatexExpressionData {
                 SharedContainer::Referenced(referenced_container) => {
                     DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                         mutability: referenced_container.reference_mutability(),
-                        expression: (create_shared(referenced_container).with_default_span()),
+                        expression: (create_shared(referenced_container)
+                            .with_default_span()),
                     })
                 }
-                SharedContainer::Owned(owned_container) => create_shared(owned_container),
+                SharedContainer::Owned(owned_container) => {
+                    create_shared(owned_container)
+                }
             },
         }
     }
 }
 
-fn create_shared(shared_container: &impl SharedContainerCommon) -> DatexExpressionData {
+fn create_shared(
+    shared_container: &impl SharedContainerCommon,
+) -> DatexExpressionData {
     if shared_container.is_borrowed() {
         DatexExpressionData::OmitRecursive
-    }
-    else {
+    } else {
         DatexExpressionData::CreateShared(CreateShared {
             mutability: shared_container.container_mutability(),
-            expression: (
-                DatexExpressionData::from(
-                    &*shared_container.value_container(),
-                ).with_default_span()
-            ),
+            expression: (DatexExpressionData::from(
+                &*shared_container.value_container(),
+            )
+            .with_default_span()),
         })
     }
 }
@@ -99,14 +103,10 @@ fn core_value_to_datex_expression(
 
         CoreValue::Range(range) => {
             DatexExpressionData::Range(RangeDeclaration {
-                start: (
-                    DatexExpressionData::from(&*range.start.clone())
-                        .with_default_span()
-                ),
-                end: (
-                    DatexExpressionData::from(&*range.end.clone())
-                        .with_default_span()
-                ),
+                start: (DatexExpressionData::from(&*range.start.clone())
+                    .with_default_span()),
+                end: (DatexExpressionData::from(&*range.end.clone())
+                    .with_default_span()),
             })
         }
 
@@ -170,10 +170,8 @@ fn core_value_to_datex_expression(
                         .yeet_type
                         .as_ref()
                         .map(|ty| type_to_type_expression(ty)),
-                    body: (
-                        DatexExpressionData::NativeImplementationIndicator
-                            .with_default_span()
-                    ),
+                    body: (DatexExpressionData::NativeImplementationIndicator
+                        .with_default_span()),
                     injected_variable_count: None,
                 },
             ))
@@ -416,14 +414,10 @@ mod tests {
         assert_eq!(
             ast,
             DatexExpressionData::Range(RangeDeclaration {
-                start: (
-                    DatexExpressionData::Integer(Integer::from(11))
-                        .with_default_span()
-                ),
-                end: (
-                    DatexExpressionData::Integer(Integer::from(13))
-                        .with_default_span()
-                ),
+                start: (DatexExpressionData::Integer(Integer::from(11))
+                    .with_default_span()),
+                end: (DatexExpressionData::Integer(Integer::from(13))
+                    .with_default_span()),
             })
         );
     }

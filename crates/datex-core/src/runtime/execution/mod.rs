@@ -250,8 +250,12 @@ mod tests {
             OwnedSharedContainer, ReferencedSharedContainer, SharedContainer,
             SharedContainerInner, SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
+            shared_container_common::SharedContainerCommon,
         },
-        traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+        traits::{
+            structural_eq::{StructuralEq, assert_structural_eq},
+            value_eq::{ValueEq, assert_value_eq},
+        },
         types::{
             r#type::Type,
             type_definition::{
@@ -264,7 +268,7 @@ mod tests {
                 decimal::Decimal,
                 endpoint::Endpoint,
                 integer::{Integer, typed_integer::TypedInteger},
-                list::List,
+                list::{List, datex_list},
                 map::Map,
             },
             value::Value,
@@ -272,10 +276,6 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
-    use crate::shared_values::shared_container_common::SharedContainerCommon;
-    use crate::traits::structural_eq::assert_structural_eq;
-    use crate::traits::value_eq::assert_value_eq;
-    use crate::values::core_values::list::datex_list;
 
     fn execute_datex_script_debug(
         datex_script: &str,

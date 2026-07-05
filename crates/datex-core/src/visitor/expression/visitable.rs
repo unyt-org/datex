@@ -2,8 +2,8 @@ use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, Conditional, CreateMut, CreateShared,
-        DatexExpression, DatexExpressionData, GenericInstantiation, DeriveRef,
-        DeriveSharedRef, List, Map, PropertyAccess, PropertyAssignment,
+        DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
+        GenericInstantiation, List, Map, PropertyAccess, PropertyAssignment,
         RangeDeclaration, RemoteExecution, StackAssignment, Statements,
         TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, VariableAssignment, VariableDeclaration,

@@ -31,8 +31,9 @@ use crate::{
 
 use crate::{
     ast::expressions::{
-        CloneExpression, CreateShared, DeriveSharedRef, RequestSharedRef,
-        RootPropertyAccess, StackAssignment, TagExpression,
+        CloneExpression, CreateShared, DeriveSharedRef, RemoteExecution,
+        RequestSharedRef, RootPropertyAccess, StackAssignment, TagExpression,
+        UnboxAssignment,
     },
     global::protocol_structures::{
         instruction_data::{
@@ -49,7 +50,6 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
-use crate::ast::expressions::{RemoteExecution, UnboxAssignment};
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -1077,18 +1077,14 @@ mod tests {
                     operator: BinaryOperator::Arithmetic(
                         ArithmeticOperator::Add
                     ),
-                    left: (
-                        DatexExpressionData::TypedInteger(TypedInteger::from(
-                            3u8
-                        ))
-                        .with_default_span()
-                    ),
-                    right: (
-                        DatexExpressionData::TypedInteger(TypedInteger::from(
-                            4u8
-                        ))
-                        .with_default_span()
-                    ),
+                    left: (DatexExpressionData::TypedInteger(
+                        TypedInteger::from(3u8)
+                    )
+                    .with_default_span()),
+                    right: (DatexExpressionData::TypedInteger(
+                        TypedInteger::from(4u8)
+                    )
+                    .with_default_span()),
                     ty: None
                 })
                 .with_default_span(),

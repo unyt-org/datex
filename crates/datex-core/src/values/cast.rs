@@ -73,7 +73,7 @@ macro_rules! impl_try_from_core_value {
                     }
                 }
             }
-        
+
             impl<'a> TryFrom<&'a mut CoreValue> for &'a mut $type {
                 type Error = TryFromDatexValueError;
                 fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {

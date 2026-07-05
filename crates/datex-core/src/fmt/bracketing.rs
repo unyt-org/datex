@@ -178,7 +178,8 @@ impl<'a> Formatter<'a> {
         // and whether that operator is associative (so we can drop parens for same-op associative cases).
 
         // check if same operator and is associative
-        let same_op_and_assoc = match (child.data(), &parent_context.operation) {
+        let same_op_and_assoc = match (child.data(), &parent_context.operation)
+        {
             (
                 DatexExpressionData::BinaryOperation(BinaryOperation {
                     operator,

@@ -424,7 +424,10 @@ mod tests {
     #[test]
     fn parse_infinity() {
         let expr = parse("infinity");
-        assert_eq!(expr.data(), &DatexExpressionData::Decimal(Decimal::Infinity));
+        assert_eq!(
+            expr.data(),
+            &DatexExpressionData::Decimal(Decimal::Infinity)
+        );
     }
 
     #[test]
@@ -487,7 +490,10 @@ mod tests {
     #[test]
     fn parse_stack_index() {
         let expr = parse("\\42");
-        assert_eq!(expr.data(), &DatexExpressionData::StackIndex(StackIndex(42)));
+        assert_eq!(
+            expr.data(),
+            &DatexExpressionData::StackIndex(StackIndex(42))
+        );
     }
 
     #[test]
@@ -516,12 +522,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
-                expression: (
-                    DatexExpressionData::Placeholder(
-                        ValueAccessType::MoveOrCopy
-                    )
-                    .with_default_span()
-                ),
+                expression: (DatexExpressionData::Placeholder(
+                    ValueAccessType::MoveOrCopy
+                )
+                .with_default_span()),
                 mutability: ReferenceMutability::Immutable,
             })
         );
@@ -533,12 +537,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
-                expression: (
-                    DatexExpressionData::Placeholder(
-                        ValueAccessType::MoveOrCopy
-                    )
-                    .with_default_span()
-                ),
+                expression: (DatexExpressionData::Placeholder(
+                    ValueAccessType::MoveOrCopy
+                )
+                .with_default_span()),
                 mutability: ReferenceMutability::Mutable,
             })
         );
@@ -550,12 +552,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Clone(CloneExpression {
-                expression: (
-                    DatexExpressionData::Placeholder(
-                        ValueAccessType::MoveOrCopy
-                    )
-                    .with_default_span()
+                expression: (DatexExpressionData::Placeholder(
+                    ValueAccessType::MoveOrCopy
                 )
+                .with_default_span())
             })
         );
     }

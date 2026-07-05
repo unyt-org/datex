@@ -1,13 +1,13 @@
 use crate::{
     core_compiler::value_compiler::append_regular_instruction,
     global::protocol_structures::{
+        instruction_data::ConfirmMoves,
         regular_instructions::RegularInstruction,
     },
     prelude::*,
     shared_values::SelfOwnedPointerAddress,
 };
 use binrw::io::Cursor;
-use crate::global::protocol_structures::instruction_data::ConfirmMoves;
 
 /// Compiles a CONFIRM_MOVES instruction with a list of pointer mappings
 pub fn compile_request_moves(

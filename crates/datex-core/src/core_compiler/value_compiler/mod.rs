@@ -49,6 +49,7 @@ use crate::{
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainer,
         SharedContainerOwnership,
+        shared_container_common::SharedContainerCommon,
     },
     types::{
         r#type::Type,
@@ -57,7 +58,6 @@ use crate::{
     },
     values::value_container::value_key::ValueKey,
 };
-use crate::shared_values::shared_container_common::SharedContainerCommon;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -662,7 +662,10 @@ mod tests {
             core_compilation_context::default_core_compilation_context,
             shared_value_tracking::TrackedValueMetadata,
         },
-        disassembler::print_disassembled,
+        disassembler::{
+            assertions::{assert_regular_instructions_equal, instructions},
+            print_disassembled,
+        },
         global::protocol_structures::instruction_data::{
             MoveWithValue, SharedRefWithValue, ShortListData, StackIndex,
         },
@@ -675,7 +678,6 @@ mod tests {
     };
     use core::assert_matches;
     use log::info;
-    use crate::disassembler::assertions::{assert_regular_instructions_equal, instructions};
 
     fn compile_value_assert_instructions(
         value: Value,

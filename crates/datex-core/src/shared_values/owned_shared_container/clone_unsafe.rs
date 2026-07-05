@@ -1,5 +1,6 @@
-use crate::shared_values::OwnedSharedContainer;
-use crate::traits::clone_unsafe::CloneUnsafe;
+use crate::{
+    shared_values::OwnedSharedContainer, traits::clone_unsafe::CloneUnsafe,
+};
 
 impl CloneUnsafe for OwnedSharedContainer {
     unsafe fn clone_unsafe(&self) -> Self {
