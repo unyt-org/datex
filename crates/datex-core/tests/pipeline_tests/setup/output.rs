@@ -1,10 +1,21 @@
 use crate::pipeline_tests::setup::{Defined, Undefined};
 use core::marker::PhantomData;
 use datex_core::{
-    ast::expressions::DatexExpression, disassembler::InstructionTree,
+    disassembler::InstructionTree,
     global::protocol_structures::instructions::Instruction,
-    parser::lexer::Token, values::value_container::ValueContainer,
+    values::value_container::ValueContainer,
 };
+
+#[cfg(feature = "ast")]
+use datex_core::ast::expressions::DatexExpression;
+
+#[cfg(feature = "parser")]
+use datex_core::parser::lexer::Token;
+
+enum SameAsInputOrCustom<T> {
+    SameAsInput,
+    Custom(T),
+}
 
 /// A builder for pipeline output assertion, allowing the user to specify
 /// the expected states for all stage (parser, compiler, execution, ...)
@@ -21,12 +32,14 @@ pub struct PipelineOutput<
     Value,
     RustValue,
 > {
+    #[cfg(feature = "parser")]
     tokens: Option<&'a [Token]>,
+    #[cfg(feature = "ast")]
     ast: Option<DatexExpression>,
     instructions: Option<InstructionTree<Instruction>>,
-    source_code: Option<String>,
-    value: Option<ValueContainer>,
-    rust_value: Option<T>,
+    source_code: Option<SameAsInputOrCustom<String>>,
+    value: Option<SameAsInputOrCustom<&'a ValueContainer>>,
+    rust_value: Option<SameAsInputOrCustom<T>>,
 
     _marker: PhantomData<(
         InputSourceCode,
@@ -82,7 +95,17 @@ impl<
         Value,
         RustValue,
     > {
-        todo!()
+        PipelineOutput {
+            #[cfg(feature = "parser")]
+            tokens: self.tokens,
+            #[cfg(feature = "ast")]
+            ast: self.ast,
+            instructions: self.instructions,
+            source_code: Some(SameAsInputOrCustom::SameAsInput),
+            value: self.value,
+            rust_value: self.rust_value,
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -127,7 +150,17 @@ impl<
         Defined,
         RustValue,
     > {
-        todo!()
+        PipelineOutput {
+            #[cfg(feature = "parser")]
+            tokens: self.tokens,
+            #[cfg(feature = "ast")]
+            ast: self.ast,
+            instructions: self.instructions,
+            source_code: self.source_code,
+            value: Some(SameAsInputOrCustom::SameAsInput),
+            rust_value: self.rust_value,
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -172,7 +205,17 @@ impl<
         Value,
         Defined,
     > {
-        todo!()
+        PipelineOutput {
+            #[cfg(feature = "parser")]
+            tokens: self.tokens,
+            #[cfg(feature = "ast")]
+            ast: self.ast,
+            instructions: self.instructions,
+            source_code: self.source_code,
+            value: self.value,
+            rust_value: Some(SameAsInputOrCustom::SameAsInput),
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -221,10 +264,12 @@ impl<
         RustValue,
     > {
         PipelineOutput {
+            #[cfg(feature = "parser")]
             tokens: self.tokens,
+            #[cfg(feature = "ast")]
             ast: self.ast,
             instructions: self.instructions,
-            source_code: Some(source.into()),
+            source_code: Some(SameAsInputOrCustom::Custom(source.into())),
             value: self.value,
             rust_value: self.rust_value,
             _marker: PhantomData,
@@ -276,12 +321,14 @@ impl<
         Defined,
     > {
         PipelineOutput {
+            #[cfg(feature = "parser")]
             tokens: self.tokens,
+            #[cfg(feature = "ast")]
             ast: self.ast,
             instructions: self.instructions,
             source_code: self.source_code,
             value: self.value,
-            rust_value: Some(value),
+            rust_value: Some(SameAsInputOrCustom::Custom(value)),
             _marker: PhantomData,
         }
     }
@@ -317,7 +364,7 @@ impl<
     /// the pipeline for the given inputs.
     pub fn datex_value(
         self,
-        value: impl Into<ValueContainer>,
+        value: impl Into<&'a ValueContainer>,
     ) -> PipelineOutput<
         'a,
         T,
@@ -332,17 +379,20 @@ impl<
         RustValue,
     > {
         PipelineOutput {
+            #[cfg(feature = "parser")]
             tokens: self.tokens,
+            #[cfg(feature = "ast")]
             ast: self.ast,
             instructions: self.instructions,
             source_code: self.source_code,
-            value: Some(value.into()),
+            value: Some(SameAsInputOrCustom::Custom(value.into())),
             rust_value: self.rust_value,
             _marker: PhantomData,
         }
     }
 }
 
+#[cfg(feature = "parser")]
 impl<
     'a,
     T,
@@ -398,6 +448,7 @@ impl<
     }
 }
 
+#[cfg(feature = "ast")]
 impl<
     'a,
     T,
@@ -497,7 +548,9 @@ impl<
         RustValue,
     > {
         PipelineOutput {
+            #[cfg(feature = "parser")]
             tokens: self.tokens,
+            #[cfg(feature = "ast")]
             ast: self.ast,
             instructions: Some(ast.into()),
             source_code: self.source_code,
@@ -523,7 +576,9 @@ pub fn output<'a, InputSourceCode, InputValue, InputRustValue>()
     Undefined,
 > {
     PipelineOutput {
+        #[cfg(feature = "parser")]
         tokens: None,
+        #[cfg(feature = "ast")]
         ast: None,
         instructions: None,
         source_code: None,

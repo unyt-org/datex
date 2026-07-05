@@ -1,5 +1,5 @@
 use crate::pipeline_tests::setup::{
-    Defined, Undefined, output, output::PipelineOutput,
+    Defined, Undefined, output::PipelineOutput,
 };
 use core::marker::PhantomData;
 use datex_core::values::value_container::ValueContainer;
@@ -7,9 +7,9 @@ use datex_core::values::value_container::ValueContainer;
 /// A builder for pipeline input,
 /// allowing the user to specify the source code, the Datex value, and the Rust value.
 pub struct PipelineInput<T, SourceCode, Value, RustValue> {
-    source_code: Option<String>,
-    value: Option<ValueContainer>,
-    rust_value: Option<T>,
+    pub(super) source_code: Option<String>,
+    pub(super) value: Option<ValueContainer>,
+    pub(super) rust_value: Option<T>,
 
     _marker: PhantomData<(SourceCode, Value, RustValue)>,
 }

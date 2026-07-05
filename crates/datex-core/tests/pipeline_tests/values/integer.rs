@@ -1,14 +1,23 @@
 use crate::pipeline_tests::setup::{input, output, validate_pipeline};
 use datex_core::{
-    ast::expressions::DatexExpressionData,
     global::protocol_structures::{
         instruction_data::UInt8Data, regular_instructions::RegularInstruction,
     },
     values::core_values::integer::typed_integer::TypedInteger,
 };
+use datex_core::values::value_container::ValueContainer;
+
+#[cfg(feature = "ast")]
+use datex_core::ast::expressions::DatexExpressionData;
 
 #[test]
 fn integer_u8() {
+    // source code input "42u8" produces corresponding DATEX value after execution
+    validate_pipeline(
+        input().source_code("42u8"),
+        output().datex_value(&ValueContainer::from(TypedInteger::U8(42))),
+    );
+    
     // For any of the given input variants, all the expected outputs must be produced
     validate_pipeline(
         input()
@@ -33,6 +42,6 @@ fn integer_u8() {
     // Rust value 42u8 produces corresponding DATEX value after execution
     validate_pipeline(
         input().rust_value(42u8),
-        output().datex_value(TypedInteger::U8(42)),
+        output().datex_value(&ValueContainer::from(TypedInteger::U8(42))),
     );
 }

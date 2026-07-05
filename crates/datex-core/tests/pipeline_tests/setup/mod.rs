@@ -36,5 +36,31 @@ pub fn validate_pipeline<
         OutputRustValue,
     >,
 ) {
+    // test each input against all outputs
+    if let Some(source_code) = input.source_code {
+        validate_source_code_input(source_code, output); 
+    }
+}
+
+pub fn validate_source_code_input<
+    T,
+    InputSourceCode,
+    InputValue,
+    InputRustValue,
+    Tokens,
+    Ast,
+    Instructions,
+    SourceCode,
+    Value,
+    RustValue,
+>(
+    source_code: String,
+    output: PipelineOutput<T, InputSourceCode, InputValue, InputRustValue, Tokens, Ast, Instructions, SourceCode, Value, RustValue>
+) {
+    // stage: parser
+    // stage: compiler
+    // stage execution
+    
+    // additional end-to-end check: source code to final value
     todo!()
 }
