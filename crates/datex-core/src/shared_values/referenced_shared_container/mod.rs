@@ -23,6 +23,7 @@ use core::{
     hash::{Hash, Hasher},
 };
 use crate::shared_values::shared_container_common::SharedContainerCommon;
+use crate::prelude::*;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///

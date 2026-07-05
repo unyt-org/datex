@@ -301,10 +301,6 @@ fn append_injected_value(
                 unreachable!("Deferred assignment parent was not registered");
             }
         };
-        println!(
-            "deferred assignment: parent {} at stack index {:?}, assigned property {}",
-            parent, parent_stack_index, assigned_property
-        );
         match assigned_property {
             ParentAccessor::ValueKey(key) => {
                 match key {

@@ -32,6 +32,7 @@ use core::{
 };
 use crate::shared_values::shared_container_common::SharedContainerCommon;
 use crate::shared_values::SharedContainer;
+use crate::prelude::*;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
