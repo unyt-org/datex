@@ -1,5 +1,6 @@
 //! This module contains the implementation of the execution loop that drives the execution of the compiled DATEX bytecode (DXB).
 //! It handles the execution of instructions, manages the runtime state, and processes interrupts that can occur during execution.
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 mod internal_slots;
 pub mod interrupts;
 mod operations;
@@ -35,25 +36,33 @@ use crate::{
     },
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
-    runtime::execution::{
-        ExecutionError, InvalidProgramError,
-        execution_loop::{
-            internal_slots::{get_root_property, get_stack_value},
-            interrupts::{
-                ExecutionInterrupt, ExternalExecutionInterrupt,
-                InterruptProvider,
+    runtime::{
+        cache::{
+            shared_references_cache::SharedReferencesCache,
+            shared_values_cache::{
+                CacheValueRetrievalError, ValueNotFoundInCacheError,
             },
-            operations::{
-                handle_assignment_operation, handle_binary_operation,
-                handle_comparison_operation, handle_unary_operation,
-                set_property,
-            },
-            runtime_value::RuntimeValue,
-            state::RuntimeExecutionState,
         },
-        macros::{
-            interrupt, interrupt_with_maybe_value, interrupt_with_value,
-            interrupt_with_values, yield_unwrap,
+        execution::{
+            ExecutionError, InvalidProgramError,
+            execution_loop::{
+                internal_slots::{get_root_property, get_stack_value},
+                interrupts::{
+                    ExecutionInterrupt, ExternalExecutionInterrupt,
+                    InterruptProvider, InterruptResult,
+                },
+                operations::{
+                    handle_assignment_operation, handle_binary_operation,
+                    handle_comparison_operation, handle_unary_operation,
+                    set_property,
+                },
+                runtime_value::RuntimeValue,
+                state::RuntimeExecutionState,
+            },
+            macros::{
+                interrupt, interrupt_with_maybe_value, interrupt_with_value,
+                yield_unwrap,
+            },
         },
     },
     shared_values::{
@@ -94,7 +103,7 @@ use crate::{
     },
 };
 use alloc::rc::Rc;
-use core::cell::RefCell;
+use core::{cell::RefCell, ops::DerefMut};
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -254,6 +263,11 @@ pub fn execution_loop(
                     }
                     ExecutionInterrupt::SetActiveValue(value) => {
                         active_value = value;
+                    }
+                    ExecutionInterrupt::TakeActiveValue => {
+                        interrupt_provider.provide_result(
+                            InterruptResult::ResolvedValue(active_value.take()),
+                        );
                     }
                 },
                 Err(err) => {
@@ -510,47 +524,14 @@ pub fn inner_execution_loop(
                                 ))
                             }
 
-                            RegularInstruction::PerformMoves(perform_move) => {
-                                // request move not required if pointers are already local addresses (= current caller is local)
-                                if state.caller_metadata.endpoint.is_local_or_equals_endpoint(state.runtime.endpoint()) {
-                                    let mut moved_values = Vec::with_capacity(perform_move.pointers.len());
-
-                                    for (_mutable_flag, address) in perform_move.pointers {
-                                        let container = yield_unwrap!(resolve_cache_value(
-                                            &mut state,
-                                            PointerAddress::SelfOwned(address),
-                                            SharedContainerOwnership::Owned,
-                                        ));
-                                        moved_values.push(ValueContainer::Shared(container));
-                                    }
-                                    Some(RuntimeValue::ValueContainer(ValueContainer::from(moved_values)))
-                                }
-                                else {
-                                    let resolved_moved_values = interrupt_with_values!(
-                                        interrupt_provider,
-                                        ExecutionInterrupt::External(
-                                            ExternalExecutionInterrupt::RequestMove(
-                                                perform_move.pointers
-                                                    .into_iter()
-                                                    .map(|(mutable_flag, address)|
-                                                    (if mutable_flag != 0 {SharedContainerMutability::Mutable} else {SharedContainerMutability::Immutable}, address)
-                                                )
-                                                .collect()
-                                            )
-                                        )
-                                    );
-                                    Some(RuntimeValue::ValueContainer(ValueContainer::from(resolved_moved_values)))
-                                }
-                            }
-
-                            RegularInstruction::Move(move_data) => {
-                                let moved_values = interrupt_with_values!(
+                            RegularInstruction::ConfirmMoves(move_data) => {
+                                interrupt!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::Move(move_data.address_mappings)
+                                        ExternalExecutionInterrupt::ConfirmMoves(move_data.address_mappings)
                                     )
                                 );
-                                Some(RuntimeValue::ValueContainer(ValueContainer::from(moved_values)))
+                                None
                             }
 
                             RegularInstruction::SharedRef(shared_ref) => {
@@ -623,6 +604,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
                             RegularInstruction::RemoteExecution(_) |
+                            RegularInstruction::MoveWithValue(_) |
                             RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::TypeExpression => unreachable!(),
                             #[cfg(feature = "disassembler")]
@@ -873,7 +855,6 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
-                                    let pointer = state.runtime.pointer_address_provider().borrow_mut().get_new_self_owned_address();
                                     let mutability = match instruction {
                                         RegularInstruction::CreateShared => SharedContainerMutability::Immutable,
                                         RegularInstruction::CreateSharedMut => SharedContainerMutability::Mutable,
@@ -886,7 +867,7 @@ pub fn inner_execution_loop(
                                                 value,
                                                 mutability,
                                             ),
-                                            pointer,
+                                            state.runtime.pointer_address_provider().borrow_mut().deref_mut(),
                                         ),
                                     ));
 
@@ -1309,6 +1290,40 @@ pub fn inner_execution_loop(
                                     None.into()
                                 }
 
+                                RegularInstruction::MoveWithValue(move_with_value) => {
+                                    let address = PointerAddress::SelfOwned(move_with_value.previous_address);
+
+                                    // for local addresses, if first value is in cache, assume all values are in cache and resolve
+                                    if state.caller_metadata.endpoint.is_local_or_equals_endpoint(state.runtime.endpoint()) &&
+                                        state
+                                            .shared_value_cache
+                                            .has_address_with_ownership(&address, SharedContainerOwnership::Owned){
+
+                                        let container = yield_unwrap!(resolve_cache_value(
+                                        &mut state,
+                                        address,
+                                        SharedContainerOwnership::Owned,
+                                    ));
+                                        Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container))).into()
+                                    }
+                                    // otherwise, perform move
+                                    else {
+                                        let value = yield_unwrap!(
+                                            yield_unwrap!(collected_results.pop_runtime_value_result_assert_existing())
+                                                .into_value_container(&mut state)
+                                        );
+                                        let container = SharedContainer::new_owned_with_inferred_allowed_type(
+                                            value,
+                                            move_with_value.mutability,
+                                            state.runtime.pointer_address_provider().borrow_mut().deref_mut(),
+                                        );
+                                        // TODO: confirm move
+
+
+                                        Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container))).into()
+                                    }
+                                }
+
                                 RegularInstruction::RemoteExecution(
                                     exec_block_data,
                                 ) => {
@@ -1340,6 +1355,7 @@ pub fn inner_execution_loop(
                                         )
                                     });
 
+                                    // Note: shared containers are explicitly cloned here as references
                                     let shared_references_cache = shared_containers.to_vec();
 
                                     yield_unwrap!(
@@ -1416,7 +1432,11 @@ pub fn inner_execution_loop(
                                         } else {
                                             match collected_result {
                                                 Some(CollectedExecutionResult::Value(val)) => val.into(),
-                                                None => CollectedExecutionResult::Value(None),
+                                                None => {
+                                                    // if no last result, it might have been moved to the active value, try to get back
+                                                    let active_value = interrupt_with_maybe_value!(interrupt_provider, ExecutionInterrupt::TakeActiveValue);
+                                                    CollectedExecutionResult::Value(active_value.map(RuntimeValue::ValueContainer))
+                                                },
                                                 _ => unreachable!(),
                                             }
                                         }
@@ -1433,39 +1453,44 @@ pub fn inner_execution_loop(
 
                                     // if caller endpoint is local endpoint, this is a local pointer
                                     let referenced_container = if state.caller_metadata.endpoint.is_local_or_equals_endpoint(state.runtime.endpoint()) {
-                                        let container = yield_unwrap!(resolve_cache_value(
+                                        let cache_result = resolve_cache_value(
                                             &mut state,
-                                            PointerAddress::SelfOwned(shared_ref.address),
+                                            PointerAddress::SelfOwned(shared_ref.address.clone()),
                                             SharedContainerOwnership::Referenced(shared_ref.ref_mutability)
-                                        ));
-                                        match container {
-                                            SharedContainer::Referenced(referenced_container) => referenced_container,
-                                            SharedContainer::Owned(_) => {
-                                                unreachable!()
+                                        );
+                                        match cache_result {
+                                            Ok(container) => match container {
+                                                SharedContainer::Referenced(referenced_container) => referenced_container,
+                                                SharedContainer::Owned(_) => {
+                                                    unreachable!()
+                                                }
+                                            },
+                                            Err(_) => {
+                                                yield_unwrap!(
+                                                    create_new_reference_from_value(
+                                                        &PointerAddress::SelfOwned(shared_ref.address),
+                                                        &mut state.runtime.memory().borrow_mut(),
+                                                        value,
+                                                        shared_ref.container_mutability,
+                                                        shared_ref.ref_mutability
+                                                    )
+                                                )
                                             }
                                         }
                                     }
                                     // else, get remote pointer from address
                                     else {
-                                        let pointer_address = RemotePointerAddress::for_endpoint(&state.caller_metadata.endpoint, &shared_ref.address);
+                                        let pointer_address = PointerAddress::Remote(RemotePointerAddress::for_endpoint(&state.caller_metadata.endpoint, &shared_ref.address));
 
-                                        if state.runtime.memory().borrow().has_reference(&PointerAddress::Remote(pointer_address.clone())) {
-                                            return yield Err(ExecutionError::Unknown); // TODO: error
-                                        }
-
-                                        let base = yield_unwrap!(BaseSharedValueContainer::try_new(
-                                            value,
-                                            TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()),
-                                            shared_ref.container_mutability,
-                                        ));
-
-                                        // Note: safe because we checked if the address already exists in memory before
-                                        yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external_from_base_container(
-                                            base,
-                                            pointer_address,
-                                            shared_ref.ref_mutability,
-                                            &state.runtime.memory().borrow_mut(),
-                                        )}.map_err(|_err| ExecutionError::InvalidSharedValueType))
+                                        yield_unwrap!(
+                                            create_new_reference_from_value(
+                                                &pointer_address,
+                                                &mut state.runtime.memory().borrow_mut(),
+                                                value,
+                                                shared_ref.container_mutability,
+                                                shared_ref.ref_mutability
+                                            )
+                                        )
                                     };
 
                                     let container = SharedContainer::Referenced(referenced_container);
@@ -1577,25 +1602,22 @@ pub fn inner_execution_loop(
 
             // if in unbounded statements, propagate active value via interrupt
             if let Some(ResultCollector::LastUnbounded(
-                LastUnboundedResultCollector {
-                    last_result:
-                        Some(CollectedExecutionResult::Value(last_result)),
-                    ..
-                },
-            )) = collector.last()
+                LastUnboundedResultCollector { last_result, .. },
+            )) = collector.last_mut()
+                && let Some(CollectedExecutionResult::Value(mut last_result)) =
+                    last_result.take()
             {
                 let active_value = yield_unwrap!(
                     last_result
-                        .clone()
-                        .map(|v| v
-                            .into_potentially_cloned_value_container(&state))
+                        .take()
+                        .map(|v| v.into_value_container(&mut state))
                         .transpose()
                 );
-
                 interrupt!(
                     interrupt_provider,
                     ExecutionInterrupt::SetActiveValue(active_value)
                 );
+                // TODO: handle other CollectedExecutionResults
             }
         }
 
@@ -1614,6 +1636,44 @@ pub fn inner_execution_loop(
             ));
         } else {
             panic!("Execution finished without root result");
+        }
+    }
+}
+
+fn create_new_reference_from_value(
+    pointer_address: &PointerAddress,
+    memory: &mut SharedReferencesCache,
+    value: ValueContainer,
+    container_mutability: SharedContainerMutability,
+    ref_mutability: ReferenceMutability,
+) -> Result<ReferencedSharedContainer, ExecutionError> {
+    if let Some(reference) = memory.get_reference(pointer_address) {
+        return Ok(reference.clone());
+    }
+    match pointer_address {
+        // if self owned was not already in memory, we can't resolve it
+        PointerAddress::SelfOwned(_) => {
+            Err(CacheValueRetrievalError::ValueNotFoundInCache(
+                ValueNotFoundInCacheError,
+            )
+            .into())
+        }
+        PointerAddress::Remote(remote_address) => {
+            let base = BaseSharedValueContainer::try_new(
+                value,
+                TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()),
+                container_mutability,
+            )?;
+
+            // Note: safe because we checked if the address already exists in memory before
+            unsafe {
+                ReferencedSharedContainer::try_new_remote_from_base_container(
+                    base,
+                    remote_address.clone(),
+                    ref_mutability,
+                )
+            }
+            .map_err(|_err| ExecutionError::InvalidSharedValueType)
         }
     }
 }

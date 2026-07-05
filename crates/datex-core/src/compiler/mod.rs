@@ -58,6 +58,7 @@ use crate::{
     runtime::{Runtime, execution::context::ExecutionMode},
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
+        shared_container_common::SharedContainerCommon,
     },
     time::Instant as TimingInstant,
     utils::buffers::{append_u8, append_u16, append_u32},
@@ -295,14 +296,14 @@ fn ensure_statements(
         is_terminated,
         unbounded,
         ..
-    }) = &mut ast.data
+    }) = ast.data_mut()
     {
         *unbounded = unbounded_section;
         *is_terminated
     } else {
         // wrap in statements
         let original_ast = ast.clone();
-        ast.data = DatexExpressionData::Statements(Statements {
+        *ast.data_mut() = DatexExpressionData::Statements(Statements {
             statements: vec![original_ast],
             is_terminated: false,
             unbounded: unbounded_section,
@@ -345,8 +346,8 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
         )
     } else {
         matches!(
-            valid_parse_result.data,
-            DatexExpressionData::Statements(Statements {
+            valid_parse_result.data(),
+            &DatexExpressionData::Statements(Statements {
                 is_terminated: true,
                 ..
             })
@@ -457,10 +458,10 @@ fn compile_ast(
 fn extract_static_value_from_ast(
     ast: &DatexExpression,
 ) -> Option<ValueContainer> {
-    if let DatexExpressionData::Placeholder(_) = ast.data {
+    if let DatexExpressionData::Placeholder(_) = ast.data() {
         return None;
     }
-    ValueContainer::try_from(&ast.data).ok()
+    ValueContainer::try_from(ast.data()).ok()
 }
 
 /// Macro for compiling a DATEX script template text with inserted values into a DXB body,
@@ -548,7 +549,7 @@ fn compile_expression(
 
     let DatexExpression { data, span, ty } = ast;
 
-    match data {
+    match *data {
         DatexExpressionData::Integer(int) => {
             append_integer(compilation_context.cursor(), &int);
         }
@@ -672,18 +673,21 @@ fn compile_expression(
                             append_value(
                                 compilation_context.core_context(),
                                 value,
+                                None,
                             );
                         }
                         ValueAccessType::Clone => {
                             append_value(
                                 compilation_context.core_context(),
                                 value,
+                                None,
                             );
                         }
                         ValueAccessType::Borrow => {
                             append_value(
                                 compilation_context.core_context(),
                                 value,
+                                None,
                             );
                         }
                     },
@@ -722,6 +726,7 @@ fn compile_expression(
                                         append_value(
                                             compilation_context.core_context(),
                                             value,
+                                            None,
                                         );
                                     }
                                     ValueContainer::Shared(shared_container) => {
@@ -840,7 +845,7 @@ fn compile_expression(
                 .append_instruction_code(InstructionCode::from(&operator));
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*expression, &metadata),
+                RichAst::new(expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -859,13 +864,13 @@ fn compile_expression(
                 .append_instruction_code(InstructionCode::from(&operator));
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*left, &metadata),
+                RichAst::new(left, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*right, &metadata),
+                RichAst::new(right, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -883,13 +888,13 @@ fn compile_expression(
                 .append_instruction_code(InstructionCode::from(&operator));
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*left, &metadata),
+                RichAst::new(left, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*right, &metadata),
+                RichAst::new(right, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -936,7 +941,7 @@ fn compile_expression(
             // compile function expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*apply.base, &metadata),
+                RichAst::new(apply.base, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -946,7 +951,7 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
 
             // depending on the key, handle different property accesses
-            match &property_access.property.data {
+            match property_access.property.data() {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.0.len() <= 255 => {
                     compile_text_property_access(compilation_context, &key.0)
@@ -960,7 +965,7 @@ fn compile_expression(
                 _ => {
                     scope = compile_dynamic_property_access(
                         compilation_context,
-                        &property_access.property,
+                        property_access.property,
                         scope,
                     )?;
                 }
@@ -969,7 +974,7 @@ fn compile_expression(
             // compile base expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*property_access.base, &metadata),
+                RichAst::new(property_access.base, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -984,7 +989,7 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
 
             // depending on the key, handle different property assignments
-            match &property_assignment.property.data {
+            match &property_assignment.property.data() {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
                     append_regular_instruction(
@@ -1006,7 +1011,7 @@ fn compile_expression(
                 _ => {
                     scope = compile_dynamic_property_assignment(
                         compilation_context,
-                        &property_assignment.property,
+                        property_assignment.property,
                         scope,
                     )?;
                 }
@@ -1016,7 +1021,7 @@ fn compile_expression(
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(
-                    *property_assignment.assigned_expression,
+                    property_assignment.assigned_expression,
                     &metadata,
                 ),
                 CompileMetadata::default(),
@@ -1026,7 +1031,7 @@ fn compile_expression(
             // compile base expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*property_assignment.base, &metadata),
+                RichAst::new(property_assignment.base, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1049,7 +1054,7 @@ fn compile_expression(
             // compile expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*value, &metadata),
+                RichAst::new(value, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1155,7 +1160,7 @@ fn compile_expression(
             // compile expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*expression, &metadata),
+                RichAst::new(expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1183,7 +1188,7 @@ fn compile_expression(
             // compile unbox expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*unbox_expression, &metadata),
+                RichAst::new(unbox_expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1191,7 +1196,7 @@ fn compile_expression(
             // compile assigned expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*assigned_expression, &metadata),
+                RichAst::new(assigned_expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1271,7 +1276,7 @@ fn compile_expression(
 
             let external_scope = compile_rich_ast(
                 &mut execution_block_ctx,
-                RichAst::new(*script, &metadata),
+                RichAst::new(script, &metadata),
                 CompilationScope::new_with_external_parent_scope(
                     scope,
                     stack_index_offset,
@@ -1306,7 +1311,7 @@ fn compile_expression(
             // insert compiled caller expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*caller, &metadata),
+                RichAst::new(caller, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1331,20 +1336,20 @@ fn compile_expression(
         }
 
         // refs
-        DatexExpressionData::GetRef(create_ref) => {
+        DatexExpressionData::DeriveRef(create_ref) => {
             compilation_context.mark_has_non_static_value();
             // TODO #764: handle lifetimes, mutability, correctly (in precompiler)
             // TODO #765: handle move/clone
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*create_ref.expression, &metadata),
+                RichAst::new(create_ref.expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
         }
 
         // shared refs
-        DatexExpressionData::GetSharedRef(create_shared_ref) => {
+        DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
             compilation_context.mark_has_non_static_value();
             compilation_context.append_instruction_code(
                 match create_shared_ref.mutability {
@@ -1358,7 +1363,7 @@ fn compile_expression(
             );
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*create_shared_ref.expression, &metadata),
+                RichAst::new(create_shared_ref.expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1378,7 +1383,7 @@ fn compile_expression(
             });
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*create_shared.expression, &metadata),
+                RichAst::new(create_shared.expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1404,13 +1409,13 @@ fn compile_expression(
 
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*range_dec.start, &metadata),
+                RichAst::new(range_dec.start, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*range_dec.end, &metadata),
+                RichAst::new(range_dec.end, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1421,7 +1426,7 @@ fn compile_expression(
             compilation_context.append_instruction_code(InstructionCode::UNBOX);
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*unbox.expression, &metadata),
+                RichAst::new(unbox.expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1442,7 +1447,7 @@ fn compile_expression(
             if let Some(inner_expression) = tag_expression.expression {
                 scope = compile_expression(
                     compilation_context,
-                    RichAst::new(*inner_expression, &metadata),
+                    RichAst::new(inner_expression, &metadata),
                     CompileMetadata::default(),
                     scope,
                 )?;
@@ -1456,7 +1461,7 @@ fn compile_expression(
             );
         }
 
-        data => {
+        _ => {
             log::error!("Unhandled expression in compiler: {:?}", data);
             let ast = DatexExpression { data, span, ty };
             return Err(CompilerError::UnexpectedTerm(Box::new(ast)));
@@ -1473,7 +1478,7 @@ fn compile_key_value_entry(
     metadata: &Rc<RefCell<AstMetadata>>,
     mut scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
-    match key.data {
+    match *key.data {
         // text -> insert key string
         DatexExpressionData::Text(text) => {
             append_key_string(compilation_context.cursor(), text.0);
@@ -1532,7 +1537,7 @@ fn compile_index_property_assignment(
 
 fn compile_dynamic_property_access(
     compilation_context: &mut CompilationContext,
-    key_expression: &DatexExpression,
+    key_expression: DatexExpression,
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     compilation_context
@@ -1541,7 +1546,7 @@ fn compile_dynamic_property_access(
     compile_expression(
         compilation_context,
         RichAst::new(
-            key_expression.clone(),
+            key_expression,
             &Rc::new(RefCell::new(AstMetadata::default())),
         ),
         CompileMetadata::default(),
@@ -1551,7 +1556,7 @@ fn compile_dynamic_property_access(
 
 fn compile_dynamic_property_assignment(
     compilation_context: &mut CompilationContext,
-    key_expression: &DatexExpression,
+    key_expression: DatexExpression,
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     compilation_context
@@ -1560,7 +1565,7 @@ fn compile_dynamic_property_assignment(
     compile_expression(
         compilation_context,
         RichAst::new(
-            key_expression.clone(),
+            key_expression,
             &Rc::new(RefCell::new(AstMetadata::default())),
         ),
         CompileMetadata::default(),
@@ -1586,20 +1591,22 @@ pub mod tests {
             instruction_codes::InstructionCode,
             protocol_structures::type_instructions::TypeInstruction,
         },
-        instructions,
         runtime::execution::context::ExecutionMode,
         types::literal_type_definition::LiteralTypeDefinition,
         values::value_container::ValueContainer,
     };
 
-    use crate::{
-        assert_instructions_equal, assert_regular_instructions_equal,
-        global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat,
-    };
+    use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
 
     use crate::{
         compiler::error::CompilerError,
-        disassembler::print_disassembled,
+        disassembler::{
+            assertions::{
+                assert_instructions_equal, assert_regular_instructions_equal,
+                instructions,
+            },
+            print_disassembled,
+        },
         global::{
             protocol_structures::{
                 injected_values::{
@@ -1608,8 +1615,9 @@ pub mod tests {
                 },
                 instruction_data::{
                     InstructionBlockData, InstructionBlockDataDebugTree,
-                    ListData, MapData, ShortListData, ShortTextData,
-                    StackIndex, StatementsData, TaggedValue, UInt8Data,
+                    ListData, MapData, ShortListData, ShortMapData,
+                    ShortTextData, StackIndex, StatementsData, TaggedValue,
+                    UInt8Data,
                 },
                 instructions::Instruction,
                 regular_instructions::RegularInstruction,
@@ -2323,7 +2331,7 @@ pub mod tests {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::ShortMap(MapData { element_count: 1 }),
+                RegularInstruction::ShortMap(ShortMapData { element_count: 1 }),
                 RegularInstruction::KeyValueShortText(ShortTextData(
                     "a".to_string()
                 )),
@@ -2714,20 +2722,26 @@ pub mod tests {
         print_disassembled(&res);
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(5, true),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(1)),
-                RegularInstruction::statements(3, true),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(2)),
-                RegularInstruction::CloneStackValue(StackIndex(0)),
-                RegularInstruction::TakeStackValue(StackIndex(1)),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(3)),
-                RegularInstruction::TakeStackValue(StackIndex(0)),
-                RegularInstruction::TakeStackValue(StackIndex(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                true,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstruction::statements_with_children(
+                        true,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::UInt8(UInt8Data(2)),
+                            RegularInstruction::CloneStackValue(StackIndex(0)),
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                        )
+                    ),
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(3)),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                    RegularInstruction::TakeStackValue(StackIndex(1)),
+                )
+            ),)
         );
     }
 
@@ -2822,28 +2836,32 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: 5,
-                        injected_variable_count: 1,
-                        // FIXME should be local
-                        injected_values: vec![InjectedValueDeclaration {
-                            index: StackIndex(0),
-                            ty: InjectedValueType::Shared(
-                                SharedInjectedValueType::Move
-                            )
-                        }],
-                        body: vec![Instruction::Regular(
-                            RegularInstruction::TakeStackValue(StackIndex(0))
-                        ),]
-                    }
-                ),
-                RegularInstruction::UInt8(UInt8Data(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::_RemoteExecutionDebugFlat(
+                        InstructionBlockDataDebugFlat {
+                            length: 5,
+                            injected_variable_count: 1,
+                            // FIXME should be local
+                            injected_values: vec![InjectedValueDeclaration {
+                                index: StackIndex(0),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Move
+                                )
+                            }],
+                            body: vec![Instruction::Regular(
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    0
+                                ))
+                            ),]
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )
+            ),)
         );
     }
 
@@ -2858,28 +2876,32 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::CreateShared,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: 5,
-                        injected_variable_count: 1,
-                        injected_values: vec![InjectedValueDeclaration {
-                            index: StackIndex(0),
-                            ty: InjectedValueType::Shared(
-                                SharedInjectedValueType::Move
-                            )
-                        }],
-                        body: vec![Instruction::Regular(
-                            RegularInstruction::TakeStackValue(StackIndex(0))
-                        ),],
-                    }
-                ),
-                RegularInstruction::UInt8(UInt8Data(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::CreateShared,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::_RemoteExecutionDebugFlat(
+                        InstructionBlockDataDebugFlat {
+                            length: 5,
+                            injected_variable_count: 1,
+                            injected_values: vec![InjectedValueDeclaration {
+                                index: StackIndex(0),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Move
+                                )
+                            }],
+                            body: vec![Instruction::Regular(
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    0
+                                ))
+                            ),],
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )
+            ),)
         )
     }
 
@@ -2892,30 +2914,32 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::CreateShared,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: 5,
-                        injected_variable_count: 1,
-                        injected_values: vec![InjectedValueDeclaration {
-                            index: StackIndex(0),
-                            ty: InjectedValueType::Shared(
-                                SharedInjectedValueType::Ref
-                            )
-                        }],
-                        body: vec![Instruction::Regular(
-                            RegularInstruction::GetStackValueSharedRef(
-                                StackIndex(0)
-                            )
-                        ),],
-                    }
-                ),
-                RegularInstruction::UInt8(UInt8Data(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::CreateShared,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::_RemoteExecutionDebugFlat(
+                        InstructionBlockDataDebugFlat {
+                            length: 5,
+                            injected_variable_count: 1,
+                            injected_values: vec![InjectedValueDeclaration {
+                                index: StackIndex(0),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Ref
+                                )
+                            }],
+                            body: vec![Instruction::Regular(
+                                RegularInstruction::GetStackValueSharedRef(
+                                    StackIndex(0)
+                                )
+                            ),],
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )
+            ),)
         )
     }
 
@@ -2972,48 +2996,50 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(3, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(69)),
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: 11,
-                        injected_variable_count: 2,
-                        injected_values: vec![
-                            // FIXME should be local
-                            InjectedValueDeclaration {
-                                index: StackIndex(0),
-                                ty: InjectedValueType::Shared(
-                                    SharedInjectedValueType::Move
-                                )
-                            },
-                            InjectedValueDeclaration {
-                                index: StackIndex(1),
-                                ty: InjectedValueType::Shared(
-                                    SharedInjectedValueType::Move
-                                )
-                            },
-                        ],
-                        body: vec![
-                            Instruction::Regular(RegularInstruction::Add),
-                            Instruction::Regular(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    0
-                                ))
-                            ),
-                            Instruction::Regular(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    1
-                                ))
-                            ),
-                        ],
-                    }
-                ),
-                RegularInstruction::UInt8(UInt8Data(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(69)),
+                    RegularInstruction::_RemoteExecutionDebugFlat(
+                        InstructionBlockDataDebugFlat {
+                            length: 11,
+                            injected_variable_count: 2,
+                            injected_values: vec![
+                                // FIXME should be local
+                                InjectedValueDeclaration {
+                                    index: StackIndex(0),
+                                    ty: InjectedValueType::Shared(
+                                        SharedInjectedValueType::Move
+                                    )
+                                },
+                                InjectedValueDeclaration {
+                                    index: StackIndex(1),
+                                    ty: InjectedValueType::Shared(
+                                        SharedInjectedValueType::Move
+                                    )
+                                },
+                            ],
+                            body: vec![
+                                Instruction::Regular(RegularInstruction::Add),
+                                Instruction::Regular(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    )
+                                ),
+                                Instruction::Regular(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(1)
+                                    )
+                                ),
+                            ],
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )
+            ),)
         );
     }
 
@@ -3027,51 +3053,45 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (
-                RegularInstruction::statements(3, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(69)),
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: 17,
-                        injected_variable_count: 1,
-                        injected_values: vec![
-                            // FIXME should be local
-                            InjectedValueDeclaration {
-                                index: StackIndex(1),
-                                ty: InjectedValueType::Shared(
-                                    SharedInjectedValueType::Move
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(69)),
+                    RegularInstruction::_RemoteExecutionDebugTree(
+                        InstructionBlockDataDebugTree {
+                            length: 17,
+                            injected_variable_count: 1,
+                            injected_values: vec![
+                                // FIXME should be local
+                                InjectedValueDeclaration {
+                                    index: StackIndex(1),
+                                    ty: InjectedValueType::Shared(
+                                        SharedInjectedValueType::Move
+                                    )
+                                },
+                            ],
+                            body: RegularInstruction::statements_with_children(
+                                false,
+                                instructions!(
+                                    RegularInstruction::PushToStack,
+                                    RegularInstruction::UInt8(UInt8Data(5)),
+                                    RegularInstruction::Add,
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(1)
+                                    ),
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    ),
                                 )
-                            },
-                        ],
-                        body: vec![
-                            Instruction::Regular(
-                                RegularInstruction::statements(2, false)
                             ),
-                            Instruction::Regular(
-                                RegularInstruction::PushToStack
-                            ),
-                            Instruction::Regular(RegularInstruction::UInt8(
-                                UInt8Data(5)
-                            )),
-                            Instruction::Regular(RegularInstruction::Add),
-                            Instruction::Regular(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    1
-                                ))
-                            ),
-                            Instruction::Regular(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    0
-                                ))
-                            ),
-                        ],
-                    }
-                ),
-                RegularInstruction::UInt8(UInt8Data(1)),
-            )
+                        }
+                    ),
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                )
+            ),)
         );
     }
 
@@ -3733,19 +3753,33 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            (
-                RegularInstruction::statements(4, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::statements(1, true),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(43)),
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(43)),
-                RegularInstruction::TakeStackValue(StackIndex(1)),
-                RegularInstruction::TakeStackValue(StackIndex(0))
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // var x = 42u8
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(42)),
+                    // var x = 43u8;
+                    RegularInstruction::statements_with_children(
+                        true,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::UInt8(UInt8Data(43)),
+                        )
+                    ),
+                    // var y = 43u8; y
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::UInt8(UInt8Data(43)),
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                        )
+                    ),
+                    // x
+                    RegularInstruction::TakeStackValue(StackIndex(0))
+                )
+            ),)
         );
     }
 
@@ -3755,21 +3789,31 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            (
-                RegularInstruction::statements(3, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(1)),
-                RegularInstruction::PushToStack,
-                RegularInstruction::statements(2, false),
-                RegularInstruction::PushToStack,
-                RegularInstruction::UInt8(UInt8Data(2)),
-                RegularInstruction::TakeStackValue(StackIndex(1)),
-                RegularInstruction::ShortList(ShortListData {
-                    element_count: 2
-                }),
-                RegularInstruction::TakeStackValue(StackIndex(0)),
-                RegularInstruction::TakeStackValue(StackIndex(1)),
-            )
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // var x = 1u8
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::UInt8(UInt8Data(1)),
+                    // var y =
+                    RegularInstruction::PushToStack,
+                    // (var x = 2u8; x)
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::UInt8(UInt8Data(2)),
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                        )
+                    ),
+                    // [x, y]
+                    RegularInstruction::ShortList(ShortListData {
+                        element_count: 2
+                    }),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                    RegularInstruction::TakeStackValue(StackIndex(1)),
+                )
+            ),)
         )
     }
 }

@@ -50,7 +50,7 @@ impl Parser {
                 rest_parameter: None, // TODO #662
                 return_type,
                 yeet_type: None, // TODO #663
-                body: Box::new(body),
+                body: (body),
                 injected_variable_count: None,
             },
         ))
@@ -107,8 +107,8 @@ mod tests {
     fn parse_empty_function() {
         let expr = parse("function test() ()");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::CallableDeclaration(Box::new(
+            expr.data(),
+            &DatexExpressionData::CallableDeclaration(Box::new(
                 CallableDeclaration {
                     name: Some(String::from("test")),
                     kind: CallableKind::Function,
@@ -116,14 +116,12 @@ mod tests {
                     rest_parameter: None,
                     return_type: None,
                     yeet_type: None,
-                    body: Box::new(
-                        DatexExpressionData::Statements(Statements {
-                            statements: vec![],
-                            is_terminated: false,
-                            unbounded: None,
-                        })
-                        .with_default_span()
-                    ),
+                    body: (DatexExpressionData::Statements(Statements {
+                        statements: vec![],
+                        is_terminated: false,
+                        unbounded: None,
+                    })
+                    .with_default_span()),
                     injected_variable_count: None,
                 }
             ))
@@ -134,8 +132,8 @@ mod tests {
     fn parse_empty_procedure() {
         let expr = parse("procedure doSomething() ()");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::CallableDeclaration(Box::new(
+            expr.data(),
+            &DatexExpressionData::CallableDeclaration(Box::new(
                 CallableDeclaration {
                     name: Some(String::from("doSomething")),
                     kind: CallableKind::Procedure,
@@ -143,14 +141,12 @@ mod tests {
                     rest_parameter: None,
                     return_type: None,
                     yeet_type: None,
-                    body: Box::new(
-                        DatexExpressionData::Statements(Statements {
-                            statements: vec![],
-                            is_terminated: false,
-                            unbounded: None,
-                        })
-                        .with_default_span()
-                    ),
+                    body: (DatexExpressionData::Statements(Statements {
+                        statements: vec![],
+                        is_terminated: false,
+                        unbounded: None,
+                    })
+                    .with_default_span()),
                     injected_variable_count: None,
                 }
             ))
@@ -161,8 +157,8 @@ mod tests {
     fn parse_function_with_parameters_and_return_type() {
         let expr = parse("function add(a: integer, b: integer) -> integer ( )");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::CallableDeclaration(Box::new(
+            expr.data(),
+            &DatexExpressionData::CallableDeclaration(Box::new(
                 CallableDeclaration {
                     name: Some("add".to_string()),
                     kind: CallableKind::Function,
@@ -188,14 +184,12 @@ mod tests {
                             .with_default_span()
                     ),
                     yeet_type: None,
-                    body: Box::new(
-                        DatexExpressionData::Statements(Statements {
-                            statements: vec![],
-                            is_terminated: false,
-                            unbounded: None,
-                        })
-                        .with_default_span()
-                    ),
+                    body: (DatexExpressionData::Statements(Statements {
+                        statements: vec![],
+                        is_terminated: false,
+                        unbounded: None,
+                    })
+                    .with_default_span()),
                     injected_variable_count: None,
                 }
             ))
@@ -207,8 +201,8 @@ mod tests {
         let expr =
             parse("function greet(name: text) -> text ( \"Hello, \" + name )");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::CallableDeclaration(Box::new(
+            expr.data(),
+            &DatexExpressionData::CallableDeclaration(Box::new(
                 CallableDeclaration {
                     name: Some("greet".to_string()),
                     kind: CallableKind::Function,
@@ -223,25 +217,21 @@ mod tests {
                             .with_default_span()
                     ),
                     yeet_type: None,
-                    body: Box::new(
-                        DatexExpressionData::BinaryOperation(BinaryOperation {
-                            left: Box::new(
-                                DatexExpressionData::Text("Hello, ".into())
-                                    .with_default_span()
-                            ),
+                    body: (DatexExpressionData::BinaryOperation(
+                        BinaryOperation {
+                            left: (DatexExpressionData::Text("Hello, ".into())
+                                .with_default_span()),
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add
                             ),
-                            right: Box::new(
-                                DatexExpressionData::Identifier(
-                                    "name".to_string()
-                                )
-                                .with_default_span()
-                            ),
+                            right: (DatexExpressionData::Identifier(
+                                "name".to_string()
+                            )
+                            .with_default_span()),
                             ty: None,
-                        })
-                        .with_default_span(),
-                    ),
+                        }
+                    )
+                    .with_default_span()),
                     injected_variable_count: None,
                 }
             ))

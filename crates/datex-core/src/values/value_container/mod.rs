@@ -23,11 +23,13 @@ pub mod apply;
 pub mod ops;
 pub mod update_handler;
 pub mod value_key;
+use crate::shared_values::shared_container_common::SharedContainerCommon;
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
     ops::FnOnce,
 };
+
 pub mod datex_proxy;
 pub mod error;
 
@@ -255,10 +257,15 @@ impl Display for ValueContainer {
         match self {
             ValueContainer::Local(value) => core::write!(f, "{value}"),
             // TODO #118: only simple temporary way to distinguish between Value and Pointer
-            ValueContainer::Shared(reference) => reference
-                .with_collapsed_value_mut(|reference| {
-                    write!(f, "&({})", reference)
-                }),
+            ValueContainer::Shared(shared) => {
+                if shared.is_borrowed() {
+                    write!(f, "{}", shared.to_string_omit_content())
+                } else {
+                    shared.with_collapsed_value(|reference| {
+                        write!(f, "shared ({})", reference)
+                    })
+                }
+            }
         }
     }
 }

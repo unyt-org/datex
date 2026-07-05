@@ -367,9 +367,11 @@ impl From<f64> for TypedDecimal {
 #[cfg(test)]
 mod tests {
     use crate::{
-        assert_structural_eq, assert_value_eq,
         prelude::*,
-        traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+        traits::{
+            structural_eq::{StructuralEq, assert_structural_eq},
+            value_eq::{ValueEq, assert_value_eq},
+        },
         values::core_values::{
             decimal::{
                 Decimal,

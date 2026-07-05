@@ -196,14 +196,13 @@ impl<'a> IntoIterator for &'a List {
     }
 }
 
-#[macro_export]
-macro_rules! datex_list {
+pub macro datex_list {
     ( $( $x:expr ),* ) => {
         {
             let list = alloc::vec![$( $crate::values::value_container::ValueContainer::from($x) ),*];
             $crate::values::core_values::list::List::new(list)
         }
-    };
+    }
 }
 
 impl From<List> for Vec<ValueContainer> {

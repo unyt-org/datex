@@ -1,8 +1,9 @@
 use crate::shared_values::{
-    ExternalSharedContainer, SelfOwnedSharedContainer,
+    ExternalSharedContainer, SelfOwnedPointerAddress, SelfOwnedSharedContainer,
     base_shared_value_container::BaseSharedValueContainer,
     pointer_address::PointerAddress,
 };
+use core::mem;
 
 /// Wrapper containing either an [SelfOwnedSharedContainer] or an [ExternalSharedContainer].
 #[derive(Debug)]
@@ -52,6 +53,44 @@ impl SharedContainerInner {
             }
             SharedContainerInner::External(external) => {
                 PointerAddress::Remote(external.address().clone())
+            }
+        }
+    }
+
+    /// Change the inner [PointerAddress] to a new one, potentially changing the type of the container.
+    /// # Safety
+    /// The caller must ensure that the new [PointerAddress] is not already used by another shared container
+    pub(super) unsafe fn change_address(
+        &mut self,
+        new_address: PointerAddress,
+    ) {
+        let previous = mem::replace(
+            &mut *self,
+            SharedContainerInner::EndpointOwned(unsafe {
+                SelfOwnedSharedContainer::new_with_address(
+                    BaseSharedValueContainer::null(),
+                    SelfOwnedPointerAddress([0; 5]),
+                )
+            }),
+        );
+
+        // TODO: handle subscriber switch etc
+        match new_address {
+            PointerAddress::SelfOwned(new_self_owned_address) => {
+                *self = SharedContainerInner::EndpointOwned(unsafe {
+                    SelfOwnedSharedContainer::new_with_address(
+                        previous.take_base_shared_container(),
+                        new_self_owned_address,
+                    )
+                });
+            }
+            PointerAddress::Remote(new_remote_address) => {
+                *self = SharedContainerInner::External(unsafe {
+                    ExternalSharedContainer::new(
+                        previous.take_base_shared_container(),
+                        new_remote_address,
+                    )
+                });
             }
         }
     }

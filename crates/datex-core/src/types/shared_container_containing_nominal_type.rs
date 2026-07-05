@@ -1,6 +1,9 @@
 use crate::{
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-    shared_values::{SharedContainer, SharedContainerMutability},
+    shared_values::{
+        SharedContainer, SharedContainerMutability,
+        shared_container_common::SharedContainerCommon,
+    },
     types::{
         nominal_type_definition::NominalTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,

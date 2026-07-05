@@ -5,13 +5,13 @@ use num_enum::TryFromPrimitive;
 use serde_repr::*;
 #[derive(
     Clone,
+    Copy,
     Debug,
     PartialEq,
     Eq,
     Hash,
     TryFromPrimitive,
     BinRead,
-    Copy,
     BinWrite,
     Serialize_repr,
     Deserialize_repr,
