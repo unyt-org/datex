@@ -519,7 +519,7 @@ fn precompile_to_rich_ast(
         )?
     } else {
         // if no precompiler data, just use the AST with default metadata
-        RichAst::new_without_metadata(valid_parse_result)
+        RichAst::new_without_metadata(Box::new(valid_parse_result))
     };
 
     Ok(rich_ast)
@@ -547,7 +547,7 @@ fn compile_expression(
     let metadata = rich_ast.metadata;
     let ast = rich_ast.ast;
 
-    let DatexExpression { data, span, ty } = ast;
+    let DatexExpression { data, span, ty } = *ast;
 
     match data {
         DatexExpressionData::Integer(int) => {
@@ -616,7 +616,7 @@ fn compile_expression(
             for item in list.items {
                 scope = compile_expression(
                     compilation_context,
-                    RichAst::new(item, &metadata),
+                    RichAst::new(Box::new(item), &metadata),
                     CompileMetadata::default(),
                     scope,
                 )?;
@@ -771,7 +771,7 @@ fn compile_expression(
             if unbounded.is_none() && statements.len() == 1 && !is_terminated {
                 scope = compile_expression(
                     compilation_context,
-                    RichAst::new(statements.remove(0), &metadata),
+                    RichAst::new(Box::new(statements.remove(0)), &metadata),
                     CompileMetadata::default(),
                     scope,
                 )?;
@@ -806,7 +806,7 @@ fn compile_expression(
                 for statement in statements.into_iter() {
                     child_scope = compile_expression(
                         compilation_context,
-                        RichAst::new(statement, &metadata),
+                        RichAst::new(Box::new(statement), &metadata),
                         CompileMetadata::default(),
                         child_scope,
                     )?;
@@ -845,7 +845,7 @@ fn compile_expression(
                 .append_instruction_code(InstructionCode::from(&operator));
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*expression, &metadata),
+                RichAst::new(expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -864,13 +864,13 @@ fn compile_expression(
                 .append_instruction_code(InstructionCode::from(&operator));
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*left, &metadata),
+                RichAst::new(left, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*right, &metadata),
+                RichAst::new(right, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -888,13 +888,13 @@ fn compile_expression(
                 .append_instruction_code(InstructionCode::from(&operator));
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*left, &metadata),
+                RichAst::new(left, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*right, &metadata),
+                RichAst::new(right, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -932,7 +932,7 @@ fn compile_expression(
             for argument in apply.arguments.iter() {
                 scope = compile_expression(
                     compilation_context,
-                    RichAst::new(argument.clone(), &metadata),
+                    RichAst::new(Box::new(argument.clone()), &metadata),
                     CompileMetadata::default(),
                     scope,
                 )?;
@@ -941,7 +941,7 @@ fn compile_expression(
             // compile function expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*apply.base, &metadata),
+                RichAst::new(apply.base, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -965,7 +965,7 @@ fn compile_expression(
                 _ => {
                     scope = compile_dynamic_property_access(
                         compilation_context,
-                        &property_access.property,
+                        property_access.property,
                         scope,
                     )?;
                 }
@@ -974,7 +974,7 @@ fn compile_expression(
             // compile base expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*property_access.base, &metadata),
+                RichAst::new(property_access.base, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1011,7 +1011,7 @@ fn compile_expression(
                 _ => {
                     scope = compile_dynamic_property_assignment(
                         compilation_context,
-                        &property_assignment.property,
+                        property_assignment.property,
                         scope,
                     )?;
                 }
@@ -1021,7 +1021,7 @@ fn compile_expression(
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(
-                    *property_assignment.assigned_expression,
+                    property_assignment.assigned_expression,
                     &metadata,
                 ),
                 CompileMetadata::default(),
@@ -1031,7 +1031,7 @@ fn compile_expression(
             // compile base expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*property_assignment.base, &metadata),
+                RichAst::new(property_assignment.base, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1054,7 +1054,7 @@ fn compile_expression(
             // compile expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*value, &metadata),
+                RichAst::new(value, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1160,7 +1160,7 @@ fn compile_expression(
             // compile expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*expression, &metadata),
+                RichAst::new(expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1188,7 +1188,7 @@ fn compile_expression(
             // compile unbox expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*unbox_expression, &metadata),
+                RichAst::new(unbox_expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1196,7 +1196,7 @@ fn compile_expression(
             // compile assigned expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*assigned_expression, &metadata),
+                RichAst::new(assigned_expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1276,7 +1276,7 @@ fn compile_expression(
 
             let external_scope = compile_rich_ast(
                 &mut execution_block_ctx,
-                RichAst::new(*script, &metadata),
+                RichAst::new(script, &metadata),
                 CompilationScope::new_with_external_parent_scope(
                     scope,
                     stack_index_offset,
@@ -1311,7 +1311,7 @@ fn compile_expression(
             // insert compiled caller expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*caller, &metadata),
+                RichAst::new(caller, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1342,7 +1342,7 @@ fn compile_expression(
             // TODO #765: handle move/clone
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*create_ref.expression, &metadata),
+                RichAst::new(create_ref.expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1363,7 +1363,7 @@ fn compile_expression(
             );
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*create_shared_ref.expression, &metadata),
+                RichAst::new(create_shared_ref.expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1383,7 +1383,7 @@ fn compile_expression(
             });
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*create_shared.expression, &metadata),
+                RichAst::new(create_shared.expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1409,13 +1409,13 @@ fn compile_expression(
 
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*range_dec.start, &metadata),
+                RichAst::new(range_dec.start, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*range_dec.end, &metadata),
+                RichAst::new(range_dec.end, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1426,7 +1426,7 @@ fn compile_expression(
             compilation_context.append_instruction_code(InstructionCode::UNBOX);
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*unbox.expression, &metadata),
+                RichAst::new(unbox.expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1447,7 +1447,7 @@ fn compile_expression(
             if let Some(inner_expression) = tag_expression.expression {
                 scope = compile_expression(
                     compilation_context,
-                    RichAst::new(*inner_expression, &metadata),
+                    RichAst::new(inner_expression, &metadata),
                     CompileMetadata::default(),
                     scope,
                 )?;
@@ -1489,7 +1489,7 @@ fn compile_key_value_entry(
                 .append_instruction_code(InstructionCode::KEY_VALUE_DYNAMIC);
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(key, metadata),
+                RichAst::new(Box::new(key), metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1498,7 +1498,7 @@ fn compile_key_value_entry(
     // insert value
     scope = compile_expression(
         compilation_context,
-        RichAst::new(value, metadata),
+        RichAst::new(Box::new(value), metadata),
         CompileMetadata::default(),
         scope,
     )?;
@@ -1537,7 +1537,7 @@ fn compile_index_property_assignment(
 
 fn compile_dynamic_property_access(
     compilation_context: &mut CompilationContext,
-    key_expression: &DatexExpression,
+    key_expression: Box<DatexExpression>,
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     compilation_context
@@ -1546,7 +1546,7 @@ fn compile_dynamic_property_access(
     compile_expression(
         compilation_context,
         RichAst::new(
-            key_expression.clone(),
+            key_expression,
             &Rc::new(RefCell::new(AstMetadata::default())),
         ),
         CompileMetadata::default(),
@@ -1556,7 +1556,7 @@ fn compile_dynamic_property_access(
 
 fn compile_dynamic_property_assignment(
     compilation_context: &mut CompilationContext,
-    key_expression: &DatexExpression,
+    key_expression: Box<DatexExpression>,
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     compilation_context
@@ -1565,7 +1565,7 @@ fn compile_dynamic_property_assignment(
     compile_expression(
         compilation_context,
         RichAst::new(
-            key_expression.clone(),
+            key_expression,
             &Rc::new(RefCell::new(AstMetadata::default())),
         ),
         CompileMetadata::default(),

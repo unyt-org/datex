@@ -211,7 +211,7 @@ impl<'a> Precompiler<'a> {
 
         let mut rich_ast = RichAst {
             metadata: self.ast_metadata,
-            ast,
+            ast: Box::new(ast),
         };
 
         // type inference - currently only if detailed errors are enabled
@@ -1057,7 +1057,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
                     DatexExpressionData::TypeDeclaration(TypeDeclaration {
@@ -1112,7 +1112,7 @@ mod tests {
         assert_matches!(
             result,
             Ok(RichAst {
-                ast: DatexExpression {
+                ast: box DatexExpression {
                     data: DatexExpressionData::ResolveCoreLibId(
                         CoreLibId::Type(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Boolean
@@ -1127,7 +1127,7 @@ mod tests {
         assert_matches!(
             result,
             Ok(RichAst {
-                ast: DatexExpression {
+                ast: box DatexExpression {
                     data: DatexExpressionData::ResolveCoreLibId(
                         CoreLibId::Type(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Integer
@@ -1141,7 +1141,7 @@ mod tests {
 
         let result = parse_and_precompile("integer/u8");
         assert_eq!(
-            result.unwrap().ast,
+            *result.unwrap().ast,
             DatexExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::CoreLibId(CoreLibId::Type(
                     CoreLibBaseTypeId::Integer.into()
@@ -1159,7 +1159,7 @@ mod tests {
         let result =
             parse_and_precompile("integer/u8").expect("Precompilation failed");
         assert_eq!(
-            result.ast,
+            *result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::CoreLibId(CoreLibId::Type(
                     CoreLibBaseTypeId::Integer.into()
@@ -1173,7 +1173,7 @@ mod tests {
         // invalid variant should work (will error later in type checking)
         let result = parse_and_precompile("integer/invalid").unwrap();
         assert_eq!(
-            result.ast,
+            *result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::CoreLibId(CoreLibId::Type(
                     CoreLibBaseTypeId::Integer.into()
@@ -1200,7 +1200,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
                     DatexExpressionData::TypeDeclaration(TypeDeclaration {
@@ -1317,7 +1317,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_terminated(vec![
                 DatexExpressionData::TypeDeclaration(TypeDeclaration {
                     id: Some(0),
@@ -1355,7 +1355,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_terminated(vec![
                 DatexExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(1),
@@ -1393,7 +1393,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_terminated(vec![
                 DatexExpressionData::TypeDeclaration(TypeDeclaration {
                     id: Some(0),
@@ -1445,7 +1445,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
                     DatexExpressionData::TypeDeclaration(TypeDeclaration {
@@ -1497,7 +1497,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::TypeDeclaration(TypeDeclaration {
                 id: Some(0),
                 name: "x".to_string(),
@@ -1518,7 +1518,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
                     DatexExpressionData::VariableDeclaration(
@@ -1568,7 +1568,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
                     DatexExpressionData::VariableDeclaration(
@@ -1616,7 +1616,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
                 .with_default_span()
         );
@@ -1628,7 +1628,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Placeholder(ValueAccessType::SharedRef)
                 .with_default_span()
         );
@@ -1637,7 +1637,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Placeholder(ValueAccessType::SharedRef)
                 .with_default_span()
         );
@@ -1649,7 +1649,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Placeholder(ValueAccessType::SharedRefMut)
                 .with_default_span()
         );
@@ -1658,7 +1658,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Placeholder(ValueAccessType::SharedRefMut)
                 .with_default_span()
         );
@@ -1670,7 +1670,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Placeholder(ValueAccessType::Clone)
                 .with_default_span()
         );
@@ -1679,7 +1679,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Placeholder(ValueAccessType::Clone)
                 .with_default_span()
         );
@@ -1691,7 +1691,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
                     DatexExpressionData::VariableDeclaration(
@@ -1725,7 +1725,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
                     DatexExpressionData::VariableDeclaration(
@@ -1759,7 +1759,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
                     DatexExpressionData::VariableDeclaration(
@@ -1793,7 +1793,7 @@ mod tests {
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
-            rich_ast.ast,
+            *rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
                     DatexExpressionData::VariableDeclaration(
