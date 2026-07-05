@@ -268,8 +268,6 @@ fn append_injected_value(
     let index =
         push_injected_container(context, container, metadata, statements_count);
 
-    println!("vistied: {:#?} {}", context.visited_values.len(), index.0);
-
     let pending_contexts = match context.visited_values.remove(&key) {
         Some(VisitedValue::Required { parent_contexts }) => parent_contexts,
         // Some(VisitedValue::Inserted { .. }) => {
