@@ -791,7 +791,7 @@ impl AstToSourceCodeConverter {
                 index: slot,
                 expression,
             }) => {
-                format!("{}%s=%s{}", slot, self.format(expression))
+                ast_fmt!(&self, "{}%s=%s{}", slot, self.format(expression))
             }
             DatexExpressionData::ComparisonOperation(ComparisonOperation {
                 operator,

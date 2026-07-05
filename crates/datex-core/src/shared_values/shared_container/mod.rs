@@ -38,6 +38,7 @@ use core::{
     fmt::{Display, Formatter},
     hash::{Hash, Hasher},
 };
+use core::fmt::Debug;
 use core::mem;
 use serde::Serializer;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
@@ -49,13 +50,26 @@ pub mod apply;
 pub mod serde_dif;
 /// Top-level wrapper for any owned or referenced shared container,
 /// which can either be an owned shared container or a reference to a shared container.
-#[derive(Debug)]
 pub enum SharedContainer {
     /// An owned shared container (`shared X`). This is always points to a [SharedContainerInner::EndpointOwned]
     Owned(OwnedSharedContainer),
     /// A referenced shared container (`'shared X` or `'mut shared X`).
     /// This can point to either a [SharedContainerInner::EndpointOwned] or a [SharedContainerInner::External]
     Referenced(ReferencedSharedContainer),
+}
+
+impl Debug for SharedContainer {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        // recursive reference
+        if self.is_borrowed() {
+            f.write_str("(...)")
+        } else {
+            match self {
+                SharedContainer::Owned(owned) => f.debug_tuple("SharedContainer").field(owned).finish(),
+                SharedContainer::Referenced(reference) => f.debug_tuple("SharedContainer").field(reference).finish(),
+            }
+        }
+    }
 }
 
 impl SharedContainer {
