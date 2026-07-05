@@ -742,8 +742,8 @@ mod tests {
     fn parse_iso_datetime_with_millis() {
         let expr = parse("2026-04-13T18:28:09.415Z");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::DateTime(
+            expr.data(),
+            &DatexExpressionData::DateTime(
                 crate::values::core_values::time::Instant::instant_from_iso(
                     "2026-04-13T18:28:09.415Z"
                 )
@@ -755,8 +755,8 @@ mod tests {
     fn parse_iso_datetime_without_millis() {
         let expr = parse("2026-04-13T18:28:09Z");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::DateTime(
+            expr.data(),
+            &DatexExpressionData::DateTime(
                 crate::values::core_values::time::Instant::instant_from_iso(
                     "2026-04-13T18:28:09Z"
                 )
@@ -769,8 +769,8 @@ mod tests {
     fn parse_iso_datetime_without_seconds() {
         let expr = parse("2026-04-13T18:28Z");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::DateTime(
+            expr.data(),
+            &DatexExpressionData::DateTime(
                 crate::values::core_values::time::Instant::instant_from_iso(
                     "2026-04-13T18:28Z"
                 )
@@ -782,8 +782,8 @@ mod tests {
     fn parse_iso_datetime_epoch() {
         let expr = parse("1970-01-01T00:00:00.000Z");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::DateTime(
+            expr.data(),
+            &DatexExpressionData::DateTime(
                 crate::values::core_values::time::Instant(0)
             )
         );
