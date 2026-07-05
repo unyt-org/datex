@@ -338,6 +338,12 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
     }
 }
 
+impl From<DatexExpressionData> for DatexExpression {
+    fn from(data: DatexExpressionData) -> Self {
+        data.with_default_span()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct BinaryOperation {
     pub operator: BinaryOperator,
