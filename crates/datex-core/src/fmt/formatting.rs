@@ -26,7 +26,7 @@ impl<'a> Formatter<'a> {
         expr: &'a DatexExpression,
     ) -> Format<'a> {
         let a = &self.alloc;
-        match &expr.data {
+        match expr.data() {
             DatexExpressionData::Integer(i) => a.as_string(i),
             DatexExpressionData::TypedInteger(ti) => {
                 self.typed_integer_to_source_code(ti, &expr.span)

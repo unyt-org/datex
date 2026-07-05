@@ -42,7 +42,7 @@ impl From<&ValueContainer> for DatexExpressionData {
                 SharedContainer::Referenced(referenced_container) => {
                     DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                         mutability: referenced_container.reference_mutability(),
-                        expression: Box::new(create_shared(referenced_container).with_default_span()),
+                        expression: (create_shared(referenced_container).with_default_span()),
                     })
                 }
                 SharedContainer::Owned(owned_container) => create_shared(owned_container),
@@ -58,10 +58,10 @@ fn create_shared(shared_container: &impl SharedContainerCommon) -> DatexExpressi
     else {
         DatexExpressionData::CreateShared(CreateShared {
             mutability: shared_container.container_mutability(),
-            expression: Box::new(
+            expression: (
                 DatexExpressionData::from(
                     &*shared_container.value_container(),
-                ).with_default_span(),
+                ).with_default_span()
             ),
         })
     }
@@ -99,13 +99,13 @@ fn core_value_to_datex_expression(
 
         CoreValue::Range(range) => {
             DatexExpressionData::Range(RangeDeclaration {
-                start: Box::new(
+                start: (
                     DatexExpressionData::from(&*range.start.clone())
-                        .with_default_span(),
+                        .with_default_span()
                 ),
-                end: Box::new(
+                end: (
                     DatexExpressionData::from(&*range.end.clone())
-                        .with_default_span(),
+                        .with_default_span()
                 ),
             })
         }
@@ -170,9 +170,9 @@ fn core_value_to_datex_expression(
                         .yeet_type
                         .as_ref()
                         .map(|ty| type_to_type_expression(ty)),
-                    body: Box::new(
+                    body: (
                         DatexExpressionData::NativeImplementationIndicator
-                            .with_default_span(),
+                            .with_default_span()
                     ),
                     injected_variable_count: None,
                 },
@@ -196,7 +196,7 @@ fn type_cast_expression(
             ty: Option::None,
         }) => DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),
-            expression: Some(Box::new(expression.with_default_span())),
+            expression: Some(expression.with_default_span()),
         }),
         // #SomeTag
         TypeDefinition::TaggedType(TaggedTypeDefinition {
@@ -416,11 +416,11 @@ mod tests {
         assert_eq!(
             ast,
             DatexExpressionData::Range(RangeDeclaration {
-                start: Box::new(
+                start: (
                     DatexExpressionData::Integer(Integer::from(11))
                         .with_default_span()
                 ),
-                end: Box::new(
+                end: (
                     DatexExpressionData::Integer(Integer::from(13))
                         .with_default_span()
                 ),

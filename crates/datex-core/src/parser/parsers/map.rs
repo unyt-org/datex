@@ -44,8 +44,8 @@ mod tests {
     fn parse_empty_map() {
         let expr = parse("{}");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Map(Map { entries: vec![] })
+            expr.data(),
+            &DatexExpressionData::Map(Map { entries: vec![] })
         );
     }
 
@@ -53,8 +53,8 @@ mod tests {
     fn parse_simple_map() {
         let expr = parse(r#"{"key1": true, "key2": false}"#);
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Map(Map {
+            expr.data(),
+            &DatexExpressionData::Map(Map {
                 entries: vec![
                     (
                         DatexExpressionData::Text("key1".into())
@@ -77,8 +77,8 @@ mod tests {
     fn parse_map_with_plain_identifier_keys() {
         let expr = parse("{key1: true, key2: false}");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Map(Map {
+            expr.data(),
+            &DatexExpressionData::Map(Map {
                 entries: vec![
                     (
                         DatexExpressionData::Text("key1".into())
@@ -101,8 +101,8 @@ mod tests {
     fn parse_map_with_reserved_keyword_keys() {
         let expr = parse("{if: true, type: false}");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Map(Map {
+            expr.data(),
+            &DatexExpressionData::Map(Map {
                 entries: vec![
                     (
                         DatexExpressionData::Text("if".into())
@@ -125,8 +125,8 @@ mod tests {
     fn parse_map_with_dynamic_expression_keys() {
         let expr = parse("{(x): true, (y + true): false}");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Map(Map {
+            expr.data(),
+            &DatexExpressionData::Map(Map {
                 entries: vec![
                     (
                         DatexExpressionData::Identifier("x".to_string())
@@ -136,7 +136,7 @@ mod tests {
                     ),
                     (
                         DatexExpressionData::BinaryOperation(BinaryOperation {
-                            left: Box::new(
+                            left: (
                                 DatexExpressionData::Identifier(
                                     "y".to_string()
                                 )
@@ -145,7 +145,7 @@ mod tests {
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add
                             ),
-                            right: Box::new(
+                            right: (
                                 DatexExpressionData::Boolean(true.into())
                                     .with_default_span()
                             ),

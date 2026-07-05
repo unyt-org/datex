@@ -296,14 +296,14 @@ fn ensure_statements(
         is_terminated,
         unbounded,
         ..
-    }) = &mut ast.data
+    }) = ast.data_mut()
     {
         *unbounded = unbounded_section;
         *is_terminated
     } else {
         // wrap in statements
         let original_ast = ast.clone();
-        ast.data = DatexExpressionData::Statements(Statements {
+        *ast.data_mut() = DatexExpressionData::Statements(Statements {
             statements: vec![original_ast],
             is_terminated: false,
             unbounded: unbounded_section,
@@ -346,8 +346,8 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
         )
     } else {
         matches!(
-            valid_parse_result.data,
-            DatexExpressionData::Statements(Statements {
+            valid_parse_result.data(),
+            &DatexExpressionData::Statements(Statements {
                 is_terminated: true,
                 ..
             })
@@ -458,10 +458,10 @@ fn compile_ast(
 fn extract_static_value_from_ast(
     ast: &DatexExpression,
 ) -> Option<ValueContainer> {
-    if let DatexExpressionData::Placeholder(_) = ast.data {
+    if let DatexExpressionData::Placeholder(_) = ast.data() {
         return None;
     }
-    ValueContainer::try_from(&ast.data).ok()
+    ValueContainer::try_from(ast.data()).ok()
 }
 
 /// Macro for compiling a DATEX script template text with inserted values into a DXB body,
@@ -519,7 +519,7 @@ fn precompile_to_rich_ast(
         )?
     } else {
         // if no precompiler data, just use the AST with default metadata
-        RichAst::new_without_metadata(Box::new(valid_parse_result))
+        RichAst::new_without_metadata(valid_parse_result)
     };
 
     Ok(rich_ast)
@@ -547,9 +547,9 @@ fn compile_expression(
     let metadata = rich_ast.metadata;
     let ast = rich_ast.ast;
 
-    let DatexExpression { data, span, ty } = *ast;
+    let DatexExpression { data, span, ty } = ast;
 
-    match data {
+    match *data {
         DatexExpressionData::Integer(int) => {
             append_integer(compilation_context.cursor(), &int);
         }
@@ -616,7 +616,7 @@ fn compile_expression(
             for item in list.items {
                 scope = compile_expression(
                     compilation_context,
-                    RichAst::new(Box::new(item), &metadata),
+                    RichAst::new((item), &metadata),
                     CompileMetadata::default(),
                     scope,
                 )?;
@@ -771,7 +771,7 @@ fn compile_expression(
             if unbounded.is_none() && statements.len() == 1 && !is_terminated {
                 scope = compile_expression(
                     compilation_context,
-                    RichAst::new(Box::new(statements.remove(0)), &metadata),
+                    RichAst::new(statements.remove(0), &metadata),
                     CompileMetadata::default(),
                     scope,
                 )?;
@@ -806,7 +806,7 @@ fn compile_expression(
                 for statement in statements.into_iter() {
                     child_scope = compile_expression(
                         compilation_context,
-                        RichAst::new(Box::new(statement), &metadata),
+                        RichAst::new((statement), &metadata),
                         CompileMetadata::default(),
                         child_scope,
                     )?;
@@ -932,7 +932,7 @@ fn compile_expression(
             for argument in apply.arguments.iter() {
                 scope = compile_expression(
                     compilation_context,
-                    RichAst::new(Box::new(argument.clone()), &metadata),
+                    RichAst::new((argument.clone()), &metadata),
                     CompileMetadata::default(),
                     scope,
                 )?;
@@ -951,7 +951,7 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
 
             // depending on the key, handle different property accesses
-            match &property_access.property.data {
+            match property_access.property.data() {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.0.len() <= 255 => {
                     compile_text_property_access(compilation_context, &key.0)
@@ -989,7 +989,7 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
 
             // depending on the key, handle different property assignments
-            match &property_assignment.property.data {
+            match &property_assignment.property.data() {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
                     append_regular_instruction(
@@ -1461,7 +1461,7 @@ fn compile_expression(
             );
         }
 
-        data => {
+        _ => {
             log::error!("Unhandled expression in compiler: {:?}", data);
             let ast = DatexExpression { data, span, ty };
             return Err(CompilerError::UnexpectedTerm(Box::new(ast)));
@@ -1478,7 +1478,7 @@ fn compile_key_value_entry(
     metadata: &Rc<RefCell<AstMetadata>>,
     mut scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
-    match key.data {
+    match *key.data {
         // text -> insert key string
         DatexExpressionData::Text(text) => {
             append_key_string(compilation_context.cursor(), text.0);
@@ -1489,7 +1489,7 @@ fn compile_key_value_entry(
                 .append_instruction_code(InstructionCode::KEY_VALUE_DYNAMIC);
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(Box::new(key), metadata),
+                RichAst::new((key), metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1498,7 +1498,7 @@ fn compile_key_value_entry(
     // insert value
     scope = compile_expression(
         compilation_context,
-        RichAst::new(Box::new(value), metadata),
+        RichAst::new((value), metadata),
         CompileMetadata::default(),
         scope,
     )?;
@@ -1537,7 +1537,7 @@ fn compile_index_property_assignment(
 
 fn compile_dynamic_property_access(
     compilation_context: &mut CompilationContext,
-    key_expression: Box<DatexExpression>,
+    key_expression: DatexExpression,
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     compilation_context
@@ -1556,7 +1556,7 @@ fn compile_dynamic_property_access(
 
 fn compile_dynamic_property_assignment(
     compilation_context: &mut CompilationContext,
-    key_expression: Box<DatexExpression>,
+    key_expression: DatexExpression,
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     compilation_context

@@ -111,11 +111,11 @@ mod tests {
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::Replace(DatexExpression {
-                data: DatexExpressionData::VariableAccess(VariableAccess {
+                data: Box::new(DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: identifier.clone(),
                     access_type: ValueAccessType::MoveOrCopy,
-                }),
+                })),
                 span: span.clone(),
                 ty: None,
             }))
@@ -151,36 +151,36 @@ mod tests {
     #[test]
     fn test() {
         let mut ast = DatexExpression {
-            data: DatexExpressionData::Statements(Statements {
+            data: Box::new(DatexExpressionData::Statements(Statements {
                 statements: vec![DatexExpression {
-                    data: DatexExpressionData::BinaryOperation(
+                    data: Box::new(DatexExpressionData::BinaryOperation(
                         BinaryOperation {
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add,
                             ),
-                            left: Box::new(DatexExpression {
-                                data: DatexExpressionData::Identifier(
+                            left: (DatexExpression {
+                                data: Box::new(DatexExpressionData::Identifier(
                                     "x".to_string(),
-                                ),
+                                )),
                                 span: 0..1,
                                 ty: None,
                             }),
-                            right: Box::new(DatexExpression {
-                                data: DatexExpressionData::Identifier(
+                            right: (DatexExpression {
+                                data: Box::new(DatexExpressionData::Identifier(
                                     "y".to_string(),
-                                ),
+                                )),
                                 span: 2..3,
                                 ty: None,
                             }),
                             ty: None,
                         },
-                    ),
+                    )),
                     span: 0..3,
                     ty: None,
                 }],
                 is_terminated: true,
                 unbounded: None,
-            }),
+            })),
             span: 1..2,
             ty: None,
         };

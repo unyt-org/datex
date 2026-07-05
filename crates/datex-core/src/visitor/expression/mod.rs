@@ -63,7 +63,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         expr: &mut DatexExpression,
     ) -> Result<(), E> {
         self.before_visit_datex_expression(expr);
-        let visit_result = match &mut expr.data {
+        let visit_result = match &mut *expr.data {
             DatexExpressionData::PropertyAssignment(property_assignment) => {
                 self.visit_property_assignment(property_assignment, &expr.span)
             }
@@ -240,7 +240,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             VisitAction::SkipChildren => Ok(()),
             VisitAction::ToNoop => {
-                expr.data = DatexExpressionData::Noop;
+                expr.data = Box::new(DatexExpressionData::Noop);
                 Ok(())
             }
             VisitAction::VisitChildren => {

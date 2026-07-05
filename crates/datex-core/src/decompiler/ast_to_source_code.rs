@@ -171,7 +171,7 @@ impl AstToSourceCodeConverter {
 
     /// Convert a key (DatexExpression) to source code, adding parentheses if necessary
     fn key_expression_to_source_code(&self, key: &DatexExpression) -> String {
-        match &key.data {
+        match key.data() {
             DatexExpressionData::Text(t) => self.key_to_string(t),
             DatexExpressionData::Integer(i) => i.to_string(),
             DatexExpressionData::TypedInteger(ti) => {
@@ -488,7 +488,7 @@ impl AstToSourceCodeConverter {
     }
 
     pub fn format(&self, ast: &DatexExpression) -> String {
-        match &ast.data {
+        match ast.data() {
             DatexExpressionData::PropertyAssignment(PropertyAssignment {
                 operator,
                 base,
@@ -886,7 +886,7 @@ impl AstToSourceCodeConverter {
                 todo!("#654 Undescribed by author.")
             }
             DatexExpressionData::Tag(tag) => match &tag.expression {
-                Some(tag_expression) => match &tag_expression.data {
+                Some(tag_expression) => match tag_expression.data() {
                     DatexExpressionData::Map(_)
                     | DatexExpressionData::List(_)
                     | DatexExpressionData::Statements(_) => {
@@ -1067,11 +1067,11 @@ mod tests {
         assert_eq!(compact().format(&null_ast.with_default_span()), "null");
 
         let range_ast = DatexExpressionData::Range(RangeDeclaration {
-            start: Box::new(
-                DatexExpressionData::Integer(11.into()).with_default_span(),
+            start: (
+                DatexExpressionData::Integer(11.into()).with_default_span()
             ),
-            end: Box::new(
-                DatexExpressionData::Integer(13.into()).with_default_span(),
+            end: (
+                DatexExpressionData::Integer(13.into()).with_default_span()
             ),
         });
 
@@ -1157,13 +1157,13 @@ mod tests {
     #[test]
     fn unbox() {
         let unbox_ast = DatexExpressionData::Unbox(Unbox {
-            expression: Box::new(
+            expression: (
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "ptr".to_string(),
                     access_type: ValueAccessType::MoveOrCopy,
                 })
-                .with_default_span(),
+                .with_default_span()
             ),
         });
         assert_eq!(compact().format(&unbox_ast.with_default_span()), "*ptr");
@@ -1174,16 +1174,16 @@ mod tests {
         let unbox_assign_ast =
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: None,
-                unbox_expression: Box::new(
+                unbox_expression: (
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "ptr".to_string(),
                         access_type: ValueAccessType::MoveOrCopy,
                     })
-                    .with_default_span(),
+                    .with_default_span()
                 ),
-                assigned_expression: Box::new(
-                    DatexExpressionData::Integer(42.into()).with_default_span(),
+                assigned_expression: (
+                    DatexExpressionData::Integer(42.into()).with_default_span()
                 ),
             });
         assert_eq!(
@@ -1199,9 +1199,9 @@ mod tests {
                 id: Some(0),
                 kind: VariableKind::Const,
                 name: "x".to_string(),
-                init_expression: Box::new(
+                init_expression: (
                     DatexExpressionData::TypedInteger(10u8.into())
-                        .with_default_span(),
+                        .with_default_span()
                 ),
                 type_annotation: Some(
                     TypeExpressionData::RefMut(Box::new(
@@ -1240,17 +1240,17 @@ mod tests {
     fn property_access_text_key() {
         let prop_access_ast =
             DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: Box::new(
+                base: (
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "obj".to_string(),
                         access_type: ValueAccessType::MoveOrCopy,
                     })
-                    .with_default_span(),
+                    .with_default_span()
                 ),
-                property: Box::new(
+                property: (
                     DatexExpressionData::Text("myProp".into())
-                        .with_default_span(),
+                        .with_default_span()
                 ),
             })
             .with_default_span();
@@ -1262,17 +1262,17 @@ mod tests {
     fn property_access_boolean_key() {
         let prop_access_ast =
             DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: Box::new(
+                base: (
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "obj".to_string(),
                         access_type: ValueAccessType::MoveOrCopy,
                     })
-                    .with_default_span(),
+                    .with_default_span()
                 ),
-                property: Box::new(
+                property: (
                     DatexExpressionData::Boolean(true.into())
-                        .with_default_span(),
+                        .with_default_span()
                 ),
             })
             .with_default_span();
@@ -1284,16 +1284,16 @@ mod tests {
     fn property_access_integer_key() {
         let prop_access_ast =
             DatexExpressionData::PropertyAccess(PropertyAccess {
-                base: Box::new(
+                base: (
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "obj".to_string(),
                         access_type: ValueAccessType::MoveOrCopy,
                     })
-                    .with_default_span(),
+                    .with_default_span()
                 ),
-                property: Box::new(
-                    DatexExpressionData::Integer(42.into()).with_default_span(),
+                property: (
+                    DatexExpressionData::Integer(42.into()).with_default_span()
                 ),
             })
             .with_default_span();
@@ -1304,13 +1304,13 @@ mod tests {
     #[test]
     fn apply_single_argument() {
         let apply_ast = DatexExpressionData::Apply(Apply {
-            base: Box::new(
+            base: (
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "func".to_string(),
                     access_type: ValueAccessType::MoveOrCopy,
                 })
-                .with_default_span(),
+                .with_default_span()
             ),
             arguments: vec![
                 DatexExpressionData::Integer(10.into()).with_default_span(),
@@ -1324,13 +1324,13 @@ mod tests {
     #[test]
     fn apply_multiple_arguments() {
         let apply_ast = DatexExpressionData::Apply(Apply {
-            base: Box::new(
+            base: (
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "func".to_string(),
                     access_type: ValueAccessType::MoveOrCopy,
                 })
-                .with_default_span(),
+                .with_default_span()
             ),
             arguments: vec![
                 DatexExpressionData::Integer(10.into()).with_default_span(),

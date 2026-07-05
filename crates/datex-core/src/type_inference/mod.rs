@@ -2581,9 +2581,9 @@ mod tests {
                 kind: VariableKind::Const,
                 name: "x".to_string(),
                 type_annotation: None,
-                init_expression: Box::new(
+                init_expression: (
                     DatexExpressionData::Integer(Integer::from(10))
-                        .with_default_span(),
+                        .with_default_span()
                 ),
             })
             .with_default_span();
@@ -2609,13 +2609,13 @@ mod tests {
         // integer - integer = integer
         let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Subtract),
-            left: Box::new(
+            left: (
                 DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span(),
+                    .with_default_span()
             ),
-            right: Box::new(
+            right: (
                 DatexExpressionData::Integer(Integer::from(2))
-                    .with_default_span(),
+                    .with_default_span()
             ),
             ty: None,
         })
@@ -2626,13 +2626,13 @@ mod tests {
         // decimal + decimal = decimal
         let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: Box::new(
+            left: (
                 DatexExpressionData::Decimal(Decimal::from(1.0))
-                    .with_default_span(),
+                    .with_default_span()
             ),
-            right: Box::new(
+            right: (
                 DatexExpressionData::Decimal(Decimal::from(2.0))
-                    .with_default_span(),
+                    .with_default_span()
             ),
             ty: None,
         })
@@ -2642,13 +2642,13 @@ mod tests {
         // integer + decimal = type error
         let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
-            left: Box::new(
+            left: (
                 DatexExpressionData::Integer(Integer::from(1))
-                    .with_default_span(),
+                    .with_default_span()
             ),
-            right: Box::new(
+            right: (
                 DatexExpressionData::Decimal(Decimal::from(2.0))
-                    .with_default_span(),
+                    .with_default_span()
             ),
             ty: None,
         })

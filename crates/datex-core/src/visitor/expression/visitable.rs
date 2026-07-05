@@ -322,7 +322,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E> {
-        match &mut self.data {
+        match self.data_mut() {
             DatexExpressionData::PropertyAssignment(property_assignment) => {
                 property_assignment.walk_children(visitor)
             }
