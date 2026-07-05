@@ -9,6 +9,7 @@ use datex_core::values::value_container::ValueContainer;
 
 #[cfg(feature = "ast")]
 use datex_core::ast::expressions::DatexExpressionData;
+use datex_core::parser::lexer::Token;
 
 #[test]
 fn integer_u8() {
@@ -25,7 +26,7 @@ fn integer_u8() {
             .datex_value(TypedInteger::U8(42))
             .rust_value(42u8),
         output()
-            .tokens(&[])
+            .tokens(&[Token::IntegerLiteral("42u8".to_string())])
             .ast(DatexExpressionData::TypedInteger(TypedInteger::U8(42)))
             .instructions(RegularInstruction::UInt8(UInt8Data(42)))
             .source_code_same_as_input()
