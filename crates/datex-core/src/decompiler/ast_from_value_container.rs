@@ -19,9 +19,7 @@ use crate::{
     },
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
-    shared_values::{
-        SharedContainer, traits::SharedContainerCommon,
-    },
+    shared_values::{SharedContainer, traits::SharedContainerCommon},
     types::{
         r#type::Type,
         type_definition::{
