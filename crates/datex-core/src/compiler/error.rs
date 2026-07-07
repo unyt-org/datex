@@ -38,7 +38,7 @@ pub enum CompilerError {
     AssignmentToImmutableReference(String),
     AssignmentToImmutableValue(String),
     OnceScopeUsedMultipleTimes,
-    TypeError(TypeError),
+    TypeError(Box<TypeError>),
     ParserError(ParserError),
     SharedMutRefToImmutableValue,
     InvalidConversionFromRefToOwnedValue,
@@ -272,7 +272,7 @@ impl From<TypeError> for SimpleOrDetailedCompilerError {
 
 impl From<TypeError> for CompilerError {
     fn from(value: TypeError) -> Self {
-        CompilerError::TypeError(value)
+        CompilerError::TypeError(Box::new(value))
     }
 }
 

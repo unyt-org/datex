@@ -10,7 +10,7 @@ use crate::{
         },
     },
     compiler::{
-        CompileOptions, parse_datex_script_to_rich_ast_simple_error,
+        CompileOptions, precompile_datex_script_simple_error,
         precompiler::precompiled_ast::RichAst,
     },
     fmt::options::{FormattingOptions, TypeDeclarationFormatting},
@@ -58,7 +58,7 @@ pub struct ParentContext<'a> {
 
 impl<'a> Formatter<'a> {
     pub fn new(script: &'a str, options: FormattingOptions) -> Self {
-        let ast = parse_datex_script_to_rich_ast_simple_error(
+        let ast = precompile_datex_script_simple_error(
             script,
             &mut CompileOptions {
                 // Preserve scoping information for accurate formatting

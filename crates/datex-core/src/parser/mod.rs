@@ -22,6 +22,7 @@ use crate::{
     prelude::*,
     utils::maybe_action::{ErrorCollector, MaybeAction, collect_or_pass_error},
 };
+use crate::parser::lexer::InvalidToken;
 
 pub mod errors;
 pub mod lexer;
@@ -48,6 +49,12 @@ impl Parser {
     /// Collects all lexing and parsing errors encountered.
     pub fn parse_collecting(src: &str, options: ParserOptions) -> ParserResult {
         let (tokens, errors) = lexer::get_spanned_tokens_from_source(src);
+        Self::parse_tokens_collecting(tokens, errors, options)
+    }
+    
+    /// Parses the given tokens and collected lexer errors.
+    /// Collects all parsing errors encountered.
+    pub fn parse_tokens_collecting(tokens: Vec<SpannedToken>, errors: Vec<InvalidToken>, options: ParserOptions) -> ParserResult {
         let mut parser = Self::new_from_tokens(tokens, Some(errors), options);
         match parser.parse_root() {
             // this should never happen when collecting errors
@@ -74,7 +81,7 @@ impl Parser {
             }
         }
     }
-
+    
     /// Parses the given source code.
     /// Aborts on the first lexing or parsing error encountered.
     pub fn parse(
@@ -82,9 +89,19 @@ impl Parser {
         options: ParserOptions,
     ) -> Result<DatexExpression, SpannedParserError> {
         let (tokens, errors) = lexer::get_spanned_tokens_from_source(src);
+        Self::parse_tokens(tokens, errors, options)
+    }
+    
+    /// Parses the given tokens and collected lexer errors.
+    /// Aborts on the first parsing error encountered.
+    pub fn parse_tokens(
+        tokens: Vec<SpannedToken>,
+        errors: Vec<InvalidToken>,
+        options: ParserOptions,
+    ) -> Result<DatexExpression, SpannedParserError> {
         // already has lexer errors - aborts early when parsing starts
         if let Some(first_error) = errors.into_iter().next() {
-            Err(first_error)
+            Err(first_error.into())
         }
         // no lexer errors - can proceed with parsing (using early abort mode)
         else {
@@ -111,13 +128,18 @@ impl Parser {
 
     fn new_from_tokens(
         tokens: Vec<SpannedToken>,
-        collected_errors: Option<Vec<SpannedParserError>>,
+        collected_token_errors: Option<Vec<InvalidToken>>,
         options: ParserOptions,
     ) -> Self {
         Self {
             tokens,
             pos: 0,
-            collected_errors,
+            collected_errors: collected_token_errors.map(|errors| {
+                errors
+                    .into_iter()
+                    .map(|invalid_token| invalid_token.into())
+                    .collect()
+            }),
             options,
         }
     }

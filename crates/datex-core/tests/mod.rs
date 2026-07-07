@@ -11,7 +11,6 @@ extern crate alloc;
 extern crate core;
 
 // pub mod network;
-pub mod values;
 
 #[cfg(all(feature = "compiler", feature = "decompiler"))]
 pub mod compiler;
@@ -26,3 +25,5 @@ pub mod execution;
 
 pub mod datex_structs_derive;
 pub mod network;
+
+pub mod pipeline_tests;
