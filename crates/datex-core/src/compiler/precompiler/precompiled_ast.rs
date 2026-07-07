@@ -60,6 +60,14 @@ pub struct RichAst {
     pub metadata: Rc<RefCell<AstMetadata>>,
 }
 
+impl Eq for RichAst {}
+
+impl PartialEq for RichAst {
+    fn eq(&self, other: &Self) -> bool {
+        self.ast == other.ast && self.metadata.borrow() == other.metadata.borrow()
+    }
+}
+
 impl RichAst {
     pub fn new(
         ast: DatexExpression,

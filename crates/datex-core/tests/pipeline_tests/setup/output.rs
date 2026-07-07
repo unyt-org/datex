@@ -8,13 +8,31 @@ use datex_core::{
 
 #[cfg(feature = "ast")]
 use datex_core::ast::expressions::DatexExpression;
-
+use datex_core::compiler::precompiler::precompiled_ast::RichAst;
 #[cfg(feature = "parser")]
 use datex_core::parser::lexer::Token;
 
-enum SameAsInputOrCustom<T> {
+pub enum SameAsInputOrCustom<T> {
     SameAsInput,
     Custom(T),
+}
+
+impl<T> SameAsInputOrCustom<T> {
+    /// Collapses the enum into a value, panicking if the value is `SameAsInput`.
+    pub fn no_input(&self) -> T {
+        match self {
+            SameAsInputOrCustom::SameAsInput => panic!("Expected input to be defined, but it was not."),
+            SameAsInputOrCustom::Custom(value) => value.clone(),
+        }
+    }
+    
+    /// Collapses the enum into a value, returning either a custom value or the provided input value.
+    pub fn with_input(self, input: T) -> T {
+        match self {
+            SameAsInputOrCustom::SameAsInput => input,
+            SameAsInputOrCustom::Custom(value) => value,
+        }
+    }
 }
 
 /// A builder for pipeline output assertion, allowing the user to specify
@@ -33,13 +51,14 @@ pub struct PipelineOutput<
     RustValue,
 > {
     #[cfg(feature = "parser")]
-    tokens: Option<&'a [Token]>,
+    pub(crate) tokens: Option<&'a [Token]>,
     #[cfg(feature = "ast")]
-    ast: Option<DatexExpression>,
-    instructions: Option<InstructionTree<Instruction>>,
-    source_code: Option<SameAsInputOrCustom<String>>,
-    value: Option<SameAsInputOrCustom<&'a ValueContainer>>,
-    rust_value: Option<SameAsInputOrCustom<T>>,
+    pub(crate) ast: Option<DatexExpression>,
+    pub(crate) rich_ast: Option<RichAst>,
+    pub(crate) instructions: Option<InstructionTree<Instruction>>,
+    pub(crate) source_code: Option<SameAsInputOrCustom<String>>,
+    pub(crate) datex_value: Option<SameAsInputOrCustom<Option<&'a ValueContainer>>>,
+    pub(crate) rust_value: Option<SameAsInputOrCustom<T>>,
 
     _marker: PhantomData<(
         InputSourceCode,
@@ -100,9 +119,10 @@ impl<
             tokens: self.tokens,
             #[cfg(feature = "ast")]
             ast: self.ast,
+            rich_ast: self.rich_ast,
             instructions: self.instructions,
             source_code: Some(SameAsInputOrCustom::SameAsInput),
-            value: self.value,
+            datex_value: self.datex_value,
             rust_value: self.rust_value,
             _marker: PhantomData,
         }
@@ -155,9 +175,10 @@ impl<
             tokens: self.tokens,
             #[cfg(feature = "ast")]
             ast: self.ast,
+            rich_ast: self.rich_ast,
             instructions: self.instructions,
             source_code: self.source_code,
-            value: Some(SameAsInputOrCustom::SameAsInput),
+            datex_value: Some(SameAsInputOrCustom::SameAsInput),
             rust_value: self.rust_value,
             _marker: PhantomData,
         }
@@ -210,9 +231,10 @@ impl<
             tokens: self.tokens,
             #[cfg(feature = "ast")]
             ast: self.ast,
+            rich_ast: self.rich_ast,
             instructions: self.instructions,
             source_code: self.source_code,
-            value: self.value,
+            datex_value: self.datex_value,
             rust_value: Some(SameAsInputOrCustom::SameAsInput),
             _marker: PhantomData,
         }
@@ -268,9 +290,10 @@ impl<
             tokens: self.tokens,
             #[cfg(feature = "ast")]
             ast: self.ast,
+            rich_ast: self.rich_ast,
             instructions: self.instructions,
             source_code: Some(SameAsInputOrCustom::Custom(source.into())),
-            value: self.value,
+            datex_value: self.datex_value,
             rust_value: self.rust_value,
             _marker: PhantomData,
         }
@@ -325,9 +348,10 @@ impl<
             tokens: self.tokens,
             #[cfg(feature = "ast")]
             ast: self.ast,
+            rich_ast: self.rich_ast,
             instructions: self.instructions,
             source_code: self.source_code,
-            value: self.value,
+            datex_value: self.datex_value,
             rust_value: Some(SameAsInputOrCustom::Custom(value)),
             _marker: PhantomData,
         }
@@ -364,7 +388,7 @@ impl<
     /// the pipeline for the given inputs.
     pub fn datex_value(
         self,
-        value: impl Into<&'a ValueContainer>,
+        value: Option<impl Into<&'a ValueContainer>>,
     ) -> PipelineOutput<
         'a,
         T,
@@ -383,9 +407,10 @@ impl<
             tokens: self.tokens,
             #[cfg(feature = "ast")]
             ast: self.ast,
+            rich_ast: self.rich_ast,
             instructions: self.instructions,
             source_code: self.source_code,
-            value: Some(SameAsInputOrCustom::Custom(value.into())),
+            datex_value: Some(SameAsInputOrCustom::Custom(value.into())),
             rust_value: self.rust_value,
             _marker: PhantomData,
         }
@@ -439,9 +464,10 @@ impl<
         PipelineOutput {
             tokens: Some(tokens),
             ast: self.ast,
+            rich_ast: self.rich_ast,
             instructions: self.instructions,
             source_code: self.source_code,
-            value: self.value,
+            datex_value: self.datex_value,
             rust_value: self.rust_value,
             _marker: PhantomData,
         }
@@ -495,9 +521,10 @@ impl<
         PipelineOutput {
             tokens: self.tokens,
             ast: Some(ast.into()),
+            rich_ast: self.rich_ast,
             instructions: self.instructions,
             source_code: self.source_code,
-            value: self.value,
+            datex_value: self.datex_value,
             rust_value: self.rust_value,
             _marker: PhantomData,
         }
@@ -552,9 +579,10 @@ impl<
             tokens: self.tokens,
             #[cfg(feature = "ast")]
             ast: self.ast,
+            rich_ast: self.rich_ast,
             instructions: Some(ast.into()),
             source_code: self.source_code,
-            value: self.value,
+            datex_value: self.datex_value,
             rust_value: self.rust_value,
             _marker: PhantomData,
         }
@@ -580,9 +608,10 @@ pub fn output<'a, InputSourceCode, InputValue, InputRustValue>()
         tokens: None,
         #[cfg(feature = "ast")]
         ast: None,
+        rich_ast: None,
         instructions: None,
         source_code: None,
-        value: None,
+        datex_value: None,
         rust_value: None,
         _marker: PhantomData,
     }

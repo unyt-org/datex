@@ -251,7 +251,7 @@ pub fn compile_script_or_return_static_value(
     mut options: CompileOptions,
     runtime: Runtime,
 ) -> Result<(StaticValueOrDXB, CompilationScope), SpannedCompilerError> {
-    let ast = parse_datex_script_to_rich_ast_simple_error(
+    let ast = precompile_datex_script_simple_error(
         datex_script,
         &mut options,
         runtime.clone(),
@@ -264,9 +264,9 @@ pub fn compile_script_or_return_static_value(
         CompileInput::new(&lookup, &options.receivers),
     );
     // FIXME #480: no clone here
-    let scope = compile_ast(
-        ast.clone(),
+    let scope = compile_rich_ast_with_context(
         &mut compilation_context,
+        ast.clone(),
         options.compile_scope,
     )?;
     if compilation_context.has_non_static_value {
@@ -314,7 +314,7 @@ fn ensure_statements(
 
 /// Parses and precompiles a DATEX script template text with inserted values into an AST with metadata
 /// Only returns the first occurring error
-pub fn parse_datex_script_to_rich_ast_simple_error(
+pub fn precompile_datex_script_simple_error(
     datex_script: &str,
     options: &mut CompileOptions,
     runtime: Runtime,
@@ -330,15 +330,28 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
     //     return Ok((result, options.compile_scope));
     // }
     let parse_start = TimingInstant::now();
-    let mut valid_parse_result =
+
+    let valid_parse_result =
         Parser::parse(datex_script, options.parser_options.clone())?;
 
+    debug!(" [parse took {} ms]", parse_start.elapsed().as_millis());
+
+    precompile_ast_simple_error(valid_parse_result, options, runtime)
+}
+
+/// Parses and precompiles a raw AST into an AST with metadata
+/// Only returns the first occurring error
+pub fn precompile_ast_simple_error(
+    mut ast: DatexExpression,
+    options: &mut CompileOptions,
+    runtime: Runtime,
+) -> Result<RichAst, SpannedCompilerError> {
     // make sure to append a statements block for the first block in ExecutionMode::Unbounded
     let is_terminated = if let ExecutionMode::Unbounded { has_next } =
         options.compile_scope.execution_mode
     {
         ensure_statements(
-            &mut valid_parse_result,
+            &mut ast,
             Some(UnboundedStatement {
                 is_first: !options.compile_scope.was_used,
                 is_last: !has_next,
@@ -346,17 +359,16 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
         )
     } else {
         matches!(
-            valid_parse_result.data(),
+            ast.data(),
             &DatexExpressionData::Statements(Statements {
                 is_terminated: true,
                 ..
             })
         )
     };
-    debug!(" [parse took {} ms]", parse_start.elapsed().as_millis());
     let precompile_start = TimingInstant::now();
     let res = precompile_to_rich_ast(
-        valid_parse_result,
+        ast,
         &mut options.compile_scope,
         PrecompilerOptions {
             detailed_errors: false,
@@ -380,7 +392,7 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
 
 /// Parses and precompiles a DATEX script template text with inserted values into an AST with metadata
 /// Returns all occurring errors and the AST if one or more errors occur.
-pub fn parse_datex_script_to_rich_ast_detailed_errors(
+pub fn precompile_datex_script_detailed_errors(
     datex_script: &str,
     options: &mut CompileOptions,
     runtime: Runtime,
@@ -417,11 +429,21 @@ pub fn compile_template(
     mut options: CompileOptions,
     runtime: Runtime,
 ) -> Result<(DXBWithSharedValues, CompilationScope), SpannedCompilerError> {
-    let ast = parse_datex_script_to_rich_ast_simple_error(
+    let rich_ast = precompile_datex_script_simple_error(
         datex_script,
         &mut options,
         runtime.clone(),
     )?;
+    compile_rich_ast(rich_ast, inserted_values, options, runtime)
+}
+
+/// Compiles a [RichAst] with inserted values into a DXB body
+pub fn compile_rich_ast(
+    rich_ast: RichAst,
+    inserted_values: Vec<Option<ValueContainer>>,
+    options: CompileOptions,
+    runtime: Runtime,
+) -> Result<(DXBWithSharedValues, CompilationScope), SpannedCompilerError> {
     let lookup = runtime.pointer_availability_lookup();
     let input = CompileInput::new(&lookup, &options.receivers);
     let mut compilation_context = CompilationContext::new(
@@ -431,25 +453,18 @@ pub fn compile_template(
         input,
     );
     let compile_start = TimingInstant::now();
-    let res = compile_ast(ast, &mut compilation_context, options.compile_scope)
-        .map(|scope| (compilation_context.into_dxb_with_shared_values(), scope))
-        .map_err(SpannedCompilerError::from);
+    let res =
+        compile_rich_ast_with_context(&mut compilation_context, rich_ast, options.compile_scope)
+            .map(|scope| {
+                (compilation_context.into_dxb_with_shared_values(), scope)
+            })
+            .map_err(SpannedCompilerError::from);
 
     debug!(
         " [compile_ast took {} ms]",
         compile_start.elapsed().as_millis()
     );
     res
-}
-
-/// Compiles a precompiled DATEX AST, returning the compilation context and scope
-fn compile_ast(
-    ast: RichAst,
-    compilation_context: &mut CompilationContext,
-    scope: CompilationScope,
-) -> Result<CompilationScope, CompilerError> {
-    let compilation_scope = compile_rich_ast(compilation_context, ast, scope)?;
-    Ok(compilation_scope)
 }
 
 /// Tries to extract a static value from a DATEX expression AST.
@@ -525,7 +540,7 @@ fn precompile_to_rich_ast(
     Ok(rich_ast)
 }
 
-pub fn compile_rich_ast(
+pub fn compile_rich_ast_with_context(
     compilation_context: &mut CompilationContext,
     rich_ast: RichAst,
     scope: CompilationScope,
@@ -1274,7 +1289,7 @@ fn compile_expression(
             let stack_index_offset =
                 StackIndex(injected_variable_count.unwrap()); // must be set by precompiler
 
-            let external_scope = compile_rich_ast(
+            let external_scope = compile_rich_ast_with_context(
                 &mut execution_block_ctx,
                 RichAst::new(script, &metadata),
                 CompilationScope::new_with_external_parent_scope(
@@ -1577,9 +1592,9 @@ fn compile_dynamic_property_assignment(
 #[cfg(feature = "disassembler")]
 pub mod tests {
     use super::{
-        CompilationContext, CompileOptions, StaticValueOrDXB, compile_ast,
+        CompilationContext, CompileOptions, StaticValueOrDXB, compile_rich_ast_with_context,
         compile_script, compile_script_or_return_static_value,
-        compile_template, parse_datex_script_to_rich_ast_simple_error,
+        compile_template, precompile_datex_script_simple_error,
     };
 
     use crate::{
@@ -1657,7 +1672,7 @@ pub mod tests {
 
     fn get_compilation_context(script: &str) -> CompilationContext {
         let mut options = CompileOptions::default();
-        let ast = parse_datex_script_to_rich_ast_simple_error(
+        let ast = precompile_datex_script_simple_error(
             script,
             &mut options,
             Runtime::stub(),
@@ -1670,7 +1685,7 @@ pub mod tests {
             options.compile_scope.execution_mode,
             input,
         );
-        compile_ast(ast, &mut compilation_context, options.compile_scope)
+        compile_rich_ast_with_context(&mut compilation_context, ast, options.compile_scope)
             .unwrap();
         compilation_context
     }

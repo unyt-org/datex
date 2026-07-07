@@ -8,7 +8,7 @@ use crate::{
         error::{
             DetailedCompilerErrors, DetailedCompilerErrorsWithMaybeRichAst,
         },
-        parse_datex_script_to_rich_ast_detailed_errors,
+        precompile_datex_script_detailed_errors,
         precompiler::precompiled_ast::RichAst,
     },
     runtime::{Runtime, cache::shared_references_cache::SharedReferencesCache},
@@ -84,7 +84,7 @@ impl CompilerWorkspace {
         content: String,
     ) -> Result<RichAst, DetailedCompilerErrorsWithMaybeRichAst> {
         let mut options = CompileOptions::default();
-        let rich_ast = parse_datex_script_to_rich_ast_detailed_errors(
+        let rich_ast = precompile_datex_script_detailed_errors(
             &content,
             &mut options,
             self.runtime.clone(),

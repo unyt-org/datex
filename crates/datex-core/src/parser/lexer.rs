@@ -387,18 +387,29 @@ pub struct SpannedToken {
     pub span: Range<usize>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InvalidToken {
+    span: Range<usize>,
+}
+
+impl From<InvalidToken> for SpannedParserError {
+    fn from(invalid: InvalidToken) -> Self {
+        SpannedParserError {
+            error: ParserError::InvalidToken,
+            span: invalid.span,
+        }
+    }
+}
+
 pub fn get_spanned_tokens_from_source(
     src: &str,
-) -> (Vec<SpannedToken>, Vec<SpannedParserError>) {
+) -> (Vec<SpannedToken>, Vec<InvalidToken>) {
     let lexer = Token::lexer(src);
     let (oks, errs): (Vec<_>, Vec<_>) = lexer
         .spanned()
         .map(|(tok, span)| {
             tok.map(|token| SpannedToken { token, span })
-                .map_err(|span| SpannedParserError {
-                    error: ParserError::InvalidToken,
-                    span,
-                })
+                .map_err(|span| InvalidToken { span })
         })
         .partition(Result::is_ok);
 
