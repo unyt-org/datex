@@ -489,12 +489,12 @@ mod tests {
         runtime::cache::shared_references_cache::SharedReferencesCache,
         types::{
             literal_type_definition::LiteralTypeDefinition,
-            r#type::Type,
-            type_definition::{TypeDefinition, union::UnionTypeDefinition},
-            type_definition_with_metadata::TypeDefinitionWithMetadata,
             traits::type_match::{
                 TypeSatisfiesValueContainer, TypeSubset, TypeSuperset,
             },
+            r#type::Type,
+            type_definition::{TypeDefinition, union::UnionTypeDefinition},
+            type_definition_with_metadata::TypeDefinitionWithMetadata,
         },
         values::{
             core_value::CoreValue,

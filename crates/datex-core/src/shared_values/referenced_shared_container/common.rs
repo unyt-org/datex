@@ -37,7 +37,7 @@ impl SharedContainerCommon for ReferencedSharedContainer {
     }
 
     fn is_borrowed(&self) -> bool {
-        !self.inner.try_borrow_mut().is_ok()
+        self.inner.try_borrow_mut().is_err()
     }
 
     /// Checks if the reference can be mutated by the local endpoint

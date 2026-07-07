@@ -1,8 +1,8 @@
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     types::{
-        type_definition::TypeDefinition,
         traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+        type_definition::TypeDefinition,
     },
     values::value_container::ValueContainer,
 };

@@ -48,8 +48,7 @@ use crate::{
     runtime::execution::ExecutionError,
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainer,
-        SharedContainerOwnership,
-        traits::SharedContainerCommon,
+        SharedContainerOwnership, traits::SharedContainerCommon,
     },
     types::{
         r#type::Type,

@@ -51,6 +51,7 @@ use crate::{
     types::{
         error::TypeError,
         literal_type_definition::LiteralTypeDefinition,
+        traits::type_match::{TypeSubset, TypeSuperset},
         r#type::Type,
         type_definition::{
             range::RangeTypeDefinition, union::UnionTypeDefinition,
@@ -58,7 +59,6 @@ use crate::{
         type_definition_with_metadata::{
             LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
         },
-        traits::type_match::{TypeSubset, TypeSuperset},
     },
     values::{
         core_value::CoreValue,
