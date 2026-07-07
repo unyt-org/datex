@@ -492,7 +492,7 @@ mod tests {
             r#type::Type,
             type_definition::{TypeDefinition, union::UnionTypeDefinition},
             type_definition_with_metadata::TypeDefinitionWithMetadata,
-            type_match::{
+            traits::type_match::{
                 TypeSatisfiesValueContainer, TypeSubset, TypeSuperset,
             },
         },

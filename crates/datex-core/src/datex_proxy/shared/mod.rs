@@ -3,7 +3,7 @@ pub mod datex_proxy;
 use crate::{
     datex_proxy::{DatexValueContainerProxy, TryFromDatexValueError},
     shared_values::{
-        SharedContainer, shared_container_common::SharedContainerCommon,
+        SharedContainer, traits::SharedContainerCommon,
     },
 };
 

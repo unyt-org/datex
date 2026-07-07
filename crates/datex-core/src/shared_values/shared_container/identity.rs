@@ -1,7 +1,7 @@
 use alloc::rc::Rc;
 
 use crate::{
-    shared_values::{SharedContainer, internal_traits::_ExposeRcInternal},
+    shared_values::{SharedContainer, traits::_ExposeRcInternal},
     traits::identity::Identity,
 };
 /// Two references are identical if they point to the same inner value (Rc pointer equality)

@@ -2,7 +2,7 @@ use crate::{
     types::{
         r#type::Type,
         type_definition::TypeDefinition,
-        type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+        traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
     },
     values::value_container::ValueContainer,
 };

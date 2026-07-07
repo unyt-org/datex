@@ -3,7 +3,7 @@ use crate::{
         SharedContainer, SharedContainerInner, SharedContainerMutability,
         SharedContainerOwnership,
         base_shared_value_container::BaseSharedValueContainer,
-        shared_container_common::SharedContainerCommon,
+        traits::SharedContainerCommon,
     },
     types::type_definition::TypeDefinition,
     values::value_container::ValueContainer,

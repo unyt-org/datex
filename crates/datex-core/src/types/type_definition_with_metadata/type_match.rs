@@ -1,11 +1,11 @@
 use crate::{
     types::{
+        traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
         r#type::Type,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
-        type_match::{TypeSatisfiesValueContainer, TypeSuperset},
     },
     values::value_container::ValueContainer,
 };

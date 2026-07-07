@@ -2,12 +2,12 @@ use crate::{
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
         SharedContainer, SharedContainerMutability,
-        shared_container_common::SharedContainerCommon,
+        traits::SharedContainerCommon,
     },
     types::{
         nominal_type_definition::NominalTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
-        type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+        traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
     },
     values::{core_value::CoreValue, value_container::ValueContainer},
 };
