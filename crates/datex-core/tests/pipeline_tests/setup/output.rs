@@ -19,13 +19,15 @@ pub enum SameAsInputOrCustom<T> {
 
 impl<T> SameAsInputOrCustom<T> {
     /// Collapses the enum into a value, panicking if the value is `SameAsInput`.
-    pub fn no_input(&self) -> T {
+    pub fn no_input(self) -> T {
         match self {
-            SameAsInputOrCustom::SameAsInput => panic!("Expected input to be defined, but it was not."),
-            SameAsInputOrCustom::Custom(value) => value.clone(),
+            SameAsInputOrCustom::SameAsInput => {
+                panic!("Expected input to be defined, but it was not.")
+            }
+            SameAsInputOrCustom::Custom(value) => value,
         }
     }
-    
+
     /// Collapses the enum into a value, returning either a custom value or the provided input value.
     pub fn with_input(self, input: T) -> T {
         match self {
@@ -57,7 +59,8 @@ pub struct PipelineOutput<
     pub(crate) rich_ast: Option<RichAst>,
     pub(crate) instructions: Option<InstructionTree<Instruction>>,
     pub(crate) source_code: Option<SameAsInputOrCustom<String>>,
-    pub(crate) datex_value: Option<SameAsInputOrCustom<Option<&'a ValueContainer>>>,
+    pub(crate) datex_value:
+        Option<SameAsInputOrCustom<Option<&'a ValueContainer>>>,
     pub(crate) rust_value: Option<SameAsInputOrCustom<T>>,
 
     _marker: PhantomData<(
@@ -410,7 +413,7 @@ impl<
             rich_ast: self.rich_ast,
             instructions: self.instructions,
             source_code: self.source_code,
-            datex_value: Some(SameAsInputOrCustom::Custom(value.into())),
+            datex_value: Some(SameAsInputOrCustom::Custom(value.map(|v| v.into()))),
             rust_value: self.rust_value,
             _marker: PhantomData,
         }

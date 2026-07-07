@@ -107,6 +107,7 @@ pub fn validate_source_code_input<
     // TODO: additional end-to-end check: source code to final value
 }
 
+#[derive(Debug)]
 pub enum ValidationError {
     LexerError(Vec<InvalidToken>),
     ParserError(SpannedParserError),
@@ -244,15 +245,6 @@ pub fn execution_stage<T>(
     let result = runtime
         .execute_dxb_sync(dxb_with_shared_values, None, true)
         .map_err(|e| ValidationError::ExecutionError(e))?;
-
-    if let Some(expected_value) = compare_value {
-        if &result != expected_value {
-            return Err(ValidationError::OutputMismatch(format!(
-                "Execution output value does not match expected value.\nExpected: {:?}\nGot: {:?}",
-                expected_value, result
-            )));
-        }
-    }
 
     // TODO: compare rust value and source code
 

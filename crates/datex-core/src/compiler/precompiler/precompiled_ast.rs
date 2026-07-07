@@ -3,7 +3,7 @@ use crate::ast::expressions::{DatexExpression, VariableKind};
 use crate::{prelude::*, types::r#type::Type};
 use core::{cell::RefCell, fmt::Display};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VariableMetadata {
     pub original_realm_index: usize,
     pub is_cross_realm: bool,
@@ -33,7 +33,7 @@ impl Display for VariableShape {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct AstMetadata {
     pub variables: Vec<VariableMetadata>,
     /// Indicates whether the AST is terminated (; at the end)
@@ -64,7 +64,8 @@ impl Eq for RichAst {}
 
 impl PartialEq for RichAst {
     fn eq(&self, other: &Self) -> bool {
-        self.ast == other.ast && self.metadata.borrow() == other.metadata.borrow()
+        self.ast == other.ast
+            && *self.metadata.borrow() == *other.metadata.borrow()
     }
 }
 

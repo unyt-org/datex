@@ -3,9 +3,11 @@ use datex_core::{
     global::protocol_structures::{
         instruction_data::UInt8Data, regular_instructions::RegularInstruction,
     },
-    values::core_values::integer::typed_integer::TypedInteger,
+    values::{
+        core_values::integer::typed_integer::TypedInteger,
+        value_container::ValueContainer,
+    },
 };
-use datex_core::values::value_container::ValueContainer;
 
 #[cfg(feature = "ast")]
 use datex_core::ast::expressions::DatexExpressionData;
@@ -16,9 +18,9 @@ fn integer_u8() {
     // source code input "42u8" produces corresponding DATEX value after execution
     validate_pipeline(
         input().source_code("42u8"),
-        output().datex_value(&ValueContainer::from(TypedInteger::U8(42))),
+        output().datex_value(Some(&ValueContainer::from(TypedInteger::U8(42)))),
     );
-    
+
     // For any of the given input variants, all the expected outputs must be produced
     validate_pipeline(
         input()
@@ -43,6 +45,6 @@ fn integer_u8() {
     // Rust value 42u8 produces corresponding DATEX value after execution
     validate_pipeline(
         input().rust_value(42u8),
-        output().datex_value(&ValueContainer::from(TypedInteger::U8(42))),
+        output().datex_value(Some(&ValueContainer::from(TypedInteger::U8(42)))),
     );
 }
