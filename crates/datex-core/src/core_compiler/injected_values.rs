@@ -23,7 +23,7 @@ use crate::{
     prelude::*,
     shared_values::{
         PointerAddress, ReferencedSharedContainer, SharedContainer,
-        shared_container_common::SharedContainerCommon,
+        traits::SharedContainerCommon,
     },
     values::value_container::ValueContainer,
 };

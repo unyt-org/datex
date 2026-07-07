@@ -23,7 +23,7 @@ pub mod apply;
 pub mod ops;
 pub mod update_handler;
 pub mod value_key;
-use crate::shared_values::shared_container_common::SharedContainerCommon;
+use crate::shared_values::traits::SharedContainerCommon;
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},

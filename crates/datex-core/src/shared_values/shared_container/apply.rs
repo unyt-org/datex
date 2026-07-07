@@ -1,6 +1,6 @@
 use crate::{
     shared_values::{
-        SharedContainer, shared_container_common::SharedContainerCommon,
+        SharedContainer, traits::SharedContainerCommon,
     },
     traits::apply::{Apply, ApplyError},
     values::value_container::ValueContainer,

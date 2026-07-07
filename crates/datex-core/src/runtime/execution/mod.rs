@@ -250,7 +250,7 @@ mod tests {
             OwnedSharedContainer, ReferencedSharedContainer, SharedContainer,
             SharedContainerInner, SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
-            shared_container_common::SharedContainerCommon,
+            traits::SharedContainerCommon,
         },
         traits::{
             structural_eq::{StructuralEq, assert_structural_eq},

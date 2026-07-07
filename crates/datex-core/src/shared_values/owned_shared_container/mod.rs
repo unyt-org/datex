@@ -11,8 +11,7 @@ use crate::{
         SharedContainerInner, SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
         errors::UnexpectedImmutableSharedContainerError,
-        internal_traits::_ExposeRcInternal,
-        shared_container_common::SharedContainerCommon,
+        traits::{_ExposeRcInternal, SharedContainerCommon},
     },
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
