@@ -1,7 +1,7 @@
 use crate::types::{
     r#type::Type,
     type_definition::{TypeDefinition, union::UnionTypeDefinition},
-    type_match::TypeSuperset,
+    traits::type_match::TypeSuperset,
 };
 
 impl TypeSuperset<Type> for UnionTypeDefinition {

@@ -10,7 +10,7 @@ use crate::{
             AccessError, UnexpectedImmutableReferenceError,
             UnexpectedSharedContainerOwnershipError,
         },
-        internal_traits::_ExposeRcInternal,
+        traits::_ExposeRcInternal,
     },
     traits::{
         apply::Apply, identity::Identity, structural_eq::StructuralEq,
@@ -29,7 +29,7 @@ use crate::{
         base_shared_value_container::observers::{
             Observer, ObserverError, ObserverId,
         },
-        shared_container_common::SharedContainerCommon,
+        traits::SharedContainerCommon,
     },
     types::type_definition::TypeDefinition,
     values::core_value::CoreValue,
