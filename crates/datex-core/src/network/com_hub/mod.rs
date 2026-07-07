@@ -1201,8 +1201,8 @@ impl ComHub {
                     // add to response for matching endpoint
                     else if let Some(matches_endpoint) = self.try_match_sender(&mut responses, &sender) {
                         let response = responses.get_mut(&matches_endpoint).unwrap();
-                        info!("Received resolved response from {} -> {}", sender, sender.any_instance_endpoint());
-                        sender = sender.any_instance_endpoint();
+                        info!("Received resolved response from {} -> {}", sender, sender.any_instance());
+                        sender = sender.any_instance();
                         // check if the receiver is already set (= current set response is Err)
                         if response.is_err() {
                             *response = Ok(Response::ResolvedResponse(sender.clone(), section));
@@ -1287,7 +1287,7 @@ impl ComHub {
     ) -> Option<Endpoint> {
         let matches = gen {
             // match sender but with any wildcard instance
-            yield sender.any_instance_endpoint();
+            yield sender.any_instance();
             // match @@local if endpoint is local endpoint
             if self.is_local_endpoint_exact(sender) {
                 yield Endpoint::LOCAL;

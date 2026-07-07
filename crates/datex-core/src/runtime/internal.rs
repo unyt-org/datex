@@ -25,7 +25,8 @@ use crate::{
     },
     prelude::*,
     runtime::{
-        Runtime, RuntimeConfig, RuntimeConfigInterface,
+        OwnedSharedSubscriptions, Runtime, RuntimeConfig,
+        RuntimeConfigInterface,
         cache::shared_references_cache::SharedReferencesCache,
         confirm_moves::compile_request_moves,
         execution::{
@@ -84,6 +85,8 @@ pub struct RuntimeInternal {
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
 
     pointer_availability_lookup: RefCell<PointerAvailabilityLookup>,
+
+    owned_pointer_subscriptions: RefCell<OwnedSharedSubscriptions>,
 }
 
 macro_rules! get_execution_context {
@@ -134,6 +137,9 @@ impl RuntimeInternal {
             incoming_sections_receiver: RefCell::new(
                 incoming_sections_receiver,
             ),
+            owned_pointer_subscriptions: RefCell::new(
+                OwnedSharedSubscriptions::default(),
+            ),
             execution_contexts: RefCell::new(HashMap::new()),
             transceiver_counter: RefCell::new(0),
             pointer_availability_lookup: RefCell::new(
@@ -163,6 +169,17 @@ impl RuntimeInternal {
     ) -> RefMut<'_, PointerAvailabilityLookup> {
         self.pointer_availability_lookup.borrow_mut()
     }
+    pub fn owned_pointer_subscriptions(
+        &self,
+    ) -> Ref<'_, OwnedSharedSubscriptions> {
+        self.owned_pointer_subscriptions.borrow()
+    }
+    pub fn owned_pointer_subscriptions_mut(
+        &self,
+    ) -> RefMut<'_, OwnedSharedSubscriptions> {
+        self.owned_pointer_subscriptions.borrow_mut()
+    }
+
     pub fn memory(&self) -> &RefCell<SharedReferencesCache> {
         &self.memory
     }

@@ -11,6 +11,7 @@ mod self_owned_shared_container;
 mod shared_container;
 mod shared_container_inner;
 mod shared_container_mutability;
+mod subscriber;
 pub mod traits;
 
 pub use external_shared_container::*;
@@ -22,3 +23,4 @@ pub use self_owned_shared_container::*;
 pub use shared_container::*;
 pub use shared_container_inner::*;
 pub use shared_container_mutability::*;
+pub use subscriber::*;

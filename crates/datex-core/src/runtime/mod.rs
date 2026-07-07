@@ -10,21 +10,23 @@ use core::{fmt::Debug, ops::Deref, result::Result};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
+pub mod cache;
 mod config;
+mod confirm_moves;
 pub mod execution;
 mod incoming_sections;
 mod internal;
+mod owned_shared_subscriptions;
+pub mod pointer_address_provider;
 pub mod pointer_availability_lookup;
 mod runner;
-
-pub mod cache;
-mod confirm_moves;
-pub mod pointer_address_provider;
+mod subscriber;
 #[cfg(test)]
 pub mod test_utils;
 
 pub use config::*;
 pub use internal::*;
+pub use owned_shared_subscriptions::*;
 pub use runner::*;
 
 #[derive(Clone, Debug)]

@@ -453,18 +453,13 @@ impl Endpoint {
     }
 
     // get endpoint type
-    pub fn type_(&self) -> EndpointType {
+    pub fn ty(&self) -> EndpointType {
         self.ty
     }
 
     // get endpoint instance
     pub fn instance(&self) -> EndpointInstance {
         self.instance
-    }
-
-    // check if endpoint is broadcast (instance is /*)
-    pub fn is_broadcast(&self) -> bool {
-        self.instance == EndpointInstance::All
     }
 
     // check if endpoint is local (@@local)
@@ -477,13 +472,17 @@ impl Endpoint {
         self == &Endpoint::ANY
     }
 
+    // check if endpoint is broadcast (instance is /*)
+    pub fn instance_is_broadcast(&self) -> bool {
+        self.instance == EndpointInstance::All
+    }
     // check if endpoint is an endpoint without a specific instance
     pub fn is_any_instance(&self) -> bool {
         self.instance == EndpointInstance::Any
     }
 
     // get the main endpoint (@person) of the endpoint without a specific instance
-    pub fn any_instance_endpoint(&self) -> Endpoint {
+    pub fn any_instance(&self) -> Endpoint {
         Endpoint {
             ty: self.ty,
             identifier: self.identifier,
@@ -492,7 +491,7 @@ impl Endpoint {
     }
 
     // get the broadcast endpoint (@person/*) of the endpoint
-    pub fn broadcast(&self) -> Endpoint {
+    pub fn all_instances(&self) -> Endpoint {
         Endpoint {
             ty: self.ty,
             identifier: self.identifier,
@@ -579,15 +578,15 @@ mod tests {
     fn utilities() {
         let endpoint: Endpoint = Endpoint::from_string("@ben/42").unwrap();
         assert!(!endpoint.is_any_instance());
-        assert!(!endpoint.is_broadcast());
+        assert!(!endpoint.instance_is_broadcast());
 
-        let main_endpoint = endpoint.any_instance_endpoint();
+        let main_endpoint = endpoint.any_instance();
         assert!(main_endpoint.is_any_instance());
         assert_eq!(main_endpoint.to_string(), "@ben");
         assert_eq!(main_endpoint.instance, EndpointInstance::Any);
 
-        let broadcast_endpoint = endpoint.broadcast();
-        assert!(broadcast_endpoint.is_broadcast());
+        let broadcast_endpoint = endpoint.all_instances();
+        assert!(broadcast_endpoint.instance_is_broadcast());
         assert_eq!(broadcast_endpoint.to_string(), "@ben/*");
     }
 
