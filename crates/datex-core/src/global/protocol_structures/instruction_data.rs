@@ -346,6 +346,7 @@ pub struct SharedRef {
     pub address: PointerAddress,
     pub ref_mutability: ReferenceMutability,
     pub container_mutability: SharedContainerMutability,
+    // TODO: hash
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

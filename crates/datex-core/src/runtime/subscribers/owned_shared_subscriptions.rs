@@ -1,7 +1,11 @@
 use crate::collections::HashMap;
 
-use crate::shared_values::{PointerAddress, SharedContainer, Subscribers};
+use crate::{
+    runtime::execution::context::RemoteExecutionContext,
+    shared_values::{PointerAddress, SharedContainer, Subscribers},
+};
 use core::assert_matches;
+
 #[derive(Debug, Default)]
 pub struct OwnedSharedSubscriptions {
     subscriptions: HashMap<SharedContainer, Subscribers>,
@@ -19,6 +23,24 @@ impl OwnedSharedSubscriptions {
         shared: &SharedContainer,
     ) -> Option<&Subscribers> {
         self.subscriptions.get(shared)
+    }
+
+    pub fn remote_execution_context(
+        &self,
+        container: &SharedContainer,
+    ) -> Option<&RemoteExecutionContext> {
+        self.subscriptions
+            .get(container)
+            .map(|subscribers| subscribers.remote_execution_context())
+    }
+
+    pub fn remote_execution_context_mut(
+        &mut self,
+        container: &SharedContainer,
+    ) -> Option<&mut RemoteExecutionContext> {
+        self.subscriptions
+            .get_mut(container)
+            .map(|subscribers| subscribers.remote_execution_context_mut())
     }
 
     /// Registers a shared container.

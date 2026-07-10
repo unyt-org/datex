@@ -1361,11 +1361,11 @@ pub fn inner_execution_loop(
                                     yield_unwrap!(
                                         // SAFETY: we guarantee that receivers is not empty.
                                         unsafe {
-                                            state.runtime.internal.register_shared_containers_for_endpoints(
+                                            state.runtime.internal.clone().register_shared_containers_for_endpoints(
                                                 &receivers_list.iter().collect::<Vec<_>>(),
                                                 shared_containers
                                             )
-                                        }.map_err(|_e| ExecutionError::MoveToMultipleEndpoints)
+                                        }.map_err(|e| ExecutionError::SubscriberError(e))
                                     );
 
                                     interrupt_with_maybe_value!(
@@ -1459,6 +1459,7 @@ pub fn inner_execution_loop(
                                             SharedContainerOwnership::Referenced(shared_ref.ref_mutability)
                                         );
                                         match cache_result {
+                                            // TODO: update new value or compare hashes to make sure we have the latest value here
                                             Ok(container) => match container {
                                                 SharedContainer::Referenced(referenced_container) => referenced_container,
                                                 SharedContainer::Owned(_) => {

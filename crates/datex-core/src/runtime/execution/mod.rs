@@ -136,13 +136,13 @@ pub async fn execute_dxb(
             }
             ExternalExecutionInterrupt::RemoteExecution {
                 input,
-                mut receivers,
+                receivers,
             } => {
                 // assert that receivers is a single endpoint
                 assert_eq!(receivers.len(), 1);
 
                 let mut remote_execution_context = RemoteExecutionContext::new(
-                    receivers.remove(0),
+                    receivers,
                     ExecutionMode::Static,
                     runtime.clone(),
                 );

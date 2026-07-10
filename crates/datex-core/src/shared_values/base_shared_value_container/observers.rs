@@ -16,7 +16,7 @@ use serde::{
 #[derive(Debug)]
 pub enum ObserverError {
     ObserverNotFound,
-    ImmutableReference,
+    ImmutableValue,
 }
 
 impl Display for ObserverError {
@@ -25,7 +25,7 @@ impl Display for ObserverError {
             ObserverError::ObserverNotFound => {
                 core::write!(f, "Observer not found")
             }
-            ObserverError::ImmutableReference => {
+            ObserverError::ImmutableValue => {
                 core::write!(f, "Cannot observe an immutable reference")
             }
         }
@@ -175,7 +175,7 @@ impl BaseSharedValueContainer {
     /// Returns an ObserverError if the reference is immutable (or a type container).
     fn ensure_mutable_container(&self) -> Result<(), ObserverError> {
         if !self.is_mutable() {
-            return Err(ObserverError::ImmutableReference);
+            return Err(ObserverError::ImmutableValue);
         }
         Ok(())
     }
@@ -263,7 +263,7 @@ mod tests {
         );
         assert_matches!(
             r.observe(Observer::new(|_| {})),
-            Err(ObserverError::ImmutableReference)
+            Err(ObserverError::ImmutableValue)
         );
 
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(

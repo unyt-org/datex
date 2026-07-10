@@ -17,6 +17,7 @@ use crate::{
     values::value_container::{ValueContainer, error::ValueError},
 };
 use core::fmt::Display;
+use crate::runtime::subscribers::SubscriberError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
@@ -83,6 +84,7 @@ pub enum ExecutionError {
     AccessError(AccessError),
     CacheValueRetrievalError(CacheValueRetrievalError),
     UpdateError(UpdateError),
+    SubscriberError(SubscriberError),
     Unknown,
     NotImplemented(String),
     StackValueNotAllocated(StackIndex),
@@ -198,6 +200,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::ValueError(err) => {
                 core::write!(f, "Value error: {err}")
+            }
+            ExecutionError::SubscriberError(err) => {
+                core::write!(f, "Subscriber error: {err}")
             }
             ExecutionError::InvalidProgram(err) => {
                 core::write!(f, "Invalid program error: {err}")

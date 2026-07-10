@@ -25,8 +25,7 @@ use crate::{
     },
     prelude::*,
     runtime::{
-        Runtime, RuntimeConfig,
-        RuntimeConfigInterface,
+        Runtime, RuntimeConfig, RuntimeConfigInterface,
         cache::shared_references_cache::SharedReferencesCache,
         confirm_moves::compile_request_moves,
         execution::{
@@ -39,11 +38,17 @@ use crate::{
         },
         pointer_address_provider::SelfOwnedPointerAddressProvider,
         pointer_availability_lookup::PointerAvailabilityLookup,
+        subscribers::{
+            SubscriberError,
+            owned_shared_subscriptions::OwnedSharedSubscriptions,
+        },
     },
     shared_values::{
         OwnedSharedContainer, PointerAddress, RemotePointerAddress,
         SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
-        base_shared_value_container::observers::TransceiverId,
+        base_shared_value_container::observers::{
+            ObserverError, TransceiverId,
+        },
     },
     time::Instant,
     utils::task_manager::TaskManager,
@@ -59,7 +64,6 @@ use core::{
     slice,
 };
 use log::{debug, error, info};
-use crate::runtime::subscribers::owned_shared_subscriptions::OwnedSharedSubscriptions;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -423,7 +427,7 @@ impl RuntimeInternal {
 
     pub async fn execute_remote(
         self: Rc<RuntimeInternal>,
-        remote_execution_context: &mut RemoteExecutionContext,
+        remote_execution_context: &RemoteExecutionContext,
         input: DXBWithSharedValues,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let routing_header: RoutingHeader = RoutingHeader::default()
@@ -431,14 +435,16 @@ impl RuntimeInternal {
             .to_owned();
 
         // get existing context_id for context, or create a new one
-        let context_id =
-            remote_execution_context.context_id.unwrap_or_else(|| {
+        let context_id = {
+            let mut context_ref =
+                remote_execution_context.context_id.borrow_mut();
+            context_ref.unwrap_or_else(|| {
+                let id = self.com_hub.block_handler.get_new_context_id();
                 // if the context_id is not set, we create a new one
-                remote_execution_context.context_id =
-                    Some(self.com_hub.block_handler.get_new_context_id());
-                remote_execution_context.context_id.unwrap()
-            });
-
+                *context_ref = Some(id);
+                id
+            })
+        };
         let block_header = BlockHeader {
             context_id,
             ..BlockHeader::default()
@@ -452,8 +458,7 @@ impl RuntimeInternal {
             input.dxb,
         );
 
-        block
-            .set_receivers(slice::from_ref(&remote_execution_context.endpoint));
+        block.set_receivers(&remote_execution_context.endpoints);
 
         let response = self
             .com_hub
@@ -572,7 +577,7 @@ impl RuntimeInternal {
 
     /// Registers a list of shared containers for a single endpoint.
     pub fn register_shared_containers_for_single_endpoint(
-        &self,
+        self: Rc<Self>,
         endpoint: &Endpoint,
         shared_containers: Vec<SharedContainer>,
     ) {
@@ -586,18 +591,29 @@ impl RuntimeInternal {
     }
 
     /// Registers a list of shared containers for a list of endpoints to subscribe.
-    /// The caller must ensure that endpoints is not empty.
+    /// Note: only the self owned containers are subscribed, others are ignored.
+    /// # Safety: The caller must ensure that endpoints is not empty.
     pub unsafe fn register_shared_containers_for_endpoints(
-        &self,
+        self: Rc<Self>,
         endpoints: &[&Endpoint],
         shared_containers: Vec<SharedContainer>,
-    ) -> Result<(), ()> {
+    ) -> Result<(), SubscriberError> {
         if endpoints.is_empty() {
             panic!("endpoints must not be empty");
         }
 
-        for _shared_container in shared_containers {
-            // TODO: Subscribe
+        for shared_container in shared_containers {
+            for endpoint in endpoints {
+                if shared_container.is_self_owned() {
+                    self.clone().subscribe_endpoint(
+                        &shared_container,
+                        endpoint,
+                        shared_container
+                            .derive_reference_with_max_mutability()
+                            .reference_mutability(),
+                    )?;
+                }
+            }
         }
 
         Ok(())
@@ -635,7 +651,7 @@ impl RuntimeInternal {
                 DXBWithSharedValues::new(body, vec![]),
                 Some(&mut ExecutionContext::Remote(
                     RemoteExecutionContext::new(
-                        from_endpoint.clone(),
+                        vec![from_endpoint.clone()],
                         ExecutionMode::Static,
                         Runtime::from(self),
                     ),
@@ -644,10 +660,6 @@ impl RuntimeInternal {
             )
             .await?;
 
-        /**
-         * MOVE $abab [1,2,#3] // {mut}
-         * CONFIRM_MOVES [$a -> $b, ...]
-         */
         // moved values should be list
         match moved_values {
             Some(ValueContainer::Local(Value {

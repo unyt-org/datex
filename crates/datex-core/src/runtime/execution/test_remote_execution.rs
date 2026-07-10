@@ -36,7 +36,7 @@ pub async fn basic_remote_execution() {
 
             // create an execution context for @test_b
             let mut remote_execution_context =
-                ExecutionContext::remote_unbounded(endpoint_b, runtime_b);
+                ExecutionContext::remote_unbounded(vec![endpoint_b], runtime_b);
 
             // execute script remotely on @test_b
             let result = runtime_a
@@ -71,7 +71,7 @@ pub async fn remote_execution_persistent_context() {
         async |runtime_a, runtime_b| {
             // create an execution context for @test_b
             let mut remote_execution_context =
-                ExecutionContext::remote_unbounded(endpoint_b, runtime_b);
+                ExecutionContext::remote_unbounded(vec![endpoint_b], runtime_b);
 
             // execute script remotely on @test_b
             let result = runtime_a
