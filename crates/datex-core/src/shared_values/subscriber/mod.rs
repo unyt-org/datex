@@ -52,6 +52,10 @@ impl Subscribers {
     pub fn lookup(&self) -> &HashMap<Endpoint, SubscriptionMetadata> {
         &self.lookup
     }
+    
+    pub fn endpoints(&self) -> Vec<Endpoint> {
+        self.lookup.keys().cloned().collect()
+    }
 }
 
 #[derive(Debug, PartialEq)]

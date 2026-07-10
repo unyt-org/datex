@@ -1,3 +1,5 @@
+pub mod owned_shared_subscriptions;
+
 use alloc::rc::Rc;
 
 use crate::{
@@ -16,7 +18,7 @@ impl RuntimeInternal {
     /// Subscribes an endpoint to a shared container with the specified access rights.
     /// # Safety
     /// The caller must ensure that the shared container has a self-owned address.
-    pub unsafe fn subscribe(
+    pub unsafe fn subscribe_endpoint(
         self: Rc<Self>,
         shared_container: &SharedContainer,
         endpoint: Endpoint,
@@ -46,9 +48,9 @@ impl RuntimeInternal {
 
     fn observe(self: &Rc<Self>, container: &SharedContainer, data: &Update) {
         let subscriber = self.owned_pointer_subscriptions();
-        let subscriber = subscriber.get_subscribers(container);
-        if let Some(subscriber) = subscriber {
-            todo!()
+        let subscribers = subscriber.get_subscribers(container);
+        if let Some(subscribers) = subscribers {
+            let endpoints = subscribers.endpoints();
         }
     }
 }

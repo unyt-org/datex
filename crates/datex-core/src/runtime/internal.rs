@@ -25,7 +25,7 @@ use crate::{
     },
     prelude::*,
     runtime::{
-        OwnedSharedSubscriptions, Runtime, RuntimeConfig,
+        Runtime, RuntimeConfig,
         RuntimeConfigInterface,
         cache::shared_references_cache::SharedReferencesCache,
         confirm_moves::compile_request_moves,
@@ -59,6 +59,7 @@ use core::{
     slice,
 };
 use log::{debug, error, info};
+use crate::runtime::subscribers::owned_shared_subscriptions::OwnedSharedSubscriptions;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
