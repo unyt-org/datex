@@ -9,9 +9,9 @@ pub mod type_expression;
 /// Actions that can be taken when visiting an expression
 pub enum VisitAction<T: Sized> {
     /// Continue visiting child nodes
-    VisitChildren,
+    ContinueRecursion,
     /// Skip visiting child nodes
-    SkipChildren,
+    AbortRecursion,
     /// Replace the current node with a new one, skipping child nodes
     Replace(T),
     /// Recurse into child nodes, then replace the current node with a new one
@@ -102,7 +102,7 @@ mod tests {
             create_ref: &mut DeriveRef,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
         }
 
         fn visit_identifier(

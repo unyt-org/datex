@@ -425,7 +425,7 @@ pub struct UnaryOperation {
     pub expression: DatexExpression,
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, Hash, Eq)]
 pub enum ValueAccessType {
     /// 'mut x
     SharedRefMut,

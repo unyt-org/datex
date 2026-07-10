@@ -159,12 +159,12 @@ pub trait TypeExpressionVisitor<E>: Sized {
                 expr.ty = Some(type_annotation);
                 Ok(())
             }
-            VisitAction::SkipChildren => Ok(()),
+            VisitAction::AbortRecursion => Ok(()),
             VisitAction::ToNoop => {
                 expr.data = TypeExpressionData::Null;
                 Ok(())
             }
-            VisitAction::VisitChildren => expr.walk_children(self),
+            VisitAction::ContinueRecursion => expr.walk_children(self),
             VisitAction::Replace(new_expr) => {
                 *expr = new_expr.to_owned();
                 Ok(())
@@ -192,7 +192,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = literal;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit structural list type expression
@@ -203,7 +203,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = structural_list;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit fixed size list type expression
@@ -214,7 +214,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = fixed_size_list;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit slice list type expression
@@ -225,7 +225,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = slice_list;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit intersection type expression
@@ -236,7 +236,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = intersection;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit union type expression
@@ -247,7 +247,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = union;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit generic access type expression
@@ -258,7 +258,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = generic_access;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit function type expression
@@ -269,7 +269,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = callable_type_expression;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit structural map type expression
@@ -280,7 +280,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = structural_map;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit type reference expression
@@ -291,7 +291,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = type_ref;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit mutable type reference expression
@@ -302,7 +302,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = type_ref_mut;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     fn visit_shared_type(
@@ -312,7 +312,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = type_shared;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     fn visit_mut_type(
@@ -322,7 +322,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = type_mut;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit integer literal
@@ -333,7 +333,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = integer;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit typed integer literal
@@ -344,7 +344,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = typed_integer;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit decimal literal
@@ -355,7 +355,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = decimal;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit typed decimal literal
@@ -366,7 +366,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = typed_decimal;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit text literal
@@ -377,7 +377,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = text;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit get reference expression
@@ -388,7 +388,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = pointer_address;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit variant access expression
@@ -399,7 +399,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = variant_access;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit boolean literal
@@ -410,7 +410,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = boolean;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit endpoint expression
@@ -421,7 +421,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = endpoint;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit null literal
@@ -430,7 +430,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     // Visit unit type
@@ -439,7 +439,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit variable access
@@ -450,7 +450,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = var_access;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     fn visit_range_type(
@@ -460,7 +460,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = range;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     fn visit_get_core_lib_type(
@@ -470,6 +470,6 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = core_lib_type_id;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 }

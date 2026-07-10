@@ -192,10 +192,10 @@ impl RuntimeInternal {
         &self.core_library
     }
 
-    pub fn pointer_address_provider(
+    pub fn pointer_address_provider_mut(
         &self,
-    ) -> &RefCell<SelfOwnedPointerAddressProvider> {
-        &self.pointer_address_provider
+    ) -> RefMut<'_, SelfOwnedPointerAddressProvider> {
+        self.pointer_address_provider.borrow_mut()
     }
     pub fn incoming_sections_receiver_mut(
         &self,
@@ -592,7 +592,9 @@ impl RuntimeInternal {
 
     /// Registers a list of shared containers for a list of endpoints to subscribe.
     /// Note: only the self owned containers are subscribed, others are ignored.
-    /// # Safety: The caller must ensure that endpoints is not empty.
+    ///
+    /// # Safety
+    /// The caller must ensure that endpoints is not empty.
     pub unsafe fn register_shared_containers_for_endpoints(
         self: Rc<Self>,
         endpoints: &[&Endpoint],

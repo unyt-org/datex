@@ -28,6 +28,6 @@ impl ExpressionVisitor<()> for TypeHintCollector {
             // TODO #677: improve
             self.type_hints.push((expr_start - 3, var_decl.id.unwrap()));
         }
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 }

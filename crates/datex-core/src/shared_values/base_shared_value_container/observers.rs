@@ -200,6 +200,13 @@ impl BaseSharedValueContainer {
     pub fn has_observers(&self) -> bool {
         !self.observers.is_empty()
     }
+
+    /// Calls all observers with the given update.
+    pub fn call_observers(&self, update: &Update) {
+        for observer in self.get_current_observers(update.source_id) {
+            observer(update);
+        }
+    }
 }
 
 #[cfg(test)]

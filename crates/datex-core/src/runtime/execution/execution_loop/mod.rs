@@ -867,7 +867,7 @@ pub fn inner_execution_loop(
                                                 value,
                                                 mutability,
                                             ),
-                                            state.runtime.pointer_address_provider().borrow_mut().deref_mut(),
+                                            state.runtime.pointer_address_provider_mut().deref_mut(),
                                         ),
                                     ));
 
@@ -1315,7 +1315,7 @@ pub fn inner_execution_loop(
                                         let container = SharedContainer::new_owned_with_inferred_allowed_type(
                                             value,
                                             move_with_value.mutability,
-                                            state.runtime.pointer_address_provider().borrow_mut().deref_mut(),
+                                            state.runtime.pointer_address_provider_mut().deref_mut(),
                                         );
                                         // TODO: confirm move
 

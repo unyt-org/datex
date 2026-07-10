@@ -8,7 +8,13 @@ use crate::{
     },
     shared_values::{
         PointerAddress, SharedContainer, SharedContainerMutability,
+        base_shared_value_container::observers::TransceiverId,
         traits::SharedContainerCommon,
+    },
+    task::sleep,
+    value_updates::{
+        update_data::{ReplaceUpdateData, Update, UpdateData},
+        update_handler::UpdateHandler,
     },
     values::{
         core_values::{
@@ -17,7 +23,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::assert_matches;
+use core::{assert_matches, ops::DerefMut, time::Duration};
 use log::info;
 
 #[tokio::test]
@@ -398,6 +404,67 @@ pub async fn test_remote_datetime_arithmetic() {
             let expected =
                 Instant::instant_from_iso("2026-04-13T18:28:10.415Z");
             assert_eq!(result, ValueContainer::from(Integer::new(expected.0)));
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[cfg(feature = "compiler")]
+pub async fn test_remote_sync() {
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, runtime_b| {
+            let mut execution_context = ExecutionContext::local(
+                ExecutionMode::unbounded(),
+                runtime_a.clone(),
+                ExecutionCallerMetadata::local_default(),
+            );
+
+            let shared_value =
+                SharedContainer::new_owned_with_inferred_allowed_type(
+                    42,
+                    SharedContainerMutability::Mutable,
+                    runtime_a.pointer_address_provider_mut().deref_mut(),
+                );
+
+            let result = runtime_a
+                .execute(
+                    "@test_b :: @@local.a = ?",
+                    &[ValueContainer::Shared(SharedContainer::Referenced(
+                        shared_value.derive_immutable_reference(),
+                    ))],
+                    Some(&mut execution_context),
+                )
+                .await
+                .unwrap()
+                .unwrap();
+
+            assert_eq!(
+                match result {
+                    ValueContainer::Shared(shared) => shared,
+                    _ => unreachable!(),
+                },
+                shared_value
+            );
+
+            shared_value
+                .base_shared_container_mut()
+                .update(Update::new(
+                    TransceiverId(0),
+                    UpdateData::Replace(ReplaceUpdateData {
+                        value: ValueContainer::from(100),
+                    }),
+                ))
+                .unwrap();
+
+            sleep(Duration::from_millis(500)).await;
+
+            // TODO: runtime_b.endpoint_properties.get("a");
         },
     )
     .await;

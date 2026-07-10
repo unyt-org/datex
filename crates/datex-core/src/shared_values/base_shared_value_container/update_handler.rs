@@ -13,8 +13,17 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::value_updates::update_data::Update;
+use crate::value_updates::update_handler::UpdateResult;
 
 impl UpdateHandler for BaseSharedValueContainer {
+    fn update(&mut self, update: Update) -> UpdateResult {
+        let update_clone = update.clone();
+        let res = Self::update_inner(self, update);
+        self.call_observers(&update_clone);
+        res
+    }
+    
     fn try_replace(
         &mut self,
         data: ReplaceUpdateData,

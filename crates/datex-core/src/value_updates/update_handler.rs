@@ -26,6 +26,10 @@ pub fn into_update_result<T: Into<UpdateReturn>, E: Into<UpdateError>>(
 
 pub trait UpdateHandler {
     fn update(&mut self, update: Update) -> UpdateResult {
+        self.update_inner(update)
+    }
+    
+    fn update_inner(&mut self, update: Update) -> UpdateResult {
         match update.data {
             UpdateData::AppendEntry(data) => into_update_result(
                 self.try_append_entry(data, update.source_id),

@@ -201,7 +201,7 @@ fn get_remote_shared_container_reference(
     address: RemotePointerAddress,
     _mutability: ReferenceMutability,
 ) -> Result<Option<ReferencedSharedContainer>, ExecutionError> {
-    let address_provider = runtime.pointer_address_provider().borrow();
+    let address_provider = runtime.pointer_address_provider_mut();
     let memory = runtime.memory().borrow();
     let resolved_address = address_provider.normalize_address(address);
     // convert slot to InternalSlot enum

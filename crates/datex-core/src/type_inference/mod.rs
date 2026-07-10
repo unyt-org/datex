@@ -1404,14 +1404,14 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _identifier: &mut String,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
     fn visit_placeholder(
         &mut self,
         _placeholder_type: &mut ValueAccessType,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
     fn visit_unbox_assignment(
         &mut self,

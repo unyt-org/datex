@@ -351,9 +351,9 @@ impl ExpressionFinder {
             } else {
                 self.found_expr = Some((expr_data, span.clone()));
             }
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
         } else {
-            Ok(VisitAction::SkipChildren)
+            Ok(VisitAction::AbortRecursion)
         }
     }
 }
