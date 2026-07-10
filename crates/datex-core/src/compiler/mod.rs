@@ -1354,10 +1354,10 @@ fn compile_expression(
             compilation_context.append_instruction_code(
                 match create_shared_ref.mutability {
                     ReferenceMutability::Immutable => {
-                        InstructionCode::GET_SHARED_REF
+                        InstructionCode::DERIVE_SHARED_REF
                     }
                     ReferenceMutability::Mutable => {
-                        InstructionCode::GET_SHARED_REF_MUT
+                        InstructionCode::DERIVE_SHARED_REF_MUT
                     }
                 },
             );
@@ -1810,7 +1810,7 @@ pub mod tests {
                 42,
                 // val b = 69;
                 InstructionCode::PUSH_TO_STACK.into(),
-                InstructionCode::GET_SHARED_REF_MUT.into(),
+                InstructionCode::DERIVE_SHARED_REF_MUT.into(),
                 InstructionCode::UINT_8.into(),
                 69,
                 // a is b

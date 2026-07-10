@@ -24,6 +24,7 @@ use crate::{
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
 use binrw::io::Write;
+use crate::core_compiler::update_compiler::append_set_property_value_key;
 
 #[derive(Debug)]
 enum VisitedValue {
@@ -301,30 +302,8 @@ fn append_injected_value(
             }
         };
         match assigned_property {
-            ParentAccessor::ValueKey(key) => match key {
-                ValueKey::Index(index) => {
-                    append_regular_instruction(
-                        context.cursor_mut(),
-                        RegularInstruction::SetPropertyIndex(UInt32Data(
-                            index as u32,
-                        )),
-                    );
-                }
-                ValueKey::Text(text) => {
-                    append_regular_instruction(
-                        context.cursor_mut(),
-                        RegularInstruction::SetPropertyText(ShortTextData(
-                            text,
-                        )),
-                    );
-                }
-                ValueKey::Value(value) => {
-                    append_regular_instruction(
-                        context.cursor_mut(),
-                        RegularInstruction::SetPropertyDynamic,
-                    );
-                    context.visit_value_container(value, None);
-                }
+            ParentAccessor::ValueKey(key) => {
+                append_set_property_value_key(context, key);
             },
             _ => todo!(),
         }

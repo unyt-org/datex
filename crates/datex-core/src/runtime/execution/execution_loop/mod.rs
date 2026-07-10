@@ -591,8 +591,8 @@ pub fn inner_execution_loop(
                             RegularInstruction::Equal |
                             RegularInstruction::NotStructuralEqual |
                             RegularInstruction::NotEqual |
-                            RegularInstruction::GetSharedReference |
-                            RegularInstruction::GetSharedReferenceMut |
+                            RegularInstruction::DeriveSharedReference |
+                            RegularInstruction::DeriveSharedReferenceMut |
                             RegularInstruction::CreateShared |
                             RegularInstruction::CreateSharedMut |
                             RegularInstruction::PushToStack |
@@ -875,7 +875,7 @@ pub fn inner_execution_loop(
                                         .into()
                                 }
 
-                                RegularInstruction::GetSharedReference => {
+                                RegularInstruction::DeriveSharedReference => {
                                     let target = yield_unwrap!(
                                         collected_results
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)
@@ -892,7 +892,7 @@ pub fn inner_execution_loop(
                                     }
                                 }
 
-                                RegularInstruction::GetSharedReferenceMut => {
+                                RegularInstruction::DeriveSharedReferenceMut => {
                                     let target = yield_unwrap!(
                                         collected_results
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)

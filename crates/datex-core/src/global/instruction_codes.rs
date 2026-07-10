@@ -93,8 +93,8 @@ pub enum InstructionCode {
     MOVE_WITH_VALUE,
     CONFIRM_MOVES,
 
-    GET_SHARED_REF,     // dynamic 'x
-    GET_SHARED_REF_MUT, // dynamic 'mut x
+    DERIVE_SHARED_REF,     // dynamic 'x
+    DERIVE_SHARED_REF_MUT, // dynamic 'mut x
 
     CREATE_SHARED,     // shared x
     CREATE_SHARED_MUT, // shared mut x

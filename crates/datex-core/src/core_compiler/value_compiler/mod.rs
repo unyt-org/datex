@@ -84,9 +84,9 @@ impl From<InjectedValueValidationError> for ExecutionError {
 /// Compiles a given value container to a DXB body
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
-pub fn compile_value_container<'a>(
+pub fn compile_value_container(
     value_container: ValueContainer,
-    compile_input: CompileInput<'a>,
+    compile_input: CompileInput,
 ) -> DXBWithSharedValues {
     let mut context =
         CoreCompilationContext::new(Vec::with_capacity(256), compile_input);

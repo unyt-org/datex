@@ -135,8 +135,8 @@ pub enum RegularInstruction {
     // assignment operator
     ModifyStackValue(ModifyStackValue),
 
-    GetSharedReference,
-    GetSharedReferenceMut,
+    DeriveSharedReference,
+    DeriveSharedReferenceMut,
 
     CreateShared,
     CreateSharedMut,
@@ -314,11 +314,11 @@ impl From<&RegularInstruction> for InstructionCode {
                 InstructionCode::NOT_STRUCTURAL_EQUAL
             }
             RegularInstruction::NotEqual => InstructionCode::NOT_EQUAL,
-            RegularInstruction::GetSharedReference => {
-                InstructionCode::GET_SHARED_REF
+            RegularInstruction::DeriveSharedReference => {
+                InstructionCode::DERIVE_SHARED_REF
             }
-            RegularInstruction::GetSharedReferenceMut => {
-                InstructionCode::GET_SHARED_REF_MUT
+            RegularInstruction::DeriveSharedReferenceMut => {
+                InstructionCode::DERIVE_SHARED_REF_MUT
             }
             RegularInstruction::CreateShared => InstructionCode::CREATE_SHARED,
             RegularInstruction::CreateSharedMut => {
@@ -510,8 +510,8 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(1)
             }
 
-            RegularInstruction::GetSharedReference
-            | RegularInstruction::GetSharedReferenceMut
+            RegularInstruction::DeriveSharedReference
+            | RegularInstruction::DeriveSharedReferenceMut
             | RegularInstruction::CreateShared
             | RegularInstruction::CreateSharedMut => {
                 NextExpectedInstructions::Regular(1)
@@ -751,11 +751,11 @@ impl RegularInstruction {
             InstructionCode::NOT_EQUAL => Ok(RegularInstruction::NotEqual),
             InstructionCode::IS => Ok(RegularInstruction::Is),
             InstructionCode::MATCHES => Ok(RegularInstruction::Matches),
-            InstructionCode::GET_SHARED_REF => {
-                Ok(RegularInstruction::GetSharedReference)
+            InstructionCode::DERIVE_SHARED_REF => {
+                Ok(RegularInstruction::DeriveSharedReference)
             }
-            InstructionCode::GET_SHARED_REF_MUT => {
-                Ok(RegularInstruction::GetSharedReferenceMut)
+            InstructionCode::DERIVE_SHARED_REF_MUT => {
+                Ok(RegularInstruction::DeriveSharedReferenceMut)
             }
 
             InstructionCode::SHARED_REF => {

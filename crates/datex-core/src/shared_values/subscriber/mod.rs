@@ -1,6 +1,7 @@
 use crate::collections::HashMap;
 
 use crate::{
+    prelude::*,
     shared_values::{
         ReferenceMutability, base_shared_value_container::observers::ObserverId,
     },
@@ -52,7 +53,7 @@ impl Subscribers {
     pub fn lookup(&self) -> &HashMap<Endpoint, SubscriptionMetadata> {
         &self.lookup
     }
-    
+
     pub fn endpoints(&self) -> Vec<Endpoint> {
         self.lookup.keys().cloned().collect()
     }

@@ -385,8 +385,8 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::Equal
                         | RegularInstruction::NotStructuralEqual
                         | RegularInstruction::NotEqual
-                        | RegularInstruction::GetSharedReference
-                        | RegularInstruction::GetSharedReferenceMut
+                        | RegularInstruction::DeriveSharedReference
+                        | RegularInstruction::DeriveSharedReferenceMut
                         | RegularInstruction::CreateShared
                         | RegularInstruction::CreateSharedMut
                         | RegularInstruction::PushToStack
@@ -580,7 +580,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::GetSharedReference => {
+                            RegularInstruction::DeriveSharedReference => {
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::DeriveSharedRef(
                                     DeriveSharedRef {
@@ -591,7 +591,7 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                            RegularInstruction::GetSharedReferenceMut => {
+                            RegularInstruction::DeriveSharedReferenceMut => {
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::DeriveSharedRef(
                                     DeriveSharedRef {

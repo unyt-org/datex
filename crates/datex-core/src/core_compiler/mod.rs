@@ -5,6 +5,7 @@ mod preamble;
 pub mod shared_value_tracking;
 mod traits;
 pub mod type_compiler;
+pub mod update_compiler;
 pub mod value_compiler;
 
 pub use traits::*;
