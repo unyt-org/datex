@@ -1,6 +1,9 @@
 //! This module contains the implementation of the [ValueContainer] enum, which represents a container for values in the DATEX type system.
 //! A [ValueContainer] can either be a local value, which directly contains a [Value], or a shared value, which contains a reference to a [SharedContainer].
-use crate::values::value_container::value_key::BorrowedValueKey;
+use crate::{
+    datex_proxy::DatexValueContainerProxy,
+    values::value_container::value_key::BorrowedValueKey,
+};
 pub mod equality;
 pub mod identity;
 use core::result::Result;
@@ -40,6 +43,15 @@ pub enum ValueContainer {
 }
 
 impl ValueContainer {
+    /// Unwraps an [Option<ValueContainer>] and returns a [ValueContainer].
+    /// If the Option is None, returns a ValueContainer containing a null value.
+    pub fn new_from_option(value: Option<ValueContainer>) -> ValueContainer {
+        match value {
+            Some(value) => value,
+            None => ValueContainer::Local(Value::null()),
+        }
+    }
+
     /// Creates a new [ValueContainer::Local] from a [Value]
     pub fn local(value: impl Into<Value>) -> Self {
         ValueContainer::Local(value.into())

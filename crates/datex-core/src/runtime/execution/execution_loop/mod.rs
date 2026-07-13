@@ -1,6 +1,14 @@
 //! This module contains the implementation of the execution loop that drives the execution of the compiled DATEX bytecode (DXB).
 //! It handles the execution of instructions, manages the runtime state, and processes interrupts that can occur during execution.
-use crate::shared_values::traits::SharedContainerCommon;
+use crate::{
+    runtime::execution::execution_loop::{
+        state::RuntimeExecutionStack,
+    },
+    shared_values::traits::SharedContainerCommon,
+    value_updates::errors::UpdateError,
+};
+mod implementation;
+use implementation::*;
 mod internal_slots;
 pub mod interrupts;
 mod operations;
@@ -121,6 +129,12 @@ impl From<Option<RuntimeValue>> for CollectedExecutionResult {
         CollectedExecutionResult::Value(value)
     }
 }
+impl From<ValueContainer> for CollectedExecutionResult {
+    fn from(value: ValueContainer) -> Self {
+        CollectedExecutionResult::Value(Some(value.into()))
+    }
+}
+
 impl From<RuntimeValue> for CollectedExecutionResult {
     fn from(value: RuntimeValue) -> Self {
         CollectedExecutionResult::Value(Some(value))
@@ -221,6 +235,7 @@ impl CollectedResults<CollectedExecutionResult> {
     /// Pops a value container result, returning an error if none exists.
     /// If the value is a slot address, it is resolved to a cloned value container.
     /// Do not use this method if you want to work on the actual value without cloning it.
+    #[deprecated(note = "old")]
     fn pop_potentially_cloned_value_container_result_assert_existing(
         &mut self,
         state: &RuntimeExecutionState,
@@ -918,21 +933,19 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()
                                     );
-                                    let res = target.with_mut_value_container(
-                                        &mut state.stack,
-                                        |target| {
-                                            handle_unary_operation(
-                                                UnaryOperator::from(
-                                                    regular_instruction,
-                                                ),
-                                                target.clone(), // TODO #646: is unary operation supposed to take ownership?
-                                                state.runtime.memory(),
-                                            )
-                                        },
+                                    let value_container = yield_unwrap!(target.as_value_container(
+                                            &mut state.stack
+                                    )).clone();
+                                    let res = handle_unary_operation(
+                                        UnaryOperator::from(
+                                            regular_instruction,
+                                        ),
+                                        value_container, // TODO #646: is unary operation supposed to take ownership?
+                                        state.runtime.memory(),
                                     );
-                                    RuntimeValue::ValueContainer(yield_unwrap!(
-                                        yield_unwrap!(res)
-                                    ))
+                                    RuntimeValue::ValueContainer(
+                                        yield_unwrap!(res).clone()
+                                    )
                                         .into()
                                 }
 
@@ -1007,23 +1020,17 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()
                                     );
+                                    let value_container_mut = yield_unwrap!(ref_runtime_value.as_value_container_mut(&mut state.stack));
 
-                                    let res = ref_runtime_value.with_mut_value_container(
-                                        &mut state.stack,
-                                        |ref_value_container| {
-                                            // assignment value must be a reference
-                                            if let Some(reference) = ref_value_container.maybe_shared() {
-                                                let update_data = ReplaceUpdateData { value: value_container };
-                                                // TODO: pass TransceiverId
-                                                reference.base_shared_container_mut().try_replace(update_data, TransceiverId(0)).map_err(ExecutionError::UpdateError)?;
-                                                Ok(())
-                                            } else {
-                                                Err(
-                                                    ExecutionError::ExpectedSharedValue,
-                                                )
-                                            }
-                                        },
-                                    ).flatten();
+                                    let res = if let Some(reference) = value_container_mut.maybe_shared() {
+                                        let update_data = ReplaceUpdateData { value: value_container };
+                                        // TODO: pass TransceiverId
+                                        reference.base_shared_container_mut().try_replace(update_data, TransceiverId(0)).map_err(ExecutionError::UpdateError).map(|_| ())
+                                    } else {
+                                        Err(
+                                            ExecutionError::ExpectedSharedValue,
+                                        )
+                                    };
                                     yield_unwrap!(res);
                                     None.into()
                                 },
@@ -1031,41 +1038,19 @@ pub fn inner_execution_loop(
                                 RegularInstruction::ModifySharedContainerValue(
                                     set_shared_container_value,
                                 ) => {
-                                    let value_container = yield_unwrap!(
+                                    let value = yield_unwrap!(yield_unwrap!(
                                         collected_results
-                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
-                                    );
-                                    let mut ref_runtime_value = yield_unwrap!(
+                                            .pop_runtime_value_result_assert_existing()
+                                    ).into_value_container(&mut state));
+
+                                    let mut target = yield_unwrap!(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()
                                     );
-
-                                    let res = ref_runtime_value.with_mut_value_container(
-                                        &mut state.stack,
-                                        |ref_value_container| {
-                                            // assignment value must be a reference
-                                            if let Some(reference) = ref_value_container.maybe_shared() {
-                                                let update_data = {
-                                                    let lhs = reference.value_container();
-                                                    let val = handle_assignment_operation(
-                                                        set_shared_container_value.operator,
-                                                        &lhs,
-                                                        value_container,
-                                                    )?;
-                                                    ReplaceUpdateData { value: val }
-                                                };
-                                                // TODO: pass TransceiverId
-                                                reference.base_shared_container_mut().try_replace(update_data, TransceiverId(0)).map_err(ExecutionError::UpdateError)?;
-                                                Ok(())
-                                            } else {
-                                                Err(
-                                                    ExecutionError::ExpectedSharedValue,
-                                                )
-                                            }
-                                        },
-                                    ).flatten();
-                                    yield_unwrap!(res);
-                                    None.into()
+                                    let target = yield_unwrap!(target.as_value_container_mut(&mut state.stack));
+                                    
+                                    let res = yield_unwrap!(modify_shared_container_value(set_shared_container_value, target, value));
+                                    RuntimeValue::ValueContainer(res).into()
                                 }
 
                                 RegularInstruction::SetStackValue(index) => {
@@ -1125,19 +1110,16 @@ pub fn inner_execution_loop(
                                             .pop_runtime_value_result_assert_existing()
                                     );
                                     let property_name = property_data.0;
-
-                                    let res = target.with_mut_value_container(
-                                        &mut state.stack,
-                                        |target| {
-                                            target.try_get_property(
-                                                &property_name,
-                                            )
-                                        },
+                                    let target = yield_unwrap!(target.as_value_container_mut(
+                                        &mut state.stack
+                                    ));
+                                    let res = target.try_get_property(
+                                        &property_name,
                                     );
                                     RuntimeValue::ValueContainer(yield_unwrap!(
-                                        yield_unwrap!(res)
+                                        res
                                     ))
-                                        .into()
+                                    .into()
                                 }
 
                                 RegularInstruction::GetPropertyIndex(
@@ -1149,17 +1131,13 @@ pub fn inner_execution_loop(
                                     );
                                     let property_index = property_data.0;
 
-                                    let res = target.with_mut_value_container(
-                                        &mut state.stack,
-                                        |target| {
-                                            target.try_get_property(
-                                                property_index,
-                                            )
-                                        },
+                                    let value_container = yield_unwrap!(target.as_value_container(&mut state.stack));
+                                    let res = value_container.try_get_property(
+                                        property_index,
                                     );
-                                    RuntimeValue::ValueContainer(yield_unwrap!(
+                                    RuntimeValue::ValueContainer(
                                         yield_unwrap!(res)
-                                    ))
+                                    )
                                         .into()
                                 }
 
@@ -1173,13 +1151,12 @@ pub fn inner_execution_loop(
                                             .pop_runtime_value_result_assert_existing()
                                     );
 
-                                    let res = target.with_mut_value_container(
-                                        &mut state.stack,
-                                        |target| target.try_get_property(&key),
-                                    );
-                                    RuntimeValue::ValueContainer(yield_unwrap!(
+                                    let value_container = yield_unwrap!(target.as_value_container(&mut state.stack));
+                                    let res = value_container.try_get_property(&key);
+
+                                    RuntimeValue::ValueContainer(
                                         yield_unwrap!(res)
-                                    ))
+                                    )
                                         .into()
                                 }
 
@@ -1192,46 +1169,53 @@ pub fn inner_execution_loop(
                                     );
                                     let property_index = property_data.0;
 
-                                    let res = target.with_mut_value_container(
-                                        &mut state.stack,
-                                        |target| {
-                                            target.try_delete_entry(
-                                                DeleteEntryUpdateData { key: ValueKey::Index(property_index as i64) },
-                                                TransceiverId(0), // TODO
-                                            )
-                                        },
+                                    let value_container = yield_unwrap!(target.as_value_container_mut(&mut state.stack));
+                                    let res = value_container.try_delete_entry(
+                                        DeleteEntryUpdateData { key: ValueKey::Index(property_index as i64) },
+                                        TransceiverId(0), // TODO
                                     );
-                                    RuntimeValue::ValueContainer(yield_unwrap!(
-                                        yield_unwrap!(res)
-                                    ))
+                                    ValueContainer::new_from_option(yield_unwrap!(res))
                                         .into()
                                 }
 
                                 RegularInstruction::SetPropertyText(
                                     property_data,
                                 ) => {
-                                    let mut target = yield_unwrap!(
+                                    let mut target_runtime_value = yield_unwrap!(collected_results
+                                            .pop_runtime_value_result_assert_existing()
+                                    );
+                                    let value_runtime_value = yield_unwrap!(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()
                                     );
-                                    let value = yield_unwrap!(
-                                        collected_results
-                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
-                                    );
-                                    let res = target.with_mut_value_container(
-                                        &mut state.stack,
-                                        |target| {
-                                            set_property(
-                                                target,
-                                                ValueKey::Text(
-                                                    property_data.0,
-                                                ),
-                                                value,
+                                    
+                                    let value = yield_unwrap!(value_runtime_value.into_value_container(&mut state));
+                                    let target = yield_unwrap!(target_runtime_value.as_value_container_mut(&mut state.stack));
+                                    
+                                    let res = if let Some(endpoint) = target.try_as::<Endpoint>() {
+                                        let res = interrupt_with_maybe_value!(
+                                            interrupt_provider,
+                                            ExecutionInterrupt::External(
+                                                ExternalExecutionInterrupt::SetEndpointProperty
+                                                    {
+                                                        endpoint: endpoint.clone(),
+                                                        property_name: property_data.0,
+                                                        value,
+                                                    }
                                             )
-                                        },
-                                    );
-                                    yield_unwrap!(yield_unwrap!(res));
-                                    None.into()
+                                        );
+                                        Ok(res)
+                                    } else {
+                                        set_property(
+                                            target,
+                                            ValueKey::Text(
+                                                property_data.0,
+                                            ),
+                                            value,
+                                        )
+                                    };
+                                    ValueContainer::new_from_option(yield_unwrap!(res))
+                                        .into()
                                 }
 
                                 RegularInstruction::SetPropertyIndex(
@@ -1246,19 +1230,16 @@ pub fn inner_execution_loop(
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
 
-                                    let res = target.with_mut_value_container(
-                                        &mut state.stack,
-                                        |target| {
-                                            set_property(
-                                                target,
-                                                ValueKey::Index(
-                                                    property_data.0 as i64,
-                                                ),
-                                                value,
-                                            )
-                                        },
+                                    let value_container = yield_unwrap!(target.as_value_container_mut(&mut state.stack));
+
+                                    let res = set_property(
+                                        value_container,
+                                        ValueKey::Index(
+                                            property_data.0 as i64,
+                                        ),
+                                        value,
                                     );
-                                    yield_unwrap!(yield_unwrap!(res));
+                                    yield_unwrap!(res);
                                     None.into()
                                 }
 
@@ -1276,17 +1257,14 @@ pub fn inner_execution_loop(
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
 
-                                    let res = target.with_mut_value_container(
-                                        &mut state.stack,
-                                        |target| {
-                                            set_property(
-                                                target,
-                                                ValueKey::Value(key),
-                                                value,
-                                            )
-                                        },
+                                    let value_container = yield_unwrap!(target.as_value_container_mut(&mut state.stack));
+
+                                    let res = set_property(
+                                        value_container,
+                                        ValueKey::Value(key),
+                                        value,
                                     );
-                                    yield_unwrap!(yield_unwrap!(res));
+                                    yield_unwrap!(res);
                                     None.into()
                                 }
 

@@ -27,7 +27,10 @@ use core::{assert_matches, ops::DerefMut, time::Duration};
 use log::info;
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn basic_remote_execution() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
@@ -66,7 +69,10 @@ pub async fn basic_remote_execution() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn remote_execution_persistent_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -106,7 +112,10 @@ pub async fn remote_execution_persistent_context() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn remote_inline() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -136,7 +145,10 @@ pub async fn remote_inline() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn remote_inline_implicit_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -157,7 +169,10 @@ pub async fn remote_inline_implicit_context() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn remote_shared_value_inject_move() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
@@ -181,7 +196,10 @@ pub async fn remote_shared_value_inject_move() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn remote_shared_value_inject_ref() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
@@ -237,7 +255,10 @@ pub async fn remote_shared_value_inject_ref() {
     .await;
 }
 
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 #[test_case::test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
 #[test_case::test_case("shared mut", SharedContainerMutability::Mutable ; "mutable")]
 #[tokio::test]
@@ -286,7 +307,10 @@ pub async fn remote_shared_value_return(
     .await;
 }
 
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 #[test_case::test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
 #[test_case::test_case("shared mut", SharedContainerMutability::Mutable; "mutable")]
 #[tokio::test]
@@ -342,7 +366,10 @@ pub async fn remote_shared_roundtrip_move(
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn test_remote_datetime_literal() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -376,7 +403,10 @@ pub async fn test_remote_datetime_literal() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn test_remote_datetime_arithmetic() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -410,11 +440,15 @@ pub async fn test_remote_datetime_arithmetic() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn test_remote_sync() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
 
+    flexi_logger::init();
     use_mock_setup_with_two_connected_runtimes(
         endpoint_a.clone(),
         endpoint_b.clone(),
@@ -434,7 +468,7 @@ pub async fn test_remote_sync() {
 
             let result = runtime_a
                 .execute(
-                    "@test_b :: @@local.a = ?",
+                    "@test_b :: @@local.a = '?",
                     &[ValueContainer::Shared(SharedContainer::Referenced(
                         shared_value.derive_immutable_reference(),
                     ))],

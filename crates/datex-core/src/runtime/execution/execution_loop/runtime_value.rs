@@ -31,21 +31,24 @@ impl From<StackIndex> for RuntimeValue {
 }
 
 impl RuntimeValue {
-    /// Call the provided closure with a reference to the underlying `ValueContainer`.
-    /// If the `RuntimeValue` is a slot address, it retrieves the value from the runtime state.
-    pub fn with_mut_value_container<F, R>(
-        &mut self,
-        slots: &mut RuntimeExecutionStack,
-        f: F,
-    ) -> Result<R, ExecutionError>
-    where
-        F: FnOnce(&mut ValueContainer) -> R,
-    {
+    pub fn as_value_container<'a>(
+        &'a self,
+        slots: &'a RuntimeExecutionStack,
+    ) -> Result<&'a ValueContainer, ExecutionError> {
         match self {
-            RuntimeValue::ValueContainer(vc) => Ok(f(vc)),
-            RuntimeValue::StackValue(addr) => {
-                let slot_value = slots.get_stack_value_mut(*addr)?;
-                Ok(f(slot_value))
+            RuntimeValue::ValueContainer(vc) => Ok(vc),
+            RuntimeValue::StackValue(index) => slots.get_stack_value(*index),
+        }
+    }
+
+    pub fn as_value_container_mut<'a>(
+        &'a mut self,
+        slots: &'a mut RuntimeExecutionStack,
+    ) -> Result<&'a mut ValueContainer, ExecutionError> {
+        match self {
+            RuntimeValue::ValueContainer(vc) => Ok(vc),
+            RuntimeValue::StackValue(index) => {
+                slots.get_stack_value_mut(*index)
             }
         }
     }

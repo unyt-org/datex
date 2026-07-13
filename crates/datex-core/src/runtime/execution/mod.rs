@@ -97,6 +97,13 @@ pub async fn execute_dxb(
 
     for output in execution_loop {
         match output? {
+            ExternalExecutionInterrupt::SetEndpointProperty {
+                endpoint,
+                property_name,
+                value,
+            } => {
+                todo!()
+            }
             ExternalExecutionInterrupt::Result(result) => return Ok(result),
             ExternalExecutionInterrupt::GetReferenceToRemotePointer(
                 address,

@@ -21,7 +21,7 @@ impl UpdateHandler for ValueContainer {
         &mut self,
         data: SetEntryUpdateData,
         source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
+    ) -> Result<Option<ValueContainer>, UpdateError> {
         match self {
             ValueContainer::Local(value) => {
                 value.try_set_entry(data, source_id)
@@ -36,7 +36,7 @@ impl UpdateHandler for ValueContainer {
         &mut self,
         data: DeleteEntryUpdateData,
         source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
+    ) -> Result<Option<ValueContainer>, UpdateError> {
         match self {
             ValueContainer::Local(value) => {
                 value.try_delete_entry(data, source_id)
@@ -65,7 +65,7 @@ impl UpdateHandler for ValueContainer {
     fn try_clear(
         &mut self,
         source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
+    ) -> Result<ValueContainer, UpdateError> {
         match self {
             ValueContainer::Local(value) => value.try_clear(source_id),
             ValueContainer::Shared(reference) => {

@@ -7,14 +7,12 @@ use crate::{
         errors::UpdateError,
         update_data::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData, UpdateData,
+            ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData,
         },
-        update_handler::UpdateHandler,
+        update_handler::{UpdateHandler, UpdateResult},
     },
     values::value_container::ValueContainer,
 };
-use crate::value_updates::update_data::Update;
-use crate::value_updates::update_handler::UpdateResult;
 
 impl UpdateHandler for BaseSharedValueContainer {
     fn update(&mut self, update: Update) -> UpdateResult {
@@ -23,7 +21,7 @@ impl UpdateHandler for BaseSharedValueContainer {
         self.call_observers(&update_clone);
         res
     }
-    
+
     fn try_replace(
         &mut self,
         data: ReplaceUpdateData,
@@ -43,23 +41,18 @@ impl UpdateHandler for BaseSharedValueContainer {
         &mut self,
         data: SetEntryUpdateData,
         source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
+    ) -> Result<Option<ValueContainer>, UpdateError> {
         self.assert_can_mutate()?;
-        self.value_container.try_set_entry(data, source_id)?;
-
-        Ok(())
+        self.value_container.try_set_entry(data, source_id)
     }
 
     fn try_delete_entry(
         &mut self,
         data: DeleteEntryUpdateData,
         source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
+    ) -> Result<Option<ValueContainer>, UpdateError> {
         self.assert_can_mutate()?;
-        let previous =
-            self.value_container.try_delete_entry(data, source_id)?;
-
-        Ok(previous)
+        self.value_container.try_delete_entry(data, source_id)
     }
 
     fn try_append_entry(
@@ -68,19 +61,15 @@ impl UpdateHandler for BaseSharedValueContainer {
         source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
         self.assert_can_mutate()?;
-        self.value_container.try_append_entry(data, source_id)?;
-
-        Ok(())
+        self.value_container.try_append_entry(data, source_id)
     }
 
     fn try_clear(
         &mut self,
         source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
+    ) -> Result<ValueContainer, UpdateError> {
         self.assert_can_mutate()?;
-        self.value_container.try_clear(source_id)?;
-
-        Ok(())
+        self.value_container.try_clear(source_id)
     }
 
     fn try_list_splice(
@@ -300,7 +289,7 @@ mod tests {
             },
             TransceiverId(0),
         );
-        assert_matches!(result, Ok(()));
+        assert_matches!(result, Ok(_));
 
         // // Try to set property on non-struct value
         let mut int_ref =

@@ -25,12 +25,12 @@ impl UpdateHandler for List {
         &mut self,
         data: SetEntryUpdateData,
         _source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
+    ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
             || UpdateError::access_error(AccessError::InvalidIndexKey),
         )?;
         self.try_set(key, data.value)
-            .map(|_| ())
+            .map(|e| Some(e))
             .map_err(UpdateError::access_error)
     }
 
@@ -38,11 +38,13 @@ impl UpdateHandler for List {
         &mut self,
         data: DeleteEntryUpdateData,
         _source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
+    ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
             || UpdateError::access_error(AccessError::InvalidIndexKey),
         )?;
-        self.try_delete(key).map_err(UpdateError::access_error)
+        self.try_delete(key)
+            .map_err(UpdateError::access_error)
+            .map(|e| Some(e))
     }
 
     fn try_append_entry(
@@ -57,9 +59,9 @@ impl UpdateHandler for List {
     fn try_clear(
         &mut self,
         _source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
-        self.clear();
-        Ok(())
+    ) -> Result<ValueContainer, UpdateError> {
+        let previous = core::mem::take(self);
+        Ok(ValueContainer::Local(previous.into()))
     }
 
     fn try_list_splice(

@@ -19,7 +19,7 @@ impl UpdateHandler for Value {
         &mut self,
         data: SetEntryUpdateData,
         source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
+    ) -> Result<Option<ValueContainer>, UpdateError> {
         match self.inner {
             CoreValue::Map(ref mut map) => map.try_set_entry(data, source_id),
             CoreValue::List(ref mut list) => {
@@ -33,7 +33,7 @@ impl UpdateHandler for Value {
         &mut self,
         data: DeleteEntryUpdateData,
         source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
+    ) -> Result<Option<ValueContainer>, UpdateError> {
         match self.inner {
             CoreValue::Map(ref mut map) => {
                 map.try_delete_entry(data, source_id)
@@ -64,7 +64,7 @@ impl UpdateHandler for Value {
     fn try_clear(
         &mut self,
         source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
+    ) -> Result<ValueContainer, UpdateError> {
         match self.inner {
             CoreValue::Map(ref mut map) => map.try_clear(source_id),
             CoreValue::List(ref mut list) => list.try_clear(source_id),

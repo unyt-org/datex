@@ -24,3 +24,12 @@ impl From<Vec<ValueContainer>> for UpdateReturn {
         UpdateReturn::MultipleValues(items)
     }
 }
+
+impl From<Option<ValueContainer>> for UpdateReturn {
+    fn from(value: Option<ValueContainer>) -> Self {
+        match value {
+            Some(value) => UpdateReturn::SingleValue(value),
+            None => UpdateReturn::None,
+        }
+    }
+}

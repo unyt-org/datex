@@ -32,6 +32,11 @@ pub enum ExternalExecutionInterrupt {
         input: DXBWithSharedValues,
         receivers: Vec<Endpoint>,
     },
+    SetEndpointProperty {
+        endpoint: Endpoint,
+        property_name: String,
+        value: ValueContainer,
+    },
     Apply(ValueContainer, Vec<ValueContainer>),
     /// Request to move a list of pointers from the current caller endpoint to the local endpoint
     RequestMove(Vec<(SharedContainerMutability, SelfOwnedPointerAddress)>),

@@ -28,7 +28,7 @@ pub trait UpdateHandler {
     fn update(&mut self, update: Update) -> UpdateResult {
         self.update_inner(update)
     }
-    
+
     fn update_inner(&mut self, update: Update) -> UpdateResult {
         match update.data {
             UpdateData::AppendEntry(data) => into_update_result(
@@ -59,20 +59,23 @@ pub trait UpdateHandler {
     ) -> Result<ValueContainer, UpdateError> {
         unimplemented!()
     }
+
     fn try_set_entry(
         &mut self,
         _data: SetEntryUpdateData,
         _source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
+    ) -> Result<Option<ValueContainer>, UpdateError> {
         unimplemented!()
     }
+
     fn try_delete_entry(
         &mut self,
         _data: DeleteEntryUpdateData,
         _source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
+    ) -> Result<Option<ValueContainer>, UpdateError> {
         unimplemented!()
     }
+
     fn try_append_entry(
         &mut self,
         _data: AppendEntryUpdateData,
@@ -80,12 +83,14 @@ pub trait UpdateHandler {
     ) -> Result<(), UpdateError> {
         unimplemented!()
     }
+
     fn try_clear(
         &mut self,
         _source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
+    ) -> Result<ValueContainer, UpdateError> {
         unimplemented!()
     }
+
     fn try_list_splice(
         &mut self,
         _data: ListSpliceUpdateData,

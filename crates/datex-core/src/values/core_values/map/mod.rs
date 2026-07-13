@@ -18,6 +18,7 @@ use crate::shared_values::errors::KeyNotFoundError;
 use core::{
     fmt::{self, Display},
     hash::{Hash, Hasher},
+    mem,
     result::Result,
 };
 mod child_iterator;
@@ -265,11 +266,13 @@ impl Map {
     }
 
     /// Clears all entries in the map, returning an error if the map is not dynamic.
-    pub fn try_clear_inner(&mut self) -> Result<(), MapAccessError> {
+    pub fn try_clear_inner(
+        &mut self,
+    ) -> Result<ValueContainer, MapAccessError> {
         match self {
             Map::Dynamic(map) => {
-                map.clear();
-                Ok(())
+                let previous = mem::take(map);
+                Ok(ValueContainer::from(Map::Dynamic(previous)))
             }
             Map::Structural(_) | Map::StructuralWithStringKeys(_) => {
                 Err(MapAccessError::Immutable)
@@ -293,19 +296,15 @@ impl Map {
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
         value: impl Into<ValueContainer>,
-    ) -> Result<(), KeyNotFoundError> {
+    ) -> Result<Option<ValueContainer>, KeyNotFoundError> {
         let key = key.into();
         match self {
-            Map::Dynamic(map) => {
-                key.with_value_container(|key| {
-                    map.insert(key.clone(), value.into());
-                });
-                Ok(())
-            }
+            Map::Dynamic(map) => Ok(key.with_value_container(|key| {
+                map.insert(key.clone(), value.into())
+            })),
             Map::Structural(vec) => key.with_value_container(|key| {
                 if let Some((_, v)) = vec.iter_mut().find(|(k, _)| k == key) {
-                    *v = value.into();
-                    Ok(())
+                    Ok(Some(core::mem::replace(v, value.into())))
                 } else {
                     Err(KeyNotFoundError { key: key.clone() })
                 }
@@ -315,8 +314,7 @@ impl Map {
                     if let Some((_, v)) =
                         vec.iter_mut().find(|(k, _)| k == string)
                     {
-                        *v = value.into();
-                        Ok(())
+                        Ok(Some(core::mem::replace(v, value.into())))
                     } else {
                         Err(KeyNotFoundError { key: key.into() })
                     }
