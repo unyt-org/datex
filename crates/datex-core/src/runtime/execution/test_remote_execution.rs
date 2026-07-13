@@ -493,6 +493,7 @@ pub async fn test_remote_sync() {
                 shared_value_on_a
             );
 
+            // trigger update a -> b
             shared_value_on_a
                 .base_shared_container_mut()
                 .update(Update::new(
@@ -526,6 +527,8 @@ pub async fn test_remote_sync() {
                 *shared_value_on_b.value_container(),
                 *shared_value_on_a.value_container()
             );
+
+            // TODO: trigger update from b to a
         },
     )
     .await;
