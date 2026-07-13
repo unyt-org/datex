@@ -102,7 +102,35 @@ pub async fn execute_dxb(
                 property_name,
                 value,
             } => {
-                todo!()
+                if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(
+                            runtime
+                                .endpoint_properties_mut()
+                                .insert(property_name, value),
+                        ),
+                    );
+                } else {
+                    todo!()
+                }
+            }
+            ExternalExecutionInterrupt::GetEndpointProperty {
+                endpoint,
+                property_name,
+            } => {
+                if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
+                    let value = runtime
+                        .endpoint_properties()
+                        .get(&property_name)
+                        .cloned();
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(Some(
+                            ValueContainer::new_from_option(value),
+                        )),
+                    );
+                } else {
+                    todo!()
+                }
             }
             ExternalExecutionInterrupt::Result(result) => return Ok(result),
             ExternalExecutionInterrupt::GetReferenceToRemotePointer(

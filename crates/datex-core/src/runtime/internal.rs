@@ -53,7 +53,9 @@ use crate::{
     time::Instant,
     utils::task_manager::TaskManager,
     values::{
-        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
+        core_value::CoreValue,
+        core_values::{endpoint::Endpoint, map::Map},
+        value::Value,
         value_container::ValueContainer,
     },
 };
@@ -63,6 +65,7 @@ use core::{
     pin::Pin,
     slice,
 };
+use indexmap::IndexMap;
 use log::{debug, error, info};
 
 #[derive(Debug)]
@@ -76,6 +79,9 @@ pub struct RuntimeInternal {
     pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     com_hub: Rc<ComHub>,
     config: RuntimeConfig,
+
+    /// Public endpoint interface properties
+    endpoint_properties: RefCell<IndexMap<String, ValueContainer>>,
 
     /// counter to keep track of transceiver ids
     transceiver_counter: RefCell<u32>,
@@ -138,6 +144,7 @@ impl RuntimeInternal {
             config,
             com_hub,
             task_manager,
+            endpoint_properties: RefCell::new(IndexMap::new()),
             core_library: CoreLibrary::default(),
             incoming_sections_receiver: RefCell::new(
                 incoming_sections_receiver,
@@ -164,6 +171,26 @@ impl RuntimeInternal {
     pub fn endpoint(&self) -> &Endpoint {
         &self.endpoint
     }
+    pub fn endpoint_properties(
+        &self,
+    ) -> Ref<'_, IndexMap<String, ValueContainer>> {
+        self.endpoint_properties.borrow()
+    }
+    pub fn endpoint_properties_mut(
+        &self,
+    ) -> RefMut<'_, IndexMap<String, ValueContainer>> {
+        self.endpoint_properties.borrow_mut()
+    }
+    pub fn get_endpoint_property_by_name(
+        &'_ self,
+        key: &str,
+    ) -> Option<Ref<'_, ValueContainer>> {
+        Ref::filter_map(self.endpoint_properties.borrow(), |props| {
+            props.get(key)
+        })
+        .ok()
+    }
+
     pub fn pointer_availability_lookup(
         &self,
     ) -> Ref<'_, PointerAvailabilityLookup> {

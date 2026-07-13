@@ -1113,9 +1113,25 @@ pub fn inner_execution_loop(
                                     let target = yield_unwrap!(target.as_value_container_mut(
                                         &mut state.stack
                                     ));
-                                    let res = target.try_get_property(
-                                        &property_name,
-                                    );
+
+                                    let res = if let Some(endpoint) = target.try_as::<Endpoint>() {
+                                        let res = interrupt_with_value!(
+                                            interrupt_provider,
+                                            ExecutionInterrupt::External(
+                                                ExternalExecutionInterrupt::GetEndpointProperty 
+                                                    {
+                                                        endpoint: endpoint.clone(),
+                                                        property_name,
+                                                    }
+                                            )
+                                        );
+                                        Ok(res)
+                                    } else {
+                                        target.try_get_property(
+                                            &property_name,
+                                        )
+                                    };
+
                                     RuntimeValue::ValueContainer(yield_unwrap!(
                                         res
                                     ))

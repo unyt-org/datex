@@ -466,12 +466,15 @@ pub async fn test_remote_sync() {
                     runtime_a.pointer_address_provider_mut().deref_mut(),
                 );
 
+            let reference =
+                ValueContainer::Shared(SharedContainer::Referenced(
+                    shared_value.derive_immutable_reference(),
+                ));
+
             let result = runtime_a
                 .execute(
-                    "@test_b :: @@local.a = '?",
-                    &[ValueContainer::Shared(SharedContainer::Referenced(
-                        shared_value.derive_immutable_reference(),
-                    ))],
+                    "@test_b :: (@@local.a = '?; @@local.a)",
+                    core::slice::from_ref(&reference),
                     Some(&mut execution_context),
                 )
                 .await
@@ -496,9 +499,16 @@ pub async fn test_remote_sync() {
                 ))
                 .unwrap();
 
-            sleep(Duration::from_millis(500)).await;
+            sleep(Duration::from_millis(100)).await;
 
-            // TODO: runtime_b.endpoint_properties.get("a");
+            let shared_value_on_b =
+                runtime_b.get_endpoint_property_by_name("a").unwrap();
+            let shared_value_on_b = shared_value_on_b.shared_unchecked();
+            assert_eq!(
+                shared_value_on_b.pointer_address().normalize(&endpoint_a),
+                shared_value.pointer_address()
+            );
+            println!("val: {:?}", shared_value_on_b);
         },
     )
     .await;
