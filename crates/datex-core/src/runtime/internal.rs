@@ -24,6 +24,7 @@ use crate::{
         com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData,
     },
     prelude::*,
+    random::RandomState,
     runtime::{
         Runtime, RuntimeConfig, RuntimeConfigInterface,
         cache::shared_references_cache::SharedReferencesCache,
@@ -81,7 +82,7 @@ pub struct RuntimeInternal {
     config: RuntimeConfig,
 
     /// Public endpoint interface properties
-    endpoint_properties: RefCell<IndexMap<String, ValueContainer>>,
+    endpoint_properties: RefCell<IndexMap<String, ValueContainer, RandomState>>,
 
     /// counter to keep track of transceiver ids
     transceiver_counter: RefCell<u8>,
@@ -144,7 +145,7 @@ impl RuntimeInternal {
             config,
             com_hub,
             task_manager,
-            endpoint_properties: RefCell::new(IndexMap::new()),
+            endpoint_properties: RefCell::new(IndexMap::default()),
             core_library: CoreLibrary::default(),
             incoming_sections_receiver: RefCell::new(
                 incoming_sections_receiver,
@@ -173,12 +174,12 @@ impl RuntimeInternal {
     }
     pub fn endpoint_properties(
         &self,
-    ) -> Ref<'_, IndexMap<String, ValueContainer>> {
+    ) -> Ref<'_, IndexMap<String, ValueContainer, RandomState>> {
         self.endpoint_properties.borrow()
     }
     pub fn endpoint_properties_mut(
         &self,
-    ) -> RefMut<'_, IndexMap<String, ValueContainer>> {
+    ) -> RefMut<'_, IndexMap<String, ValueContainer, RandomState>> {
         self.endpoint_properties.borrow_mut()
     }
     pub fn get_endpoint_property_by_name(

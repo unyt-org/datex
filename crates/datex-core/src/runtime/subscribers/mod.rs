@@ -183,25 +183,7 @@ impl RuntimeInternal {
         // TODO: make sure that all endpoints that are skipped here get the number of skipped
         // blocks in the next block header so that they dont wait for this block
         context.endpoints = receiver_endpoints;
-
-        println!(
-            "Sending update block to endpoints: {}",
-            context
-                .endpoints
-                .iter()
-                .map(|e| e.to_string())
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
-
-        println!(
-            "DXB: {}",
-            get_disassembled_with_options(
-                &update_dxb.dxb,
-                DisassemblerOptions::default()
-            )
-        );
-
+        
         self_clone
             .execute_remote(context, update_dxb)
             .await

@@ -40,8 +40,8 @@ use core::{
     fmt::{Debug, Display, Formatter},
     hash::{Hash, Hasher},
     mem,
+    ops::Deref,
 };
-use std::ops::Deref;
 use serde::Serializer;
 
 pub mod apply;
@@ -169,15 +169,16 @@ impl SharedContainer {
     /// Returns true if the shared container has a self owned pointer address
     pub fn is_self_owned(&self) -> bool {
         match self {
-            SharedContainer::Owned(owned) => {
-                true
-            }
+            SharedContainer::Owned(owned) => true,
             SharedContainer::Referenced(referenced) => {
-                matches!(referenced.inner().deref(), SharedContainerInner::EndpointOwned(_))
+                matches!(
+                    referenced.inner().deref(),
+                    SharedContainerInner::EndpointOwned(_)
+                )
             }
         }
     }
-    
+
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as self.
     pub fn derive_immutable_reference(&self) -> ReferencedSharedContainer {
         match self {

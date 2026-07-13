@@ -460,7 +460,7 @@ pub async fn test_remote_sync() {
                 ExecutionCallerMetadata::local_default(),
             );
 
-            let shared_value =
+            let shared_value_on_a =
                 SharedContainer::new_owned_with_inferred_allowed_type(
                     42,
                     SharedContainerMutability::Mutable,
@@ -469,7 +469,7 @@ pub async fn test_remote_sync() {
 
             let reference =
                 ValueContainer::Shared(SharedContainer::Referenced(
-                    shared_value.derive_immutable_reference(),
+                    shared_value_on_a.derive_immutable_reference(),
                 ));
 
             let result = runtime_a
@@ -487,12 +487,12 @@ pub async fn test_remote_sync() {
                     ValueContainer::Shared(shared) => shared,
                     _ => unreachable!(),
                 },
-                shared_value
+                shared_value_on_a
             );
 
             println!("{}", runtime_b.memory().borrow());
 
-            shared_value
+            shared_value_on_a
                 .base_shared_container_mut()
                 .update(Update::new(
                     TransceiverId::Local,
@@ -507,13 +507,20 @@ pub async fn test_remote_sync() {
             let shared_value_on_b =
                 runtime_b.get_endpoint_property_by_name("a").unwrap();
             let shared_value_on_b = shared_value_on_b.shared_unchecked();
+            // same pointer addresses
             assert_eq!(
                 shared_value_on_b
                     .pointer_address()
                     .normalize_for_local(&endpoint_a),
-                shared_value.pointer_address()
+                shared_value_on_a.pointer_address()
+            );
+            // not the same Rcs
+            assert_ne!(
+                shared_value_on_b,
+                shared_value_on_a,
             );
             println!("val: {:?}", shared_value_on_b);
+
         },
     )
     .await;

@@ -1,14 +1,12 @@
-use core::fmt::Display;
 use crate::{
     collections::HashMap,
     shared_values::{
-        PointerAddress, ReferencedSharedContainer,
+        PointerAddress, ReferencedSharedContainer, SharedContainer,
         weak_shared_container::WeakSharedContainer,
     },
+    values::value_container::ValueContainer,
 };
-use crate::decompiler::decompile_value;
-use crate::shared_values::SharedContainer;
-use crate::values::value_container::ValueContainer;
+use core::fmt::Display;
 
 #[derive(Debug, Default)]
 pub struct SharedReferencesCache {
@@ -34,7 +32,7 @@ impl SharedReferencesCache {
             .entry(pointer_address)
             .or_insert_with(|| container.downgrade());
     }
-    
+
     /// Registers an owned shared container in the cache.
     /// This method should be called for shared containers that this endpoint owns and is responsible for.
     /// If the reference is already registered (has a PointerAddress), the existing address is returned and no new registration is done.
@@ -98,19 +96,27 @@ impl SharedReferencesCache {
             }
         }
     }
-    
+
     /// Returns an iterator over all currently stored owned references in the cache.
-    pub fn owned_values(&self) -> impl Iterator<Item = &ReferencedSharedContainer> {
+    pub fn owned_values(
+        &self,
+    ) -> impl Iterator<Item = &ReferencedSharedContainer> {
         self.owned_values.values()
     }
-    
+
     /// Returns an iterator over all currently stored remote references in the cache.
-    pub fn remote_values(&self) -> impl Iterator<Item = ReferencedSharedContainer> {
-        self.remote_values.values().filter_map(|weak_ref| weak_ref.upgrade())
+    pub fn remote_values(
+        &self,
+    ) -> impl Iterator<Item = ReferencedSharedContainer> {
+        self.remote_values
+            .values()
+            .filter_map(|weak_ref| weak_ref.upgrade())
     }
 
     /// Returns an iterator over all currently stored remote weak references in the cache.
-    pub fn remote_values_weak(&self) -> impl Iterator<Item = &WeakSharedContainer> {
+    pub fn remote_values_weak(
+        &self,
+    ) -> impl Iterator<Item = &WeakSharedContainer> {
         self.remote_values.values()
     }
 }
@@ -119,18 +125,38 @@ impl SharedReferencesCache {
 impl Display for SharedReferencesCache {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         use crate::decompiler::*;
-        
+
         // print owned values
         writeln!(f, "Owned Values:")?;
         for (address, value) in &self.owned_values {
-            writeln!(f, "  {}: {}", address, decompile_value(&ValueContainer::Shared(SharedContainer::Referenced(value.clone())), DecompileOptions::default()))?;
+            writeln!(
+                f,
+                "  {}: {}",
+                address,
+                decompile_value(
+                    &ValueContainer::Shared(SharedContainer::Referenced(
+                        value.clone()
+                    )),
+                    DecompileOptions::default()
+                )
+            )?;
         }
         // print remote values
         writeln!(f, "Remote Values:")?;
         for (address, weak_value) in &self.remote_values {
             let value = weak_value.upgrade();
             if let Some(value) = value {
-                writeln!(f, "  {}: {}", address, decompile_value(&ValueContainer::Shared(SharedContainer::Referenced(value)), DecompileOptions::default()))?;
+                writeln!(
+                    f,
+                    "  {}: {}",
+                    address,
+                    decompile_value(
+                        &ValueContainer::Shared(SharedContainer::Referenced(
+                            value
+                        )),
+                        DecompileOptions::default()
+                    )
+                )?;
             } else {
                 writeln!(f, "  {}: <dropped>", address)?;
             }
