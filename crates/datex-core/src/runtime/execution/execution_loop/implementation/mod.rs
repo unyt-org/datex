@@ -30,7 +30,6 @@ pub fn modify_shared_container_value(
             ))?;
             ReplaceUpdateData { value: val }
         };
-        // TODO: pass TransceiverId
         Ok(reference
             .base_shared_container_mut()
             .try_replace(update_data, source_id)?)

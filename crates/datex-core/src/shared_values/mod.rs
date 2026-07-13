@@ -13,6 +13,7 @@ mod shared_container_inner;
 mod shared_container_mutability;
 mod subscriber;
 pub mod traits;
+pub mod weak_shared_container;
 
 pub use external_shared_container::*;
 pub use owned_shared_container::*;

@@ -25,6 +25,7 @@ use crate::{
 };
 use core::{assert_matches, ops::DerefMut, time::Duration};
 use log::info;
+use std::ops::Deref;
 
 #[tokio::test]
 #[cfg(all(
@@ -489,6 +490,8 @@ pub async fn test_remote_sync() {
                 shared_value
             );
 
+            println!("{}", runtime_b.memory().borrow());
+
             shared_value
                 .base_shared_container_mut()
                 .update(Update::new(
@@ -505,7 +508,9 @@ pub async fn test_remote_sync() {
                 runtime_b.get_endpoint_property_by_name("a").unwrap();
             let shared_value_on_b = shared_value_on_b.shared_unchecked();
             assert_eq!(
-                shared_value_on_b.pointer_address().normalize(&endpoint_a),
+                shared_value_on_b
+                    .pointer_address()
+                    .normalize_for_local(&endpoint_a),
                 shared_value.pointer_address()
             );
             println!("val: {:?}", shared_value_on_b);

@@ -57,8 +57,8 @@ impl Subscribers {
         &self.lookup
     }
 
-    pub fn endpoints(&self) -> Vec<Endpoint> {
-        self.lookup.keys().cloned().collect()
+    pub fn endpoints(&self) -> impl Iterator<Item = &Endpoint> {
+        self.lookup.keys()
     }
     
     pub fn remote_execution_context(&self) -> &RemoteExecutionContext {

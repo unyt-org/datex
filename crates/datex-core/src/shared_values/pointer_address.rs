@@ -43,13 +43,16 @@ impl RemotePointerAddress {
 
     /// Normalizes the pointer address to a self-owned address if it is a
     /// remote address with the same endpoint as the provided local endpoint.
-    pub fn normalize(self, local_endpoint: &Endpoint) -> PointerAddress {
-        if &self.endpoint() == local_endpoint {
+    pub fn normalize_for_local(
+        &self,
+        local_endpoint: &Endpoint,
+    ) -> PointerAddress {
+        if self.endpoint().is_local_or_equals_endpoint(local_endpoint) {
             let mut id = [0u8; 5];
             id.copy_from_slice(&self.0[21..26]);
             PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(id))
         } else {
-            PointerAddress::Remote(self)
+            PointerAddress::Remote(self.clone())
         }
     }
 }
@@ -67,6 +70,14 @@ impl SelfOwnedPointerAddress {
 
     pub fn to_address_string(&self) -> String {
         hex::encode(self.0)
+    }
+
+    /// Returns a [RemotePointerAddress] for the given endpoint and his self-owned pointer address.
+    pub fn remote_for_endpoint(
+        &self,
+        endpoint: &Endpoint,
+    ) -> RemotePointerAddress {
+        RemotePointerAddress::for_endpoint(endpoint, self)
     }
 }
 
@@ -122,10 +133,10 @@ impl PointerAddress {
 
     /// Normalizes the pointer address to a self-owned address if it is a
     /// remote address with the same endpoint as the provided local endpoint.
-    pub fn normalize(self, local_endpoint: &Endpoint) -> Self {
+    pub fn normalize_for_local(self, local_endpoint: &Endpoint) -> Self {
         match self {
             PointerAddress::Remote(remote_address) => {
-                remote_address.normalize(local_endpoint)
+                remote_address.normalize_for_local(local_endpoint)
             }
             _ => self,
         }

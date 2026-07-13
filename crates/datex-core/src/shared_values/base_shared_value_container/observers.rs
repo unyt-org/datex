@@ -58,6 +58,16 @@ impl From<&Endpoint> for TransceiverId {
     }
 }
 
+impl From<TransceiverId> for Endpoint {
+    fn from(transceiver_id: TransceiverId) -> Self {
+        match transceiver_id {
+            TransceiverId::Local => Endpoint::LOCAL,
+            TransceiverId::Remote(endpoint) => endpoint,
+            TransceiverId::Dif(_) => Endpoint::LOCAL, // DIF clients are considered local for this conversion
+        }
+    }
+}
+
 impl Serialize for TransceiverId {
     fn serialize<S: Serializer>(
         &self,

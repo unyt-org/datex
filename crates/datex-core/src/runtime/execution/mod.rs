@@ -241,7 +241,7 @@ fn get_remote_shared_container_reference(
     let resolved_address = address_provider.normalize_address(address);
     // convert slot to InternalSlot enum
     // TODO #770: resolve from remote, handle mutability
-    Ok(memory.get_reference(&resolved_address).cloned())
+    Ok(memory.get_reference(&resolved_address))
 }
 
 fn get_core_lib_value_container(
@@ -261,7 +261,6 @@ fn get_local_pointer_value(
         .memory()
         .borrow()
         .get_reference(&PointerAddress::SelfOwned(address))
-        .cloned()
 }
 
 #[cfg(test)]

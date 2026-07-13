@@ -492,7 +492,6 @@ pub fn inner_execution_loop(
                                 )))
                             }
 
-                            // TODO: still needed?
                             RegularInstruction::BorrowStackValue(index) => {
                                 Some(RuntimeValue::StackValue(index))
                             }
@@ -547,12 +546,12 @@ pub fn inner_execution_loop(
                             }
 
                             RegularInstruction::SharedRef(shared_ref) => {
-                                let endpoint = state.runtime.endpoint().clone();
+                                let address = state.normalize_pointer_address(&shared_ref.address);
                                 // shared ref without value, assumes value already known, otherwise request (todo)
                                 let container = yield_unwrap!(resolve_cache_value(
                                     &mut state,
-                                    shared_ref.address.normalize(&endpoint),
-                                    SharedContainerOwnership::Referenced(shared_ref.ref_mutability)
+                                    &address,
+                                    SharedContainerOwnership::Referenced(shared_ref.ref_mutability),
                                 ));
                                 Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container)))
                             }
@@ -1009,25 +1008,31 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::SetSharedContainerValue => {
-                                    let value_container = yield_unwrap!(
-                                        collected_results
-                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
-                                    );
                                     let mut ref_runtime_value = yield_unwrap!(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()
                                     );
+                                    let value_container = yield_unwrap!(
+                                        yield_unwrap!(
+                                            collected_results
+                                                .pop_runtime_value_result_assert_existing()
+                                        ).into_value_container(&mut state)
+                                    );
+
+
                                     let value_container_mut = yield_unwrap!(ref_runtime_value.as_value_container_mut(&mut state.stack));
 
+                                    // TODO: check if caller endpoint can actually mutate the container
                                     let res = if let Some(reference) = value_container_mut.maybe_shared() {
                                         let update_data = ReplaceUpdateData { value: value_container };
-                                        // TODO: pass TransceiverId
-                                        reference.base_shared_container_mut().try_replace(update_data, TransceiverId::Local).map_err(ExecutionError::UpdateError).map(|_| ())
+                                        let source_id = state.source_id.clone();
+                                        reference.base_shared_container_mut().try_replace(update_data, source_id).map_err(ExecutionError::UpdateError).map(|_| ())
                                     } else {
                                         Err(
                                             ExecutionError::ExpectedSharedValue,
                                         )
                                     };
+
                                     yield_unwrap!(res);
                                     None.into()
                                 }
@@ -1294,7 +1299,7 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::MoveWithValue(move_with_value) => {
-                                    let address = PointerAddress::SelfOwned(move_with_value.previous_address);
+                                    let address = state.normalize_pointer_address(&PointerAddress::SelfOwned(move_with_value.previous_address));
 
                                     // for local addresses, if first value is in cache, assume all values are in cache and resolve
                                     if state.caller_metadata.endpoint.is_local_or_equals_endpoint(state.runtime.endpoint()) &&
@@ -1303,7 +1308,7 @@ pub fn inner_execution_loop(
                                             .has_address_with_ownership(&address, SharedContainerOwnership::Owned) {
                                         let container = yield_unwrap!(resolve_cache_value(
                                         &mut state,
-                                        address,
+                                        &address,
                                         SharedContainerOwnership::Owned,
                                     ));
                                         Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container))).into()
@@ -1448,16 +1453,20 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::SharedRefWithValue(shared_ref) => {
+                                    let address = state.normalize_pointer_address(&PointerAddress::SelfOwned(shared_ref.address.clone()));
+
                                     let value = yield_unwrap!(
-                                        collected_results
-                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
+                                        yield_unwrap!(
+                                            collected_results
+                                                .pop_runtime_value_result_assert_existing()
+                                        ).into_value_container(&mut state)
                                     );
 
                                     // if caller endpoint is local endpoint, this is a local pointer
                                     let referenced_container = if state.caller_metadata.endpoint.is_local_or_equals_endpoint(state.runtime.endpoint()) {
                                         let cache_result = resolve_cache_value(
                                             &mut state,
-                                            PointerAddress::SelfOwned(shared_ref.address.clone()),
+                                            &address,
                                             SharedContainerOwnership::Referenced(shared_ref.ref_mutability),
                                         );
                                         match cache_result {
@@ -1471,7 +1480,7 @@ pub fn inner_execution_loop(
                                             Err(_) => {
                                                 yield_unwrap!(
                                                     create_new_reference_from_value(
-                                                        &PointerAddress::SelfOwned(shared_ref.address),
+                                                        &address,
                                                         &mut state.runtime.memory().borrow_mut(),
                                                         value,
                                                         shared_ref.container_mutability,
@@ -1643,6 +1652,8 @@ pub fn inner_execution_loop(
     }
 }
 
+/// Creates a new reference with the given value or returns the existing reference from the cache.
+/// Stores the new reference in the cache.
 fn create_new_reference_from_value(
     pointer_address: &PointerAddress,
     memory: &mut SharedReferencesCache,
@@ -1657,7 +1668,7 @@ fn create_new_reference_from_value(
         // if self owned was not already in memory, we can't resolve it
         PointerAddress::SelfOwned(_) => {
             Err(CacheValueRetrievalError::ValueNotFoundInCache(
-                ValueNotFoundInCacheError,
+                ValueNotFoundInCacheError(pointer_address.clone()),
             )
                 .into())
         }
@@ -1669,26 +1680,57 @@ fn create_new_reference_from_value(
             )?;
 
             // Note: safe because we checked if the address already exists in memory before
-            unsafe {
+            let reference = unsafe {
                 ReferencedSharedContainer::try_new_remote_from_base_container(
                     base,
                     remote_address.clone(),
                     ref_mutability,
                 )
             }
-                .map_err(|_err| ExecutionError::InvalidSharedValueType)
+                .map_err(|_err| ExecutionError::InvalidSharedValueType)?;
+
+            /// stores the reference in memory, so that we can handle updates from the owner endpoint,
+            /// assuming that we are subscribed to the reference until we unsubscribe
+            memory.register_remote_shared_container(&reference);
+
+            Ok(reference)
         }
     }
 }
 
+/// Tries to resolve a cache value by address from either the execution or runtime cache
 fn resolve_cache_value(
     state: &mut RuntimeExecutionState,
-    pointer_address: PointerAddress,
+    pointer_address: &PointerAddress,
+    ownership: SharedContainerOwnership,
+) -> Result<SharedContainer, ExecutionError> {
+    // first try to get from execution cache
+    if let Ok(val) = resolve_execution_cache_value(
+        state,
+        pointer_address,
+        ownership,
+    ) {
+        Ok(val)
+    }
+    // else, try to get from runtime cache
+    else {
+        if let Some(reference) = state.runtime.memory().borrow().get_reference(pointer_address) {
+            Ok(SharedContainer::Referenced(reference))
+        } else {
+            Err(ExecutionError::CacheValueRetrievalError(CacheValueRetrievalError::ValueNotFoundInCache(ValueNotFoundInCacheError(pointer_address.clone()))))
+        }
+    }
+}
+
+
+fn resolve_execution_cache_value(
+    state: &mut RuntimeExecutionState,
+    pointer_address: &PointerAddress,
     ownership: SharedContainerOwnership,
 ) -> Result<SharedContainer, ExecutionError> {
     // try to find in execution context cache
     state
         .shared_value_cache
-        .try_get_shared_container_with_ownership(&pointer_address, ownership)
+        .try_get_shared_container_with_ownership(pointer_address, ownership)
         .map_err(ExecutionError::CacheValueRetrievalError)
 }

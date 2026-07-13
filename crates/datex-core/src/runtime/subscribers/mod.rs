@@ -5,6 +5,10 @@ use crate::{
         core_compilation_context::CompileInput,
         update_compiler::compile_updates,
     },
+    disassembler::{
+        get_disassembled_with_options, options::DisassemblerOptions,
+        print_disassembled,
+    },
     prelude::*,
     runtime::{
         RuntimeInternal,
@@ -91,7 +95,7 @@ impl RuntimeInternal {
                 };
 
             let context = RemoteExecutionContext::new(
-                vec![self.endpoint().clone()],
+                vec![endpoint.clone()],
                 ExecutionMode::Static,
                 self.clone().into(),
             );
@@ -117,7 +121,23 @@ impl RuntimeInternal {
         let subscriber = self.owned_pointer_subscriptions();
         let subscribers = subscriber.get_subscribers(container);
         if let Some(subscribers) = subscribers {
-            let endpoints = subscribers.endpoints();
+            let source_endpoint = Endpoint::from(update.source_id.clone())
+                .as_local_if_endpoint(self.endpoint());
+
+            let endpoints = subscribers
+                .endpoints()
+                .filter_map(|endpoint| {
+                    let normalized_endpoint =
+                        endpoint.as_local_if_endpoint(self.endpoint());
+                    // filter out the source endpoint
+                    if normalized_endpoint == source_endpoint {
+                        None
+                    } else {
+                        Some(normalized_endpoint)
+                    }
+                })
+                .collect::<Vec<_>>();
+
             self.task_manager()
                 .register_task(self.clone().send_update_block(
                     // TODO: no clone?
@@ -151,13 +171,35 @@ impl RuntimeInternal {
 
         let self_clone = self.clone();
 
-        let subscriptions = self.owned_pointer_subscriptions();
-        let context =
-            subscriptions.remote_execution_context(&container).unwrap();
+        // FIXME: refcell hold across await point for context
+        let mut subscriptions = self.owned_pointer_subscriptions_mut();
+
+        let context = subscriptions
+            .remote_execution_context_mut(&container)
+            .unwrap();
+
+        // Update the context's endpoints to the receiver endpoints for this update block.
+        // This ensures that the endpoint that triggered this update does not get the update sent again
+        // TODO: make sure that all endpoints that are skipped here get the number of skipped
+        // blocks in the next block header so that they dont wait for this block
+        context.endpoints = receiver_endpoints;
 
         println!(
-            "Sending update block to endpoints: {:?}",
-            receiver_endpoints
+            "Sending update block to endpoints: {}",
+            context
+                .endpoints
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+
+        println!(
+            "DXB: {}",
+            get_disassembled_with_options(
+                &update_dxb.dxb,
+                DisassemblerOptions::default()
+            )
         );
 
         self_clone
