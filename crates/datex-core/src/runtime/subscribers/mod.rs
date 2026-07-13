@@ -66,9 +66,9 @@ impl RuntimeInternal {
 
         let mut owned_pointer_subscriptions =
             self.owned_pointer_subscriptions_mut();
-        let subscribers = if let Some(subscribers) = unsafe {
+        let subscribers = if let Some(subscribers) =
             owned_pointer_subscriptions.get_subscribers_mut(shared_container)
-        } {
+        {
             subscribers
                 .remote_execution_context_mut()
                 .add_endpoint(endpoint.clone());
@@ -150,6 +150,11 @@ impl RuntimeInternal {
         let subscriptions = self.owned_pointer_subscriptions();
         let context =
             subscriptions.remote_execution_context(&container).unwrap();
+
+        println!(
+            "Sending update block to endpoints: {:?}",
+            receiver_endpoints
+        );
 
         self_clone
             .execute_remote(context, update_dxb)
