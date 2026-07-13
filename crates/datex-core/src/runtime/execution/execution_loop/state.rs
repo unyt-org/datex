@@ -43,7 +43,11 @@ impl ExecutionLoopState {
     ) -> Self {
         let state = RuntimeExecutionState {
             runtime: runtime.clone(),
-            source_id: TransceiverId(0), // TODO #640: set proper source ID
+            source_id: TransceiverId::from(
+                &caller_metadata
+                    .endpoint
+                    .as_local_if_endpoint(runtime.endpoint()),
+            ),
             stack,
             caller_metadata,
             shared_value_cache: SharedValuesCache::new(shared_values),
@@ -79,6 +83,12 @@ pub struct RuntimeExecutionState {
     pub source_id: TransceiverId,
     pub caller_metadata: ExecutionCallerMetadata,
     pub shared_value_cache: SharedValuesCache,
+}
+
+impl RuntimeExecutionState {
+    pub(crate) fn source_id_cloned(&self) -> TransceiverId {
+        self.source_id.clone()
+    }
 }
 
 #[derive(Debug, Default)]

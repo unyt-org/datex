@@ -127,7 +127,7 @@ mod tests {
                 AppendEntryUpdateData {
                     value: ValueContainer::from(4),
                 },
-                TransceiverId(0),
+                TransceiverId::Local,
             )
             .expect("Failed to push value to list");
         let updated_value = list_ref.try_get_property(3).unwrap();
@@ -143,7 +143,7 @@ mod tests {
             AppendEntryUpdateData {
                 value: ValueContainer::from(99),
             },
-            TransceiverId(0),
+            TransceiverId::Local,
         );
         assert_matches!(result, Err(UpdateError::ImmutableValue));
 
@@ -157,7 +157,7 @@ mod tests {
             AppendEntryUpdateData {
                 value: ValueContainer::from(99),
             },
-            TransceiverId(0),
+            TransceiverId::Local,
         );
         assert_matches!(result, Err(UpdateError::InvalidUpdate))
     }
@@ -180,7 +180,7 @@ mod tests {
                     key: "key1".into(),
                     value: ValueContainer::from(42),
                 },
-                TransceiverId(0),
+                TransceiverId::Local,
             )
             .expect("Failed to set existing property");
         let updated_value = map_ref.try_get_property("key1").unwrap();
@@ -192,7 +192,7 @@ mod tests {
                 key: "new".into(),
                 value: ValueContainer::from(99),
             },
-            TransceiverId(0),
+            TransceiverId::Local,
         );
         assert!(result.is_ok());
         let new_value = map_ref.try_get_property("new").unwrap();
@@ -219,7 +219,7 @@ mod tests {
                     key: 1.into(),
                     value: ValueContainer::from(42),
                 },
-                TransceiverId(0),
+                TransceiverId::Local,
             )
             .expect("Failed to set existing index");
         let updated_value = list_ref.try_get_property(1).unwrap();
@@ -231,7 +231,7 @@ mod tests {
                 key: 5.into(),
                 value: ValueContainer::from(99),
             },
-            TransceiverId(0),
+            TransceiverId::Local,
         );
         assert_eq!(
             result,
@@ -251,7 +251,7 @@ mod tests {
                 key: 0.into(),
                 value: ValueContainer::from(99),
             },
-            TransceiverId(0),
+            TransceiverId::Local,
         );
         assert_matches!(result, Err(UpdateError::InvalidUpdate));
     }
@@ -275,7 +275,7 @@ mod tests {
                     key: "name".into(),
                     value: ValueContainer::from("Bob"),
                 },
-                TransceiverId(0),
+                TransceiverId::Local,
             )
             .expect("Failed to set existing property");
         let name = struct_ref.try_get_property("name").unwrap();
@@ -287,7 +287,7 @@ mod tests {
                 key: "nonexistent".into(),
                 value: ValueContainer::from("value"),
             },
-            TransceiverId(0),
+            TransceiverId::Local,
         );
         assert_matches!(result, Ok(_));
 
@@ -302,7 +302,7 @@ mod tests {
                 key: "name".into(),
                 value: ValueContainer::from("Bob"),
             },
-            TransceiverId(0),
+            TransceiverId::Local,
         );
         assert_matches!(result, Err(UpdateError::InvalidUpdate));
     }
@@ -318,7 +318,7 @@ mod tests {
                 ReplaceUpdateData {
                     value: ValueContainer::from(43),
                 },
-                TransceiverId(0)
+                TransceiverId::Local
             ),
             Err(UpdateError::ImmutableValue)
         );
@@ -332,7 +332,7 @@ mod tests {
                 ReplaceUpdateData {
                     value: ValueContainer::from(43),
                 },
-                TransceiverId(0)
+                TransceiverId::Local
             ),
             Err(UpdateError::ImmutableValue)
         );

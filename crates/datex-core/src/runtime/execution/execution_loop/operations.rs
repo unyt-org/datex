@@ -35,9 +35,10 @@ pub fn set_property(
     target: &mut ValueContainer,
     key: ValueKey,
     value: ValueContainer,
+    transceiver_id: TransceiverId,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     target
-        .try_set_entry(SetEntryUpdateData { key, value }, TransceiverId(0)) // TODO #644: set correct source id
+        .try_set_entry(SetEntryUpdateData { key, value }, transceiver_id) // TODO #644: set correct source id
         .map_err(ExecutionError::from)
 }
 

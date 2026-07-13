@@ -4,10 +4,12 @@ use crate::{
     shared_values::base_shared_value_container::BaseSharedValueContainer,
     utils::{freemap::NextKey, serde_serialize_seed::SerializeSeed},
     value_updates::update_data::Update,
+    values::core_values::endpoint::Endpoint,
 };
 use core::{
     fmt::{Debug, Display},
     result::Result,
+    str::FromStr,
 };
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
@@ -23,10 +25,10 @@ impl Display for ObserverError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             ObserverError::ObserverNotFound => {
-                core::write!(f, "Observer not found")
+                write!(f, "Observer not found")
             }
             ObserverError::ImmutableValue => {
-                core::write!(f, "Cannot observe an immutable reference")
+                write!(f, "Cannot observe an immutable reference")
             }
         }
     }
@@ -35,11 +37,69 @@ impl Display for ObserverError {
 pub type ObserverCallback = Rc<dyn Fn(&Update)>;
 
 /// unique identifier for a transceiver (source of updates)
-/// 0-255 are reserved for DIF clients
-#[derive(
-    Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq, Hash,
-)]
-pub struct TransceiverId(pub u32);
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+pub enum TransceiverId {
+    #[default]
+    /// ID used for local transceivers
+    Local,
+    /// ID used for remote endpoint transceivers
+    Remote(Endpoint),
+    /// ID used for DIF clients
+    Dif(u8),
+}
+
+impl From<&Endpoint> for TransceiverId {
+    fn from(endpoint: &Endpoint) -> Self {
+        if endpoint.is_local() {
+            TransceiverId::Local
+        } else {
+            TransceiverId::Remote(endpoint.clone())
+        }
+    }
+}
+
+impl Serialize for TransceiverId {
+    fn serialize<S: Serializer>(
+        &self,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        match self {
+            TransceiverId::Local => serializer.serialize_str("local"),
+            TransceiverId::Remote(endpoint) => {
+                let endpoint_str = endpoint.to_string();
+                serializer.serialize_str(&endpoint_str)
+            }
+            TransceiverId::Dif(id) => serializer.serialize_u8(*id),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for TransceiverId {
+    fn deserialize<D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        if s == "local" {
+            Ok(TransceiverId::Local)
+        } else if let Ok(id) = s.parse::<u8>() {
+            Ok(TransceiverId::Dif(id))
+        } else {
+            Ok(TransceiverId::Remote(
+                Endpoint::from_str(&s).map_err(serde::de::Error::custom)?,
+            ))
+        }
+    }
+}
+
+impl Display for TransceiverId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            TransceiverId::Local => write!(f, "local"),
+            TransceiverId::Remote(endpoint) => write!(f, "{}", endpoint),
+            TransceiverId::Dif(id) => write!(f, "{}", id),
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default)]
 pub struct ObserveOptions {
@@ -99,11 +159,11 @@ impl Debug for Observer {
 }
 
 impl Observer {
-    /// Creates a new observer with the given callback function,
+    /// Creates a new local observer with the given callback function,
     /// using default options and a transceiver ID of 0.
     pub fn new<F: Fn(&Update) + 'static>(callback: F) -> Self {
         Observer {
-            transceiver_id: TransceiverId(0),
+            transceiver_id: TransceiverId::Local,
             options: ObserveOptions::default(),
             callback: Rc::new(callback),
         }
@@ -183,14 +243,14 @@ impl BaseSharedValueContainer {
     /// Notifies all observers of a change represented by the given [Update].
     pub fn get_current_observers(
         &self,
-        source_id: TransceiverId,
+        source_id: &TransceiverId,
     ) -> Vec<ObserverCallback> {
         self.observers
             .iter()
             .filter(|(_, observer)| {
                 // Filter out bounced back transceiver updates if relay_own_updates not enabled
                 observer.options.relay_own_updates
-                    || observer.transceiver_id != source_id
+                    || &observer.transceiver_id != source_id
             })
             .map(|(_, f)| f.callback.clone())
             .collect()
@@ -203,7 +263,7 @@ impl BaseSharedValueContainer {
 
     /// Calls all observers with the given update.
     pub fn call_observers(&self, update: &Update) {
-        for observer in self.get_current_observers(update.source_id) {
+        for observer in self.get_current_observers(&update.source_id) {
             observer(update);
         }
     }
@@ -253,7 +313,7 @@ mod tests {
                 options: observe_options,
                 callback: Rc::new(move |update| {
                     update_collector_clone.borrow_mut().push(Update {
-                        source_id: update.source_id,
+                        source_id: update.source_id.clone(),
                         data: update.data.clone(),
                     });
                 }),

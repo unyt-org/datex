@@ -69,7 +69,7 @@ impl DIFInterface {
     pub fn get_current_observers(
         &self,
         address: &PointerAddress,
-        source_id: TransceiverId,
+        source_id: &TransceiverId,
     ) -> Result<Vec<ObserverCallback>, ValueNotFoundInCacheError> {
         let shared_container = self
             .cache
@@ -138,7 +138,7 @@ impl DIFInterface {
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         Ok(shared_container_ref.base_shared_container_mut().observe(
             Observer {
-                transceiver_id: self.transceiver_id,
+                transceiver_id: self.transceiver_id.clone(),
                 options,
                 callback: Rc::new(callback),
             },

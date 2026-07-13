@@ -492,7 +492,7 @@ pub async fn test_remote_sync() {
             shared_value
                 .base_shared_container_mut()
                 .update(Update::new(
-                    TransceiverId(1), // FIXME
+                    TransceiverId::Local,
                     UpdateData::Replace(ReplaceUpdateData {
                         value: ValueContainer::from(100),
                     }),

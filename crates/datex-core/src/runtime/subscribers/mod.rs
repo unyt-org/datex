@@ -14,7 +14,7 @@ use crate::{
         PointerAddress, ReferenceMutability, SharedContainer,
         SharedContainerMutability, Subscribers,
         base_shared_value_container::observers::{
-            Observer, ObserverError, ObserverId,
+            ObserveOptions, Observer, ObserverError, ObserverId, TransceiverId,
         },
         traits::SharedContainerCommon,
     },
@@ -79,9 +79,13 @@ impl RuntimeInternal {
                 if shared_container.base_shared_container().is_mutable() {
                     let container = shared_container.clone();
                     let me = self.clone();
-                    Some(shared_container.observe(Observer::new(
-                        move |data| me.handle_update(&container, data),
-                    ))?)
+                    Some(shared_container.observe(Observer {
+                        transceiver_id: TransceiverId::Remote(Endpoint::ANY),
+                        callback: Rc::new(move |data| {
+                            me.handle_update(&container, data)
+                        }),
+                        options: ObserveOptions::default(),
+                    })?)
                 } else {
                     None
                 };

@@ -84,7 +84,7 @@ pub struct RuntimeInternal {
     endpoint_properties: RefCell<IndexMap<String, ValueContainer>>,
 
     /// counter to keep track of transceiver ids
-    transceiver_counter: RefCell<u32>,
+    transceiver_counter: RefCell<u8>,
 
     task_manager: TaskManager,
 
@@ -760,8 +760,9 @@ impl RuntimeInternal {
 
     /// Creates a new [DIFInterface] with a unique transceiver id and the runtime's pointer address provider
     pub fn create_dif_interface(&self) -> DIFInterface {
-        let id = TransceiverId(*self.transceiver_counter.borrow());
-        self.transceiver_counter.replace(id.0 + 1);
+        let count = *self.transceiver_counter.borrow();
+        let id = TransceiverId::Dif(count);
+        self.transceiver_counter.replace(count + 1);
         DIFInterface::new(id, self.pointer_address_provider.clone())
     }
 }

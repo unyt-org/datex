@@ -18,6 +18,7 @@ pub fn modify_shared_container_value(
     set_shared_container_value: ModifySharedContainerValue,
     target: &ValueContainer,
     value: ValueContainer,
+    source_id: TransceiverId,
 ) -> Result<ValueContainer, ExecutionError> {
     if let Some(reference) = target.maybe_shared() {
         let update_data = {
@@ -32,7 +33,7 @@ pub fn modify_shared_container_value(
         // TODO: pass TransceiverId
         Ok(reference
             .base_shared_container_mut()
-            .try_replace(update_data, TransceiverId(0))?)
+            .try_replace(update_data, source_id)?)
     } else {
         Err(ExecutionError::ExpectedSharedValue)
     }

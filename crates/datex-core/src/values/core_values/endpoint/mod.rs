@@ -221,7 +221,7 @@ impl Endpoint {
         })
     }
 
-    // create alias endpoint (@person)
+    /// Create alias endpoint (@person)
     pub fn person(
         name: &str,
         instance: EndpointInstance,
@@ -229,7 +229,7 @@ impl Endpoint {
         Self::named(name, instance, EndpointType::Person)
     }
 
-    // create institution endpoint (@+institution)
+    /// Create institution endpoint (@+institution)
     pub fn institution(
         name: &str,
         instance: EndpointInstance,
@@ -237,7 +237,18 @@ impl Endpoint {
         Self::named(name, instance, EndpointType::Institution)
     }
 
-    // create endpoint from string (@person/42, @@local, @+unyt)
+    /// If the endpoint is equal to the given endpoint, return the [Endpoint::LOCAL] endpoint, 
+    /// otherwise return the endpoint itself
+    pub fn as_local_if_endpoint(&self, endpoint: &Endpoint) -> Endpoint {
+        if self == endpoint {
+            Endpoint::LOCAL
+        }
+        else {
+            self.clone()
+        }
+    }
+    
+    /// Create endpoint from string (@person/42, @@local, @+unyt)
     fn from_string(name: &str) -> Result<Endpoint, InvalidEndpointError> {
         let name = name.to_string();
         if name
