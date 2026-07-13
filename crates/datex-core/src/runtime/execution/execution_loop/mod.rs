@@ -1040,15 +1040,17 @@ pub fn inner_execution_loop(
                                 RegularInstruction::ModifySharedContainerValue(
                                     set_shared_container_value,
                                 ) => {
+                                    let mut target = yield_unwrap!(
+                                        collected_results
+                                            .pop_runtime_value_result_assert_existing()
+                                    );
+
                                     let value = yield_unwrap!(yield_unwrap!(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()
                                     ).into_value_container(&mut state));
 
-                                    let mut target = yield_unwrap!(
-                                        collected_results
-                                            .pop_runtime_value_result_assert_existing()
-                                    );
+
                                     let source_id = state.source_id_cloned();
                                     let target = yield_unwrap!(target.as_value_container_mut(&mut state.stack));
 

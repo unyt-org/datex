@@ -1185,18 +1185,18 @@ fn compile_expression(
                 },
             );
 
-            // compile unbox expression
-            scope = compile_expression(
-                compilation_context,
-                RichAst::new(unbox_expression, &metadata),
-                CompileMetadata::default(),
-                scope,
-            )?;
-
             // compile assigned expression
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(assigned_expression, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+            
+            // compile unbox expression
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(unbox_expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
