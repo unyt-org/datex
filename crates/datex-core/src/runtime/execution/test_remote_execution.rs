@@ -23,9 +23,12 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{assert_matches, ops::DerefMut, time::Duration};
-use log::info;
-use std::ops::Deref;
+use core::{
+    assert_matches,
+    ops::{Deref, DerefMut},
+    time::Duration,
+};
+use tokio::task::yield_now;
 
 #[tokio::test]
 #[cfg(all(
@@ -490,8 +493,6 @@ pub async fn test_remote_sync() {
                 shared_value_on_a
             );
 
-            println!("{}", runtime_b.memory().borrow());
-
             shared_value_on_a
                 .base_shared_container_mut()
                 .update(Update::new(
@@ -502,7 +503,9 @@ pub async fn test_remote_sync() {
                 ))
                 .unwrap();
 
-            sleep(Duration::from_millis(100)).await;
+            // wait for sync update
+            yield_now().await;
+            yield_now().await;
 
             let shared_value_on_b =
                 runtime_b.get_endpoint_property_by_name("a").unwrap();
@@ -514,13 +517,15 @@ pub async fn test_remote_sync() {
                     .normalize_for_local(&endpoint_a),
                 shared_value_on_a.pointer_address()
             );
-            // not the same Rcs
-            assert_ne!(
-                shared_value_on_b,
-                shared_value_on_a,
-            );
+            // not the same RCs
+            assert_ne!(shared_value_on_b, &shared_value_on_a,);
             println!("val: {:?}", shared_value_on_b);
 
+            // same values after sync
+            assert_eq!(
+                *shared_value_on_b.value_container(),
+                *shared_value_on_a.value_container()
+            );
         },
     )
     .await;
