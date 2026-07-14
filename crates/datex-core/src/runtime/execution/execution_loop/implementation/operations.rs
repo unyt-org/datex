@@ -1,3 +1,4 @@
+//! This module contains the implementation of operations that can be performed on [ValueContainer]s
 use crate::{
     global::operators::{
         ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
