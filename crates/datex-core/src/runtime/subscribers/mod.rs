@@ -211,7 +211,7 @@ impl RuntimeInternal {
         // Update the context's endpoints to the receiver endpoints for this update block.
         // This ensures that the endpoint that triggered this update does not get the update sent again
         // TODO: make sure that all endpoints that are skipped here get the number of skipped
-        // blocks in the next block header so that they dont wait for this block
+        // blocks in the next block header so that they dont wait for this block (set skip_after_block)
         context.endpoints = receiver_endpoints;
 
         self_clone

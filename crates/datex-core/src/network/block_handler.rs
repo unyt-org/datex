@@ -216,6 +216,7 @@ impl BlockHandler {
     ) -> Vec<IncomingSection> {
         let section_index = block.block_header.section_index;
         let block_number = block.block_header.block_number;
+        let skip_after_block = block.block_header.skip_after_block;
         let is_end_of_section =
             block.block_header.flags_and_timestamp.is_end_of_section();
         let is_end_of_context =
@@ -252,6 +253,30 @@ impl BlockHandler {
 
         // TODO #172: what happens if the endpoint has not received all blocks starting with block_number 0?
         // we should still potentially process those blocks
+
+        // special handling of skipped blocks:
+        if let Some(skip_after_block) = skip_after_block {
+            // if skip_after_block is set and is next_block_number is skip_after_block + 1
+            // set next_block_number to current block (skip all blocks up to the current block)
+            if scope_context.next_block_number == skip_after_block + 1 {
+                scope_context.next_block_number = block_number;
+            }
+            // if skip_after_block is set and next_block_number is less than or 
+            // equal to skip_after_block, we still need to wait for some blocks
+            else if scope_context.next_block_number <= skip_after_block {
+                todo!()
+            }
+            // if skip_after_block is set and next_block_number is greater than skip_after_block + 1, 
+            // we accidentally already received and handled blocks that should have been skipped.
+            else {
+                log::warn!(
+                    "Received block with skip_after_block={} but next_block_number is {}.",
+                    skip_after_block,
+                    scope_context.next_block_number
+                );
+                scope_context.next_block_number = block_number;
+            }
+        }
 
         // Case 2: if the block is the next expected block in the current section, put it into the
         // section block queue and try to drain blocks from the cache

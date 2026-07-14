@@ -183,6 +183,10 @@ pub struct BlockHeader {
     /// it starts from 0 again, leading to duplicate block ids after a while
     pub block_number: u16,
 
+    /// When set, this indicates that all blocks between [skip_after_block] and the current [block_number]
+    /// should be skipped and don't need to be awaited
+    pub skip_after_block: Option<u16>,
+
     pub flags_and_timestamp: FlagsAndTimestamp,
 
     #[brw(if(flags_and_timestamp.has_lifetime()))]
