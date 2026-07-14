@@ -1,5 +1,6 @@
 use crate::{
     global::protocol_structures::instruction_data::ModifySharedContainerValue,
+    prelude::*,
     runtime::{
         execution::ExecutionError,
         pointer_address_provider::SelfOwnedPointerAddressProvider,

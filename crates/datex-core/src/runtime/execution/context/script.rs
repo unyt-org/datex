@@ -1,8 +1,7 @@
 #[cfg(feature = "compiler")]
 use crate::compiler::error::SpannedCompilerError;
-use crate::runtime::execution::ExecutionError;
+use crate::{prelude::*, runtime::execution::ExecutionError};
 use core::fmt::Display;
-
 #[derive(Debug)]
 pub enum ScriptExecutionError {
     #[cfg(feature = "compiler")]

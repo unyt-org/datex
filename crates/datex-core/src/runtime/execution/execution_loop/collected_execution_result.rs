@@ -6,6 +6,7 @@ use crate::{
     values::{core_values::map::MapKey, value_container::ValueContainer},
 };
 
+use crate::prelude::*;
 #[derive(Debug)]
 pub enum CollectedExecutionResult {
     /// contains an optional runtime value that is intercepted by the consumer of a value or passed as the final result at the end of execution
@@ -17,6 +18,7 @@ pub enum CollectedExecutionResult {
     /// contains a key-value pair that is intercepted by a map construction operation
     KeyValuePair(Box<(MapKey, ValueContainer)>),
 }
+use crate::prelude::*;
 
 impl CollectedExecutionResult {
     pub fn type_definition(definition: TypeDefinition) -> Self {
