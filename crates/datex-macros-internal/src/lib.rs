@@ -7,6 +7,10 @@ mod datex_proxy;
 mod utils;
 mod value_macros;
 
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
+
 #[proc_macro_derive(FromCoreValue)]
 pub fn from_core_value_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);

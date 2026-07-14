@@ -12,6 +12,10 @@ mod compile;
 mod execute;
 mod utils;
 
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
+
 #[proc_macro]
 pub fn precompile(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as PrecompileInput);
