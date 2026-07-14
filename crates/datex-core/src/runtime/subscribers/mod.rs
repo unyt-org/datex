@@ -86,7 +86,7 @@ impl RuntimeInternal {
                     Some(shared_container.observe(Observer {
                         transceiver_id: TransceiverId::Remote(Endpoint::ANY),
                         callback: Rc::new(move |data| {
-                            me.handle_update(&container, data)
+                            me.send_update_to_subscribers(&container, data)
                         }),
                         options: ObserveOptions::default(),
                     })?)
@@ -113,7 +113,7 @@ impl RuntimeInternal {
     }
 
     /// Handles an update to a shared container by notifying all subscribed endpoints.
-    fn handle_update(
+    fn send_update_to_subscribers(
         self: &Rc<Self>,
         container: &SharedContainer,
         update: &Update,
@@ -138,20 +138,50 @@ impl RuntimeInternal {
                 })
                 .collect::<Vec<_>>();
 
-            self.task_manager()
-                .register_task(self.clone().send_update_block(
+            self.task_manager().register_task(
+                self.clone().send_update_block_to_subscribers(
                     // TODO: no clone?
                     container.clone(),
                     update.clone(),
                     endpoints,
-                ));
+                ),
+            );
         }
     }
 
-    /// Compiles a DXB block for the given update and sends it to the specified receiver endpoints.
+    /// Sends an update to the owner of the shared container.
+    async fn send_update_to_owner(
+        self: Rc<Self>,
+        container: SharedContainer,
+        update: Update,
+    ) {
+        let owner: Endpoint = todo!(); // container.pointer_address();
+
+        let update_dxb = {
+            let lookup = self.pointer_availability_lookup();
+            let input = CompileInput::new(lookup.deref(), &[owner]);
+
+            compile_updates(&container, &[&update.data], input)
+        };
+
+        let self_clone = self.clone();
+
+        let context = RemoteExecutionContext::new(
+            vec![owner],
+            ExecutionMode::Static,
+            self.into(),
+        );
+
+        self_clone
+            .execute_remote(&context, update_dxb)
+            .await
+            .expect("Failed to execute remote update block");
+    }
+
+    /// Compiles a DXB block for the given update and sends it to the specified subscriber endpoints.
     /// Note: this function asserts that the shared container is still owned and that the remote execution
     /// context still exists.
-    async fn send_update_block(
+    async fn send_update_block_to_subscribers(
         self: Rc<RuntimeInternal>,
         container: SharedContainer,
         update: Update,
@@ -183,7 +213,7 @@ impl RuntimeInternal {
         // TODO: make sure that all endpoints that are skipped here get the number of skipped
         // blocks in the next block header so that they dont wait for this block
         context.endpoints = receiver_endpoints;
-        
+
         self_clone
             .execute_remote(context, update_dxb)
             .await
