@@ -28,6 +28,10 @@
 extern crate alloc;
 extern crate num_integer;
 
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
+
 #[cfg(feature = "std")]
 extern crate std;
 
