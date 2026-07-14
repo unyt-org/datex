@@ -18,7 +18,6 @@ pub enum CollectedExecutionResult {
     /// contains a key-value pair that is intercepted by a map construction operation
     KeyValuePair(Box<(MapKey, ValueContainer)>),
 }
-use crate::prelude::*;
 
 impl CollectedExecutionResult {
     pub fn type_definition(definition: TypeDefinition) -> Self {
