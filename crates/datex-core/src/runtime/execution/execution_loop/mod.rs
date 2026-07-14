@@ -173,7 +173,7 @@ impl CollectedResults<CollectedExecutionResult> {
         &mut self,
     ) -> Result<RuntimeValue, ExecutionError> {
         self.pop_value_result()
-            .ok_or(ExecutionError::InvalidProgram(
+            .ok_or(ExecutionError::invalid_program(
                 InvalidProgramError::ExpectedValue,
             ))
     }
@@ -234,12 +234,12 @@ pub fn execution_loop(
                 Err(err) => {
                     match err {
                         ExecutionError::DXBParserError(
-                            DXBParserError::ExpectingMoreInstructions,
+                            box DXBParserError::ExpectingMoreInstructions,
                         ) => {
                             yield Err(
                                 ExecutionError::IntermediateResultWithState(
                                     Box::new(active_value.take()),
-                                    None,
+                                    Box::new(None),
                                 ),
                             );
                             // assume that when continuing after this yield, more instructions will have been loaded
@@ -422,7 +422,7 @@ pub fn inner_execution_loop(
                                     ExecutionInterrupt::External(
                                         ExternalExecutionInterrupt::GetCoreLibValue(
                                             yield_unwrap!(
-                                                id.try_into().map_err(|_| ExecutionError::InvalidProgram(InvalidProgramError::InvalidCoreLibId(id)))
+                                                id.try_into().map_err(|_| ExecutionError::invalid_program(InvalidProgramError::InvalidCoreLibId(id)))
                                             )
                                         )
                                     )
@@ -1009,7 +1009,7 @@ pub fn inner_execution_loop(
                                             }
                                         }
                                         _ => {
-                                            return yield Err(ExecutionError::InvalidProgram(InvalidProgramError::ExpectedList))
+                                            return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList))
                                         }
                                     }
 
@@ -1243,7 +1243,7 @@ pub fn inner_execution_loop(
                                     let receivers_list: Vec<Endpoint> = match receivers {
                                         ValueContainer::Local(Value { inner: CoreValue::Endpoint(endpoint), .. }) => vec![endpoint],
                                         // TODO: support advanced receivers
-                                        _ => return yield Err(ExecutionError::ValueError(ValueError::InvalidOperation))
+                                        _ => return yield Err(ExecutionError::value_error(ValueError::InvalidOperation))
                                     };
 
                                     let injected_values = yield_unwrap!(state.stack.resolve_injected_values(&exec_block_data.injected_values));
@@ -1272,7 +1272,7 @@ pub fn inner_execution_loop(
                                                 &receivers_list.iter().collect::<Vec<_>>(),
                                                 shared_containers
                                             )
-                                        }.map_err(|e| ExecutionError::SubscriberError(e))
+                                        }.map_err(ExecutionError::subscriber_error)
                                     );
 
                                     interrupt_with_maybe_value!(
@@ -1626,7 +1626,7 @@ fn resolve_cache_value(
         {
             Ok(SharedContainer::Referenced(reference))
         } else {
-            Err(ExecutionError::CacheValueRetrievalError(
+            Err(ExecutionError::cache_value_retrieval_error(
                 CacheValueRetrievalError::ValueNotFoundInCache(
                     ValueNotFoundInCacheError(pointer_address.clone()),
                 ),
@@ -1644,5 +1644,5 @@ fn resolve_execution_cache_value(
     state
         .shared_value_cache
         .try_get_shared_container_with_ownership(pointer_address, ownership)
-        .map_err(ExecutionError::CacheValueRetrievalError)
+        .map_err(ExecutionError::cache_value_retrieval_error)
 }

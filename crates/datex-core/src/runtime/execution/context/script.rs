@@ -6,20 +6,20 @@ use core::fmt::Display;
 #[derive(Debug)]
 pub enum ScriptExecutionError {
     #[cfg(feature = "compiler")]
-    CompilerError(SpannedCompilerError),
-    ExecutionError(ExecutionError),
+    CompilerError(Box<SpannedCompilerError>),
+    ExecutionError(Box<ExecutionError>),
 }
 
 #[cfg(feature = "compiler")]
 impl From<SpannedCompilerError> for ScriptExecutionError {
     fn from(err: SpannedCompilerError) -> Self {
-        ScriptExecutionError::CompilerError(err)
+        ScriptExecutionError::CompilerError(Box::new(err))
     }
 }
 
 impl From<ExecutionError> for ScriptExecutionError {
     fn from(err: ExecutionError) -> Self {
-        ScriptExecutionError::ExecutionError(err)
+        ScriptExecutionError::ExecutionError(Box::new(err))
     }
 }
 

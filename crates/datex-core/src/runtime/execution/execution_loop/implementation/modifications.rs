@@ -73,7 +73,7 @@ pub fn set_shared_container_value(
         reference
             .base_shared_container_mut()
             .try_replace(update_data, source_id)
-            .map_err(ExecutionError::UpdateError)
+            .map_err(ExecutionError::update_error)
             .map(|_| ()) // FIXME do we want to return the old value that was replaced from the execution?
     } else {
         Err(ExecutionError::ExpectedSharedValue)

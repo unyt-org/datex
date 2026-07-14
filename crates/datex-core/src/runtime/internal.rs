@@ -717,7 +717,7 @@ impl RuntimeInternal {
                 }).collect::<Vec<_>>();
                 Ok(owned_values)
             }
-            _ => Err(ExecutionError::InvalidProgram(
+            _ => Err(ExecutionError::invalid_program(
                 InvalidProgramError::ExpectedValue,
             )),
         }

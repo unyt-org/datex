@@ -233,7 +233,7 @@ impl ExecutionContext {
         match execution_result {
             Err(ExecutionError::IntermediateResultWithState(
                 box intermediate_result,
-                Some(state),
+                box Some(state),
             )) => {
                 match self {
                     ExecutionContext::Local(LocalExecutionContext {

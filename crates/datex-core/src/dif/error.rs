@@ -78,7 +78,7 @@ impl From<CacheValueRetrievalError> for DIFUpdateError {
 
 #[derive(Debug)]
 pub enum DIFApplyError {
-    ExecutionError(ExecutionError),
+    ExecutionError(Box<ExecutionError>),
     ReferenceNotFound,
 }
 impl Display for DIFApplyError {

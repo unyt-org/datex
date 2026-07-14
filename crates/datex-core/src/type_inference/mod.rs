@@ -290,7 +290,7 @@ impl<'a> TypeInference<'a> {
         error: SpannedTypeError,
     ) -> Result<VisitAction<DatexExpression>, SpannedTypeError> {
         if let Some(collected_errors) = &mut self.errors {
-            let action = match error.error {
+            let action = match *error.error {
                 TypeError::Unimplemented(_) => {
                     VisitAction::SetTypeRecurseChildNodes(Type::core(
                         CoreLibBaseTypeId::Never,
@@ -470,12 +470,12 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _fixed_size_list: &mut FixedSizeList,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError {
-            error: TypeError::Unimplemented(
+        Err(SpannedTypeError::new_with_span(
+            TypeError::Unimplemented(
                 "FixedSizeList type inference not implemented".into(),
             ),
-            span: Some(span.clone()),
-        })
+            span.clone(),
+        ))
     }
 
     fn visit_callable_type(
@@ -526,12 +526,12 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _generic_access: &mut GenericAccess,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError {
-            error: TypeError::Unimplemented(
+        Err(SpannedTypeError::new_with_span(
+            TypeError::Unimplemented(
                 "GenericAccess type inference not implemented".into(),
             ),
-            span: Some(span.clone()),
-        })
+            span.clone(),
+        ))
     }
     fn visit_literal_type(
         &mut self,
@@ -571,24 +571,24 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _slice_list: &mut SliceList,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError {
-            error: TypeError::Unimplemented(
+        Err(SpannedTypeError::new_with_span(
+            TypeError::Unimplemented(
                 "SliceList type inference not implemented".into(),
             ),
-            span: Some(span.clone()),
-        })
+            span.clone(),
+        ))
     }
     fn visit_variant_access_type(
         &mut self,
         _variant_access: &mut TypeVariantAccess,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError {
-            error: TypeError::Unimplemented(
+        Err(SpannedTypeError::new_with_span(
+            TypeError::Unimplemented(
                 "VariantAccess type inference not implemented".into(),
             ),
-            span: Some(span.clone()),
-        })
+            span.clone(),
+        ))
     }
 
     fn visit_get_core_lib_type(
@@ -620,10 +620,10 @@ impl<'a> TypeInference<'a> {
             None
         };
 
-        ty.ok_or(SpannedTypeError {
-            error: TypeError::ReferenceToNonTypeValue,
+        ty.ok_or(SpannedTypeError::new(
+            TypeError::ReferenceToNonTypeValue,
             span,
-        })
+        ))
     }
 }
 
@@ -666,9 +666,11 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         mark_type(
             inner_type
                 .try_convert_to_shared_ref(get_shared_ref.mutability)
-                .map_err(|_| SpannedTypeError {
-                    error: TypeError::InvalidSharedReference,
-                    span: Some(span.clone()),
+                .map_err(|_| {
+                    SpannedTypeError::new_with_span(
+                        TypeError::InvalidSharedReference,
+                        span.clone(),
+                    )
                 })?,
         )
     }
@@ -749,13 +751,13 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         match variable_assignment.operator {
             None => {
                 if !annotated_type.is_superset_of(&assigned_type) {
-                    return Err(SpannedTypeError {
-                        error: TypeError::AssignmentTypeMismatch {
-                            expected: annotated_type,
-                            found: assigned_type,
-                        },
-                        span: Some(span.clone()),
-                    });
+                    return Err(SpannedTypeError::new_with_span(
+                        TypeError::assignment_type_mismatch(
+                            annotated_type,
+                            assigned_type,
+                        ),
+                        span.clone(),
+                    ));
                 }
             }
             _ => {
@@ -835,10 +837,10 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 let annotated_type = self.infer_type_expression(specific)?;
                 if !init_type.is_subset_of(&annotated_type) {
                     self.record_error(SpannedTypeError::new_with_span(
-                        TypeError::AssignmentTypeMismatch {
-                            expected: annotated_type.clone(),
-                            found: init_type,
-                        },
+                        TypeError::assignment_type_mismatch(
+                            annotated_type.clone(),
+                            init_type,
+                        ),
                         span.clone(),
                     ))?;
                 }
@@ -889,22 +891,22 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 if let Some(ty) = ty {
                     mark_type(ty)
                 } else {
-                    Err(SpannedTypeError {
-                        error: TypeError::MismatchedOperands(
+                    Err(SpannedTypeError::new_with_span(
+                        TypeError::mismatched_operands(
                             op, left_type, right_type,
                         ),
-                        span: Some(span.clone()),
-                    })
+                        span.clone(),
+                    ))
                 }
             }
             _ => {
                 //  otherwise, use never type
-                self.record_error(SpannedTypeError {
-                    error: TypeError::Unimplemented(
+                self.record_error(SpannedTypeError::new_with_span(
+                    TypeError::Unimplemented(
                         "Binary operation not implemented".into(),
                     ),
-                    span: Some(span.clone()),
-                })?;
+                    span.clone(),
+                ))?;
                 mark_never()
             }
         }
@@ -1019,10 +1021,10 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                         mark_type(Type::core(CoreLibBaseTypeId::Never))
                     }
                 }
-                _ => Err(SpannedTypeError {
-                    error: TypeError::UnsupportedApply(caller.clone()),
-                    span: Some(span.clone()),
-                }),
+                _ => Err(SpannedTypeError::new_with_span(
+                    TypeError::unsupported_apply(caller.clone()),
+                    span.clone(),
+                )),
             }
         })
     }
