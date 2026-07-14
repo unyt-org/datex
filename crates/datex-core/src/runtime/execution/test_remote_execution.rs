@@ -503,7 +503,7 @@ pub async fn test_remote_sync() {
                 ))
                 .unwrap();
 
-            // wait for sync update
+            // wait for update sync
             yield_now().await;
             yield_now().await;
 
@@ -540,9 +540,10 @@ pub async fn test_remote_sync() {
                 ))
                 .unwrap();
 
+            // wait for update sync
             yield_now().await;
             yield_now().await;
-            sleep(Duration::from_millis(400)).await;
+            yield_now().await;
 
             assert_eq!(
                 *shared_value_on_b.value_container(),
