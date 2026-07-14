@@ -232,7 +232,7 @@ impl ExecutionContext {
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         match execution_result {
             Err(ExecutionError::IntermediateResultWithState(
-                intermediate_result,
+                box intermediate_result,
                 Some(state),
             )) => {
                 match self {

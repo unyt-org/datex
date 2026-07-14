@@ -105,7 +105,7 @@ pub enum ExecutionError {
     AssignmentError(AssignmentError),
     ReferenceCreationError(SharedValueCreationError),
     IntermediateResultWithState(
-        Option<ValueContainer>,
+        Box<Option<ValueContainer>>,
         Option<ExecutionLoopState>,
     ),
     ApplyError(ApplyError),

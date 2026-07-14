@@ -125,7 +125,7 @@ impl Map {
                 }
             }
         }
-        .ok_or_else(|| KeyNotFoundError { key: key.into() })
+        .ok_or_else(|| KeyNotFoundError::new(key.into()))
     }
 
     /// Checks if the map contains the given key.
@@ -212,9 +212,9 @@ impl Map {
         match self {
             Map::Dynamic(map) => key.with_value_container(|key| {
                 map.shift_remove(key).ok_or_else(|| {
-                    MapAccessError::KeyNotFound(KeyNotFoundError {
-                        key: key.clone(),
-                    })
+                    MapAccessError::KeyNotFound(KeyNotFoundError::new(
+                        key.clone(),
+                    ))
                 })
             }),
             Map::Structural(_) | Map::StructuralWithStringKeys(_) => {
@@ -225,6 +225,7 @@ impl Map {
 
     /// Removes a key from the map, returning the value if it existed.
     /// Also works for structural maps, but creates a map that no longer matches the assumed type.
+    /// # Safety
     /// The map should no longer be used after this operation.
     pub unsafe fn try_delete_unsafe<'a>(
         &mut self,
@@ -234,7 +235,7 @@ impl Map {
         match self {
             Map::Dynamic(map) => key.with_value_container(|key| {
                 map.shift_remove(key)
-                    .ok_or_else(|| KeyNotFoundError { key: key.clone() })
+                    .ok_or_else(|| KeyNotFoundError::new(key.clone()))
             }),
             Map::Structural(vec) => key.with_value_container(|key| {
                 for (k, v) in vec.iter_mut() {
@@ -245,7 +246,7 @@ impl Map {
                         ));
                     }
                 }
-                Err(KeyNotFoundError { key: key.clone() })
+                Err(KeyNotFoundError::new(key.clone()))
             }),
             Map::StructuralWithStringKeys(vec) => {
                 if let Some(string) = key.try_as_text() {
@@ -257,9 +258,9 @@ impl Map {
                             ));
                         }
                     }
-                    Err(KeyNotFoundError { key: key.into() })
+                    Err(KeyNotFoundError::new(key.clone().into()))
                 } else {
-                    Err(KeyNotFoundError { key: key.into() })
+                    Err(KeyNotFoundError::new(key.clone().into()))
                 }
             }
         }
@@ -306,7 +307,7 @@ impl Map {
                 if let Some((_, v)) = vec.iter_mut().find(|(k, _)| k == key) {
                     Ok(Some(core::mem::replace(v, value.into())))
                 } else {
-                    Err(KeyNotFoundError { key: key.clone() })
+                    Err(KeyNotFoundError::new(key.clone()))
                 }
             }),
             Map::StructuralWithStringKeys(vec) => {
@@ -316,10 +317,10 @@ impl Map {
                     {
                         Ok(Some(core::mem::replace(v, value.into())))
                     } else {
-                        Err(KeyNotFoundError { key: key.into() })
+                        Err(KeyNotFoundError::new(key.clone().into()))
                     }
                 } else {
-                    Err(KeyNotFoundError { key: key.into() })
+                    Err(KeyNotFoundError::new(key.clone().into()))
                 }
             }
         }

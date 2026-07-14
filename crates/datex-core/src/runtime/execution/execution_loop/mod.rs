@@ -238,7 +238,7 @@ pub fn execution_loop(
                         ) => {
                             yield Err(
                                 ExecutionError::IntermediateResultWithState(
-                                    active_value.take(),
+                                    Box::new(active_value.take()),
                                     None,
                                 ),
                             );
