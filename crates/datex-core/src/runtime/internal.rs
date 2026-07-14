@@ -641,6 +641,12 @@ impl RuntimeInternal {
                             )
                             .map_err(SubscriberError::Observer)?
                     }
+                    // also store the subscribed pointer in cache so that we can handle incoming
+                    // pointer updates from the subscribers
+                    self.memory.borrow_mut().register_owned_shared_container(
+                        &shared_container
+                            .derive_reference_with_max_mutability(),
+                    );
                 }
             }
         }

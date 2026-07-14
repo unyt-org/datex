@@ -72,10 +72,6 @@ impl RuntimeInternal {
                     shared_container.pointer_address().endpoint(),
                 ),
                 callback: Rc::new(move |update| {
-                    println!(
-                        "syncing now! {:?}",
-                        update
-                    );
                     if let Some(container) = weak_container.upgrade() {
                         self_clone.task_manager().register_task(
                             self_clone.clone().send_update_to_owner(

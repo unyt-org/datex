@@ -338,6 +338,7 @@ pub mod clone_unsafe;
 mod common;
 pub mod datex_proxy;
 pub mod equality;
+pub mod update_handler;
 
 impl From<OwnedSharedContainer> for SharedContainer {
     fn from(value: OwnedSharedContainer) -> Self {

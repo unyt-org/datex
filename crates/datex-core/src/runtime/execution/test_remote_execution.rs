@@ -477,7 +477,7 @@ pub async fn test_remote_sync() {
 
             let result = runtime_a
                 .execute(
-                    "@test_b :: (@@local.a = '?; @@local.a)",
+                    "@test_b :: (@@local.a = 'mut ?; @@local.a)",
                     core::slice::from_ref(&reference),
                     Some(&mut execution_context),
                 )
@@ -495,7 +495,6 @@ pub async fn test_remote_sync() {
 
             // trigger update a -> b
             shared_value_on_a
-                .base_shared_container_mut()
                 .update(Update::new(
                     TransceiverId::Local,
                     UpdateData::Replace(ReplaceUpdateData {
@@ -519,8 +518,7 @@ pub async fn test_remote_sync() {
                 shared_value_on_a.pointer_address()
             );
             // not the same RCs
-            assert_ne!(shared_value_on_b, &shared_value_on_a,);
-            println!("val: {:?}", shared_value_on_b);
+            assert_ne!(shared_value_on_b, &shared_value_on_a);
 
             // same values after sync
             assert_eq!(
@@ -534,7 +532,6 @@ pub async fn test_remote_sync() {
 
             // trigger update b -> a
             shared_value_on_b
-                .base_shared_container_mut()
                 .update(Update::new(
                     TransceiverId::Local,
                     UpdateData::Replace(ReplaceUpdateData {
@@ -545,6 +542,7 @@ pub async fn test_remote_sync() {
 
             yield_now().await;
             yield_now().await;
+            sleep(Duration::from_millis(400)).await;
 
             assert_eq!(
                 *shared_value_on_b.value_container(),

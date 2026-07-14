@@ -1664,9 +1664,8 @@ fn create_new_reference_from_value(
     container_mutability: SharedContainerMutability,
     ref_mutability: ReferenceMutability,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
-    
     let memory = &mut runtime.memory().borrow_mut();
-    
+
     if let Some(reference) = memory.get_reference(pointer_address) {
         return Ok(reference.clone());
     }
