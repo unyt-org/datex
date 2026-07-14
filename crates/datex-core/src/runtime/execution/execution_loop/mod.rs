@@ -1,17 +1,10 @@
 //! This module contains the implementation of the execution loop that drives the execution of the compiled DATEX bytecode (DXB).
 //! It handles the execution of instructions, manages the runtime state, and processes interrupts that can occur during execution.
-use crate::{
-    runtime::execution::execution_loop::{
-        state::RuntimeExecutionStack,
-    },
-    shared_values::traits::SharedContainerCommon,
-    value_updates::errors::UpdateError,
-};
+use crate::shared_values::traits::SharedContainerCommon;
 mod implementation;
 use implementation::*;
 mod internal_slots;
 pub mod interrupts;
-mod operations;
 mod runtime_value;
 pub mod state;
 
@@ -45,6 +38,7 @@ use crate::{
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     runtime::{
+        Runtime,
         cache::{
             shared_references_cache::SharedReferencesCache,
             shared_values_cache::{
@@ -58,11 +52,6 @@ use crate::{
                 interrupts::{
                     ExecutionInterrupt, ExternalExecutionInterrupt,
                     InterruptProvider, InterruptResult,
-                },
-                operations::{
-                    handle_assignment_operation, handle_binary_operation,
-                    handle_comparison_operation, handle_unary_operation,
-                    set_property,
                 },
                 runtime_value::RuntimeValue,
                 state::RuntimeExecutionState,
@@ -112,68 +101,24 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, ops::DerefMut};
-use crate::runtime::Runtime;
-
-#[derive(Debug)]
-enum CollectedExecutionResult {
-    /// contains an optional runtime value that is intercepted by the consumer of a value or passed as the final result at the end of execution
-    Value(Option<RuntimeValue>),
-    /// contains a [Type] that is intercepted by a consumer of a type value
-    Type(Type),
-    TypeDefinition(TypeDefinition),
-    /// contains a key-value pair that is intercepted by a map construction operation
-    KeyValuePair((MapKey, ValueContainer)),
-}
-
-impl From<Option<RuntimeValue>> for CollectedExecutionResult {
-    fn from(value: Option<RuntimeValue>) -> Self {
-        CollectedExecutionResult::Value(value)
-    }
-}
-impl From<ValueContainer> for CollectedExecutionResult {
-    fn from(value: ValueContainer) -> Self {
-        CollectedExecutionResult::Value(Some(value.into()))
-    }
-}
-
-impl From<RuntimeValue> for CollectedExecutionResult {
-    fn from(value: RuntimeValue) -> Self {
-        CollectedExecutionResult::Value(Some(value))
-    }
-}
-impl From<Type> for CollectedExecutionResult {
-    fn from(value: Type) -> Self {
-        CollectedExecutionResult::Type(value)
-    }
-}
-
-impl From<TypeDefinition> for CollectedExecutionResult {
-    fn from(value: TypeDefinition) -> Self {
-        CollectedExecutionResult::TypeDefinition(value)
-    }
-}
-
-impl From<(MapKey, ValueContainer)> for CollectedExecutionResult {
-    fn from(value: (MapKey, ValueContainer)) -> Self {
-        CollectedExecutionResult::KeyValuePair(value)
-    }
-}
+mod collected_execution_result;
+use collected_execution_result::CollectedExecutionResult;
 
 impl
-CollectionResultsPopper<
-    CollectedExecutionResult,
-    Option<RuntimeValue>,
-    MapKey,
-    ValueContainer,
-    Type,
-    TypeDefinition,
-> for CollectedResults<CollectedExecutionResult>
+    CollectionResultsPopper<
+        CollectedExecutionResult,
+        Option<RuntimeValue>,
+        MapKey,
+        ValueContainer,
+        Type,
+        TypeDefinition,
+    > for CollectedResults<CollectedExecutionResult>
 {
     fn try_extract_type_definition_result(
         result: CollectedExecutionResult,
     ) -> Option<TypeDefinition> {
         match result {
-            CollectedExecutionResult::TypeDefinition(ty) => Some(ty),
+            CollectedExecutionResult::TypeDefinition(ty) => Some(*ty),
             _ => None,
         }
     }
@@ -190,7 +135,7 @@ CollectionResultsPopper<
         result: CollectedExecutionResult,
     ) -> Option<Type> {
         match result {
-            CollectedExecutionResult::Type(ty) => Some(ty),
+            CollectedExecutionResult::Type(ty) => Some(*ty),
             _ => None,
         }
     }
@@ -199,7 +144,7 @@ CollectionResultsPopper<
         result: CollectedExecutionResult,
     ) -> Option<(MapKey, ValueContainer)> {
         match result {
-            CollectedExecutionResult::KeyValuePair((key, value)) => {
+            CollectedExecutionResult::KeyValuePair(box (key, value)) => {
                 Some((key, value))
             }
             _ => None,
@@ -265,7 +210,7 @@ pub fn execution_loop(
     state: RuntimeExecutionState,
     dxb_body: Rc<RefCell<Vec<u8>>>,
     interrupt_provider: InterruptProvider,
-) -> impl Iterator<Item=Result<ExternalExecutionInterrupt, ExecutionError>> {
+) -> impl Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>> {
     gen move {
         let mut active_value: Option<ValueContainer> = None;
 
@@ -315,7 +260,7 @@ pub fn inner_execution_loop(
     dxb_body: Rc<RefCell<Vec<u8>>>,
     interrupt_provider: InterruptProvider,
     mut state: RuntimeExecutionState,
-) -> impl Iterator<Item=Result<ExecutionInterrupt, ExecutionError>> {
+) -> impl Iterator<Item = Result<ExecutionInterrupt, ExecutionError>> {
     gen move {
         let mut collector =
             InstructionCollector::<CollectedExecutionResult>::default();
@@ -635,10 +580,10 @@ pub fn inner_execution_loop(
                     if let Some(type_instruction) = type_instruction {
                         Some(match type_instruction {
                             TypeInstruction::TypeDefinitionCoreType(core_lib_type_id) => {
-                                CollectedExecutionResult::TypeDefinition(TypeDefinition::CoreType(core_lib_type_id))
+                                CollectedExecutionResult::type_definition(TypeDefinition::CoreType(core_lib_type_id))
                             }
                             TypeInstruction::TypeDefinitionLiteral(literal) => {
-                                CollectedExecutionResult::TypeDefinition(literal.into())
+                                CollectedExecutionResult::type_definition(literal.into())
                             }
 
                             TypeInstruction::TypeDefinitionSharedTypeReference(type_ref) => {
@@ -748,10 +693,10 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
-                                    CollectedExecutionResult::KeyValuePair((
+                                    CollectedExecutionResult::key_value_pair(
                                         MapKey::Value(key),
                                         value,
-                                    ))
+                                    )
                                 }
 
                                 RegularInstruction::KeyValueShortText(
@@ -761,37 +706,23 @@ pub fn inner_execution_loop(
                                         collected_results.pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let key = MapKey::Text(short_text_data.0);
-                                    CollectedExecutionResult::KeyValuePair((
+                                    CollectedExecutionResult::key_value_pair(
                                         key, value,
-                                    ))
+                                    )
                                 }
 
                                 RegularInstruction::TaggedValue(TaggedValue {
-                                                                    tag: ShortTextData(tag),
-                                                                    is_empty
-                                                                }) => {
+                                    tag: ShortTextData(tag),
+                                    is_empty
+                                }) => {
                                     assert!(!is_empty);
-
                                     let value_container = yield_unwrap!(
                                         collected_results.pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
-                                    // expected value container to be local value
-                                    match value_container {
-                                        ValueContainer::Local(mut value) => {
-                                            // add tag type to the value
-                                            value.custom_type = Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                                                tag,
-                                                ty: value.custom_type.map(Type::from).map(Box::new),
-                                            }));
-                                            RuntimeValue::ValueContainer(ValueContainer::Local(value))
-                                                .into()
-                                        }
-                                        _ => {
-                                            return yield Err(
-                                                ExecutionError::ExpectedLocalValue,
-                                            );
-                                        }
-                                    }
+                                    yield_unwrap!(create_tagged_value_container(
+                                        value_container,
+                                        tag,
+                                    )).into()
                                 }
 
                                 RegularInstruction::Add
@@ -815,10 +746,9 @@ pub fn inner_execution_loop(
                                         &left,
                                         &right,
                                     );
-                                    RuntimeValue::ValueContainer(yield_unwrap!(
+                                    yield_unwrap!(
                                         res
-                                    ))
-                                        .into()
+                                    ).into()
                                 }
 
                                 RegularInstruction::Is
@@ -842,10 +772,9 @@ pub fn inner_execution_loop(
                                         &left,
                                         &right,
                                     );
-                                    RuntimeValue::ValueContainer(yield_unwrap!(
+                                    yield_unwrap!(
                                         res
-                                    ))
-                                        .into()
+                                    ).into()
                                 }
 
                                 RegularInstruction::Matches => {
@@ -873,18 +802,11 @@ pub fn inner_execution_loop(
                                         _ => unreachable!(),
                                     };
 
-                                    let shared_container = SharedContainer::Owned(OwnedSharedContainer::new_from_self_owned_container(
-                                        SelfOwnedSharedContainer::new(
-                                            BaseSharedValueContainer::new_with_inferred_allowed_type(
-                                                value,
-                                                mutability,
-                                            ),
-                                            state.runtime.pointer_address_provider_mut().deref_mut(),
-                                        ),
-                                    ));
-
-                                    RuntimeValue::ValueContainer(ValueContainer::Shared(shared_container))
-                                        .into()
+                                    create_owned_shared_container(
+                                        value,
+                                        mutability,
+                                        state.runtime.pointer_address_provider_mut().deref_mut(),
+                                    ).into()
                                 }
 
                                 RegularInstruction::DeriveSharedReference => {
@@ -1129,8 +1051,7 @@ pub fn inner_execution_loop(
                                         let res = interrupt_with_value!(
                                             interrupt_provider,
                                             ExecutionInterrupt::External(
-                                                ExternalExecutionInterrupt::GetEndpointProperty 
-                                                    {
+                                                ExternalExecutionInterrupt::GetEndpointProperty{
                                                         endpoint: endpoint.clone(),
                                                         property_name,
                                                     }
@@ -1617,10 +1538,10 @@ pub fn inner_execution_loop(
 
             // if in unbounded statements, propagate active value via interrupt
             if let Some(ResultCollector::LastUnbounded(
-                            LastUnboundedResultCollector { last_result, .. },
-                        )) = collector.last_mut()
+                LastUnboundedResultCollector { last_result, .. },
+            )) = collector.last_mut()
                 && let Some(CollectedExecutionResult::Value(mut last_result)) =
-                last_result.take()
+                    last_result.take()
             {
                 let active_value = yield_unwrap!(
                     last_result
@@ -1675,7 +1596,7 @@ fn create_new_reference_from_value(
             Err(CacheValueRetrievalError::ValueNotFoundInCache(
                 ValueNotFoundInCacheError(pointer_address.clone()),
             )
-                .into())
+            .into())
         }
         PointerAddress::Remote(remote_address) => {
             let base = BaseSharedValueContainer::try_new(
@@ -1692,13 +1613,15 @@ fn create_new_reference_from_value(
                     ref_mutability,
                 )
             }
-                .map_err(|_err| ExecutionError::InvalidSharedValueType)?;
+            .map_err(|_err| ExecutionError::InvalidSharedValueType)?;
 
             // stores the reference in memory, so that we can handle updates from the owner endpoint,
             // assuming that we are subscribed to the reference until we unsubscribe
             memory.register_remote_shared_container(&reference);
             // Also set up observers to send any update back to the owner
-            runtime.internal().sync_value_with_owner(&SharedContainer::Referenced(reference.clone()))?;
+            runtime.internal().sync_value_with_owner(
+                &SharedContainer::Referenced(reference.clone()),
+            )?;
 
             Ok(reference)
         }
@@ -1712,23 +1635,29 @@ fn resolve_cache_value(
     ownership: SharedContainerOwnership,
 ) -> Result<SharedContainer, ExecutionError> {
     // first try to get from execution cache
-    if let Ok(val) = resolve_execution_cache_value(
-        state,
-        pointer_address,
-        ownership,
-    ) {
+    if let Ok(val) =
+        resolve_execution_cache_value(state, pointer_address, ownership)
+    {
         Ok(val)
     }
     // else, try to get from runtime cache
     else {
-        if let Some(reference) = state.runtime.memory().borrow().get_reference(pointer_address) {
+        if let Some(reference) = state
+            .runtime
+            .memory()
+            .borrow()
+            .get_reference(pointer_address)
+        {
             Ok(SharedContainer::Referenced(reference))
         } else {
-            Err(ExecutionError::CacheValueRetrievalError(CacheValueRetrievalError::ValueNotFoundInCache(ValueNotFoundInCacheError(pointer_address.clone()))))
+            Err(ExecutionError::CacheValueRetrievalError(
+                CacheValueRetrievalError::ValueNotFoundInCache(
+                    ValueNotFoundInCacheError(pointer_address.clone()),
+                ),
+            ))
         }
     }
 }
-
 
 fn resolve_execution_cache_value(
     state: &mut RuntimeExecutionState,

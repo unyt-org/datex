@@ -1,11 +1,13 @@
 use crate::{
     global::protocol_structures::instruction_data::ModifySharedContainerValue,
-    runtime::execution::{
-        ExecutionError, execution_loop::operations::handle_assignment_operation,
-    },
+    runtime::execution::ExecutionError,
     shared_values::{
         base_shared_value_container::observers::TransceiverId,
         traits::SharedContainerCommon,
+    },
+    types::{
+        r#type::Type,
+        type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
     },
     value_updates::{
         errors::UpdateError, update_data::ReplaceUpdateData,
@@ -14,6 +16,14 @@ use crate::{
     values::value_container::ValueContainer,
 };
 
+mod operations;
+pub use operations::*;
+
+mod create;
+pub use create::*;
+
+/// Modifies the value of a shared container by applying the specified [ModifySharedContainerValue] operation.
+/// If the target [ValueContainer] is not a shared container, an [ExecutionError::ExpectedSharedValue] is returned.
 pub fn modify_shared_container_value(
     set_shared_container_value: ModifySharedContainerValue,
     target: &ValueContainer,
