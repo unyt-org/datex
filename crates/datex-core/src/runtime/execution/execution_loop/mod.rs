@@ -126,7 +126,7 @@ impl
         result: CollectedExecutionResult,
     ) -> Option<Option<RuntimeValue>> {
         match result {
-            CollectedExecutionResult::Value(val) => Some(val),
+            CollectedExecutionResult::Value(box val) => Some(val),
             _ => None,
         }
     }
@@ -1333,16 +1333,16 @@ pub fn inner_execution_loop(
                                         // reset stack index
                                         state.stack.truncate(previous_stack_index);
                                         if terminated {
-                                            CollectedExecutionResult::Value(
+                                            CollectedExecutionResult::value(
                                                 None,
                                             )
                                         } else {
                                             match collected_result {
-                                                Some(CollectedExecutionResult::Value(val)) => val.into(),
+                                                Some(CollectedExecutionResult::Value(box val)) => val.into(),
                                                 None => {
                                                     // if no last result, it might have been moved to the active value, try to get back
                                                     let active_value = interrupt_with_maybe_value!(interrupt_provider, ExecutionInterrupt::TakeActiveValue);
-                                                    CollectedExecutionResult::Value(active_value.map(RuntimeValue::ValueContainer))
+                                                    CollectedExecutionResult::value(active_value.map(RuntimeValue::ValueContainer))
                                                 }
                                                 _ => unreachable!(),
                                             }
@@ -1406,7 +1406,7 @@ pub fn inner_execution_loop(
                                     };
 
                                     let container = SharedContainer::Referenced(referenced_container);
-                                    CollectedExecutionResult::Value(Some(ValueContainer::Shared(container).into()))
+                                    CollectedExecutionResult::value(Some(ValueContainer::Shared(container).into()))
                                 }
 
                                 e => {
@@ -1479,18 +1479,18 @@ pub fn inner_execution_loop(
                                         StatementsData { terminated, .. },
                                     ) => {
                                         if terminated {
-                                            CollectedExecutionResult::Value(
+                                            CollectedExecutionResult::value(
                                                 None,
                                             )
                                         } else {
                                             match collected_result {
                                                 Some(
                                                     CollectedExecutionResult::Value(
-                                                        val,
+                                                        box val,
                                                     ),
                                                 ) => val.into(),
                                                 None => {
-                                                    CollectedExecutionResult::Value(
+                                                    CollectedExecutionResult::value(
                                                         None,
                                                     )
                                                 }

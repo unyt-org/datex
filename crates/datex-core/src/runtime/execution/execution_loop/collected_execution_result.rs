@@ -10,7 +10,7 @@ use crate::prelude::*;
 #[derive(Debug)]
 pub enum CollectedExecutionResult {
     /// contains an optional runtime value that is intercepted by the consumer of a value or passed as the final result at the end of execution
-    Value(Option<RuntimeValue>),
+    Value(Box<Option<RuntimeValue>>),
     /// contains a [Type] that is intercepted by a consumer of a type value
     Type(Box<Type>),
     /// contains a [TypeDefinition] that is intercepted by a consumer of a type definition value
@@ -30,24 +30,24 @@ impl CollectedExecutionResult {
         CollectedExecutionResult::KeyValuePair(Box::new((key, value)))
     }
     pub fn value(value: Option<RuntimeValue>) -> Self {
-        CollectedExecutionResult::Value(value)
+        CollectedExecutionResult::Value(Box::new(value))
     }
 }
 
 impl From<Option<RuntimeValue>> for CollectedExecutionResult {
     fn from(value: Option<RuntimeValue>) -> Self {
-        CollectedExecutionResult::Value(value)
+        CollectedExecutionResult::value(value)
     }
 }
 impl From<ValueContainer> for CollectedExecutionResult {
     fn from(value: ValueContainer) -> Self {
-        CollectedExecutionResult::Value(Some(value.into()))
+        CollectedExecutionResult::value(Some(value.into()))
     }
 }
 
 impl From<RuntimeValue> for CollectedExecutionResult {
     fn from(value: RuntimeValue) -> Self {
-        CollectedExecutionResult::Value(Some(value))
+        CollectedExecutionResult::value(Some(value))
     }
 }
 impl From<Type> for CollectedExecutionResult {
