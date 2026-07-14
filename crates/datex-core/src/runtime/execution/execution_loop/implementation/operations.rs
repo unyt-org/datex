@@ -8,10 +8,13 @@ use crate::{
         },
     },
     runtime::execution::ExecutionError,
-    shared_values::SharedContainer,
+    shared_values::{
+        ReferenceMutability, SharedContainer, SharedContainerMutability,
+    },
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
+    value_updates::update_data::ReplaceUpdateData,
     values::{
         core_values::range::Range,
         value_container::{ValueContainer, value_key::ValueKey},
@@ -31,19 +34,6 @@ use crate::{
         update_data::SetEntryUpdateData, update_handler::UpdateHandler,
     },
 };
-
-/// Sets a property on the target [ValueContainer] using the provided key and value.
-/// If the property cannot be set, an [ExecutionError::UpdateError] is returned.
-pub fn set_property(
-    target: &mut ValueContainer,
-    key: ValueKey,
-    value: ValueContainer,
-    transceiver_id: TransceiverId,
-) -> Result<Option<ValueContainer>, ExecutionError> {
-    target
-        .try_set_entry(SetEntryUpdateData { key, value }, transceiver_id) // TODO #644: set correct source id
-        .map_err(ExecutionError::from)
-}
 
 /// Handles a binary operation between two [ValueContainer]s based on the specified [BinaryOperator].
 fn handle_unary_shared_value_operation(
@@ -263,12 +253,25 @@ pub fn handle_binary_operation(
 
 /// Derives a shared reference from the given target [ValueContainer].
 /// If the target is not a shared container, an [ExecutionError::ExpectedSharedValue] is returned.
-pub fn derive_shared_ref(
+/// The derived reference will have the specified [ReferenceMutability].
+/// If a mutable reference is requested for a non-mutable shared container, an [ExecutionError::MutableReferenceToNonMutableValue] is returned.
+pub fn derive_shared_reference(
     target: &ValueContainer,
+    mutability: ReferenceMutability,
 ) -> Result<ValueContainer, ExecutionError> {
+    // value_container must be a shared value, otherwise we cannot create a reference to it
     if let ValueContainer::Shared(shared) = target {
         Ok(ValueContainer::Shared(SharedContainer::Referenced(
-            shared.derive_immutable_reference(),
+            match mutability {
+                ReferenceMutability::Immutable => {
+                    Ok(shared.derive_immutable_reference())
+                }
+                ReferenceMutability::Mutable => {
+                    shared.try_derive_mutable_reference().map_err(|_| {
+                        ExecutionError::MutableReferenceToNonMutableValue
+                    })
+                }
+            }?,
         )))
     } else {
         Err(ExecutionError::ExpectedSharedValue)
