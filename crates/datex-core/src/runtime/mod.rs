@@ -19,7 +19,7 @@ mod internal;
 pub mod pointer_address_provider;
 pub mod pointer_availability_lookup;
 mod runner;
-mod subscribers;
+pub mod remote_value_sync;
 #[cfg(test)]
 pub mod test_utils;
 

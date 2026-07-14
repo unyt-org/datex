@@ -472,7 +472,7 @@ pub async fn test_remote_sync() {
 
             let reference =
                 ValueContainer::Shared(SharedContainer::Referenced(
-                    shared_value_on_a.derive_immutable_reference(),
+                    shared_value_on_a.derive_reference_with_max_mutability(),
                 ));
 
             let result = runtime_a
@@ -524,11 +524,36 @@ pub async fn test_remote_sync() {
 
             // same values after sync
             assert_eq!(
+                *shared_value_on_a.value_container(),
+                ValueContainer::from(100)
+            );
+            assert_eq!(
                 *shared_value_on_b.value_container(),
                 *shared_value_on_a.value_container()
             );
 
-            // TODO: trigger update from b to a
+            // trigger update b -> a
+            shared_value_on_b
+                .base_shared_container_mut()
+                .update(Update::new(
+                    TransceiverId::Local,
+                    UpdateData::Replace(ReplaceUpdateData {
+                        value: ValueContainer::from(200),
+                    }),
+                ))
+                .unwrap();
+
+            yield_now().await;
+            yield_now().await;
+
+            assert_eq!(
+                *shared_value_on_b.value_container(),
+                ValueContainer::from(200)
+            );
+            assert_eq!(
+                *shared_value_on_b.value_container(),
+                *shared_value_on_a.value_container()
+            );
         },
     )
     .await;

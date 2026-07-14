@@ -112,6 +112,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, ops::DerefMut};
+use crate::runtime::Runtime;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -1483,7 +1484,7 @@ pub fn inner_execution_loop(
                                                 yield_unwrap!(
                                                     create_new_reference_from_value(
                                                         &address,
-                                                        &mut state.runtime.memory().borrow_mut(),
+                                                        &state.runtime,
                                                         value,
                                                         shared_ref.container_mutability,
                                                         shared_ref.ref_mutability
@@ -1499,7 +1500,7 @@ pub fn inner_execution_loop(
                                         yield_unwrap!(
                                             create_new_reference_from_value(
                                                 &pointer_address,
-                                                &mut state.runtime.memory().borrow_mut(),
+                                                &state.runtime,
                                                 value,
                                                 shared_ref.container_mutability,
                                                 shared_ref.ref_mutability
@@ -1658,11 +1659,14 @@ pub fn inner_execution_loop(
 /// Stores the new reference in the cache.
 fn create_new_reference_from_value(
     pointer_address: &PointerAddress,
-    memory: &mut SharedReferencesCache,
+    runtime: &Runtime,
     value: ValueContainer,
     container_mutability: SharedContainerMutability,
     ref_mutability: ReferenceMutability,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
+    
+    let memory = &mut runtime.memory().borrow_mut();
+    
     if let Some(reference) = memory.get_reference(pointer_address) {
         return Ok(reference.clone());
     }
@@ -1691,9 +1695,11 @@ fn create_new_reference_from_value(
             }
                 .map_err(|_err| ExecutionError::InvalidSharedValueType)?;
 
-            /// stores the reference in memory, so that we can handle updates from the owner endpoint,
-            /// assuming that we are subscribed to the reference until we unsubscribe
+            // stores the reference in memory, so that we can handle updates from the owner endpoint,
+            // assuming that we are subscribed to the reference until we unsubscribe
             memory.register_remote_shared_container(&reference);
+            // Also set up observers to send any update back to the owner
+            runtime.internal().sync_value_with_owner(&SharedContainer::Referenced(reference.clone()))?;
 
             Ok(reference)
         }

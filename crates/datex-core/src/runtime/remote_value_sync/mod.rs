@@ -1,4 +1,4 @@
-pub mod owned_shared_subscriptions;
+pub mod synced_value_data;
 
 use crate::{
     core_compiler::{
@@ -15,8 +15,8 @@ use crate::{
         execution::context::{ExecutionMode, RemoteExecutionContext},
     },
     shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainer,
-        SharedContainerMutability, Subscribers,
+        PointerAddress, ReferenceMutability, ReferencedSharedContainer,
+        SharedContainer, SharedContainerMutability, Subscribers,
         base_shared_value_container::observers::{
             ObserveOptions, Observer, ObserverError, ObserverId, TransceiverId,
         },
@@ -54,24 +54,61 @@ impl Display for SubscriberError {
 }
 
 impl RuntimeInternal {
-    /// Subscribes an endpoint to a shared container with the specified access rights.
-    pub fn subscribe_endpoint(
+    /// Sends local value updates back to the owner of a (remote) shared container.
+    /// If the container is not mutable, this function does nothing.
+    pub fn sync_value_with_owner(
+        self: Rc<Self>,
+        shared_container: &SharedContainer,
+    ) -> Result<(), SubscriberError> {
+        if shared_container.can_mutate() {
+            // access as weak container so that the Rc can still be garbage collected
+            let weak_container = shared_container
+                .derive_reference_with_max_mutability()
+                .downgrade();
+            let self_clone = self.clone();
+
+            let observer_id = shared_container.observe(Observer {
+                transceiver_id: TransceiverId::Remote(
+                    shared_container.pointer_address().endpoint(),
+                ),
+                callback: Rc::new(move |update| {
+                    println!(
+                        "syncing now! {:?}",
+                        update
+                    );
+                    if let Some(container) = weak_container.upgrade() {
+                        self_clone.task_manager().register_task(
+                            self_clone.clone().send_update_to_owner(
+                                container,
+                                update.clone(),
+                            ),
+                        );
+                    }
+                }),
+                options: ObserveOptions::default(),
+            })?;
+
+            // store observer
+            let mut synced_values = self.synced_values_mut();
+            synced_values
+                .set_owner_observer(shared_container.clone(), observer_id);
+        }
+        Ok(())
+    }
+
+    /// Subscribes an endpoint to a self-owned shared container with the specified access rights.
+    ///
+    /// # Safety
+    /// The caller must ensure that the shared container is self-owned.
+    pub unsafe fn subscribe_endpoint_to_owned_value(
         self: Rc<Self>,
         shared_container: &SharedContainer,
         endpoint: &Endpoint,
         access_rights: ReferenceMutability,
-    ) -> Result<(), SubscriberError> {
-        if !matches!(
-            shared_container.pointer_address(),
-            PointerAddress::SelfOwned(_)
-        ) {
-            return Err(SubscriberError::NotASelfOwnedContainer);
-        }
-
-        let mut owned_pointer_subscriptions =
-            self.owned_pointer_subscriptions_mut();
+    ) -> Result<(), ObserverError> {
+        let mut synced_values = self.synced_values_mut();
         let subscribers = if let Some(subscribers) =
-            owned_pointer_subscriptions.get_subscribers_mut(shared_container)
+            synced_values.get_subscribers_mut(shared_container)
         {
             subscribers
                 .remote_execution_context_mut()
@@ -82,11 +119,12 @@ impl RuntimeInternal {
             let observer_id =
                 if shared_container.base_shared_container().is_mutable() {
                     let container = shared_container.clone();
-                    let me = self.clone();
+                    let self_clone = self.clone();
                     Some(shared_container.observe(Observer {
                         transceiver_id: TransceiverId::Remote(Endpoint::ANY),
                         callback: Rc::new(move |data| {
-                            me.send_update_to_subscribers(&container, data)
+                            self_clone
+                                .send_update_to_subscribers(&container, data)
                         }),
                         options: ObserveOptions::default(),
                     })?)
@@ -101,7 +139,7 @@ impl RuntimeInternal {
             );
 
             unsafe {
-                owned_pointer_subscriptions.set_subscribers(
+                synced_values.set_subscribers(
                     shared_container,
                     Subscribers::new(observer_id, context),
                 )
@@ -112,13 +150,47 @@ impl RuntimeInternal {
         Ok(())
     }
 
+    /// Sends an update to the owner of the shared container.
+    async fn send_update_to_owner(
+        self: Rc<Self>,
+        container: ReferencedSharedContainer,
+        update: Update,
+    ) {
+        let owner = container.pointer_address().endpoint();
+
+        let update_dxb = {
+            let lookup = self.pointer_availability_lookup();
+            let endpoints = [owner.clone()];
+            let input = CompileInput::new(lookup.deref(), &endpoints);
+
+            compile_updates(
+                &SharedContainer::Referenced(container),
+                &[&update.data],
+                input,
+            )
+        };
+
+        let self_clone = self.clone();
+
+        let context = RemoteExecutionContext::new(
+            vec![owner],
+            ExecutionMode::Static,
+            self.into(),
+        );
+
+        self_clone
+            .execute_remote(&context, update_dxb)
+            .await
+            .expect("Failed to execute remote update block");
+    }
+
     /// Handles an update to a shared container by notifying all subscribed endpoints.
     fn send_update_to_subscribers(
         self: &Rc<Self>,
         container: &SharedContainer,
         update: &Update,
     ) {
-        let subscriber = self.owned_pointer_subscriptions();
+        let subscriber = self.synced_values();
         let subscribers = subscriber.get_subscribers(container);
         if let Some(subscribers) = subscribers {
             let source_endpoint = Endpoint::from(update.source_id.clone())
@@ -149,35 +221,6 @@ impl RuntimeInternal {
         }
     }
 
-    /// Sends an update to the owner of the shared container.
-    async fn send_update_to_owner(
-        self: Rc<Self>,
-        container: SharedContainer,
-        update: Update,
-    ) {
-        let owner: Endpoint = todo!(); // container.pointer_address();
-
-        let update_dxb = {
-            let lookup = self.pointer_availability_lookup();
-            let input = CompileInput::new(lookup.deref(), &[owner]);
-
-            compile_updates(&container, &[&update.data], input)
-        };
-
-        let self_clone = self.clone();
-
-        let context = RemoteExecutionContext::new(
-            vec![owner],
-            ExecutionMode::Static,
-            self.into(),
-        );
-
-        self_clone
-            .execute_remote(&context, update_dxb)
-            .await
-            .expect("Failed to execute remote update block");
-    }
-
     /// Compiles a DXB block for the given update and sends it to the specified subscriber endpoints.
     /// Note: this function asserts that the shared container is still owned and that the remote execution
     /// context still exists.
@@ -202,7 +245,7 @@ impl RuntimeInternal {
         let self_clone = self.clone();
 
         // FIXME: refcell hold across await point for context
-        let mut subscriptions = self.owned_pointer_subscriptions_mut();
+        let mut subscriptions = self.synced_values_mut();
 
         let context = subscriptions
             .remote_execution_context_mut(&container)

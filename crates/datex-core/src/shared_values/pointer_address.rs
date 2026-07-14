@@ -141,6 +141,15 @@ impl PointerAddress {
             _ => self,
         }
     }
+
+    /// Returns the endpoint part of the remote pointer address
+    /// or @@local for self owned pointer addresses
+    pub fn endpoint(&self) -> Endpoint {
+        match self {
+            PointerAddress::SelfOwned(_) => Endpoint::LOCAL,
+            PointerAddress::Remote(remote_address) => remote_address.endpoint(),
+        }
+    }
 }
 
 impl TryFrom<String> for PointerAddress {

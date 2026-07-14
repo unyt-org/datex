@@ -7,6 +7,7 @@ use crate::{
     runtime::{
         cache::shared_values_cache::CacheValueRetrievalError,
         execution::execution_loop::state::ExecutionLoopState,
+        remote_value_sync::SubscriberError,
     },
     shared_values::errors::{
         AccessError, AssignmentError, SharedValueCreationError,
@@ -17,7 +18,6 @@ use crate::{
     values::value_container::{ValueContainer, error::ValueError},
 };
 use core::fmt::Display;
-use crate::runtime::subscribers::SubscriberError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
@@ -177,6 +177,12 @@ impl From<ResponseError> for ExecutionError {
 impl From<AssignmentError> for ExecutionError {
     fn from(error: AssignmentError) -> Self {
         ExecutionError::AssignmentError(error)
+    }
+}
+
+impl From<SubscriberError> for ExecutionError {
+    fn from(error: SubscriberError) -> Self {
+        ExecutionError::SubscriberError(error)
     }
 }
 

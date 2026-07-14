@@ -39,9 +39,8 @@ use crate::{
         },
         pointer_address_provider::SelfOwnedPointerAddressProvider,
         pointer_availability_lookup::PointerAvailabilityLookup,
-        subscribers::{
-            SubscriberError,
-            owned_shared_subscriptions::OwnedSharedSubscriptions,
+        remote_value_sync::{
+            SubscriberError, synced_value_data::SyncedValueData,
         },
     },
     shared_values::{
@@ -98,7 +97,7 @@ pub struct RuntimeInternal {
 
     pointer_availability_lookup: RefCell<PointerAvailabilityLookup>,
 
-    owned_pointer_subscriptions: RefCell<OwnedSharedSubscriptions>,
+    synced_values: RefCell<SyncedValueData>,
 }
 
 macro_rules! get_execution_context {
@@ -150,9 +149,7 @@ impl RuntimeInternal {
             incoming_sections_receiver: RefCell::new(
                 incoming_sections_receiver,
             ),
-            owned_pointer_subscriptions: RefCell::new(
-                OwnedSharedSubscriptions::default(),
-            ),
+            synced_values: RefCell::new(SyncedValueData::default()),
             execution_contexts: RefCell::new(HashMap::new()),
             transceiver_counter: RefCell::new(0),
             pointer_availability_lookup: RefCell::new(
@@ -202,15 +199,11 @@ impl RuntimeInternal {
     ) -> RefMut<'_, PointerAvailabilityLookup> {
         self.pointer_availability_lookup.borrow_mut()
     }
-    pub fn owned_pointer_subscriptions(
-        &self,
-    ) -> Ref<'_, OwnedSharedSubscriptions> {
-        self.owned_pointer_subscriptions.borrow()
+    pub fn synced_values(&self) -> Ref<'_, SyncedValueData> {
+        self.synced_values.borrow()
     }
-    pub fn owned_pointer_subscriptions_mut(
-        &self,
-    ) -> RefMut<'_, OwnedSharedSubscriptions> {
-        self.owned_pointer_subscriptions.borrow_mut()
+    pub fn synced_values_mut(&self) -> RefMut<'_, SyncedValueData> {
+        self.synced_values.borrow_mut()
     }
 
     pub fn memory(&self) -> &RefCell<SharedReferencesCache> {
@@ -619,7 +612,7 @@ impl RuntimeInternal {
     }
 
     /// Registers a list of shared containers for a list of endpoints to subscribe.
-    /// Note: only the self owned containers are subscribed, others are ignored.
+    /// Note: only self owned pointers are registered, others are skipped
     ///
     /// # Safety
     /// The caller must ensure that endpoints is not empty.
@@ -633,15 +626,21 @@ impl RuntimeInternal {
         }
 
         for shared_container in shared_containers {
-            for endpoint in endpoints {
-                if shared_container.is_self_owned() {
-                    self.clone().subscribe_endpoint(
-                        &shared_container,
-                        endpoint,
-                        shared_container
-                            .derive_reference_with_max_mutability()
-                            .reference_mutability(),
-                    )?;
+            // subscribe (remote) endpoints to own container
+            if shared_container.is_self_owned() {
+                for endpoint in endpoints {
+                    // SAFETY: We checked that the shared container is self-owned
+                    unsafe {
+                        self.clone()
+                            .subscribe_endpoint_to_owned_value(
+                                &shared_container,
+                                endpoint,
+                                shared_container
+                                    .derive_reference_with_max_mutability()
+                                    .reference_mutability(),
+                            )
+                            .map_err(SubscriberError::Observer)?
+                    }
                 }
             }
         }
