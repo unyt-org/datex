@@ -5,10 +5,6 @@ use crate::{
         core_compilation_context::CompileInput,
         update_compiler::compile_updates,
     },
-    disassembler::{
-        get_disassembled_with_options, options::DisassemblerOptions,
-        print_disassembled,
-    },
     prelude::*,
     runtime::{
         RuntimeInternal,
@@ -16,9 +12,9 @@ use crate::{
     },
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
-        SharedContainer, SharedContainerMutability, Subscribers,
+        SharedContainer, Subscribers,
         base_shared_value_container::observers::{
-            ObserveOptions, Observer, ObserverError, ObserverId, TransceiverId,
+            ObserveOptions, Observer, ObserverError, TransceiverId,
         },
         traits::SharedContainerCommon,
     },

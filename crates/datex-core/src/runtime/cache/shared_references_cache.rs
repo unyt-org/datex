@@ -82,7 +82,7 @@ impl SharedReferencesCache {
             || self
                 .remote_values
                 .get(pointer_address)
-                .map_or(false, |weak_ref| weak_ref.upgrade().is_some())
+                .is_some_and(|weak_ref| weak_ref.upgrade().is_some())
     }
 
     /// Returns an iterator over all currently stored references in the cache, both owned and remote.

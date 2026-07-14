@@ -12,7 +12,7 @@ use crate::prelude::*;
 use alloc::format;
 use core::{
     cell::RefCell,
-    ops::{Deref, DerefMut, Range},
+    ops::{DerefMut, Range},
     unreachable,
 };
 

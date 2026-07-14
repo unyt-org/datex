@@ -46,16 +46,12 @@ use crate::{
     shared_values::{
         OwnedSharedContainer, PointerAddress, RemotePointerAddress,
         SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
-        base_shared_value_container::observers::{
-            ObserverError, TransceiverId,
-        },
+        base_shared_value_container::observers::TransceiverId,
     },
     time::Instant,
     utils::task_manager::TaskManager,
     values::{
-        core_value::CoreValue,
-        core_values::{endpoint::Endpoint, map::Map},
-        value::Value,
+        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
         value_container::ValueContainer,
     },
 };
@@ -63,7 +59,6 @@ use alloc::rc::Rc;
 use core::{
     cell::{Ref, RefCell, RefMut},
     pin::Pin,
-    slice,
 };
 use indexmap::IndexMap;
 use log::{debug, error, info};

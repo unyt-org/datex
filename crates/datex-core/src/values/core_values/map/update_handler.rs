@@ -38,7 +38,7 @@ impl UpdateHandler for Map {
         let key = BorrowedValueKey::from(data.key);
         self.try_delete(key)
             .map_err(UpdateError::access_error)
-            .map(|e| Some(e))
+            .map(Some)
     }
 
     fn try_append_entry(

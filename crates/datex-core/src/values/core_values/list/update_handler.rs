@@ -30,7 +30,7 @@ impl UpdateHandler for List {
             || UpdateError::access_error(AccessError::InvalidIndexKey),
         )?;
         self.try_set(key, data.value)
-            .map(|e| Some(e))
+            .map(Some)
             .map_err(UpdateError::access_error)
     }
 
@@ -44,7 +44,7 @@ impl UpdateHandler for List {
         )?;
         self.try_delete(key)
             .map_err(UpdateError::access_error)
-            .map(|e| Some(e))
+            .map(Some)
     }
 
     fn try_append_entry(

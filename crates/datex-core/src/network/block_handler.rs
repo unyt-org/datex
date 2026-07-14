@@ -261,12 +261,12 @@ impl BlockHandler {
             if scope_context.next_block_number == skip_after_block + 1 {
                 scope_context.next_block_number = block_number;
             }
-            // if skip_after_block is set and next_block_number is less than or 
+            // if skip_after_block is set and next_block_number is less than or
             // equal to skip_after_block, we still need to wait for some blocks
             else if scope_context.next_block_number <= skip_after_block {
                 todo!()
             }
-            // if skip_after_block is set and next_block_number is greater than skip_after_block + 1, 
+            // if skip_after_block is set and next_block_number is greater than skip_after_block + 1,
             // we accidentally already received and handled blocks that should have been skipped.
             else {
                 log::warn!(

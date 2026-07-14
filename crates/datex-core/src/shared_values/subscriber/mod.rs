@@ -1,7 +1,6 @@
 use crate::collections::HashMap;
 
 use crate::{
-    prelude::*,
     runtime::execution::context::RemoteExecutionContext,
     shared_values::{
         ReferenceMutability, base_shared_value_container::observers::ObserverId,
@@ -17,7 +16,10 @@ pub struct Subscribers {
 }
 
 impl Subscribers {
-    pub fn new(observer_id: Option<ObserverId>, remote_execution_context: RemoteExecutionContext) -> Self {
+    pub fn new(
+        observer_id: Option<ObserverId>,
+        remote_execution_context: RemoteExecutionContext,
+    ) -> Self {
         Self {
             lookup: HashMap::new(),
             observer_id,
@@ -60,12 +62,14 @@ impl Subscribers {
     pub fn endpoints(&self) -> impl Iterator<Item = &Endpoint> {
         self.lookup.keys()
     }
-    
+
     pub fn remote_execution_context(&self) -> &RemoteExecutionContext {
         &self.remote_execution_context
     }
 
-    pub fn remote_execution_context_mut(&mut self) -> &mut RemoteExecutionContext {
+    pub fn remote_execution_context_mut(
+        &mut self,
+    ) -> &mut RemoteExecutionContext {
         &mut self.remote_execution_context
     }
 }

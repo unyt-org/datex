@@ -8,12 +8,7 @@ use crate::{
         base_shared_value_container::observers::TransceiverId,
         traits::SharedContainerCommon,
     },
-    types::{
-        r#type::Type,
-        type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
-    },
     value_updates::{
-        errors::UpdateError,
         update_data::{ReplaceUpdateData, SetEntryUpdateData},
         update_handler::UpdateHandler,
     },

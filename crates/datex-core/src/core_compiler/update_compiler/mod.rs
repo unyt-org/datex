@@ -112,26 +112,26 @@ pub fn append_replace<T: BufferProvider + ValueVisitor>(
 }
 
 pub fn append_append_entry<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
-    append_entry_update_data: &AppendEntryUpdateData,
+    _context: &mut T,
+    _append_entry_update_data: &AppendEntryUpdateData,
 ) {
     // +=
     todo!()
 }
 
 pub fn append_list_splice<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
-    list_splice_update_data: &ListSpliceUpdateData,
+    _context: &mut T,
+    _list_splice_update_data: &ListSpliceUpdateData,
 ) {
     todo!()
 }
-pub fn append_clear<T: BufferProvider + ValueVisitor>(context: &mut T) {
+pub fn append_clear<T: BufferProvider + ValueVisitor>(_context: &mut T) {
     todo!()
 }
 
 pub fn append_delete_entry<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
-    delete_entry_update_data: &DeleteEntryUpdateData,
+    _context: &mut T,
+    _delete_entry_update_data: &DeleteEntryUpdateData,
 ) {
     todo!()
 }

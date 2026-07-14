@@ -4,6 +4,7 @@ use crate::{
         buffer_provider::BufferProvider,
         core_compilation_context::ByteCursor,
         shared_value_tracking::{TrackedValueCollection, TrackedValueMetadata},
+        update_compiler::append_set_property_value_key,
         value_compiler::{append_regular_instruction, append_value},
         value_visitor::{ParentAccessor, ParentContext, ValueVisitor},
     },
@@ -24,7 +25,6 @@ use crate::{
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
 use binrw::io::Write;
-use crate::core_compiler::update_compiler::append_set_property_value_key;
 
 #[derive(Debug)]
 enum VisitedValue {
@@ -304,7 +304,7 @@ fn append_injected_value(
         match assigned_property {
             ParentAccessor::ValueKey(key) => {
                 append_set_property_value_key(context, key);
-            },
+            }
             _ => todo!(),
         }
 

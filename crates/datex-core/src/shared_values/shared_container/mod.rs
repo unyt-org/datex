@@ -169,7 +169,7 @@ impl SharedContainer {
     /// Returns true if the shared container has a self owned pointer address
     pub fn is_self_owned(&self) -> bool {
         match self {
-            SharedContainer::Owned(owned) => true,
+            SharedContainer::Owned(_owned) => true,
             SharedContainer::Referenced(referenced) => {
                 matches!(
                     referenced.inner().deref(),

@@ -1,5 +1,4 @@
 use crate::{
-    global::protocol_structures::instruction_data::ModifySharedContainerValue,
     prelude::*,
     runtime::{
         execution::ExecutionError,
@@ -8,18 +7,11 @@ use crate::{
     shared_values::{
         OwnedSharedContainer, SelfOwnedSharedContainer, SharedContainer,
         SharedContainerMutability,
-        base_shared_value_container::{
-            BaseSharedValueContainer, observers::TransceiverId,
-        },
-        traits::SharedContainerCommon,
+        base_shared_value_container::BaseSharedValueContainer,
     },
     types::{
         r#type::Type,
         type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
-    },
-    value_updates::{
-        errors::UpdateError, update_data::ReplaceUpdateData,
-        update_handler::UpdateHandler,
     },
     values::value_container::ValueContainer,
 };

@@ -1192,7 +1192,7 @@ fn compile_expression(
                 CompileMetadata::default(),
                 scope,
             )?;
-            
+
             // compile unbox expression
             scope = compile_expression(
                 compilation_context,

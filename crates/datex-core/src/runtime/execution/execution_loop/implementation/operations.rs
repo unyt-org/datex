@@ -8,31 +8,19 @@ use crate::{
         },
     },
     runtime::execution::ExecutionError,
-    shared_values::{
-        ReferenceMutability, SharedContainer, SharedContainerMutability,
-    },
+    shared_values::{ReferenceMutability, SharedContainer},
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    value_updates::update_data::ReplaceUpdateData,
-    values::{
-        core_values::range::Range,
-        value_container::{ValueContainer, value_key::ValueKey},
-    },
+    values::{core_values::range::Range, value_container::ValueContainer},
 };
 use core::cell::RefCell;
 
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    shared_values::{
-        base_shared_value_container::observers::TransceiverId,
-        traits::SharedContainerCommon,
-    },
+    shared_values::traits::SharedContainerCommon,
     types::{traits::type_match::TypeSatisfiesValueContainer, r#type::Type},
-    value_updates::{
-        update_data::SetEntryUpdateData, update_handler::UpdateHandler,
-    },
 };
 
 /// Handles a binary operation between two [ValueContainer]s based on the specified [BinaryOperator].

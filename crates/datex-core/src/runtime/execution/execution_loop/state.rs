@@ -20,12 +20,12 @@ use crate::{
         },
     },
     shared_values::{
-        SharedContainer, base_shared_value_container::observers::TransceiverId,
+        PointerAddress, SharedContainer,
+        base_shared_value_container::observers::TransceiverId,
     },
     values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, fmt::Debug};
-use crate::shared_values::PointerAddress;
 
 pub struct ExecutionLoopState {
     pub iterator: Box<
@@ -90,7 +90,7 @@ impl RuntimeExecutionState {
     pub(crate) fn source_id_cloned(&self) -> TransceiverId {
         self.source_id.clone()
     }
-    
+
     /// Normalizes a pointer address to ensure it is in the correct form for the current execution context.
     /// For self-owned addresses, it converts them to remote addresses owned by the caller's endpoint.
     /// For remote addresses, it ensures that if the address is local to the current runtime, it is normalized to a @@local address.
@@ -103,13 +103,16 @@ impl RuntimeExecutionState {
 
         match address {
             // convert self owned to caller owned
-            PointerAddress::SelfOwned(address) => 
-                PointerAddress::Remote(address.remote_for_endpoint(owner_endpoint)).normalize_for_local(&local_endpoint),
+            PointerAddress::SelfOwned(address) => PointerAddress::Remote(
+                address.remote_for_endpoint(owner_endpoint),
+            )
+            .normalize_for_local(&local_endpoint),
             // make sure remote with local endpoint is normalized to @@local
-            PointerAddress::Remote(address) => address.normalize_for_local(&local_endpoint)
+            PointerAddress::Remote(address) => {
+                address.normalize_for_local(&local_endpoint)
+            }
         }
     }
-    
 }
 
 #[derive(Debug, Default)]

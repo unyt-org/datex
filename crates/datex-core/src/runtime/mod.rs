@@ -18,8 +18,8 @@ mod incoming_sections;
 mod internal;
 pub mod pointer_address_provider;
 pub mod pointer_availability_lookup;
-mod runner;
 pub mod remote_value_sync;
+mod runner;
 #[cfg(test)]
 pub mod test_utils;
 

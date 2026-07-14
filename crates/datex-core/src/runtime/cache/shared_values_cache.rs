@@ -12,7 +12,6 @@ use crate::{
     },
 };
 use core::fmt::Display;
-use strum_macros::Display;
 
 /// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]
@@ -42,7 +41,9 @@ impl Display for CacheValueRetrievalError {
             CacheValueRetrievalError::UnexpectedImmutableReference(err) => {
                 write!(f, "Unexpected immutable reference: {}", err)
             }
-            CacheValueRetrievalError::UnexpectedSharedContainerOwnership(err) => {
+            CacheValueRetrievalError::UnexpectedSharedContainerOwnership(
+                err,
+            ) => {
                 write!(f, "Unexpected shared container ownership: {}", err)
             }
             CacheValueRetrievalError::ValueNotFoundInCache(err) => {

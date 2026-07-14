@@ -39,11 +39,8 @@ use crate::{
     prelude::*,
     runtime::{
         Runtime,
-        cache::{
-            shared_references_cache::SharedReferencesCache,
-            shared_values_cache::{
-                CacheValueRetrievalError, ValueNotFoundInCacheError,
-            },
+        cache::shared_values_cache::{
+            CacheValueRetrievalError, ValueNotFoundInCacheError,
         },
         execution::{
             ExecutionError, InvalidProgramError,
@@ -63,13 +60,10 @@ use crate::{
         },
     },
     shared_values::{
-        OwnedSharedContainer, PointerAddress, ReferenceMutability,
-        ReferencedSharedContainer, RemotePointerAddress,
-        SelfOwnedSharedContainer, SharedContainer, SharedContainerMutability,
+        PointerAddress, ReferenceMutability, ReferencedSharedContainer,
+        RemotePointerAddress, SharedContainer, SharedContainerMutability,
         SharedContainerOwnership,
-        base_shared_value_container::{
-            BaseSharedValueContainer, observers::TransceiverId,
-        },
+        base_shared_value_container::BaseSharedValueContainer,
     },
     types::{
         r#type::Type,
@@ -80,8 +74,7 @@ use crate::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
     value_updates::{
-        update_data::{DeleteEntryUpdateData, ReplaceUpdateData},
-        update_handler::UpdateHandler,
+        update_data::DeleteEntryUpdateData, update_handler::UpdateHandler,
     },
     values::{
         core_value::CoreValue,

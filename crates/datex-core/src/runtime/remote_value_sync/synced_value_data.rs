@@ -28,7 +28,7 @@ impl SyncedValueData {
     ) -> Option<&Subscribers> {
         self.subscribers.get(shared)
     }
-    
+
     pub fn remote_execution_context(
         &self,
         container: &SharedContainer,
@@ -66,7 +66,7 @@ impl SyncedValueData {
 
     pub fn get_owner_observer(
         &self,
-        shared: &SharedContainer
+        shared: &SharedContainer,
     ) -> Option<&ObserverId> {
         self.owner_observers.get(shared)
     }
@@ -75,7 +75,11 @@ impl SyncedValueData {
         self.owner_observers.remove(shared);
     }
 
-    pub fn set_owner_observer(&mut self, shared: SharedContainer, observer: ObserverId) {
+    pub fn set_owner_observer(
+        &mut self,
+        shared: SharedContainer,
+        observer: ObserverId,
+    ) {
         self.owner_observers.insert(shared, observer);
     }
 }

@@ -1,11 +1,9 @@
 use crate::{
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
-        ExternalSharedContainer, ReferenceMutability, RemotePointerAddress,
-        SelfOwnedPointerAddress, Subscribers, SubscriptionMetadata,
+        ExternalSharedContainer, RemotePointerAddress, SelfOwnedPointerAddress,
         base_shared_value_container::BaseSharedValueContainer,
     },
-    values::core_values::endpoint::Endpoint,
 };
 
 /// A shared container with a pointer address owned by the local endpoint

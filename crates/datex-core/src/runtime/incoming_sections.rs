@@ -121,37 +121,42 @@ impl RuntimeInternal {
         );
 
         let block = {
-           let lookup = self.pointer_availability_lookup();
-           let receivers = vec![receiver_endpoint.clone()];
-           let compile_input = CompileInput::new(&lookup, &receivers);
+            let lookup = self.pointer_availability_lookup();
+            let receivers = vec![receiver_endpoint.clone()];
+            let compile_input = CompileInput::new(&lookup, &receivers);
 
-           let dxb = match result {
-               Ok(value) => {
-                   // info!("Sending result value {:?}", value);
-                   if let Some(value) = value {
-                       let res = compile_value_container(value, compile_input);
-                       drop(lookup);
+            let dxb = match result {
+                Ok(value) => {
+                    // info!("Sending result value {:?}", value);
+                    if let Some(value) = value {
+                        let res = compile_value_container(value, compile_input);
+                        drop(lookup);
 
-                       self.clone().register_shared_containers_for_single_endpoint(
-                           &receiver_endpoint,
-                           res.shared_values,
-                       );
+                        self.clone()
+                            .register_shared_containers_for_single_endpoint(
+                                &receiver_endpoint,
+                                res.shared_values,
+                            );
 
-                       res.dxb
-                   } else {
-                       vec![]
-                   }
-               }
-               Err(e) => {
-                   info!("Execution error (on {}): {}", self.endpoint(), e);
-                   compile_panic(e.to_string(), compile_input)
-               }
-           };
+                        res.dxb
+                    } else {
+                        vec![]
+                    }
+                }
+                Err(e) => {
+                    info!("Execution error (on {}): {}", self.endpoint(), e);
+                    compile_panic(e.to_string(), compile_input)
+                }
+            };
 
-           let mut block =
-               DXBBlock::new(routing_header, block_header, encrypted_header, dxb);
-           block.set_receivers(core::slice::from_ref(&receiver_endpoint));
-           block
+            let mut block = DXBBlock::new(
+                routing_header,
+                block_header,
+                encrypted_header,
+                dxb,
+            );
+            block.set_receivers(core::slice::from_ref(&receiver_endpoint));
+            block
         };
 
         self.com_hub().send_own_block_async(block).await

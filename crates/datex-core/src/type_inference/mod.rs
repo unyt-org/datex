@@ -1391,7 +1391,6 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 *type_id
             )
             .into()),
-            
             _ => Err(SpannedTypeError::new_with_span(
                 TypeError::Unimplemented(
                     "Only CoreLibId::Type is supported in get_core_lib_id expressions for now".into(),
