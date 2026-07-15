@@ -102,7 +102,7 @@ impl Crypto for CryptoNative {
 
     // EdDSA keygen
     fn gen_ed25519<'a>()
-    -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError> {
         Box::pin(async move {
             let key = PKey::generate_ed25519().map_err(|_| {
                 Ed25519GenError::Backend(BackendError::Unavailable(
@@ -111,14 +111,26 @@ impl Crypto for CryptoNative {
             })?;
 
             // Keep your DER/PKCS8 formats (portable).
-            let public_key = key.public_key_to_der().map_err(|_| {
+            let public_key: [u8; 32] = key.raw_public_key().map_err(|_| {
                 Ed25519GenError::Backend(BackendError::Unavailable(
                     "ed25519 pub der",
                 ))
+            })?
+            .try_into()
+            .map_err(|_| {
+                Ed25519GenError::Backend(BackendError::Unavailable(
+                    "ed25519 pub key length",
+                ))
             })?;
-            let private_key = key.private_key_to_pkcs8().map_err(|_| {
+            let private_key: [u8; 32] = key.raw_private_key().map_err(|_| {
                 Ed25519GenError::Backend(BackendError::Unavailable(
                     "ed25519 priv pkcs8",
+                ))
+            })?
+            .try_into()
+            .map_err(|_| {
+                Ed25519GenError::Backend(BackendError::Unavailable(
+                    "ed25519 priv key length",
                 ))
             })?;
 
@@ -132,7 +144,7 @@ impl Crypto for CryptoNative {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
-            let sig_key = PKey::private_key_from_pkcs8(pri_key)
+            let sig_key = PKey::private_key_from_raw_bytes(pri_key, Id::ED25519)
                 .map_err(|_| Ed25519SignError::InvalidPrivateKey)?;
 
             let mut signer =
@@ -166,7 +178,7 @@ impl Crypto for CryptoNative {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
         Box::pin(async move {
-            let public_key = PKey::public_key_from_der(pub_key)
+            let public_key = PKey::public_key_from_raw_bytes(pub_key, Id::ED25519)
                 .map_err(|_| Ed25519VerifyError::InvalidPublicKey)?;
 
             // OpenSSL expects signature to be exactly 64 bytes for Ed25519.
@@ -304,7 +316,7 @@ impl Crypto for CryptoNative {
 
     // Generate encryption keypair
     fn gen_x25519<'a>()
-    -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError> {
         Box::pin(async move {
             let key = PKey::generate_x25519().map_err(|_| {
                 X25519GenError::Backend(BackendError::Unavailable(
@@ -312,8 +324,8 @@ impl Crypto for CryptoNative {
                 ))
             })?;
 
-            let public_key: [u8; 44] = key
-                .public_key_to_der()
+            let public_key: [u8; 32] = key
+                .raw_public_key()
                 .map_err(|_| {
                     X25519GenError::Backend(BackendError::Unavailable(
                         "openssl x25519 gen",
@@ -325,8 +337,8 @@ impl Crypto for CryptoNative {
                         "openssl x25519 gen",
                     ))
                 })?;
-            let private_key: [u8; 48] = key
-                .private_key_to_pkcs8()
+            let private_key: [u8; 32] = key
+                .raw_private_key()
                 .map_err(|_| {
                     X25519GenError::Backend(BackendError::Unavailable(
                         "openssl x25519 gen",
@@ -344,8 +356,8 @@ impl Crypto for CryptoNative {
 
     // Derive shared secret on x255109
     fn derive_x25519<'a>(
-        pri_key: &'a [u8; 48],
-        peer_raw: &'a [u8; 44],
+        pri_key: &'a [u8; 32],
+        peer_raw: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         Box::pin(async move {
             let my_priv = PKey::private_key_from_pkcs8(pri_key)
@@ -390,6 +402,13 @@ mod tests {
         crypto::Crypto,
         error::{Ed25519VerifyError, KeyUnwrapError, X25519DeriveError},
     };
+
+    use ml_kem::{
+        MlKem512,
+        kem::{Decapsulate, Encapsulate, Kem}
+    };
+    use ml_dsa::{MlDsa65, Generate, Keypair, SigningKey, Signer, Verifier};
+
     #[test]
     fn uuid() {
         let uuid1 = CryptoNative::create_uuid();
@@ -554,11 +573,36 @@ mod tests {
         let (_pub, pri) = CryptoNative::gen_x25519().await.expect("gen");
 
         // peer key with wrong bytes should error
-        let bad_peer = [0u8; 44]; // not a valid DER public key usually, but your impl uses raw_bytes
+        let bad_peer = [0u8; 32]; // not a valid DER public key usually, but your impl uses raw_bytes
         let err = CryptoNative::derive_x25519(&pri, &bad_peer)
             .await
             .unwrap_err();
 
         assert_eq!(err, X25519DeriveError::InvalidPeerPublicKey);
+    }
+
+    #[test]
+    pub fn pqc_setup() {
+        // Example copy pasted from docs...
+        // Generate a decapsulation/encapsulation keypair
+        let (dk, ek) = MlKem512::generate_keypair();
+
+        // Encapsulate a shared key to the holder of the decapsulation key, receive the shared
+        // secret `k_send` and the encapsulated form `ct`.
+        let (ct, k_send) = ek.encapsulate();
+
+        // Decapsulate the shared key
+        let k_recv = dk.decapsulate(&ct);
+
+        // We've now established a shared key
+        assert_eq!(k_send, k_recv);
+
+        // Example copy pasted from docs...
+        let sk = SigningKey::<MlDsa65>::generate();
+
+        let msg = b"Hello world";
+        let sig = sk.sign(msg);
+
+        sk.verifying_key().verify(msg, &sig).unwrap();
     }
 }

@@ -11,7 +11,7 @@ use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
 pub mod cache;
-mod config;
+pub mod config;
 pub mod execution;
 mod incoming_sections;
 mod internal;
