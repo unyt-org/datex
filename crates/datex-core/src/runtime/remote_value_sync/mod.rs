@@ -148,6 +148,13 @@ impl RuntimeInternal {
         container: ReferencedSharedContainer,
         update: Update,
     ) {
+        // a= [0, 43, 42]
+        // a= [0, 43, 42]
+        // @a -> a += 42 // + timestamp
+        // ...
+        // if ($a == 4) (
+        //
+        // )
         let owner = container.pointer_address().endpoint();
 
         let update_dxb = {
@@ -185,6 +192,7 @@ impl RuntimeInternal {
         let subscriber = self.synced_values();
         let subscribers = subscriber.get_subscribers(container);
         if let Some(subscribers) = subscribers {
+            // TODO: don't send full update to source endpoint, but send update info with hash of the value
             let source_endpoint = Endpoint::from(update.source_id.clone())
                 .as_local_if_endpoint(self.endpoint());
 
