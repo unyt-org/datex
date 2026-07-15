@@ -36,7 +36,7 @@ panic = "abort"
 inventory = "0.3"
 
 # dependency for time
-chrono = { version = "0.4.38", features =["clock"] }
+chrono = { version = "0.4.38", features = ["clock"] }
 
 # core dependencies
 strum = { version = "0.27.1", default-features = false, features = ["derive"] }
@@ -189,7 +189,7 @@ default = ["no_std", "dep:async-timer", "disassembler"]
 no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
 # Full feature, includes all optional features except those for specific targets (native, wasm)
-full = ["compiler", "decompiler"]
+full = ["compiler", "decompiler", "disassembler"]
 
 ### features for specific targets #############################################
 
