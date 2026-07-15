@@ -49,22 +49,6 @@ impl DIFInterface {
     }
 }
 impl DIFInterface {
-    /// Updates the shared container for the given address and returns an update result
-    pub fn update(
-        &self,
-        address: &PointerAddress,
-        update: Update,
-    ) -> Result<UpdateReturn, DIFUpdateError> {
-        let shared_container = self
-            .cache
-            .try_get_shared_container_mutable_reference(address)?;
-        let mut base_container = shared_container.base_shared_container_mut();
-
-        base_container
-            .update(update)
-            .map_err(DIFUpdateError::UpdateError)
-    }
-
     /// Returns a list of all [ObserverCallback]s that are currently active for the pointer
     pub fn get_current_observers(
         &self,

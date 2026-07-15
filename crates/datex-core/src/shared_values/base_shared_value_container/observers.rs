@@ -104,9 +104,9 @@ impl<'de> Deserialize<'de> for TransceiverId {
                 formatter.write_str("a valid transceiver id")
             }
 
-            fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
+            fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
             where
-                E: Error,
+                E: DeError,
             {
                 Ok(TransceiverId::Dif(v.to_u8().ok_or_else(|| {
                     DeError::custom(format!(

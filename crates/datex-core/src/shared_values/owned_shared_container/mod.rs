@@ -1,7 +1,6 @@
 mod clone_unsafe;
 mod common;
 pub mod datex_proxy;
-pub mod update_handler;
 
 use crate::{
     prelude::*,
