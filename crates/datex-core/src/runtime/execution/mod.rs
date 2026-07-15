@@ -14,11 +14,26 @@ use crate::{
 };
 
 use crate::{
+    core_compiler::{
+        buffer_provider::BufferProvider,
+        core_compilation_context::{CompileInput, CoreCompilationContext},
+        core_compile,
+        value_compiler::{
+            append_endpoint, append_regular_instruction, append_value,
+            append_value_container,
+        },
+        value_visitor::ValueVisitor,
+    },
+    global::protocol_structures::{
+        instruction_data::ShortTextData,
+        regular_instructions::RegularInstruction,
+    },
     libs::core::core_lib_id::CoreLibId,
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         RemotePointerAddress, SelfOwnedPointerAddress, SharedContainer,
     },
+    values::core_values::endpoint::Endpoint,
 };
 use core::{result::Result, unreachable};
 pub use errors::*;
@@ -43,6 +58,41 @@ pub fn execute_dxb_sync(
 
     for output in execution_loop {
         match output? {
+            ExternalExecutionInterrupt::SetEndpointProperty {
+                endpoint,
+                property_name,
+                value,
+            } => {
+                if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(
+                            runtime
+                                .endpoint_properties_mut()
+                                .insert(property_name, value),
+                        ),
+                    );
+                } else {
+                    return Err(ExecutionError::RequiresAsyncExecution);
+                }
+            }
+            ExternalExecutionInterrupt::GetEndpointProperty {
+                endpoint,
+                property_name,
+            } => {
+                if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
+                    let value = runtime
+                        .endpoint_properties()
+                        .get(&property_name)
+                        .cloned();
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(Some(
+                            ValueContainer::new_from_option(value),
+                        )),
+                    );
+                } else {
+                    return Err(ExecutionError::RequiresAsyncExecution);
+                }
+            }
             ExternalExecutionInterrupt::Result(result) => return Ok(result),
             ExternalExecutionInterrupt::GetReferenceToRemotePointer(
                 address,
@@ -111,7 +161,17 @@ pub async fn execute_dxb(
                         ),
                     );
                 } else {
-                    todo!()
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(
+                            set_remote_endpoint_property(
+                                &runtime,
+                                endpoint,
+                                property_name,
+                                value,
+                            )
+                            .await?,
+                        ),
+                    );
                 }
             }
             ExternalExecutionInterrupt::GetEndpointProperty {
@@ -129,7 +189,16 @@ pub async fn execute_dxb(
                         )),
                     );
                 } else {
-                    todo!()
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(
+                            get_remote_endpoint_property(
+                                &runtime,
+                                endpoint,
+                                property_name,
+                            )
+                            .await?,
+                        ),
+                    );
                 }
             }
             ExternalExecutionInterrupt::Result(result) => return Ok(result),
@@ -216,6 +285,44 @@ pub async fn execute_dxb(
     }
 
     unreachable!("Execution loop should always return a result");
+}
+
+async fn set_remote_endpoint_property(
+    runtime: &Runtime,
+    endpoint: Endpoint,
+    property_name: String,
+    value: ValueContainer,
+) -> Result<Option<ValueContainer>, ExecutionError> {
+    runtime
+        .execute_instructions_remote(vec![endpoint], |ctx| {
+            append_regular_instruction(
+                ctx.cursor_mut(),
+                RegularInstruction::SetPropertyText(ShortTextData(
+                    property_name,
+                )),
+            );
+            append_value_container(ctx, value);
+            append_endpoint(ctx.cursor_mut(), &Endpoint::LOCAL);
+        })
+        .await
+}
+
+async fn get_remote_endpoint_property(
+    runtime: &Runtime,
+    endpoint: Endpoint,
+    property_name: String,
+) -> Result<Option<ValueContainer>, ExecutionError> {
+    runtime
+        .execute_instructions_remote(vec![endpoint], |ctx| {
+            append_regular_instruction(
+                ctx.cursor_mut(),
+                RegularInstruction::GetPropertyText(ShortTextData(
+                    property_name,
+                )),
+            );
+            append_endpoint(ctx.cursor_mut(), &Endpoint::LOCAL);
+        })
+        .await
 }
 
 fn handle_apply(

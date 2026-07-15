@@ -77,7 +77,7 @@ pub(crate) unsafe fn default_core_compilation_context<'a>()
 }
 
 impl<'a> CoreCompilationContext<'a> {
-    /// Create a new core compilation context with an initial byte input buffer and starting slot address for shared value tracking
+    /// Create a new core compilation context with an initial byte input buffer
     pub fn new(
         buffer: Vec<u8>,
         input: CompileInput<'a>,
@@ -90,6 +90,15 @@ impl<'a> CoreCompilationContext<'a> {
             ),
             input,
         }
+    }
+
+    /// Create a new core compilation context for the provided receiver endpoints
+    pub fn new_for_endpoints(
+        pointer_lookup: &'a PointerAvailabilityLookup,
+        receivers: &'a [Endpoint],
+    ) -> CoreCompilationContext<'a> {
+        let input = CompileInput::new(pointer_lookup, receivers);
+        CoreCompilationContext::new(vec![], input)
     }
 
     pub fn cursor(&self) -> &Cursor<Vec<u8>> {

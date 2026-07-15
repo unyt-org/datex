@@ -26,6 +26,8 @@ pub mod test_utils;
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
+use crate::core_compiler::core_compilation_context::CoreCompilationContext;
+use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Clone, Debug)]
 pub struct Runtime {
@@ -128,5 +130,17 @@ impl Runtime {
             input,
         )
         .await
+    }
+
+    async fn execute_instructions_remote(
+        &self,
+        endpoints: Vec<Endpoint>,
+        compile_handler: impl FnOnce(&mut CoreCompilationContext)
+    ) -> Result<Option<ValueContainer>, ExecutionError> {
+        RuntimeInternal::execute_instructions_remote(
+            self.internal(),
+            endpoints,
+            compile_handler,
+        ).await
     }
 }
