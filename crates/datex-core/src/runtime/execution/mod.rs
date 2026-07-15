@@ -15,12 +15,10 @@ use crate::{
 
 use crate::{
     core_compiler::{
+        InstructionInput,
         buffer_provider::BufferProvider,
-        core_compilation_context::{CompileInput, CoreCompilationContext},
-        core_compile,
         value_compiler::{
             append_endpoint, append_regular_instruction, append_value,
-            append_value_container,
         },
         value_visitor::ValueVisitor,
     },
@@ -294,16 +292,17 @@ async fn set_remote_endpoint_property(
     value: ValueContainer,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     runtime
-        .execute_instructions_remote(vec![endpoint], |ctx| {
-            append_regular_instruction(
-                ctx.cursor_mut(),
+        .execute_instructions_remote(
+            vec![endpoint],
+            vec![
                 RegularInstruction::SetPropertyText(ShortTextData(
                     property_name,
-                )),
-            );
-            append_value_container(ctx, value);
-            append_endpoint(ctx.cursor_mut(), &Endpoint::LOCAL);
-        })
+                ))
+                .into(),
+                InstructionInput::ValueContainer(value),
+                RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
+            ],
+        )
         .await
 }
 
@@ -313,15 +312,16 @@ async fn get_remote_endpoint_property(
     property_name: String,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     runtime
-        .execute_instructions_remote(vec![endpoint], |ctx| {
-            append_regular_instruction(
-                ctx.cursor_mut(),
+        .execute_instructions_remote(
+            vec![endpoint],
+            vec![
                 RegularInstruction::GetPropertyText(ShortTextData(
                     property_name,
-                )),
-            );
-            append_endpoint(ctx.cursor_mut(), &Endpoint::LOCAL);
-        })
+                ))
+                .into(),
+                RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
+            ],
+        )
         .await
 }
 

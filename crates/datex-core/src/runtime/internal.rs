@@ -63,7 +63,7 @@ use core::{
 use indexmap::IndexMap;
 use log::{debug, error, info};
 use crate::core_compiler::core_compilation_context::CoreCompilationContext;
-use crate::core_compiler::core_compile;
+use crate::core_compiler::{core_compile, InstructionInput};
 use crate::core_compiler::value_compiler::{append_endpoint, append_regular_instruction, append_value_container};
 
 #[derive(Debug)]
@@ -498,12 +498,12 @@ impl RuntimeInternal {
     pub async fn execute_instructions_remote(
         self: Rc<RuntimeInternal>,
         endpoints: Vec<Endpoint>,
-        compile_handler: impl FnOnce(&mut CoreCompilationContext)
+        instructions_input: Vec<InstructionInput>
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let dxb = core_compile(
             &*self.pointer_availability_lookup(),
             &endpoints,
-            compile_handler,
+            instructions_input,
         );
 
         let mut remote_execution_context = RemoteExecutionContext::new(

@@ -400,8 +400,10 @@ pub fn append_big_decimal(cursor: &mut ByteCursor, decimal: &Decimal) {
 }
 
 pub fn append_endpoint(cursor: &mut ByteCursor, endpoint: &Endpoint) {
-    append_instruction_code(cursor, InstructionCode::ENDPOINT);
-    endpoint.write_le(cursor).unwrap();
+    append_regular_instruction(
+        cursor,
+        RegularInstruction::Endpoint(endpoint.clone()), // FIXME: no clone
+    );
 }
 
 /// Appends a typed integer with explicit type casts
