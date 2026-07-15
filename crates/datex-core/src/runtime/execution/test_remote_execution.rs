@@ -448,6 +448,53 @@ pub async fn test_remote_datetime_arithmetic() {
     feature = "compiler",
     any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
 ))]
+pub async fn test_remote_endpoint_property() {
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    flexi_logger::init();
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, runtime_b| {
+            let mut execution_context = ExecutionContext::local(
+                ExecutionMode::unbounded(),
+                runtime_a.clone(),
+                ExecutionCallerMetadata::local_default(),
+            );
+
+            // set property
+            runtime_a
+                .execute(
+                    "@test_b.example = 42",
+                    &[],
+                    Some(&mut execution_context),
+                )
+                .await
+                .unwrap();
+
+            let example_on_b =
+                runtime_b.get_endpoint_property_by_name("example").unwrap();
+            assert_eq!(*example_on_b, ValueContainer::from(Integer::from(42)));
+
+            // get property
+            let result = runtime_a
+                .execute("@test_b.example", &[], Some(&mut execution_context))
+                .await
+                .unwrap()
+                .unwrap();
+
+            assert_eq!(result, ValueContainer::from(Integer::from(42)));
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn test_remote_sync() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
