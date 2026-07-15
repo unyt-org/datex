@@ -3,7 +3,7 @@ use crate::{
     channel::mpsc::UnboundedSender,
     collections::HashMap,
     global::protocol_structures::{
-        block_header::BlockType, routing_header::SignatureType,
+        block_header::BlockType, routing_header::{EncryptionType, SignatureType},
     },
     network::com_hub::{
         errors::{ComHubError, SocketEndpointRegistrationError},
@@ -1004,23 +1004,76 @@ impl ComHub {
             Ok(block)
         }
 
-        match block.routing_header.flags.signature_type() {
-            // SignatureType::None can be handled synchronously
-            SignatureType::None => SyncOrAsync::Sync(
-                update_sender_and_timestamp(block, self.endpoint.clone()),
-            ),
+        let encrypted = !matches!(
+            block.routing_header.flags.encryption_type(),
+            EncryptionType::None
+        );
+        let signed = !matches!(
+            block.routing_header.flags.signature_type(),
+            SignatureType::None
+        );
+        if !encrypted && !signed {
+            return SyncOrAsync::Sync(update_sender_and_timestamp(
+                block,
+                self.endpoint.clone(),
+            ));
+        }
+        SyncOrAsync::Async(Box::pin(async move {
+            #[cfg(feature = "crypto_enabled")]
+            {
+                // Prepare future encryption
+                let fut_block =
+                    match block.routing_header.flags.encryption_type() {
+                        EncryptionType::None => {
+                            info!("Prepping not encrypted dxb");
+                            SyncOrAsync::Sync(block)
+                        }
+                        EncryptionType::Encrypted => {
+                            info!("Prepareing encrypted dxb");
+                            SyncOrAsync::Async(Box::pin(async move {
+                                let key: [u8; 32] =
+                                    CryptoImpl::random_bytes(32)
+                                        .try_into()
+                                        .unwrap();
+                                let iv = [0u8; 16];
+                                let enc_body = CryptoImpl::aes_ctr_encrypt(
+                                    &key,
+                                    &iv,
+                                    block.body.as_slice(),
+                                )
+                                .await
+                                .unwrap();
+                                let new_body =
+                                    [key.to_vec(), enc_body].concat();
+                                block.body = new_body.to_vec();
+                                block
+                            }))
+                        }
+                    };
 
-            // SignatureType::Unencrypted and SignatureType::Encrypted require async signing
-            sig_ty => {
-                let endpoint = self.endpoint.clone();
+                // Execute future encryption
+                block = match fut_block {
+                    SyncOrAsync::Sync(block) => block,
+                    SyncOrAsync::Async(block) => block.await,
+                };
+            }
 
-                SyncOrAsync::Async(Box::pin(async move {
+            match block.routing_header.flags.signature_type() {
+                // SignatureType::None can be handled synchronously
+                SignatureType::None => {
+                    update_sender_and_timestamp(block, self.endpoint.clone())
+                }
+
+                // SignatureType::Unencrypted and SignatureType::Encrypted require async signing
+                sig_ty => {
+                    let endpoint = self.endpoint.clone();
+
                     let (pub_key, pri_key) = CryptoImpl::gen_ed25519()
                         .await
                         .map_err(|_| ComHubError::SignatureCreationError)?;
 
                     let raw_signed =
-                        [pub_key.clone(), block.body.clone()].concat();
+                        [pub_key.to_vec(), block.body.clone()].concat();
 
                     let hashed_signed = CryptoImpl::hash_sha256(&raw_signed)
                         .await
@@ -1053,11 +1106,12 @@ impl ComHub {
                         SignatureType::None => unreachable!("handled above"),
                     };
 
-                    block.signature = Some([sig_bytes, pub_key].concat());
+                    block.signature =
+                        Some([sig_bytes, pub_key.to_vec()].concat());
                     update_sender_and_timestamp(block, endpoint)
-                }))
+                }
             }
-        }
+        }))
     }
 
     /// Public method to send an outgoing block from this endpoint. Called by the runtime.

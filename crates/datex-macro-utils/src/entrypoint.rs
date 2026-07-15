@@ -7,7 +7,7 @@ use datex_core::{
         DatexValueContainerProxyDeserialize,
         DatexValueContainerProxyInfallibleSerialize,
     },
-    runtime::{Runtime, RuntimeConfig},
+    runtime::{Runtime, config::RuntimeConfig},
 };
 use proc_macro2::TokenStream;
 use quote::quote;

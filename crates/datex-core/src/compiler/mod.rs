@@ -1617,7 +1617,7 @@ pub mod tests {
             type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         },
         prelude::*,
-        runtime::{Runtime, RuntimeConfig, RuntimeRunner},
+        runtime::{Runtime, config::RuntimeConfig, RuntimeRunner},
         shared_values::PointerAddress,
         values::core_values::integer::{Integer, typed_integer::TypedInteger},
     };
