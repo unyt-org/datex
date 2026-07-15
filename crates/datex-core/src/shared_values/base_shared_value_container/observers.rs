@@ -4,16 +4,20 @@ use crate::{
     shared_values::base_shared_value_container::BaseSharedValueContainer,
     utils::{freemap::NextKey, serde_serialize_seed::SerializeSeed},
     value_updates::update_data::Update,
-    values::core_values::endpoint::Endpoint,
+    values::{core_value::CoreValue, core_values::endpoint::Endpoint},
 };
 use core::{
     fmt::{Debug, Display},
     result::Result,
     str::FromStr,
 };
+use num_traits::ToPrimitive;
 use serde::{
-    Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
+    Deserialize, Deserializer, Serialize, Serializer,
+    de::{DeserializeSeed, Error, Visitor},
+    forward_to_deserialize_any,
 };
+use serde_with::__private__::DeError;
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -88,16 +92,43 @@ impl<'de> Deserialize<'de> for TransceiverId {
     fn deserialize<D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Self, D::Error> {
-        let s = String::deserialize(deserializer)?;
-        if s == "local" {
-            Ok(TransceiverId::Local)
-        } else if let Ok(id) = s.parse::<u8>() {
-            Ok(TransceiverId::Dif(id))
-        } else {
-            Ok(TransceiverId::Remote(
-                Endpoint::from_str(&s).map_err(serde::de::Error::custom)?,
-            ))
+        struct TransceiverIdVisitor;
+
+        impl<'de> Visitor<'de> for TransceiverIdVisitor {
+            type Value = TransceiverId;
+
+            fn expecting(
+                &self,
+                formatter: &mut core::fmt::Formatter,
+            ) -> core::fmt::Result {
+                formatter.write_str("a valid transceiver id")
+            }
+
+            fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                Ok(TransceiverId::Dif(v.to_u8().ok_or_else(|| {
+                    DeError::custom(format!(
+                        "value {v} is too large to fit into u8"
+                    ))
+                })?))
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                if v == "local" {
+                    Ok(TransceiverId::Local)
+                } else {
+                    Ok(TransceiverId::Remote(
+                        Endpoint::from_str(v).map_err(Error::custom)?,
+                    ))
+                }
+            }
         }
+        deserializer.deserialize_any(TransceiverIdVisitor)
     }
 }
 
