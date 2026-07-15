@@ -50,7 +50,7 @@ impl<'ctx> SerdeContext<'ctx, SharedContainer> {
 
             SharedContainerOwnership::Referenced(
                 ReferenceMutability::Mutable,
-            ) => "'mut ",
+            ) => "'mut",
 
             SharedContainerOwnership::Owned => "",
         };

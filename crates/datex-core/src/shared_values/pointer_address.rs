@@ -153,13 +153,13 @@ impl PointerAddress {
 }
 
 impl TryFrom<String> for PointerAddress {
-    type Error = &'static str;
+    type Error = String;
     fn try_from(s: String) -> Result<Self, Self::Error> {
         PointerAddress::try_from(s.as_str())
     }
 }
 impl TryFrom<&str> for PointerAddress {
-    type Error = &'static str;
+    type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let hex_str = if let Some(stripped) = s.strip_prefix('$') {
             stripped
@@ -167,7 +167,8 @@ impl TryFrom<&str> for PointerAddress {
             s
         };
 
-        let bytes = hex::decode(hex_str).map_err(|_| "Invalid hex string")?;
+        let bytes = hex::decode(hex_str)
+            .map_err(|_| format!("Invalid hex string: {s}"))?;
         match bytes.len() {
             5 => {
                 let mut arr = [0u8; 5];
@@ -179,7 +180,7 @@ impl TryFrom<&str> for PointerAddress {
                 arr.copy_from_slice(&bytes);
                 Ok(PointerAddress::Remote(RemotePointerAddress(arr)))
             }
-            _ => Err("PointerAddress must be 5 or 26 bytes long"),
+            _ => Err("PointerAddress must be 5 or 26 bytes long".to_string()),
         }
     }
 }
