@@ -160,6 +160,7 @@ pub fn append_set_property_value_key<T: BufferProvider + ValueVisitor>(
 }
 
 #[cfg(test)]
+#[cfg(feature = "disassembler")]
 mod tests {
     use super::*;
     use crate::{
