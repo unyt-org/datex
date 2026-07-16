@@ -3,6 +3,7 @@ use crate::{
     value_updates::update_strategies::time_based::UpdateId,
 };
 
+use crate::prelude::*;
 #[derive(Clone)]
 pub struct Snapshot {
     /// Value after every update up to last_update
