@@ -1,8 +1,7 @@
 use core::cmp::Ordering;
 
-use crate::{stub::time::Instant, values::core_values::endpoint::Endpoint};
+use crate::values::core_values::endpoint::Endpoint;
 
-use crate::prelude::*;
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct UpdateId {
     pub timestamp: u64,

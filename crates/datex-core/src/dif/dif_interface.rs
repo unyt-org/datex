@@ -20,9 +20,7 @@ use crate::{
         traits::SharedContainerCommon,
     },
     traits::apply::{Apply, ApplyError},
-    value_updates::{
-        UpdateReturn, update_data::Update, update_handler::UpdateHandler,
-    },
+    value_updates::{UpdateReturn, update_data::Update},
     values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;

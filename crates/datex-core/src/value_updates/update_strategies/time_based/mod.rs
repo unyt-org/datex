@@ -4,12 +4,8 @@ use core::{
 };
 
 use crate::{
-    datex_proxy::DatexValueContainerProxyInfallibleSerialize,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
-    value_updates::{
-        errors::UpdateError,
-        update_handler::{UpdateHandler, UpdateResult},
-    },
+    value_updates::errors::UpdateError,
     values::value_container::ValueContainer,
 };
 use fnv64_rs::Fnv1aHasher;

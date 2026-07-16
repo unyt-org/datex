@@ -7,9 +7,9 @@ use crate::{
         errors::UpdateError,
         update_data::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData,
+            ReplaceUpdateData, SetEntryUpdateData, UpdateData,
         },
-        update_handler::{UpdateHandler, UpdateResult},
+        update_handler::UpdateHandler,
     },
     values::value_container::ValueContainer,
 };

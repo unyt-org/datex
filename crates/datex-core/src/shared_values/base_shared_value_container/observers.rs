@@ -4,7 +4,7 @@ use crate::{
     shared_values::base_shared_value_container::BaseSharedValueContainer,
     utils::{freemap::NextKey, serde_serialize_seed::SerializeSeed},
     value_updates::update_data::Update,
-    values::{core_value::CoreValue, core_values::endpoint::Endpoint},
+    values::core_values::endpoint::Endpoint,
 };
 use core::{
     fmt::{Debug, Display},
@@ -15,7 +15,6 @@ use num_traits::ToPrimitive;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{DeserializeSeed, Error, Visitor},
-    forward_to_deserialize_any,
 };
 use serde_with::__private__::DeError;
 

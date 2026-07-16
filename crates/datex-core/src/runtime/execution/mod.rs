@@ -1,13 +1,6 @@
 //! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
-    core_compiler::{
-        InstructionInput,
-        buffer_provider::BufferProvider,
-        value_compiler::{
-            append_endpoint, append_regular_instruction, append_value,
-        },
-        value_visitor::ValueVisitor,
-    },
+    core_compiler::InstructionInput,
     global::protocol_structures::{
         instruction_data::ShortTextData,
         regular_instructions::RegularInstruction,

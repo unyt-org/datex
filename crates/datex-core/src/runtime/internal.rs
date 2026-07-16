@@ -1,7 +1,10 @@
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
     collections::HashMap,
-    core_compiler::core_compilation_context::DXBWithSharedValues,
+    core_compiler::{
+        InstructionInput, core_compilation_context::DXBWithSharedValues,
+        core_compile,
+    },
     dif::dif_interface::DIFInterface,
     disassembler::{
         options::DisassemblerOptions, print_disassembled_with_options,
@@ -62,9 +65,6 @@ use core::{
 };
 use indexmap::IndexMap;
 use log::{debug, error, info};
-use crate::core_compiler::core_compilation_context::CoreCompilationContext;
-use crate::core_compiler::{core_compile, InstructionInput};
-use crate::core_compiler::value_compiler::{append_endpoint, append_regular_instruction, append_value_container};
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -494,14 +494,14 @@ impl RuntimeInternal {
         .await
         .0
     }
-    
+
     pub async fn execute_instructions_remote(
         self: Rc<RuntimeInternal>,
         endpoints: Vec<Endpoint>,
-        instructions_input: Vec<InstructionInput>
+        instructions_input: Vec<InstructionInput>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let dxb = core_compile(
-            &*self.pointer_availability_lookup(),
+            &self.pointer_availability_lookup(),
             &endpoints,
             instructions_input,
         );
@@ -511,7 +511,7 @@ impl RuntimeInternal {
             ExecutionMode::Static,
             Runtime::from(self.clone()),
         );
-        self.execute_remote(&mut remote_execution_context, dxb).await
+        self.execute_remote(&remote_execution_context, dxb).await
     }
 
     pub(crate) async fn execute_incoming_section(
