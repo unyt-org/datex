@@ -10,7 +10,7 @@ use serde::{
     ser::SerializeSeq,
 };
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct ListSpliceUpdateData {
     pub start: u32,
     pub delete_count: u32,

@@ -874,6 +874,7 @@ dependencies = [
  "embassy-futures",
  "embassy-time",
  "flexi_logger",
+ "fnv64-rs",
  "foldhash 0.2.0",
  "futures",
  "futures-core",
@@ -1697,6 +1698,12 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "fnv64-rs"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cc850b3c085261b3d9436bfea82ff6339750590e8edc815fb5c5ef8b801cb24"
 
 [[package]]
 name = "foldhash"

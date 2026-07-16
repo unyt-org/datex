@@ -9,7 +9,7 @@ use crate::{
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct SetEntryUpdateData {
     pub key: ValueKey,
     pub value: ValueContainer,

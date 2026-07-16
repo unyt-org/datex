@@ -15,7 +15,7 @@ pub use list_splice::*;
 pub use replace::*;
 pub use set_entry::*;
 
-#[derive(Clone, Debug, PartialEq, AsRefStr)]
+#[derive(Clone, Debug, PartialEq, AsRefStr, Hash)]
 #[strum(serialize_all = "snake_case")]
 pub enum UpdateData {
     /// Represents a replacement operation for a value.
@@ -48,7 +48,7 @@ impl UpdateData {
     }
 }
 /// Represents an update to a value from a source [TransceiverId]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct Update {
     pub source_id: TransceiverId,
     pub data: UpdateData,
