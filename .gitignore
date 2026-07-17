@@ -5,3 +5,4 @@ target
 *.dbg
 extensions
 .datex-cache
+crates/datex-core/docs/diagrams/mmd/lexer.mmd
