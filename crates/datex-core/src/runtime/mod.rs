@@ -16,6 +16,7 @@ mod confirm_moves;
 pub mod execution;
 mod incoming_sections;
 mod internal;
+mod logger;
 pub mod pointer_address_provider;
 pub mod pointer_availability_lookup;
 pub mod remote_value_sync;

@@ -56,9 +56,8 @@ impl RuntimeInternal {
             )
             .await;
         match &result {
-            Ok(Some(result)) => info!(
-                "Successful Execution result (on {} from {}): {}",
-                self.endpoint(),
+            Ok(Some(result)) => self.log_info(format!(
+                "Successful Execution result (from {}): {}",
                 endpoint,
                 {
                     #[cfg(feature = "decompiler")]
@@ -73,17 +72,15 @@ impl RuntimeInternal {
                         result
                     }
                 }
-            ),
-            Ok(None) => info!(
-                "Successful Execution result (on {} from {}): None",
-                self.endpoint(),
+            )),
+            Ok(None) => self.log_info(format!(
+                "Successful Execution result (from {}): None",
                 endpoint
-            ),
-            Err(e) => info!(
-                "Execution error (on {} from {}): {e}",
-                self.endpoint(),
+            )),
+            Err(e) => self.log_info(format!(
+                "Execution error (from {}): {e}",
                 endpoint
-            ),
+            )),
         }
 
         // send response back to the sender

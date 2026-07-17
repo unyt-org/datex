@@ -705,9 +705,9 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::TaggedValue(TaggedValue {
-                                    tag: ShortTextData(tag),
-                                    is_empty
-                                }) => {
+                                                                    tag: ShortTextData(tag),
+                                                                    is_empty
+                                                                }) => {
                                     assert!(!is_empty);
                                     let value_container = yield_unwrap!(
                                         collected_results.pop_potentially_cloned_value_container_result_assert_existing(&state)
@@ -812,7 +812,6 @@ pub fn inner_execution_loop(
                                         &target,
                                         ReferenceMutability::Immutable
                                     )).into()
-
                                 }
 
                                 RegularInstruction::DeriveSharedReferenceMut => {
@@ -824,14 +823,13 @@ pub fn inner_execution_loop(
                                         &target,
                                         ReferenceMutability::Mutable
                                     )).into()
-
                                 }
 
                                 RegularInstruction::UnaryMinus
                                 | RegularInstruction::UnaryPlus
                                 | RegularInstruction::BitwiseNot
                                 | RegularInstruction::Unbox => {
-                                    let  target = yield_unwrap!(
+                                    let target = yield_unwrap!(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()
                                     );
@@ -1255,26 +1253,13 @@ pub fn inner_execution_loop(
                                         )
                                     });
 
-                                    // Note: shared containers are explicitly cloned here as references
-                                    let shared_references_cache = shared_containers.to_vec();
-
-                                    yield_unwrap!(
-                                        // SAFETY: we guarantee that receivers is not empty.
-                                        unsafe {
-                                            state.runtime.internal.clone().register_shared_containers_for_endpoints(
-                                                &receivers_list.iter().collect::<Vec<_>>(),
-                                                shared_containers
-                                            )
-                                        }.map_err(ExecutionError::subscriber_error)
-                                    );
-
                                     interrupt_with_maybe_value!(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::RemoteExecution {
                                                 input: DXBWithSharedValues {
                                                     dxb: buffer,
-                                                    shared_values: shared_references_cache,
+                                                    shared_values: shared_containers,
                                                 },
                                                 receivers: receivers_list
                                             }

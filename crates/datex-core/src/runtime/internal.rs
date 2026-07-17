@@ -478,6 +478,16 @@ impl RuntimeInternal {
         );
 
         block.set_receivers(&remote_execution_context.endpoints);
+        // TODO: ensure in remote_execution_context that endpoints are never empty
+        unsafe {
+            self.clone().register_shared_containers_for_endpoints(
+                &(remote_execution_context
+                    .endpoints
+                    .iter()
+                    .collect::<Vec<_>>()),
+                input.shared_values,
+            )?;
+        }
 
         let response = self
             .com_hub
@@ -486,13 +496,10 @@ impl RuntimeInternal {
             .remove(0)?;
         let incoming_section = response.take_incoming_section();
 
-        RuntimeInternal::execute_incoming_section(
-            self,
-            incoming_section,
-            Some(input.shared_values),
-        )
-        .await
-        .0
+        // TODO: do we need to pass input.shared_values here to execution?
+        RuntimeInternal::execute_incoming_section(self, incoming_section, None)
+            .await
+            .0
     }
 
     pub async fn execute_instructions_remote(
@@ -506,7 +513,7 @@ impl RuntimeInternal {
             instructions_input,
         );
 
-        let mut remote_execution_context = RemoteExecutionContext::new(
+        let remote_execution_context = RemoteExecutionContext::new(
             endpoints,
             ExecutionMode::Static,
             Runtime::from(self.clone()),
