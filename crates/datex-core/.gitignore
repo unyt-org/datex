@@ -4,3 +4,4 @@ bin
 .DS_Store
 .idea
 rustc-ice-*
+./docs/diagrams/mmd/lexer.mmd
