@@ -15,7 +15,7 @@ use core::cell::RefCell;
 pub struct RemoteExecutionContext {
     #[cfg(feature = "compiler")]
     pub compile_scope: CompilationScope,
-    pub endpoints: Vec<Endpoint>,
+    endpoints: Vec<Endpoint>,
     pub context_id: RefCell<Option<OutgoingContextId>>,
     pub execution_mode: ExecutionMode,
     pub runtime: Runtime,
@@ -44,6 +44,22 @@ impl RemoteExecutionContext {
             return;
         }
         self.endpoints.push(endpoint);
+    }
+
+    pub fn endpoints(&self) -> &[Endpoint] {
+        &self.endpoints
+    }
+
+    /// Sets the endpoints for the remote execution context.
+    /// # Safety
+    /// The caller must ensure that the endpoints vector is not empty.
+    pub unsafe fn set_endpoints(&mut self, endpoints: Vec<Endpoint>) {
+        if endpoints.is_empty() {
+            panic!("RemoteExecutionContext: endpoints cannot be empty");
+        }
+        else {
+            self.endpoints = endpoints;
+        }
     }
 }
 

@@ -27,7 +27,6 @@ impl UpdateHandler for ValueContainer {
                 value.try_set_entry(data, source_id)
             }
             ValueContainer::Shared(reference) => reference
-                .base_shared_container_mut()
                 .try_set_entry(data, source_id),
         }
     }

@@ -477,12 +477,12 @@ impl RuntimeInternal {
             input.dxb,
         );
 
-        block.set_receivers(&remote_execution_context.endpoints);
+        block.set_receivers(remote_execution_context.endpoints());
         // TODO: ensure in remote_execution_context that endpoints are never empty
         unsafe {
             self.clone().register_shared_containers_for_endpoints(
                 &(remote_execution_context
-                    .endpoints
+                    .endpoints()
                     .iter()
                     .collect::<Vec<_>>()),
                 input.shared_values,

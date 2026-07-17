@@ -210,20 +210,22 @@ impl RuntimeInternal {
                 })
                 .collect::<Vec<_>>();
 
-            self.task_manager().register_task(
-                self.clone().send_update_block_to_subscribers(
-                    // TODO: no clone?
-                    container.clone(),
-                    update.clone(),
-                    endpoints,
-                ),
-            );
+            if !endpoints.is_empty() {
+                self.task_manager().register_task(
+                    self.clone().send_update_block_to_subscribers(
+                        // TODO: no clone?
+                        container.clone(),
+                        update.clone(),
+                        endpoints,
+                    ),
+                );
+            }
         }
     }
 
     /// Compiles a DXB block for the given update and sends it to the specified subscriber endpoints.
     /// Note: this function asserts that the shared container is still owned and that the remote execution
-    /// context still exists.
+    /// context still exists. It also asserts that the receiver endpoints are not empty.
     async fn send_update_block_to_subscribers(
         self: Rc<RuntimeInternal>,
         container: SharedContainer,
@@ -255,7 +257,10 @@ impl RuntimeInternal {
         // This ensures that the endpoint that triggered this update does not get the update sent again
         // TODO: make sure that all endpoints that are skipped here get the number of skipped
         // blocks in the next block header so that they dont wait for this block (set skip_after_block)
-        context.endpoints = receiver_endpoints;
+        // SAFETY: send_update_block_to_subscribers is only called when receiver_endpoints is not empty
+        unsafe {
+            context.set_endpoints(receiver_endpoints);
+        }
 
         self_clone
             .execute_remote(context, update_dxb)

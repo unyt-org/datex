@@ -40,7 +40,7 @@ impl ExecutionContext {
                 vec![Endpoint::LOCAL]
             }
             ExecutionContext::Remote(remote_context) => {
-                remote_context.endpoints.clone()
+                remote_context.endpoints().to_vec()
             }
         }
     }
