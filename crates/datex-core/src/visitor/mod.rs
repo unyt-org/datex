@@ -50,10 +50,6 @@ mod tests {
     };
     use core::ops::Range;
 
-    pub struct MyAstTypeExpressionError {
-        message: String,
-    }
-
     #[derive(Debug)]
     pub struct MyAstExpressionError {
         message: String,
@@ -70,7 +66,7 @@ mod tests {
     impl TypeExpressionVisitor<MyAstExpressionError> for MyAst {
         fn visit_literal_type(
             &mut self,
-            literal: &mut String,
+            _literal: &mut String,
             span: &Range<usize>,
         ) -> TypeExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::Replace(TypeExpression::new(
@@ -99,8 +95,8 @@ mod tests {
         }
         fn visit_get_ref(
             &mut self,
-            create_ref: &mut DeriveRef,
-            span: &Range<usize>,
+            _create_ref: &mut DeriveRef,
+            _span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::ContinueRecursion)
         }
@@ -125,8 +121,8 @@ mod tests {
 
         fn visit_boolean(
             &mut self,
-            boolean: &mut Boolean,
-            span: &Range<usize>,
+            _boolean: &mut Boolean,
+            _span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Err(MyAstExpressionError::new("Booleans are not allowed"))
         }

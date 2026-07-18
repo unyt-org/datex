@@ -486,6 +486,7 @@ pub struct TypeMetadataBin {
     pub ownership: TypeOwnershipCode,
     pub mutability: TypeMutabilityCode,
     pub type_local_or_shared: TypeLocalOrShared,
+    #[skip]
     _unused: B4,
 }
 

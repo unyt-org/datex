@@ -1647,13 +1647,10 @@ mod tests {
             runtime.clone(),
         )
         .expect("Precompilation failed");
-        let inferred_res = infer_expression_type_simple_error(
-            &mut res,
-            &*runtime.memory().borrow(),
-        );
+
         if let Err(err) = infer_expression_type_simple_error(
             &mut res,
-            &*runtime.memory().borrow(),
+            &runtime.memory().borrow(),
         ) {
             panic!("Type inference failed: {:#?}", err);
         } else {
@@ -2088,7 +2085,6 @@ mod tests {
 
     #[test]
     fn statements_expression() {
-        let memory = &SharedReferencesCache::default();
         let inferred = infer_type_from_script_ignore_errors("10; 20; 30");
         assert_eq!(
             inferred,
@@ -2321,7 +2317,7 @@ mod tests {
         a = "hello"; // type error
         "#;
         let errors = errors_for_script(src);
-        let error = errors.first().unwrap();
+        let _ = errors.first().unwrap();
 
         // TODO:
         // assert_matches!(

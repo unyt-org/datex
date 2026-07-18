@@ -131,7 +131,7 @@ pub trait UpdateHandler {
     }
     fn try_replace(
         &mut self,
-        path: Vec<ValueKey>,
+        _path: Vec<ValueKey>,
         source_id: TransceiverId,
         data: ReplaceUpdateData,
     ) -> Result<(), UpdateError> {
@@ -173,7 +173,7 @@ pub trait UpdateHandlerImpl {
             UpdateOperation::Decrement(box data) => {
                 into_update_result(self.try_decrement(path, source_id, data))
             }
-            UpdateOperation::Replace(box data) => unreachable!(
+            UpdateOperation::Replace(box _data) => unreachable!(
                 "Replace operation should be handled at a higher level"
             ),
         }
@@ -182,7 +182,7 @@ pub trait UpdateHandlerImpl {
     fn try_set_entry(
         &mut self,
         _path: Vec<ValueKey>,
-        source_id: TransceiverId,
+        _source_id: TransceiverId,
         _data: SetEntryUpdateData,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         Err(UpdateError::InvalidUpdate)
@@ -191,7 +191,7 @@ pub trait UpdateHandlerImpl {
     fn try_delete_entry(
         &mut self,
         _path: Vec<ValueKey>,
-        source_id: TransceiverId,
+        _source_id: TransceiverId,
         _data: DeleteEntryUpdateData,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         Err(UpdateError::InvalidUpdate)
@@ -200,7 +200,7 @@ pub trait UpdateHandlerImpl {
     fn try_append_entry(
         &mut self,
         _path: Vec<ValueKey>,
-        source_id: TransceiverId,
+        _source_id: TransceiverId,
         _data: AppendEntryUpdateData,
     ) -> Result<(), UpdateError> {
         Err(UpdateError::InvalidUpdate)
@@ -209,7 +209,7 @@ pub trait UpdateHandlerImpl {
     fn try_clear(
         &mut self,
         _path: Vec<ValueKey>,
-        source_id: TransceiverId,
+        _source_id: TransceiverId,
     ) -> Result<ValueContainer, UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
@@ -217,7 +217,7 @@ pub trait UpdateHandlerImpl {
     fn try_list_splice(
         &mut self,
         _path: Vec<ValueKey>,
-        source_id: TransceiverId,
+        _source_id: TransceiverId,
         _data: ListSpliceUpdateData,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         Err(UpdateError::InvalidUpdate)
@@ -226,7 +226,7 @@ pub trait UpdateHandlerImpl {
     fn try_increment(
         &mut self,
         _path: Vec<ValueKey>,
-        source_id: TransceiverId,
+        _source_id: TransceiverId,
         _data: IncrementUpdateData,
     ) -> Result<(), UpdateError> {
         Err(UpdateError::InvalidUpdate)
@@ -234,7 +234,7 @@ pub trait UpdateHandlerImpl {
     fn try_decrement(
         &mut self,
         _path: Vec<ValueKey>,
-        source_id: TransceiverId,
+        _source_id: TransceiverId,
         _data: DecrementUpdateData,
     ) -> Result<(), UpdateError> {
         Err(UpdateError::InvalidUpdate)

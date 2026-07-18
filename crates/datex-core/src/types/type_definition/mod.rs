@@ -114,6 +114,9 @@ impl OperatorHandler for TypeDefinition {
                 tagged_type_definition
                     .get_update_type_for_modification(operator)
             }
+            TypeDefinition::CoreType(core_type) => {
+                core_type.get_update_type_for_modification(operator)
+            }
             // TODO set
             _ => Err(()),
         }

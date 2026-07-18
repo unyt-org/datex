@@ -1,9 +1,12 @@
 use crate::{
+    global::operators::ModificationOperator,
     libs::core::core_lib_id::{
         CoreLibIdIndex, CoreLibIdTrait, TYPE_SPACE_BASE,
         TYPE_VARIANT_SPACE_BASE,
     },
     prelude::*,
+    types::traits::operator_handler::OperatorHandler,
+    value_updates::update_data::UpdateModificationOperator,
     values::core_values::{
         decimal::typed_decimal::DecimalTypeVariant,
         integer::typed_integer::IntegerTypeVariant,
@@ -61,6 +64,35 @@ pub enum CoreLibBaseTypeId {
     Range, // #core.Range
     #[strum(serialize = "Type")]
     Type, // #core.Type
+}
+
+impl OperatorHandler for CoreLibBaseTypeId {
+    fn get_update_type_for_modification(
+        &self,
+        operator: ModificationOperator,
+    ) -> Result<UpdateModificationOperator, ()> {
+        match self {
+            // numeric types support increment and decrement operations
+            CoreLibBaseTypeId::Integer | CoreLibBaseTypeId::Decimal => {
+                match operator {
+                    ModificationOperator::AddAssign => {
+                        Ok(UpdateModificationOperator::Increment)
+                    }
+                    ModificationOperator::SubtractAssign => {
+                        Ok(UpdateModificationOperator::Decrement)
+                    }
+                    _ => Err(()),
+                }
+            }
+            CoreLibBaseTypeId::List => match operator {
+                ModificationOperator::AddAssign => {
+                    Ok(UpdateModificationOperator::AppendEntry)
+                }
+                _ => Err(()),
+            },
+            _ => Err(()),
+        }
+    }
 }
 
 impl CoreLibBaseTypeId {
@@ -204,6 +236,25 @@ pub enum CoreLibTypeId {
     Base(CoreLibBaseTypeId),
     Variant(CoreLibVariantTypeId),
 }
+impl CoreLibTypeId {
+    pub fn base_type_id(&self) -> CoreLibBaseTypeId {
+        match self {
+            CoreLibTypeId::Base(base_id) => *base_id,
+            CoreLibTypeId::Variant(variant_id) => variant_id.base_type_id(),
+        }
+    }
+}
+
+impl OperatorHandler for CoreLibTypeId {
+    fn get_update_type_for_modification(
+        &self,
+        operator: ModificationOperator,
+    ) -> Result<UpdateModificationOperator, ()> {
+        self.base_type_id()
+            .get_update_type_for_modification(operator)
+    }
+}
+
 use binrw::io::{Read, Seek, Write};
 impl BinWrite for CoreLibTypeId {
     type Args<'a> = ();

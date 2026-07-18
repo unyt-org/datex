@@ -836,9 +836,6 @@ impl ComHub {
                     "Socket already registered for endpoint {sender}",
                 );
             }
-            Err(error) => {
-                core::panic!("Failed to register socket endpoint {sender}: {error:?}");
-            },
             Ok(_) => { }
         }
     }

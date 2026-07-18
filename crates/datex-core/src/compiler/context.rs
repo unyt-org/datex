@@ -28,25 +28,7 @@ pub struct CompilationContext<'a> {
 }
 
 impl<'a> CompilationContext<'a> {
-    const MAX_INT_32: i64 = 2_147_483_647;
-    const MIN_INT_32: i64 = -2_147_483_648;
-
-    const MAX_INT_8: i64 = 127;
-    const MIN_INT_8: i64 = -128;
-
-    const MAX_INT_16: i64 = 32_767;
-    const MIN_INT_16: i64 = -32_768;
-
-    const MAX_UINT_16: i64 = 65_535;
-
-    const INT_8_BYTES: u8 = 1;
-    const INT_16_BYTES: u8 = 2;
     const INT_32_BYTES: u8 = 4;
-    const INT_64_BYTES: u8 = 8;
-    const INT_128_BYTES: u8 = 16;
-
-    const FLOAT_32_BYTES: u8 = 4;
-    const FLOAT_64_BYTES: u8 = 8;
 
     pub fn new(
         buffer: Vec<u8>,

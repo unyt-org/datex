@@ -86,10 +86,10 @@ fn append_update_operation<T: BufferProvider + ValueVisitor>(
             append_delete_entry(context, data)
         }
         UpdateOperation::ListSplice(data) => append_list_splice(context, data),
-        UpdateOperation::Increment(data) => {
+        UpdateOperation::Increment(_data) => {
             todo!()
         }
-        UpdateOperation::Decrement(data) => {
+        UpdateOperation::Decrement(_data) => {
             todo!()
         }
     }

@@ -2,7 +2,7 @@ use crate::{
     core_compiler::core_compilation_context::ByteCursor,
     global::protocol_structures::type_instructions::TypeInstruction,
 };
-use binrw::{BinWrite, io::Write};
+use binrw::BinWrite;
 
 pub mod type_to_instructions;
 

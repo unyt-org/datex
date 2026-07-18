@@ -185,6 +185,7 @@ mod tests {
         );
     }
 
+    #[test]
     fn parse_statements_with_multiple_semicolons() {
         let expr = parse("(;;true;;; false;; ; null;)");
         assert_eq!(

@@ -556,7 +556,7 @@ mod tests {
         let mut section = incoming_sections_receiver.next().await.unwrap();
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -578,7 +578,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -655,7 +655,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -779,7 +779,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -799,7 +799,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -822,7 +822,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -843,7 +843,7 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                Some(blocks),
+                Some(_),
                 incoming_context_section_id,
             )) => {
                 // section must match
@@ -862,7 +862,7 @@ mod tests {
     #[timeout(2000)]
     #[cfg(feature = "std")]
     async fn await_response_block() {
-        let (incoming_sections_sender, mut incoming_sections_receiver) =
+        let (incoming_sections_sender, _incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
         let block_handler = BlockHandler::init(incoming_sections_sender);

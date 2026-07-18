@@ -1514,7 +1514,10 @@ fn compile_text_property_access(
     // append key length as u8
     append_u8(compilation_context.cursor(), key.len() as u8);
     // append key bytes
-    compilation_context.cursor().write_all(key.as_bytes());
+    compilation_context
+        .cursor()
+        .write_all(key.as_bytes())
+        .expect("Failed to write key bytes to compilation context cursor");
 }
 
 fn compile_index_property_access(
@@ -1655,7 +1658,7 @@ pub mod tests {
         result
     }
 
-    fn get_compilation_context(script: &str) -> CompilationContext {
+    fn get_compilation_context(script: &'_ str) -> CompilationContext<'_> {
         let mut options = CompileOptions::default();
         let ast = parse_datex_script_to_rich_ast_simple_error(
             script,

@@ -316,7 +316,6 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let lookup = &PointerAvailabilityLookup::default();
         let mut tracking = tracking();
 
         let index = tracking.register_shared_value(container.clone());

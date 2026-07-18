@@ -1110,10 +1110,6 @@ mod tests {
         );
     }
 
-    fn parse_unwrap(src: &str) -> DatexExpression {
-        Parser::parse_with_default_options(src).unwrap()
-    }
-
     fn parse_and_precompile_spanned_result(
         src: &str,
     ) -> Result<RichAst, SpannedCompilerError> {

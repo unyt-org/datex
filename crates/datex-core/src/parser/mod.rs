@@ -14,7 +14,6 @@ use crate::{
     },
 };
 use core::ops::Range;
-use itertools::Itertools;
 use parser_result::ParserResult;
 // TODO #658: move to different module
 

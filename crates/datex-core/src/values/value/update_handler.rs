@@ -18,8 +18,17 @@ impl UpdateHandler for Value {
                     UpdateData::new_with_path(operation, path),
                 );
                 match &mut self.inner {
+                    // collections
                     CoreValue::Map(map) => map.try_update(update),
                     CoreValue::List(list) => list.try_update(update),
+                    CoreValue::Integer(integer) => integer.try_update(update),
+                    CoreValue::Decimal(decimal) => decimal.try_update(update),
+                    CoreValue::TypedInteger(integer) => {
+                        integer.try_update(update)
+                    }
+                    CoreValue::TypedDecimal(decimal) => {
+                        decimal.try_update(update)
+                    }
                     _ => Err(UpdateError::InvalidUpdate),
                 }
             }

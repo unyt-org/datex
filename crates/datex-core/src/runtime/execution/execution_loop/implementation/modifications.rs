@@ -31,7 +31,7 @@ pub fn try_modify_value_container(
         source_id,
         UpdateData::new_with_path(
             try_create_update_operation_for_modification(
-                operator, &target, value,
+                operator, target, value,
             )?,
             path,
         ),
@@ -56,7 +56,7 @@ fn try_create_update_operation_for_modification(
             Ok(UpdateOperation::append_entry(value))
         }
         UpdateModificationOperator::Increment => {
-            Ok(UpdateOperation::replace(value))
+            Ok(UpdateOperation::increment(value))
         }
         UpdateModificationOperator::Decrement => {
             Ok(UpdateOperation::decrement(value))

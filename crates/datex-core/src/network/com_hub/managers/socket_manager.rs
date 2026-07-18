@@ -10,7 +10,7 @@ use crate::{
 use core::cell::{Ref, RefCell, RefMut};
 use datex_macros_internal::Datex;
 use futures::channel::oneshot;
-use futures_util::{FutureExt, future::join_all};
+use futures_util::future::join_all;
 use itertools::Itertools;
 use log::{debug, error, info};
 

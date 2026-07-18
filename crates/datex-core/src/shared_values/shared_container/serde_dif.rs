@@ -241,9 +241,7 @@ mod tests {
 
         assert_matches!(
             cache.try_take_owned_shared_container(&ptr_address),
-            Err(CacheValueRetrievalError::ValueNotFoundInCache(
-                ValueNotFoundInCacheError
-            ))
+            Err(CacheValueRetrievalError::ValueNotFoundInCache(_))
         );
     }
 }

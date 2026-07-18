@@ -126,7 +126,7 @@ impl SharedContainer {
     }
 
     /// Gets the current actual [TypeDefinition] of the collapsed inner [Value]
-    pub fn actual_type<'a>(&'a self) -> Sheep<'_, TypeDefinition> {
+    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
         Sheep::Owned(
             self.with_collapsed_value(|value| value.actual_type().into_owned()),
         )
