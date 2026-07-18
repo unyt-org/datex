@@ -136,6 +136,9 @@ impl Update {
     pub fn operation(&self) -> &UpdateOperation {
         self.data.operation()
     }
+    pub fn into_operation(self) -> UpdateOperation {
+        self.data.into_operation()
+    }
     pub fn into_parts(self) -> (TransceiverId, UpdateOperation, Vec<ValueKey>) {
         let (operation, path) = self.data.into_parts();
         (self.source_id, operation, path)
@@ -177,5 +180,8 @@ impl UpdateData {
 
     pub fn operation(&self) -> &UpdateOperation {
         &self.operation
+    }
+    pub fn into_operation(self) -> UpdateOperation {
+        self.operation
     }
 }

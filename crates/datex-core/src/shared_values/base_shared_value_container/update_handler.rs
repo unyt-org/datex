@@ -3,13 +3,19 @@ use crate::{
     shared_values::base_shared_value_container::{
         BaseSharedValueContainer, observers::TransceiverId,
     },
+    types::{
+        error::TypeError,
+        traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+        r#type::Type,
+    },
     value_updates::{
+        UpdateReturn,
         errors::UpdateError,
         update_data::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData, Update,
+            ReplaceUpdateData, SetEntryUpdateData, Update, UpdateOperation,
         },
-        update_handler::{UpdateHandler, UpdateResult},
+        update_handler::{UpdateHandler, UpdateResult, into_update_result},
     },
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
@@ -17,6 +23,28 @@ use crate::{
 impl UpdateHandler for BaseSharedValueContainer {
     fn try_handle_update(&mut self, update: Update) -> UpdateResult {
         self.assert_can_mutate()?;
+
+        // Validate while borrowing `update`.
+        if let UpdateOperation::Replace(replace) = update.operation() {
+            if !self
+                .allowed_type()
+                .is_superset_of(replace.value.actual_type().as_ref())
+            {
+                // FIXE type check
+
+                // return Err(UpdateError::type_error(
+                //     TypeError::InvalidSharedReference,
+                // ));
+            }
+            let UpdateOperation::Replace(box replace) = update.into_operation()
+            else {
+                unreachable!("operation was already confirmed as Replace");
+            };
+            let previous =
+                core::mem::replace(self.value_container_mut(), replace.value);
+            return Ok(UpdateReturn::SingleValue(previous));
+        }
+
         self.value_container.try_handle_update(update)
     }
 }

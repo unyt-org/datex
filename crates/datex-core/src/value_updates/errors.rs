@@ -15,6 +15,9 @@ impl UpdateError {
     pub fn access_error<T: Into<AccessError>>(err: T) -> Self {
         UpdateError::AccessError(Box::new(err.into()))
     }
+    pub fn type_error<T: Into<TypeError>>(err: T) -> Self {
+        UpdateError::TypeError(Box::new(err.into()))
+    }
 }
 
 impl From<AccessError> for UpdateError {
