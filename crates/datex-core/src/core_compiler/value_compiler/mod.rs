@@ -708,20 +708,18 @@ mod tests {
 
     #[test]
     fn compile_tagged_empty_value() {
-        let value = Value {
-            inner: CoreValue::Null,
-            custom_type: Some(TypeDefinition::TaggedType(
-                TaggedTypeDefinition {
-                    ty: Some(Box::new(Type::Alias(
-                        TypeDefinition::CoreType(CoreLibTypeId::Base(
-                            CoreLibBaseTypeId::Unit,
-                        ))
-                        .into(),
-                    ))),
-                    tag: "Example".to_string(),
-                },
-            )),
-        };
+        let value = Value::new(
+            CoreValue::Null,
+            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                ty: Some(Box::new(Type::Alias(
+                    TypeDefinition::CoreType(CoreLibTypeId::Base(
+                        CoreLibBaseTypeId::Unit,
+                    ))
+                    .into(),
+                ))),
+                tag: "Example".to_string(),
+            })),
+        );
 
         compile_value_assert_instructions(
             value,
@@ -734,15 +732,13 @@ mod tests {
 
     #[test]
     fn compile_tagged_value() {
-        let value = Value {
-            inner: CoreValue::Null,
-            custom_type: Some(TypeDefinition::TaggedType(
-                TaggedTypeDefinition {
-                    ty: None,
-                    tag: "Example".to_string(),
-                },
-            )),
-        };
+        let value = Value::new(
+            CoreValue::Null,
+            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                ty: None,
+                tag: "Example".to_string(),
+            })),
+        );
 
         compile_value_assert_instructions(
             value,

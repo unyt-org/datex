@@ -1,8 +1,8 @@
 //! This module contains the implementation of operations that can be performed on [ValueContainer]s
 use crate::{
     global::operators::{
-        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-        ComparisonOperator, LogicalUnaryOperator, SharedValueUnaryOperator,
+        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
+        LogicalUnaryOperator, ModificationOperator, SharedValueUnaryOperator,
         UnaryOperator,
         binary::{
             ArithmeticOperator, BitwiseOperator, LogicalOperator, RangeOperator,
@@ -130,21 +130,6 @@ pub fn handle_comparison_operation(
             let val = v_type.satisfies_value_container(lhs);
             Ok(ValueContainer::from(val))
         }
-        _ => {
-            unreachable!("Instruction {:?} is not a valid operation", operator);
-        }
-    }
-}
-
-/// Handles an assignment operation between two [ValueContainer]s based on the specified [AssignmentOperator].
-pub fn handle_assignment_operation(
-    operator: AssignmentOperator,
-    lhs: &ValueContainer,
-    rhs: ValueContainer,
-) -> Result<ValueContainer, ExecutionError> {
-    match operator {
-        AssignmentOperator::AddAssign => Ok((lhs + &rhs)?),
-        AssignmentOperator::SubtractAssign => Ok((lhs - &rhs)?),
         _ => {
             unreachable!("Instruction {:?} is not a valid operation", operator);
         }

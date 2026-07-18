@@ -1,87 +1,28 @@
 use crate::{
-    prelude::*,
-    shared_values::base_shared_value_container::observers::TransceiverId,
     value_updates::{
         errors::UpdateError,
-        update_data::{
-            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            SetEntryUpdateData,
-        },
-        update_handler::UpdateHandler,
+        update_data::{Update, UpdateData, UpdateOperation},
+        update_handler::{UpdateHandler, UpdateHandlerImpl, UpdateResult},
     },
-    values::{
-        core_value::CoreValue, value::Value, value_container::ValueContainer,
-    },
+    values::{core_value::CoreValue, value::Value},
 };
 
 impl UpdateHandler for Value {
-    fn try_set_entry(
-        &mut self,
-        data: SetEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => map.try_set_entry(data, source_id),
-            CoreValue::List(ref mut list) => {
-                list.try_set_entry(data, source_id)
+    fn try_handle_update(&mut self, update: Update) -> UpdateResult {
+        let (source_id, operation, path) = update.into_parts();
+        match operation {
+            UpdateOperation::Replace(_) => Err(UpdateError::InvalidUpdate),
+            _ => {
+                let update = Update::new(
+                    source_id,
+                    UpdateData::new_with_path(operation, path),
+                );
+                match &mut self.inner {
+                    CoreValue::Map(map) => map.try_update(update),
+                    CoreValue::List(list) => list.try_update(update),
+                    _ => Err(UpdateError::InvalidUpdate),
+                }
             }
-            _ => Err(UpdateError::InvalidUpdate),
-        }
-    }
-
-    fn try_delete_entry(
-        &mut self,
-        data: DeleteEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                map.try_delete_entry(data, source_id)
-            }
-            CoreValue::List(ref mut list) => {
-                list.try_delete_entry(data, source_id)
-            }
-            _ => Err(UpdateError::InvalidUpdate),
-        }
-    }
-
-    fn try_append_entry(
-        &mut self,
-        data: AppendEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                map.try_append_entry(data, source_id)
-            }
-            CoreValue::List(ref mut list) => {
-                list.try_append_entry(data, source_id)
-            }
-            _ => Err(UpdateError::InvalidUpdate),
-        }
-    }
-
-    fn try_clear(
-        &mut self,
-        source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => map.try_clear(source_id),
-            CoreValue::List(ref mut list) => list.try_clear(source_id),
-            _ => Err(UpdateError::InvalidUpdate),
-        }
-    }
-
-    fn try_list_splice(
-        &mut self,
-        _data: ListSpliceUpdateData,
-        _source_id: TransceiverId,
-    ) -> Result<Vec<ValueContainer>, UpdateError> {
-        match self.inner {
-            CoreValue::List(ref mut list) => {
-                list.try_list_splice(_data, _source_id)
-            }
-            _ => Err(UpdateError::InvalidUpdate),
         }
     }
 }

@@ -1,11 +1,15 @@
 use core::fmt::Display;
 
-use serde::{Serialize, de::DeserializeSeed, ser::SerializeMap};
+use serde::{
+    Serialize,
+    de::DeserializeSeed,
+    ser::{SerializeMap, SerializeSeq},
+};
 
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    utils::serde_serialize_seed::SerializeSeed,
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
@@ -49,6 +53,25 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
     }
 }
 
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, &'ctx [ValueKey]> {
+    type Value = &'ctx [ValueKey];
+
+    fn serialize<S: serde::Serializer>(
+        &mut self,
+        value: &Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let mut seq_serializer = serializer.serialize_seq(Some(value.len()))?;
+        for key in *value {
+            seq_serializer.serialize_element(&ValueWithSeed::new(
+                key,
+                self.cast::<ValueKey>(),
+            ))?;
+        }
+        seq_serializer.end()
+    }
+}
+
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueKey> {
     type Value = ValueKey;
 
@@ -59,6 +82,37 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueKey> {
         deserializer.deserialize_any(self)
     }
 }
+
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Vec<ValueKey>> {
+    type Value = Vec<ValueKey>;
+
+    fn deserialize<D: serde::Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<Self::Value, D::Error> {
+        deserializer.deserialize_any(self)
+    }
+}
+
+impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, Vec<ValueKey>> {
+    type Value = Vec<ValueKey>;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "a sequence of value keys")
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(
+        mut self,
+        mut seq: A,
+    ) -> Result<Self::Value, A::Error> {
+        let mut keys = Vec::new();
+        while let Some(key) = seq.next_element_seed(self.cast::<ValueKey>())? {
+            keys.push(key);
+        }
+        Ok(keys)
+    }
+}
+
 impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, ValueKey> {
     type Value = ValueKey;
 

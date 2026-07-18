@@ -1,51 +1,55 @@
+use crate::values::value_container::ValueContainer;
+use core::fmt;
+
 use crate::{
     dif::serde_context::SerdeContext,
     utils::serde_serialize_seed::ValueWithSeed,
-    values::value_container::ValueContainer,
 };
 use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
 #[derive(Clone, Debug, PartialEq, Hash)]
-pub struct ReplaceUpdateData {
+pub struct DecrementUpdateData {
     pub value: ValueContainer,
 }
-impl ReplaceUpdateData {
+impl DecrementUpdateData {
     pub fn new(value: ValueContainer) -> Self {
-        ReplaceUpdateData { value }
+        DecrementUpdateData { value }
     }
 }
 
-impl<'ctx> SerdeContext<'ctx, ReplaceUpdateData> {
+impl<'ctx> SerdeContext<'ctx, DecrementUpdateData> {
     pub fn serialize_fields<S: SerializeSeq>(
         &mut self,
-        value: &ReplaceUpdateData,
+        value: &DecrementUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
         seq.serialize_element(&ValueWithSeed::new(
             &value.value,
             self.cast::<ValueContainer>(),
         ))?;
-
         Ok(())
     }
 }
-impl<'de> Visitor<'de> for SerdeContext<'_, ReplaceUpdateData> {
-    type Value = ReplaceUpdateData;
+impl<'de> Visitor<'de> for SerdeContext<'_, DecrementUpdateData> {
+    type Value = DecrementUpdateData;
 
-    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "a replace update data sequence with 1 element")
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "a delete entry update data sequence with 1 element (key)"
+        )
     }
 
     fn visit_seq<A: serde::de::SeqAccess<'de>>(
         mut self,
         mut seq: A,
     ) -> Result<Self::Value, A::Error> {
-        let value = seq
+        let key = seq
             .next_element_seed(self.cast::<ValueContainer>())?
             .ok_or_else(|| de::Error::invalid_length(0, &self))?;
 
-        Ok(ReplaceUpdateData { value })
+        Ok(DecrementUpdateData { value: key })
     }
 }

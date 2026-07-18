@@ -1,7 +1,7 @@
 use crate::{
     core_compiler::value_compiler::append_instruction,
     global::{
-        operators::AssignmentOperator,
+        operators::ModificationOperator,
         protocol_structures::{
             injected_values::InjectedValueDeclaration,
             instructions::Instruction,
@@ -360,14 +360,14 @@ pub struct SharedRefWithValue {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct ModifySharedContainerValue {
-    pub operator: AssignmentOperator,
+    pub operator: ModificationOperator,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct ModifyStackValue {
     pub index: StackIndex,
-    pub operator: AssignmentOperator,
+    pub operator: ModificationOperator,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

@@ -14,6 +14,11 @@ pub struct SetEntryUpdateData {
     pub key: ValueKey,
     pub value: ValueContainer,
 }
+impl SetEntryUpdateData {
+    pub fn new(key: ValueKey, value: ValueContainer) -> Self {
+        SetEntryUpdateData { key, value }
+    }
+}
 
 impl<'ctx> SerdeContext<'ctx, SetEntryUpdateData> {
     pub fn serialize_fields<S: SerializeSeq>(

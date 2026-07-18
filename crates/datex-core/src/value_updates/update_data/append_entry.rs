@@ -13,6 +13,11 @@ use serde::{
 pub struct AppendEntryUpdateData {
     pub value: ValueContainer,
 }
+impl AppendEntryUpdateData {
+    pub fn new(value: ValueContainer) -> Self {
+        AppendEntryUpdateData { value }
+    }
+}
 
 impl<'ctx> SerdeContext<'ctx, AppendEntryUpdateData> {
     pub fn serialize_fields<S: SerializeSeq>(

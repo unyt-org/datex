@@ -12,10 +12,7 @@ use crate::{
         },
         traits::_ExposeRcInternal,
     },
-    traits::{
-        apply::Apply, identity::Identity, structural_eq::StructuralEq,
-        value_eq::ValueEq,
-    },
+    utils::sheep::Sheep,
     values::{
         value::Value,
         value_container::{ValueContainer, value_key::BorrowedValueKey},
@@ -38,11 +35,9 @@ use alloc::rc::Rc;
 use core::{
     cell::RefCell,
     fmt::{Debug, Display, Formatter},
-    hash::{Hash, Hasher},
     mem,
     ops::Deref,
 };
-use serde::Serializer;
 
 pub mod apply;
 pub mod serde_dif;
@@ -131,8 +126,20 @@ impl SharedContainer {
     }
 
     /// Gets the current actual [TypeDefinition] of the collapsed inner [Value]
-    pub fn actual_type(&self) -> TypeDefinition {
-        self.with_collapsed_value(|value| value.actual_type())
+    pub fn actual_type<'a>(&'a self) -> Sheep<'_, TypeDefinition> {
+        Sheep::Owned(
+            self.with_collapsed_value(|value| value.actual_type().into_owned()),
+        )
+    }
+    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
+    pub fn with_actual_type<R, F>(&self, f: F) -> R
+    where
+        F: for<'b> FnOnce(&'b TypeDefinition) -> R,
+    {
+        self.with_collapsed_value(|value| {
+            let actual_type = value.actual_type();
+            f(actual_type.as_ref())
+        })
     }
 
     /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container

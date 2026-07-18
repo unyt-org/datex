@@ -424,13 +424,11 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                     let map = Map::StructuralWithStringKeys(vec![
                         #(#into_datex_fields),*
                     ]);
-                    Value {
-                        inner: CoreValue::Map(map),
-                        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    Value::new(CoreValue::Map(map), Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                             tag: #variant_name.to_string(),
                             ty: None,
-                        })),
-                    }
+                        }))
+                    )
                 }
             },
             FieldsType::Transparent => {
@@ -439,14 +437,11 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                     #ident::#variant_ident {..} => {
                         let value: #helper_struct_ident = value.into();
                         let container = #into_field;
-                        if let ValueContainer::Local(Value {custom_type: None, inner}) = container {
-                            Value {
-                                inner,
-                                custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                                    tag: #variant_name.to_string(),
-                                    ty: None,
-                                })),
-                            }
+                        if let ValueContainer::Local(value) = container && value.custom_type().is_none() {
+                            Value::new(value.into_inner(), Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                                tag: #variant_name.to_string(),
+                                ty: None,
+                            })))
                         }
                         else {
                             unreachable!("Expected ValueContainer::Local without custom type");
@@ -461,25 +456,19 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                         let list = List::from(vec![
                             #(#into_datex_fields),*
                         ]);
-                        Value {
-                            inner: CoreValue::List(list),
-                            custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                                tag: #variant_name.to_string(),
-                                ty: None,
-                            })),
-                        }
+                        Value::new(CoreValue::List(list), Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                            tag: #variant_name.to_string(),
+                            ty: None,
+                        })))
                     }
                 }
             }
             FieldsType::Unit => quote! {
                 #ident::#variant_ident => {
-                    Value {
-                        inner: CoreValue::Null,
-                        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                            tag: #variant_name.to_string(),
-                            ty: None,
-                        })),
-                    }
+                    Value::new(CoreValue::Null, Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                        tag: #variant_name.to_string(),
+                        ty: None,
+                    })))
                 }
             },
         };

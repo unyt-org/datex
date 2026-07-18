@@ -2,7 +2,10 @@ use crate::{
     prelude::*,
     values::{
         core_values::map::Map,
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
+        value_container::{
+            ValueContainer,
+            value_key::{BorrowedValueKey, ValueKey},
+        },
     },
 };
 
@@ -14,16 +17,17 @@ use crate::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
             SetEntryUpdateData,
         },
-        update_handler::UpdateHandler,
+        update_handler::UpdateHandlerImpl,
     },
 };
 use core::result::Result;
 
-impl UpdateHandler for Map {
+impl UpdateHandlerImpl for Map {
     fn try_set_entry(
         &mut self,
-        data: SetEntryUpdateData,
+        path: Vec<ValueKey>,
         _source_id: TransceiverId,
+        data: SetEntryUpdateData,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key);
         self.try_set(key, data.value)
@@ -32,8 +36,9 @@ impl UpdateHandler for Map {
 
     fn try_delete_entry(
         &mut self,
-        data: DeleteEntryUpdateData,
+        path: Vec<ValueKey>,
         _source_id: TransceiverId,
+        data: DeleteEntryUpdateData,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key);
         self.try_delete(key)
@@ -43,14 +48,16 @@ impl UpdateHandler for Map {
 
     fn try_append_entry(
         &mut self,
-        _data: AppendEntryUpdateData,
+        path: Vec<ValueKey>,
         _source_id: TransceiverId,
+        _data: AppendEntryUpdateData,
     ) -> Result<(), UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
 
     fn try_clear(
         &mut self,
+        path: Vec<ValueKey>,
         _source_id: TransceiverId,
     ) -> Result<ValueContainer, UpdateError> {
         self.try_clear_inner().map_err(UpdateError::access_error)
@@ -58,8 +65,9 @@ impl UpdateHandler for Map {
 
     fn try_list_splice(
         &mut self,
-        _data: ListSpliceUpdateData,
+        path: Vec<ValueKey>,
         _source_id: TransceiverId,
+        _data: ListSpliceUpdateData,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }

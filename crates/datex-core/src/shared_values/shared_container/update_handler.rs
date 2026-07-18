@@ -6,16 +6,14 @@ use crate::{
     value_updates::{
         UpdateReturn,
         errors::UpdateError,
-        update_data::{SetEntryUpdateData, Update, UpdateData},
+        update_data::{SetEntryUpdateData, Update, UpdateOperation},
         update_handler::{UpdateHandler, UpdateResult},
     },
-    values::value_container::ValueContainer,
+    values::value_container::{ValueContainer, value_key::ValueKey},
 };
 
-/// Update implementation
-/// Note: does not implement [UpdateHandler] directly, since we don't need a mutable reference to self
-impl SharedContainer {
-    pub fn update(&self, update: Update) -> UpdateResult {
+impl UpdateHandler for SharedContainer {
+    fn try_handle_update(&mut self, update: Update) -> UpdateResult {
         if let SharedContainer::Referenced(referenced) = self
             && !referenced.can_mutate()
         {
@@ -24,25 +22,13 @@ impl SharedContainer {
 
         let observers = self
             .base_shared_container()
-            .get_current_observers(&update.source_id);
+            .get_current_observers(update.source_id());
         let update_clone = update.clone();
-        let result = self.base_shared_container_mut().handle_update(update)?;
+        let result =
+            self.base_shared_container_mut().try_handle_update(update)?;
         for observer in observers {
             observer(&update_clone);
         }
         Ok(result)
-    }
-
-    // TODO: better way than duplicate implementation of those methods?
-    pub fn try_set_entry(
-        &self,
-        data: SetEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
-        match self.update(UpdateData::SetEntry(data).with_source(source_id))? {
-            UpdateReturn::SingleValue(value) => Ok(Some(value)),
-            UpdateReturn::None => Ok(None),
-            _ => unreachable!(),
-        }
     }
 }

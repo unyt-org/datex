@@ -10,13 +10,6 @@ use crate::{
     values::{core_values::map::Map, value_container::ValueContainer},
 };
 
-pub fn get_stack_value(
-    runtime_state: &RuntimeExecutionState,
-    index: StackIndex,
-) -> Result<&ValueContainer, ExecutionError> {
-    runtime_state.stack.get_stack_value(index)
-}
-
 pub fn get_root_property(
     runtime_state: &RuntimeExecutionState,
     root_property: RootProperty,

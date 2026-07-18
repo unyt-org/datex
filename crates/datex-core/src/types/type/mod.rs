@@ -4,6 +4,7 @@
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
+    global::operators::ModificationOperator,
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -15,12 +16,14 @@ use crate::{
         literal_type_definition::LiteralTypeDefinition,
         nominal_type_definition::NominalTypeDefinition,
         shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+        traits::operator_handler::OperatorHandler,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
             LocalMutability, LocalOwnership, TypeDefinitionWithMetadata,
             TypeMetadata,
         },
     },
+    value_updates::update_data::UpdateModificationOperator,
     values::{core_value::CoreValue, value_container::ValueContainer},
 };
 use core::{fmt::Display, hash::Hash, ops::Deref};
@@ -34,6 +37,17 @@ pub mod type_match;
 pub enum Type {
     Alias(TypeDefinitionWithMetadata),
     Nominal(SharedContainerContainingNominalType),
+}
+
+impl OperatorHandler for Type {
+    fn get_update_type_for_modification(
+        &self,
+        operator: ModificationOperator,
+    ) -> Result<UpdateModificationOperator, ()> {
+        self.with_collapsed_type_definition(|ty| {
+            ty.get_update_type_for_modification(operator)
+        })
+    }
 }
 
 impl Type {

@@ -33,3 +33,44 @@ impl From<Option<ValueContainer>> for UpdateReturn {
         }
     }
 }
+impl TryFrom<UpdateReturn> for Option<ValueContainer> {
+    type Error = ();
+
+    fn try_from(value: UpdateReturn) -> Result<Self, Self::Error> {
+        match value {
+            UpdateReturn::None => Ok(None),
+            UpdateReturn::SingleValue(value) => Ok(Some(value)),
+            UpdateReturn::MultipleValues(_) => Err(()),
+        }
+    }
+}
+impl TryFrom<UpdateReturn> for Vec<ValueContainer> {
+    type Error = ();
+
+    fn try_from(value: UpdateReturn) -> Result<Self, Self::Error> {
+        match value {
+            UpdateReturn::MultipleValues(values) => Ok(values),
+            _ => Err(()),
+        }
+    }
+}
+impl TryFrom<UpdateReturn> for ValueContainer {
+    type Error = ();
+
+    fn try_from(value: UpdateReturn) -> Result<Self, Self::Error> {
+        match value {
+            UpdateReturn::SingleValue(value) => Ok(value),
+            _ => Err(()),
+        }
+    }
+}
+impl TryFrom<UpdateReturn> for () {
+    type Error = ();
+
+    fn try_from(value: UpdateReturn) -> Result<Self, Self::Error> {
+        match value {
+            UpdateReturn::None => Ok(()),
+            _ => Err(()),
+        }
+    }
+}

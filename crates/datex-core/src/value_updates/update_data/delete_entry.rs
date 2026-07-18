@@ -13,6 +13,11 @@ use serde::{
 pub struct DeleteEntryUpdateData {
     pub key: ValueKey,
 }
+impl DeleteEntryUpdateData {
+    pub fn new(key: ValueKey) -> Self {
+        DeleteEntryUpdateData { key }
+    }
+}
 
 impl<'ctx> SerdeContext<'ctx, DeleteEntryUpdateData> {
     pub fn serialize_fields<S: SerializeSeq>(

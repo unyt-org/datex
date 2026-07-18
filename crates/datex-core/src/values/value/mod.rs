@@ -2,16 +2,23 @@
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
     prelude::*,
+    shared_values::base_shared_value_container::observers::{
+        LocalObserverCallback, ObserverCallback,
+    },
     types::type_definition::{
         TypeDefinition, callable::CallableTypeDefinition,
     },
+    utils::sheep::Sheep,
     values::{
         core_value::CoreValue,
         core_values::{
             callable::{Callable, CallableBody},
             integer::typed_integer::TypedInteger,
         },
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
+        value_container::{
+            ValueContainer,
+            value_key::{BorrowedValueKey, ValueKey},
+        },
     },
 };
 pub mod apply;
@@ -26,15 +33,45 @@ use crate::{
     shared_values::errors::AccessError, values::core_values::endpoint::Endpoint,
 };
 use core::{
-    fmt::{Display, Formatter},
+    fmt::{Debug, Display, Formatter},
     result::Result,
 };
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+/// The local observer callback hold the callback and the path of the value if referenced
+/// by a shared container
+pub struct LocalObserveData {
+    pub callback: LocalObserverCallback,
+    pub path: Vec<ValueKey>,
+}
+impl Debug for LocalObserveData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("LocalObserveData")
+            .field("callback", &"<ObserverCallback>")
+            .field("path", &self.path)
+            .finish()
+    }
+}
+
+#[derive(Debug)]
 pub struct Value {
+    /// The inner representation of the value, which is a [CoreValue].
     pub inner: CoreValue,
-    // actual type of the value - if [None], use default type for given value
+    /// actual type of the value - if [None], use default type for given value
     pub custom_type: Option<TypeDefinition>,
+    /// Optional observer callback for local values. This is used to notify observers of changes to the value.
+    pub observers: Option<LocalObserveData>,
+}
+
+/// The Value clone does copy the value and custom type,
+/// but removed the observer
+impl Clone for Value {
+    fn clone(&self) -> Self {
+        Value {
+            inner: self.inner.clone(),
+            custom_type: self.custom_type.clone(),
+            observers: None,
+        }
+    }
 }
 
 impl<T: Into<CoreValue>> From<T> for Value {
@@ -43,6 +80,7 @@ impl<T: Into<CoreValue>> From<T> for Value {
         Value {
             inner,
             custom_type: None,
+            observers: None,
         }
     }
 }
@@ -50,6 +88,19 @@ impl<T: Into<CoreValue>> From<T> for Value {
 impl Value {
     pub fn null() -> Self {
         CoreValue::Null.into()
+    }
+    pub fn new(inner: CoreValue, custom_type: Option<TypeDefinition>) -> Self {
+        Value {
+            inner,
+            custom_type,
+            observers: None,
+        }
+    }
+    pub fn custom_type(&self) -> Option<&TypeDefinition> {
+        self.custom_type.as_ref()
+    }
+    pub fn into_inner(self) -> CoreValue {
+        self.inner
     }
 }
 
@@ -68,6 +119,7 @@ impl Value {
                 creator,
             }),
             custom_type: Some(TypeDefinition::callable(signature)),
+            observers: None,
         }
     }
 
@@ -136,10 +188,12 @@ impl Value {
     }
 
     /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type(&self) -> TypeDefinition {
+    pub fn actual_type<'a>(&'a self) -> Sheep<'a, TypeDefinition> {
         match &self.custom_type {
-            Some(actual_type) => actual_type.clone(),
-            None => TypeDefinition::CoreType(self.default_core_type()),
+            Some(actual_type) => Sheep::Borrowed(actual_type),
+            None => {
+                Sheep::Owned(TypeDefinition::CoreType(self.default_core_type()))
+            }
         }
     }
 
@@ -493,6 +547,7 @@ mod tests {
             custom_type: Some(TypeDefinition::CoreType(
                 CoreLibBaseTypeId::Integer.into(),
             )),
+            observers: None,
         };
 
         assert!(val.has_default_type());
@@ -505,6 +560,7 @@ mod tests {
                     vec![],
                 ),
             )),
+            observers: None,
         };
 
         assert!(!val.has_default_type());

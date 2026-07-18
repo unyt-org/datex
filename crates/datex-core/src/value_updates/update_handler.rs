@@ -5,11 +5,12 @@ use crate::{
         UpdateReturn,
         errors::UpdateError,
         update_data::{
-            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData,
+            AppendEntryUpdateData, DecrementUpdateData, DeleteEntryUpdateData,
+            IncrementUpdateData, ListSpliceUpdateData, ReplaceUpdateData,
+            SetEntryUpdateData, Update, UpdateData, UpdateOperation,
         },
     },
-    values::value_container::ValueContainer,
+    values::value_container::{ValueContainer, value_key::ValueKey},
 };
 
 pub type UpdateResult = Result<UpdateReturn, UpdateError>;
@@ -25,73 +26,217 @@ pub fn into_update_result<T: Into<UpdateReturn>, E: Into<UpdateError>>(
 }
 
 pub trait UpdateHandler {
-    fn handle_update(&mut self, update: Update) -> UpdateResult {
-        match update.data {
-            UpdateData::AppendEntry(data) => into_update_result(
-                self.try_append_entry(data, update.source_id),
-            ),
-            UpdateData::Clear => {
-                into_update_result(self.try_clear(update.source_id))
-            }
-            UpdateData::Replace(data) => {
-                into_update_result(self.try_replace(data, update.source_id))
-            }
-            UpdateData::SetEntry(data) => {
-                into_update_result(self.try_set_entry(data, update.source_id))
-            }
-            UpdateData::DeleteEntry(data) => into_update_result(
-                self.try_delete_entry(data, update.source_id),
-            ),
-            UpdateData::ListSplice(data) => {
-                into_update_result(self.try_list_splice(data, update.source_id))
-            }
-        }
-    }
-
-    fn try_replace(
-        &mut self,
-        _data: ReplaceUpdateData,
-        _source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
-        unimplemented!()
-    }
+    fn try_handle_update(&mut self, update: Update) -> UpdateResult;
 
     fn try_set_entry(
         &mut self,
-        _data: SetEntryUpdateData,
-        _source_id: TransceiverId,
+        path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        data: SetEntryUpdateData,
     ) -> Result<Option<ValueContainer>, UpdateError> {
-        unimplemented!()
+        Ok(self.try_handle_update(Update::new(
+            source_id,
+            UpdateData::new_with_path(UpdateOperation::SetEntry(Box::new(data)), path),
+        ))?.try_into().expect("UpdateReturn should be convertible into Result<Option<ValueContainer>, UpdateError>"))
     }
 
     fn try_delete_entry(
         &mut self,
-        _data: DeleteEntryUpdateData,
-        _source_id: TransceiverId,
+        path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        data: DeleteEntryUpdateData,
     ) -> Result<Option<ValueContainer>, UpdateError> {
-        unimplemented!()
+        Ok(self.try_handle_update(Update::new(
+            source_id,
+            UpdateData::new_with_path(UpdateOperation::DeleteEntry(Box::new(data)), path),
+        ))?.try_into().expect("UpdateReturn should be convertible into Result<Option<ValueContainer>, UpdateError>"))
     }
 
     fn try_append_entry(
         &mut self,
-        _data: AppendEntryUpdateData,
-        _source_id: TransceiverId,
+        path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        data: AppendEntryUpdateData,
     ) -> Result<(), UpdateError> {
-        unimplemented!()
+        Ok(self.try_handle_update(Update::new(
+            source_id,
+            UpdateData::new_with_path(UpdateOperation::AppendEntry(Box::new(data)), path),
+        ))?
+        .try_into()
+        .expect(
+            "UpdateReturn should be convertible into Result<(), UpdateError>",
+        ))
     }
 
     fn try_clear(
         &mut self,
-        _source_id: TransceiverId,
+        path: Vec<ValueKey>,
+        source_id: TransceiverId,
     ) -> Result<ValueContainer, UpdateError> {
-        unimplemented!()
+        Ok(self.try_handle_update(Update::new(
+            source_id,
+            UpdateData::new_with_path(UpdateOperation::Clear, path),
+        ))?
+        .try_into()
+        .expect(
+            "UpdateReturn should be convertible into Result<ValueContainer, UpdateError>",
+        ))
     }
 
     fn try_list_splice(
         &mut self,
-        _data: ListSpliceUpdateData,
-        _source_id: TransceiverId,
+        path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        data: ListSpliceUpdateData,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
-        unimplemented!()
+        Ok(self.try_handle_update(Update::new(
+            source_id,
+            UpdateData::new_with_path(UpdateOperation::ListSplice(Box::new(data)), path),
+        ))?
+        .try_into()
+        .expect(
+            "UpdateReturn should be convertible into Result<Vec<ValueContainer>, UpdateError>",
+        ))
+    }
+
+    fn try_increment(
+        &mut self,
+        path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        data: IncrementUpdateData,
+    ) -> Result<(), UpdateError> {
+        Ok(self.try_handle_update(Update::new(
+            source_id,
+            UpdateData::new_with_path(UpdateOperation::Increment(Box::new(data)), path),
+        ))?
+        .try_into()
+        .expect(
+            "UpdateReturn should be convertible into Result<(), UpdateError>",
+        ))
+    }
+    fn try_decrement(
+        &mut self,
+        path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        data: DecrementUpdateData,
+    ) -> Result<(), UpdateError> {
+        Ok(self.try_handle_update(Update::new(
+            source_id,
+            UpdateData::new_with_path(UpdateOperation::Decrement(Box::new(data)), path),
+        ))?
+        .try_into()
+        .expect(
+            "UpdateReturn should be convertible into Result<(), UpdateError>",
+        ))
+    }
+    fn try_replace(
+        &mut self,
+        path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        data: ReplaceUpdateData,
+    ) -> Result<(), UpdateError> {
+        Ok(self.try_handle_update(Update::new(
+            source_id,
+            UpdateData::new(UpdateOperation::Replace(Box::new(data))),
+        ))?
+        .try_into()
+        .expect(
+            "UpdateReturn should be convertible into Result<(), UpdateError>",
+        ))
+    }
+}
+
+pub trait UpdateHandlerImpl {
+    /// Handles an update operation on the implementing type and returns an UpdateResult.
+    /// The replace must be handled at a higher level, as it is not specific to the implementing type.
+    fn try_update(&mut self, update: Update) -> UpdateResult {
+        let (source_id, operation, path) = update.into_parts();
+        match operation {
+            UpdateOperation::SetEntry(box data) => {
+                into_update_result(self.try_set_entry(path, source_id, data))
+            }
+            UpdateOperation::DeleteEntry(box data) => {
+                into_update_result(self.try_delete_entry(path, source_id, data))
+            }
+            UpdateOperation::AppendEntry(box data) => {
+                into_update_result(self.try_append_entry(path, source_id, data))
+            }
+            UpdateOperation::Clear => {
+                into_update_result(self.try_clear(path, source_id))
+            }
+            UpdateOperation::ListSplice(box data) => {
+                into_update_result(self.try_list_splice(path, source_id, data))
+            }
+            UpdateOperation::Increment(box data) => {
+                into_update_result(self.try_increment(path, source_id, data))
+            }
+            UpdateOperation::Decrement(box data) => {
+                into_update_result(self.try_decrement(path, source_id, data))
+            }
+            UpdateOperation::Replace(box data) => unreachable!(
+                "Replace operation should be handled at a higher level"
+            ),
+        }
+    }
+
+    fn try_set_entry(
+        &mut self,
+        _path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        _data: SetEntryUpdateData,
+    ) -> Result<Option<ValueContainer>, UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
+
+    fn try_delete_entry(
+        &mut self,
+        _path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        _data: DeleteEntryUpdateData,
+    ) -> Result<Option<ValueContainer>, UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
+
+    fn try_append_entry(
+        &mut self,
+        _path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        _data: AppendEntryUpdateData,
+    ) -> Result<(), UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
+
+    fn try_clear(
+        &mut self,
+        _path: Vec<ValueKey>,
+        source_id: TransceiverId,
+    ) -> Result<ValueContainer, UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
+
+    fn try_list_splice(
+        &mut self,
+        _path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        _data: ListSpliceUpdateData,
+    ) -> Result<Vec<ValueContainer>, UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
+
+    fn try_increment(
+        &mut self,
+        _path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        _data: IncrementUpdateData,
+    ) -> Result<(), UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
+    fn try_decrement(
+        &mut self,
+        _path: Vec<ValueKey>,
+        source_id: TransceiverId,
+        _data: DecrementUpdateData,
+    ) -> Result<(), UpdateError> {
+        Err(UpdateError::InvalidUpdate)
     }
 }

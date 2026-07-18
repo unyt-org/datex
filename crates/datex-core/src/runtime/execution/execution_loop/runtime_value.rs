@@ -2,10 +2,7 @@ use crate::{
     global::protocol_structures::instruction_data::StackIndex,
     runtime::execution::{
         ExecutionError,
-        execution_loop::{
-            internal_slots::get_stack_value,
-            state::{RuntimeExecutionStack, RuntimeExecutionState},
-        },
+        execution_loop::state::{RuntimeExecutionStack, RuntimeExecutionState},
     },
     values::value_container::ValueContainer,
 };
@@ -63,8 +60,8 @@ impl RuntimeValue {
     ) -> Result<ValueContainer, ExecutionError> {
         match self {
             RuntimeValue::ValueContainer(vc) => Ok(vc),
-            RuntimeValue::StackValue(addr) => {
-                Ok(get_stack_value(state, addr)?.clone())
+            RuntimeValue::StackValue(index) => {
+                Ok(state.stack.get_stack_value(index)?.clone())
             }
         }
     }

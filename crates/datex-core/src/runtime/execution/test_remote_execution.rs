@@ -13,7 +13,7 @@ use crate::{
     },
     task::sleep,
     value_updates::{
-        update_data::{ReplaceUpdateData, Update, UpdateData},
+        update_data::{ReplaceUpdateData, Update, UpdateOperation},
         update_handler::UpdateHandler,
     },
     values::{
@@ -504,13 +504,15 @@ pub async fn test_remote_sync() {
         endpoint_a.clone(),
         endpoint_b.clone(),
         async |runtime_a, runtime_b| {
+            use crate::value_updates::update_data::UpdateData;
+
             let mut execution_context = ExecutionContext::local(
                 ExecutionMode::unbounded(),
                 runtime_a.clone(),
                 ExecutionCallerMetadata::local_default(),
             );
 
-            let shared_value_on_a =
+            let mut shared_value_on_a =
                 SharedContainer::new_owned_with_inferred_allowed_type(
                     42,
                     SharedContainerMutability::Mutable,
@@ -542,11 +544,11 @@ pub async fn test_remote_sync() {
 
             // trigger update a -> b
             shared_value_on_a
-                .update(Update::new(
+                .try_handle_update(Update::new(
                     TransceiverId::Local,
-                    UpdateData::Replace(ReplaceUpdateData {
-                        value: ValueContainer::from(100),
-                    }),
+                    UpdateData::new(UpdateOperation::replace(
+                        ValueContainer::from(100),
+                    )),
                 ))
                 .unwrap();
 
@@ -554,9 +556,9 @@ pub async fn test_remote_sync() {
             yield_now().await;
             yield_now().await;
 
-            let shared_value_on_b =
-                runtime_b.get_endpoint_property_by_name("a").unwrap();
-            let shared_value_on_b = shared_value_on_b.shared_unchecked();
+            let mut shared_value_on_b =
+                runtime_b.get_endpoint_property_by_name_mut("a").unwrap();
+            let shared_value_on_b = shared_value_on_b.shared_unchecked_mut();
             // same pointer addresses
             assert_eq!(
                 shared_value_on_b
@@ -579,11 +581,11 @@ pub async fn test_remote_sync() {
 
             // trigger update b -> a
             shared_value_on_b
-                .update(Update::new(
+                .try_handle_update(Update::new(
                     TransceiverId::Local,
-                    UpdateData::Replace(ReplaceUpdateData {
-                        value: ValueContainer::from(200),
-                    }),
+                    UpdateData::new(UpdateOperation::replace(
+                        ValueContainer::from(200),
+                    )),
                 ))
                 .unwrap();
 

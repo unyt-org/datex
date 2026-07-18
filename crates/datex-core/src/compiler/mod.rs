@@ -36,7 +36,7 @@ use crate::{
     global::{
         dxb_block::DXBBlock,
         instruction_codes::InstructionCode,
-        operators::assignment::AssignmentOperator,
+        operators::modification::ModificationOperator,
         protocol_structures::{
             block_header::BlockHeader,
             encrypted_header::EncryptedHeader,
@@ -1126,8 +1126,8 @@ fn compile_expression(
                         RegularInstruction::SetStackValue(stack_index),
                     );
                 }
-                Some(operator @ AssignmentOperator::AddAssign)
-                | Some(operator @ AssignmentOperator::SubtractAssign) => {
+                Some(operator @ ModificationOperator::AddAssign)
+                | Some(operator @ ModificationOperator::SubtractAssign) => {
                     // TODO #435: handle mut type
                     // // if immutable reference, return error
                     // if mut_type == Some(ReferenceMutability::Immutable) {

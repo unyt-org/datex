@@ -5,12 +5,14 @@
 use strum::AsRefStr;
 pub mod binrw;
 use crate::{
+    global::operators::ModificationOperator,
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     shared_values::PointerAddress,
     types::{
         literal_type_definition::LiteralTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
+        traits::operator_handler::OperatorHandler,
         r#type::Type,
         type_definition::{
             callable::CallableTypeDefinition,
@@ -24,6 +26,7 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
+    value_updates::update_data::UpdateModificationOperator,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
 pub mod callable;
@@ -87,6 +90,34 @@ pub enum TypeDefinition {
 
     // core types ("nominal")
     CoreType(CoreLibTypeId), // -> $123
+}
+
+impl OperatorHandler for TypeDefinition {
+    fn get_update_type_for_modification(
+        &self,
+        operator: ModificationOperator,
+    ) -> Result<UpdateModificationOperator, ()> {
+        match self {
+            TypeDefinition::Collection(collection_definition) => {
+                collection_definition.get_update_type_for_modification(operator)
+            }
+            TypeDefinition::Shared(shared_container) => {
+                shared_container.get_update_type_for_modification(operator)
+            }
+            TypeDefinition::Nested(inner_type) => {
+                inner_type.get_update_type_for_modification(operator)
+            }
+            TypeDefinition::ImplType(impl_type_definition) => {
+                impl_type_definition.get_update_type_for_modification(operator)
+            }
+            TypeDefinition::TaggedType(tagged_type_definition) => {
+                tagged_type_definition
+                    .get_update_type_for_modification(operator)
+            }
+            // TODO set
+            _ => Err(()),
+        }
+    }
 }
 
 impl Hash for TypeDefinition {

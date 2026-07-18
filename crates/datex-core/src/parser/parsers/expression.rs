@@ -11,8 +11,8 @@ use crate::{
         spanned::Spanned,
     },
     global::operators::{
-        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-        ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
+        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
+        LogicalUnaryOperator, ModificationOperator, UnaryOperator,
         binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
     },
     parser::{
@@ -211,10 +211,10 @@ impl Parser {
         let span = lhs.span.start..rhs.span.end;
         let assignment_operator = match op.token {
             Token::Assign => None,
-            Token::AddAssign => Some(AssignmentOperator::AddAssign),
-            Token::SubAssign => Some(AssignmentOperator::SubtractAssign),
-            Token::MulAssign => Some(AssignmentOperator::MultiplyAssign),
-            Token::DivAssign => Some(AssignmentOperator::DivideAssign),
+            Token::AddAssign => Some(ModificationOperator::AddAssign),
+            Token::SubAssign => Some(ModificationOperator::SubtractAssign),
+            Token::MulAssign => Some(ModificationOperator::MultiplyAssign),
+            Token::DivAssign => Some(ModificationOperator::DivideAssign),
             _ => unreachable!(),
         };
 
@@ -663,8 +663,8 @@ mod tests {
         },
         global::{
             operators::{
-                ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-                ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
+                ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
+                LogicalUnaryOperator, ModificationOperator, UnaryOperator,
                 binary::{
                     ArithmeticOperator, BitwiseOperator, LogicalOperator,
                 },
@@ -1449,7 +1449,7 @@ mod tests {
             &DatexExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
                 name: "x".to_string(),
-                operator: Some(AssignmentOperator::AddAssign),
+                operator: Some(ModificationOperator::AddAssign),
                 expression: (DatexExpressionData::Integer(42.into())
                     .with_default_span()),
             })

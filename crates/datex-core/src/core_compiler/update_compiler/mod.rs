@@ -18,7 +18,7 @@ use crate::{
     },
     value_updates::update_data::{
         AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-        ReplaceUpdateData, SetEntryUpdateData, UpdateData,
+        ReplaceUpdateData, SetEntryUpdateData, UpdateData, UpdateOperation,
     },
     values::value_container::value_key::ValueKey,
 };
@@ -65,22 +65,33 @@ fn append_updates<T: BufferProvider + ValueVisitor>(
     );
 
     for update in updates {
-        append_update(context, update);
+        // TODO append update.path
+        append_update_operation(context, update.operation());
     }
 }
 
 /// Appends a single update operation on a shared container
-fn append_update<T: BufferProvider + ValueVisitor>(
+fn append_update_operation<T: BufferProvider + ValueVisitor>(
     context: &mut T,
-    update: &UpdateData,
+    operation: &UpdateOperation,
 ) {
-    match update {
-        UpdateData::SetEntry(data) => append_set_entry(context, data),
-        UpdateData::AppendEntry(data) => append_append_entry(context, data),
-        UpdateData::Replace(data) => append_replace(context, data),
-        UpdateData::Clear => append_clear(context),
-        UpdateData::DeleteEntry(data) => append_delete_entry(context, data),
-        UpdateData::ListSplice(data) => append_list_splice(context, data),
+    match operation {
+        UpdateOperation::SetEntry(data) => append_set_entry(context, data),
+        UpdateOperation::AppendEntry(data) => {
+            append_append_entry(context, data)
+        }
+        UpdateOperation::Replace(data) => append_replace(context, data),
+        UpdateOperation::Clear => append_clear(context),
+        UpdateOperation::DeleteEntry(data) => {
+            append_delete_entry(context, data)
+        }
+        UpdateOperation::ListSplice(data) => append_list_splice(context, data),
+        UpdateOperation::Increment(data) => {
+            todo!()
+        }
+        UpdateOperation::Decrement(data) => {
+            todo!()
+        }
     }
 }
 
@@ -189,7 +200,7 @@ mod tests {
             pointer_availability_lookup::PointerAvailabilityLookup,
         },
         shared_values::{SharedContainer, SharedContainerMutability},
-        value_updates::update_data::{SetEntryUpdateData, UpdateData},
+        value_updates::update_data::{SetEntryUpdateData, UpdateOperation},
         values::{
             core_values::map::Map,
             value_container::{ValueContainer, value_key::ValueKey},
@@ -209,10 +220,10 @@ mod tests {
 
         let address = container.pointer_address();
 
-        let update_data = UpdateData::SetEntry(SetEntryUpdateData {
-            key: ValueKey::Text("test_key".to_string()),
-            value: ValueContainer::from(100u8),
-        });
+        let update_data = UpdateData::new(UpdateOperation::set_entry(
+            ValueKey::Text("test_key".to_string()),
+            ValueContainer::from(100u8),
+        ));
 
         let lookup = PointerAvailabilityLookup::default();
 
@@ -257,9 +268,9 @@ mod tests {
 
         let address = container.pointer_address();
 
-        let update_data = UpdateData::Replace(ReplaceUpdateData {
-            value: ValueContainer::from(100u8),
-        });
+        let update_data = UpdateData::new(UpdateOperation::replace(
+            ValueContainer::from(100u8),
+        ));
 
         let lookup = PointerAvailabilityLookup::default();
 

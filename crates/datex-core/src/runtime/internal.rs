@@ -186,6 +186,15 @@ impl RuntimeInternal {
         })
         .ok()
     }
+    pub fn get_endpoint_property_by_name_mut(
+        &'_ self,
+        key: &str,
+    ) -> Option<RefMut<'_, ValueContainer>> {
+        RefMut::filter_map(self.endpoint_properties.borrow_mut(), |props| {
+            props.get_mut(key)
+        })
+        .ok()
+    }
 
     pub fn pointer_availability_lookup(
         &self,

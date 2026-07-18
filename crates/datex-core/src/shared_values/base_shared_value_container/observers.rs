@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     shared_values::base_shared_value_container::BaseSharedValueContainer,
     utils::{freemap::NextKey, serde_serialize_seed::SerializeSeed},
-    value_updates::update_data::Update,
+    value_updates::update_data::{Update, UpdateData},
     values::core_values::endpoint::Endpoint,
 };
 use core::{
@@ -38,6 +38,7 @@ impl Display for ObserverError {
 }
 
 pub type ObserverCallback = Rc<dyn Fn(&Update)>;
+pub type LocalObserverCallback = Rc<dyn Fn(&UpdateData)>;
 
 /// unique identifier for a transceiver (source of updates)
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -303,7 +304,7 @@ impl BaseSharedValueContainer {
 
     /// Calls all observers with the given update.
     pub fn call_observers(&self, update: &Update) {
-        for observer in self.get_current_observers(&update.source_id) {
+        for observer in self.get_current_observers(update.source_id()) {
             observer(update);
         }
     }
@@ -326,7 +327,7 @@ mod tests {
         },
         value_updates::{
             update_data::{
-                ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData,
+                ReplaceUpdateData, SetEntryUpdateData, Update, UpdateOperation,
             },
             update_handler::UpdateHandler,
         },
@@ -352,10 +353,7 @@ mod tests {
                 transceiver_id,
                 options: observe_options,
                 callback: Rc::new(move |update| {
-                    update_collector_clone.borrow_mut().push(Update {
-                        source_id: update.source_id.clone(),
-                        data: update.data.clone(),
-                    });
+                    update_collector_clone.borrow_mut().push(update.clone());
                 }),
             })
             .expect("Failed to attach observer");

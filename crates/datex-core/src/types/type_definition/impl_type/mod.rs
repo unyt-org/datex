@@ -1,4 +1,10 @@
-use crate::{prelude::*, shared_values::PointerAddress, types::r#type::Type};
+use crate::{
+    global::operators::ModificationOperator,
+    prelude::*,
+    shared_values::PointerAddress,
+    types::{traits::operator_handler::OperatorHandler, r#type::Type},
+    value_updates::update_data::UpdateModificationOperator,
+};
 use core::fmt::Display;
 pub mod serde_dif;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -13,6 +19,15 @@ impl ImplTypeDefinition {
             inner_type: Box::new(inner_type),
             impl_markers,
         }
+    }
+}
+
+impl OperatorHandler for ImplTypeDefinition {
+    fn get_update_type_for_modification(
+        &self,
+        operator: ModificationOperator,
+    ) -> Result<UpdateModificationOperator, ()> {
+        self.inner_type.get_update_type_for_modification(operator)
     }
 }
 

@@ -7,76 +7,19 @@ use crate::{
         errors::UpdateError,
         update_data::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData, UpdateData,
+            ReplaceUpdateData, SetEntryUpdateData, Update,
         },
-        update_handler::UpdateHandler,
+        update_handler::{UpdateHandler, UpdateResult},
     },
-    values::value_container::ValueContainer,
+    values::value_container::{ValueContainer, value_key::ValueKey},
 };
 
 impl UpdateHandler for BaseSharedValueContainer {
-    fn try_replace(
-        &mut self,
-        data: ReplaceUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
+    fn try_handle_update(&mut self, update: Update) -> UpdateResult {
         self.assert_can_mutate()?;
-        // set new value container
-        // TODO: type check?
-        let _update_data =
-            UpdateData::Replace(data.clone()).with_source(source_id);
-        let prev = core::mem::replace(&mut self.value_container, data.value);
-
-        Ok(prev)
-    }
-
-    fn try_set_entry(
-        &mut self,
-        data: SetEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
-        self.assert_can_mutate()?;
-        self.value_container.try_set_entry(data, source_id)
-    }
-
-    fn try_delete_entry(
-        &mut self,
-        data: DeleteEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
-        self.assert_can_mutate()?;
-        self.value_container.try_delete_entry(data, source_id)
-    }
-
-    fn try_append_entry(
-        &mut self,
-        data: AppendEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
-        self.assert_can_mutate()?;
-        self.value_container.try_append_entry(data, source_id)
-    }
-
-    fn try_clear(
-        &mut self,
-        source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
-        self.assert_can_mutate()?;
-        self.value_container.try_clear(source_id)
-    }
-
-    fn try_list_splice(
-        &mut self,
-        data: ListSpliceUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<Vec<ValueContainer>, UpdateError> {
-        self.assert_can_mutate()?;
-        let removed = self.value_container.try_list_splice(data, source_id)?;
-
-        Ok(removed)
+        self.value_container.try_handle_update(update)
     }
 }
-
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -93,6 +36,7 @@ mod tests {
             errors::UpdateError,
             update_data::{
                 AppendEntryUpdateData, ReplaceUpdateData, SetEntryUpdateData,
+                Update, UpdateData, UpdateOperation,
             },
             update_handler::UpdateHandler,
         },
@@ -116,12 +60,12 @@ mod tests {
                 SharedContainerMutability::Mutable,
             );
         list_ref
-            .try_append_entry(
-                AppendEntryUpdateData {
-                    value: ValueContainer::from(4),
-                },
+            .try_handle_update(Update::new(
                 TransceiverId::Local,
-            )
+                UpdateData::new(UpdateOperation::append_entry(
+                    ValueContainer::from(4),
+                )),
+            ))
             .expect("Failed to push value to list");
         let updated_value = list_ref.try_get_property(3).unwrap();
         assert_eq!(updated_value, ValueContainer::from(4));
@@ -132,12 +76,12 @@ mod tests {
                 List::from(vec![ValueContainer::from(42)]),
                 SharedContainerMutability::Immutable,
             );
-        let result = int_ref.try_append_entry(
-            AppendEntryUpdateData {
-                value: ValueContainer::from(99),
-            },
+        let result = int_ref.try_handle_update(Update::new(
             TransceiverId::Local,
-        );
+            UpdateData::new(UpdateOperation::append_entry(
+                ValueContainer::from(99),
+            )),
+        ));
         assert_matches!(result, Err(UpdateError::ImmutableValue));
 
         // Try to push to non-list value
@@ -146,12 +90,12 @@ mod tests {
                 42,
                 SharedContainerMutability::Mutable,
             );
-        let result = int_ref.try_append_entry(
-            AppendEntryUpdateData {
-                value: ValueContainer::from(99),
-            },
+        let result = int_ref.try_handle_update(Update::new(
             TransceiverId::Local,
-        );
+            UpdateData::new(UpdateOperation::append_entry(
+                ValueContainer::from(99),
+            )),
+        ));
         assert_matches!(result, Err(UpdateError::InvalidUpdate))
     }
 
@@ -167,26 +111,27 @@ mod tests {
                 SharedContainerMutability::Mutable,
             );
         // Set existing property
+
         map_ref
-            .try_set_entry(
-                SetEntryUpdateData {
-                    key: "key1".into(),
-                    value: ValueContainer::from(42),
-                },
+            .try_handle_update(Update::new(
                 TransceiverId::Local,
-            )
+                UpdateData::new(UpdateOperation::set_entry(
+                    "key1".into(),
+                    ValueContainer::from(42),
+                )),
+            ))
             .expect("Failed to set existing property");
         let updated_value = map_ref.try_get_property("key1").unwrap();
         assert_eq!(updated_value, 42.into());
 
         // Set new property
-        let result = map_ref.try_set_entry(
-            SetEntryUpdateData {
-                key: "new".into(),
-                value: ValueContainer::from(99),
-            },
+        let result = map_ref.try_handle_update(Update::new(
             TransceiverId::Local,
-        );
+            UpdateData::new(UpdateOperation::set_entry(
+                "new".into(),
+                ValueContainer::from(99),
+            )),
+        ));
         assert!(result.is_ok());
         let new_value = map_ref.try_get_property("new").unwrap();
         assert_eq!(new_value, 99.into());
@@ -208,11 +153,12 @@ mod tests {
         // Set existing index
         list_ref
             .try_set_entry(
+                vec![],
+                TransceiverId::Local,
                 SetEntryUpdateData {
                     key: 1.into(),
                     value: ValueContainer::from(42),
                 },
-                TransceiverId::Local,
             )
             .expect("Failed to set existing index");
         let updated_value = list_ref.try_get_property(1).unwrap();
@@ -220,11 +166,12 @@ mod tests {
 
         // Try to set out-of-bounds index
         let result = list_ref.try_set_entry(
+            vec![],
+            TransceiverId::Local,
             SetEntryUpdateData {
                 key: 5.into(),
                 value: ValueContainer::from(99),
             },
-            TransceiverId::Local,
         );
         assert_eq!(
             result,
@@ -240,11 +187,12 @@ mod tests {
                 SharedContainerMutability::Mutable,
             );
         let result = int_ref.try_set_entry(
+            vec![],
+            TransceiverId::Local,
             SetEntryUpdateData {
                 key: 0.into(),
                 value: ValueContainer::from(99),
             },
-            TransceiverId::Local,
         );
         assert_matches!(result, Err(UpdateError::InvalidUpdate));
     }
@@ -264,11 +212,12 @@ mod tests {
         // Set existing property
         struct_ref
             .try_set_entry(
+                vec![],
+                TransceiverId::Local,
                 SetEntryUpdateData {
                     key: "name".into(),
                     value: ValueContainer::from("Bob"),
                 },
-                TransceiverId::Local,
             )
             .expect("Failed to set existing property");
         let name = struct_ref.try_get_property("name").unwrap();
@@ -276,11 +225,12 @@ mod tests {
 
         // Try to set non-existing property
         let result = struct_ref.try_set_entry(
+            vec![],
+            TransceiverId::Local,
             SetEntryUpdateData {
                 key: "nonexistent".into(),
                 value: ValueContainer::from("value"),
             },
-            TransceiverId::Local,
         );
         assert_matches!(result, Ok(_));
 
@@ -291,11 +241,12 @@ mod tests {
                 SharedContainerMutability::Mutable,
             );
         let result = int_ref.try_set_entry(
+            vec![],
+            TransceiverId::Local,
             SetEntryUpdateData {
                 key: "name".into(),
                 value: ValueContainer::from("Bob"),
             },
-            TransceiverId::Local,
         );
         assert_matches!(result, Err(UpdateError::InvalidUpdate));
     }
@@ -308,10 +259,11 @@ mod tests {
         );
         assert_matches!(
             r.try_replace(
+                vec![],
+                TransceiverId::Local,
                 ReplaceUpdateData {
                     value: ValueContainer::from(43),
                 },
-                TransceiverId::Local
             ),
             Err(UpdateError::ImmutableValue)
         );
@@ -322,10 +274,11 @@ mod tests {
         );
         assert_matches!(
             r.try_replace(
+                vec![],
+                TransceiverId::Local,
                 ReplaceUpdateData {
                     value: ValueContainer::from(43),
                 },
-                TransceiverId::Local
             ),
             Err(UpdateError::ImmutableValue)
         );

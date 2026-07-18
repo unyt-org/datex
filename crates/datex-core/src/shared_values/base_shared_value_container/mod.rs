@@ -45,10 +45,7 @@ impl BaseSharedValueContainer {
     /// Returns a new [BaseSharedValueContainer] with a [ValueContainer] containing a [CoreValue::Null], an allowed type of [CoreLibTypeId::Base(CoreLibBaseTypeId::Null)] and a mutability of [SharedContainerMutability::Immutable].
     pub fn null() -> Self {
         Self::new_with_inferred_allowed_type(
-            ValueContainer::Local(Value {
-                inner: CoreValue::Null,
-                custom_type: None,
-            }),
+            ValueContainer::Local(Value::new(CoreValue::Null, None)),
             SharedContainerMutability::Immutable,
         )
     }
@@ -80,7 +77,8 @@ impl BaseSharedValueContainer {
         mutability: SharedContainerMutability,
     ) -> Self {
         let value_container = value_container.into();
-        let allowed_type = value_container.allowed_or_actual_type();
+        let allowed_type =
+            value_container.allowed_or_actual_type().into_owned();
         BaseSharedValueContainer {
             value_container,
             allowed_type,

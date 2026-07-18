@@ -915,7 +915,7 @@ mod tests {
         },
         global::{
             instruction_codes::InstructionCode,
-            operators::{AssignmentOperator, binary::ArithmeticOperator},
+            operators::{ModificationOperator, binary::ArithmeticOperator},
         },
         prelude::*,
         values::core_values::integer::{Integer, typed_integer::TypedInteger},

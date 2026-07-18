@@ -5,7 +5,7 @@ use core::{
 
 use crate::{
     shared_values::{SharedContainer, traits::SharedContainerCommon},
-    value_updates::errors::UpdateError,
+    value_updates::{errors::UpdateError, update_handler::UpdateHandler},
     values::value_container::ValueContainer,
 };
 use fnv64_rs::Fnv1aHasher;
@@ -124,7 +124,7 @@ impl UpdateHistory {
     fn replay_all(&mut self) -> Result<(), UpdateError> {
         self.current = self.snapshot.value.clone();
         for entry in &self.entries {
-            self.current.update(entry.update.clone())?;
+            self.current.try_handle_update(entry.update.clone())?;
         }
         Ok(())
     }
@@ -190,7 +190,9 @@ mod tests {
             base_shared_value_container::observers::TransceiverId,
             traits::SharedContainerCommon,
         },
-        value_updates::update_data::{ReplaceUpdateData, Update, UpdateData},
+        value_updates::update_data::{
+            ReplaceUpdateData, Update, UpdateData, UpdateOperation,
+        },
         values::{core_values::endpoint::Endpoint, value::Value},
     };
     fn shared<T>(
@@ -221,7 +223,7 @@ mod tests {
             },
             update: Update::new(
                 TransceiverId::Local,
-                UpdateData::Replace(ReplaceUpdateData { value }),
+                UpdateData::new(UpdateOperation::replace(value)),
             ),
             history_hash: 0,
         }

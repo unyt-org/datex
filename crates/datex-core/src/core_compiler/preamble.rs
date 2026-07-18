@@ -761,6 +761,7 @@ mod tests {
                     RegularInstruction::statements_with_children(
                         false,
                         instructions!(
+                            // shared mut a = [null]
                             RegularInstruction::PushToStack,
                             RegularInstruction::MoveWithValue(MoveWithValue {
                                 mutability: SharedContainerMutability::Mutable,
@@ -776,6 +777,7 @@ mod tests {
                                     ))
                                 )
                             ),
+                            // ('mut a).0 = 'mut a
                             RegularInstruction::PushToStack,
                             RegularInstruction::GetStackValueSharedRefMut(
                                 StackIndex(0)

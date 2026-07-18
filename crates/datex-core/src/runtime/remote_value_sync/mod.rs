@@ -164,7 +164,7 @@ impl RuntimeInternal {
 
             compile_updates(
                 &SharedContainer::Referenced(container),
-                &[&update.data],
+                &[update.data()],
                 input,
             )
         };
@@ -193,7 +193,7 @@ impl RuntimeInternal {
         let subscribers = subscriber.get_subscribers(container);
         if let Some(subscribers) = subscribers {
             // TODO: don't send full update to source endpoint, but send update info with hash of the value
-            let source_endpoint = Endpoint::from(update.source_id.clone())
+            let source_endpoint = Endpoint::from(update.source_id().clone())
                 .as_local_if_endpoint(self.endpoint());
 
             let endpoints = subscribers
@@ -241,7 +241,7 @@ impl RuntimeInternal {
             let lookup = self.pointer_availability_lookup();
             let input = CompileInput::new(lookup.deref(), &receiver_endpoints);
 
-            compile_updates(&container, &[&update.data], input)
+            compile_updates(&container, &[update.data()], input)
         };
 
         let self_clone = self.clone();

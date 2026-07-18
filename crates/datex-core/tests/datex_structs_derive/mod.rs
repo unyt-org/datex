@@ -342,75 +342,75 @@ fn value_to_new_typestruct() {
 
 #[test]
 fn value_to_enum() {
-    let variant_a = Value {
-        inner: CoreValue::Null,
-        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+    let variant_a = Value::new(
+        CoreValue::Null,
+        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantA".to_string(),
             ty: None,
         })),
-    };
+    );
 
     let example: ExampleEnum = variant_a.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantA);
 
-    let variant_b = Value {
-        inner: CoreValue::from(vec![
+    let variant_b = Value::new(
+        CoreValue::from(vec![
             ValueContainer::from(1u8),
             ValueContainer::from(2u8),
         ]),
-        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantB".to_string(),
             ty: None,
         })),
-    };
+    );
     let example: ExampleEnum = variant_b.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantB(1, 2));
 
-    let variant_c = Value {
-        inner: CoreValue::from(Map::from(vec![
+    let variant_c = Value::new(
+        CoreValue::from(Map::from(vec![
             ("x".to_string(), ValueContainer::from(3u8)),
             ("y".to_string(), ValueContainer::from("Hello".to_string())),
         ])),
-        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantC".to_string(),
             ty: None,
         })),
-    };
+    );
     let example: ExampleEnum = variant_c.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantC { x: 3, y } if &y == "Hello" );
 
-    let variant_d = Value {
-        inner: CoreValue::from(42u8),
-        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+    let variant_d = Value::new(
+        CoreValue::from(42u8),
+        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantD".to_string(),
             ty: None,
         })),
-    };
+    );
     let example: ExampleEnum = variant_d.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantD(42));
 }
 
 #[test]
 fn value_to_enum_failure() {
-    let invalid_variant = Value {
-        inner: CoreValue::from(vec![
+    let invalid_variant = Value::new(
+        CoreValue::from(vec![
             ValueContainer::from(1u8),
             ValueContainer::from(2u8),
         ]),
-        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantX".to_string(),
             ty: None,
         })),
-    };
+    );
     assert!(ExampleEnum::try_from(invalid_variant).is_err());
 
-    let invalid_variant = Value {
-        inner: CoreValue::from(42),
-        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+    let invalid_variant = Value::new(
+        CoreValue::from(42u8),
+        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantA".to_string(),
             ty: None,
         })),
-    };
+    );
     assert!(ExampleEnum::try_from(invalid_variant).is_err());
 }
 

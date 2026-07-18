@@ -16,6 +16,20 @@ pub struct ListSpliceUpdateData {
     pub delete_count: u32,
     pub items: Vec<ValueContainer>,
 }
+impl ListSpliceUpdateData {
+    pub fn new(
+        start: u32,
+        delete_count: u32,
+        items: Vec<ValueContainer>,
+    ) -> Self {
+        ListSpliceUpdateData {
+            start,
+            delete_count,
+            items,
+        }
+    }
+}
+
 impl<'ctx> SerdeContext<'ctx, ListSpliceUpdateData> {
     pub fn serialize_fields<S: SerializeSeq>(
         &mut self,

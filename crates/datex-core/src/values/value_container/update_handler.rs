@@ -8,83 +8,18 @@ use crate::{
         errors::UpdateError,
         update_data::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            SetEntryUpdateData,
+            SetEntryUpdateData, Update, UpdateOperation,
         },
-        update_handler::UpdateHandler,
+        update_handler::{UpdateHandler, UpdateResult},
     },
-    values::value_container::ValueContainer,
+    values::value_container::{ValueContainer, value_key::ValueKey},
 };
-use core::result::Result;
 
 impl UpdateHandler for ValueContainer {
-    fn try_set_entry(
-        &mut self,
-        data: SetEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
+    fn try_handle_update(&mut self, update: Update) -> UpdateResult {
         match self {
-            ValueContainer::Local(value) => {
-                value.try_set_entry(data, source_id)
-            }
-            ValueContainer::Shared(reference) => reference
-                .try_set_entry(data, source_id),
-        }
-    }
-
-    fn try_delete_entry(
-        &mut self,
-        data: DeleteEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
-        match self {
-            ValueContainer::Local(value) => {
-                value.try_delete_entry(data, source_id)
-            }
-            ValueContainer::Shared(reference) => reference
-                .base_shared_container_mut()
-                .try_delete_entry(data, source_id),
-        }
-    }
-
-    fn try_append_entry(
-        &mut self,
-        data: AppendEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
-        match self {
-            ValueContainer::Local(value) => {
-                value.try_append_entry(data, source_id)
-            }
-            ValueContainer::Shared(reference) => reference
-                .base_shared_container_mut()
-                .try_append_entry(data, source_id),
-        }
-    }
-
-    fn try_clear(
-        &mut self,
-        source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
-        match self {
-            ValueContainer::Local(value) => value.try_clear(source_id),
-            ValueContainer::Shared(reference) => {
-                reference.base_shared_container_mut().try_clear(source_id)
-            }
-        }
-    }
-
-    fn try_list_splice(
-        &mut self,
-        data: ListSpliceUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<Vec<ValueContainer>, UpdateError> {
-        match self {
-            ValueContainer::Local(value) => {
-                value.try_list_splice(data, source_id)
-            }
-            ValueContainer::Shared(reference) => reference
-                .base_shared_container_mut()
-                .try_list_splice(data, source_id),
+            ValueContainer::Local(local) => local.try_handle_update(update),
+            ValueContainer::Shared(shared) => shared.try_handle_update(update),
         }
     }
 }

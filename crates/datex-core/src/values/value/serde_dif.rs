@@ -16,7 +16,7 @@ use num::ToPrimitive;
 use serde::{
     Deserializer, Serialize, Serializer,
     de::{DeserializeSeed, Error as DeError, Visitor},
-    ser::{SerializeMap, SerializeStruct, SerializeTuple},
+    ser::SerializeTuple,
 };
 
 impl<'ctx> SerdeContext<'ctx, Value> {
@@ -385,7 +385,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
                 ))
             })?;
 
-        Ok(Value { custom_type, inner })
+        Ok(Value::new(inner, custom_type))
     }
 }
 
@@ -426,10 +426,7 @@ mod tests {
     #[test]
     fn endpoint_serialization() {
         let endpoint = Endpoint::from_str("@jonas").unwrap();
-        let value = Value {
-            inner: CoreValue::Endpoint(endpoint.clone()),
-            custom_type: None,
-        };
+        let value = Value::new(CoreValue::Endpoint(endpoint.clone()), None);
         let mut cache = SharedValuesCache::default();
         let serialized =
             SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);

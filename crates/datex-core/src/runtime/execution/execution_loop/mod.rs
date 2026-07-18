@@ -45,7 +45,7 @@ use crate::{
         execution::{
             ExecutionError, InvalidProgramError,
             execution_loop::{
-                internal_slots::{get_root_property, get_stack_value},
+                internal_slots::get_root_property,
                 interrupts::{
                     ExecutionInterrupt, ExternalExecutionInterrupt,
                     InterruptProvider, InterruptResult,
@@ -496,13 +496,10 @@ pub fn inner_execution_loop(
                             }
 
                             RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
-                                Some(RuntimeValue::ValueContainer(ValueContainer::Local(Value {
-                                    inner: CoreValue::Null,
-                                    custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                                Some(RuntimeValue::ValueContainer(ValueContainer::Local(Value::new(CoreValue::Null, Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                         tag,
                                         ty: Some(Box::new(TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into()).into())),
-                                    })),
-                                })))
+                                    }))))))
                             }
 
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
@@ -876,10 +873,7 @@ pub fn inner_execution_loop(
                                     let ty =
                                         collected_results.pop_type_result();
                                     RuntimeValue::ValueContainer(
-                                        ValueContainer::Local(Value {
-                                            inner: CoreValue::Type(ty),
-                                            custom_type: None, // TODO #648: type for type
-                                        }),
+                                        ValueContainer::Local(Value::new(CoreValue::Type(ty), None)), // TODO #648: type for type
                                     )
                                         .into()
                                 }
@@ -888,52 +882,51 @@ pub fn inner_execution_loop(
                                                                          index,
                                                                          operator
                                                                      }) => {
-                                    let slot_value = yield_unwrap!(
-                                        get_stack_value(&state, index)
-                                    );
                                     let value = yield_unwrap!(
-                                            collected_results
-                                                .pop_potentially_cloned_value_container_result_assert_existing(&state)
-                                        );
-
-                                    let new_val = yield_unwrap!(
-                                        handle_assignment_operation(
-                                            operator,
-                                            slot_value,
-                                            value,
-                                        )
+                                        collected_results
+                                            .pop_potentially_cloned_value_container_result_assert_existing(&state)
                                     );
+                                    let source_id = state.source_id_cloned();
+                                    let slot_value = yield_unwrap!(
+                                        state.stack.get_stack_value_mut(index)
+                                    );
+
                                     yield_unwrap!(
-                                        state
-                                            .stack
-                                            .set_stack_value(index, new_val)
+                                        try_modify_value_container(
+                                            slot_value,
+                                            operator,
+                                            value,
+                                            source_id,
+                                            vec![] // FIXME path
+                                        )
                                     );
                                     None.into()
                                 }
 
                                 RegularInstruction::SetSharedContainerValue => {
-                                    let target = yield_unwrap!(
+                                    let mut target = yield_unwrap!(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()
                                     );
-                                    let new_value = yield_unwrap!(
+                                    let new_value: ValueContainer = yield_unwrap!(
                                         yield_unwrap!(
                                             collected_results
                                                 .pop_runtime_value_result_assert_existing()
                                         ).into_value_container(&mut state)
                                     );
-
-                                    let target = yield_unwrap!(target.as_value_container(&state.stack));
+                                    let source_id = state.source_id_cloned();
+                                    let target = yield_unwrap!(target.as_value_container_mut(&mut state.stack));
                                     yield_unwrap!(set_shared_container_value(
                                         target,
                                         new_value,
-                                        state.source_id_cloned(),
+                                        source_id,
                                     ));
                                     None.into()
                                 }
 
+                                // TODO: Deprecate, as handled with usual modify stack value
                                 RegularInstruction::ModifySharedContainerValue(
-                                    set_shared_container_value,
+                                    modify_shared_container_value_data,
                                 ) => {
                                     let mut target = yield_unwrap!(
                                         collected_results
@@ -949,13 +942,14 @@ pub fn inner_execution_loop(
                                     let source_id = state.source_id_cloned();
                                     let target = yield_unwrap!(target.as_value_container_mut(&mut state.stack));
 
-                                    let res = yield_unwrap!(modify_shared_container_value(
-                                        set_shared_container_value,
+                                    yield_unwrap!(try_modify_value_container(
                                         target,
+                                        modify_shared_container_value_data.operator,
                                         value,
-                                        source_id
+                                        source_id,
+                                        vec![] 
                                     ));
-                                    RuntimeValue::ValueContainer(res).into()
+                                    None.into()
                                 }
 
                                 RegularInstruction::SetStackValue(index) => {
@@ -1087,8 +1081,9 @@ pub fn inner_execution_loop(
                                     let source_id = state.source_id_cloned();
                                     let value_container = yield_unwrap!(target.as_value_container_mut(&mut state.stack));
                                     let res = value_container.try_delete_entry(
-                                        DeleteEntryUpdateData { key: ValueKey::Index(property_index as i64) },
+                                        vec![], // FIXME path
                                         source_id,
+                                        DeleteEntryUpdateData { key: ValueKey::Index(property_index as i64) },
                                     );
                                     ValueContainer::new_from_option(yield_unwrap!(res))
                                         .into()
@@ -1122,12 +1117,13 @@ pub fn inner_execution_loop(
                                         );
                                         Ok(res)
                                     } else {
-                                        set_property(
+                                        try_set_property(
                                             target,
                                             ValueKey::Text(
                                                 property_data.0,
                                             ),
                                             value,
+                                            vec![], // FIXME path
                                             source_id,
                                         )
                                     };
@@ -1149,12 +1145,13 @@ pub fn inner_execution_loop(
                                     let source_id = state.source_id_cloned();
                                     let value_container = yield_unwrap!(target.as_value_container_mut(&mut state.stack));
 
-                                    let res = set_property(
+                                    let res = try_set_property(
                                         value_container,
                                         ValueKey::Index(
                                             property_data.0 as i64,
                                         ),
                                         value,
+                                        vec![], // FIXME path
                                         source_id,
                                     );
                                     yield_unwrap!(res);
@@ -1179,10 +1176,11 @@ pub fn inner_execution_loop(
 
                                     let value_container = yield_unwrap!(target.as_value_container_mut(&mut state.stack));
 
-                                    let res = set_property(
+                                    let res = try_set_property(
                                         value_container,
                                         ValueKey::Value(key),
                                         value,
+                                        vec![], // FIXME path
                                         source_id,
                                     );
                                     yield_unwrap!(res);

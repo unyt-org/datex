@@ -1,12 +1,12 @@
 //! This module contains the implementation of the [ValueContainer] enum, which represents a container for values in the DATEX type system.
 //! A [ValueContainer] can either be a local value, which directly contains a [Value], or a shared value, which contains a reference to a [SharedContainer].
 use crate::{
-    datex_proxy::DatexValueContainerProxy,
+    datex_proxy::DatexValueContainerProxy, utils::sheep::Sheep,
     values::value_container::value_key::BorrowedValueKey,
 };
 pub mod equality;
 pub mod identity;
-use core::result::Result;
+use core::{cell::Ref, ops::Deref, result::Result};
 pub mod serde_dif;
 use super::value::Value;
 use crate::{
@@ -148,10 +148,20 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_type(&self) -> TypeDefinition {
+    pub fn actual_type<'a>(&'a self) -> Sheep<'a, TypeDefinition> {
         match self {
-            ValueContainer::Local(local) => local.actual_type().clone(),
-            ValueContainer::Shared(shared) => shared.actual_type().clone(),
+            ValueContainer::Local(local) => local.actual_type(),
+            ValueContainer::Shared(shared) => shared.actual_type(),
+        }
+    }
+
+    pub fn with_actual_type<R, F: FnOnce(&TypeDefinition) -> R>(
+        &self,
+        f: F,
+    ) -> R {
+        match self {
+            ValueContainer::Local(local) => f(&local.actual_type()),
+            ValueContainer::Shared(shared) => shared.with_actual_type(f),
         }
     }
 
@@ -159,7 +169,7 @@ impl ValueContainer {
     pub fn actual_container_type(&self) -> TypeDefinitionWithMetadata {
         match self {
             ValueContainer::Local(value) => TypeDefinitionWithMetadata {
-                definition: value.actual_type(),
+                definition: value.actual_type().into_owned(),
                 metadata: TypeMetadata::default(),
                 reference_name: None,
             },
@@ -182,15 +192,24 @@ impl ValueContainer {
 
     /// For local values, returns the actual type of the value container
     /// For shared values, returns the allowed type of the value container
-    pub fn allowed_or_actual_type(&self) -> TypeDefinition {
+    pub fn allowed_or_actual_type(&self) -> Sheep<'_, TypeDefinition> {
         match self {
             ValueContainer::Local(value) => value.actual_type(),
-            ValueContainer::Shared(shared) => shared.allowed_type().clone(),
+            ValueContainer::Shared(shared) => Sheep::Ref(shared.allowed_type()),
         }
     }
 
     /// Returns the contained SharedContainer if it is a SharedContainer, otherwise returns None.
     pub fn maybe_shared(&self) -> Option<&SharedContainer> {
+        if let ValueContainer::Shared(shared) = self {
+            Some(shared)
+        } else {
+            None
+        }
+    }
+
+    /// Returns a mutable reference to the contained SharedContainer if it is a SharedContainer, otherwise returns None.
+    pub fn maybe_shared_mut(&mut self) -> Option<&mut SharedContainer> {
         if let ValueContainer::Shared(shared) = self {
             Some(shared)
         } else {
@@ -212,6 +231,14 @@ impl ValueContainer {
 
     /// Returns a reference to the contained SharedContainer, panics if it is not a SharedContainer.
     pub fn shared_unchecked(&self) -> &SharedContainer {
+        match self {
+            ValueContainer::Shared(shared) => shared,
+            _ => {
+                core::panic!("Cannot convert ValueContainer to SharedContainer")
+            }
+        }
+    }
+    pub fn shared_unchecked_mut(&mut self) -> &mut SharedContainer {
         match self {
             ValueContainer::Shared(shared) => shared,
             _ => {
