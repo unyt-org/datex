@@ -7,6 +7,8 @@ use crate::{
 };
 use core::fmt::Display;
 pub mod serde_dif;
+mod type_match;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplTypeDefinition {
     pub inner_type: Box<Type>,

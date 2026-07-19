@@ -40,6 +40,12 @@ impl TypeSuperset<TypeDefinition> for TypeDefinition {
                 TypeDefinition::CoreType(other_core),
             ) => self_core.is_superset_of(other_core),
 
+            // union supersets, e.g. 1|2|3 >= 1|2
+            (
+                TypeDefinition::ImplType(self_impl),
+                TypeDefinition::ImplType(other_impl),
+            ) => self_impl.is_superset_of(other_impl),
+
             // union superset with any TypeDefinition, e.g. 1|2 >= 1
             (TypeDefinition::Union(self_union), other) => {
                 self_union.is_superset_of(other)
