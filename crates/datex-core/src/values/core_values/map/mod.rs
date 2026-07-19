@@ -22,6 +22,7 @@ use core::{
     result::Result,
 };
 mod child_iterator;
+pub mod local_child_path_resolver;
 pub mod serde_dif;
 
 use crate::value_updates::update_handler::UpdateCallbackData;
@@ -163,6 +164,30 @@ impl Map {
                 // only works if key is a string
                 if let Some(string) = key.try_as_text() {
                     vec.iter().find(|(k, _)| k == string).map(|(_, v)| v)
+                } else {
+                    None
+                }
+            }
+        }
+        .ok_or_else(|| KeyNotFoundError::new(key.into()))
+    }
+
+    pub fn get_mut<'a>(
+        &mut self,
+        key: impl Into<BorrowedValueKey<'a>>,
+    ) -> Result<&mut ValueContainer, KeyNotFoundError> {
+        let key = key.into();
+        match &mut self.entries {
+            MapEntries::Dynamic(map) => {
+                key.with_value_container(|key| map.get_mut(key))
+            }
+            MapEntries::Structural(vec) => key.with_value_container(|key| {
+                vec.iter_mut().find(|(k, _)| k == key).map(|(_, v)| v)
+            }),
+            MapEntries::StructuralWithStringKeys(vec) => {
+                // only works if key is a string
+                if let Some(string) = key.try_as_text() {
+                    vec.iter_mut().find(|(k, _)| k == string).map(|(_, v)| v)
                 } else {
                     None
                 }

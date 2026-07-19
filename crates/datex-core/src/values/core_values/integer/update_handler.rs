@@ -8,15 +8,21 @@ use crate::{
 
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
-    value_updates::{errors::UpdateError, update_handler::UpdateHandlerImpl},
+    value_updates::{
+        errors::UpdateError,
+        update_data::DecrementUpdateData,
+        update_handler::{UpdateCallbackData, UpdateHandlerImpl},
+    },
 };
 use core::result::Result;
 
 impl UpdateHandlerImpl for Integer {
+    fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
+        None
+    }
+
     fn try_increment(
         &mut self,
-        _path: Vec<ValueKey>,
-        _source_id: TransceiverId,
         data: IncrementUpdateData,
     ) -> Result<(), UpdateError> {
         let value = data
@@ -28,9 +34,7 @@ impl UpdateHandlerImpl for Integer {
     }
     fn try_decrement(
         &mut self,
-        _path: Vec<ValueKey>,
-        _source_id: TransceiverId,
-        data: crate::value_updates::update_data::DecrementUpdateData,
+        data: DecrementUpdateData,
     ) -> Result<(), UpdateError> {
         let value = data
             .value

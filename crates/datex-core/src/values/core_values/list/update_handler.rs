@@ -36,10 +36,12 @@ impl InternalMutabilityUpdateHandler for List {
 }
 
 impl UpdateHandlerImpl for List {
+    fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
+        self.update_callback_data.as_ref()
+    }
+
     fn try_set_entry(
         &mut self,
-        _path: Vec<ValueKey>,
-        _transceiver_id: TransceiverId,
         data: SetEntryUpdateData,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
@@ -52,8 +54,6 @@ impl UpdateHandlerImpl for List {
 
     fn try_delete_entry(
         &mut self,
-        _path: Vec<ValueKey>,
-        _transceiver_id: TransceiverId,
         data: DeleteEntryUpdateData,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
@@ -66,46 +66,22 @@ impl UpdateHandlerImpl for List {
 
     fn try_append_entry(
         &mut self,
-        _path: Vec<ValueKey>,
-        _transceiver_id: TransceiverId,
         data: AppendEntryUpdateData,
     ) -> Result<(), UpdateError> {
         self.push(data.value);
         Ok(())
     }
 
-    fn try_clear(
-        &mut self,
-        _path: Vec<ValueKey>,
-        _transceiver_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
+    fn try_clear(&mut self) -> Result<ValueContainer, UpdateError> {
         let previous = core::mem::take(self);
         Ok(ValueContainer::Local(previous.into()))
     }
 
     fn try_list_splice(
         &mut self,
-        _path: Vec<ValueKey>,
-        _transceiver_id: TransceiverId,
         data: ListSpliceUpdateData,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         Ok(self
             .splice(data.start..(data.start + data.delete_count), data.items))
-    }
-    fn try_decrement(
-        &mut self,
-        _path: Vec<ValueKey>,
-        _transceiver_id: TransceiverId,
-        _data: DecrementUpdateData,
-    ) -> Result<(), UpdateError> {
-        Err(UpdateError::InvalidUpdate)
-    }
-    fn try_increment(
-        &mut self,
-        _path: Vec<ValueKey>,
-        _transceiver_id: TransceiverId,
-        _data: IncrementUpdateData,
-    ) -> Result<(), UpdateError> {
-        Err(UpdateError::InvalidUpdate)
     }
 }

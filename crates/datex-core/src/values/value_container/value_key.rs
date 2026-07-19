@@ -176,6 +176,18 @@ impl<'a> From<ValueKey> for BorrowedValueKey<'a> {
     }
 }
 
+impl<'a> From<&'a ValueKey> for BorrowedValueKey<'a> {
+    fn from(owned: &'a ValueKey) -> Self {
+        match owned {
+            ValueKey::Text(text) => BorrowedValueKey::Text(Cow::Borrowed(text)),
+            ValueKey::Index(index) => BorrowedValueKey::Index(*index),
+            ValueKey::Value(value_container) => {
+                BorrowedValueKey::Value(Cow::Borrowed(value_container))
+            }
+        }
+    }
+}
+
 impl From<BorrowedValueKey<'_>> for ValueKey {
     fn from(owned: BorrowedValueKey) -> Self {
         match owned {

@@ -17,11 +17,14 @@ use crate::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
             SetEntryUpdateData,
         },
-        update_handler::{UpdateCallbackData, UpdateHandlerImpl},
+        update_handler::{
+            InternalMutabilityUpdateHandler, UpdateCallbackData,
+            UpdateHandlerImpl,
+        },
     },
+    values::value::Value,
 };
 use core::result::Result;
-use crate::value_updates::update_handler::InternalMutabilityUpdateHandler;
 
 impl InternalMutabilityUpdateHandler for Map {
     fn set_update_callback_data(
@@ -32,12 +35,13 @@ impl InternalMutabilityUpdateHandler for Map {
     }
 }
 
-
 impl UpdateHandlerImpl for Map {
+    fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
+        self.update_callback_data.as_ref()
+    }
+
     fn try_set_entry(
         &mut self,
-        _path: Vec<ValueKey>,
-        _source_id: TransceiverId,
         data: SetEntryUpdateData,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key);
@@ -47,8 +51,6 @@ impl UpdateHandlerImpl for Map {
 
     fn try_delete_entry(
         &mut self,
-        _path: Vec<ValueKey>,
-        _source_id: TransceiverId,
         data: DeleteEntryUpdateData,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key);
@@ -57,11 +59,7 @@ impl UpdateHandlerImpl for Map {
             .map(Some)
     }
 
-    fn try_clear(
-        &mut self,
-        _path: Vec<ValueKey>,
-        _source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
+    fn try_clear(&mut self) -> Result<ValueContainer, UpdateError> {
         self.try_clear_inner().map_err(UpdateError::access_error)
     }
 }

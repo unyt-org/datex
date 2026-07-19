@@ -1,15 +1,13 @@
 use crate::{
     prelude::*,
     value_updates::update_data::IncrementUpdateData,
-    values::{
-        core_values::decimal::{Decimal, typed_decimal::TypedDecimal},
-        value_container::value_key::ValueKey,
-    },
+    values::core_values::decimal::{Decimal, typed_decimal::TypedDecimal},
 };
 
-use crate::{
-    shared_values::base_shared_value_container::observers::TransceiverId,
-    value_updates::{errors::UpdateError, update_handler::UpdateHandlerImpl},
+use crate::value_updates::{
+    errors::UpdateError,
+    update_data::DecrementUpdateData,
+    update_handler::{UpdateCallbackData, UpdateHandlerImpl},
 };
 use core::{
     ops::{AddAssign, SubAssign},
@@ -17,10 +15,12 @@ use core::{
 };
 
 impl UpdateHandlerImpl for TypedDecimal {
+    fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
+        None
+    }
+
     fn try_increment(
         &mut self,
-        _path: Vec<ValueKey>,
-        _source_id: TransceiverId,
         data: IncrementUpdateData,
     ) -> Result<(), UpdateError> {
         let value = data
@@ -32,9 +32,7 @@ impl UpdateHandlerImpl for TypedDecimal {
     }
     fn try_decrement(
         &mut self,
-        _path: Vec<ValueKey>,
-        _source_id: TransceiverId,
-        data: crate::value_updates::update_data::DecrementUpdateData,
+        data: DecrementUpdateData,
     ) -> Result<(), UpdateError> {
         let value = data
             .value

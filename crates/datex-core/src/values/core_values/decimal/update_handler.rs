@@ -14,12 +14,16 @@ use core::{
     ops::{AddAssign, SubAssign},
     result::Result,
 };
+use crate::value_updates::update_data::DecrementUpdateData;
+use crate::value_updates::update_handler::UpdateCallbackData;
 
 impl UpdateHandlerImpl for Decimal {
+    fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
+        None
+    }
+
     fn try_increment(
         &mut self,
-        _path: Vec<ValueKey>,
-        _source_id: TransceiverId,
         data: IncrementUpdateData,
     ) -> Result<(), UpdateError> {
         let value = data
@@ -31,9 +35,7 @@ impl UpdateHandlerImpl for Decimal {
     }
     fn try_decrement(
         &mut self,
-        _path: Vec<ValueKey>,
-        _source_id: TransceiverId,
-        data: crate::value_updates::update_data::DecrementUpdateData,
+        data: DecrementUpdateData,
     ) -> Result<(), UpdateError> {
         let value = data
             .value

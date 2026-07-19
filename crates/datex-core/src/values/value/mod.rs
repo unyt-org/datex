@@ -23,6 +23,7 @@ pub mod apply;
 mod child_iterator;
 pub mod datex_proxy;
 pub mod equality;
+mod local_child_path_resolver;
 pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;

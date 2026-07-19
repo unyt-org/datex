@@ -14,6 +14,7 @@ use core::{
 };
 
 mod child_iterator;
+pub mod local_child_path_resolver;
 pub mod update_handler;
 
 #[derive(Debug, Default)]
@@ -58,6 +59,16 @@ impl List {
         let index = self.wrap_index(index);
         self.items
             .get(index as usize)
+            .ok_or(IndexOutOfBoundsError { index })
+    }
+
+    pub fn try_get_mut(
+        &mut self,
+        index: i64,
+    ) -> Result<&mut ValueContainer, IndexOutOfBoundsError> {
+        let index = self.wrap_index(index);
+        self.items
+            .get_mut(index as usize)
             .ok_or(IndexOutOfBoundsError { index })
     }
 
