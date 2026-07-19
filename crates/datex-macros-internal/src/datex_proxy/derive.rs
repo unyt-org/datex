@@ -302,7 +302,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
 
     let into_datex_fields_inner = match fields_type {
         FieldsType::Named => quote! {
-            Value::from(Map::StructuralWithStringKeys(vec![
+            Value::from(Map::structural_with_string_keys(vec![
                 #(#into_datex_fields),*
             ]))
         },
@@ -421,7 +421,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             FieldsType::Named => quote! {
                 #ident::#variant_ident {..} => {
                     let value: #helper_struct_ident = value.into();
-                    let map = Map::StructuralWithStringKeys(vec![
+                    let map = Map::structural_with_string_keys(vec![
                         #(#into_datex_fields),*
                     ]);
                     Value::new(CoreValue::Map(map), Some(TypeDefinition::TaggedType(TaggedTypeDefinition {

@@ -654,7 +654,7 @@ mod tests {
         if let ValueContainer::Local(value) = result {
             assert_eq!(
                 &value.inner,
-                &CoreValue::Map(Map::StructuralWithStringKeys(vec![(
+                &CoreValue::Map(Map::structural_with_string_keys(vec![(
                     "a".to_string(),
                     ValueContainer::from(true)
                 )]))

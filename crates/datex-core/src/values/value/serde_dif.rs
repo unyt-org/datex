@@ -415,7 +415,7 @@ mod tests {
                 decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
                 endpoint::Endpoint,
                 integer::{Integer, typed_integer::IntegerTypeVariant},
-                map::Map,
+                map::{Map, MapEntries},
             },
             value_container::ValueContainer,
         },
@@ -447,13 +447,14 @@ mod tests {
         let mut cache = SharedValuesCache::default();
 
         // { endpoint: "@jonas" } -> [<map-idx>, { endpoint: [<endpoint-idx>, "@jonas"] }]
-        let value =
-            Value::from(CoreValue::Map(Map::StructuralWithStringKeys(vec![(
+        let value = Value::from(CoreValue::Map(
+            Map::structural_with_string_keys(vec![(
                 "endpoint".into(),
                 ValueContainer::Local(Value::from(
                     Endpoint::from_str("@jonas").unwrap(),
                 )),
-            )])));
+            )]),
+        ));
         let serialized =
             SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
         assert_eq!(
@@ -470,7 +471,7 @@ mod tests {
         );
 
         // { "endpoint": "@jonas" } -> [<map-idx>, [[<endpoint-idx>, "@jonas"]]]
-        let value = Value::from(CoreValue::Map(Map::Structural(vec![(
+        let value = Value::from(CoreValue::Map(Map::structural(vec![(
             "endpoint".into(),
             Value::from(Endpoint::from_str("@jonas").unwrap()).into(),
         )])));
@@ -598,7 +599,7 @@ mod tests {
         CoreValue::Endpoint(Endpoint::from_str("@jonas").unwrap()) ; "endpoint"
     )]
     #[test_case(
-        CoreValue::Map(Map::StructuralWithStringKeys(vec![(
+        CoreValue::Map(Map::structural_with_string_keys(vec![(
             "endpoint".into(),
             ValueContainer::Local(Value::from(Endpoint::from_str("@jonas").unwrap())),
         )])) ; "map with string keys"

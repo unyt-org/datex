@@ -2,9 +2,7 @@
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
     prelude::*,
-    shared_values::base_shared_value_container::observers::{
-        LocalObserverCallback, ObserverCallback,
-    },
+    shared_values::base_shared_value_container::observers::ObserverCallback,
     types::type_definition::{
         TypeDefinition, callable::CallableTypeDefinition,
     },
@@ -37,29 +35,12 @@ use core::{
     result::Result,
 };
 
-/// The local observer callback hold the callback and the path of the value if referenced
-/// by a shared container
-pub struct LocalObserveData {
-    pub callback: LocalObserverCallback,
-    pub path: Vec<ValueKey>,
-}
-impl Debug for LocalObserveData {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("LocalObserveData")
-            .field("callback", &"<ObserverCallback>")
-            .field("path", &self.path)
-            .finish()
-    }
-}
-
 #[derive(Debug)]
 pub struct Value {
     /// The inner representation of the value, which is a [CoreValue].
     pub inner: CoreValue,
     /// actual type of the value - if [None], use default type for given value
     pub custom_type: Option<TypeDefinition>,
-    /// Optional observer callback for local values. This is used to notify observers of changes to the value.
-    pub observers: Option<LocalObserveData>,
 }
 
 /// The Value clone does copy the value and custom type,
@@ -69,7 +50,6 @@ impl Clone for Value {
         Value {
             inner: self.inner.clone(),
             custom_type: self.custom_type.clone(),
-            observers: None,
         }
     }
 }
@@ -80,7 +60,6 @@ impl<T: Into<CoreValue>> From<T> for Value {
         Value {
             inner,
             custom_type: None,
-            observers: None,
         }
     }
 }
@@ -90,11 +69,7 @@ impl Value {
         CoreValue::Null.into()
     }
     pub fn new(inner: CoreValue, custom_type: Option<TypeDefinition>) -> Self {
-        Value {
-            inner,
-            custom_type,
-            observers: None,
-        }
+        Value { inner, custom_type }
     }
     pub fn custom_type(&self) -> Option<&TypeDefinition> {
         self.custom_type.as_ref()
@@ -119,7 +94,6 @@ impl Value {
                 creator,
             }),
             custom_type: Some(TypeDefinition::callable(signature)),
-            observers: None,
         }
     }
 
@@ -547,7 +521,6 @@ mod tests {
             custom_type: Some(TypeDefinition::CoreType(
                 CoreLibBaseTypeId::Integer.into(),
             )),
-            observers: None,
         };
 
         assert!(val.has_default_type());
@@ -560,7 +533,6 @@ mod tests {
                     vec![],
                 ),
             )),
-            observers: None,
         };
 
         assert!(!val.has_default_type());

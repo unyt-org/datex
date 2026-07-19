@@ -36,7 +36,6 @@ pub struct BaseSharedValueContainer {
     /// The [TypeDefinition] that is allowed to be assigned to the shared container. This is used for type checking when assigning a new value container to the shared container.
     allowed_type: TypeDefinition,
     /// List of observer callbacks
-    /// TODO: move observers to ValueContainer?
     observers: FreeHashMap<ObserverId, Observer>,
     mutability: SharedContainerMutability,
 }

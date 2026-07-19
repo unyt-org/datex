@@ -38,7 +38,6 @@ impl Display for ObserverError {
 }
 
 pub type ObserverCallback = Rc<dyn Fn(&Update)>;
-pub type LocalObserverCallback = Rc<dyn Fn(&UpdateData)>;
 
 /// unique identifier for a transceiver (source of updates)
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]

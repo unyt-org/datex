@@ -6,35 +6,57 @@ use crate::{
 };
 pub mod equality;
 pub mod serde_dif;
+use crate::value_updates::update_handler::UpdateCallbackData;
 use core::{
     fmt::Display,
     ops::{Index, Range},
     result::Result,
 };
+
 mod child_iterator;
 pub mod update_handler;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct List(Vec<ValueContainer>);
+#[derive(Debug, Default)]
+pub struct List {
+    items: Vec<ValueContainer>,
+    /// Optional observer callback for local values. This is used to notify observers of changes to the value.
+    pub update_callback_data: Option<UpdateCallbackData>,
+}
+
+impl Clone for List {
+    fn clone(&self) -> Self {
+        List {
+            items: self.items.clone(),
+            update_callback_data: None,
+        }
+    }
+}
+
 impl List {
     pub fn new<T: Into<ValueContainer>>(values: Vec<T>) -> Self {
-        List(values.into_iter().map(Into::into).collect())
+        List {
+            items: values.into_iter().map(Into::into).collect(),
+            update_callback_data: None,
+        }
     }
     pub fn with_capacity(capacity: u32) -> Self {
-        List(Vec::with_capacity(capacity as usize))
+        List {
+            items: Vec::with_capacity(capacity as usize),
+            update_callback_data: None,
+        }
     }
     pub fn len(&self) -> u32 {
-        self.0.len() as u32
+        self.items.len() as u32
     }
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.items.is_empty()
     }
     pub fn try_get(
         &self,
         index: i64,
     ) -> Result<&ValueContainer, IndexOutOfBoundsError> {
         let index = self.wrap_index(index);
-        self.0
+        self.items
             .get(index as usize)
             .ok_or(IndexOutOfBoundsError { index })
     }
@@ -50,7 +72,7 @@ impl List {
     ) -> Result<ValueContainer, IndexOutOfBoundsError> {
         let index = self.get_valid_index(index)?;
         // replace
-        Ok(core::mem::replace(&mut self.0[index], value))
+        Ok(core::mem::replace(&mut self.items[index], value))
     }
 
     /// Tries to delete the value at the specified index, returning it if successful.
@@ -60,39 +82,39 @@ impl List {
         index: i64,
     ) -> Result<ValueContainer, IndexOutOfBoundsError> {
         let index = self.get_valid_index(index)?;
-        Ok(self.0.remove(index))
+        Ok(self.items.remove(index))
     }
 
     pub fn push<T: Into<ValueContainer>>(&mut self, value: T) {
-        self.0.push(value.into());
+        self.items.push(value.into());
     }
 
     pub fn pop(&mut self) -> Option<ValueContainer> {
-        self.0.pop()
+        self.items.pop()
     }
 
     pub fn clear(&mut self) {
-        self.0.clear();
+        self.items.clear();
     }
 
     pub fn as_vec(&self) -> &Vec<ValueContainer> {
-        &self.0
+        &self.items
     }
 
     pub fn into_vec(self) -> Vec<ValueContainer> {
-        self.0
+        self.items
     }
 
     pub fn as_mut_vec(&mut self) -> &mut Vec<ValueContainer> {
-        &mut self.0
+        &mut self.items
     }
 
     pub fn iter(&self) -> core::slice::Iter<'_, ValueContainer> {
-        self.0.iter()
+        self.items.iter()
     }
 
     pub fn iter_mut(&mut self) -> core::slice::IterMut<'_, ValueContainer> {
-        self.0.iter_mut()
+        self.items.iter_mut()
     }
 
     pub fn splice(
@@ -104,14 +126,14 @@ impl List {
             start: range.start as usize,
             end: range.end as usize,
         };
-        self.0.splice(range, replace_with).collect()
+        self.items.splice(range, replace_with).collect()
     }
 
     /// if index is negative, count from the end
     #[inline]
     fn wrap_index(&self, index: i64) -> u32 {
         if index < 0 {
-            (index + self.0.len() as i64) as u32
+            (index + self.items.len() as i64) as u32
         } else {
             index as u32
         }
@@ -123,7 +145,7 @@ impl List {
         index: i64,
     ) -> Result<usize, IndexOutOfBoundsError> {
         let index = self.wrap_index(index);
-        if (index as usize) < self.0.len() {
+        if (index as usize) < self.items.len() {
             Ok(index as usize)
         } else {
             Err(IndexOutOfBoundsError { index })
@@ -135,14 +157,14 @@ impl List {
         index: i64,
     ) -> Result<ValueContainer, IndexOutOfBoundsError> {
         let index = self.get_valid_index(index)?;
-        Ok(self.0.remove(index))
+        Ok(self.items.remove(index))
     }
 }
 
 impl Display for List {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         core::write!(f, "[")?;
-        for (i, value) in self.0.iter().enumerate() {
+        for (i, value) in self.items.iter().enumerate() {
             if i > 0 {
                 core::write!(f, ", ")?;
             }
@@ -157,7 +179,10 @@ where
     T: Into<ValueContainer>,
 {
     fn from(vec: Vec<T>) -> Self {
-        List(vec.into_iter().map(Into::into).collect())
+        List {
+            items: vec.into_iter().map(Into::into).collect(),
+            update_callback_data: None,
+        }
     }
 }
 
@@ -166,7 +191,10 @@ where
     T: Into<ValueContainer>,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        List(iter.into_iter().map(Into::into).collect())
+        List {
+            items: iter.into_iter().map(Into::into).collect(),
+            update_callback_data: None,
+        }
     }
 }
 
@@ -174,7 +202,7 @@ impl Index<usize> for List {
     type Output = ValueContainer;
 
     fn index(&self, index: usize) -> &Self::Output {
-        &self.0[index]
+        &self.items[index]
     }
 }
 
@@ -183,7 +211,7 @@ impl IntoIterator for List {
     type IntoIter = vec::IntoIter<ValueContainer>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        self.items.into_iter()
     }
 }
 
@@ -192,7 +220,7 @@ impl<'a> IntoIterator for &'a List {
     type IntoIter = core::slice::Iter<'a, ValueContainer>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
+        self.items.iter()
     }
 }
 
@@ -207,6 +235,6 @@ pub macro datex_list {
 
 impl From<List> for Vec<ValueContainer> {
     fn from(list: List) -> Self {
-        list.0
+        list.items
     }
 }

@@ -1,6 +1,8 @@
 use crate::{
     prelude::*,
-    shared_values::base_shared_value_container::observers::TransceiverId,
+    shared_values::base_shared_value_container::observers::{
+        ObserverCallback, TransceiverId,
+    },
     value_updates::{
         UpdateReturn,
         errors::UpdateError,
@@ -12,6 +14,7 @@ use crate::{
     },
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
+use core::fmt::{Debug, Formatter};
 
 pub type UpdateResult = Result<UpdateReturn, UpdateError>;
 
@@ -146,7 +149,30 @@ pub trait UpdateHandler {
     }
 }
 
+/// The local observer callback hold the callback and the path of the value if referenced
+/// by a shared container
+pub struct UpdateCallbackData {
+    pub callback: ObserverCallback,
+    pub path: Vec<ValueKey>,
+}
+impl Debug for UpdateCallbackData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("LocalObserveData")
+            .field("callback", &"<ObserverCallback>")
+            .field("path", &self.path)
+            .finish()
+    }
+}
+
+pub trait InternalMutabilityUpdateHandler {
+    fn set_update_callback_data(
+        &mut self,
+        observe_data: Option<UpdateCallbackData>,
+    );
+}
+
 pub trait UpdateHandlerImpl {
+
     /// Handles an update operation on the implementing type and returns an UpdateResult.
     /// The replace must be handled at a higher level, as it is not specific to the implementing type.
     fn try_update(&mut self, update: Update) -> UpdateResult {

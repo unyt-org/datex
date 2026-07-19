@@ -17,10 +17,21 @@ use crate::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
             SetEntryUpdateData,
         },
-        update_handler::UpdateHandlerImpl,
+        update_handler::{UpdateCallbackData, UpdateHandlerImpl},
     },
 };
 use core::result::Result;
+use crate::value_updates::update_handler::InternalMutabilityUpdateHandler;
+
+impl InternalMutabilityUpdateHandler for Map {
+    fn set_update_callback_data(
+        &mut self,
+        observe_data: Option<UpdateCallbackData>,
+    ) {
+        self.update_callback_data = observe_data;
+    }
+}
+
 
 impl UpdateHandlerImpl for Map {
     fn try_set_entry(

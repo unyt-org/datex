@@ -20,9 +20,20 @@ use crate::value_updates::{
         AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
         SetEntryUpdateData,
     },
-    update_handler::UpdateHandlerImpl,
+    update_handler::{
+        InternalMutabilityUpdateHandler, UpdateCallbackData, UpdateHandlerImpl,
+    },
 };
 use core::result::Result;
+
+impl InternalMutabilityUpdateHandler for List {
+    fn set_update_callback_data(
+        &mut self,
+        observe_data: Option<UpdateCallbackData>,
+    ) {
+        self.update_callback_data = observe_data;
+    }
+}
 
 impl UpdateHandlerImpl for List {
     fn try_set_entry(
