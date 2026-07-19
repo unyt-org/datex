@@ -3,8 +3,13 @@ use crate::{
     prelude::*,
     shared_values::base_shared_value_container::BaseSharedValueContainer,
     utils::{freemap::NextKey, serde_serialize_seed::SerializeSeed},
-    value_updates::update_data::{Update, UpdateData},
-    values::core_values::endpoint::Endpoint,
+    value_updates::{
+        update_data::{Update, UpdateData},
+        update_handler::{InternalMutabilityUpdateHandler, UpdateCallbackData},
+    },
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
 };
 use core::{
     fmt::{Debug, Display},
@@ -200,11 +205,24 @@ impl Debug for Observer {
 
 impl Observer {
     /// Creates a new local observer with the given callback function,
-    /// using default options and a transceiver ID of 0.
+    /// using the default options and [TransceiverId::Local].
     pub fn new<F: Fn(&Update) + 'static>(callback: F) -> Self {
         Observer {
             transceiver_id: TransceiverId::Local,
             options: ObserveOptions::default(),
+            callback: Rc::new(callback),
+        }
+    }
+
+    /// Creates a new local observer with the given callback function,
+    /// using provided options and [TransceiverId::Local].
+    pub fn new_with_options<F: Fn(&Update) + 'static>(
+        callback: F,
+        options: ObserveOptions,
+    ) -> Self {
+        Observer {
+            transceiver_id: TransceiverId::Local,
+            options,
             callback: Rc::new(callback),
         }
     }
@@ -214,7 +232,7 @@ impl BaseSharedValueContainer {
     /// Adds an observer to this reference that will be notified on value changes.
     /// Returns an error if the reference is immutable.
     /// The returned u32 is an observer ID that can be used to remove the observer later.
-    pub fn observe(
+    pub(crate) fn observe(
         &mut self,
         observer: Observer,
     ) -> Result<ObserverId, ObserverError> {
@@ -226,7 +244,7 @@ impl BaseSharedValueContainer {
 
     /// Removes an observer by its ID.
     /// Returns an error if the observer ID is not found or the reference is immutable.
-    pub fn unobserve(
+    pub(crate) fn unobserve(
         &mut self,
         observer_id: ObserverId,
     ) -> Result<(), ObserverError> {
@@ -263,7 +281,7 @@ impl BaseSharedValueContainer {
 
     /// Removes all observers from this reference.
     /// Returns an error if the reference is immutable.
-    pub fn unobserve_all(&mut self) -> Result<(), ObserverError> {
+    pub(crate) fn unobserve_all(&mut self) -> Result<(), ObserverError> {
         self.ensure_mutable_container()?;
         for id in self.observers_ids() {
             let _ = self.unobserve(id);

@@ -47,13 +47,10 @@ impl ReferencedSharedContainer {
     pub(crate) fn new_mutable_unchecked(
         inner: Rc<RefCell<SharedContainerInner>>,
     ) -> Self {
-        let container_mutability =
-            *inner.borrow().base_shared_container().mutability();
-
         ReferencedSharedContainer {
             inner,
             reference_mutability: ReferenceMutability::Mutable,
-            container_mutability,
+            container_mutability: SharedContainerMutability::Mutable,
             move_indicator: false,
         }
     }

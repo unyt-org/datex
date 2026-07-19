@@ -24,16 +24,19 @@ use crate::{
     shared_values::{
         ReferenceMutability,
         base_shared_value_container::observers::{
-            Observer, ObserverError, ObserverId,
+            Observer, ObserverCallback, ObserverError, ObserverId,
         },
         traits::SharedContainerCommon,
     },
     types::type_definition::TypeDefinition,
+    value_updates::update_handler::{
+        InternalMutabilityUpdateHandler, UpdateCallbackData,
+    },
     values::core_value::CoreValue,
 };
 use alloc::rc::Rc;
 use core::{
-    cell::RefCell,
+    cell::{Ref, RefCell, RefMut},
     fmt::{Debug, Display, Formatter},
     mem,
     ops::Deref,
@@ -115,14 +118,61 @@ impl SharedContainer {
         &self,
         observer: Observer,
     ) -> Result<ObserverId, ObserverError> {
-        self.base_shared_container_mut().observe(observer)
+        let res = self.base_shared_container_mut().observe(observer)?;
+        self.ensure_local_nested_observe_callbacks();
+
+        Ok(res)
     }
 
     pub fn unobserve(
         &self,
         observer_id: ObserverId,
     ) -> Result<(), ObserverError> {
-        self.base_shared_container_mut().unobserve(observer_id)
+        let res = self.base_shared_container_mut().unobserve(observer_id)?;
+
+        // also disable local nested observe callbacks if there are no more observers registered
+        if !self.base_shared_container().has_observers() {
+            self.disable_local_nested_observe_callbacks();
+        }
+
+        Ok(res)
+    }
+
+    // Enables observe callbacks for the inner local value if not yet enabled
+    fn ensure_local_nested_observe_callbacks(&self) {
+        let mut base = self.base_shared_container_mut();
+        let enabled = if !base.get_local_observers_enabled()
+            && let ValueContainer::Local(local_value) =
+                base.value_container_mut()
+        {
+            let self_clone = self.clone();
+
+            let callback: ObserverCallback = Rc::new(move |update| {
+                self_clone.base_shared_container().call_observers(update);
+            });
+            local_value.set_update_callback_data(Some(UpdateCallbackData {
+                callback,
+                path: vec![],
+            }));
+            true
+        } else {
+            false
+        };
+
+        if enabled {
+            base.set_local_observers_enabled(true);
+        }
+    }
+
+    fn disable_local_nested_observe_callbacks(&self) {
+        let mut base = self.base_shared_container_mut();
+        if base.get_local_observers_enabled()
+            && let ValueContainer::Local(local_value) =
+                base.value_container_mut()
+        {
+            local_value.set_update_callback_data(None);
+        }
+        base.set_local_observers_enabled(false);
     }
 
     /// Gets the current actual [TypeDefinition] of the collapsed inner [Value]
@@ -302,6 +352,30 @@ impl SharedContainer {
                 referenced.to_string_omit_content()
             }
         }
+    }
+
+    /// Tries to get an immutable reference to the value as a specified type.
+    /// Does not perform any type conversion.
+    /// This only works for local values, not for shared values.
+    pub fn try_as<T>(&self) -> Option<Ref<'_, T>>
+    where
+        for<'a> &'a T: TryFrom<&'a CoreValue>,
+    {
+        Ref::filter_map(self.value_container(), |value| value.try_as::<T>())
+            .ok()
+    }
+
+    /// Tries to get a mutable reference to the value as a specified type.
+    /// Does not perform any type conversion.
+    /// This only works for local values, not for shared values.
+    pub fn try_as_mut<T>(&self) -> Option<RefMut<'_, T>>
+    where
+        for<'a> &'a mut T: TryFrom<&'a mut CoreValue>,
+    {
+        RefMut::filter_map(self.value_container_mut(), |value| {
+            value.try_as_mut::<T>()
+        })
+        .ok()
     }
 }
 

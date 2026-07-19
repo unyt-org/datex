@@ -26,6 +26,7 @@ use core::{
     prelude::rust_2024::*,
 };
 use observers::{Observer, ObserverId};
+use crate::shared_values::base_shared_value_container::observers::ObserverCallback;
 
 /// For the internal implementation of shared containers.
 /// A BaseSharedValueContainer can only exists, when it's inner value matches the allowed type.
@@ -37,6 +38,7 @@ pub struct BaseSharedValueContainer {
     allowed_type: TypeDefinition,
     /// List of observer callbacks
     observers: FreeHashMap<ObserverId, Observer>,
+    local_observers_enabled: bool,
     mutability: SharedContainerMutability,
 }
 
@@ -65,6 +67,7 @@ impl BaseSharedValueContainer {
             allowed_type,
             observers: FreeHashMap::new(),
             mutability,
+            local_observers_enabled: false,
         })
     }
 
@@ -83,6 +86,7 @@ impl BaseSharedValueContainer {
             allowed_type,
             observers: FreeHashMap::new(),
             mutability,
+            local_observers_enabled: false,
         }
     }
 
@@ -118,6 +122,14 @@ impl BaseSharedValueContainer {
     }
     pub fn mutability(&self) -> &SharedContainerMutability {
         &self.mutability
+    }
+    
+    pub fn get_local_observers_enabled(&self) -> bool {
+        self.local_observers_enabled
+    }
+    
+    pub fn set_local_observers_enabled(&mut self, enabled: bool) {
+        self.local_observers_enabled = enabled;
     }
 }
 

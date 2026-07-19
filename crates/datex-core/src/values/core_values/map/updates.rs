@@ -13,7 +13,7 @@ use crate::{
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
-use std::mem;
+use core::mem;
 
 impl Map {
     /// Removes a key from the map, returning the value if it existed.
