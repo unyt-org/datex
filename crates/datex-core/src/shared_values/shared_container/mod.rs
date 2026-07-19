@@ -155,13 +155,6 @@ impl SharedContainer {
         self.base_shared_container().with_collapsed_value(f)
     }
 
-    pub fn try_get_property<'a>(
-        &self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, AccessError> {
-        self.base_shared_container().try_get_property(key)
-    }
-
     pub fn pointer_address(&self) -> PointerAddress {
         match self {
             SharedContainer::Owned(owned) => {

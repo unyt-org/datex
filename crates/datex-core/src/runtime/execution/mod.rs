@@ -807,9 +807,9 @@ mod tests {
         info!("Map: {:?}", map);
 
         // access by key
-        assert_eq!(map.get("x"), Ok(&Integer::from(1).into()));
-        assert_eq!(map.get("y"), Ok(&Integer::from(2).into()));
-        assert_eq!(map.get("z"), Ok(&Integer::from(42).into()));
+        assert_eq!(map.try_get("x"), Ok(&Integer::from(1).into()));
+        assert_eq!(map.try_get("y"), Ok(&Integer::from(2).into()));
+        assert_eq!(map.try_get("z"), Ok(&Integer::from(42).into()));
 
         // structural equality checks
         let expected_se: Map = Map::from(vec![
@@ -1000,7 +1000,7 @@ mod tests {
         .unwrap();
         assert!(res.is_some());
         let env = res.unwrap().try_into_value::<Map>().unwrap();
-        assert_eq!(env.get("TEST_ENV_VAR"), Ok(&"test_value".into()));
+        assert_eq!(env.try_get("TEST_ENV_VAR"), Ok(&"test_value".into()));
     }
 
     #[test]

@@ -13,12 +13,15 @@ use core::{
     ops::{AddAssign, SubAssign},
     result::Result,
 };
+use crate::value_updates::update_handler::UpdateCallbackDataAccess;
 
-impl UpdateHandlerImpl for TypedDecimal {
+impl UpdateCallbackDataAccess for TypedDecimal {
     fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
         None
     }
+}
 
+impl UpdateHandlerImpl for TypedDecimal {
     fn try_increment(
         &mut self,
         data: IncrementUpdateData,

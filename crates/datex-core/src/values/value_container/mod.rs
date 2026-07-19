@@ -135,6 +135,17 @@ impl ValueContainer {
         }
     }
 
+    /// Strips any local observers from the given value container.
+    /// This method should be called when a value is moved from its [SharedContainer] parent.
+    pub fn without_local_observers(self) -> ValueContainer {
+        match self {
+            ValueContainer::Local(value) => {
+                ValueContainer::Local(value.without_local_observers())
+            }
+            val => val,
+        }
+    }
+
     /// Performs a clone used by the "clone" command
     /// Local values are just cloned normally
     /// For shared value, the inner value container is cloned (shared x -> x)
@@ -148,7 +159,7 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_type<'a>(&'a self) -> Sheep<'a, TypeDefinition> {
+    pub fn actual_type(&self) -> Sheep<TypeDefinition> {
         match self {
             ValueContainer::Local(local) => local.actual_type(),
             ValueContainer::Shared(shared) => shared.actual_type(),
@@ -243,18 +254,6 @@ impl ValueContainer {
             ValueContainer::Shared(shared) => shared,
             _ => {
                 core::panic!("Cannot convert ValueContainer to SharedContainer")
-            }
-        }
-    }
-
-    pub fn try_get_property<'a>(
-        &self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, AccessError> {
-        match self {
-            ValueContainer::Local(value) => value.try_get_property(key),
-            ValueContainer::Shared(reference) => {
-                reference.try_get_property(key)
             }
         }
     }

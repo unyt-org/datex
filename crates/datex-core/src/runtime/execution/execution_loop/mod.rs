@@ -97,14 +97,14 @@ mod collected_execution_result;
 use collected_execution_result::CollectedExecutionResult;
 
 impl
-    CollectionResultsPopper<
-        CollectedExecutionResult,
-        Option<RuntimeValue>,
-        MapKey,
-        ValueContainer,
-        Type,
-        TypeDefinition,
-    > for CollectedResults<CollectedExecutionResult>
+CollectionResultsPopper<
+    CollectedExecutionResult,
+    Option<RuntimeValue>,
+    MapKey,
+    ValueContainer,
+    Type,
+    TypeDefinition,
+> for CollectedResults<CollectedExecutionResult>
 {
     fn try_extract_type_definition_result(
         result: CollectedExecutionResult,
@@ -202,7 +202,7 @@ pub fn execution_loop(
     state: RuntimeExecutionState,
     dxb_body: Rc<RefCell<Vec<u8>>>,
     interrupt_provider: InterruptProvider,
-) -> impl Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>> {
+) -> impl Iterator<Item=Result<ExternalExecutionInterrupt, ExecutionError>> {
     gen move {
         let mut active_value: Option<ValueContainer> = None;
 
@@ -252,7 +252,7 @@ pub fn inner_execution_loop(
     dxb_body: Rc<RefCell<Vec<u8>>>,
     interrupt_provider: InterruptProvider,
     mut state: RuntimeExecutionState,
-) -> impl Iterator<Item = Result<ExecutionInterrupt, ExecutionError>> {
+) -> impl Iterator<Item=Result<ExecutionInterrupt, ExecutionError>> {
     gen move {
         let mut collector =
             InstructionCollector::<CollectedExecutionResult>::default();
@@ -496,9 +496,9 @@ pub fn inner_execution_loop(
 
                             RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
                                 Some(RuntimeValue::ValueContainer(ValueContainer::Local(Value::new(CoreValue::Null, Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                                        tag,
-                                        ty: Some(Box::new(TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into()).into())),
-                                    }))))))
+                                    tag,
+                                    ty: Some(Box::new(TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into()).into())),
+                                }))))))
                             }
 
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
@@ -1024,9 +1024,9 @@ pub fn inner_execution_loop(
                                         );
                                         Ok(res)
                                     } else {
-                                        target.try_get_property(
+                                        target.with_collapsed_value(|v| v.try_get_property(
                                             &property_name,
-                                        )
+                                        ).map(|v| v.clone())) // FIXME: no clone?
                                     };
 
                                     yield_unwrap!(
@@ -1044,9 +1044,9 @@ pub fn inner_execution_loop(
                                     let property_index = property_data.0;
 
                                     let value_container = yield_unwrap!(target.as_value_container(&state.stack));
-                                    let res = value_container.try_get_property(
+                                    let res = value_container.with_collapsed_value(|v| v.try_get_property(
                                         property_index,
-                                    );
+                                    ).map(|v| v.clone())); // FIXME: no clone?
                                     yield_unwrap!(res)
                                         .into()
                                 }
@@ -1062,7 +1062,9 @@ pub fn inner_execution_loop(
                                     );
 
                                     let value_container = yield_unwrap!(target.as_value_container(&state.stack));
-                                    let res = value_container.try_get_property(&key);
+                                    let res = value_container.with_collapsed_value(
+                                        |v| v.try_get_property(&key).map(|v| v.clone())
+                                    ); // FIXME: no clone?
 
                                     yield_unwrap!(res)
                                         .into()
@@ -1489,10 +1491,10 @@ pub fn inner_execution_loop(
 
             // if in unbounded statements, propagate active value via interrupt
             if let Some(ResultCollector::LastUnbounded(
-                LastUnboundedResultCollector { last_result, .. },
-            )) = collector.last_mut()
+                            LastUnboundedResultCollector { last_result, .. },
+                        )) = collector.last_mut()
                 && let Some(CollectedExecutionResult::Value(mut last_result)) =
-                    last_result.take()
+                last_result.take()
             {
                 let active_value = yield_unwrap!(
                     last_result
@@ -1547,7 +1549,7 @@ fn create_new_reference_from_value(
             Err(CacheValueRetrievalError::ValueNotFoundInCache(
                 ValueNotFoundInCacheError(pointer_address.clone()),
             )
-            .into())
+                .into())
         }
         PointerAddress::Remote(remote_address) => {
             let base = BaseSharedValueContainer::try_new(
@@ -1564,7 +1566,7 @@ fn create_new_reference_from_value(
                     ref_mutability,
                 )
             }
-            .map_err(|_err| ExecutionError::InvalidSharedValueType)?;
+                .map_err(|_err| ExecutionError::InvalidSharedValueType)?;
 
             // stores the reference in memory, so that we can handle updates from the owner endpoint,
             // assuming that we are subscribed to the reference until we unsubscribe

@@ -195,6 +195,19 @@ pub struct UpdateCallbackData {
     pub callback: ObserverCallback,
     pub path: Vec<ValueKey>,
 }
+impl UpdateCallbackData {
+    /// Creates a new UpdateCallbackData with the same callback,
+    /// appending the provided child_key to the path.
+    pub fn with_child_path(&self, child_key: impl Into<ValueKey>) -> Self {
+        let mut new_path = self.path.clone();
+        new_path.push(child_key.into());
+        UpdateCallbackData {
+            callback: self.callback.clone(),
+            path: new_path,
+        }
+    }
+}
+
 impl Debug for UpdateCallbackData {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("LocalObserveData")
@@ -204,16 +217,57 @@ impl Debug for UpdateCallbackData {
     }
 }
 
-pub trait InternalMutabilityUpdateHandler {
+pub trait UpdateCallbackDataAccess {
+    fn get_update_callback_data(&self) -> Option<&UpdateCallbackData>;
+}
+
+pub trait InternalMutabilityUpdateHandler: UpdateCallbackDataAccess {
     fn set_update_callback_data(
         &mut self,
         observe_data: Option<UpdateCallbackData>,
     );
+
+    /// Updates the update callback data for a child value based on the current update callback data of the parent.
+    fn set_child_update_callback_data(
+        &self,
+        child_key: impl Into<ValueKey>,
+        child_value: &mut Value,
+    ) {
+        if let Some(callback_data) = self.get_update_callback_data() {
+            let child_callback_data = callback_data.with_child_path(child_key);
+            child_value.set_update_callback_data(Some(child_callback_data));
+        } else {
+            child_value.set_update_callback_data(None);
+        }
+    }
+
+    /// Updates the update callback data for a child value if it is a [ValueContainer::Local], 
+    /// based on the current update callback data of the parent.
+    fn set_child_update_callback_data_if_local(
+        &self,
+        child_key: &(impl Into<ValueKey> + Clone),
+        child_value: &mut ValueContainer
+    ) {
+        if let ValueContainer::Local(child_value) = child_value {
+            self.set_child_update_callback_data(child_key.clone(), child_value);
+        }
+    }
+    
+    /// Triggers the update callback if the source_id is provided and the callback data is available.
+    fn maybe_trigger_update_callback(
+        &self,
+        source_id: Option<TransceiverId>,
+        update_operation_generator: impl FnOnce() -> UpdateOperation
+    ) {
+        if let Some(source_id) = source_id && 
+            let Some(callback_data) = self.get_update_callback_data() {
+            let operation = update_operation_generator();
+            (callback_data.callback)(&Update::new(source_id, UpdateData::new_with_path(operation, callback_data.path.clone())));
+        }
+    }
 }
 
-pub trait UpdateHandlerImpl {
-    fn get_update_callback_data(&self) -> Option<&UpdateCallbackData>;
-
+pub trait UpdateHandlerImpl: UpdateCallbackDataAccess {
     /// Handles an update operation on the implementing type and returns an UpdateResult.
     /// The replacement operation must be handled at a higher level, as it is not specific to the implementing type.
     /// If the optional source_id is provided, it should be used to notify observers of the internal update.

@@ -107,13 +107,6 @@ impl BaseSharedValueContainer {
         }
     }
 
-    pub fn try_get_property<'a>(
-        &self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, AccessError> {
-        self.with_collapsed_value(|value| value.try_get_property(key))
-    }
-
     pub fn value_container(&self) -> &ValueContainer {
         &self.value_container
     }

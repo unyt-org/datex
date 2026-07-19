@@ -1,28 +1,30 @@
 use crate::{
-    prelude::*,
-    value_updates::update_data::IncrementUpdateData,
-    values::{
-        core_values::integer::{Integer, typed_integer::TypedInteger},
-        value_container::value_key::ValueKey,
-    },
+    prelude::*, value_updates::update_data::IncrementUpdateData,
+    values::core_values::integer::typed_integer::TypedInteger,
 };
 
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
-    value_updates::{errors::UpdateError, update_handler::UpdateHandlerImpl},
+    value_updates::{
+        errors::UpdateError,
+        update_data::DecrementUpdateData,
+        update_handler::{
+            UpdateCallbackData, UpdateCallbackDataAccess, UpdateHandlerImpl,
+        },
+    },
 };
 use core::{
     ops::{Add, AddAssign, SubAssign},
     result::Result,
 };
-use crate::value_updates::update_data::DecrementUpdateData;
-use crate::value_updates::update_handler::{UpdateCallbackData};
 
-impl UpdateHandlerImpl for TypedInteger {
+impl UpdateCallbackDataAccess for TypedInteger {
     fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
         None
     }
-    
+}
+
+impl UpdateHandlerImpl for TypedInteger {
     fn try_increment(
         &mut self,
         data: IncrementUpdateData,

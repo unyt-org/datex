@@ -1,16 +1,9 @@
 use crate::{
     prelude::*,
-    shared_values::{
-        base_shared_value_container::observers::TransceiverId,
-        errors::AccessError,
-    },
-    value_updates::update_data::{DecrementUpdateData, IncrementUpdateData},
+    shared_values::errors::AccessError,
     values::{
         core_values::list::List,
-        value_container::{
-            ValueContainer,
-            value_key::{BorrowedValueKey, ValueKey},
-        },
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 
@@ -25,20 +18,33 @@ use crate::value_updates::{
     },
 };
 use core::result::Result;
+use crate::value_updates::update_handler::UpdateCallbackDataAccess;
 
 impl InternalMutabilityUpdateHandler for List {
     fn set_update_callback_data(
         &mut self,
         observe_data: Option<UpdateCallbackData>,
     ) {
+        // Update the update callback data for all child values
+        for (index, child) in self.iter_local_values_mut() {
+            child.set_update_callback_data(
+                observe_data
+                    .as_ref()
+                    .map(|data| data.with_child_path(index)),
+            );
+        }
+        // Update the update callback data for the list itself
         self.update_callback_data = observe_data;
     }
 }
 
-impl UpdateHandlerImpl for List {
+impl UpdateCallbackDataAccess for List {
     fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
         self.update_callback_data.as_ref()
     }
+}
+
+impl UpdateHandlerImpl for List {
 
     fn try_set_entry(
         &mut self,
@@ -47,7 +53,7 @@ impl UpdateHandlerImpl for List {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
             || UpdateError::access_error(AccessError::InvalidIndexKey),
         )?;
-        self.try_set(key, data.value)
+        self.try_set_with_source(key, data.value, None)
             .map(Some)
             .map_err(UpdateError::access_error)
     }
@@ -59,7 +65,7 @@ impl UpdateHandlerImpl for List {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
             || UpdateError::access_error(AccessError::InvalidIndexKey),
         )?;
-        self.try_delete(key)
+        self.try_delete_with_source(key, None)
             .map_err(UpdateError::access_error)
             .map(Some)
     }
@@ -68,7 +74,7 @@ impl UpdateHandlerImpl for List {
         &mut self,
         data: AppendEntryUpdateData,
     ) -> Result<(), UpdateError> {
-        self.push(data.value);
+        self.push_with_source(data.value, None);
         Ok(())
     }
 
@@ -82,6 +88,6 @@ impl UpdateHandlerImpl for List {
         data: ListSpliceUpdateData,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         Ok(self
-            .splice(data.start..(data.start + data.delete_count), data.items))
+            .splice_with_source(data.start..(data.start + data.delete_count), data.items, None))
     }
 }

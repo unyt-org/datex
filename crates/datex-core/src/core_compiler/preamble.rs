@@ -827,7 +827,7 @@ mod tests {
             );
             let mut container_mut = owned_container.value_container_mut();
             let map = container_mut.try_as_mut::<Map>().unwrap();
-            map.set(
+            map.set_unchecked(
                 "a",
                 Map::from(vec![(
                     ValueContainer::from("b"),
@@ -944,7 +944,7 @@ mod tests {
         {
             let mut container_mut = owned_container_a.value_container_mut();
             let map = container_mut.try_as_mut::<Map>().unwrap();
-            map.set(
+            map.set_unchecked(
                 "b",
                 ValueContainer::Shared(SharedContainer::Referenced(
                     owned_container_b.derive_with_max_mutability(),
@@ -955,7 +955,7 @@ mod tests {
         {
             let mut container_mut = owned_container_b.value_container_mut();
             let map = container_mut.try_as_mut::<Map>().unwrap();
-            map.set(
+            map.set_unchecked(
                 "c",
                 ValueContainer::Shared(SharedContainer::Referenced(
                     owned_container_c.derive_with_max_mutability(),

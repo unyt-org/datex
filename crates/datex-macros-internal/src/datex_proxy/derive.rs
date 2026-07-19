@@ -760,7 +760,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                     SerdeMode::None => {
                         if field_attributes.datex_default {
                             quote! {
-                                match unsafe { map.try_delete_unsafe(#field_name) } {
+                                match unsafe { map.try_delete_unchecked(#field_name) } {
                                     Ok(value_container) => {
                                         DatexValueContainerProxyDeserialize::try_from_value_container(
                                             value_container
@@ -773,7 +773,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                             quote! {
                                 DatexValueContainerProxyDeserialize::try_from_map_property(
                                     unsafe {
-                                        map.try_delete_unsafe(#field_name)
+                                        map.try_delete_unchecked(#field_name)
                                     }
                                 )?
                             }
@@ -783,7 +783,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                     SerdeMode::Fallible | SerdeMode::Infallible => {
                         if field_attributes.datex_default {
                             quote! {
-                                match unsafe { map.try_delete_unsafe(#field_name) } {
+                                match unsafe { map.try_delete_unchecked(#field_name) } {
                                     Ok(value_container) => {
                                         try_serde_from_value_container(value_container)?
                                     }
@@ -794,7 +794,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                             quote! {
                                 try_serde_from_value_container(
                                     unsafe {
-                                        map.try_delete_unsafe(#field_name)
+                                        map.try_delete_unchecked(#field_name)
                                             .map_err(|err| {
                                                 TryFromDatexValueError(err.to_string())
                                             })?

@@ -24,8 +24,15 @@ use core::{
 mod child_iterator;
 pub mod local_child_path_resolver;
 pub mod serde_dif;
+pub mod updates;
 
-use crate::value_updates::update_handler::UpdateCallbackData;
+use crate::{
+    shared_values::base_shared_value_container::observers::TransceiverId,
+    value_updates::update_handler::{
+        InternalMutabilityUpdateHandler, UpdateCallbackData,
+    },
+    values::value_container::value_key::ValueKey,
+};
 use indexmap::{IndexMap, map::MutableKeys};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -148,7 +155,7 @@ impl Map {
 
     /// Gets a value in the map by reference.
     /// Returns None if the key is not found.
-    pub fn get<'a>(
+    pub fn try_get<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<&ValueContainer, KeyNotFoundError> {
@@ -172,7 +179,7 @@ impl Map {
         .ok_or_else(|| KeyNotFoundError::new(key.into()))
     }
 
-    pub fn get_mut<'a>(
+    pub fn try_get_mut<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<&mut ValueContainer, KeyNotFoundError> {
@@ -271,96 +278,68 @@ impl Map {
         Ok(())
     }
 
-    /// Removes a key from the map, returning the value if it existed.
-    pub fn try_delete<'a>(
-        &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, MapAccessError> {
-        let key = key.into();
-        match &mut self.entries {
-            MapEntries::Dynamic(map) => key.with_value_container(|key| {
-                map.shift_remove(key).ok_or_else(|| {
-                    MapAccessError::KeyNotFound(KeyNotFoundError::new(
-                        key.clone(),
-                    ))
-                })
-            }),
-            MapEntries::Structural(_)
-            | MapEntries::StructuralWithStringKeys(_) => {
-                Err(MapAccessError::Immutable)
-            }
+    pub(crate) fn iter(&self) -> MapIterator {
+        MapIterator {
+            map: self,
+            index: 0,
         }
     }
 
-    /// Removes a key from the map, returning the value if it existed.
-    /// Also works for structural maps, but creates a map that no longer matches the assumed type.
-    /// # Safety
-    /// The map should no longer be used after this operation.
-    pub unsafe fn try_delete_unsafe<'a>(
-        &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, KeyNotFoundError> {
-        let key = key.into();
-        match &mut self.entries {
-            MapEntries::Dynamic(map) => key.with_value_container(|key| {
-                map.shift_remove(key)
-                    .ok_or_else(|| KeyNotFoundError::new(key.clone()))
-            }),
-            MapEntries::Structural(vec) => key.with_value_container(|key| {
-                for (k, v) in vec.iter_mut() {
-                    if k == key {
-                        return Ok(core::mem::replace(
-                            v,
-                            ValueContainer::from(Value::null()),
-                        ));
-                    }
-                }
-                Err(KeyNotFoundError::new(key.clone()))
-            }),
-            MapEntries::StructuralWithStringKeys(vec) => {
-                if let Some(string) = key.try_as_text() {
-                    for (k, v) in vec.iter_mut() {
-                        if k == string {
-                            return Ok(core::mem::replace(
-                                v,
-                                ValueContainer::from(Value::null()),
-                            ));
-                        }
-                    }
-                    Err(KeyNotFoundError::new(key.clone().into()))
-                } else {
-                    Err(KeyNotFoundError::new(key.clone().into()))
-                }
-            }
-        }
+    pub(crate) fn iter_mut(&mut self) -> MapMutIterator {
+        self.into_iter()
     }
 
-    /// Clears all entries in the map, returning an error if the map is not dynamic.
-    pub fn try_clear_inner(
+    /// Returns an iterator over the local values in the map,
+    /// skipping any children that have a [ValueContainer::Shared] value
+    pub fn iter_local_values_mut(
         &mut self,
-    ) -> Result<ValueContainer, MapAccessError> {
-        match &mut self.entries {
-            MapEntries::Dynamic(map) => {
-                let previous = mem::take(map);
-                Ok(ValueContainer::from(Map::from(MapEntries::Dynamic(
-                    previous,
-                ))))
+    ) -> impl Iterator<Item = (BorrowedMutMapKey<'_>, &mut Value)> {
+        self.iter_mut().filter_map(|(key, item)| {
+            if let ValueContainer::Local(local_value) = item {
+                Some((key, local_value))
+            } else {
+                None
             }
-            MapEntries::Structural(_)
-            | MapEntries::StructuralWithStringKeys(_) => {
-                Err(MapAccessError::Immutable)
-            }
-        }
+        })
     }
 
     /// Sets a value in the map, panicking if it fails.
-    pub(crate) fn set<'a>(
+    pub(crate) fn set_unchecked<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
         value: impl Into<ValueContainer>,
     ) {
         self.try_set(key, value)
             .expect("Setting value in map failed");
+    }
+
+    /// Removes a key from the map, returning the value if it existed.
+    pub fn try_delete<'a>(
+        &mut self,
+        key: impl Into<BorrowedValueKey<'a>>,
+    ) -> Result<ValueContainer, MapAccessError> {
+        self.try_delete_with_source(key, Some(TransceiverId::Local))
+    }
+
+    /// Removes a key from the map, returning the value if it existed.
+    /// Also works for structural maps, but creates a map that no longer matches the assumed type.
+    /// # Safety
+    /// The map should no longer be used after this operation.
+    pub unsafe fn try_delete_unchecked<'a>(
+        &mut self,
+        key: impl Into<BorrowedValueKey<'a>>,
+    ) -> Result<ValueContainer, KeyNotFoundError> {
+        unsafe {
+            self.try_delete_unchecked_with_source(
+                key,
+                Some(TransceiverId::Local),
+            )
+        }
+    }
+
+    /// Clears all entries in the map, returning an error if the map is not dynamic.
+    pub fn try_clear(&mut self) -> Result<ValueContainer, MapAccessError> {
+        self.try_clear_with_source(Some(TransceiverId::Local))
     }
 
     /// Sets a value in the map, returning an error if it fails.
@@ -370,39 +349,7 @@ impl Map {
         key: impl Into<BorrowedValueKey<'a>>,
         value: impl Into<ValueContainer>,
     ) -> Result<Option<ValueContainer>, KeyNotFoundError> {
-        let key = key.into();
-        match &mut self.entries {
-            MapEntries::Dynamic(map) => Ok(key.with_value_container(|key| {
-                map.insert(key.clone(), value.into())
-            })),
-            MapEntries::Structural(vec) => key.with_value_container(|key| {
-                if let Some((_, v)) = vec.iter_mut().find(|(k, _)| k == key) {
-                    Ok(Some(core::mem::replace(v, value.into())))
-                } else {
-                    Err(KeyNotFoundError::new(key.clone()))
-                }
-            }),
-            MapEntries::StructuralWithStringKeys(vec) => {
-                if let Some(string) = key.try_as_text() {
-                    if let Some((_, v)) =
-                        vec.iter_mut().find(|(k, _)| k == string)
-                    {
-                        Ok(Some(core::mem::replace(v, value.into())))
-                    } else {
-                        Err(KeyNotFoundError::new(key.clone().into()))
-                    }
-                } else {
-                    Err(KeyNotFoundError::new(key.clone().into()))
-                }
-            }
-        }
-    }
-
-    pub(crate) fn iter<'a>(&'a self) -> MapIterator<'a> {
-        MapIterator {
-            map: self,
-            index: 0,
-        }
+        self.try_set_with_source(key, value.into(), Some(TransceiverId::Local))
     }
 }
 
@@ -464,6 +411,14 @@ impl<'a> From<&'a mut MapKey> for BorrowedMutMapKey<'a> {
         }
     }
 }
+impl<'a> From<BorrowedMutMapKey<'a>> for MapKey {
+    fn from(key: BorrowedMutMapKey<'a>) -> Self {
+        match key {
+            BorrowedMutMapKey::Text(text) => MapKey::Text(text.to_string()),
+            BorrowedMutMapKey::Value(value) => MapKey::Value(value.clone()),
+        }
+    }
+}
 
 impl<'a> From<BorrowedMutMapKey<'a>> for ValueContainer {
     fn from(key: BorrowedMutMapKey) -> Self {
@@ -508,6 +463,15 @@ impl From<MapKey> for ValueContainer {
         match key {
             MapKey::Text(text) => ValueContainer::Local(Value::from(text)),
             MapKey::Value(value) => value,
+        }
+    }
+}
+
+impl From<MapKey> for ValueKey {
+    fn from(key: MapKey) -> Self {
+        match key {
+            MapKey::Text(text) => ValueKey::Text(text),
+            MapKey::Value(value) => ValueKey::Value(value),
         }
     }
 }
@@ -777,7 +741,7 @@ impl From<Vec<(MapKey, ValueContainer)>> for Map {
         } else {
             let mut map = Map::default();
             for (k, v) in vec {
-                map.set(&k, v);
+                map.set_unchecked(&k, v);
             }
             map
         }
@@ -839,21 +803,21 @@ mod tests {
     #[test]
     fn map() {
         let mut map = Map::default();
-        map.set("key1", 42);
-        map.set("key2", "value2");
+        map.set_unchecked("key1", 42);
+        map.set_unchecked("key2", "value2");
         assert_eq!(map.size(), 2);
-        assert_eq!(map.get("key1").unwrap().to_string(), "42");
-        assert_eq!(map.get("key2").unwrap().to_string(), "\"value2\"");
+        assert_eq!(map.try_get("key1").unwrap().to_string(), "42");
+        assert_eq!(map.try_get("key2").unwrap().to_string(), "\"value2\"");
         assert_eq!(map.to_string(), r#"{"key1": 42, "key2": "value2"}"#);
     }
 
     #[test]
     fn duplicate_keys() {
         let mut map = Map::default();
-        map.set("key1", 42);
-        map.set("key1", "new_value");
+        map.set_unchecked("key1", 42);
+        map.set_unchecked("key1", "new_value");
         assert_eq!(map.size(), 1);
-        assert_eq!(map.get("key1").unwrap().to_string(), "\"new_value\"");
+        assert_eq!(map.try_get("key1").unwrap().to_string(), "\"new_value\"");
     }
 
     #[test]
@@ -869,11 +833,11 @@ mod tests {
             ),
         );
 
-        map.set(key.clone(), "value");
+        map.set_unchecked(key.clone(), "value");
         // same reference should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&key));
-        assert_eq!(map.get(&key).unwrap().to_string(), "\"value\"");
+        assert_eq!(map.try_get(&key).unwrap().to_string(), "\"value\"");
 
         // new reference with same value should not be found
         let new_key = ValueContainer::Shared(
@@ -884,14 +848,14 @@ mod tests {
             ),
         );
         assert!(!map.has(&new_key));
-        assert!(map.get(&new_key).is_err());
+        assert!(map.try_get(&new_key).is_err());
     }
 
     #[test]
     fn decimal_nan_value_key() {
         let mut map = Map::default();
         let nan_value = ValueContainer::from(Decimal::Nan);
-        map.set(&nan_value, "value");
+        map.set_unchecked(&nan_value, "value");
         // same NaN value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&nan_value));
@@ -901,7 +865,7 @@ mod tests {
         assert!(map.has(&new_nan_value));
 
         // adding new_nan_value should not increase size
-        map.set(&new_nan_value, "new_value");
+        map.set_unchecked(&new_nan_value, "new_value");
         assert_eq!(map.size(), 1);
     }
 
@@ -909,7 +873,7 @@ mod tests {
     fn float_nan_value_key() {
         let mut map = Map::default();
         let nan_value = ValueContainer::from(f64::NAN);
-        map.set(&nan_value, "value");
+        map.set_unchecked(&nan_value, "value");
         // same NaN value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&nan_value));
@@ -923,7 +887,7 @@ mod tests {
         assert!(!map.has(&float32_nan_value));
 
         // adding new_nan_value should not increase size
-        map.set(&new_nan_value, "new_value");
+        map.set_unchecked(&new_nan_value, "new_value");
         assert_eq!(map.size(), 1);
     }
 
@@ -931,7 +895,7 @@ mod tests {
     fn decimal_zero_value_key() {
         let mut map = Map::default();
         let zero_value = ValueContainer::from(Decimal::Zero);
-        map.set(&zero_value, "value");
+        map.set_unchecked(&zero_value, "value");
         // same Zero value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&zero_value));
@@ -945,7 +909,7 @@ mod tests {
         assert!(map.has(&neg_zero_value));
 
         // adding neg_zero_value should not increase size
-        map.set(&neg_zero_value, "new_value");
+        map.set_unchecked(&neg_zero_value, "new_value");
         assert_eq!(map.size(), 1);
     }
 
@@ -953,7 +917,7 @@ mod tests {
     fn float_zero_value_key() {
         let mut map = Map::default();
         let zero_value = ValueContainer::from(0.0f64);
-        map.set(&zero_value, "value");
+        map.set_unchecked(&zero_value, "value");
         // same 0.0 value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&zero_value));
@@ -965,7 +929,7 @@ mod tests {
         assert!(map.has(&neg_zero_value));
 
         // adding neg_zero_value should not increase size
-        map.set(&neg_zero_value, "new_value");
+        map.set_unchecked(&neg_zero_value, "new_value");
         assert_eq!(map.size(), 1);
 
         // new 0.0f32 value should not be found
@@ -978,7 +942,7 @@ mod tests {
         let mut map = Map::default();
         let zero_big_decimal =
             ValueContainer::from(TypedDecimal::Decimal(Decimal::Zero));
-        map.set(&zero_big_decimal, "value");
+        map.set_unchecked(&zero_big_decimal, "value");
         // same Zero value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&zero_big_decimal));
@@ -992,7 +956,7 @@ mod tests {
         assert!(map.has(&neg_zero_big_decimal));
 
         // adding neg_zero_big_decimal should not increase size
-        map.set(&neg_zero_big_decimal, "new_value");
+        map.set_unchecked(&neg_zero_big_decimal, "new_value");
         assert_eq!(map.size(), 1);
     }
 }

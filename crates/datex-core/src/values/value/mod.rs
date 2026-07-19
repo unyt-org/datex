@@ -29,7 +29,9 @@ pub mod serde_dif;
 pub mod update_handler;
 
 use crate::{
-    shared_values::errors::AccessError, values::core_values::endpoint::Endpoint,
+    shared_values::{SharedContainer, errors::AccessError},
+    value_updates::update_handler::InternalMutabilityUpdateHandler,
+    values::core_values::endpoint::Endpoint,
 };
 use core::{
     fmt::{Debug, Display, Formatter},
@@ -77,6 +79,13 @@ impl Value {
     }
     pub fn into_inner(self) -> CoreValue {
         self.inner
+    }
+
+    /// Strips any local observers from the given value container.
+    /// This method should be called when a value is moved from its [SharedContainer] parent.
+    pub fn without_local_observers(mut self) -> Value {
+        self.set_update_callback_data(None);
+        self
     }
 }
 
@@ -176,23 +185,40 @@ impl Value {
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, AccessError> {
+    ) -> Result<&ValueContainer, AccessError> {
         match self.inner {
             CoreValue::Map(ref map) => {
                 // If the value is a map, get the property
-                Ok(map.get(key)?.clone())
+                Ok(map.try_get(key)?)
             }
             CoreValue::List(ref list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_get(index)?.clone())
+                    Ok(list.try_get(index)?)
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
             }
-            CoreValue::Text(ref text) => {
+            _ => {
+                // If the value is not an map, we cannot get a property
+                Err(AccessError::InvalidOperation(
+                    "Cannot get property".to_string(),
+                ))
+            }
+        }
+    }
+
+    pub fn try_get_property_mut<'a>(
+        &mut self,
+        key: impl Into<BorrowedValueKey<'a>>,
+    ) -> Result<&mut ValueContainer, AccessError> {
+        match self.inner {
+            CoreValue::Map(ref mut map) => {
+                // If the value is a map, get the property
+                Ok(map.try_get_mut(key)?)
+            }
+            CoreValue::List(ref mut list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    let char = text.char_at(index)?;
-                    Ok(ValueContainer::from(char.to_string()))
+                    Ok(list.try_get_mut(index)?)
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
@@ -218,7 +244,7 @@ impl Value {
             }
             CoreValue::List(ref mut list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    Ok(list.delete(index)?)
+                    Ok(list.try_delete(index)?)
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
@@ -252,7 +278,7 @@ impl Value {
             }
             CoreValue::List(ref mut list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    list.delete(index)?;
+                    list.try_delete(index)?;
                     Ok(())
                 } else {
                     Err(AccessError::InvalidIndexKey)

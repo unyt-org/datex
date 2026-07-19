@@ -15,12 +15,15 @@ use core::{
     result::Result,
 };
 use crate::value_updates::update_data::DecrementUpdateData;
-use crate::value_updates::update_handler::UpdateCallbackData;
+use crate::value_updates::update_handler::{UpdateCallbackData, UpdateCallbackDataAccess};
 
-impl UpdateHandlerImpl for Decimal {
+impl UpdateCallbackDataAccess for Decimal {
     fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
         None
     }
+}
+
+impl UpdateHandlerImpl for Decimal {
 
     fn try_increment(
         &mut self,

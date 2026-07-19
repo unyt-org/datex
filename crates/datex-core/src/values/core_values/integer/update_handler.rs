@@ -15,11 +15,15 @@ use crate::{
     },
 };
 use core::result::Result;
+use crate::value_updates::update_handler::UpdateCallbackDataAccess;
 
-impl UpdateHandlerImpl for Integer {
+impl UpdateCallbackDataAccess for Integer {
     fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
         None
     }
+}
+
+impl UpdateHandlerImpl for Integer {
 
     fn try_increment(
         &mut self,

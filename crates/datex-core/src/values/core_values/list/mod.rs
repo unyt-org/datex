@@ -6,7 +6,13 @@ use crate::{
 };
 pub mod equality;
 pub mod serde_dif;
-use crate::value_updates::update_handler::UpdateCallbackData;
+use crate::{
+    shared_values::base_shared_value_container::observers::TransceiverId,
+    value_updates::update_handler::{
+        InternalMutabilityUpdateHandler, UpdateCallbackData,
+    },
+    values::value::Value,
+};
 use core::{
     fmt::Display,
     ops::{Index, Range},
@@ -16,6 +22,7 @@ use core::{
 mod child_iterator;
 pub mod local_child_path_resolver;
 pub mod update_handler;
+pub mod updates;
 
 #[derive(Debug, Default)]
 pub struct List {
@@ -72,42 +79,6 @@ impl List {
             .ok_or(IndexOutOfBoundsError { index })
     }
 
-    /// Sets the value at the specified index.
-    /// If the index is equal to the current length of the list, the value is pushed to the end.
-    /// If the index is greater than the current length, None is returned.
-    /// Returns the previous value at the index if it was replaced.
-    pub fn try_set(
-        &mut self,
-        index: i64,
-        value: ValueContainer,
-    ) -> Result<ValueContainer, IndexOutOfBoundsError> {
-        let index = self.get_valid_index(index)?;
-        // replace
-        Ok(core::mem::replace(&mut self.items[index], value))
-    }
-
-    /// Tries to delete the value at the specified index, returning it if successful.
-    /// If the index is out of bounds, an error is returned.
-    pub fn try_delete(
-        &mut self,
-        index: i64,
-    ) -> Result<ValueContainer, IndexOutOfBoundsError> {
-        let index = self.get_valid_index(index)?;
-        Ok(self.items.remove(index))
-    }
-
-    pub fn push<T: Into<ValueContainer>>(&mut self, value: T) {
-        self.items.push(value.into());
-    }
-
-    pub fn pop(&mut self) -> Option<ValueContainer> {
-        self.items.pop()
-    }
-
-    pub fn clear(&mut self) {
-        self.items.clear();
-    }
-
     pub fn as_vec(&self) -> &Vec<ValueContainer> {
         &self.items
     }
@@ -128,16 +99,21 @@ impl List {
         self.items.iter_mut()
     }
 
-    pub fn splice(
+    /// Returns an iterator over the local values in the list,
+    /// skipping any children that are [ValueContainer::Shared]
+    pub fn iter_local_values_mut(
         &mut self,
-        range: Range<u32>,
-        replace_with: impl IntoIterator<Item = ValueContainer>,
-    ) -> Vec<ValueContainer> {
-        let range = Range {
-            start: range.start as usize,
-            end: range.end as usize,
-        };
-        self.items.splice(range, replace_with).collect()
+    ) -> impl Iterator<Item = (u32, &mut Value)> {
+        self.items
+            .iter_mut()
+            .enumerate()
+            .filter_map(|(index, item)| {
+                if let ValueContainer::Local(local_value) = item {
+                    Some((index as u32, local_value))
+                } else {
+                    None
+                }
+            })
     }
 
     /// if index is negative, count from the end
@@ -154,21 +130,54 @@ impl List {
     fn get_valid_index(
         &self,
         index: i64,
-    ) -> Result<usize, IndexOutOfBoundsError> {
+    ) -> Result<u32, IndexOutOfBoundsError> {
         let index = self.wrap_index(index);
         if (index as usize) < self.items.len() {
-            Ok(index as usize)
+            Ok(index)
         } else {
             Err(IndexOutOfBoundsError { index })
         }
     }
 
-    pub fn delete(
+    /// Sets the value at the specified index.
+    /// If the index is equal to the current length of the list, the value is pushed to the end.
+    /// If the index is greater than the current length, None is returned.
+    /// Returns the previous value at the index if it was replaced.
+    pub fn try_set(
+        &mut self,
+        index: i64,
+        mut value: ValueContainer,
+    ) -> Result<ValueContainer, IndexOutOfBoundsError> {
+        self.try_set_with_source(index, value, Some(TransceiverId::Local))
+    }
+
+    /// Tries to delete the value at the specified index, returning it if successful.
+    /// If the index is out of bounds, an error is returned.
+    pub fn try_delete(
         &mut self,
         index: i64,
     ) -> Result<ValueContainer, IndexOutOfBoundsError> {
-        let index = self.get_valid_index(index)?;
-        Ok(self.items.remove(index))
+        self.try_delete_with_source(index, Some(TransceiverId::Local))
+    }
+
+    pub fn push<T: Into<ValueContainer>>(&mut self, value: T) {
+        self.push_with_source(value, Some(TransceiverId::Local))
+    }
+
+    pub fn pop(&mut self) -> Option<ValueContainer> {
+        self.pop_with_source(Some(TransceiverId::Local))
+    }
+
+    pub fn clear(&mut self) {
+        self.clear_with_source(Some(TransceiverId::Local))
+    }
+
+    pub fn splice(
+        &mut self,
+        range: Range<u32>,
+        replace_with: impl IntoIterator<Item = ValueContainer>,
+    ) -> Vec<ValueContainer> {
+        self.splice_with_source(range, replace_with, Some(TransceiverId::Local))
     }
 }
 
