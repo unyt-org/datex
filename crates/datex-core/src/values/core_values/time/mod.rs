@@ -6,11 +6,10 @@ use core::fmt;
 pub struct Instant(pub i128);
 
 impl Instant {
-    // FIXME: make compatible with nostd/embedded
-    // /// Returns the current UTC time
-    // pub fn now() -> Self {
-    //     Self(Utc::now().timestamp_millis() as i128) // Current system time
-    // }
+    /// Returns the current UTC time
+    pub fn now() -> Self {
+        Self(Utc::now().timestamp_millis() as i128) // Current system time
+    }
 
     /// Return ISO 8601 UTC string with millisecond precision (always ends with 'Z')
     pub fn to_iso_string(&self) -> String {
@@ -31,13 +30,12 @@ impl Instant {
         Self(dt.timestamp_millis() as i128)
     }
 
-    // FIXME
-    // // I always wished for this function in other languages
-    // /// Return difference between now and other Instant in 'ms'
-    // /// Return time is always positive
-    // pub fn difference_between_now(self) -> u64 {
-    //     (self.0 - Instant::now().0).unsigned_abs() as u64
-    // }
+    // I always wished for this function in other languages
+    /// Return difference between now and other Instant in 'ms'
+    /// Return time is always positive
+    pub fn difference_between_now(self) -> u64 {
+        (self.0 - Instant::now().0).unsigned_abs() as u64
+    }
 
     /// Add duration (in milliseconds)
     pub fn add_ms(&self, ms: i128) -> Self {
