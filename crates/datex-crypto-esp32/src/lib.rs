@@ -13,7 +13,7 @@ use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
 
 use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 use datex_crypto_facade::{
-    crypto::{AsyncCryptoResult, Crypto},
+    crypto::{AsyncCryptoResult, Crypto, CryptoVault, PQCrypto},
     error::BackendError,
 };
 
@@ -23,6 +23,15 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hkdf::Hkdf;
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
+
+use ml_dsa::{
+    Generate, Keypair, MlDsa44, Signer as ml_dsa_signer,
+    SigningKey as ml_dsa_signing_key, Verifier as ml_dsa_verifier,
+};
+use ml_kem::{
+    FromSeed, MlKem512, TryKeyInit,
+    kem::{Decapsulate, Encapsulate, Kem, KeyExport},
+};
 
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 mod hal {
@@ -103,39 +112,6 @@ impl Crypto for CryptoEsp32 {
     fn hash_sha256<'a>(
         to_digest: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
-        use ml_dsa::{
-            Generate, Keypair, MlDsa65, Signer, SigningKey, Verifier,
-        };
-        use ml_kem::{
-            MlKem512,
-            kem::{Decapsulate, Encapsulate, Kem},
-        };
-        // just checking if things work...
-        // Example copy pasted from docs...
-        // Generate a decapsulation/encapsulation keypair
-        let (dk, ek) = MlKem512::generate_keypair();
-
-        // Encapsulate a shared key to the holder of the decapsulation key, receive the shared
-        // secret `k_send` and the encapsulated form `ct`.
-        let (ct, k_send) = ek.encapsulate();
-
-        // Decapsulate the shared key
-        let k_recv = dk.decapsulate(&ct);
-
-        // We've now established a shared key
-        assert_eq!(k_send, k_recv);
-
-        /*
-        // Example copy pasted from docs...
-        let sk = SigningKey::<MlDsa65>::generate();
-
-        let msg = b"Hello world";
-        let sig = sk.sign(msg);
-
-        sk.verifying_key().verify(msg, &sig).unwrap();
-        // just checking if things work...
-        */
-
         Box::pin(async move {
             let hash: [u8; 32] = Sha256::digest(to_digest).into();
             Ok(hash)
@@ -293,6 +269,133 @@ impl Crypto for CryptoEsp32 {
             let public_key = PublicKey::from(y);
             Ok(private_key.diffie_hellman(&public_key).to_bytes())
         })
+    }
+}
+
+impl PQCrypto for CryptoEsp32 {
+    fn gen_mlkem() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+        let (dk, ek) = MlKem512::generate_keypair();
+        let decap_key = dk.to_bytes().to_vec();
+        let seed = dk.to_seed().unwrap().to_vec();
+        let encap_key = ek.to_bytes().to_vec();
+        (seed.to_vec(), decap_key, encap_key)
+    }
+
+    fn import_mlkem_keypair_from_seed(vault: &mut CryptoVault, seed: Vec<u8>) {
+        // verify working seed
+        /*
+        let kem_seed = ml_kem::array::Array::from_iter(seed);
+        let (dk, ek) = MlKem512::from_seed(&kem_seed);
+        let encap_key = ek.to_bytes().to_vec();
+        */
+        vault.kem_seed = seed;
+    }
+
+    fn export_mlkem_keypair_from_seed(
+        vault: &CryptoVault,
+    ) -> (Vec<u8>, Vec<u8>) {
+        let kem_seed = ml_kem::array::Array::from_iter(vault.kem_seed.clone());
+        let (dk, ek) = MlKem512::from_seed(&kem_seed);
+        let decap_key = dk.to_bytes().to_vec();
+        let encap_key = ek.to_bytes().to_vec();
+        (decap_key, encap_key)
+    }
+
+    fn enc_mlkem(peer_pub: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
+        let ek = ml_kem::ml_kem_512::EncapsulationKey::new_from_slice(
+            peer_pub.as_slice(),
+        )
+        .unwrap();
+        let (ct, k_send) = ek.encapsulate();
+        (ct.to_vec(), k_send.to_vec())
+    }
+
+    fn dec_mlkem(vault: &CryptoVault, ct: Vec<u8>) -> Vec<u8> {
+        let (dk, _) = MlKem512::from_seed(&ml_kem::array::Array::from_iter(
+            vault.kem_seed.clone(),
+        ));
+        dk.decapsulate(&ml_kem::array::Array::from_iter(ct))
+            .to_vec()
+    }
+
+    fn gen_mldsa() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+        let sig_seed =
+            ml_dsa_signing_key::<MlDsa44>::generate().to_seed().to_vec();
+        // TODO: remove clone...
+        let sk = ml_dsa_signing_key::<MlDsa44>::from_seed(
+            &ml_dsa::common::array::Array::from_iter(sig_seed.clone()),
+        );
+        let sig_key = sk.to_bytes().to_vec();
+        let ver_key = sk.verifying_key().encode().to_vec();
+        (sig_seed, sig_key, ver_key)
+    }
+
+    fn import_mldsa_keypair_from_seed(vault: &mut CryptoVault, seed: Vec<u8>) {
+        // verify working seed
+        /*
+        let sk = SigningKey::<MlDsa44>::from_seed(
+            &ml_dsa::common::array::Array::from_iter(seed.clone()),
+        );
+        let ver_key = sk.verifying_key().encode().to_vec();
+        */
+        vault.dsa_seed = seed;
+    }
+
+    fn export_mldsa_keypair_from_seed(
+        vault: &CryptoVault,
+    ) -> (Vec<u8>, Vec<u8>) {
+        // temporary hack: check for length
+        // ml_dsa -> 32byes
+        // ed25519 -> 64bytes
+        match vault.dsa_seed.len() {
+            32_usize => {
+                let sk = ml_dsa_signing_key::<MlDsa44>::from_seed(
+                    &ml_dsa::common::array::Array::from_iter(
+                        vault.dsa_seed.clone(),
+                    ),
+                );
+                let sig_key = sk.to_bytes().to_vec();
+                let ver_key = sk.verifying_key().encode().to_vec();
+                (sig_key, ver_key)
+            }
+            64_usize => {
+                let (pub_key, pri_key) = vault.dsa_seed.split_at(32);
+                (pri_key.to_vec(), pub_key.to_vec())
+            }
+            _ => unimplemented!("needs better errorhandling..."),
+        }
+    }
+
+    fn sig_mldsa(vault: &CryptoVault, data: &[u8]) -> Vec<u8> {
+        let sk = ml_dsa_signing_key::<MlDsa44>::from_seed(
+            &ml_dsa::common::array::Array::from_iter(vault.dsa_seed.clone()),
+        );
+        let sig = sk.sign(data).encode();
+        sig.to_vec()
+    }
+
+    fn ver_mldsa(sig: Vec<u8>, ver_key: Vec<u8>, data: &[u8]) -> bool {
+        let ver_key = ml_dsa::VerifyingKey::<MlDsa44>::decode(
+            &ml_dsa::common::array::Array::from_iter(ver_key),
+        );
+        let ver = ver_key.verify(
+            data,
+            &ml_dsa::Signature::decode(
+                &ml_dsa::common::array::Array::from_iter(sig),
+            )
+            .unwrap(),
+        );
+        ver.is_ok()
+    }
+
+    // Hack around asnc implementation
+    fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
+        let key: [u8; 32] = Self::random_bytes(32)
+            .try_into()
+            .map_err(|_| BackendError::Unavailable("ed25519 key gen rng"))?;
+        let pri_key = SigningKey::from_bytes(&key);
+        let pub_key = pri_key.verifying_key().to_bytes();
+        Ok((pub_key, pri_key.to_bytes()))
     }
 }
 

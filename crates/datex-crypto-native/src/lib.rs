@@ -1,5 +1,5 @@
 use datex_crypto_facade::{
-    crypto::{AsyncCryptoResult, Crypto},
+    crypto::{AsyncCryptoResult, Crypto, CryptoVault, PQCrypto},
     error::{
         AesCtrError, BackendError, Ed25519GenError, Ed25519SignError,
         Ed25519VerifyError, HkdfError, KeyUnwrapError, KeyWrapError,
@@ -24,8 +24,137 @@ use uuid::Uuid;
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
 
+use ml_dsa::{
+    Generate, Keypair, MlDsa44, Signer as ml_dsa_signer, SigningKey,
+    Verifier as ml_dsa_verifier,
+};
+use ml_kem::{
+    FromSeed, MlKem512, TryKeyInit,
+    kem::{Decapsulate, Encapsulate, Kem, KeyExport},
+};
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CryptoNative;
+impl PQCrypto for CryptoNative {
+    fn gen_mlkem() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+        let (dk, ek) = MlKem512::generate_keypair();
+        let decap_key = dk.to_bytes().to_vec();
+        let seed = dk.to_seed().unwrap().to_vec();
+        let encap_key = ek.to_bytes().to_vec();
+        (seed.to_vec(), decap_key, encap_key)
+    }
+
+    fn import_mlkem_keypair_from_seed(vault: &mut CryptoVault, seed: Vec<u8>) {
+        // verify working seed
+        /*
+        let kem_seed = ml_kem::array::Array::from_iter(seed);
+        let (dk, ek) = MlKem512::from_seed(&kem_seed);
+        let encap_key = ek.to_bytes().to_vec();
+        */
+        vault.kem_seed = seed;
+    }
+    fn export_mlkem_keypair_from_seed(
+        vault: &CryptoVault,
+    ) -> (Vec<u8>, Vec<u8>) {
+        let kem_seed = ml_kem::array::Array::from_iter(vault.kem_seed.clone());
+        let (dk, ek) = MlKem512::from_seed(&kem_seed);
+        let decap_key = dk.to_bytes().to_vec();
+        let encap_key = ek.to_bytes().to_vec();
+        (decap_key, encap_key)
+    }
+
+    fn enc_mlkem(peer_pub: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
+        let ek = ml_kem::ml_kem_512::EncapsulationKey::new_from_slice(
+            peer_pub.as_slice(),
+        )
+        .unwrap();
+        let (ct, k_send) = ek.encapsulate();
+        (ct.to_vec(), k_send.to_vec())
+    }
+
+    fn dec_mlkem(vault: &CryptoVault, ct: Vec<u8>) -> Vec<u8> {
+        let (dk, _) = MlKem512::from_seed(&ml_kem::array::Array::from_iter(
+            vault.kem_seed.clone(),
+        ));
+        dk.decapsulate(&ml_kem::array::Array::from_iter(ct))
+            .to_vec()
+    }
+
+    fn gen_mldsa() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+        let sig_seed = SigningKey::<MlDsa44>::generate().to_seed().to_vec();
+        // TODO: remove clone...
+        let sk = SigningKey::<MlDsa44>::from_seed(
+            &ml_dsa::common::array::Array::from_iter(sig_seed.clone()),
+        );
+        let sig_key = sk.to_bytes().to_vec();
+        let ver_key = sk.verifying_key().encode().to_vec();
+        (sig_seed, sig_key, ver_key)
+    }
+
+    fn import_mldsa_keypair_from_seed(vault: &mut CryptoVault, seed: Vec<u8>) {
+        // verify working seed
+        /*
+        let sk = SigningKey::<MlDsa44>::from_seed(
+            &ml_dsa::common::array::Array::from_iter(seed.clone()),
+        );
+        let ver_key = sk.verifying_key().encode().to_vec();
+        */
+        vault.dsa_seed = seed;
+    }
+
+    fn export_mldsa_keypair_from_seed(
+        vault: &CryptoVault,
+    ) -> (Vec<u8>, Vec<u8>) {
+        let sk = SigningKey::<MlDsa44>::from_seed(
+            &ml_dsa::common::array::Array::from_iter(vault.dsa_seed.clone()),
+        );
+        let sig_key = sk.to_bytes().to_vec();
+        let ver_key = sk.verifying_key().encode().to_vec();
+        (sig_key, ver_key)
+    }
+
+    fn sig_mldsa(vault: &CryptoVault, data: &[u8]) -> Vec<u8> {
+        let sk = SigningKey::<MlDsa44>::from_seed(
+            &ml_dsa::common::array::Array::from_iter(vault.dsa_seed.clone()),
+        );
+        let sig = sk.sign(data).encode();
+        sig.to_vec()
+    }
+
+    fn ver_mldsa(sig: Vec<u8>, ver_key: Vec<u8>, data: &[u8]) -> bool {
+        let ver_key = ml_dsa::VerifyingKey::<MlDsa44>::decode(
+            &ml_dsa::common::array::Array::from_iter(ver_key),
+        );
+        let ver = ver_key.verify(
+            data,
+            &ml_dsa::Signature::decode(
+                &ml_dsa::common::array::Array::from_iter(sig),
+            )
+            .unwrap(),
+        );
+        ver.is_ok()
+    }
+    fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
+        let key = PKey::generate_ed25519()
+            .map_err(|_| BackendError::Unavailable("openssl ed25519 gen"))?;
+
+        let public_key: [u8; 32] = key
+            .raw_public_key()
+            .map_err(|_| BackendError::Unavailable("ed25519 pub der"))?
+            .try_into()
+            .map_err(|_| BackendError::Unavailable("ed25519 pub key length"))?;
+        let private_key: [u8; 32] = key
+            .raw_private_key()
+            .map_err(|_| BackendError::Unavailable("ed25519 priv pkcs8"))?
+            .try_into()
+            .map_err(|_| {
+                BackendError::Unavailable("ed25519 priv key length")
+            })?;
+
+        Ok((public_key, private_key))
+    }
+}
+
 impl Crypto for CryptoNative {
     fn create_uuid() -> String {
         Uuid::new_v4().to_string()
@@ -110,29 +239,32 @@ impl Crypto for CryptoNative {
                 ))
             })?;
 
-            // Keep your DER/PKCS8 formats (portable).
-            let public_key: [u8; 32] = key.raw_public_key().map_err(|_| {
-                Ed25519GenError::Backend(BackendError::Unavailable(
-                    "ed25519 pub der",
-                ))
-            })?
-            .try_into()
-            .map_err(|_| {
-                Ed25519GenError::Backend(BackendError::Unavailable(
-                    "ed25519 pub key length",
-                ))
-            })?;
-            let private_key: [u8; 32] = key.raw_private_key().map_err(|_| {
-                Ed25519GenError::Backend(BackendError::Unavailable(
-                    "ed25519 priv pkcs8",
-                ))
-            })?
-            .try_into()
-            .map_err(|_| {
-                Ed25519GenError::Backend(BackendError::Unavailable(
-                    "ed25519 priv key length",
-                ))
-            })?;
+            let public_key: [u8; 32] = key
+                .raw_public_key()
+                .map_err(|_| {
+                    Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 pub der",
+                    ))
+                })?
+                .try_into()
+                .map_err(|_| {
+                    Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 pub key length",
+                    ))
+                })?;
+            let private_key: [u8; 32] = key
+                .raw_private_key()
+                .map_err(|_| {
+                    Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 priv pkcs8",
+                    ))
+                })?
+                .try_into()
+                .map_err(|_| {
+                    Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 priv key length",
+                    ))
+                })?;
 
             Ok((public_key, private_key))
         })
@@ -144,8 +276,9 @@ impl Crypto for CryptoNative {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
-            let sig_key = PKey::private_key_from_raw_bytes(pri_key, Id::ED25519)
-                .map_err(|_| Ed25519SignError::InvalidPrivateKey)?;
+            let sig_key =
+                PKey::private_key_from_raw_bytes(pri_key, Id::ED25519)
+                    .map_err(|_| Ed25519SignError::InvalidPrivateKey)?;
 
             let mut signer =
                 Signer::new_without_digest(&sig_key).map_err(|_| {
@@ -178,8 +311,9 @@ impl Crypto for CryptoNative {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
         Box::pin(async move {
-            let public_key = PKey::public_key_from_raw_bytes(pub_key, Id::ED25519)
-                .map_err(|_| Ed25519VerifyError::InvalidPublicKey)?;
+            let public_key =
+                PKey::public_key_from_raw_bytes(pub_key, Id::ED25519)
+                    .map_err(|_| Ed25519VerifyError::InvalidPublicKey)?;
 
             // OpenSSL expects signature to be exactly 64 bytes for Ed25519.
             if sig.len() != 64 {
@@ -397,17 +531,11 @@ impl Crypto for CryptoNative {
 
 #[cfg(test)]
 mod tests {
-    use super::CryptoNative;
+    use super::{CryptoNative, CryptoVault, PQCrypto};
     use datex_crypto_facade::{
         crypto::Crypto,
         error::{Ed25519VerifyError, KeyUnwrapError, X25519DeriveError},
     };
-
-    use ml_kem::{
-        MlKem512,
-        kem::{Decapsulate, Encapsulate, Kem}
-    };
-    use ml_dsa::{MlDsa65, Generate, Keypair, SigningKey, Signer, Verifier};
 
     #[test]
     fn uuid() {
@@ -582,27 +710,52 @@ mod tests {
     }
 
     #[test]
-    pub fn pqc_setup() {
-        // Example copy pasted from docs...
-        // Generate a decapsulation/encapsulation keypair
-        let (dk, ek) = MlKem512::generate_keypair();
+    pub fn pqc_kem_keyimport() {
+        let mut vault = CryptoVault::new_empty();
+        let (seed, _pri_key, pub_key) = CryptoNative::gen_mlkem();
 
-        // Encapsulate a shared key to the holder of the decapsulation key, receive the shared
-        // secret `k_send` and the encapsulated form `ct`.
-        let (ct, k_send) = ek.encapsulate();
+        CryptoNative::import_mlkem_keypair_from_seed(&mut vault, seed.clone());
 
-        // Decapsulate the shared key
-        let k_recv = dk.decapsulate(&ct);
+        assert_eq!(seed.len(), 64);
+        assert_eq!(seed, vault.kem_seed);
+    }
 
-        // We've now established a shared key
-        assert_eq!(k_send, k_recv);
+    #[test]
+    pub fn pqc_dsa_keyimport() {
+        let mut vault = CryptoVault::new_empty();
+        let (seed, _pry_key, pub_key) = CryptoNative::gen_mldsa();
 
-        // Example copy pasted from docs...
-        let sk = SigningKey::<MlDsa65>::generate();
+        CryptoNative::import_mldsa_keypair_from_seed(&mut vault, seed.clone());
 
-        let msg = b"Hello world";
-        let sig = sk.sign(msg);
+        assert_eq!(seed.len(), 32);
+        assert_eq!(seed, vault.dsa_seed);
+    }
 
-        sk.verifying_key().verify(msg, &sig).unwrap();
+    #[test]
+    pub fn pqc_kem() {
+        let mut vault = CryptoVault::new_empty();
+        let (kem_seed, _pri_key, kem_pub_key) = CryptoNative::gen_mlkem();
+        CryptoNative::import_mlkem_keypair_from_seed(&mut vault, kem_seed);
+
+        let (ct, ss_a) = CryptoNative::enc_mlkem(kem_pub_key.clone());
+        let ss_b = CryptoNative::dec_mlkem(&vault, ct.clone());
+
+        let (ct_b, ss_c) = CryptoNative::enc_mlkem(kem_pub_key);
+
+        assert_eq!(ss_a, ss_b);
+        assert_ne!(ss_b, ss_c);
+        assert_ne!(ct, ct_b);
+    }
+
+    #[test]
+    pub fn pqc_dsa() {
+        let mut vault = CryptoVault::new_empty();
+        let (dsa_seed, _pri_key, dsa_pub_key) = CryptoNative::gen_mldsa();
+        CryptoNative::import_mldsa_keypair_from_seed(&mut vault, dsa_seed);
+
+        let data = b"Hello world";
+        let sig = CryptoNative::sig_mldsa(&vault, data);
+        let ver = CryptoNative::ver_mldsa(sig, dsa_pub_key, data);
+        assert!(ver);
     }
 }

@@ -90,3 +90,8 @@ pub enum X25519DeriveError {
     InvalidPeerPublicKey,
     Backend(BackendError),
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PQCError {
+    PlaceHolder,
+}

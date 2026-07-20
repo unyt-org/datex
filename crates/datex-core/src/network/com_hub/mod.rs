@@ -3,7 +3,8 @@ use crate::{
     channel::mpsc::UnboundedSender,
     collections::HashMap,
     global::protocol_structures::{
-        block_header::BlockType, routing_header::{EncryptionType, SignatureType},
+        block_header::BlockType,
+        routing_header::{EncryptionType, SignatureType},
     },
     network::com_hub::{
         errors::{ComHubError, SocketEndpointRegistrationError},
@@ -87,10 +88,13 @@ use crate::{
     },
 };
 use async_select::select;
-use datex_crypto_facade::crypto::Crypto;
+use datex_crypto_facade::crypto::{Crypto, PQCrypto};
 use datex_macros_internal::Datex;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
+
+use crate::std_sync::Mutex;
+use datex_crypto_facade::crypto::CryptoVault;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -114,6 +118,8 @@ pub struct ComHub {
     outgoing_block_interceptors: RefCell<Vec<OutgoingBlockInterceptor>>,
 
     pub task_manager: TaskManager,
+
+    pub vault: Mutex<CryptoVault>,
 }
 
 impl Debug for ComHub {
@@ -195,6 +201,50 @@ impl ComHub {
     ) -> (Rc<ComHub>, impl Future<Output = ()>) {
         let (task_manager, task_future) = TaskManager::create();
 
+        // fill vault with random static (permanent) keys
+        // note: embedded mutex behaves differently...
+        // note: mldsa currently replaced with ed25519 for esp32
+        let mut vault = CryptoVault::new_empty();
+        info!("Vault Empty (expect: true): {:?}", vault.gen_both());
+        cfg_if::cfg_if! {
+            if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
+                let (seed_kem, _pri_key_kem, _pub_key_kem) = CryptoImpl::gen_mlkem();
+                CryptoImpl::import_mlkem_keypair_from_seed(
+                    &mut vault,
+                    seed_kem.clone(),
+                );
+                // Generate ed25519 instead of mldsa keys,
+                // concat keys and pretend it's the seed.
+                let (pub_key, pri_key) = CryptoImpl::gen_ed25519_cheat().unwrap();
+                let fake_seed_dsa = [pub_key, pri_key].concat();
+                // let (seed_dsa, _pri_key_dsa, _pub_key_dsa) = CryptoImpl::gen_mldsa();
+                CryptoImpl::import_mldsa_keypair_from_seed(
+                    &mut vault,
+                    fake_seed_dsa.clone(),
+                );
+                info!("Vault Empty (expect: false): {:?}", vault.gen_both());
+                info!("Vault (dsa len: {:?}):{:?}", fake_seed_dsa.len(), fake_seed_dsa);
+                info!("Vault (kem):{:?}", seed_kem);
+            } else {
+                let (seed_kem, _pri_key_kem, _pub_key_kem) = CryptoImpl::gen_mlkem();
+                CryptoImpl::import_mlkem_keypair_from_seed(
+                    &mut vault,
+                    seed_kem.clone(),
+                );
+                let (pub_key, pri_key) = CryptoImpl::gen_ed25519_cheat().unwrap();
+                let fake_seed_dsa = [pub_key, pri_key].concat();
+                // let (seed_dsa, _pri_key_dsa, _pub_key_dsa) = CryptoImpl::gen_mldsa();
+                CryptoImpl::import_mldsa_keypair_from_seed(
+                    &mut vault,
+                    fake_seed_dsa.clone(),
+                );
+                info!("Vault Empty (expect: false): {:?}", vault.gen_both());
+                // info!("Vault (dsa len: {:?}):{:?}", seed_dsa.len(), seed_dsa);
+                info!("Vault (dsa len: {:?}):{:?}", fake_seed_dsa.len(), fake_seed_dsa);
+                info!("Vault (kem):{:?}", seed_kem);
+            }
+        }
+
         let block_handler = BlockHandler::init(incoming_sections_sender);
         let com_hub = Rc::new(ComHub {
             endpoint: endpoint.into(),
@@ -205,6 +255,7 @@ impl ComHub {
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
             task_manager,
+            vault: Mutex::new(vault),
         });
 
         (com_hub, task_future)
@@ -661,6 +712,7 @@ impl ComHub {
 
         // assign endpoint to socket if none is assigned
         // only if a new block and the sender in not the local endpoint
+        let block_id = block.get_block_id();
         if is_new_block
             && !self.is_local_endpoint_exact(&block.routing_header.sender)
         {
@@ -678,16 +730,6 @@ impl ComHub {
                         || e == &Endpoint::ANY
                         || e == &Endpoint::ANY_ALL_INSTANCES
                 });
-
-                // handle blocks for own endpoint
-                let own_received_block =
-                    if is_for_own && block_type != BlockType::Hello {
-                        info!("Block is for this endpoint ({})", self.endpoint);
-
-                        Some(block.clone()) // FIXME #733: no clone
-                    } else {
-                        None
-                    };
 
                 // TODO #177: handle this via TTL, not explicitly for Hello blocks
                 let relay_receivers = {
@@ -718,17 +760,24 @@ impl ComHub {
                 let relayed_block = relay_receivers
                     .map(|receivers| block.clone_with_new_receivers(receivers));
 
+                // handle blocks for own endpoint
+                let own_received_block =
+                    if is_for_own && block_type != BlockType::Hello {
+                        info!("Block is for this endpoint ({})", self.endpoint);
+
+                        Some(block) // FIXME #733: no clone
+                    } else {
+                        None
+                    };
+
                 (relayed_block, own_received_block, is_for_own)
             } else {
                 (None, None, false)
             };
 
         // add to block history
-        let block_id_for_history = if is_new_block {
-            Some(block.get_block_id())
-        } else {
-            None
-        };
+        let block_id_for_history =
+            if is_new_block { Some(block_id) } else { None };
 
         ReceiveBlockPreprocessResult {
             relayed_block,
@@ -981,27 +1030,27 @@ impl ComHub {
         }
     }
 
+    /// Updates the sender and timestamp of the block
+    fn update_sender_and_timestamp(
+        mut block: DXBBlock,
+        endpoint: Endpoint,
+    ) -> Result<DXBBlock, ComHubError> {
+        let now = now_ms();
+        block.routing_header.sender = endpoint;
+        block
+            .block_header
+            .flags_and_timestamp
+            .set_creation_timestamp(now);
+        block.routing_header.distance = 1;
+        Ok(block)
+    }
+
     /// Prepares an own block for sending by setting sender, timestamp, distance and signing if needed.
     /// Will return either synchronously or asynchronously depending on the signature type.
     pub fn prepare_own_block(
         &self,
         mut block: DXBBlock,
     ) -> PrepareOwnBlockResult<'_> {
-        /// Updates the sender and timestamp of the block
-        fn update_sender_and_timestamp(
-            mut block: DXBBlock,
-            endpoint: Endpoint,
-        ) -> Result<DXBBlock, ComHubError> {
-            let now = now_ms();
-            block.routing_header.sender = endpoint;
-            block
-                .block_header
-                .flags_and_timestamp
-                .set_creation_timestamp(now);
-            block.routing_header.distance = 1;
-            Ok(block)
-        }
-
         let encrypted = !matches!(
             block.routing_header.flags.encryption_type(),
             EncryptionType::None
@@ -1011,11 +1060,33 @@ impl ComHub {
             SignatureType::None
         );
         if !encrypted && !signed {
-            return SyncOrAsync::Sync(update_sender_and_timestamp(
+            return SyncOrAsync::Sync(Self::update_sender_and_timestamp(
                 block,
                 self.endpoint.clone(),
             ));
         }
+
+        // access vault to get keys
+        cfg_if::cfg_if! {
+            // note: mutex works differently on embedded...
+            if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
+                let vault = self.vault.lock();
+                let (pub_sig_key, pri_sig_key) = vault.dsa_seed.split_at(32);
+                info!("pub_key, pri_key: {:?}; {:?}", pub_sig_key, pri_sig_key);
+                info!("kem_seed: {:?}", vault.kem_seed);
+                let pub_key = pub_sig_key.to_vec();
+                let pri_key = pri_sig_key.to_vec();
+            } else { // non-embedded
+                let vault = self.vault.lock().unwrap();
+                let (pub_sig_key, pri_sig_key) = vault.dsa_seed.split_at(32);
+                // info!("dsa_seed: {:?}", vault.clone().dsa_seed);
+                info!("pub_key, pri_key: {:?}; {:?}", pub_sig_key, pri_sig_key);
+                info!("kem_seed: {:?}", vault.kem_seed);
+                let pub_key = pub_sig_key.to_vec();
+                let pri_key = pri_sig_key.to_vec();
+            }
+        }
+
         SyncOrAsync::Async(Box::pin(async move {
             #[cfg(feature = "crypto_enabled")]
             {
@@ -1023,11 +1094,11 @@ impl ComHub {
                 let fut_block =
                     match block.routing_header.flags.encryption_type() {
                         EncryptionType::None => {
-                            info!("Prepping not encrypted dxb");
+                            info!("Prepare not encrypted dxb");
                             SyncOrAsync::Sync(block)
                         }
                         EncryptionType::Encrypted => {
-                            info!("Prepareing encrypted dxb");
+                            info!("Prepare encrypted dxb");
                             SyncOrAsync::Async(Box::pin(async move {
                                 let key: [u8; 32] =
                                     CryptoImpl::random_bytes(32)
@@ -1057,48 +1128,36 @@ impl ComHub {
             }
 
             match block.routing_header.flags.signature_type() {
-                // SignatureType::None can be handled synchronously
+                // SignatureType::None exits early
                 SignatureType::None => {
-                    update_sender_and_timestamp(block, self.endpoint.clone())
+                    info!("Setting no signature");
+                    Self::update_sender_and_timestamp(
+                        block,
+                        self.endpoint.clone(),
+                    )
                 }
 
-                // SignatureType::Unencrypted and SignatureType::Encrypted require async signing
+                // SignatureType::Unencrypted and SignatureType::Encrypted handled below
                 sig_ty => {
-                    let endpoint = self.endpoint.clone();
-
-                    let (pub_key, pri_key) = CryptoImpl::gen_ed25519()
-                        .await
-                        .map_err(|_| ComHubError::SignatureCreationError)?;
-
-                    let raw_signed =
-                        [pub_key.to_vec(), block.body.clone()].concat();
-
-                    let hashed_signed = CryptoImpl::hash_sha256(&raw_signed)
-                        .await
-                        .map_err(|_| ComHubError::SignatureCreationError)?;
-
-                    let signature =
-                        CryptoImpl::sig_ed25519(&pri_key, &hashed_signed)
-                            .await
-                            .map_err(|_| ComHubError::SignatureCreationError)?;
-
-                    let sig_bytes: Vec<u8> = match sig_ty {
-                        SignatureType::Unencrypted => signature.to_vec(),
-
-                        SignatureType::Encrypted => {
-                            let hash =
-                                CryptoImpl::hkdf_sha256(&pub_key, &[0u8; 16])
-                                    .await
-                                    .map_err(|_| {
-                                        ComHubError::SignatureCreationError
-                                    })?;
-
-                            CryptoImpl::aes_ctr_encrypt(
-                                &hash, &[0u8; 16], &signature,
-                            )
+                    let data = {
+                        CryptoImpl::hash_sha256(block.body.as_slice())
                             .await
                             .map_err(|_| ComHubError::SignatureCreationError)?
-                            .to_vec()
+                    };
+
+                    let signature = CryptoImpl::sig_ed25519(&pri_key, &data)
+                        .await
+                        .map_err(|_| ComHubError::SignatureCreationError)?;
+
+                    let sig_bytes: Vec<u8> = match sig_ty {
+                        SignatureType::Unencrypted => {
+                            info!("Setting not encrypted signature");
+                            signature.to_vec()
+                        }
+
+                        SignatureType::Encrypted => {
+                            info!("Setting encrypted signature");
+                            unimplemented!();
                         }
 
                         SignatureType::None => unreachable!("handled above"),
@@ -1106,7 +1165,9 @@ impl ComHub {
 
                     block.signature =
                         Some([sig_bytes, pub_key.to_vec()].concat());
-                    update_sender_and_timestamp(block, endpoint)
+
+                    let endpoint = self.endpoint.clone();
+                    Self::update_sender_and_timestamp(block, endpoint)
                 }
             }
         }))
@@ -1626,7 +1687,23 @@ impl ComHub {
             .flags_and_timestamp
             .set_block_type(BlockType::Hello);
         // TODO #182 include fingerprint of the own public key into body
-
+        // note: embedded mutex behaves differently...
+        /*
+        cfg_if::cfg_if! {
+            if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
+                let vault = self.vault.lock();
+                let (pub_key, pri_key) = vault.dsa_seed.split_at(32);
+                info!("pub_key, pri_key: {:?}; {:?}", pub_key, pri_key);
+                info!("kem_seed: {:?}", vault.kem_seed);
+                // (vault.dsa_seed.clone(), vault.kem_seed.clone())
+            } else { // non-embedded
+                let vault = self.vault.lock().unwrap();
+                info!("dsa_seed: {:?}", vault.clone().dsa_seed);
+                info!("kem_seed: {:?}", vault.kem_seed);
+                // (vault.dsa_seed.clone(), vault.kem_seed.clone())
+            }
+        }
+        */
         let block = self
             .prepare_own_block(block)
             .into_result()
@@ -2310,98 +2387,6 @@ pub mod tests {
         .await;
     }
 
-    // #[async_test]
-    // pub async fn unencrypted_signature_prepare_block_com_hub() {
-    //     let (com_hub, interface_proxy, mut incoming_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     // receive block
-    //     let mut block = DXBBlock {
-    //         body: vec![0x01, 0x02, 0x03],
-    //         encrypted_header: EncryptedHeader {
-    //             flags: encrypted_header::Flags::new()
-    //                 .with_user_agent(encrypted_header::UserAgent::Unused11),
-    //             ..Default::default()
-    //         },
-    //         ..DXBBlock::default()
-    //     };
-    //     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
-    //     block.recalculate_struct();
-    //     block
-    //         .routing_header
-    //         .flags
-    //         .set_signature_type(SignatureType::Unencrypted);
-    //     block = com_hub.prepare_own_block(block).await.unwrap();
-    //     let block_bytes = block.to_bytes();
-    //
-    //     let (_, mut incoming_blocks_sender) =
-    //         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
-    //     yield_now().await;
-    //
-    //     incoming_blocks_sender
-    //         .start_send(block_bytes.as_slice().to_vec())
-    //         .unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     let last_block = get_next_received_single_block_from_receiver(
-    //         &mut incoming_sections_receiver,
-    //     )
-    //     .await;
-    //     assert_eq!(last_block.raw_bytes.clone().unwrap(), block_bytes);
-    //     assert_eq!(block.signature, last_block.signature);
-    //
-    //     assert!(com_hub.validate_block(&last_block).await.unwrap());
-    // }
-    //
-    // #[async_test]
-    // pub async fn encrypted_signature_prepare_block_com_hub() {
-    //     let (com_hub, interface_proxy, mut incoming_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     // receive block
-    //     let mut block = DXBBlock {
-    //         body: vec![0x01, 0x02, 0x03],
-    //         encrypted_header: EncryptedHeader {
-    //             flags: encrypted_header::Flags::new()
-    //                 .with_user_agent(encrypted_header::UserAgent::Unused11),
-    //             ..Default::default()
-    //         },
-    //         ..DXBBlock::default()
-    //     };
-    //
-    //     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
-    //     block.recalculate_struct();
-    //
-    //     block
-    //         .routing_header
-    //         .flags
-    //         .set_signature_type(SignatureType::Encrypted);
-    //     block = com_hub.prepare_own_block(block).await.unwrap();
-    //     let block_bytes = block.to_bytes();
-    //
-    //     let (_, mut incoming_blocks_sender) =
-    //         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
-    //     yield_now().await;
-    //
-    //     incoming_blocks_sender
-    //         .start_send(block_bytes.as_slice().to_vec())
-    //         .unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     let last_block = get_next_received_single_block_from_receiver(
-    //         &mut incoming_sections_receiver,
-    //     )
-    //     .await;
-    //     assert_eq!(last_block.raw_bytes.clone().unwrap(), block_bytes);
-    //     assert_eq!(block.signature, last_block.signature);
-    //
-    //     assert!(com_hub.validate_block(&last_block).await.unwrap());
-    // }
-    //
-    //
-    //
     // #[async_test]
     // pub async fn reconnect() {
     //     let com_hub = create_mock_com_hub();

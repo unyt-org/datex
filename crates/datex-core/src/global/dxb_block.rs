@@ -367,82 +367,48 @@ impl DXBBlock {
             signature_type @ (SignatureType::Encrypted
             | SignatureType::Unencrypted) => MaybeAsync::Async(async move {
                 let is_valid = match signature_type {
-                    SignatureType::Encrypted => {
-                        let raw_sign = self.signature.as_ref().ok_or(
-                            SignatureValidationError::MissingSignature,
-                        )?;
-                        let (enc_sign, pub_key) = raw_sign.split_at(64);
-                        let hash = CryptoImpl::hkdf_sha256(pub_key, &[0u8; 16])
-                            .await
-                            .map_err(|_| {
-                                SignatureValidationError::SignatureParseError
-                            })?;
-                        let signature = CryptoImpl::aes_ctr_decrypt(
-                            &hash, &[0u8; 16], enc_sign,
-                        )
-                        .await
-                        .map_err(|_| {
-                            SignatureValidationError::SignatureParseError
-                        })?;
-
-                        let raw_signed = [pub_key, &self.body.clone()].concat();
-                        let hashed_signed = CryptoImpl::hash_sha256(
-                            &raw_signed,
-                        )
-                        .await
-                        .map_err(|_| {
-                            SignatureValidationError::SignatureParseError
-                        })?;
-
-                        CryptoImpl::ver_ed25519(
-                            pub_key,
-                            &signature,
-                            &hashed_signed,
-                        )
-                        .await
-                        .map_err(|_| {
-                            SignatureValidationError::InvalidSignature
-                        })?
-                    }
-
                     SignatureType::Unencrypted => {
+                        log::info!("Validating not encrypted signature");
                         let raw_sign = self.signature.as_ref().ok_or(
                             SignatureValidationError::MissingSignature,
                         )?;
                         let (signature, pub_key) = raw_sign.split_at(64);
 
-                        let raw_signed = [pub_key, &self.body.clone()].concat();
-                        let hashed_signed = CryptoImpl::hash_sha256(
-                            &raw_signed,
-                        )
-                        .await
-                        .map_err(|_| {
-                            SignatureValidationError::SignatureParseError
-                        })?;
+                        // hash and validation lead to stack-overflows on embedded...
+                        {
+                            let data = CryptoImpl::hash_sha256(
+                                &self.body,
+                            )
+                            .await
+                            .map_err(|_| {
+                                SignatureValidationError::SignatureParseError
+                            })?;
 
-                        CryptoImpl::ver_ed25519(
-                            pub_key,
-                            signature,
-                            &hashed_signed,
-                        )
-                        .await
-                        .map_err(|_| {
-                            SignatureValidationError::InvalidSignature
-                        })?
+                            CryptoImpl::ver_ed25519(pub_key, signature, &data)
+                                .await
+                                .map_err(|_| {
+                                    SignatureValidationError::InvalidSignature
+                                })?
+                        }
                     }
+                    SignatureType::Encrypted => {
+                        log::info!("Validating encrypted signature");
+                        unimplemented!();
+                    }
+
                     _ => unreachable!(),
                 };
 
                 match is_valid {
                     true => match self.routing_header.flags.encryption_type() {
                         EncryptionType::None => {
-                            log::info!("Dur sig val: EncryptionType::None");
+                            log::info!(
+                                "Validated signature of not encrypted dxb"
+                            );
                             Ok(self)
                         }
                         EncryptionType::Encrypted => {
-                            log::info!(
-                                "Dur sig val: EncryptionType::Encrypted"
-                            );
+                            log::info!("Validated signature of encrypted dxb");
                             let key: [u8; 32] =
                                 self.body[..32].try_into().unwrap();
                             let iv = [0u8; 16];

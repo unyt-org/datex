@@ -145,30 +145,6 @@ impl Crypto for CryptoWeb {
     fn hash_sha256<'a>(
         to_digest: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
-        // just checking if things work...
-        // Example copy pasted from docs...
-        // Generate a decapsulation/encapsulation keypair
-        let (dk, ek) = MlKem512::generate_keypair();
-
-        // Encapsulate a shared key to the holder of the decapsulation key, receive the shared
-        // secret `k_send` and the encapsulated form `ct`.
-        let (ct, k_send) = ek.encapsulate();
-
-        // Decapsulate the shared key
-        let k_recv = dk.decapsulate(&ct);
-
-        // We've now established a shared key
-        assert_eq!(k_send, k_recv);
-
-        // Example copy pasted from docs...
-        let sk = SigningKey::<MlDsa65>::generate();
-
-        let msg = b"Hello world";
-        let sig = sk.sign(msg);
-
-        sk.verifying_key().verify(msg, &sig).unwrap();
-        // just checking if things work...
-
         Box::pin(async move {
             let subtle = CryptoWeb::crypto_subtle();
 
