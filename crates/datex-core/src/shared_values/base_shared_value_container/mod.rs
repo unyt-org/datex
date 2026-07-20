@@ -21,12 +21,15 @@ pub mod apply;
 pub mod observers;
 pub mod serde_dif;
 
+use crate::{
+    shared_values::base_shared_value_container::observers::ObserverCallback,
+    utils::sheep::Sheep,
+};
 use core::{
     fmt::{Debug, Display},
     prelude::rust_2024::*,
 };
 use observers::{Observer, ObserverId};
-use crate::shared_values::base_shared_value_container::observers::ObserverCallback;
 
 /// For the internal implementation of shared containers.
 /// A BaseSharedValueContainer can only exists, when it's inner value matches the allowed type.
@@ -111,6 +114,13 @@ impl BaseSharedValueContainer {
         }
     }
 
+    pub fn collapsed_value(&self) -> Sheep<Value> {
+        match &self.value_container {
+            ValueContainer::Local(v) => Sheep::Borrowed(v),
+            ValueContainer::Shared(shared) => shared.collapsed_value(),
+        }
+    }
+
     pub fn value_container(&self) -> &ValueContainer {
         &self.value_container
     }
@@ -123,11 +133,11 @@ impl BaseSharedValueContainer {
     pub fn mutability(&self) -> &SharedContainerMutability {
         &self.mutability
     }
-    
+
     pub fn get_local_observers_enabled(&self) -> bool {
         self.local_observers_enabled
     }
-    
+
     pub fn set_local_observers_enabled(&mut self, enabled: bool) {
         self.local_observers_enabled = enabled;
     }

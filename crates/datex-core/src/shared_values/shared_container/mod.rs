@@ -205,6 +205,12 @@ impl SharedContainer {
         self.base_shared_container().with_collapsed_value(f)
     }
 
+    pub fn collapsed_value(&self) -> Sheep<Value> {
+        Sheep::map(self.base_shared_container(), |value| {
+            value.collapsed_value()
+        })
+    }
+
     pub fn pointer_address(&self) -> PointerAddress {
         match self {
             SharedContainer::Owned(owned) => {
