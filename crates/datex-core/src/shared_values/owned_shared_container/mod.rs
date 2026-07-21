@@ -98,21 +98,6 @@ impl OwnedSharedContainer {
         })
     }
 
-    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value_mut<R>(
-        &self,
-        f: impl FnOnce(&mut Value) -> R,
-    ) -> R {
-        self.inner_mut()
-            .base_shared_container_mut()
-            .with_collapsed_value_mut(f)
-    }
-
-    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
-        self.inner().base_shared_container().with_collapsed_value(f)
-    }
-
     /// Get a [Ref] to the inner [SelfOwnedSharedContainer].
     /// It is guaranteed that the contained [SharedContainerInner] is always a [SharedContainerInner::EndpointOwned].
     pub fn as_self_owned_shared_container(

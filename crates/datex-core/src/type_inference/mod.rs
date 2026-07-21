@@ -40,7 +40,8 @@ use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainerOwnership,
+        PointerAddress, ReferenceMutability, SharedContainer,
+        SharedContainerOwnership,
     },
     type_inference::{
         error::{
@@ -609,13 +610,14 @@ impl<'a> TypeInference<'a> {
         let ty = if let Some(container) =
             self.memory.get_reference(pointer_address)
         {
-            container.with_collapsed_value(|value| {
-                if let CoreValue::Type(ty) = &value.inner {
-                    Some(ty.clone())
-                } else {
-                    None
-                }
-            })
+            let container = SharedContainer::Referenced(container);
+            let value = container.collapsed_value();
+
+            if let CoreValue::Type(ty) = &value.borrow().inner {
+                Some(ty.clone())
+            } else {
+                None
+            }
         } else {
             None
         };
@@ -929,17 +931,20 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         if type_declaration.kind.is_nominal() {
             match &type_def {
-                Type::Nominal(definition) => definition
-                    .with_collapsed_value_mut(|val| {
-                        match &mut val.inner {
-                            CoreValue::NominalTypeDefinition(nominal_def) => {
-                                nominal_def.replace_definition_type(inferred_type_def);
-                            }
-                            _ => {
-                                panic!("Expected nominal type to be an alias during type declaration inference")
-                            }
+                Type::Nominal(definition) => {
+                    let mut val = definition.collapsed_value_mut();
+                    match &mut val.borrow_mut().inner {
+                        CoreValue::NominalTypeDefinition(nominal_def) => {
+                            nominal_def
+                                .replace_definition_type(inferred_type_def);
                         }
-                    }),
+                        _ => {
+                            panic!(
+                                "Expected nominal type to be an alias during type declaration inference"
+                            )
+                        }
+                    }
+                }
                 Type::Alias(_r) => {
                     // FIXME #620 is this necessary?
                     // reference.borrow_mut().type_value = Type::new(

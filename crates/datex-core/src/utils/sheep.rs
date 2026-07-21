@@ -7,14 +7,6 @@ pub enum Sheep<'a, T> {
     Owned(T),
 }
 
-impl<'a, T> Sheep<'a, T> {
-    pub fn map<U, F>(orig: Ref<'a, T>, f: F) -> Sheep<'a, U>
-    where
-        F: FnOnce(&T) -> Sheep<U> {
-        todo!()
-    }
-}
-
 impl<'a, T> From<Ref<'a, T>> for Sheep<'a, T> {
     fn from(r: Ref<'a, T>) -> Self {
         Sheep::Ref(r)

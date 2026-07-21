@@ -22,7 +22,12 @@ pub mod observers;
 pub mod serde_dif;
 
 use crate::{
-    shared_values::base_shared_value_container::observers::ObserverCallback,
+    shared_values::{
+        base_shared_value_container::observers::ObserverCallback,
+        collapsed_container_value::{
+            CollapsedContainerValue, CollapsedContainerValueMut,
+        },
+    },
     utils::sheep::Sheep,
 };
 use core::{
@@ -93,31 +98,19 @@ impl BaseSharedValueContainer {
         }
     }
 
-    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value_mut<R>(
-        &mut self,
-        f: impl FnOnce(&mut Value) -> R,
-    ) -> R {
-        match &mut self.value_container {
-            ValueContainer::Local(v) => f(v),
-            ValueContainer::Shared(shared) => {
-                shared.with_collapsed_value_mut(f)
-            }
-        }
-    }
-
-    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
+    pub fn collapsed_value(&self) -> CollapsedContainerValue {
         match &self.value_container {
-            ValueContainer::Local(v) => f(v),
-            ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
-        }
-    }
-
-    pub fn collapsed_value(&self) -> Sheep<Value> {
-        match &self.value_container {
-            ValueContainer::Local(v) => Sheep::Borrowed(v),
+            ValueContainer::Local(v) => CollapsedContainerValue::new_local(v),
             ValueContainer::Shared(shared) => shared.collapsed_value(),
+        }
+    }
+
+    pub fn collapsed_value_mut(&mut self) -> CollapsedContainerValueMut {
+        match &mut self.value_container {
+            ValueContainer::Local(v) => {
+                CollapsedContainerValueMut::new_local(v)
+            }
+            ValueContainer::Shared(shared) => shared.collapsed_value_mut(),
         }
     }
 

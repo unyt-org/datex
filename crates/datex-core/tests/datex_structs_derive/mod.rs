@@ -551,17 +551,17 @@ fn struct_with_owned_shared_value_container() {
     };
 
     let value_container: ValueContainer = example.into();
+    
+    let map: &Map = value_container.try_as().unwrap();
 
-    value_container.try_with(|map: &Map| {
-        if let ValueContainer::Shared(SharedContainer::Owned(
-            shared_container,
-        )) = map.try_get("owned").unwrap()
-        {
-            assert_eq!(*shared_container.pointer_address(), address);
-        } else {
-            panic!("Expected a Shared Owned variant in the ValueContainer");
-        }
-    });
+    if let ValueContainer::Shared(SharedContainer::Owned(
+      shared_container,
+    )) = map.try_get("owned").unwrap()
+    {
+        assert_eq!(*shared_container.pointer_address(), address);
+    } else {
+        panic!("Expected a Shared Owned variant in the ValueContainer");
+    }
 
     // TODO: function mapping, SharedRef<x>, Shared<x>
 }

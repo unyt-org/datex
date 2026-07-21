@@ -170,17 +170,16 @@ impl<'a> SharedValueTracking<'a> {
                         );
                     }
                     _ => {
-                        inner_container.with_collapsed_value_mut(|value| {
-                            for child in value.iter_children_mut() {
-                                if let ValueContainer::Shared(child) = child {
-                                    self.register_child(
-                                        parent_moved,
-                                        child,
-                                        parents,
-                                    );
-                                }
+                        let mut value = inner_container.collapsed_value_mut();
+                        for child in value.borrow_mut().iter_children_mut() {
+                            if let ValueContainer::Shared(child) = child {
+                                self.register_child(
+                                    parent_moved,
+                                    child,
+                                    parents,
+                                );
                             }
-                        });
+                        }
                     }
                 }
 
@@ -521,13 +520,12 @@ mod tests {
         );
         let parent = referenced_shared(&parent, ReferenceMutability::Immutable);
 
-        parent
-            .value_container_mut()
-            .with_collapsed_value_mut(|value| {
-                value.inner =
-                    List::from(vec![ValueContainer::Shared(parent.clone())])
-                        .into();
-            });
+        {
+            let mut collapsed = parent.collapsed_value_mut();
+            let mut value = collapsed.borrow_mut();
+
+            value.inner = List::from(vec![ValueContainer::Shared(parent.clone())]).into();
+        }
 
         let parent_index = tracking.register_shared_value(parent.clone());
 

@@ -26,9 +26,13 @@ use crate::{
         base_shared_value_container::observers::{
             Observer, ObserverCallback, ObserverError, ObserverId,
         },
+        collapsed_container_value::{
+            CollapsedContainerValue, CollapsedContainerValueMut,
+        },
         traits::SharedContainerCommon,
     },
     types::type_definition::TypeDefinition,
+    utils::sheep_mut::SheepMut,
     value_updates::update_handler::{
         InternalMutabilityUpdateHandler, UpdateCallbackData,
     },
@@ -177,38 +181,43 @@ impl SharedContainer {
 
     /// Gets the current actual [TypeDefinition] of the collapsed inner [Value]
     pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
-        Sheep::Owned(
-            self.with_collapsed_value(|value| value.actual_type().into_owned()),
-        )
-    }
-    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
-    pub fn with_actual_type<R, F>(&self, f: F) -> R
-    where
-        F: for<'b> FnOnce(&'b TypeDefinition) -> R,
-    {
-        self.with_collapsed_value(|value| {
-            let actual_type = value.actual_type();
-            f(actual_type.as_ref())
-        })
+        let value = self.collapsed_value();
+        Sheep::Owned(value.borrow().actual_type().into_owned())
     }
 
-    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value_mut<R>(
-        &self,
-        f: impl FnOnce(&mut Value) -> R,
-    ) -> R {
-        self.base_shared_container_mut().with_collapsed_value_mut(f)
+    pub fn collapsed_value(&self) -> CollapsedContainerValue {
+        CollapsedContainerValue::new_shared(self.get_collapsed_rc())
     }
 
-    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
-        self.base_shared_container().with_collapsed_value(f)
+    pub fn collapsed_value_mut(&self) -> CollapsedContainerValueMut {
+        CollapsedContainerValueMut::new_shared(self.get_collapsed_rc())
     }
 
-    pub fn collapsed_value(&self) -> Sheep<Value> {
-        Sheep::map(self.base_shared_container(), |value| {
-            value.collapsed_value()
-        })
+    /// Returns the Rc<RefCell<SharedContainerInner>> of the most inner local value of the shared container.
+    fn get_collapsed_rc(&self) -> Rc<RefCell<SharedContainerInner>> {
+        // TODO: no clone of RC?
+        // collapse nested direct shared children until most inner local value is found
+        let mut inner_rc = self.get_rc_internal().clone();
+
+        loop {
+            let next_rc = {
+                let borrowed = inner_rc.borrow();
+
+                match borrowed.base_shared_container().value_container() {
+                    ValueContainer::Shared(shared) => {
+                        Some(shared.get_rc_internal().clone())
+                    }
+                    _ => None,
+                }
+            };
+
+            match next_rc {
+                Some(rc) => inner_rc = rc,
+                None => break,
+            }
+        }
+
+        inner_rc
     }
 
     pub fn pointer_address(&self) -> PointerAddress {

@@ -26,7 +26,12 @@ pub mod apply;
 pub mod ops;
 pub mod update_handler;
 pub mod value_key;
-use crate::shared_values::traits::SharedContainerCommon;
+use crate::shared_values::{
+    collapsed_container_value::{
+        CollapsedContainerValue, CollapsedContainerValueMut,
+    },
+    traits::SharedContainerCommon,
+};
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
@@ -57,24 +62,21 @@ impl ValueContainer {
         ValueContainer::Local(value.into())
     }
 
-    /// Calls a fn with a reference to the current inner collapsed value of the  container
-    pub fn with_collapsed_value<R, F: FnOnce(&Value) -> R>(&self, f: F) -> R {
+    pub fn collapsed_value(&self) -> CollapsedContainerValue {
         match self {
-            ValueContainer::Local(value) => f(value),
-            ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
+            ValueContainer::Local(value) => {
+                CollapsedContainerValue::new_local(value)
+            }
+            ValueContainer::Shared(shared) => shared.collapsed_value(),
         }
     }
 
-    /// Calls a fn with a mutable reference to the current inner collapsed value of the container
-    pub(crate) fn with_collapsed_value_mut<R, F: FnOnce(&mut Value) -> R>(
-        &mut self,
-        f: F,
-    ) -> R {
+    pub fn collapsed_value_mut(&mut self) -> CollapsedContainerValueMut {
         match self {
-            ValueContainer::Local(value) => f(value),
-            ValueContainer::Shared(shared) => {
-                shared.with_collapsed_value_mut(f)
+            ValueContainer::Local(value) => {
+                CollapsedContainerValueMut::new_local(value)
             }
+            ValueContainer::Shared(shared) => shared.collapsed_value_mut(),
         }
     }
 
@@ -82,7 +84,8 @@ impl ValueContainer {
     /// Use [ValueContainer::with_collapsed_value] instead whenever possible
     /// or match the [ValueContainer]
     pub fn get_cloned_value(&self) -> Value {
-        self.with_collapsed_value(|value| value.clone())
+        let val = self.collapsed_value();
+        val.borrow().clone()
     }
 
     /// Tries to get an immutable reference to the value as a specified type.
@@ -109,17 +112,6 @@ impl ValueContainer {
             ValueContainer::Local(value) => value.inner.try_as_mut(),
             ValueContainer::Shared(_) => None,
         }
-    }
-
-    /// Tries to get the current collapsed value as a specified type.
-    /// Does not perform any type conversion.
-    /// Runs the provided closure with a reference to the typed value if the conversion was successful, otherwise returns None.
-    pub fn try_with<T, R, F>(&self, f: F) -> Option<R>
-    where
-        F: for<'a> FnOnce(&'a T) -> R,
-        for<'a> &'a T: TryFrom<&'a CoreValue>,
-    {
-        self.with_collapsed_value(|value| value.inner.try_as().map(f))
     }
 
     /// Tries to get the current collapsed value as a specified type.
@@ -163,16 +155,6 @@ impl ValueContainer {
         match self {
             ValueContainer::Local(local) => local.actual_type(),
             ValueContainer::Shared(shared) => shared.actual_type(),
-        }
-    }
-
-    pub fn with_actual_type<R, F: FnOnce(&TypeDefinition) -> R>(
-        &self,
-        f: F,
-    ) -> R {
-        match self {
-            ValueContainer::Local(local) => f(&local.actual_type()),
-            ValueContainer::Shared(shared) => shared.with_actual_type(f),
         }
     }
 
@@ -299,9 +281,8 @@ impl Display for ValueContainer {
                 if shared.is_borrowed() {
                     write!(f, "{}", shared.to_string_omit_content())
                 } else {
-                    shared.with_collapsed_value(|reference| {
-                        write!(f, "shared ({})", reference)
-                    })
+                    let value = shared.collapsed_value();
+                    write!(f, "shared ({})", value.borrow().as_ref())
                 }
             }
         }

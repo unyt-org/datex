@@ -1024,9 +1024,10 @@ pub fn inner_execution_loop(
                                         );
                                         Ok(res)
                                     } else {
-                                        target.with_collapsed_value(|v| v.try_get_property(
+                                        let collapsed_value = target.collapsed_value();
+                                        collapsed_value.borrow().try_get_property(
                                             &property_name,
-                                        ).map(|v| v.clone())) // FIXME: no clone?
+                                        ).map(|v| v.clone()) // FIXME: no clone?
                                     };
 
                                     yield_unwrap!(
@@ -1044,9 +1045,10 @@ pub fn inner_execution_loop(
                                     let property_index = property_data.0;
 
                                     let value_container = yield_unwrap!(target.as_value_container(&state.stack));
-                                    let res = value_container.with_collapsed_value(|v| v.try_get_property(
+                                    let collapsed_value = value_container.collapsed_value();
+                                    let res = collapsed_value.borrow().try_get_property(
                                         property_index,
-                                    ).map(|v| v.clone())); // FIXME: no clone?
+                                    ).map(|v| v.clone()); // FIXME: no clone?
                                     yield_unwrap!(res)
                                         .into()
                                 }
@@ -1062,9 +1064,8 @@ pub fn inner_execution_loop(
                                     );
 
                                     let value_container = yield_unwrap!(target.as_value_container(&state.stack));
-                                    let res = value_container.with_collapsed_value(
-                                        |v| v.try_get_property(&key).map(|v| v.clone())
-                                    ); // FIXME: no clone?
+                                    let collapsed_value = value_container.collapsed_value();
+                                    let res = collapsed_value.borrow().try_get_property(&key).map(|v| v.clone()); // FIXME: no clone?
 
                                     yield_unwrap!(res)
                                         .into()
