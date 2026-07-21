@@ -43,8 +43,8 @@ impl<T> Deref for Sheep<'_, T> {
     }
 }
 
-impl<T> Sheep<'_, T> {
-    pub fn as_ref(&self) -> &T {
+impl<T> AsRef<T> for Sheep<'_, T> {
+    fn as_ref(&self) -> &T {
         match self {
             Sheep::Ref(r) => r.deref(),
             Sheep::Borrowed(b) => b,
