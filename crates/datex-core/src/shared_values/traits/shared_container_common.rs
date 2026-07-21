@@ -8,6 +8,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::cell::{Ref, RefMut};
+use crate::value_updates::update_data::Update;
 
 pub trait SharedContainerCommon {
     /// Get the [SharedContainerMutability] of the container
@@ -40,4 +41,7 @@ pub trait SharedContainerCommon {
 
     /// Returns the [SharedContainerOwnership] of this shared container
     fn ownership(&self) -> SharedContainerOwnership;
+    
+    /// Returns a mutable reference to the queued updates of this shared container
+    fn queued_updates_mut(&self) -> RefMut<'_, Vec<Update>>;
 }

@@ -29,6 +29,7 @@ use crate::{
         collapsed_container_value::{
             CollapsedContainerValue, CollapsedContainerValueMut,
         },
+        shared_mut::SharedMut,
         traits::SharedContainerCommon,
     },
     types::type_definition::TypeDefinition,
@@ -152,7 +153,13 @@ impl SharedContainer {
             let self_clone = self.clone();
 
             let callback: ObserverCallback = Rc::new(move |update| {
-                self_clone.base_shared_container().call_observers(update);
+                // don't call observers if the shared container is currently borrowed,
+                // instead queue the update to be called later when the borrow is dropped
+                if self_clone.is_borrowed() {
+                    self_clone.queued_updates_mut().push(update.clone());
+                } else {
+                    self_clone.base_shared_container().call_observers(update);
+                }
             });
             local_value.set_update_callback_data(Some(UpdateCallbackData {
                 callback,
@@ -383,7 +390,7 @@ impl SharedContainer {
     /// Tries to get a mutable reference to the value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_as_mut<T>(&self) -> Option<RefMut<'_, T>>
+    pub fn try_as_mut<T>(&self) -> Option<SharedMut<'_, T>>
     where
         for<'a> &'a mut T: TryFrom<&'a mut CoreValue>,
     {
@@ -391,6 +398,26 @@ impl SharedContainer {
             value.try_as_mut::<T>()
         })
         .ok()
+        .map(|v| SharedMut::new(v, self))
+    }
+
+    /// This method is called when a borrow of the inner shared container is dropped.
+    /// If no more borrows are active, it will process any queued updates and notify observers.
+    pub fn notify_borrow_dropped(&self) {
+        if !self.is_borrowed() {
+            // FIXME: where to store queued updates without borrow?!
+            let mut queued_updates = self.queued_updates_mut();
+            println!(
+                "SharedContainer: no more borrows active, processing queued updates: {}",
+                queued_updates.len()
+            );
+            if !queued_updates.is_empty() {
+                let updates = mem::take(&mut *queued_updates);
+                for update in updates {
+                    self.base_shared_container().call_observers(&update);
+                }
+            }
+        }
     }
 }
 

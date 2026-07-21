@@ -9,6 +9,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::cell::{Ref, RefMut};
+use crate::value_updates::update_data::Update;
 
 impl SharedContainerCommon for OwnedSharedContainer {
     /// Get the [SharedContainerMutability] of the container
@@ -67,5 +68,9 @@ impl SharedContainerCommon for OwnedSharedContainer {
 
     fn ownership(&self) -> SharedContainerOwnership {
         SharedContainerOwnership::Owned
+    }
+
+    fn queued_updates_mut(&self) -> RefMut<'_, Vec<Update>> {
+        self.queued_updates.borrow_mut()
     }
 }

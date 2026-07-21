@@ -25,6 +25,7 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
+use crate::value_updates::update_data::Update;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -41,6 +42,8 @@ pub struct OwnedSharedContainer {
     inner: Rc<RefCell<SharedContainerInner>>,
     /// This reflects the container mutability of the inner container, which is guaranteed to stay the same
     container_mutability: SharedContainerMutability,
+    /// Stored queued updates that will be applied when the borrow of the inner value is dropped
+    queued_updates: RefCell<Vec<Update>>,
 }
 
 impl OwnedSharedContainer {
@@ -54,6 +57,7 @@ impl OwnedSharedContainer {
                 container,
             ))),
             container_mutability,
+            queued_updates: RefCell::new(Vec::new()),
         }
     }
 

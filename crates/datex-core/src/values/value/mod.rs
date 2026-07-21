@@ -172,7 +172,7 @@ impl Value {
     }
 
     /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type<'a>(&'a self) -> Sheep<'a, TypeDefinition> {
+    pub fn actual_type(&self) -> Sheep<TypeDefinition> {
         match &self.custom_type {
             Some(actual_type) => Sheep::Borrowed(actual_type),
             None => {

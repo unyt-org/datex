@@ -15,6 +15,7 @@ use crate::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
     types::type_definition::TypeDefinition,
+    value_updates::update_data::Update,
     values::{value::Value, value_container::ValueContainer},
 };
 use alloc::rc::Rc;
@@ -27,7 +28,7 @@ use core::{
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
 /// The inner value can either be a [SharedContainerInner::EndpointOwned] or [SharedContainerInner::External]
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ReferencedSharedContainer {
     /// The inner container contains the actual value which can be shared between multiple owners.
     /// This can either be a [SharedContainerInner::EndpointOwned] or a [SharedContainerInner::External]
@@ -37,6 +38,20 @@ pub struct ReferencedSharedContainer {
     pub(super) container_mutability: SharedContainerMutability,
     /// Field used internally to indicate that this reference should be treated as a move in the context of the compiler
     pub(super) move_indicator: bool,
+    /// Stored queued updates that will be applied when the borrow of the inner value is dropped
+    pub(super) queued_updates: RefCell<Vec<Update>>,
+}
+
+impl Clone for ReferencedSharedContainer {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            reference_mutability: self.reference_mutability,
+            container_mutability: self.container_mutability,
+            move_indicator: self.move_indicator,
+            queued_updates: RefCell::new(Vec::new()),
+        }
+    }
 }
 
 impl ReferencedSharedContainer {
@@ -52,6 +67,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Mutable,
             container_mutability: SharedContainerMutability::Mutable,
             move_indicator: false,
+            queued_updates: RefCell::new(Vec::new()),
         }
     }
 
@@ -67,6 +83,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Immutable,
             container_mutability,
             move_indicator: false,
+            queued_updates: RefCell::new(Vec::new()),
         }
     }
 
@@ -106,6 +123,7 @@ impl ReferencedSharedContainer {
             reference_mutability,
             container_mutability,
             move_indicator: false,
+            queued_updates: RefCell::new(Vec::new()),
         })
     }
 
@@ -171,6 +189,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Immutable,
             container_mutability: self.container_mutability(),
             move_indicator: false,
+            queued_updates: RefCell::new(Vec::new()),
         }
     }
 

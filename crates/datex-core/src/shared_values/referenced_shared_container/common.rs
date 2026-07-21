@@ -9,6 +9,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::cell::{Ref, RefMut};
+use crate::value_updates::update_data::Update;
 
 impl SharedContainerCommon for ReferencedSharedContainer {
     /// Get the [SharedContainerMutability] of the inner [SelfOwnedSharedContainer].
@@ -45,6 +46,7 @@ impl SharedContainerCommon for ReferencedSharedContainer {
         self.reference_mutability == ReferenceMutability::Mutable
     }
 
+    // TODO: convert to try_inner borrows
     fn inner(&self) -> Ref<'_, SharedContainerInner> {
         self.inner.borrow()
     }
@@ -67,5 +69,9 @@ impl SharedContainerCommon for ReferencedSharedContainer {
 
     fn ownership(&self) -> SharedContainerOwnership {
         SharedContainerOwnership::Referenced(self.reference_mutability())
+    }
+
+    fn queued_updates_mut(&self) -> RefMut<'_, Vec<Update>> {
+        self.queued_updates.borrow_mut()
     }
 }

@@ -12,6 +12,7 @@ mod self_owned_shared_container;
 mod shared_container;
 mod shared_container_inner;
 mod shared_container_mutability;
+pub mod shared_mut;
 mod subscriber;
 pub mod traits;
 pub mod weak_shared_container;

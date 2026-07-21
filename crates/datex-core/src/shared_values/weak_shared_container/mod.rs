@@ -31,6 +31,7 @@ impl WeakSharedContainer {
             reference_mutability: self.reference_mutability,
             container_mutability: self.container_mutability,
             move_indicator: self.move_indicator,
+            queued_updates: RefCell::new(Vec::new()),
         })
     }
 }
