@@ -37,8 +37,11 @@ impl RuntimeRunner {
         let (incoming_sections_sender, incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let (com_hub, com_hub_task_future) =
-            ComHub::create(endpoint.clone(), incoming_sections_sender);
+        let (com_hub, com_hub_task_future) = ComHub::create_with_vault(
+            endpoint.clone(),
+            incoming_sections_sender,
+        );
+
         let memory = RefCell::new(SharedReferencesCache::default());
         let pointer_address_provider = Rc::new(RefCell::new(
             SelfOwnedPointerAddressProvider::new(endpoint.clone()),

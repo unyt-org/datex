@@ -9,6 +9,12 @@ pub type AsyncCryptoResult<'a, T, E> =
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CryptoVault {
+    // 25519 static keys
+    pub pri_sig_key: [u8; 32],
+    pub pub_sig_key: [u8; 32],
+    pri_cry_key: [u8; 32],
+    pub_cry_key: [u8; 32],
+    // mlkem and mldsa- experimental
     pub dsa_seed: Vec<u8>,
     pub kem_seed: Vec<u8>,
 }
@@ -16,6 +22,10 @@ pub struct CryptoVault {
 impl CryptoVault {
     pub fn new_empty() -> Self {
         CryptoVault {
+            pri_sig_key: [0u8; 32],
+            pub_sig_key: [0u8; 32],
+            pri_cry_key: [0u8; 32],
+            pub_cry_key: [0u8; 32],
             dsa_seed: Vec::from([0u8; 32]),
             kem_seed: Vec::from([0u8; 64]),
         }
@@ -27,14 +37,18 @@ impl CryptoVault {
         y && z
     }
 
-    pub fn set_both(&mut self, dsa_seed: Vec<u8>, kem_seed: Vec<u8>) -> bool {
-        if !self.is_empty() {
-            self.dsa_seed = dsa_seed;
-            self.kem_seed = kem_seed;
-        } else {
-            return false;
-        }
-        true
+    pub fn set_pqc_keys(&mut self, dsa_seed: Vec<u8>, kem_seed: Vec<u8>) {
+        self.dsa_seed = dsa_seed;
+        self.kem_seed = kem_seed;
+    }
+
+    pub fn set_sig_keys(&mut self, pri_key: [u8; 32], pub_key: [u8; 32]) {
+        self.pri_sig_key = pri_key;
+        self.pub_sig_key = pub_key;
+    }
+    pub fn set_cry_keys(&mut self, pri_key: [u8; 32], pub_key: [u8; 32]) {
+        self.pri_cry_key = pri_key;
+        self.pub_cry_key = pub_key;
     }
 }
 

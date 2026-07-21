@@ -201,49 +201,26 @@ impl ComHub {
     ) -> (Rc<ComHub>, impl Future<Output = ()>) {
         let (task_manager, task_future) = TaskManager::create();
 
-        // fill vault with random static (permanent) keys
-        // note: embedded mutex behaves differently...
-        // note: mldsa currently replaced with ed25519 for esp32
-        let mut vault = CryptoVault::new_empty();
-        info!("Vault Empty (expect: true): {:?}", vault.is_empty());
-        cfg_if::cfg_if! {
-            if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
-                let (seed_kem, _pri_key_kem, _pub_key_kem) = CryptoImpl::gen_mlkem();
-                CryptoImpl::import_mlkem_keypair_from_seed(
-                    &mut vault,
-                    seed_kem.clone(),
-                );
-                // Generate ed25519 instead of mldsa keys,
-                // concat keys and pretend it's the seed.
-                let (pub_key, pri_key) = CryptoImpl::gen_ed25519_cheat().unwrap();
-                let fake_seed_dsa = [pub_key, pri_key].concat();
-                // let (seed_dsa, _pri_key_dsa, _pub_key_dsa) = CryptoImpl::gen_mldsa();
-                CryptoImpl::import_mldsa_keypair_from_seed(
-                    &mut vault,
-                    fake_seed_dsa.clone(),
-                );
-                info!("Vault Empty (expect: false): {:?}", vault.is_empty());
-                info!("Vault (dsa len: {:?}):{:?}", fake_seed_dsa.len(), fake_seed_dsa);
-                info!("Vault (kem):{:?}", seed_kem);
-            } else {
-                let (seed_kem, _pri_key_kem, _pub_key_kem) = CryptoImpl::gen_mlkem();
-                CryptoImpl::import_mlkem_keypair_from_seed(
-                    &mut vault,
-                    seed_kem.clone(),
-                );
-                let (pub_key, pri_key) = CryptoImpl::gen_ed25519_cheat().unwrap();
-                let fake_seed_dsa = [pub_key, pri_key].concat();
-                // let (seed_dsa, _pri_key_dsa, _pub_key_dsa) = CryptoImpl::gen_mldsa();
-                CryptoImpl::import_mldsa_keypair_from_seed(
-                    &mut vault,
-                    fake_seed_dsa.clone(),
-                );
-                info!("Vault Empty (expect: false): {:?}", vault.is_empty());
-                // info!("Vault (dsa len: {:?}):{:?}", seed_dsa.len(), seed_dsa);
-                info!("Vault (dsa len: {:?}):{:?}", fake_seed_dsa.len(), fake_seed_dsa);
-                info!("Vault (kem):{:?}", seed_kem);
-            }
-        }
+        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let com_hub = Rc::new(ComHub {
+            endpoint: endpoint.into(),
+            options: ComHubOptions::default(),
+            block_handler,
+            socket_manager: ComInterfaceSocketManager::new(),
+            interfaces_manager: ComInterfaceManager::default(),
+            incoming_block_interceptors: RefCell::new(Vec::new()),
+            outgoing_block_interceptors: RefCell::new(Vec::new()),
+            task_manager,
+            vault: Mutex::new(CryptoVault::new_empty()),
+        });
+
+        (com_hub, task_future)
+    }
+    pub fn create_with_vault(
+        endpoint: impl Into<Endpoint>,
+        incoming_sections_sender: UnboundedSender<IncomingSection>,
+    ) -> (Rc<ComHub>, impl Future<Output = ()>) {
+        let (task_manager, task_future) = TaskManager::create();
 
         let block_handler = BlockHandler::init(incoming_sections_sender);
         let com_hub = Rc::new(ComHub {
@@ -255,10 +232,33 @@ impl ComHub {
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
             task_manager,
-            vault: Mutex::new(vault),
+            vault: Mutex::new(Self::gen_filled_vault()),
         });
 
         (com_hub, task_future)
+    }
+
+    fn gen_filled_vault() -> CryptoVault {
+        #[cfg(feature = "crypto_enabled")]
+        {
+            // fill vault with random static (permanent) keys
+            // note: embedded mutex behaves differently...
+            let mut vault = CryptoVault::new_empty();
+
+            // note: mldsa currently replaced with ed25519
+            // let (seed_dsa, _pri_key_dsa, _pub_key_dsa) = CryptoImpl::gen_mldsa();
+            let dsa_seed = Vec::from([0u8; 32]);
+
+            let (kem_seed, _, _) = CryptoImpl::gen_mlkem();
+            let (pub_key, pri_key) = CryptoImpl::gen_ed25519_cheat().unwrap();
+            vault.set_sig_keys(pri_key, pub_key);
+            vault.set_pqc_keys(dsa_seed, kem_seed);
+            vault
+        }
+        #[cfg(not(feature = "crypto_enabled"))]
+        {
+            CryptoVault::new_empty()
+        }
     }
 
     /// Registers the handle_sockets_task for the given ComInterfaceConfiguration
@@ -1069,15 +1069,16 @@ impl ComHub {
             // note: mutex works differently on embedded...
             if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
                 let vault = self.vault.lock();
-                let (pub_sig_key, pri_sig_key) = vault.dsa_seed.split_at(32);
+                let pub_sig_key = vault.pub_sig_key;
+                let pri_sig_key = vault.pri_sig_key;
                 info!("pub_key, pri_key: {:?}; {:?}", pub_sig_key, pri_sig_key);
                 info!("kem_seed: {:?}", vault.kem_seed);
                 let pub_key = pub_sig_key.to_vec();
                 let pri_key = pri_sig_key.to_vec();
             } else { // non-embedded
                 let vault = self.vault.lock().unwrap();
-                let (pub_sig_key, pri_sig_key) = vault.dsa_seed.split_at(32);
-                // info!("dsa_seed: {:?}", vault.clone().dsa_seed);
+                let pub_sig_key = vault.pub_sig_key;
+                let pri_sig_key = vault.pri_sig_key;
                 info!("pub_key, pri_key: {:?}; {:?}", pub_sig_key, pri_sig_key);
                 info!("kem_seed: {:?}", vault.kem_seed);
                 let pub_key = pub_sig_key.to_vec();
