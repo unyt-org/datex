@@ -205,7 +205,7 @@ impl ComHub {
         // note: embedded mutex behaves differently...
         // note: mldsa currently replaced with ed25519 for esp32
         let mut vault = CryptoVault::new_empty();
-        info!("Vault Empty (expect: true): {:?}", vault.gen_both());
+        info!("Vault Empty (expect: true): {:?}", vault.is_empty());
         cfg_if::cfg_if! {
             if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
                 let (seed_kem, _pri_key_kem, _pub_key_kem) = CryptoImpl::gen_mlkem();
@@ -222,7 +222,7 @@ impl ComHub {
                     &mut vault,
                     fake_seed_dsa.clone(),
                 );
-                info!("Vault Empty (expect: false): {:?}", vault.gen_both());
+                info!("Vault Empty (expect: false): {:?}", vault.is_empty());
                 info!("Vault (dsa len: {:?}):{:?}", fake_seed_dsa.len(), fake_seed_dsa);
                 info!("Vault (kem):{:?}", seed_kem);
             } else {
@@ -238,7 +238,7 @@ impl ComHub {
                     &mut vault,
                     fake_seed_dsa.clone(),
                 );
-                info!("Vault Empty (expect: false): {:?}", vault.gen_both());
+                info!("Vault Empty (expect: false): {:?}", vault.is_empty());
                 // info!("Vault (dsa len: {:?}):{:?}", seed_dsa.len(), seed_dsa);
                 info!("Vault (dsa len: {:?}):{:?}", fake_seed_dsa.len(), fake_seed_dsa);
                 info!("Vault (kem):{:?}", seed_kem);
@@ -635,8 +635,6 @@ impl ComHub {
         let preprocess_result =
             self.receive_block_preprocess(&socket_uuid, block);
 
-        let self_clone = self.clone();
-
         // validate block signature if sent to own endpoint
         let validation_result = match preprocess_result.own_received_block {
             // if block is for own endpoint, validate signature if set
@@ -671,8 +669,8 @@ impl ComHub {
                 if preprocess_result.relayed_block.is_some()
                     || trace_block.is_some()
                 {
-                    MaybeAsync::Async(async move {
-                        self_clone
+                    MaybeAsync::Async(Box::pin(async move {
+                        self.clone()
                             .receive_block_async(
                                 trace_block,
                                 preprocess_result.relayed_block,
@@ -683,7 +681,7 @@ impl ComHub {
                             .await;
 
                         Ok(own_block)
-                    })
+                    }))
                 }
                 // otherwise, return directly without async handler
                 else {

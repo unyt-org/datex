@@ -21,13 +21,20 @@ impl CryptoVault {
         }
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         let y = self.dsa_seed.eq(&Vec::from([0u8; 32]));
         let z = self.kem_seed.eq(&Vec::from([0u8; 64]));
         y && z
     }
-    pub fn gen_both(&self) -> bool {
-        self.is_empty()
+
+    pub fn set_both(&mut self, dsa_seed: Vec<u8>, kem_seed: Vec<u8>) -> bool {
+        if !self.is_empty() {
+            self.dsa_seed = dsa_seed;
+            self.kem_seed = kem_seed;
+        } else {
+            return false;
+        }
+        true
     }
 }
 
