@@ -1,21 +1,12 @@
-use crate::{
-    prelude::*,
-    values::{
-        core_values::map::Map,
-        value_container::{
-            ValueContainer,
-            value_key::{BorrowedValueKey, ValueKey},
-        },
-    },
+use crate::values::{
+    core_values::map::Map,
+    value_container::{ValueContainer, value_key::BorrowedValueKey},
 };
 
 use crate::{
     value_updates::{
         errors::UpdateError,
-        update_data::{
-            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            SetEntryUpdateData,
-        },
+        update_data::{DeleteEntryUpdateData, SetEntryUpdateData},
         update_handler::{
             InternalMutabilityUpdateHandler, UpdateCallbackData,
             UpdateCallbackDataAccess, UpdateHandlerImpl,

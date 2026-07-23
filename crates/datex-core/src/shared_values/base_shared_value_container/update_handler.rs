@@ -1,23 +1,10 @@
 use crate::{
     prelude::*,
-    shared_values::base_shared_value_container::{
-        BaseSharedValueContainer, observers::TransceiverId,
-    },
-    types::{
-        error::TypeError,
-        traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
-        r#type::Type,
-    },
+    shared_values::base_shared_value_container::BaseSharedValueContainer,
+    types::traits::type_match::TypeSuperset,
     value_updates::{
-        UpdateReturn,
-        errors::UpdateError,
-        update_data::{
-            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData, Update, UpdateOperation,
-        },
-        update_handler::{
-            UpdateHandler, UpdateHandlerImpl, UpdateResult, into_update_result,
-        },
+        UpdateReturn, errors::UpdateError, update_data::UpdateOperation,
+        update_handler::UpdateResult,
     },
     values::value_container::{ValueContainer, value_key::ValueKey},
 };

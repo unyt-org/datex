@@ -114,7 +114,7 @@ impl Map {
         }?
         .without_local_observers();
 
-        self.maybe_trigger_update_callback(source, || UpdateOperation::clear());
+        self.maybe_trigger_update_callback(source, UpdateOperation::clear);
 
         Ok(res)
     }

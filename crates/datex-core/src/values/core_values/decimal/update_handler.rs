@@ -1,21 +1,19 @@
 use crate::{
-    prelude::*,
     value_updates::update_data::IncrementUpdateData,
-    values::{
-        core_values::decimal::Decimal, value_container::value_key::ValueKey,
-    },
+    values::core_values::decimal::Decimal,
 };
 
-use crate::{
-    shared_values::base_shared_value_container::observers::TransceiverId,
-    value_updates::{errors::UpdateError, update_handler::UpdateHandlerImpl},
+use crate::value_updates::{
+    errors::UpdateError,
+    update_data::DecrementUpdateData,
+    update_handler::{
+        UpdateCallbackData, UpdateCallbackDataAccess, UpdateHandlerImpl,
+    },
 };
 use core::{
     ops::{AddAssign, SubAssign},
     result::Result,
 };
-use crate::value_updates::update_data::DecrementUpdateData;
-use crate::value_updates::update_handler::{UpdateCallbackData, UpdateCallbackDataAccess};
 
 impl UpdateCallbackDataAccess for Decimal {
     fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
@@ -24,7 +22,6 @@ impl UpdateCallbackDataAccess for Decimal {
 }
 
 impl UpdateHandlerImpl for Decimal {
-
     fn try_increment(
         &mut self,
         data: IncrementUpdateData,

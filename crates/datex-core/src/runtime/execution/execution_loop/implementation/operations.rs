@@ -2,8 +2,7 @@
 use crate::{
     global::operators::{
         ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
-        LogicalUnaryOperator, ModificationOperator, SharedValueUnaryOperator,
-        UnaryOperator,
+        LogicalUnaryOperator, SharedValueUnaryOperator, UnaryOperator,
         binary::{
             ArithmeticOperator, BitwiseOperator, LogicalOperator, RangeOperator,
         },

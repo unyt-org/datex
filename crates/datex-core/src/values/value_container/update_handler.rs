@@ -1,7 +1,7 @@
 use crate::{
     value_updates::{
         update_data::Update,
-        update_handler::{UpdateHandler, UpdateHandlerImpl, UpdateResult},
+        update_handler::{UpdateHandler, UpdateResult},
     },
     values::value_container::ValueContainer,
 };

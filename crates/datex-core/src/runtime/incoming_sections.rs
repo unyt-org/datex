@@ -77,10 +77,8 @@ impl RuntimeInternal {
                 "Successful Execution result (from {}): None",
                 endpoint
             )),
-            Err(e) => self.log_info(format!(
-                "Execution error (from {}): {e}",
-                endpoint
-            )),
+            Err(e) => self
+                .log_info(format!("Execution error (from {}): {e}", endpoint)),
         }
 
         // send response back to the sender

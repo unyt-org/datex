@@ -1,21 +1,16 @@
 use crate::{
-    prelude::*,
     value_updates::update_data::IncrementUpdateData,
-    values::{
-        core_values::integer::Integer, value_container::value_key::ValueKey,
-    },
+    values::core_values::integer::Integer,
 };
 
-use crate::{
-    shared_values::base_shared_value_container::observers::TransceiverId,
-    value_updates::{
-        errors::UpdateError,
-        update_data::DecrementUpdateData,
-        update_handler::{UpdateCallbackData, UpdateHandlerImpl},
+use crate::value_updates::{
+    errors::UpdateError,
+    update_data::DecrementUpdateData,
+    update_handler::{
+        UpdateCallbackData, UpdateCallbackDataAccess, UpdateHandlerImpl,
     },
 };
 use core::result::Result;
-use crate::value_updates::update_handler::UpdateCallbackDataAccess;
 
 impl UpdateCallbackDataAccess for Integer {
     fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
@@ -24,7 +19,6 @@ impl UpdateCallbackDataAccess for Integer {
 }
 
 impl UpdateHandlerImpl for Integer {
-
     fn try_increment(
         &mut self,
         data: IncrementUpdateData,

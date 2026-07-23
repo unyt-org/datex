@@ -9,9 +9,8 @@ use crate::{
         UpdateReturn,
         errors::UpdateError,
         update_data::{
-            AppendEntryUpdateData, DecrementUpdateData, DeleteEntryUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData,
-            UpdateModificationOperator, UpdateOperation,
+            SetEntryUpdateData, Update, UpdateData, UpdateModificationOperator,
+            UpdateOperation,
         },
         update_handler::UpdateHandler,
     },

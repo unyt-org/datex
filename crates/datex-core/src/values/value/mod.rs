@@ -2,7 +2,6 @@
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
     prelude::*,
-    shared_values::base_shared_value_container::observers::ObserverCallback,
     types::type_definition::{
         TypeDefinition, callable::CallableTypeDefinition,
     },
@@ -13,10 +12,7 @@ use crate::{
             callable::{Callable, CallableBody},
             integer::typed_integer::TypedInteger,
         },
-        value_container::{
-            ValueContainer,
-            value_key::{BorrowedValueKey, ValueKey},
-        },
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 pub mod apply;
@@ -29,7 +25,7 @@ pub mod serde_dif;
 pub mod update_handler;
 
 use crate::{
-    shared_values::{SharedContainer, errors::AccessError},
+    shared_values::errors::AccessError,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
     values::core_values::endpoint::Endpoint,
 };
@@ -172,7 +168,7 @@ impl Value {
     }
 
     /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type(&self) -> Sheep<TypeDefinition> {
+    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
         match &self.custom_type {
             Some(actual_type) => Sheep::Borrowed(actual_type),
             None => {

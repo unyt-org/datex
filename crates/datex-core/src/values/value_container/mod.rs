@@ -6,12 +6,12 @@ use crate::{
 };
 pub mod equality;
 pub mod identity;
-use core::{cell::Ref, ops::Deref, result::Result};
+use core::ops::Deref;
 pub mod serde_dif;
 use super::value::Value;
 use crate::{
     prelude::*,
-    shared_values::{SharedContainer, errors::AccessError},
+    shared_values::SharedContainer,
     types::{
         r#type::Type,
         type_definition::TypeDefinition,
@@ -62,7 +62,7 @@ impl ValueContainer {
         ValueContainer::Local(value.into())
     }
 
-    pub fn collapsed_value(&self) -> CollapsedContainerValue {
+    pub fn collapsed_value(&self) -> CollapsedContainerValue<'_> {
         match self {
             ValueContainer::Local(value) => {
                 CollapsedContainerValue::new_local(value)
@@ -71,7 +71,7 @@ impl ValueContainer {
         }
     }
 
-    pub fn collapsed_value_mut(&mut self) -> CollapsedContainerValueMut {
+    pub fn collapsed_value_mut(&mut self) -> CollapsedContainerValueMut<'_> {
         match self {
             ValueContainer::Local(value) => {
                 CollapsedContainerValueMut::new_local(value)
@@ -151,7 +151,7 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_type(&self) -> Sheep<TypeDefinition> {
+    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
         match self {
             ValueContainer::Local(local) => local.actual_type(),
             ValueContainer::Shared(shared) => shared.actual_type(),

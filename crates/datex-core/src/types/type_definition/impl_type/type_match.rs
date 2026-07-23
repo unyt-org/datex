@@ -1,5 +1,7 @@
-use crate::types::traits::type_match::TypeSuperset;
-use crate::types::type_definition::impl_type::ImplTypeDefinition;
+use crate::types::{
+    traits::type_match::TypeSuperset,
+    type_definition::impl_type::ImplTypeDefinition,
+};
 
 impl TypeSuperset<ImplTypeDefinition> for ImplTypeDefinition {
     fn is_superset_of(&self, other: &ImplTypeDefinition) -> bool {
@@ -8,7 +10,7 @@ impl TypeSuperset<ImplTypeDefinition> for ImplTypeDefinition {
             .impl_markers
             .iter()
             .all(|self_impl| other.impl_markers.contains(self_impl));
-        
+
         if !all_impls_in_self_are_in_other {
             return false;
         }

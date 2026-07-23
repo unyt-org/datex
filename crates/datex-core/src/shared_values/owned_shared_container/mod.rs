@@ -16,7 +16,8 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    values::{value::Value, value_container::ValueContainer},
+    value_updates::update_data::Update,
+    values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
 use core::{
@@ -25,7 +26,6 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
-use crate::value_updates::update_data::Update;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].

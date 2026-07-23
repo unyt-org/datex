@@ -4,7 +4,7 @@ use crate::{
     traits::local_child_path_resolver::LocalChildPathResolver,
     value_updates::{
         errors::UpdateError,
-        update_data::{Update, UpdateData, UpdateOperation},
+        update_data::UpdateOperation,
         update_handler::{
             InternalMutabilityUpdateHandler, UpdateCallbackData,
             UpdateCallbackDataAccess, UpdateHandler, UpdateHandlerImpl,
@@ -12,9 +12,8 @@ use crate::{
         },
     },
     values::{
-        core_value::CoreValue,
-        value::Value,
-        value_container::{ValueContainer, value_key::ValueKey},
+        core_value::CoreValue, value::Value,
+        value_container::value_key::ValueKey,
     },
 };
 

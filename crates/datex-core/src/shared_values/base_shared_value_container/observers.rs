@@ -4,12 +4,9 @@ use crate::{
     shared_values::base_shared_value_container::BaseSharedValueContainer,
     utils::{freemap::NextKey, serde_serialize_seed::SerializeSeed},
     value_updates::{
-        update_data::{Update, UpdateData},
-        update_handler::{InternalMutabilityUpdateHandler, UpdateCallbackData},
+        update_data::Update, update_handler::InternalMutabilityUpdateHandler,
     },
-    values::{
-        core_values::endpoint::Endpoint, value_container::ValueContainer,
-    },
+    values::core_values::endpoint::Endpoint,
 };
 use core::{
     fmt::{Debug, Display},

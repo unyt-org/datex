@@ -18,7 +18,6 @@ use crate::shared_values::errors::KeyNotFoundError;
 use core::{
     fmt::{self, Display},
     hash::{Hash, Hasher},
-    mem,
     result::Result,
 };
 mod child_iterator;
@@ -278,14 +277,14 @@ impl Map {
         Ok(())
     }
 
-    pub(crate) fn iter(&self) -> MapIterator {
+    pub(crate) fn iter(&self) -> MapIterator<'_> {
         MapIterator {
             map: self,
             index: 0,
         }
     }
 
-    pub(crate) fn iter_mut(&mut self) -> MapMutIterator {
+    pub(crate) fn iter_mut(&mut self) -> MapMutIterator<'_> {
         self.into_iter()
     }
 

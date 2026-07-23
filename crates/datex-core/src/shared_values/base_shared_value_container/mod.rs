@@ -4,16 +4,13 @@ use crate::{
     types::type_definition::TypeDefinition,
     utils::freemap::FreeHashMap,
     values::{
-        core_value::CoreValue,
-        value::Value,
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
+        core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
 pub mod update_handler;
 use crate::{
     shared_values::{
-        SharedContainerMutability,
-        errors::{AccessError, SharedValueCreationError},
+        SharedContainerMutability, errors::SharedValueCreationError,
     },
     value_updates::errors::UpdateError,
 };
@@ -21,14 +18,8 @@ pub mod apply;
 pub mod observers;
 pub mod serde_dif;
 
-use crate::{
-    shared_values::{
-        base_shared_value_container::observers::ObserverCallback,
-        collapsed_container_value::{
-            CollapsedContainerValue, CollapsedContainerValueMut,
-        },
-    },
-    utils::sheep::Sheep,
+use crate::shared_values::collapsed_container_value::{
+    CollapsedContainerValue, CollapsedContainerValueMut,
 };
 use core::{
     fmt::{Debug, Display},
@@ -98,14 +89,14 @@ impl BaseSharedValueContainer {
         }
     }
 
-    pub fn collapsed_value(&self) -> CollapsedContainerValue {
+    pub fn collapsed_value(&self) -> CollapsedContainerValue<'_> {
         match &self.value_container {
             ValueContainer::Local(v) => CollapsedContainerValue::new_local(v),
             ValueContainer::Shared(shared) => shared.collapsed_value(),
         }
     }
 
-    pub fn collapsed_value_mut(&mut self) -> CollapsedContainerValueMut {
+    pub fn collapsed_value_mut(&mut self) -> CollapsedContainerValueMut<'_> {
         match &mut self.value_container {
             ValueContainer::Local(v) => {
                 CollapsedContainerValueMut::new_local(v)

@@ -1,4 +1,3 @@
-use core::hash::{Hash, Hasher};
 use crate::{
     traits::structural_eq::StructuralEq,
     values::{
@@ -8,6 +7,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use core::hash::{Hash, Hasher};
 
 impl PartialEq for Map {
     fn eq(&self, other: &Self) -> bool {

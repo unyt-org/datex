@@ -56,8 +56,7 @@ impl RemoteExecutionContext {
     pub unsafe fn set_endpoints(&mut self, endpoints: Vec<Endpoint>) {
         if endpoints.is_empty() {
             panic!("RemoteExecutionContext: endpoints cannot be empty");
-        }
-        else {
+        } else {
             self.endpoints = endpoints;
         }
     }

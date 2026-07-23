@@ -16,7 +16,7 @@ use crate::{
     },
     types::type_definition::TypeDefinition,
     value_updates::update_data::Update,
-    values::{value::Value, value_container::ValueContainer},
+    values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
 use core::{

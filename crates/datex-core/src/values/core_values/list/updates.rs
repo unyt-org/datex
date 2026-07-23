@@ -126,7 +126,7 @@ impl List {
             start: range.start as usize,
             end: range.end as usize,
         };
-        let start = range.start as usize;
+        let start = range.start;
         let res = self.items.splice(range, replace_with).collect::<Vec<_>>();
 
         self.maybe_trigger_update_callback(source_id, || {

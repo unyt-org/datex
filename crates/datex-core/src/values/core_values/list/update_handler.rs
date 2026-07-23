@@ -14,11 +14,11 @@ use crate::value_updates::{
         SetEntryUpdateData,
     },
     update_handler::{
-        InternalMutabilityUpdateHandler, UpdateCallbackData, UpdateHandlerImpl,
+        InternalMutabilityUpdateHandler, UpdateCallbackData,
+        UpdateCallbackDataAccess, UpdateHandlerImpl,
     },
 };
 use core::result::Result;
-use crate::value_updates::update_handler::UpdateCallbackDataAccess;
 
 impl InternalMutabilityUpdateHandler for List {
     fn set_update_callback_data(
@@ -45,7 +45,6 @@ impl UpdateCallbackDataAccess for List {
 }
 
 impl UpdateHandlerImpl for List {
-
     fn try_set_entry(
         &mut self,
         data: SetEntryUpdateData,
@@ -87,7 +86,10 @@ impl UpdateHandlerImpl for List {
         &mut self,
         data: ListSpliceUpdateData,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
-        Ok(self
-            .splice_with_source(data.start..(data.start + data.delete_count), data.items, None))
+        Ok(self.splice_with_source(
+            data.start..(data.start + data.delete_count),
+            data.items,
+            None,
+        ))
     }
 }

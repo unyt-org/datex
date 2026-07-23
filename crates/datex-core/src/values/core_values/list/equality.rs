@@ -1,7 +1,7 @@
-use core::hash::{Hash, Hasher};
 use crate::{
     traits::structural_eq::StructuralEq, values::core_values::list::List,
 };
+use core::hash::{Hash, Hasher};
 
 impl PartialEq for List {
     fn eq(&self, other: &Self) -> bool {

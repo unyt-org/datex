@@ -74,7 +74,7 @@ pub trait UpdateHandler {
         source_id: TransceiverId,
         data: AppendEntryUpdateData,
     ) -> Result<(), UpdateError> {
-        Ok(self.try_handle_update(
+        let _: () = self.try_handle_update(
             Update::new(
                 source_id,
                 UpdateData::new_with_path(
@@ -86,7 +86,8 @@ pub trait UpdateHandler {
         .try_into()
         .expect(
             "UpdateReturn should be convertible into Result<(), UpdateError>",
-        ))
+        );
+        Ok(())
     }
 
     fn try_clear(
@@ -133,7 +134,7 @@ pub trait UpdateHandler {
         source_id: TransceiverId,
         data: IncrementUpdateData,
     ) -> Result<(), UpdateError> {
-        Ok(self.try_handle_update(
+        let _: () = self.try_handle_update(
             Update::new(
                 source_id,
                 UpdateData::new_with_path(
@@ -145,7 +146,8 @@ pub trait UpdateHandler {
         .try_into()
         .expect(
             "UpdateReturn should be convertible into Result<(), UpdateError>",
-        ))
+        );
+        Ok(())
     }
     fn try_decrement(
         &mut self,
@@ -153,7 +155,7 @@ pub trait UpdateHandler {
         source_id: TransceiverId,
         data: DecrementUpdateData,
     ) -> Result<(), UpdateError> {
-        Ok(self.try_handle_update(
+        let _: () = self.try_handle_update(
             Update::new(
                 source_id,
                 UpdateData::new_with_path(
@@ -165,7 +167,8 @@ pub trait UpdateHandler {
         .try_into()
         .expect(
             "UpdateReturn should be convertible into Result<(), UpdateError>",
-        ))
+        );
+        Ok(())
     }
     fn try_replace(
         &mut self,
@@ -173,7 +176,7 @@ pub trait UpdateHandler {
         source_id: TransceiverId,
         data: ReplaceUpdateData,
     ) -> Result<(), UpdateError> {
-        Ok(self.try_handle_update(
+        let _: () = self.try_handle_update(
             Update::new(
                 source_id,
                 UpdateData::new_with_path(
@@ -185,7 +188,8 @@ pub trait UpdateHandler {
         .try_into()
         .expect(
             "UpdateReturn should be convertible into Result<(), UpdateError>",
-        ))
+        );
+        Ok(())
     }
 }
 
@@ -241,28 +245,35 @@ pub trait InternalMutabilityUpdateHandler: UpdateCallbackDataAccess {
         }
     }
 
-    /// Updates the update callback data for a child value if it is a [ValueContainer::Local], 
+    /// Updates the update callback data for a child value if it is a [ValueContainer::Local],
     /// based on the current update callback data of the parent.
     fn set_child_update_callback_data_if_local(
         &self,
         child_key: &(impl Into<ValueKey> + Clone),
-        child_value: &mut ValueContainer
+        child_value: &mut ValueContainer,
     ) {
         if let ValueContainer::Local(child_value) = child_value {
             self.set_child_update_callback_data(child_key.clone(), child_value);
         }
     }
-    
+
     /// Triggers the update callback if the source_id is provided and the callback data is available.
     fn maybe_trigger_update_callback(
         &self,
         source_id: Option<TransceiverId>,
-        update_operation_generator: impl FnOnce() -> UpdateOperation
+        update_operation_generator: impl FnOnce() -> UpdateOperation,
     ) {
-        if let Some(source_id) = source_id && 
-            let Some(callback_data) = self.get_update_callback_data() {
+        if let Some(source_id) = source_id
+            && let Some(callback_data) = self.get_update_callback_data()
+        {
             let operation = update_operation_generator();
-            (callback_data.callback)(&Update::new(source_id, UpdateData::new_with_path(operation, callback_data.path.clone())));
+            (callback_data.callback)(&Update::new(
+                source_id,
+                UpdateData::new_with_path(
+                    operation,
+                    callback_data.path.clone(),
+                ),
+            ));
         }
     }
 }

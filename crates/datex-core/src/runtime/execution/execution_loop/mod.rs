@@ -96,14 +96,14 @@ mod collected_execution_result;
 use collected_execution_result::CollectedExecutionResult;
 
 impl
-CollectionResultsPopper<
-    CollectedExecutionResult,
-    Option<RuntimeValue>,
-    MapKey,
-    ValueContainer,
-    Type,
-    TypeDefinition,
-> for CollectedResults<CollectedExecutionResult>
+    CollectionResultsPopper<
+        CollectedExecutionResult,
+        Option<RuntimeValue>,
+        MapKey,
+        ValueContainer,
+        Type,
+        TypeDefinition,
+    > for CollectedResults<CollectedExecutionResult>
 {
     fn try_extract_type_definition_result(
         result: CollectedExecutionResult,
@@ -201,7 +201,7 @@ pub fn execution_loop(
     state: RuntimeExecutionState,
     dxb_body: Rc<RefCell<Vec<u8>>>,
     interrupt_provider: InterruptProvider,
-) -> impl Iterator<Item=Result<ExternalExecutionInterrupt, ExecutionError>> {
+) -> impl Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>> {
     gen move {
         let mut active_value: Option<ValueContainer> = None;
 
@@ -287,7 +287,10 @@ pub gen fn inner_execution_loop(
                 ) =
                     regular_instruction
                 {
-                    let regular_result: Result<Option<RuntimeValue>, ExecutionError> = try {
+                    let regular_result: Result<
+                        Option<RuntimeValue>,
+                        ExecutionError,
+                    > = try {
                         match regular_instruction {
                         // boolean
                         RegularInstruction::True => Some(ValueContainer::from(true).into()),
@@ -552,7 +555,7 @@ pub gen fn inner_execution_loop(
 
                     Some(match regular_result {
                         Ok(value) => value,
-                        Err(error) => return yield Err(error.into()),
+                        Err(error) => return yield Err(error),
                     })
                 } else {
                     None
@@ -566,20 +569,24 @@ pub gen fn inner_execution_loop(
 
                 if let Some(type_instruction) = type_instruction {
                     Some(match type_instruction {
-                        TypeInstruction::TypeDefinitionCoreType(core_lib_type_id) => {
-                            CollectedExecutionResult::type_definition(TypeDefinition::CoreType(core_lib_type_id))
-                        }
+                        TypeInstruction::TypeDefinitionCoreType(
+                            core_lib_type_id,
+                        ) => CollectedExecutionResult::type_definition(
+                            TypeDefinition::CoreType(core_lib_type_id),
+                        ),
                         TypeInstruction::TypeDefinitionLiteral(literal) => {
-                            CollectedExecutionResult::type_definition(literal.into())
+                            CollectedExecutionResult::type_definition(
+                                literal.into(),
+                            )
                         }
 
-                        TypeInstruction::TypeDefinitionSharedTypeReference(type_ref) => {
+                        TypeInstruction::TypeDefinitionSharedTypeReference(
+                            type_ref,
+                        ) => {
                             let val = interrupt_with_maybe_value!(
                                 interrupt_provider,
                                 match type_ref.address {
-                                    PointerAddress::SelfOwned(
-                                        address,
-                                    ) => {
+                                    PointerAddress::SelfOwned(address) => {
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::GetReferenceToLocalPointer(
                                                 address,
@@ -600,9 +607,9 @@ pub gen fn inner_execution_loop(
                             match val {
                                 // simple Type value
                                 Some(ValueContainer::Local(Value {
-                                                                inner: CoreValue::Type(_ty),
-                                                                ..
-                                                            })) => todo!(),
+                                    inner: CoreValue::Type(_ty),
+                                    ..
+                                })) => todo!(),
                                 // FIXME:
                                 // // Type Reference
                                 // Some(ValueContainer::Shared(SharedContainer {
@@ -643,7 +650,7 @@ pub gen fn inner_execution_loop(
         // handle collecting nested expressions
         while let Some(result) = collector.try_pop_collected() {
             let expr_result: Result<CollectedExecutionResult, ExecutionError> = try {
-            match result {
+                match result {
                     FullOrPartialResult::Full {
                         instruction,
                         results: mut collected_results,
@@ -674,8 +681,7 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::KeyValueDynamic => {
-                                    let value = 
-                                        collected_results.pop_potentially_cloned_value_container_result_assert_existing(&state)?;
+                                    let value = collected_results.pop_potentially_cloned_value_container_result_assert_existing(&state)?;
                                     let key = collected_results
                                             .pop_potentially_cloned_value_container_result_assert_existing(&state)?;
                                     CollectedExecutionResult::key_value_pair(
@@ -900,7 +906,7 @@ pub gen fn inner_execution_loop(
                                         modify_shared_container_value_data.operator,
                                         value,
                                         source_id,
-                                        vec![] 
+                                        vec![]
                                     )?;
                                     None.into()
                                 }
@@ -970,9 +976,8 @@ pub gen fn inner_execution_loop(
                                         let collapsed_value = target.collapsed_value();
                                         collapsed_value.borrow().try_get_property(
                                             &property_name,
-                                        )
-                                        .map(|v| v.clone())
-                                        .map_err(|a| ExecutionError::access_error(a))? // FIXME: no clone?
+                                        ).cloned()
+                                        .map_err(ExecutionError::access_error)? // FIXME: no clone?
                                     };
 
                                     res.into()
@@ -990,7 +995,7 @@ pub gen fn inner_execution_loop(
                                     let res = collapsed_value.borrow().try_get_property(
                                         property_index,
                                     ).cloned()
-                                    .map_err(|e|ExecutionError::access_error(e))?; // FIXME: no clone?
+                                    .map_err(ExecutionError::access_error)?; // FIXME: no clone?
                                     res.into()
                                 }
 
@@ -1002,8 +1007,8 @@ pub gen fn inner_execution_loop(
 
                                     let value_container = target.as_value_container(&state.stack)?;
                                     let collapsed_value = value_container.collapsed_value();
-                                    let res = collapsed_value.borrow().try_get_property(&key).map(|v| v.clone())
-                                    .map_err(|e| ExecutionError::access_error(e))?; // FIXME: no clone?
+                                    let res = collapsed_value.borrow().try_get_property(&key).cloned()
+                                    .map_err(ExecutionError::access_error)?; // FIXME: no clone?
 
                                     res.into()
                                 }
@@ -1021,7 +1026,7 @@ pub gen fn inner_execution_loop(
                                         vec![], // FIXME path
                                         source_id,
                                         DeleteEntryUpdateData { key: ValueKey::Index(property_index as i64) },
-                                    ).map_err(|e| ExecutionError::update_error(e))?;
+                                    ).map_err(ExecutionError::update_error)?;
                                     ValueContainer::new_from_option(res)
                                         .into()
                                 }
@@ -1073,7 +1078,7 @@ pub gen fn inner_execution_loop(
                                     let source_id = state.source_id_cloned();
                                     let value_container = target.as_value_container_mut(&mut state.stack)?;
 
-                                    let res = try_set_property(
+                                    let _res = try_set_property(
                                         value_container,
                                         ValueKey::Index(
                                             property_data.0 as i64,
@@ -1097,7 +1102,7 @@ pub gen fn inner_execution_loop(
 
                                     let value_container = target.as_value_container_mut(&mut state.stack)?;
 
-                                    let res = try_set_property(
+                                    let _res = try_set_property(
                                         value_container,
                                         ValueKey::Value(key),
                                         value,
@@ -1124,9 +1129,7 @@ pub gen fn inner_execution_loop(
                                     }
                                     // otherwise, perform move
                                     else {
-                                        let value = 
-                                            collected_results.pop_runtime_value_result_assert_existing()?
-                                                .into_value_container(&mut state)?;
+                                        let value = collected_results.pop_runtime_value_result_assert_existing()?.into_value_container(&mut state)?;
                                         let container = SharedContainer::new_owned_with_inferred_allowed_type(
                                             value,
                                             move_with_value.mutability,
@@ -1169,7 +1172,7 @@ pub gen fn inner_execution_loop(
                                             exec_block_data,
                                             injected_values,
                                             compile_input,
-                                        ).map_err(|e| ExecutionError::invalid_program(InvalidProgramError::ExpectedValue))?
+                                        ).map_err(|_e| ExecutionError::invalid_program(InvalidProgramError::ExpectedValue))?
                                     };
 
                                     interrupt_with_maybe_value!(
@@ -1424,7 +1427,7 @@ pub gen fn inner_execution_loop(
 
             let active_value = match active_value_result {
                 Ok(value) => value,
-                Err(error) => return yield Err(error.into()),
+                Err(error) => return yield Err(error),
             };
 
             interrupt!(
@@ -1439,18 +1442,16 @@ pub gen fn inner_execution_loop(
     if let Some(result) = collector.take_root_result() {
         let root_result: Result<_, ExecutionError> = try {
             match result {
-                CollectedExecutionResult::Value(value) => {
-                    value
-                        .map(|v| v.into_value_container(&mut state))
-                        .transpose()?
-                }
+                CollectedExecutionResult::Value(value) => value
+                    .map(|v| v.into_value_container(&mut state))
+                    .transpose()?,
                 _ => unreachable!("Expected root result"),
             }
         };
 
         let root_result = match root_result {
             Ok(value) => value,
-            Err(error) => return yield Err(error.into()),
+            Err(error) => return yield Err(error),
         };
 
         yield Ok(ExecutionInterrupt::External(
@@ -1481,7 +1482,7 @@ fn create_new_reference_from_value(
             Err(CacheValueRetrievalError::ValueNotFoundInCache(
                 ValueNotFoundInCacheError(pointer_address.clone()),
             )
-                .into())
+            .into())
         }
         PointerAddress::Remote(remote_address) => {
             let base = BaseSharedValueContainer::try_new(
@@ -1498,7 +1499,7 @@ fn create_new_reference_from_value(
                     ref_mutability,
                 )
             }
-                .map_err(|_err| ExecutionError::InvalidSharedValueType)?;
+            .map_err(|_err| ExecutionError::InvalidSharedValueType)?;
 
             // stores the reference in memory, so that we can handle updates from the owner endpoint,
             // assuming that we are subscribed to the reference until we unsubscribe

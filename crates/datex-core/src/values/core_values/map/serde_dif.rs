@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
-        core_values::map::{BorrowedMapKey, Map},
+        core_values::map::{BorrowedMapKey, Map, MapEntries},
         value_container::ValueContainer,
     },
 };
@@ -14,7 +14,6 @@ use serde::{
     de::{self, DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
-use crate::values::core_values::map::MapEntries;
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, BorrowedMapKey<'ctx>> {
     type Value = BorrowedMapKey<'ctx>;

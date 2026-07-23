@@ -7,16 +7,13 @@ use crate::{
         SelfOwnedPointerAddress, SharedContainerInner,
         SharedContainerMutability, SharedContainerOwnership,
         errors::{
-            AccessError, UnexpectedImmutableReferenceError,
+            UnexpectedImmutableReferenceError,
             UnexpectedSharedContainerOwnershipError,
         },
         traits::_ExposeRcInternal,
     },
     utils::sheep::Sheep,
-    values::{
-        value::Value,
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
-    },
+    values::value_container::ValueContainer,
 };
 pub mod identity;
 use crate::{
@@ -33,7 +30,6 @@ use crate::{
         traits::SharedContainerCommon,
     },
     types::type_definition::TypeDefinition,
-    utils::sheep_mut::SheepMut,
     value_updates::update_handler::{
         InternalMutabilityUpdateHandler, UpdateCallbackData,
     },
@@ -134,14 +130,14 @@ impl SharedContainer {
         &self,
         observer_id: ObserverId,
     ) -> Result<(), ObserverError> {
-        let res = self.base_shared_container_mut().unobserve(observer_id)?;
+        self.base_shared_container_mut().unobserve(observer_id)?;
 
         // also disable local nested observe callbacks if there are no more observers registered
         if !self.base_shared_container().has_observers() {
             self.disable_local_nested_observe_callbacks();
         }
 
-        Ok(res)
+        Ok(())
     }
 
     // Enables observe callbacks for the inner local value if not yet enabled
@@ -193,11 +189,11 @@ impl SharedContainer {
         Sheep::Owned(value.borrow().actual_type().into_owned())
     }
 
-    pub fn collapsed_value(&self) -> CollapsedContainerValue {
+    pub fn collapsed_value(&self) -> CollapsedContainerValue<'_> {
         CollapsedContainerValue::new_shared(self.get_collapsed_rc())
     }
 
-    pub fn collapsed_value_mut(&self) -> CollapsedContainerValueMut {
+    pub fn collapsed_value_mut(&self) -> CollapsedContainerValueMut<'_> {
         CollapsedContainerValueMut::new_shared(self.get_collapsed_rc())
     }
 

@@ -9,8 +9,8 @@ use datex_core::{
     },
     collections::HashMap,
     global::operators::{
-        ArithmeticUnaryOperator, ModificationOperator, BinaryOperator,
-        ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
+        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
+        LogicalUnaryOperator, ModificationOperator, UnaryOperator,
         binary::{ArithmeticOperator, BitwiseOperator},
     },
     prelude::*,

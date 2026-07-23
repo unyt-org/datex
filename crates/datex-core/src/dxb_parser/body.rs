@@ -189,7 +189,7 @@ pub gen fn iterate_instructions(
 
                 NextInstructionType::Regular => {
                     let instruction = RegularInstruction::read(&mut reader)
-                        .map_err(|e| DXBParserError::BinRwError(e))?;
+                        .map_err(DXBParserError::BinRwError)?;
 
                     let instruction =
                         if let RegularInstruction::RemoteExecution(
@@ -281,7 +281,7 @@ pub gen fn iterate_instructions(
 
                 NextInstructionType::Type => {
                     let instruction = TypeInstruction::read(&mut reader)
-                        .map_err(|e| DXBParserError::BinRwError(e))?;
+                        .map_err(DXBParserError::BinRwError)?;
 
                     next_instructions_stack
                         .handle_next_expected_instructions(

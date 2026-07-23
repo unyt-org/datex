@@ -146,7 +146,7 @@ impl List {
     pub fn try_set(
         &mut self,
         index: i64,
-        mut value: ValueContainer,
+        value: ValueContainer,
     ) -> Result<ValueContainer, IndexOutOfBoundsError> {
         self.try_set_with_source(index, value, Some(TransceiverId::Local))
     }

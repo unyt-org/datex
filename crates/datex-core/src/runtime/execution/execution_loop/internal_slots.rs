@@ -1,9 +1,6 @@
 use crate::{
     datex_proxy::DatexValueContainerProxyInfallibleSerialize,
-    global::{
-        protocol_structures::instruction_data::StackIndex,
-        root_properties::RootProperty,
-    },
+    global::root_properties::RootProperty,
     runtime::execution::{
         ExecutionError, execution_loop::state::RuntimeExecutionState,
     },

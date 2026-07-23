@@ -524,7 +524,8 @@ mod tests {
             let mut collapsed = parent.collapsed_value_mut();
             let mut value = collapsed.borrow_mut();
 
-            value.inner = List::from(vec![ValueContainer::Shared(parent.clone())]).into();
+            value.inner =
+                List::from(vec![ValueContainer::Shared(parent.clone())]).into();
         }
 
         let parent_index = tracking.register_shared_value(parent.clone());
