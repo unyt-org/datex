@@ -79,7 +79,7 @@ impl
         TypeExpression,
     > for CollectedResults<CollectedAstResult>
 {
-    fn try_extract_type_definition_result(
+    fn try_extract_type_definition(
         result: CollectedAstResult,
     ) -> Option<TypeExpression> {
         match result {
@@ -89,7 +89,7 @@ impl
     }
 
     /// Pops a DatexExpression from the collected results.
-    fn try_extract_value_result(
+    fn try_extract_value(
         result: CollectedAstResult,
     ) -> Option<DatexExpression> {
         match result {
@@ -99,9 +99,7 @@ impl
     }
 
     /// Pops a TypeExpression from the collected results.
-    fn try_extract_type_result(
-        result: CollectedAstResult,
-    ) -> Option<TypeExpression> {
+    fn try_extract_type(result: CollectedAstResult) -> Option<TypeExpression> {
         match result {
             CollectedAstResult::TypeExpression(expr) => Some(expr),
             _ => None,
@@ -109,7 +107,7 @@ impl
     }
 
     /// Pops a key-value pair from the collected results.
-    fn try_extract_key_value_pair_result(
+    fn try_extract_key_value_pair(
         result: CollectedAstResult,
     ) -> Option<(DatexExpression, DatexExpression)> {
         match result {
@@ -515,8 +513,8 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::KeyValueDynamic => {
                                 let value =
-                                    collected_results.pop_value_result();
-                                let key = collected_results.pop_value_result();
+                                    collected_results.pop_value();
+                                let key = collected_results.pop_value();
                                 CollectedAstResult::KeyValuePair((key, value))
                             }
 
@@ -524,7 +522,7 @@ pub fn ast_from_bytecode(
                                 short_text_data,
                             ) => {
                                 let value =
-                                    collected_results.pop_value_result();
+                                    collected_results.pop_value();
                                 let key = DatexExpressionData::Text(
                                     short_text_data.0.into(),
                                 )
@@ -542,8 +540,8 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::NotStructuralEqual
                             | RegularInstruction::NotEqual => {
                                 let right =
-                                    collected_results.pop_value_result();
-                                let left = collected_results.pop_value_result();
+                                    collected_results.pop_value();
+                                let left = collected_results.pop_value();
                                 DatexExpressionData::BinaryOperation(
                                     BinaryOperation {
                                         operator: BinaryOperator::from(
@@ -561,7 +559,7 @@ pub fn ast_from_bytecode(
                             instruction @ (
                                 RegularInstruction::CreateShared | RegularInstruction::CreateSharedMut
                             ) => {
-                                let expr = collected_results.pop_value_result();
+                                let expr = collected_results.pop_value();
                                 DatexExpressionData::CreateShared(
                                     CreateShared {
                                         mutability: match instruction {
@@ -581,7 +579,7 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::DeriveSharedReference => {
-                                let expr = collected_results.pop_value_result();
+                                let expr = collected_results.pop_value();
                                 DatexExpressionData::DeriveSharedRef(
                                     DeriveSharedRef {
                                         mutability: ReferenceMutability::Immutable,
@@ -592,7 +590,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
                             RegularInstruction::DeriveSharedReferenceMut => {
-                                let expr = collected_results.pop_value_result();
+                                let expr = collected_results.pop_value();
                                 DatexExpressionData::DeriveSharedRef(
                                     DeriveSharedRef {
                                         mutability: ReferenceMutability::Mutable,
@@ -604,9 +602,9 @@ pub fn ast_from_bytecode(
                             }
                             RegularInstruction::SetSharedContainerValue => {
                                 DatexExpressionData::UnboxAssignment(UnboxAssignment {
-                                    assigned_expression: (collected_results.pop_value_result()),
+                                    assigned_expression: (collected_results.pop_value()),
                                     operator: None,
-                                    unbox_expression: (collected_results.pop_value_result()),
+                                    unbox_expression: (collected_results.pop_value()),
                                 })
                                     .with_default_span()
                                     .into()
@@ -616,7 +614,7 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::UnaryPlus
                             | RegularInstruction::BitwiseNot
                             | RegularInstruction::Unbox => {
-                                let expr = collected_results.pop_value_result();
+                                let expr = collected_results.pop_value();
                                 DatexExpressionData::UnaryOperation(
                                     UnaryOperation {
                                         operator: UnaryOperator::from(
@@ -630,9 +628,9 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::TypedValue => {
-                                let expr = collected_results.pop_value_result();
+                                let expr = collected_results.pop_value();
                                 let expr_type =
-                                    collected_results.pop_type_result();
+                                    collected_results.pop_type();
                                 DatexExpressionData::Apply(Apply {
                                     base: (
                                         DatexExpressionData::TypeExpression(
@@ -674,7 +672,7 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::PushToStack => {
-                                let expr = collected_results.pop_value_result();
+                                let expr = collected_results.pop_value();
                                 DatexExpressionData::SlotAssignment(
                                     StackAssignment {
                                         index: StackIndex(0), // FIXME: push
@@ -686,7 +684,7 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::PushListToStack => {
-                                let expr = collected_results.pop_value_result();
+                                let expr = collected_results.pop_value();
                                 DatexExpressionData::SlotAssignment(
                                     StackAssignment {
                                         index: StackIndex(0), // FIXME: push_multiple \0..\10 = x
@@ -698,7 +696,7 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::SetStackValue(slot_address) => {
-                                let expr = collected_results.pop_value_result();
+                                let expr = collected_results.pop_value();
                                 DatexExpressionData::VariableAssignment(
                                     VariableAssignment {
                                         id: None,
@@ -719,7 +717,7 @@ pub fn ast_from_bytecode(
                                 is_empty
                             }) => {
                                 assert!(!is_empty);
-                                let expression = Some(collected_results.pop_value_result());
+                                let expression = Some(collected_results.pop_value());
 
                                 DatexExpressionData::Tag(TagExpression {
                                     tag,
@@ -748,7 +746,7 @@ pub fn ast_from_bytecode(
                             ) | RegularInstruction::GetPropertyIndex(
                                 index_data,
                             ) => {
-                                let base = collected_results.pop_value_result();
+                                let base = collected_results.pop_value();
                                 DatexExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
                                         base: (base),
@@ -765,7 +763,7 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::TakePropertyText(text_data) | RegularInstruction::GetPropertyText(text_data) => {
-                                let base = collected_results.pop_value_result();
+                                let base = collected_results.pop_value();
                                 DatexExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
                                         base: (base),
@@ -782,9 +780,9 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::TakePropertyDynamic | RegularInstruction::GetPropertyDynamic => {
-                                let base = collected_results.pop_value_result();
+                                let base = collected_results.pop_value();
                                 let property =
-                                    collected_results.pop_value_result();
+                                    collected_results.pop_value();
                                 DatexExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
                                         base: (base),
@@ -798,9 +796,9 @@ pub fn ast_from_bytecode(
                             RegularInstruction::SetPropertyIndex(
                                 index_data,
                             ) => {
-                                let base = collected_results.pop_value_result();
+                                let base = collected_results.pop_value();
                                 let value =
-                                    collected_results.pop_value_result();
+                                    collected_results.pop_value();
                                 DatexExpressionData::PropertyAssignment(
                                     PropertyAssignment {
                                         base: (base),
@@ -819,9 +817,9 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::SetPropertyText(text_data) => {
-                                let base = collected_results.pop_value_result();
+                                let base = collected_results.pop_value();
                                 let value =
-                                    collected_results.pop_value_result();
+                                    collected_results.pop_value();
                                 DatexExpressionData::PropertyAssignment(
                                     PropertyAssignment {
                                         base: (base),
@@ -840,11 +838,11 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::SetPropertyDynamic => {
-                                let base = collected_results.pop_value_result();
+                                let base = collected_results.pop_value();
                                 let value =
-                                    collected_results.pop_value_result();
+                                    collected_results.pop_value();
                                 let property =
-                                    collected_results.pop_value_result();
+                                    collected_results.pop_value();
                                 DatexExpressionData::PropertyAssignment(
                                     PropertyAssignment {
                                         base: (base),
@@ -857,7 +855,7 @@ pub fn ast_from_bytecode(
                                 .into()
                             }
                             RegularInstruction::RemoteExecution(remote_execution_data) => {
-                                let receivers = collected_results.pop_value_result();
+                                let receivers = collected_results.pop_value();
 
                                 let body = DatexExpressionData::Statements(Statements {
                                     statements: vec![ast_from_bytecode(&remote_execution_data.body)?],

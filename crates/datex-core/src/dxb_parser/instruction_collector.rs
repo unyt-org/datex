@@ -17,46 +17,41 @@ pub trait CollectionResultsPopper<
     TypeDefinition,
 >: GetResults<Result> + Sized
 {
-    fn try_extract_type_definition_result(
-        result: Result,
-    ) -> Option<TypeDefinition>;
-    fn try_extract_value_result(result: Result) -> Option<Val>;
-    fn try_extract_type_result(result: Result) -> Option<Type>;
-    fn try_extract_key_value_pair_result(
-        result: Result,
-    ) -> Option<(Key, KeyVal)>;
+    fn try_extract_value(result: Result) -> Option<Val>;
+    fn try_extract_type(result: Result) -> Option<Type>;
+    fn try_extract_type_definition(result: Result) -> Option<TypeDefinition>;
+    fn try_extract_key_value_pair(result: Result) -> Option<(Key, KeyVal)>;
 
-    fn try_pop_value_result(&mut self) -> Option<Val> {
+    fn try_pop_value(&mut self) -> Option<Val> {
         let result = self.pop()?;
-        Self::try_extract_value_result(result)
+        Self::try_extract_value(result)
     }
-    fn try_pop_type_result(&mut self) -> Option<Type> {
+    fn try_pop_type(&mut self) -> Option<Type> {
         let result = self.pop()?;
-        Self::try_extract_type_result(result)
+        Self::try_extract_type(result)
     }
-    fn try_pop_key_value_pair_result(&mut self) -> Option<(Key, KeyVal)> {
+    fn try_pop_type_definition(&mut self) -> Option<TypeDefinition> {
         let result = self.pop()?;
-        Self::try_extract_key_value_pair_result(result)
+        Self::try_extract_type_definition(result)
+    }
+    fn try_pop_key_value_pair(&mut self) -> Option<(Key, KeyVal)> {
+        let result = self.pop()?;
+        Self::try_extract_key_value_pair(result)
     }
 
-    fn pop_type_definition_result(&mut self) -> TypeDefinition {
-        self.try_pop_type_definition_result()
+    fn pop_value(&mut self) -> Val {
+        self.try_pop_value().expect("Expected value result")
+    }
+    fn pop_type(&mut self) -> Type {
+        self.try_pop_type()
             .expect("Expected type definition result")
     }
-    fn try_pop_type_definition_result(&mut self) -> Option<TypeDefinition> {
-        let result = self.pop()?;
-        Self::try_extract_type_definition_result(result)
-    }
-
-    fn pop_value_result(&mut self) -> Val {
-        self.try_pop_value_result().expect("Expected value result")
-    }
-    fn pop_type_result(&mut self) -> Type {
-        self.try_pop_type_result()
+    fn pop_type_definition(&mut self) -> TypeDefinition {
+        self.try_pop_type_definition()
             .expect("Expected type definition result")
     }
-    fn pop_key_value_pair_result(&mut self) -> (Key, KeyVal) {
-        self.try_pop_key_value_pair_result()
+    fn pop_key_value_pair(&mut self) -> (Key, KeyVal) {
+        self.try_pop_key_value_pair()
             .expect("Expected key-value pair result")
     }
 
@@ -82,7 +77,7 @@ pub trait CollectionResultsPopper<
         let count = self.len();
         let mut expressions = Vec::with_capacity(count);
         for _ in 0..count {
-            expressions.push(self.pop_value_result());
+            expressions.push(self.pop_value());
         }
         expressions.reverse();
         expressions
@@ -94,7 +89,7 @@ pub trait CollectionResultsPopper<
         let count = self.len();
         let mut expression_pairs = Vec::with_capacity(count);
         for _ in 0..count {
-            let pair = self.pop_key_value_pair_result();
+            let pair = self.pop_key_value_pair();
             expression_pairs.push(pair);
         }
         expression_pairs.reverse();
@@ -107,7 +102,7 @@ pub trait CollectionResultsPopper<
         let count = self.len();
         let mut type_expressions = Vec::with_capacity(count);
         for _ in 0..count {
-            type_expressions.push(self.pop_type_result());
+            type_expressions.push(self.pop_type());
         }
         type_expressions.reverse();
         type_expressions
