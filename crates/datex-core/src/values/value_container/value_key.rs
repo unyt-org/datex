@@ -46,7 +46,14 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
             ValueKey::Index(index) => index.serialize(serializer),
             ValueKey::Value(value_container) => {
                 let mut map_serializer = serializer.serialize_map(Some(1))?;
-                map_serializer.serialize_entry("value", value_container)?;
+                map_serializer.serialize_entry(
+                    "value",
+                    &ValueWithSeed::new(
+                        value_container,
+                        &mut self.cast::<ValueContainer>(),
+                    ),
+                )?;
+
                 map_serializer.end()
             }
         }
@@ -136,12 +143,14 @@ impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, ValueKey> {
     }
 
     fn visit_map<A: serde::de::MapAccess<'de>>(
-        self,
+        mut self,
         mut map_access: A,
     ) -> Result<Self::Value, A::Error> {
-        let entry = map_access.next_entry::<String, ValueContainer>()?;
-        if let Some((key, value)) = entry {
+        let key = map_access.next_key::<String>()?;
+        if let Some(key) = key {
             if key == "value" {
+                let value = map_access
+                    .next_value_seed(self.cast::<ValueContainer>())?;
                 Ok(ValueKey::Value(value))
             } else {
                 Err(serde::de::Error::custom(format!(
