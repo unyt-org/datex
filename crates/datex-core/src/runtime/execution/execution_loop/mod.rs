@@ -872,8 +872,7 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::SetSharedContainerValue => {
                                     let mut target = collected_results
                                             .pop_runtime_value_result_assert_existing()?;
-                                    let new_value: ValueContainer = 
-                                            collected_results
+                                    let new_value: ValueContainer = collected_results
                                                 .pop_runtime_value_result_assert_existing()?
                                                 .into_value_container(&mut state)?;
                                     let source_id = state.source_id_cloned();

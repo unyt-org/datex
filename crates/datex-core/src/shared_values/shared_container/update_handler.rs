@@ -44,10 +44,11 @@ mod tests {
         shared_values::{
             SharedContainerMutability,
             base_shared_value_container::observers::{
-                ObserveOptions, Observer,
+                ObserveOptions, Observer, TransceiverId,
             },
         },
-        values::core_values::list::List,
+        value_updates::update_data::{UpdateData, UpdateOperation},
+        values::{core_values::list::List, value_container::ValueContainer},
     };
     use alloc::rc::Rc;
     use core::cell::RefCell;
