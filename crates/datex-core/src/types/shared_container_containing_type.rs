@@ -56,3 +56,19 @@ impl SharedContainerContainingType {
         f(ty)
     }
 }
+
+impl TryFrom<SharedContainer> for SharedContainerContainingType {
+    type Error = ();
+
+    fn try_from(value: SharedContainer) -> Result<Self, Self::Error> {
+        let is_type = {
+            let val = value.collapsed_value();
+            matches!(&val.borrow().inner, CoreValue::Type(_))
+        };
+        if is_type {
+            Ok(SharedContainerContainingType(value))
+        } else {
+            Err(())
+        }
+    }
+}
