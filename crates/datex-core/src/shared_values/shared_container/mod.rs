@@ -46,6 +46,7 @@ use core::{
     mem,
     ops::Deref,
 };
+use log::info;
 
 pub mod apply;
 pub mod serde_dif;
@@ -407,7 +408,7 @@ impl SharedContainer {
         if !self.is_borrowed() {
             // FIXME: where to store queued updates without borrow?!
             let mut queued_updates = self.queued_updates_mut();
-            println!(
+            info!(
                 "SharedContainer: no more borrows active, processing queued updates: {}",
                 queued_updates.len()
             );

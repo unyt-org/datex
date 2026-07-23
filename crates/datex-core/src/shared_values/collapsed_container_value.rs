@@ -4,8 +4,7 @@ use crate::{
     values::{value::Value, value_container::ValueContainer},
 };
 use alloc::rc::Rc;
-use core::cell::{Ref, RefCell};
-use std::cell::RefMut;
+use core::cell::{Ref, RefCell, RefMut};
 
 pub struct CollapsedContainerValueShared {
     rc: Rc<RefCell<SharedContainerInner>>,

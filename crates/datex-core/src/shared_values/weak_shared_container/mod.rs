@@ -5,6 +5,7 @@ use crate::shared_values::{
 use alloc::rc::Weak;
 use core::cell::RefCell;
 
+use crate::prelude::*;
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
 /// The inner value can either be a [SharedContainerInner::EndpointOwned] or [SharedContainerInner::External]

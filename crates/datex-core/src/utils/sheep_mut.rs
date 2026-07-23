@@ -1,5 +1,7 @@
-use core::{cell::RefMut, ops::Deref};
-use std::ops::DerefMut;
+use core::{
+    cell::RefMut,
+    ops::{Deref, DerefMut},
+};
 
 /// A sheep can be a reference, a borrowed value, or an owned value.
 pub enum SheepMut<'a, T> {
