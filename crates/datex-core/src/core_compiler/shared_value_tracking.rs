@@ -224,8 +224,11 @@ impl<'a> SharedValueTracking<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
+        core_compiler::shared_value_tracking::{
+            SharedValueTracking, TrackedValueMetadata, default_tracking,
+        },
+        global::protocol_structures::instruction_data::StackIndex,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             PointerAddress, ReferenceMutability, SharedContainer,

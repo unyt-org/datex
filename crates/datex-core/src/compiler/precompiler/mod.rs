@@ -421,7 +421,7 @@ impl Precompiler<'_> {
     /// - Err() is returned if early abort for errors is enabled
     fn get_identifier_with_access_type(
         &mut self,
-        identifier: &String,
+        identifier: &str,
         span: &Range<usize>,
         access_type: ValueAccessType,
     ) -> Result<Option<DatexExpression>, SpannedCompilerError> {
@@ -434,7 +434,7 @@ impl Precompiler<'_> {
                 ResolvedVariable::VariableId(id) => {
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id,
-                        name: identifier.clone(),
+                        name: identifier.to_owned(),
                         access_type,
                     })
                     .with_span(span.clone())
@@ -991,22 +991,20 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         self.visit_datex_expression(&mut comparison_operation.left)?;
         self.visit_datex_expression(&mut comparison_operation.right)?;
 
-        match comparison_operation.left.data_mut() {
-            DatexExpressionData::VariableAccess(VariableAccess {
-                access_type,
-                ..
-            }) => *access_type = ValueAccessType::Borrow,
-            // Add PropertyAccess
-            _ => {}
+        if let DatexExpressionData::VariableAccess(VariableAccess {
+            access_type,
+            ..
+        }) = comparison_operation.left.data_mut()
+        {
+            *access_type = ValueAccessType::Borrow
         };
 
-        match comparison_operation.right.data_mut() {
-            DatexExpressionData::VariableAccess(VariableAccess {
-                access_type,
-                ..
-            }) => *access_type = ValueAccessType::Borrow,
-            // Add PropertyAccess
-            _ => {}
+        if let DatexExpressionData::VariableAccess(VariableAccess {
+            access_type,
+            ..
+        }) = comparison_operation.right.data_mut()
+        {
+            *access_type = ValueAccessType::Borrow
         };
 
         Ok(VisitAction::AbortRecursion)
@@ -1027,30 +1025,53 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
         ast::{
             expressions::{
-                CreateShared, DeriveRef, DeriveSharedRef, Map, PropertyAccess,
-                PropertyAssignment, RequestSharedRef, Unbox,
+                BinaryOperation, CreateShared, DatexExpression,
+                DatexExpressionData, DeriveRef, DeriveSharedRef, Map,
+                PropertyAccess, PropertyAssignment, RemoteExecution,
+                RequestSharedRef, Statements, TypeDeclaration,
+                TypeDeclarationKind, Unbox, ValueAccessType, VariableAccess,
+                VariableDeclaration, VariableKind, VariantAccess,
             },
             resolved_variable::ResolvedVariable,
+            spanned::Spanned,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
-        compiler::ComparisonOperation,
-        libs::core::type_id::{
-            CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
+        compiler::{
+            ComparisonOperation,
+            error::{
+                CompilerError,
+                SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
+                SpannedCompilerError,
+            },
+            precompiler::{
+                Precompiler,
+                options::PrecompilerOptions,
+                precompile_ast_simple_error,
+                precompiled_ast::{AstMetadata, RichAst, VariableShape},
+                scope_stack::PrecompilerScopeStack,
+            },
+        },
+        global::operators::{BinaryOperator, binary::ArithmeticOperator},
+        libs::core::{
+            core_lib_id::CoreLibId,
+            type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
         },
         parser::Parser,
-        runtime::{RuntimeConfig, RuntimeRunner},
-        shared_values::{PointerAddress, SharedContainerMutability},
+        runtime::{Runtime, RuntimeConfig, RuntimeRunner},
+        shared_values::{
+            PointerAddress, ReferenceMutability, SharedContainerMutability,
+        },
         types::type_definition_with_metadata::LocalReferenceMutability,
         values::core_values::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::IntegerTypeVariant},
         },
     };
-    use core::{assert_matches, str::FromStr};
+    use alloc::rc::Rc;
+    use core::{assert_matches, cell::RefCell, str::FromStr};
 
     fn precompile(
         ast: DatexExpression,

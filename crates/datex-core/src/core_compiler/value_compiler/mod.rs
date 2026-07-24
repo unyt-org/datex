@@ -662,26 +662,46 @@ pub fn append_statements_preamble(
 #[cfg(test)]
 #[cfg(feature = "disassembler")]
 mod tests {
-
-    use super::*;
     use crate::{
         core_compiler::{
-            core_compilation_context::default_core_compilation_context,
+            core_compilation_context::{
+                CompileInput, CoreCompilationContext,
+                default_core_compilation_context,
+            },
             shared_value_tracking::TrackedValueMetadata,
+            value_compiler::compile_value,
+            value_visitor::ValueVisitor,
         },
         disassembler::{
             assertions::{assert_regular_instructions_equal, instructions},
             print_disassembled,
         },
-        global::protocol_structures::instruction_data::{
-            MoveWithValue, SharedRefWithValue, ShortListData, StackIndex,
+        global::protocol_structures::{
+            instruction_data::{
+                Int32Data, MoveWithValue, SharedRefWithValue, ShortListData,
+                ShortTextData, StackIndex, TaggedValue,
+            },
+            regular_instructions::RegularInstruction,
         },
+        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         runtime::{
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
         },
-        shared_values::SharedContainerMutability,
-        values::{core_values::list::List, value::Value},
+        shared_values::{
+            PointerAddress, ReferenceMutability, SharedContainer,
+            SharedContainerMutability,
+        },
+        types::{
+            r#type::Type,
+            type_definition::{
+                TypeDefinition, tagged_type::TaggedTypeDefinition,
+            },
+        },
+        values::{
+            core_value::CoreValue, core_values::list::List, value::Value,
+            value_container::ValueContainer,
+        },
     };
     use core::assert_matches;
     use log::info;

@@ -185,22 +185,30 @@ pub fn append_set_property_value_key<T: BufferProvider + ValueVisitor>(
 #[cfg(test)]
 #[cfg(feature = "disassembler")]
 mod tests {
-    use super::*;
     use crate::{
-        core_compiler::core_compilation_context::CompileInput,
+        core_compiler::{
+            core_compilation_context::CompileInput,
+            update_compiler::compile_updates,
+        },
         disassembler::assertions::{
             assert_regular_instructions_equal, instructions,
         },
         global::protocol_structures::{
-            instruction_data::UInt8Data,
+            instruction_data::{
+                SharedRef, ShortTextData, StackIndex, UInt8Data,
+            },
             regular_instructions::RegularInstruction,
         },
         runtime::{
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
         },
-        shared_values::{SharedContainer, SharedContainerMutability},
-        value_updates::update_data::{SetEntryUpdateData, UpdateOperation},
+        shared_values::{
+            ReferenceMutability, SharedContainer, SharedContainerMutability,
+        },
+        value_updates::update_data::{
+            SetEntryUpdateData, UpdateData, UpdateOperation,
+        },
         values::{
             core_values::map::Map,
             value_container::{ValueContainer, value_key::ValueKey},

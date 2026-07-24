@@ -462,7 +462,7 @@ mod tests {
         let context_id = block_handler.get_new_context_id();
 
         // Create a single DXB block
-        let mut block = DXBBlock {
+        let block = DXBBlock {
             block_header: BlockHeader {
                 context_id,
                 flags_and_timestamp: FlagsAndTimestamp::new()
@@ -492,7 +492,7 @@ mod tests {
                     block_endpoint_context_id
                 );
             }
-            _ => panic!("Expected a SingleBlock section"),
+            _ => core::panic!("Expected a SingleBlock section"),
         }
     }
 

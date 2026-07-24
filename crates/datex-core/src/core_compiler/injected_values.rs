@@ -87,7 +87,7 @@ pub fn compile_injected_values(
 ///  - local injected values must be local containers
 ///  - shared injected move values must be owned shared containers
 ///  - shared injected ref values must be shared containers (owned or referenced)
-/// TODO: check full type constraints for values here in the future, not just ownership
+///    TODO: check full type constraints for values here in the future, not just ownership
 fn validate_injected_value_declaration_for_values(
     injected_value_declarations: &[InjectedValueDeclaration],
     injected_values: &[ValueContainer],

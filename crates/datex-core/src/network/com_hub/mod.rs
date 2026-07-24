@@ -571,7 +571,7 @@ impl ComHub {
     /// Returns a MaybeAsync which is async in the following cases:
     /// * the block signature is validated because the block is for own endpoint and signature is set
     /// * the block needs to be relayed to other endpoints or is a trace block, which requires async handling for the relay/trace logic
-    /// The MaybeAsync returns the own received block if the block is for own endpoint and signature is valid, otherwise None
+    ///   The MaybeAsync returns the own received block if the block is for own endpoint and signature is valid, otherwise None
     // FIXME #732: this seams to generate a very big future which causes heap allocation to fail on embedded targets (!?)
     pub(crate) fn receive_block(
         self: Rc<Self>,

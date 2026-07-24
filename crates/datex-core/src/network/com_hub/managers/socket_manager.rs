@@ -708,7 +708,7 @@ impl ComInterfaceSocketManager {
         // TODO #187: do we need the block here for additional information (match conditions),
         // otherwise receivers are enough
         local_endpoint: &Endpoint,
-        receiver_endpoints: &Vec<Endpoint>,
+        receiver_endpoints: &[Endpoint],
         mut exclude_sockets: Vec<ComInterfaceSocketUUID>,
     ) -> Option<Vec<(Option<ComInterfaceSocketUUID>, Vec<Endpoint>)>> {
         if !receiver_endpoints.is_empty() {
