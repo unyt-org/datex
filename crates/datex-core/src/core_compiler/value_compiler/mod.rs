@@ -684,6 +684,7 @@ mod tests {
             regular_instructions::RegularInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        prelude::*,
         runtime::{
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,

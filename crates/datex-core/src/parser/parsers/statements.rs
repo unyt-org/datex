@@ -117,7 +117,7 @@ mod tests {
             expressions::{DatexExpressionData, Statements},
             spanned::Spanned,
         },
-        parser::tests::{parse, try_parse_and_return_on_first_error},
+        parser::tests::parse,
         prelude::*,
     };
 

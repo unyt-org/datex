@@ -53,7 +53,6 @@ mod tests {
             spanned::Spanned,
         },
         parser::tests::parse,
-        prelude::*,
     };
     #[test]
     fn parse_single_if() {
@@ -61,10 +60,10 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Conditional(Conditional {
-                condition: (DatexExpressionData::Boolean(true.into())
-                    .with_default_span()),
-                then_branch: (DatexExpressionData::Integer(42.into())
-                    .with_default_span()),
+                condition: DatexExpressionData::Boolean(true.into())
+                    .with_default_span(),
+                then_branch: DatexExpressionData::Integer(42.into())
+                    .with_default_span(),
                 else_branch: None,
             })
         )
@@ -76,13 +75,12 @@ mod tests {
         assert_eq!(
             expr.data(),
             &DatexExpressionData::Conditional(Conditional {
-                condition: (DatexExpressionData::Boolean(false.into())
-                    .with_default_span()),
-                then_branch: (DatexExpressionData::Integer(0.into())
-                    .with_default_span()),
+                condition: DatexExpressionData::Boolean(false.into())
+                    .with_default_span(),
+                then_branch: DatexExpressionData::Integer(0.into())
+                    .with_default_span(),
                 else_branch: Some(
-                    (DatexExpressionData::Integer(1.into())
-                        .with_default_span())
+                    DatexExpressionData::Integer(1.into()).with_default_span()
                 ),
             })
         )
@@ -99,17 +97,17 @@ mod tests {
                 then_branch: (DatexExpressionData::Integer(1.into())
                     .with_default_span()),
                 else_branch: Some(
-                    (DatexExpressionData::Conditional(Conditional {
-                        condition: (DatexExpressionData::Boolean(false.into())
-                            .with_default_span()),
-                        then_branch: (DatexExpressionData::Integer(2.into())
-                            .with_default_span()),
+                    DatexExpressionData::Conditional(Conditional {
+                        condition: DatexExpressionData::Boolean(false.into())
+                            .with_default_span(),
+                        then_branch: DatexExpressionData::Integer(2.into())
+                            .with_default_span(),
                         else_branch: Some(
-                            (DatexExpressionData::Integer(3.into())
-                                .with_default_span())
+                            DatexExpressionData::Integer(3.into())
+                                .with_default_span()
                         ),
                     })
-                    .with_default_span())
+                    .with_default_span()
                 ),
             })
         )

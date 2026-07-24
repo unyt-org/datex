@@ -458,7 +458,7 @@ impl Precompiler<'_> {
 
     fn visit_identifier_with_access_type(
         &mut self,
-        identifier: &String,
+        identifier: &str,
         span: &Range<usize>,
         access_type: ValueAccessType,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
@@ -1031,9 +1031,9 @@ mod tests {
                 BinaryOperation, CreateShared, DatexExpression,
                 DatexExpressionData, DeriveRef, DeriveSharedRef, Map,
                 PropertyAccess, PropertyAssignment, RemoteExecution,
-                RequestSharedRef, Statements, TypeDeclaration,
-                TypeDeclarationKind, Unbox, ValueAccessType, VariableAccess,
-                VariableDeclaration, VariableKind, VariantAccess,
+                Statements, TypeDeclaration, TypeDeclarationKind, Unbox,
+                ValueAccessType, VariableAccess, VariableDeclaration,
+                VariableKind, VariantAccess,
             },
             resolved_variable::ResolvedVariable,
             spanned::Spanned,
@@ -1057,18 +1057,14 @@ mod tests {
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         libs::core::{
             core_lib_id::CoreLibId,
-            type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
+            type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         },
         parser::Parser,
-        runtime::{Runtime, RuntimeConfig, RuntimeRunner},
-        shared_values::{
-            PointerAddress, ReferenceMutability, SharedContainerMutability,
-        },
+        prelude::*,
+        runtime::Runtime,
+        shared_values::{ReferenceMutability, SharedContainerMutability},
         types::type_definition_with_metadata::LocalReferenceMutability,
-        values::core_values::{
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::IntegerTypeVariant},
-        },
+        values::core_values::{endpoint::Endpoint, integer::Integer},
     };
     use alloc::rc::Rc;
     use core::{assert_matches, cell::RefCell, str::FromStr};

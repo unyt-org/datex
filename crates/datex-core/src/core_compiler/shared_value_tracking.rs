@@ -229,6 +229,7 @@ mod tests {
             SharedValueTracking, TrackedValueMetadata, default_tracking,
         },
         global::protocol_structures::instruction_data::StackIndex,
+        prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             PointerAddress, ReferenceMutability, SharedContainer,

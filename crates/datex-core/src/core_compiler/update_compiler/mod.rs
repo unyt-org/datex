@@ -199,6 +199,7 @@ mod tests {
             },
             regular_instructions::RegularInstruction,
         },
+        prelude::*,
         runtime::{
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
