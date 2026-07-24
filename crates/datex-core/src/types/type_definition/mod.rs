@@ -398,20 +398,18 @@ impl TypeDefinition {
 
 impl From<TypeDefinition> for TypeDefinitionWithMetadata {
     fn from(structural_definition: TypeDefinition) -> Self {
-        TypeDefinitionWithMetadata {
-            definition: structural_definition,
-            metadata: TypeMetadata::default(),
-            reference_name: None,
-        }
+        TypeDefinitionWithMetadata::new(
+            structural_definition,
+            TypeMetadata::default(),
+        )
     }
 }
 
 impl From<LiteralTypeDefinition> for TypeDefinitionWithMetadata {
     fn from(literal_definition: LiteralTypeDefinition) -> Self {
-        TypeDefinitionWithMetadata {
-            definition: literal_definition.into(),
-            metadata: TypeMetadata::default(),
-            reference_name: None,
-        }
+        TypeDefinitionWithMetadata::new(
+            literal_definition.into(),
+            TypeMetadata::default(),
+        )
     }
 }

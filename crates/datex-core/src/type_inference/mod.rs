@@ -1141,11 +1141,10 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                         // if nested type, collapse
                         TypeDefinition::Nested(ty) => *ty,
                         // else, just remove ref
-                        def => Type::Alias(TypeDefinitionWithMetadata {
-                            metadata: TypeMetadata::default(),
-                            definition: def,
-                            reference_name: None,
-                        }),
+                        def => Type::Alias(TypeDefinitionWithMetadata::new(
+                            def,
+                            TypeMetadata::default(),
+                        )),
                     }
                 }
             }
@@ -2114,29 +2113,25 @@ mod tests {
         let inferred = infer_type_from_script_ignore_errors("shared 42");
         assert_eq!(
             inferred,
-            Type::from(TypeDefinitionWithMetadata {
-                definition: LiteralTypeDefinition::Integer(42.into()).into(),
-                metadata: TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata::new(
+                LiteralTypeDefinition::Integer(42.into()).into(),
+                TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Immutable,
                     ownership: SharedContainerOwnership::Owned
                 },
-
-                reference_name: None,
-            })
+            ))
         );
 
         let inferred = infer_type_from_script_ignore_errors("shared mut 42");
         assert_eq!(
             inferred,
-            Type::from(TypeDefinitionWithMetadata {
-                definition: LiteralTypeDefinition::Integer(42.into()).into(),
-                metadata: TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata::new(
+                LiteralTypeDefinition::Integer(42.into()).into(),
+                TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Mutable,
                     ownership: SharedContainerOwnership::Owned
                 },
-
-                reference_name: None,
-            })
+            ))
         );
     }
 
@@ -2145,50 +2140,44 @@ mod tests {
         let inferred = infer_type_from_script_ignore_errors("'shared 42");
         assert_eq!(
             inferred,
-            Type::from(TypeDefinitionWithMetadata {
-                definition: LiteralTypeDefinition::Integer(42.into()).into(),
-                metadata: TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata::new(
+                LiteralTypeDefinition::Integer(42.into()).into(),
+                TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Immutable,
                     ownership: SharedContainerOwnership::Referenced(
                         ReferenceMutability::Immutable
                     )
-                },
-
-                reference_name: None,
-            })
+                }
+            ))
         );
 
         let inferred = infer_type_from_script_ignore_errors("'shared mut 42");
         assert_eq!(
             inferred,
-            Type::from(TypeDefinitionWithMetadata {
-                definition: LiteralTypeDefinition::Integer(42.into()).into(),
-                metadata: TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata::new(
+                LiteralTypeDefinition::Integer(42.into()).into(),
+                TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Mutable,
                     ownership: SharedContainerOwnership::Referenced(
                         ReferenceMutability::Immutable
                     )
                 },
-
-                reference_name: None,
-            })
+            ))
         );
 
         let inferred =
             infer_type_from_script_ignore_errors("'mut shared mut 42");
         assert_eq!(
             inferred,
-            Type::from(TypeDefinitionWithMetadata {
-                definition: LiteralTypeDefinition::Integer(42.into()).into(),
-                metadata: TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata::new(
+                LiteralTypeDefinition::Integer(42.into()).into(),
+                TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Mutable,
                     ownership: SharedContainerOwnership::Referenced(
                         ReferenceMutability::Mutable
                     )
                 },
-
-                reference_name: None,
-            })
+            ))
         );
     }
 
@@ -2214,15 +2203,13 @@ mod tests {
         let inferred = infer_from_script("*(shared (shared 42))");
         assert_eq!(
             inferred.to_type(),
-            Type::from(TypeDefinitionWithMetadata {
-                definition: LiteralTypeDefinition::Integer(42.into()).into(),
-                metadata: TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata::new(
+                LiteralTypeDefinition::Integer(42.into()).into(),
+                TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Immutable,
                     ownership: SharedContainerOwnership::Owned
                 },
-
-                reference_name: None,
-            })
+            ))
         );
     }
 

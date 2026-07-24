@@ -161,24 +161,20 @@ impl ValueContainer {
     /// Returns the actual type that describes the value container (e.g. integer or 'mut shared mut integer).
     pub fn actual_container_type(&self) -> TypeDefinitionWithMetadata {
         match self {
-            ValueContainer::Local(value) => TypeDefinitionWithMetadata {
-                definition: value.actual_type().into_owned(),
-                metadata: TypeMetadata::default(),
-                reference_name: None,
-            },
+            ValueContainer::Local(value) => TypeDefinitionWithMetadata::new(
+                value.actual_type().into_owned(),
+                TypeMetadata::default(),
+            ),
             ValueContainer::Shared(shared) => {
                 let inner_type =
                     shared.value_container().actual_container_type();
-                TypeDefinitionWithMetadata {
-                    definition: TypeDefinition::Nested(Box::new(Type::from(
-                        inner_type,
-                    ))),
-                    metadata: TypeMetadata::Shared {
+                TypeDefinitionWithMetadata::new(
+                    TypeDefinition::Nested(Box::new(Type::from(inner_type))),
+                    TypeMetadata::Shared {
                         mutability: shared.container_mutability(),
                         ownership: shared.ownership(),
                     },
-                    reference_name: None,
-                }
+                )
             }
         }
     }

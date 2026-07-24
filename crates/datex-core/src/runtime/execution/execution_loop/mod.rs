@@ -1239,11 +1239,7 @@ pub gen fn inner_execution_loop(
                                     }
                                     TypeInstruction::TypeDefinitionWithMetadata(metadata) => {
                                         let definition = collected_results.pop_type_definition();
-                                        Type::Alias(TypeDefinitionWithMetadata {
-                                            metadata,
-                                            definition,
-                                            reference_name: None,
-                                        }).into()
+                                        Type::Alias(TypeDefinitionWithMetadata::new(definition, metadata)).into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),
                                 }
