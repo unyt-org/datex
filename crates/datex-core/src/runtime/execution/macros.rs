@@ -39,6 +39,7 @@ pub(crate) use interrupt_with_value;
 
 /// Yield an interrupt and get the next resolved values
 /// expecting the next input to be a ResolvedValues variant
+#[allow(unused_macros)]
 macro_rules! interrupt_with_values {
     ($input:expr, $arg:expr) => {{
         use crate::runtime::execution::macros::interrupt;

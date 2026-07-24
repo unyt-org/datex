@@ -535,9 +535,6 @@ pub fn append_get_shared_ref(
     address: PointerAddress,
     mutability: &ReferenceMutability,
 ) {
-    /**
-    @example :: (function remoteFn() ($1234567); callback(remoteFn); @@local :: remoteFn() )
-    **/
     match address {
         PointerAddress::SelfOwned(local_address) => {
             append_regular_instruction(
