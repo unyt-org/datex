@@ -1550,8 +1550,8 @@ mod tests {
             pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
         shared_values::{
-            OwnedSharedContainer, ReferenceMutability, SharedContainer,
-            SharedContainerMutability, SharedContainerOwnership,
+            ReferenceMutability, SharedContainerMutability,
+            SharedContainerOwnership,
         },
         type_inference::{
             InferOutcome,

@@ -785,8 +785,7 @@ mod tests {
             pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
         shared_values::{
-            OwnedSharedContainer, SelfOwnedPointerAddress,
-            SelfOwnedSharedContainer, SharedContainer,
+            SelfOwnedPointerAddress, SelfOwnedSharedContainer, SharedContainer,
             SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
         },

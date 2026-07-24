@@ -18,8 +18,10 @@ pub mod traits;
 pub mod weak_shared_container;
 
 pub use external_shared_container::*;
+pub use owned_shared_container::OwnedSharedContainer;
 pub use ownership::*;
 pub use pointer_address::*;
+pub use referenced_shared_container::ReferencedSharedContainer;
 pub use self_owned_shared_container::*;
 pub use shared_container::*;
 pub use shared_container_inner::*;
