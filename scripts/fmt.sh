@@ -26,4 +26,4 @@ cargo clippy \
 cargo fmt --all
 
 # commit changes
-# git commit -a -m "fmt"
+git commit -a -m "fmt"
