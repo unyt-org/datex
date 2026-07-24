@@ -1,4 +1,4 @@
-cargcargo-features = ["profile-rustflags"]
+cargo-features = ["profile-rustflags"]
 
 [package]
 name = "datex-core"
@@ -239,6 +239,9 @@ syntax_highlighting_legacy = ["dep:syntect"]
 
 # when enabled, unsigned DXB blocks are accepted
 allow_unsigned_blocks = []
+
+# when enabled, deterministic behavior is enforced for operations that can be non-deterministic
+enable_deterministic_behavior = []
 
 # when set, all crypto-related features are enabled
 crypto_enabled = []

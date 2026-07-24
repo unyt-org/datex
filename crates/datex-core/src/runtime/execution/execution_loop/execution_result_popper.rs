@@ -1,88 +1,18 @@
 use crate::{
-    core_compiler::{
-        core_compilation_context::{CompileInput, DXBWithSharedValues},
-        injected_values::compile_injected_values,
+    dxb_parser::instruction_collector::{
+        CollectedResults, CollectionResultsPopper,
     },
-    dxb_parser::{
-        body::{DXBParserError, iterate_instructions},
-        instruction_collector::{
-            CollectedResults, CollectionResultsPopper, FullOrPartialResult,
-            InstructionCollector, LastUnboundedResultCollector,
-            ResultCollector, StatementResultCollectionStrategy,
-        },
-    },
-    global::{
-        operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-        protocol_structures::{
-            instruction_data::{
-                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, ModifyStackValue,
-                ShortStatementsData, ShortTextData, StatementsData,
-                TaggedValue, TextData, UnboundedStatementsData,
-            },
-            instructions::{Instruction, NestedInstructionResolutionStrategy},
-            regular_instructions::RegularInstruction,
-            type_instructions::TypeInstruction,
-        },
-    },
-    libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
-    runtime::{
-        Runtime,
-        cache::shared_values_cache::{
-            CacheValueRetrievalError, ValueNotFoundInCacheError,
-        },
-        execution::{
-            ExecutionError, InvalidProgramError,
-            execution_loop::{
-                collected_execution_result::CollectedExecutionResult,
-                internal_slots::get_root_property,
-                interrupts::{
-                    ExecutionInterrupt, ExternalExecutionInterrupt,
-                    InterruptProvider, InterruptResult,
-                },
-                runtime_value::RuntimeValue,
-                state::RuntimeExecutionState,
-            },
-            macros::{
-                interrupt, interrupt_with_maybe_value, interrupt_with_value,
-            },
+    runtime::execution::{
+        ExecutionError, InvalidProgramError,
+        execution_loop::{
+            collected_execution_result::CollectedExecutionResult,
+            runtime_value::RuntimeValue, state::RuntimeExecutionState,
         },
     },
-    shared_values::{
-        PointerAddress, ReferenceMutability, ReferencedSharedContainer,
-        RemotePointerAddress, SharedContainer, SharedContainerMutability,
-        SharedContainerOwnership,
-        base_shared_value_container::BaseSharedValueContainer,
-    },
-    types::{
-        r#type::Type,
-        type_definition::{
-            TypeDefinition, impl_type::ImplTypeDefinition,
-            range::RangeTypeDefinition, tagged_type::TaggedTypeDefinition,
-        },
-        type_definition_with_metadata::TypeDefinitionWithMetadata,
-    },
-    value_updates::{
-        update_data::DeleteEntryUpdateData, update_handler::UpdateHandler,
-    },
-    values::{
-        core_value::CoreValue,
-        core_values::{
-            callable::{Callable, CallableBody, CoreStub},
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
-            list::List,
-            map::{Map, MapKey},
-        },
-        value::Value,
-        value_container::{
-            ValueContainer, error::ValueError, value_key::ValueKey,
-        },
-    },
+    types::{r#type::Type, type_definition::TypeDefinition},
+    values::{core_values::map::MapKey, value_container::ValueContainer},
 };
-use core::{cell::RefCell, ops::DerefMut};
 
 impl
     CollectionResultsPopper<
