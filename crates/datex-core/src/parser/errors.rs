@@ -32,6 +32,8 @@ pub enum ParserError {
     InvalidTypeVariantAccess,
     // used in internal parser logic to indicate a failed parse attempt that lead to a rollback
     CouldNotMatchGenericParams,
+
+    ExpressionNestingTooDeep,
 }
 
 #[derive(Debug)]

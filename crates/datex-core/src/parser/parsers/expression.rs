@@ -29,9 +29,36 @@ use crate::{
 };
 
 pub static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
+const MAX_EXPRESSION_DEPTH: usize = 64;
 
 impl Parser {
     pub(crate) fn parse_expression(
+        &mut self,
+        min_bp: u8,
+    ) -> Result<DatexExpression, SpannedParserError> {
+        if self.expression_depth >= MAX_EXPRESSION_DEPTH {
+            let span = match self.peek() {
+                Ok(token) => token.span.clone(),
+                Err(_) => 0..0,
+            };
+            return Err(SpannedParserError {
+                error: ParserError::ExpressionNestingTooDeep,
+                span,
+            });
+        }
+
+        self.expression_depth += 1;
+
+        let result = stacker::maybe_grow(64 * 1024, 1024 * 1024, || {
+            self.parse_expression_inner(min_bp)
+        });
+
+        self.expression_depth -= 1;
+
+        result
+    }
+
+    pub(crate) fn parse_expression_inner(
         &mut self,
         min_bp: u8,
     ) -> Result<DatexExpression, SpannedParserError> {
@@ -672,8 +699,11 @@ mod tests {
             protocol_structures::instruction_data::StackIndex,
         },
         parser::{
-            errors::ParserError,
-            tests::{parse, try_parse_and_return_on_first_error},
+            errors::{ParserError, SpannedParserError},
+            tests::{
+                parse, try_parse_and_collect_errors,
+                try_parse_and_return_on_first_error,
+            },
         },
         prelude::*,
         shared_values::{
@@ -681,6 +711,8 @@ mod tests {
         },
         types::type_definition_with_metadata::LocalReferenceMutability,
     };
+
+    use core::assert_matches;
 
     #[test]
     fn parse_simple_binary_expression() {
@@ -1876,5 +1908,12 @@ mod tests {
                 mutability: ReferenceMutability::Mutable,
             })
         );
+    }
+
+    #[test]
+    fn excessive_nesting() {
+        let input = "(".repeat(1_000) + "3" + &")".repeat(1_000);
+        let result = try_parse_and_return_on_first_error(&input).unwrap_err();
+        assert_matches!(result.error, ParserError::ExpressionNestingTooDeep);
     }
 }
