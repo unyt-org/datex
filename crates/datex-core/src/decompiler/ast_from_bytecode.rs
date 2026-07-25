@@ -31,17 +31,20 @@ use crate::{
 
 use crate::{
     ast::expressions::{
-        CloneExpression, CreateShared, DeriveSharedRef, RemoteExecution,
-        RequestSharedRef, RootPropertyAccess, StackAssignment, TagExpression,
-        UnboxAssignment,
+        CloneExpression, ComparisonOperation, CreateShared, DeriveSharedRef,
+        RemoteExecution, RequestSharedRef, RootPropertyAccess, StackAssignment,
+        TagExpression, UnboxAssignment,
     },
-    global::protocol_structures::{
-        instruction_data::{
-            ShortTextData, StackIndex, TaggedValue, UnboundedStatementsData,
+    global::{
+        operators::ComparisonOperator,
+        protocol_structures::{
+            instruction_data::{
+                ShortTextData, StackIndex, TaggedValue, UnboundedStatementsData,
+            },
+            instructions::NestedInstructionResolutionStrategy,
+            regular_instructions::RegularInstruction,
+            type_instructions::TypeInstruction,
         },
-        instructions::NestedInstructionResolutionStrategy,
-        regular_instructions::RegularInstruction,
-        type_instructions::TypeInstruction,
     },
     prelude::*,
     shared_values::{
@@ -534,11 +537,7 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::Subtract
                             | RegularInstruction::Multiply
                             | RegularInstruction::Divide
-                            | RegularInstruction::Matches
-                            | RegularInstruction::StructuralEqual
-                            | RegularInstruction::Equal
-                            | RegularInstruction::NotStructuralEqual
-                            | RegularInstruction::NotEqual => {
+                            | RegularInstruction::Matches => {
                                 let right =
                                     collected_results.pop_value();
                                 let left = collected_results.pop_value();
@@ -554,6 +553,28 @@ pub fn ast_from_bytecode(
                                 )
                                 .with_default_span()
                                 .into()
+                            }
+
+                            RegularInstruction::Is
+                            | RegularInstruction::StructuralEqual
+                            | RegularInstruction::Equal
+                            | RegularInstruction::NotStructuralEqual
+                            | RegularInstruction::NotEqual => {
+                                let right =
+                                    collected_results.pop_value();
+                                let left = collected_results.pop_value();
+
+                                DatexExpressionData::ComparisonOperation(
+                                    ComparisonOperation {
+                                        operator: ComparisonOperator::from(
+                                            &regular_instruction,
+                                        ),
+                                        left: left,
+                                        right: right,
+                                    },
+                                )
+                                    .with_default_span()
+                                    .into()
                             }
 
                             instruction @ (
