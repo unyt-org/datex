@@ -1,8 +1,9 @@
 use crate::{
-    libs::core::CoreLibPointerId,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    prelude::*,
     types::{
-        definition::TypeDefinition,
-        structural_type_definition::StructuralTypeDefinition,
+        literal_type_definition::LiteralTypeDefinition,
+        type_definition::TypeDefinition,
     },
     values::core_values::text::Text,
 };
@@ -16,43 +17,44 @@ impl CommonSqlProvider {
     ) -> Vec<(String, String)> {
         let mut columns = Vec::new();
         match type_def {
-            TypeDefinition::Structural(StructuralTypeDefinition::Map(map)) => {
-                for (key_type, value_type) in map {
-                    let column_name = match &key_type.type_definition {
-                        TypeDefinition::Structural(
-                            StructuralTypeDefinition::Text(Text(key_name)),
-                        ) => key_name,
-                        _ => {
-                            todo!()
-                        }
-                    };
-
-                    let column_type = match &value_type.type_definition {
-                        TypeDefinition::SharedReference(shared_ref) => {
-                            let shared_type = shared_ref.borrow();
-                            let pt = shared_type.pointer.address();
-                            if pt == CoreLibPointerId::Text.into() {
-                                "TEXT"
-                            } else if pt
-                                == CoreLibPointerId::Integer(None).into()
-                            {
-                                "INTEGER"
-                            } else if pt
-                                == CoreLibPointerId::Decimal(None).into()
-                            {
-                                "REAL"
-                            } else if pt == CoreLibPointerId::Boolean.into() {
-                                "SMALLINT"
-                            } else if pt == CoreLibPointerId::Endpoint.into() {
-                                "TEXT"
-                            } else {
-                                "TEXT"
+            TypeDefinition::Map(map) => {
+                for (key_type, value_type) in &map.0 {
+                    let column_name =
+                        key_type.with_collapsed_type_definition(|c| match c {
+                            TypeDefinition::Literal(
+                                LiteralTypeDefinition::Text(Text(key_name)),
+                            ) => key_name.clone(),
+                            _ => {
+                                todo!()
                             }
-                        }
-                        _ => {
-                            todo!()
-                        }
-                    };
+                        });
+
+                    let column_type = value_type
+                        .with_collapsed_type_definition(|c| match c {
+                            TypeDefinition::CoreType(core_lib_id) => {
+                                match core_lib_id {
+                                    CoreLibTypeId::Base(
+                                        CoreLibBaseTypeId::Text,
+                                    ) => "TEXT",
+                                    CoreLibTypeId::Base(
+                                        CoreLibBaseTypeId::Integer,
+                                    ) => "INTEGER",
+                                    CoreLibTypeId::Base(
+                                        CoreLibBaseTypeId::Decimal,
+                                    ) => "REAL",
+                                    CoreLibTypeId::Base(
+                                        CoreLibBaseTypeId::Boolean,
+                                    ) => "SMALLINT",
+                                    CoreLibTypeId::Base(
+                                        CoreLibBaseTypeId::Endpoint,
+                                    ) => "TEXT",
+                                    _ => "TEXT",
+                                }
+                            }
+                            _ => {
+                                todo!()
+                            }
+                        });
                     columns.push((
                         column_name.to_string(),
                         column_type.to_string(),

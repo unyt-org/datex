@@ -1,15 +1,17 @@
-use std::panic;
+use core::panic;
 
 use sqlx::{Connection, Row, SqliteConnection, sqlite::SqliteConnectOptions};
 
 use crate::{
     collections::HashMap,
-    shared_values::pointer_address::PointerAddress,
+    prelude::*,
+    shared_values::PointerAddress,
     storage::{
         StorageEntryId, StorageInterface,
         interface_impls::sql::common_sql_provider::CommonSqlProvider,
     },
     values::value_container::ValueContainer,
+    types::type_definition::TypeDefinition,
 };
 
 /// SQLite-backed implementation of the [`StorageInterface`] trait.
@@ -35,7 +37,7 @@ impl SqliteStorageInterface {
         })
     }
 
-    /// Returns the table name for the given collection ID, if one exists.
+    /// Returns the table name for the given collection ID if one exists.
     fn get_table_name(&self, collection_id: u32) -> Option<&str> {
         self.table_name_map.get(&collection_id).map(|s| s.as_str())
     }
@@ -120,20 +122,24 @@ impl StorageInterface for SqliteStorageInterface {
     async fn update(&mut self, id: StorageEntryId, value: &ValueContainer) {
         let table_name =
             self.get_table_name(id.collection_id().unwrap()).unwrap();
-        let columns = self.provider.get_column_metadata(&value.allowed_type());
+        let columns = self
+            .provider
+            .get_column_metadata(&value.allowed_or_actual_type());
         panic!("columns: {:#?}", columns)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::values::{
-        core_value::CoreValue,
-        core_values::{
-            text::Text,
-            r#type::{LocalMutability, Type, TypeMetadata},
+    use crate::{
+        libs::core::type_id::CoreLibBaseTypeId,
+        types::{
+            literal_type_definition::LiteralTypeDefinition,
+            type_definition::{TypeDefinition, map::MapTypeDefinition},
         },
-        value::Value,
+        values::{
+            core_value::CoreValue, core_values::text::Text, value::Value,
+        },
     };
 
     use super::*;
@@ -179,34 +185,17 @@ mod tests {
         let id = interface.create(&value).await;
         let updated = ValueContainer::Local(Value {
             inner: CoreValue::Null,
-            actual_type: Box::new(TypeDefinition::Structural(
-                StructuralTypeDefinition::Map(vec![
-                    (
-                        Type::structural(
-                            StructuralTypeDefinition::Text(Text(
-                                "name".to_string(),
-                            )),
-                            TypeMetadata::Local {
-                                mutability: LocalMutability::Mutable,
-                                reference_mutability: None,
-                            },
-                        ),
-                        Type::text(),
-                    ),
-                    (
-                        Type::structural(
-                            StructuralTypeDefinition::Text(Text(
-                                "age".to_string(),
-                            )),
-                            TypeMetadata::Local {
-                                mutability: LocalMutability::Mutable,
-                                reference_mutability: None,
-                            },
-                        ),
-                        Type::integer(),
-                    ),
-                ]),
-            )),
+            custom_type: Some(TypeDefinition::Map(MapTypeDefinition(vec![
+                (
+                    LiteralTypeDefinition::Text(Text("name".to_string()))
+                        .into(),
+                    TypeDefinition::core(CoreLibBaseTypeId::Text).into(),
+                ),
+                (
+                    LiteralTypeDefinition::Text(Text("age".to_string())).into(),
+                    TypeDefinition::core(CoreLibBaseTypeId::Integer).into(),
+                ),
+            ]))),
         });
         interface.update(id, &updated).await;
         let retrieved = interface.get(id).await;

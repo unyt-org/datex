@@ -1,6 +1,5 @@
 use crate::{
-    shared_values::pointer_address::PointerAddress,
-    values::value_container::ValueContainer,
+    shared_values::PointerAddress, values::value_container::ValueContainer,
 };
 
 /// Unique identifier for an entry within a storage backend.
