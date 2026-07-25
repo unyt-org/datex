@@ -52,6 +52,7 @@ impl OperatorHandler for Type {
 
 impl Type {
     pub const UNIT: Type = Type::Alias(TypeDefinitionWithMetadata::unit());
+    pub const NULL: Type = Type::Alias(TypeDefinitionWithMetadata::null());
 
     pub fn with_name(mut self, name: impl Into<String>) -> Self {
         match &mut self {

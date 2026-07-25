@@ -19,6 +19,13 @@ impl TypeDefinitionWithMetadata {
             reference_name: None,
         }
     }
+    pub const fn null() -> Self {
+        TypeDefinitionWithMetadata {
+            definition: TypeDefinition::NULL,
+            metadata: TypeMetadata::default(),
+            reference_name: None,
+        }
+    }
 }
 
 impl TypeDefinitionWithMetadata {

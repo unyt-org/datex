@@ -290,6 +290,8 @@ impl TypeDefinition {
     pub const UNIT: TypeDefinition =
         TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit));
 
+    pub const NULL: TypeDefinition = TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Null));
+
     /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
     pub fn with_collapsed<R>(&self, f: impl FnOnce(&TypeDefinition) -> R) -> R {
         match self {

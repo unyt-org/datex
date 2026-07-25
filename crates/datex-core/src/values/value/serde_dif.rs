@@ -204,7 +204,13 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 serializer,
                 false,
             ),
-            CoreValue::Type(_ty) => todo!(),
+            CoreValue::Type(ty) => self.serialize_with_core_type_serde(
+                ty,
+                core_lib_type,
+                &value.custom_type,
+                serializer,
+                false,
+            ),
             CoreValue::NominalTypeDefinition(_nominal_type_definition) => {
                 todo!()
             }
