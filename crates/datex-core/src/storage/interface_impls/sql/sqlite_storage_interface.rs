@@ -1,6 +1,6 @@
 use core::panic;
 
-use sqlx::{Connection, Row, SqliteConnection, sqlite::SqliteConnectOptions};
+use sqlx::{sqlite::SqliteConnectOptions, Connection, Row, Sqlite, SqliteConnection};
 
 use crate::{
     collections::HashMap,
@@ -11,16 +11,13 @@ use crate::{
         interface_impls::sql::common_sql_provider::CommonSqlProvider,
     },
     values::value_container::ValueContainer,
-    types::type_definition::TypeDefinition,
 };
 
 /// SQLite-backed implementation of the [`StorageInterface`] trait.
 pub struct SqliteStorageInterface {
-    /// Active database connection.
-    conn: SqliteConnection,
     /// Maps collection IDs to their corresponding table name.
     table_name_map: HashMap<u32, String>,
-    provider: CommonSqlProvider,
+    provider: CommonSqlProvider<Sqlite>,
 }
 
 impl SqliteStorageInterface {
@@ -31,9 +28,8 @@ impl SqliteStorageInterface {
         let conn = SqliteConnection::connect_with(options).await?;
 
         Ok(Self {
-            conn,
             table_name_map: HashMap::new(),
-            provider: CommonSqlProvider {},
+            provider: CommonSqlProvider {conn},
         })
     }
 
@@ -44,6 +40,7 @@ impl SqliteStorageInterface {
 }
 
 impl StorageInterface for SqliteStorageInterface {
+    /// Creates a new entry in the database and optionally creates a new table if it doesn't exist.
     async fn create(&mut self, value: &ValueContainer) -> StorageEntryId {
         let table_name = "table_X";
         let table_id = sqlx::query(&format!(
