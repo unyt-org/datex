@@ -128,6 +128,8 @@ pub fn ast_from_bytecode(
 ) -> Result<DatexExpression, DXBParserError> {
     let mut collector = InstructionCollector::<CollectedAstResult>::default();
 
+    let mut next_stack_index = StackIndex(0);
+
     for instruction in iterate_instructions(
         Rc::new(RefCell::new(dxb.to_vec())),
         NestedInstructionResolutionStrategy::default(),
@@ -141,7 +143,7 @@ pub fn ast_from_bytecode(
                     .default_regular_instruction_collection(
                         regular_instruction,
                         StatementResultCollectionStrategy::Full,
-                        StackIndex(0), // stack index not needed since there is no stack to keep track of
+                        next_stack_index,
                     );
 
                 let expr = regular_instruction.map(|regular_instruction|
@@ -699,14 +701,18 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::PushToStack => {
                                 let expr = collected_results.pop_value();
-                                DatexExpressionData::StackAssignment(
+
+                                let res = DatexExpressionData::StackAssignment(
                                     StackAssignment {
-                                        index: StackIndex(0), // FIXME: push
+                                        index: next_stack_index,
                                         expression: (expr),
                                     }
                                 )
                                     .with_default_span()
-                                    .into()
+                                    .into();
+                                next_stack_index += 1;
+
+                                res
                             }
 
                             RegularInstruction::PushListToStack => {
