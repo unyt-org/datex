@@ -28,6 +28,7 @@ use crate::{
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
 };
+use crate::ast::expressions::InterfaceMethodCall;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -604,6 +605,15 @@ impl AstToSourceCodeConverter {
                 }
 
                 format!("{}({})", self.format(base), args_source.join(","))
+            }
+            DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall { base, method_name, arguments }) => {
+                let mut args_source = vec![];
+
+                for arg in arguments {
+                    args_source.push(self.format(arg));
+                }
+
+                format!("{}->{}({})", self.format(base), method_name, args_source.join(","))
             }
             DatexExpressionData::TypeExpression(type_expr) => {
                 format!(

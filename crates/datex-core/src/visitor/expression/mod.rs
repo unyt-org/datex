@@ -30,6 +30,7 @@ use crate::{
     },
 };
 use core::ops::Range;
+use crate::ast::expressions::InterfaceMethodCall;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -174,8 +175,11 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                     &expr.span,
                 )
             }
-            DatexExpressionData::Apply(apply_chain) => {
-                self.visit_apply(apply_chain, &expr.span)
+            DatexExpressionData::Apply(apply) => {
+                self.visit_apply(apply, &expr.span)
+            }
+            DatexExpressionData::InterfaceMethodCall(call) => {
+                self.visit_interface_method_call(call, &expr.span)
             }
             DatexExpressionData::PropertyAccess(property_access) => {
                 self.visit_property_access(property_access, &expr.span)
@@ -374,7 +378,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         Ok(VisitAction::ContinueRecursion)
     }
 
-    /// Visit apply chain
+    /// Visit apply
     fn visit_apply(
         &mut self,
         apply: &mut Apply,
@@ -382,6 +386,17 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = apply;
+        Ok(VisitAction::ContinueRecursion)
+    }
+
+    /// Visit interface method call
+    fn visit_interface_method_call(
+        &mut self,
+        call: &mut InterfaceMethodCall,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = call;
         Ok(VisitAction::ContinueRecursion)
     }
 

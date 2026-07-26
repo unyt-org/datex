@@ -3,10 +3,11 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, Conditional, CreateMut, CreateShared,
         DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
-        GenericInstantiation, List, Map, PropertyAccess, PropertyAssignment,
-        RangeDeclaration, RemoteExecution, StackAssignment, Statements,
-        TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
-        UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
+        GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
+        PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
+        Statements, TagExpression, TypeDeclaration, UnaryOperation, Unbox,
+        UnboxAssignment, UnboxSlotAssignment, VariableAssignment,
+        VariableDeclaration,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
@@ -174,6 +175,19 @@ impl<E> VisitableExpression<E> for TagExpression {
 }
 
 impl<E> VisitableExpression<E> for Apply {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.base)?;
+        for arg in &mut self.arguments {
+            visitor.visit_datex_expression(arg)?;
+        }
+        Ok(())
+    }
+}
+
+impl<E> VisitableExpression<E> for InterfaceMethodCall {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -385,8 +399,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::UnaryOperation(unary_operation) => {
                 unary_operation.walk_children(visitor)
             }
-            DatexExpressionData::Apply(apply_chain) => {
-                apply_chain.walk_children(visitor)
+            DatexExpressionData::Apply(apply) => apply.walk_children(visitor),
+            DatexExpressionData::InterfaceMethodCall(call) => {
+                call.walk_children(visitor)
             }
             DatexExpressionData::PropertyAccess(property_access) => {
                 property_access.walk_children(visitor)

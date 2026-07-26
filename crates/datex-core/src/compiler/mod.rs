@@ -36,7 +36,9 @@ use crate::{
     global::{
         dxb_block::DXBBlock,
         instruction_codes::InstructionCode,
-        operators::modification::ModificationOperator,
+        operators::{
+            binary::ArithmeticOperator, modification::ModificationOperator,
+        },
         protocol_structures::{
             block_header::BlockHeader,
             encrypted_header::EncryptedHeader,
@@ -1126,8 +1128,7 @@ fn compile_expression(
                         RegularInstruction::SetStackValue(stack_index),
                     );
                 }
-                Some(operator @ ModificationOperator::AddAssign)
-                | Some(operator @ ModificationOperator::SubtractAssign) => {
+                Some(operator) => {
                     // TODO #435: handle mut type
                     // // if immutable reference, return error
                     // if mut_type == Some(ReferenceMutability::Immutable) {
@@ -1144,17 +1145,19 @@ fn compile_expression(
                     //     ));
                     // }
 
-                    append_regular_instruction(
-                        compilation_context.cursor(),
-                        RegularInstruction::ModifyStackValue(
-                            ModifyStackValue {
-                                index: stack_index,
-                                operator,
-                            },
-                        ),
-                    );
+                    if compile_maybe_direct_assignment_operation(
+                        compilation_context,
+                        operator,
+                    ) {
+                        append_regular_instruction(
+                            compilation_context.cursor(),
+                            RegularInstruction::BorrowStackValue(stack_index),
+                        );
+                    } else {
+                        // Generate x = x * z instructions;
+                        todo!()
+                    }
                 }
-                op => core::todo!("#436 Handle assignment operator: {op:?}"),
             }
 
             // compile expression
@@ -1173,17 +1176,21 @@ fn compile_expression(
         }) => {
             compilation_context.mark_has_non_static_value();
 
-            append_regular_instruction(
-                compilation_context.cursor(),
-                match operator {
-                    Some(operator) => {
-                        RegularInstruction::ModifySharedContainerValue(
-                            ModifySharedContainerValue { operator },
-                        )
+            match operator {
+                Some(operator) => {
+                    if !compile_maybe_direct_assignment_operation(
+                        compilation_context,
+                        operator,
+                    ) {
+                        // Generate x = x * z instructions;
+                        todo!()
                     }
-                    None => RegularInstruction::SetSharedContainerValue,
-                },
-            );
+                }
+                None => append_regular_instruction(
+                    compilation_context.cursor(),
+                    RegularInstruction::SetSharedContainerValue,
+                ),
+            };
 
             // compile assigned expression
             scope = compile_expression(
@@ -1469,6 +1476,26 @@ fn compile_expression(
     }
 
     Ok(scope)
+}
+
+/// Compiles a direct assignment operation (e.g., `+=`, `-=`) into the corresponding regular instruction (e.g. [RegularInstruction::Increment]).
+/// Returns `true` if the operation was successfully compiled, or `false` if the operator is not a direct assignment operation.
+fn compile_maybe_direct_assignment_operation(
+    compilation_context: &mut CompilationContext,
+    operator: ModificationOperator,
+) -> bool {
+    match operator {
+        ModificationOperator::AddAssign => append_regular_instruction(
+            compilation_context.cursor(),
+            RegularInstruction::Increment,
+        ),
+        ModificationOperator::SubtractAssign => append_regular_instruction(
+            compilation_context.cursor(),
+            RegularInstruction::Decrement,
+        ),
+        operator => return false,
+    };
+    return true;
 }
 
 fn compile_key_value_entry(

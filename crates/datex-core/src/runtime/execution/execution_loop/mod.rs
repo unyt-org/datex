@@ -779,13 +779,12 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::Splice(
                                     splice,
                                 ) => {
-                                    let mut values = collected_results.try_collect_value_containers(&mut state)?;
-                                    // last argument is the target
-                                    let mut target = values.remove(values.len() - 1);
-
                                     let source_id = state.source_id_cloned();
+                                    let mut target = collected_results.try_pop_runtime_value()?;
+                                    let mut values = collected_results.try_collect_value_containers(&mut state)?;
+                                    let target_value = target.as_value_container_mut(&mut state.stack)?;
 
-                                    let res_values = target
+                                    let res_values = target_value
                                         .try_list_splice(vec![], source_id, ListSpliceUpdateData::new(
                                             splice.start_index,
                                             splice.delete_count,
@@ -797,12 +796,12 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::Clear => {
-                                    let mut target = collected_results.try_pop_value_container(&mut state)?;
-
                                     let source_id = state.source_id_cloned();
+                                    let mut target = collected_results.try_pop_runtime_value()?;
+                                    let target_value = target.as_value_container_mut(&mut state.stack)?;
 
                                     // TODO: res?
-                                    let _res = target
+                                    let _res = target_value
                                         .try_clear(vec![], source_id)
                                         .map_err(|e| e.into())?;
 
@@ -810,13 +809,13 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::Increment => {
-                                    let mut target = collected_results.try_pop_value_container(&mut state)?;
-                                    let value = collected_results.try_pop_value_container(&mut state)?;
-
                                     let source_id = state.source_id_cloned();
+                                    let mut target = collected_results.try_pop_runtime_value()?;
+                                    let value = collected_results.try_pop_value_container(&mut state)?;
+                                    let target_value = target.as_value_container_mut(&mut state.stack)?;
 
-                                    // TODO: res?
-                                    let _res = target
+
+                                    target_value
                                         .try_increment(vec![], source_id, IncrementUpdateData::new(value))
                                         .map_err(|e| e.into())?;
 
@@ -824,12 +823,12 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::Decrement => {
-                                    let mut target = collected_results.try_pop_value_container(&mut state)?;
-                                    let value = collected_results.try_pop_value_container(&mut state)?;
-
                                     let source_id = state.source_id_cloned();
+                                    let mut target = collected_results.try_pop_runtime_value()?;
+                                    let value = collected_results.try_pop_value_container(&mut state)?;
+                                    let target_value = target.as_value_container_mut(&mut state.stack)?;
 
-                                    let _res = target
+                                    target_value
                                         .try_decrement(vec![], source_id, DecrementUpdateData::new(value))
                                         .map_err(|e| e.into())?;
 
