@@ -8,6 +8,7 @@ authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
     "Jonas Strehle <jonas@unyt.org>",
     "Norbert Brzezinski <norbert@unyt.org>",
+    "Nico Brenner <nico@unyt.org>",
 ]
 edition = "2024"
 license-file = "../../LICENSE"
@@ -36,7 +37,7 @@ panic = "abort"
 inventory = "0.3"
 
 # dependency for time
-chrono = { version = "0.4.38", features =["clock"] }
+chrono = { version = "0.4.38", features = ["clock"] }
 
 # core dependencies
 strum = { version = "0.27.1", default-features = false, features = ["derive"] }
@@ -106,6 +107,10 @@ spin = { version = "0.10.0", default-features = false, features = [
 
 # std-only dependencies (optional)
 internment = { version = "0.8.6", optional = true }
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "tls-native-tls",
+], optional = true }
 
 
 # lsp dependencies (optional)
@@ -179,12 +184,22 @@ tokio = { version = "1.43.0", features = [
 ], default-features = false }
 flexi_logger = { version = "0.31.8" }
 
+# ---------------------------------
+# --------- FEATURE FLAGS ---------
+# ---------------------------------
 [features]
 # alloc = [] see https://github.com/unyt-org/datex/issues/699
 
 # When using the "std" feature, the "default" feature should not be enabled since
 # it includes no_std-specific dependencies
-default = ["no_std", "dep:async-timer", "disassembler"]
+default = [
+    "no_std",
+    "dep:async-timer",
+    "disassembler",
+    "storage",
+    "storage_sqlite",
+]
+
 
 no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
@@ -291,3 +306,5 @@ lsp_wasm = ["lsp"]
 ### interface-related features ################################################
 
 webrtc = ["dep:webrtc"]
+storage = []
+storage_sqlite = ["storage", "dep:sqlx", "sqlx/sqlite"]
