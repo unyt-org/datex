@@ -1495,7 +1495,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         )?)
     }
 
-    fn visit_slot_assignment(
+    fn visit_stack_assignment(
         &mut self,
         _slot_assignment: &mut StackAssignment,
         span: &Range<usize>,

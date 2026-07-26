@@ -14,7 +14,8 @@ use crate::{
     },
     libs::core::core_lib_id::CoreLibId,
     shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainerMutability,
+        PointerAddress, ReferenceMutability, SelfOwnedPointerAddress,
+        SharedContainerMutability,
     },
     types::{
         r#type::Type, type_definition::callable::CallableKind,
@@ -142,6 +143,9 @@ pub enum DatexExpressionData {
     /// reference access to shared value, e.g. '$ABC / 'mut $ABC
     RequestSharedRef(RequestSharedRef),
 
+    /// move a shared value, e.g. $ABC
+    MoveSharedValue(SelfOwnedPointerAddress),
+
     ResolveCoreLibId(CoreLibId),
 
     /// compile ( ... )
@@ -196,8 +200,11 @@ pub enum DatexExpressionData {
     /// Property access on the root, e.g. $.print
     RootPropertyAccess(RootPropertyAccess),
 
-    /// Slot assignment
-    SlotAssignment(StackAssignment),
+    /// Stack assignment e.g. {0} = ...
+    StackAssignment(StackAssignment),
+
+    /// Push list to stack, e.g. {...} = ...
+    StackListAssignment(StackListAssignment),
 
     /// Binary operation, e.g. x + y
     BinaryOperation(BinaryOperation),
@@ -625,8 +632,11 @@ pub struct RootPropertyAccess {
 pub struct StackAssignment {
     pub index: StackIndex,
     pub expression: DatexExpression,
-    // TODO: operator for stack assignment, e.g. \\1 += 2
-    // pub operator: Option<AssignmentOperator>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StackListAssignment {
+    pub expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]

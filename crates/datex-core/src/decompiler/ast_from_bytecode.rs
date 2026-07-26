@@ -33,10 +33,10 @@ use crate::{
     ast::expressions::{
         CloneExpression, ComparisonOperation, CreateShared, DeriveSharedRef,
         RemoteExecution, RequestSharedRef, RootPropertyAccess, StackAssignment,
-        TagExpression, UnboxAssignment,
+        StackListAssignment, TagExpression, UnboxAssignment,
     },
     global::{
-        operators::ComparisonOperator,
+        operators::{ComparisonOperator, ModificationOperator},
         protocol_structures::{
             instruction_data::{
                 ShortTextData, StackIndex, TaggedValue, UnboundedStatementsData,
@@ -301,10 +301,6 @@ pub fn ast_from_bytecode(
                             DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                         }
 
-                        RegularInstruction::MoveWithValue(_move_with_value) => {
-                            DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
-                        }
-
                         RegularInstruction::CloneStackValue(stack_index) => {
                             DatexExpressionData::Clone(CloneExpression {
                                 expression: (DatexExpressionData::StackIndex(stack_index).with_default_span())
@@ -400,6 +396,7 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::TypedValue
                         | RegularInstruction::Increment
                         | RegularInstruction::Decrement
+                        | RegularInstruction::MoveWithValue(_)
                         | RegularInstruction::RemoteExecution(_)
                         | RegularInstruction::TypeExpression => {
                             unreachable!()
@@ -694,9 +691,15 @@ pub fn ast_from_bytecode(
                                 }
                             }
 
+                            RegularInstruction::MoveWithValue(move_with_value) => {
+                                DatexExpressionData::MoveSharedValue(move_with_value.previous_address)
+                                    .with_default_span()
+                                    .into()
+                            }
+
                             RegularInstruction::PushToStack => {
                                 let expr = collected_results.pop_value();
-                                DatexExpressionData::SlotAssignment(
+                                DatexExpressionData::StackAssignment(
                                     StackAssignment {
                                         index: StackIndex(0), // FIXME: push
                                         expression: (expr),
@@ -707,13 +710,10 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::PushListToStack => {
-                                let expr = collected_results.pop_value();
-                                DatexExpressionData::SlotAssignment(
-                                    StackAssignment {
-                                        index: StackIndex(0), // FIXME: push_multiple \0..\10 = x
-                                        expression: (expr),
-                                    }
-                                )
+                                let expression = collected_results.pop_value();
+                                DatexExpressionData::StackListAssignment(StackListAssignment {
+                                    expression,
+                                })
                                     .with_default_span()
                                     .into()
                             }
@@ -843,10 +843,28 @@ pub fn ast_from_bytecode(
                                 todo!()
                             }
                             RegularInstruction::Increment => {
-                                todo!()
+                                let base = collected_results.pop_value();
+                                let value =
+                                    collected_results.pop_value();
+                                DatexExpressionData::UnboxAssignment(UnboxAssignment {
+                                    operator: Some(ModificationOperator::AddAssign),
+                                    unbox_expression: base,
+                                    assigned_expression: value,
+                                })
+                                    .with_default_span()
+                                    .into()
                             }
                             RegularInstruction::Decrement => {
-                                todo!()
+                                let base = collected_results.pop_value();
+                                let value =
+                                    collected_results.pop_value();
+                                DatexExpressionData::UnboxAssignment(UnboxAssignment {
+                                    operator: Some(ModificationOperator::SubtractAssign),
+                                    unbox_expression: base,
+                                    assigned_expression: value,
+                                })
+                                    .with_default_span()
+                                    .into()
                             }
 
                             RegularInstruction::SetEntryText(text_data) => {

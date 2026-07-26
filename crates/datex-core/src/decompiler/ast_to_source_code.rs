@@ -22,13 +22,13 @@ use core::fmt::{self};
 
 use crate::{
     ast::expressions::{
-        RootPropertyAccess, UnboxSlotAssignment, ValueAccessType,
+        InterfaceMethodCall, RootPropertyAccess, StackListAssignment,
+        UnboxSlotAssignment, ValueAccessType,
     },
     decompiler::{FormattingMode, FormattingOptions, IndentType},
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
 };
-use crate::ast::expressions::InterfaceMethodCall;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -182,7 +182,7 @@ impl AstToSourceCodeConverter {
                     ti.to_string()
                 }
             }
-            _ => format!("({})", self.format(key)),
+            _ => format!("({})", self.format_child(key)),
         }
     }
     fn key_type_expression_to_source_code(
@@ -384,16 +384,19 @@ impl AstToSourceCodeConverter {
     }
 
     fn wrap_map_elements(&self, elements: Vec<String>) -> String {
-        self.wrap_elements(elements, BraceStyle::Curly, Some(","))
+        self.wrap_elements(elements, BraceStyle::Curly, Some(","), false)
     }
     fn wrap_list_elements(&self, elements: Vec<String>) -> String {
-        self.wrap_elements(elements, BraceStyle::Square, Some(","))
+        self.wrap_elements(elements, BraceStyle::Square, Some(","), false)
+    }
+    fn wrap_statement_elements(&self, elements: Vec<String>) -> String {
+        self.wrap_elements(elements, BraceStyle::Paren, None, true)
     }
     fn wrap_union_elements(&self, elements: Vec<String>) -> String {
-        self.wrap_elements(elements, BraceStyle::None, Some("|"))
+        self.wrap_elements(elements, BraceStyle::None, Some("|"), false)
     }
     fn wrap_intersection_elements(&self, elements: Vec<String>) -> String {
-        self.wrap_elements(elements, BraceStyle::None, Some("&"))
+        self.wrap_elements(elements, BraceStyle::None, Some("&"), false)
     }
 
     /// Wrap elements with commas and appropriate braces, handling pretty/compact modes
@@ -402,6 +405,7 @@ impl AstToSourceCodeConverter {
         elements: Vec<String>,
         brace_style: BraceStyle,
         separator: Option<&str>,
+        force_newlines: bool,
     ) -> String {
         let separator = separator.unwrap_or("");
 
@@ -427,7 +431,7 @@ impl AstToSourceCodeConverter {
             + joined_inline.len()
             + brace_style.close().len();
 
-        if !has_newline && inline_len <= Self::MAX_INLINE {
+        if !has_newline && inline_len <= Self::MAX_INLINE && !force_newlines {
             // single-line
             return format!(
                 "{}{}{}",
@@ -474,7 +478,7 @@ impl AstToSourceCodeConverter {
                     "{}:{}{}",
                     self.key_expression_to_source_code(k),
                     self.space(),
-                    self.format(v)
+                    self.format_child(v)
                 )
             })
             .collect();
@@ -484,11 +488,22 @@ impl AstToSourceCodeConverter {
     /// Convert a list/array to source code.
     fn list_to_source_code(&self, list: &List) -> String {
         let elements: Vec<String> =
-            list.items.iter().map(|v| self.format(v)).collect();
+            list.items.iter().map(|v| self.format_child(v)).collect();
         self.wrap_list_elements(elements)
     }
 
+    /// Format a DatexExpression tree into source code
     pub fn format(&self, ast: &DatexExpression) -> String {
+        self.format_inner(ast, true)
+    }
+
+    /// Format a DatexExpression tree into source code, treating it as a child node (not the root).
+    fn format_child(&self, ast: &DatexExpression) -> String {
+        self.format_inner(ast, false)
+    }
+
+    /// Format a DatexExpression tree into source code, with an option to indicate if it's the root node.
+    fn format_inner(&self, ast: &DatexExpression, is_root: bool) -> String {
         match ast.data() {
             DatexExpressionData::PropertyAssignment(PropertyAssignment {
                 operator,
@@ -499,14 +514,14 @@ impl AstToSourceCodeConverter {
                 ast_fmt!(
                     &self,
                     "{}.{}{}%s{}%s{}",
-                    self.format(base),
+                    self.format_child(base),
                     self.key_expression_to_source_code(property),
                     self.space(),
                     match operator {
                         Some(operator) => operator.to_string(),
                         None => "=".to_string(),
                     },
-                    self.format(assigned_expression)
+                    self.format_child(assigned_expression)
                 )
             }
             DatexExpressionData::VariantAccess(VariantAccess {
@@ -520,8 +535,8 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Integer(i) => i.to_string(),
             DatexExpressionData::DateTime(instant) => instant.to_iso_string(),
             DatexExpressionData::Range(RangeDeclaration { start, end }) => {
-                let left_code = self.format(start);
-                let right_code = self.format(end);
+                let left_code = self.format_child(start);
+                let right_code = self.format_child(end);
                 ast_fmt!(&self, "{}..{}", left_code, right_code)
             }
             DatexExpressionData::TypedInteger(ti) => {
@@ -550,10 +565,10 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::DeriveRef(create_ref) => {
                 match &create_ref.mutability {
                     LocalReferenceMutability::Mutable => {
-                        format!("&mut {}", self.format(&create_ref.expression))
+                        format!("&mut {}", self.format_child(&create_ref.expression))
                     }
                     LocalReferenceMutability::Immutable => {
-                        format!("&{}", self.format(&create_ref.expression))
+                        format!("&{}", self.format_child(&create_ref.expression))
                     }
                 }
             }
@@ -562,13 +577,13 @@ impl AstToSourceCodeConverter {
                     ReferenceMutability::Mutable => {
                         format!(
                             "'mut {}",
-                            self.format(&create_shared_ref.expression)
+                            self.format_child(&create_shared_ref.expression)
                         )
                     }
                     ReferenceMutability::Immutable => {
                         format!(
                             "'{}",
-                            self.format(&create_shared_ref.expression)
+                            self.format_child(&create_shared_ref.expression)
                         )
                     }
                 }
@@ -581,11 +596,14 @@ impl AstToSourceCodeConverter {
                 format!(
                     "shared {}{}",
                     mut_string,
-                    self.format(&create_shared.expression)
+                    self.format_child(&create_shared.expression)
                 )
             }
             DatexExpressionData::CreateMut(create_shared) => {
-                format!("mut {}", self.format(&create_shared.expression))
+                format!("mut {}", self.format_child(&create_shared.expression))
+            }
+            DatexExpressionData::MoveSharedValue(move_shared_value) => {
+                format!("{}", move_shared_value)
             }
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator,
@@ -601,19 +619,28 @@ impl AstToSourceCodeConverter {
                 let mut args_source = vec![];
 
                 for arg in arguments {
-                    args_source.push(self.format(arg));
+                    args_source.push(self.format_child(arg));
                 }
 
-                format!("{}({})", self.format(base), args_source.join(","))
+                format!("{}({})", self.format_child(base), args_source.join(","))
             }
-            DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall { base, method_name, arguments }) => {
+            DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                base,
+                method_name,
+                arguments,
+            }) => {
                 let mut args_source = vec![];
 
                 for arg in arguments {
-                    args_source.push(self.format(arg));
+                    args_source.push(self.format_child(arg));
                 }
 
-                format!("{}->{}({})", self.format(base), method_name, args_source.join(","))
+                format!(
+                    "{}->{}({})",
+                    self.format_child(base),
+                    method_name,
+                    args_source.join(",")
+                )
             }
             DatexExpressionData::TypeExpression(type_expr) => {
                 format!(
@@ -625,7 +652,7 @@ impl AstToSourceCodeConverter {
                 ast_fmt!(
                     &self,
                     "compile (%n{}%n)",
-                    self.format(&compile_expr.expression)
+                    self.format_child(&compile_expr.expression)
                 )
             }
             DatexExpressionData::Recover => unreachable!(
@@ -638,21 +665,24 @@ impl AstToSourceCodeConverter {
                     .iter()
                     .enumerate()
                     .map(|(i, stmt)| {
-                        let code = self.format(stmt);
+                        let code = self.format_child(stmt);
                         let is_last_statement =
                             i + 1 == statements.statements.len();
-                        if is_last_statement {
-                            if terminated {
-                                ast_fmt!(&self, "{};", code)
-                            } else {
-                                code
-                            }
+                        if !is_last_statement || terminated {
+                            ast_fmt!(&self, "{};", code)
                         } else {
-                            ast_fmt!(&self, "{};%n", code)
+                            code
                         }
                     })
                     .collect();
-                statements_code.join("")
+                
+                // no outer parentheses for root statements
+                if is_root {
+                    statements_code.join(self.newline())
+                }
+                else {
+                    self.wrap_statement_elements(statements_code)
+                }
             }
             DatexExpressionData::RequestSharedRef(get_shared_ref) => {
                 format!(
@@ -687,7 +717,7 @@ impl AstToSourceCodeConverter {
                     );
                 }
                 code.push_str(&self.pad("="));
-                code.push_str(&self.format(init_expression));
+                code.push_str(&self.format_child(init_expression));
                 code
             }
             DatexExpressionData::VariableAssignment(VariableAssignment {
@@ -701,7 +731,7 @@ impl AstToSourceCodeConverter {
                 if let Some(operator) = operator {
                     code.push_str(&self.pad(&operator.to_string()));
                 }
-                code.push_str(&self.format(expression));
+                code.push_str(&self.format_child(expression));
                 code
             }
             DatexExpressionData::VariableAccess(VariableAccess {
@@ -775,7 +805,7 @@ impl AstToSourceCodeConverter {
 
                 // indented function body
                 let body_code = self
-                    .format(body)
+                    .format_child(body)
                     .replace("\n", &format!("\n{}", self.indent()));
 
                 ast_fmt!(
@@ -791,17 +821,22 @@ impl AstToSourceCodeConverter {
                 )
             }
             DatexExpressionData::Unbox(unbox) => {
-                format!("*{}", self.format(&unbox.expression))
+                format!("*{}", self.format_child(&unbox.expression))
             }
             DatexExpressionData::Clone(clone) => {
-                format!("clone {}", self.format(&clone.expression))
+                format!("clone {}", self.format_child(&clone.expression))
             }
             DatexExpressionData::StackIndex(slot) => slot.to_string(),
-            DatexExpressionData::SlotAssignment(StackAssignment {
+            DatexExpressionData::StackAssignment(StackAssignment {
                 index: slot,
                 expression,
             }) => {
-                ast_fmt!(&self, "{}%s=%s{}", slot, self.format(expression))
+                ast_fmt!(&self, "{}%s=%s{}", slot, self.format_child(expression))
+            }
+            DatexExpressionData::StackListAssignment(StackListAssignment {
+                expression,
+            }) => {
+                ast_fmt!(&self, "{{...}}%s=%s{}", self.format_child(expression))
             }
             DatexExpressionData::ComparisonOperation(ComparisonOperation {
                 operator,
@@ -811,8 +846,8 @@ impl AstToSourceCodeConverter {
                 ast_fmt!(
                     &self,
                     "{}%s{operator}%s{}",
-                    self.format(left),
-                    self.format(right)
+                    self.format_child(left),
+                    self.format_child(right)
                 )
             }
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
@@ -820,17 +855,15 @@ impl AstToSourceCodeConverter {
                 unbox_expression,
                 assigned_expression,
             }) => {
-                let unbox_prefix = "*";
                 ast_fmt!(
                     &self,
-                    "{}{}%s{}%s{}",
-                    unbox_prefix,
-                    self.format(unbox_expression),
+                    "{}%s{}%s{}",
+                    self.format_child(unbox_expression),
                     match operator {
                         Some(operator) => operator.to_string(),
                         None => "=".to_string(),
                     },
-                    self.format(assigned_expression)
+                    self.format_child(assigned_expression)
                 )
             }
             DatexExpressionData::UnboxSlotAssignment(UnboxSlotAssignment {
@@ -848,14 +881,14 @@ impl AstToSourceCodeConverter {
                         Some(operator) => operator.to_string(),
                         None => "=".to_string(),
                     },
-                    self.format(assigned_expression)
+                    self.format_child(assigned_expression)
                 )
             }
             DatexExpressionData::UnaryOperation(unary_operation) => {
                 format!(
                     "{}{}",
                     unary_operation.operator,
-                    self.format(&unary_operation.expression)
+                    self.format_child(&unary_operation.expression)
                 )
             }
             DatexExpressionData::Placeholder(placeholder_type) => {
@@ -875,8 +908,8 @@ impl AstToSourceCodeConverter {
                 ast_fmt!(
                     &self,
                     "{}%s::%s{}",
-                    self.format(left),
-                    self.format(right)
+                    self.format_child(left),
+                    self.format_child(right)
                 )
             }
             DatexExpressionData::PropertyAccess(PropertyAccess {
@@ -885,7 +918,7 @@ impl AstToSourceCodeConverter {
             }) => {
                 format!(
                     "{}.{}",
-                    self.format(base),
+                    self.format_child(base),
                     self.key_expression_to_source_code(property)
                 )
             }
@@ -904,7 +937,7 @@ impl AstToSourceCodeConverter {
                             &self,
                             "#{}%s{}",
                             tag.tag,
-                            self.format(tag_expression)
+                            self.format_child(tag_expression)
                         )
                     }
                     _ => {
@@ -912,7 +945,7 @@ impl AstToSourceCodeConverter {
                             &self,
                             "#{}%s({})",
                             tag.tag,
-                            self.format(tag_expression)
+                            self.format_child(tag_expression)
                         )
                     }
                 },
@@ -949,6 +982,7 @@ mod tests {
             type_expressions::TypeExpressionData,
         },
         decompiler::options::FormattingOptions,
+        global::operators::ModificationOperator,
         parser::Parser,
         values::core_values::decimal::Decimal,
     };
@@ -1178,7 +1212,7 @@ mod tests {
     fn unbox_assignment() {
         let unbox_assign_ast =
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
-                operator: None,
+                operator: Some(ModificationOperator::AddAssign),
                 unbox_expression: (DatexExpressionData::VariableAccess(
                     VariableAccess {
                         id: 0,
@@ -1192,7 +1226,7 @@ mod tests {
             });
         assert_eq!(
             compact().format(&unbox_assign_ast.with_default_span()),
-            "*ptr=42"
+            "ptr+=42"
         );
     }
 

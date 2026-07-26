@@ -14,6 +14,7 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
+use crate::ast::expressions::StackListAssignment;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -243,6 +244,18 @@ impl<E> VisitableExpression<E> for StackAssignment {
         Ok(())
     }
 }
+
+
+impl<E> VisitableExpression<E> for StackListAssignment {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.expression)?;
+        Ok(())
+    }
+}
+
 impl<E> VisitableExpression<E> for CallableDeclaration {
     fn walk_children(
         &mut self,
@@ -384,8 +397,11 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::Clone(datex_expression) => {
                 datex_expression.walk_children(visitor)
             }
-            DatexExpressionData::SlotAssignment(slot_assignment) => {
-                slot_assignment.walk_children(visitor)
+            DatexExpressionData::StackAssignment(stack_assignment) => {
+                stack_assignment.walk_children(visitor)
+            }
+            DatexExpressionData::StackListAssignment(stack_list_assignment) => {
+                stack_list_assignment.walk_children(visitor)
             }
             DatexExpressionData::ComparisonOperation(comparison_operation) => {
                 comparison_operation.walk_children(visitor)
@@ -440,6 +456,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
             | DatexExpressionData::RootPropertyAccess(_)
             | DatexExpressionData::ResolveCoreLibId(_)
             | DatexExpressionData::Endpoint(_)
+            | DatexExpressionData::MoveSharedValue(_)
             | DatexExpressionData::DateTime(_) => Ok(()),
         }
     }

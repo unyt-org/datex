@@ -5,10 +5,10 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
         CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-        DeriveSharedRef, GenericInstantiation, List, Map, PropertyAccess,
-        PropertyAssignment, RemoteExecution, RequestSharedRef,
-        RootPropertyAccess, StackAssignment, Statements, TagExpression,
-        TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
+        DeriveSharedRef, GenericInstantiation, InterfaceMethodCall, List, Map,
+        PropertyAccess, PropertyAssignment, RemoteExecution, RequestSharedRef,
+        RootPropertyAccess, StackAssignment, StackListAssignment, Statements,
+        TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
@@ -30,7 +30,6 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::InterfaceMethodCall;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -154,8 +153,14 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::StackIndex(slot) => {
                 self.visit_stack_index(slot, &expr.span)
             }
-            DatexExpressionData::SlotAssignment(slot_assignment) => {
-                self.visit_slot_assignment(slot_assignment, &expr.span)
+            DatexExpressionData::StackAssignment(stack_assignment) => {
+                self.visit_stack_assignment(stack_assignment, &expr.span)
+            }
+            DatexExpressionData::StackListAssignment(stack_list_assignment) => {
+                self.visit_stack_list_assignment(
+                    stack_list_assignment,
+                    &expr.span,
+                )
             }
             DatexExpressionData::BinaryOperation(binary_operation) => {
                 self.visit_binary_operation(binary_operation, &expr.span)
@@ -223,6 +228,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::OmitRecursive => {
                 unreachable!("Omit expressions should not be visited")
+            }
+            DatexExpressionData::MoveSharedValue(_) => {
+                todo!("Move shared value visit?");
             }
         };
 
@@ -474,14 +482,25 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         Ok(VisitAction::AbortRecursion)
     }
 
-    /// Visit slot assignment
-    fn visit_slot_assignment(
+    /// Visit stack assignment
+    fn visit_stack_assignment(
         &mut self,
-        slot_assignment: &mut StackAssignment,
+        stack_assignment: &mut StackAssignment,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
-        let _ = slot_assignment;
+        let _ = stack_assignment;
+        Ok(VisitAction::ContinueRecursion)
+    }
+
+    /// Visit stack list assignment
+    fn visit_stack_list_assignment(
+        &mut self,
+        stack_list_assignment: &mut StackListAssignment,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = stack_list_assignment;
         Ok(VisitAction::ContinueRecursion)
     }
 

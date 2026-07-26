@@ -1127,6 +1127,14 @@ fn compile_expression(
                         compilation_context.cursor(),
                         RegularInstruction::SetStackValue(stack_index),
                     );
+
+                    // compile expression
+                    scope = compile_expression(
+                        compilation_context,
+                        RichAst::new(expression, &metadata),
+                        CompileMetadata::default(),
+                        scope,
+                    )?;
                 }
                 Some(operator) => {
                     // TODO #435: handle mut type
@@ -1149,6 +1157,14 @@ fn compile_expression(
                         compilation_context,
                         operator,
                     ) {
+                        // compile expression
+                        scope = compile_expression(
+                            compilation_context,
+                            RichAst::new(expression, &metadata),
+                            CompileMetadata::default(),
+                            scope,
+                        )?;
+
                         append_regular_instruction(
                             compilation_context.cursor(),
                             RegularInstruction::BorrowStackValue(stack_index),
@@ -1159,14 +1175,6 @@ fn compile_expression(
                     }
                 }
             }
-
-            // compile expression
-            scope = compile_expression(
-                compilation_context,
-                RichAst::new(expression, &metadata),
-                CompileMetadata::default(),
-                scope,
-            )?;
         }
 
         DatexExpressionData::UnboxAssignment(UnboxAssignment {

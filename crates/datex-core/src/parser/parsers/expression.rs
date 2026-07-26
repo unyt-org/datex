@@ -275,7 +275,7 @@ impl Parser {
             }
             // slot assignment
             DatexExpressionData::StackIndex(slot) => {
-                DatexExpressionData::SlotAssignment(StackAssignment {
+                DatexExpressionData::StackAssignment(StackAssignment {
                     index: slot,
                     expression: (rhs),
                 })
@@ -1493,7 +1493,7 @@ mod tests {
         let expr = parse("\\2 = 100");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::SlotAssignment(StackAssignment {
+            &DatexExpressionData::StackAssignment(StackAssignment {
                 index: StackIndex(2),
                 expression: (DatexExpressionData::Integer(100.into())
                     .with_default_span()),
