@@ -64,6 +64,10 @@ pub enum InstructionCode {
     INCREMENT,
     DECREMENT,
 
+    APPEND_ENTRY,
+    CLEAR,
+    SPLICE,
+
     // pointers & variables 0xa0 - 0xbf
 
     // stack value
@@ -73,7 +77,6 @@ pub enum InstructionCode {
     GET_STACK_VALUE_SHARED_REF, // '#stack[i]
     GET_STACK_VALUE_SHARED_REF_MUT, // 'mut #stack[i]
     SET_STACK_VALUE,   // #stack[i] = ...
-    MODIFY_STACK_VALUE, // #stack[i] += ..., ...
     PUSH_TO_STACK,     // #stack += ...
     PUSH_LIST_TO_STACK, // #stack ...+= [x]
     TAKE_STACK_VALUE,  // #stack[i]
@@ -99,8 +102,7 @@ pub enum InstructionCode {
     CREATE_SHARED,     // shared x
     CREATE_SHARED_MUT, // shared mut x
 
-    MODIFY_SHARED_CONTAINER_VALUE, // *x += 10;
-    SET_SHARED_CONTAINER_VALUE,    // *x = 10;
+    SET_SHARED_CONTAINER_VALUE, // *x = 10;
 
     UNBOX, // *x
 

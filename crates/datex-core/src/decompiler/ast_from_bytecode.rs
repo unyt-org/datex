@@ -265,21 +265,21 @@ pub fn ast_from_bytecode(
                         RegularInstruction::RequestRemoteSharedRef(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
-                                mutability: ReferenceMutability::Immutable
+                                mutability: ReferenceMutability::Immutable,
                             })
                         }
 
                         RegularInstruction::RequestRemoteSharedRefMut(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
-                                mutability: ReferenceMutability::Mutable
+                                mutability: ReferenceMutability::Mutable,
                             })
                         }
 
                         RegularInstruction::GetLocalSharedRef(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
-                                mutability: ReferenceMutability::Immutable
+                                mutability: ReferenceMutability::Immutable,
                             })
                         }
 
@@ -311,7 +311,6 @@ pub fn ast_from_bytecode(
                             })
                         }
 
-
                         RegularInstruction::BorrowStackValue(stack_index) => {
                             DatexExpressionData::StackIndex(stack_index)
                         }
@@ -319,14 +318,14 @@ pub fn ast_from_bytecode(
                         RegularInstruction::GetStackValueSharedRef(stack_index) => {
                             DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Immutable,
-                                expression: (DatexExpressionData::StackIndex(stack_index).with_default_span())
+                                expression: (DatexExpressionData::StackIndex(stack_index).with_default_span()),
                             })
                         }
 
                         RegularInstruction::GetStackValueSharedRefMut(stack_index) => {
                             DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Mutable,
-                                expression: (DatexExpressionData::StackIndex(stack_index).with_default_span())
+                                expression: (DatexExpressionData::StackIndex(stack_index).with_default_span()),
                             })
                         }
 
@@ -342,7 +341,7 @@ pub fn ast_from_bytecode(
                             })
                         }
 
-                        RegularInstruction::TaggedValue(TaggedValue {is_empty: true, tag: ShortTextData(tag) }) => {
+                        RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
                             DatexExpressionData::Tag(TagExpression {
                                 tag,
                                 expression: None,
@@ -369,17 +368,17 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::UnaryMinus
                         | RegularInstruction::UnaryPlus
                         | RegularInstruction::BitwiseNot
-                        | RegularInstruction::TaggedValue(TaggedValue {is_empty: false, .. })
+                        | RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. })
                         | RegularInstruction::Apply(_)
                         | RegularInstruction::GetPropertyText(_)
                         | RegularInstruction::GetPropertyIndex(_)
                         | RegularInstruction::GetPropertyDynamic
-                        | RegularInstruction::TakePropertyText(_)
-                        | RegularInstruction::TakePropertyIndex(_)
-                        | RegularInstruction::TakePropertyDynamic
-                        | RegularInstruction::SetPropertyText(_)
-                        | RegularInstruction::SetPropertyIndex(_)
-                        | RegularInstruction::SetPropertyDynamic
+                        | RegularInstruction::TakeEntryText(_)
+                        | RegularInstruction::TakeEntryIndex(_)
+                        | RegularInstruction::TakeEntryDynamic
+                        | RegularInstruction::SetEntryText(_)
+                        | RegularInstruction::SetEntryIndex(_)
+                        | RegularInstruction::SetEntryDynamic
                         | RegularInstruction::Is
                         | RegularInstruction::Matches
                         | RegularInstruction::StructuralEqual
@@ -393,11 +392,14 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::PushToStack
                         | RegularInstruction::PushListToStack
                         | RegularInstruction::SetStackValue(_)
-                        | RegularInstruction::ModifyStackValue(_)
-                        | RegularInstruction::ModifySharedContainerValue(_)
+                        | RegularInstruction::Splice(_)
+                        | RegularInstruction::AppendEntry
+                        | RegularInstruction::Clear
                         | RegularInstruction::SetSharedContainerValue
                         | RegularInstruction::Unbox
                         | RegularInstruction::TypedValue
+                        | RegularInstruction::Increment
+                        | RegularInstruction::Decrement
                         | RegularInstruction::RemoteExecution(_)
                         | RegularInstruction::TypeExpression => {
                             unreachable!()
@@ -405,10 +407,10 @@ pub fn ast_from_bytecode(
                         #[cfg(feature = "disassembler")]
                         RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => {
                             todo!("also map to ast")
-                        },
+                        }
                     }
-                .with_default_span()))
-                .transpose()?;
+                        .with_default_span()))
+                    .transpose()?;
                 expr.map(CollectedAstResult::from)
             }
             Instruction::Type(type_instruction) => {
@@ -461,7 +463,7 @@ pub fn ast_from_bytecode(
                                 unreachable!()
                             }
                         }
-                        .with_default_span()
+                            .with_default_span()
                     });
 
                 type_expression.map(CollectedAstResult::from)
@@ -499,9 +501,9 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                            RegularInstruction::Statements(StatementsData {terminated, ..})
+                            RegularInstruction::Statements(StatementsData { terminated, .. })
                             | RegularInstruction::ShortStatements(
-                                ShortStatementsData {terminated, ..},
+                                ShortStatementsData { terminated, .. },
                             ) => {
                                 let statements =
                                     collected_results.collect_value_results();
@@ -510,8 +512,8 @@ pub fn ast_from_bytecode(
                                     is_terminated: terminated,
                                     unbounded: None,
                                 })
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
                             RegularInstruction::KeyValueDynamic => {
@@ -529,7 +531,7 @@ pub fn ast_from_bytecode(
                                 let key = DatexExpressionData::Text(
                                     short_text_data.0.into(),
                                 )
-                                .with_default_span();
+                                    .with_default_span();
                                 CollectedAstResult::KeyValuePair((key, value))
                             }
 
@@ -551,8 +553,8 @@ pub fn ast_from_bytecode(
                                         ty: None,
                                     },
                                 )
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
                             RegularInstruction::Is
@@ -578,7 +580,7 @@ pub fn ast_from_bytecode(
                             }
 
                             instruction @ (
-                                RegularInstruction::CreateShared | RegularInstruction::CreateSharedMut
+                            RegularInstruction::CreateShared | RegularInstruction::CreateSharedMut
                             ) => {
                                 let expr = collected_results.pop_value();
                                 DatexExpressionData::CreateShared(
@@ -644,8 +646,8 @@ pub fn ast_from_bytecode(
                                         expression: (expr),
                                     },
                                 )
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
                             RegularInstruction::TypedValue => {
@@ -657,19 +659,19 @@ pub fn ast_from_bytecode(
                                         DatexExpressionData::TypeExpression(
                                             expr_type,
                                         )
-                                        .with_default_span()
+                                            .with_default_span()
                                     ),
                                     arguments: vec![expr],
                                 })
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
                             RegularInstruction::UnboundedStatementsEnd(
-                                UnboundedStatementsData {terminated},
+                                UnboundedStatementsData { terminated },
                             ) => {
                                 let result = collector.try_pop_unbounded().ok_or(DXBParserError::NotInUnboundedRegularScopeError)?;
-                                if let FullOrPartialResult::Full {results, ..} =
+                                if let FullOrPartialResult::Full { results, .. } =
                                     result
                                 {
                                     DatexExpressionData::Statements(
@@ -685,8 +687,8 @@ pub fn ast_from_bytecode(
                                             ),
                                         },
                                     )
-                                    .with_default_span()
-                                    .into()
+                                        .with_default_span()
+                                        .into()
                                 } else {
                                     unreachable!()
                                 }
@@ -700,8 +702,8 @@ pub fn ast_from_bytecode(
                                         expression: (expr),
                                     }
                                 )
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
                             RegularInstruction::PushListToStack => {
@@ -729,14 +731,14 @@ pub fn ast_from_bytecode(
                                         expression: (expr),
                                     },
                                 )
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
                             RegularInstruction::TaggedValue(TaggedValue {
-                                tag: ShortTextData(tag),
-                                is_empty
-                            }) => {
+                                                                tag: ShortTextData(tag),
+                                                                is_empty
+                                                            }) => {
                                 assert!(!is_empty);
                                 let expression = Some(collected_results.pop_value());
 
@@ -758,11 +760,11 @@ pub fn ast_from_bytecode(
                                     base: (base),
                                     arguments,
                                 })
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
-                            RegularInstruction::TakePropertyIndex(
+                            RegularInstruction::TakeEntryIndex(
                                 index_data,
                             ) | RegularInstruction::GetPropertyIndex(
                                 index_data,
@@ -775,15 +777,15 @@ pub fn ast_from_bytecode(
                                             DatexExpressionData::Integer(
                                                 Integer::from(index_data.0),
                                             )
-                                            .with_default_span()
-                                        )
+                                                .with_default_span()
+                                        ),
                                     },
                                 )
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
-                            RegularInstruction::TakePropertyText(text_data) | RegularInstruction::GetPropertyText(text_data) => {
+                            RegularInstruction::TakeEntryText(text_data) | RegularInstruction::GetPropertyText(text_data) => {
                                 let base = collected_results.pop_value();
                                 DatexExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
@@ -792,15 +794,15 @@ pub fn ast_from_bytecode(
                                             DatexExpressionData::Text(
                                                 text_data.0.into(),
                                             )
-                                            .with_default_span()
-                                        )
+                                                .with_default_span()
+                                        ),
                                     },
                                 )
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
-                            RegularInstruction::TakePropertyDynamic | RegularInstruction::GetPropertyDynamic => {
+                            RegularInstruction::TakeEntryDynamic | RegularInstruction::GetPropertyDynamic => {
                                 let base = collected_results.pop_value();
                                 let property =
                                     collected_results.pop_value();
@@ -810,11 +812,11 @@ pub fn ast_from_bytecode(
                                         property: (property),
                                     },
                                 )
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
-                            RegularInstruction::SetPropertyIndex(
+                            RegularInstruction::SetEntryIndex(
                                 index_data,
                             ) => {
                                 let base = collected_results.pop_value();
@@ -827,17 +829,27 @@ pub fn ast_from_bytecode(
                                             DatexExpressionData::Integer(
                                                 Integer::from(index_data.0),
                                             )
-                                            .with_default_span()
+                                                .with_default_span()
                                         ),
                                         operator: None,
                                         assigned_expression: (value),
                                     },
                                 )
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
-                            RegularInstruction::SetPropertyText(text_data) => {
+                            RegularInstruction::Splice(splice_data) => {
+                                todo!()
+                            }
+                            RegularInstruction::Increment => {
+                                todo!()
+                            }
+                            RegularInstruction::Decrement => {
+                                todo!()
+                            }
+
+                            RegularInstruction::SetEntryText(text_data) => {
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
@@ -848,17 +860,17 @@ pub fn ast_from_bytecode(
                                             DatexExpressionData::Text(
                                                 text_data.0.into(),
                                             )
-                                            .with_default_span()
+                                                .with_default_span()
                                         ),
                                         operator: None,
                                         assigned_expression: (value),
                                     },
                                 )
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
-                            RegularInstruction::SetPropertyDynamic => {
+                            RegularInstruction::SetEntryDynamic => {
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
@@ -872,8 +884,8 @@ pub fn ast_from_bytecode(
                                         assigned_expression: (value),
                                     },
                                 )
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
                             RegularInstruction::RemoteExecution(remote_execution_data) => {
                                 let receivers = collected_results.pop_value();
@@ -889,8 +901,8 @@ pub fn ast_from_bytecode(
                                     right: (body),
                                     injected_variable_count: None,
                                 })
-                                .with_default_span()
-                                .into()
+                                    .with_default_span()
+                                    .into()
                             }
 
                             e => {

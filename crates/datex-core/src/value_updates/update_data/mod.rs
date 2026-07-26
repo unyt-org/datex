@@ -88,7 +88,7 @@ impl UpdateOperation {
 }
 
 #[derive(Clone, Debug, PartialEq, AsRefStr, Hash)]
-pub enum UpdateModificationOperator {
+pub enum UpdateOperator {
     AppendEntry, // Set<5> += 4
     DeleteEntry, // Set<5, 4> -= 4
     Increment,   // 5 += 1

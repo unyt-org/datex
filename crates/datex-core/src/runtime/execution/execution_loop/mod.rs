@@ -2,6 +2,7 @@
 //! It handles the execution of instructions, manages the runtime state, and processes interrupts that can occur during execution.
 mod implementation;
 use implementation::*;
+use std::assert_matches;
 mod execution_result_popper;
 mod internal_slots;
 pub mod interrupts;
@@ -25,9 +26,9 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, ModifyStackValue,
-                ShortStatementsData, ShortTextData, StatementsData,
-                TaggedValue, TextData, UnboundedStatementsData,
+                FloatAsInt32Data, InstantData, ShortStatementsData,
+                ShortTextData, StatementsData, TaggedValue, TextData,
+                UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
@@ -93,6 +94,13 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, ops::DerefMut};
 mod collected_execution_result;
+use crate::value_updates::{
+    UpdateReturn,
+    update_data::{
+        DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData, Update,
+        UpdateData, UpdateOperation,
+    },
+};
 use collected_execution_result::CollectedExecutionResult;
 
 /// Main execution loop that drives the execution of the DXB body
@@ -323,9 +331,9 @@ pub gen fn inner_execution_loop(
 
                             RegularInstruction::GetRootProperty(stack_index) => {
                                 Some(RuntimeValue::ValueContainer(get_root_property(
-                                        &state,
-                                        stack_index,
-                                    )?))
+                                    &state,
+                                    stack_index,
+                                )?))
                             }
 
                             RegularInstruction::BorrowStackValue(index) => {
@@ -420,12 +428,12 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::GetPropertyText(_) |
                             RegularInstruction::GetPropertyIndex(_) |
                             RegularInstruction::GetPropertyDynamic |
-                            RegularInstruction::TakePropertyText(_) |
-                            RegularInstruction::TakePropertyIndex(_) |
-                            RegularInstruction::TakePropertyDynamic |
-                            RegularInstruction::SetPropertyText(_) |
-                            RegularInstruction::SetPropertyIndex(_) |
-                            RegularInstruction::SetPropertyDynamic |
+                            RegularInstruction::TakeEntryText(_) |
+                            RegularInstruction::TakeEntryIndex(_) |
+                            RegularInstruction::TakeEntryDynamic |
+                            RegularInstruction::SetEntryText(_) |
+                            RegularInstruction::SetEntryIndex(_) |
+                            RegularInstruction::SetEntryDynamic |
                             RegularInstruction::Is |
                             RegularInstruction::Matches |
                             RegularInstruction::StructuralEqual |
@@ -439,8 +447,11 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::PushToStack |
                             RegularInstruction::PushListToStack |
                             RegularInstruction::SetStackValue(_) |
-                            RegularInstruction::ModifyStackValue(_) |
-                            RegularInstruction::ModifySharedContainerValue(_) |
+                            RegularInstruction::Splice(_) |
+                            RegularInstruction::AppendEntry |
+                            RegularInstruction::Clear |
+                            RegularInstruction::Increment |
+                            RegularInstruction::Decrement |
                             RegularInstruction::SetSharedContainerValue |
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
@@ -582,7 +593,7 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::KeyValueDynamic => {
                                     let value = collected_results.try_pop_value_container(&mut state)?;
                                     let key = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
                                     CollectedExecutionResult::key_value_pair(
                                         MapKey::Value(key),
                                         value,
@@ -617,9 +628,9 @@ pub gen fn inner_execution_loop(
                                 | RegularInstruction::Range
                                 | RegularInstruction::Divide => {
                                     let right = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
                                     let left = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
 
                                     let res = handle_binary_operation(
                                         BinaryOperator::from(
@@ -637,9 +648,9 @@ pub gen fn inner_execution_loop(
                                 | RegularInstruction::NotStructuralEqual
                                 | RegularInstruction::NotEqual => {
                                     let right = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
                                     let left = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
 
                                     let res = handle_comparison_operation(
                                         ComparisonOperator::from(
@@ -653,7 +664,7 @@ pub gen fn inner_execution_loop(
 
                                 RegularInstruction::Matches => {
                                     let _target = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
                                     let _type_pattern =
                                         collected_results.pop_type();
 
@@ -665,7 +676,7 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::CreateSharedMut
                                 ) => {
                                     let value = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
                                     let mutability = match instruction {
                                         RegularInstruction::CreateShared => SharedContainerMutability::Immutable,
                                         RegularInstruction::CreateSharedMut => SharedContainerMutability::Mutable,
@@ -681,20 +692,20 @@ pub gen fn inner_execution_loop(
 
                                 RegularInstruction::DeriveSharedReference => {
                                     let target = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
 
                                     derive_shared_reference(
                                         &target,
-                                        ReferenceMutability::Immutable
+                                        ReferenceMutability::Immutable,
                                     )?.into()
                                 }
 
                                 RegularInstruction::DeriveSharedReferenceMut => {
                                     let target = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
                                     derive_shared_reference(
                                         &target,
-                                        ReferenceMutability::Mutable
+                                        ReferenceMutability::Mutable,
                                     )?.into()
                                 }
 
@@ -703,7 +714,7 @@ pub gen fn inner_execution_loop(
                                 | RegularInstruction::BitwiseNot
                                 | RegularInstruction::Unbox => {
                                     let target = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
                                     let value_container = target.as_value_container(
                                         &state.stack
                                     )?.clone();
@@ -721,7 +732,7 @@ pub gen fn inner_execution_loop(
 
                                 RegularInstruction::TypedValue => {
                                     let mut value_container = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
                                     let ty =
                                         collected_results.pop_type();
 
@@ -749,34 +760,15 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
 
-                                RegularInstruction::ModifyStackValue(ModifyStackValue {
-                                                                            index,
-                                                                            operator
-                                                                        }) => {
-                                    let value = collected_results
-                                            .try_pop_value_container(&mut state)?;
-                                    let source_id = state.source_id_cloned();
-                                    let slot_value = state.stack.get_stack_value_mut(index)?;
-
-                                    try_modify_value_container(
-                                        slot_value,
-                                        operator,
-                                        value,
-                                        source_id,
-                                        vec![] // FIXME path
-                                    )?;
-                                    None.into()
-                                }
-
                                 RegularInstruction::SetSharedContainerValue => {
                                     let mut target = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
                                     let new_value: ValueContainer = collected_results
-                                                .try_pop_runtime_value()?
-                                                .into_value_container(&mut state)?;
+                                        .try_pop_runtime_value()?
+                                        .into_value_container(&mut state)?;
                                     let source_id = state.source_id_cloned();
                                     let target = target.as_value_container_mut(&mut state.stack)?;
-                                    set_shared_container_value(
+                                    try_set_shared_container_value(
                                         target,
                                         new_value,
                                         source_id,
@@ -784,34 +776,69 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                // TODO: Deprecate, as handled with usual modify stack value
-                                RegularInstruction::ModifySharedContainerValue(
-                                    modify_shared_container_value_data,
+                                RegularInstruction::Splice(
+                                    splice,
                                 ) => {
-                                    let mut target = collected_results
-                                            .try_pop_runtime_value()?;
-
-                                    let value = collected_results
-                                            .try_pop_runtime_value()?
-                                            .into_value_container(&mut state)?;
-
+                                    let mut values = collected_results.try_collect_value_containers(&mut state)?;
+                                    // last argument is the target
+                                    let mut target = values.remove(values.len() - 1);
 
                                     let source_id = state.source_id_cloned();
-                                    let target = target.as_value_container_mut(&mut state.stack)?;
 
-                                    try_modify_value_container(
-                                        target,
-                                        modify_shared_container_value_data.operator,
-                                        value,
-                                        source_id,
-                                        vec![]
-                                    )?;
+                                    let res_values = target
+                                        .try_list_splice(vec![], source_id, ListSpliceUpdateData::new(
+                                            splice.start_index,
+                                            splice.delete_count,
+                                            values,
+                                        )).map_err(|e| e.into())?;
+
+                                    // create new list from result values
+                                    ValueContainer::from(res_values).into()
+                                }
+
+                                RegularInstruction::Clear => {
+                                    let mut target = collected_results.try_pop_value_container(&mut state)?;
+
+                                    let source_id = state.source_id_cloned();
+
+                                    // TODO: res?
+                                    let _res = target
+                                        .try_clear(vec![], source_id)
+                                        .map_err(|e| e.into())?;
+
+                                    None.into()
+                                }
+
+                                RegularInstruction::Increment => {
+                                    let mut target = collected_results.try_pop_value_container(&mut state)?;
+                                    let value = collected_results.try_pop_value_container(&mut state)?;
+
+                                    let source_id = state.source_id_cloned();
+
+                                    // TODO: res?
+                                    let _res = target
+                                        .try_increment(vec![], source_id, IncrementUpdateData::new(value))
+                                        .map_err(|e| e.into())?;
+
+                                    None.into()
+                                }
+
+                                RegularInstruction::Decrement => {
+                                    let mut target = collected_results.try_pop_value_container(&mut state)?;
+                                    let value = collected_results.try_pop_value_container(&mut state)?;
+
+                                    let source_id = state.source_id_cloned();
+
+                                    let _res = target
+                                        .try_decrement(vec![], source_id, DecrementUpdateData::new(value))
+                                        .map_err(|e| e.into())?;
+
                                     None.into()
                                 }
 
                                 RegularInstruction::SetStackValue(index) => {
                                     let value = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
                                     state
                                         .stack
                                         .set_stack_value(index, value)?;
@@ -820,7 +847,7 @@ pub gen fn inner_execution_loop(
 
                                 RegularInstruction::PushToStack => {
                                     let value = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
 
                                     state
                                         .stack
@@ -831,7 +858,7 @@ pub gen fn inner_execution_loop(
 
                                 RegularInstruction::PushListToStack => {
                                     let value = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
 
                                     // value must be a list value
                                     // push all entries onto the stack
@@ -854,7 +881,7 @@ pub gen fn inner_execution_loop(
                                     property_data,
                                 ) => {
                                     let mut target = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
                                     let property_name = property_data.0;
                                     let target = target.as_value_container_mut(
                                         &mut state.stack
@@ -875,7 +902,7 @@ pub gen fn inner_execution_loop(
                                         collapsed_value.borrow().try_get_property(
                                             &property_name,
                                         ).cloned()
-                                        .map_err(ExecutionError::access_error)? // FIXME: no clone?
+                                            .map_err(ExecutionError::access_error)? // FIXME: no clone?
                                     };
 
                                     res.into()
@@ -885,7 +912,7 @@ pub gen fn inner_execution_loop(
                                     property_data,
                                 ) => {
                                     let target = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
                                     let property_index = property_data.0;
 
                                     let value_container = target.as_value_container(&state.stack)?;
@@ -893,29 +920,29 @@ pub gen fn inner_execution_loop(
                                     let res = collapsed_value.borrow().try_get_property(
                                         property_index,
                                     ).cloned()
-                                    .map_err(ExecutionError::access_error)?; // FIXME: no clone?
+                                        .map_err(ExecutionError::access_error)?; // FIXME: no clone?
                                     res.into()
                                 }
 
                                 RegularInstruction::GetPropertyDynamic => {
                                     let key = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
                                     let target = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
 
                                     let value_container = target.as_value_container(&state.stack)?;
                                     let collapsed_value = value_container.collapsed_value();
                                     let res = collapsed_value.borrow().try_get_property(&key).cloned()
-                                    .map_err(ExecutionError::access_error)?; // FIXME: no clone?
+                                        .map_err(ExecutionError::access_error)?; // FIXME: no clone?
 
                                     res.into()
                                 }
 
-                                RegularInstruction::TakePropertyIndex(
+                                RegularInstruction::TakeEntryIndex(
                                     property_data,
                                 ) => {
                                     let mut target = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
                                     let property_index = property_data.0;
 
                                     let source_id = state.source_id_cloned();
@@ -929,13 +956,13 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
 
-                                RegularInstruction::SetPropertyText(
+                                RegularInstruction::SetEntryText(
                                     property_data,
                                 ) => {
                                     let mut target_runtime_value = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
                                     let value_runtime_value = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
                                     let source_id = state.source_id_cloned();
                                     let value = value_runtime_value.into_value_container(&mut state)?;
                                     let target = target_runtime_value.as_value_container_mut(&mut state.stack)?;
@@ -966,13 +993,13 @@ pub gen fn inner_execution_loop(
                                     ValueContainer::new_from_option(res).into()
                                 }
 
-                                RegularInstruction::SetPropertyIndex(
+                                RegularInstruction::SetEntryIndex(
                                     property_data,
                                 ) => {
                                     let mut target = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
                                     let value = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
                                     let source_id = state.source_id_cloned();
                                     let value_container = target.as_value_container_mut(&mut state.stack)?;
 
@@ -988,13 +1015,13 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::SetPropertyDynamic => {
+                                RegularInstruction::SetEntryDynamic => {
                                     let mut target = collected_results
-                                            .try_pop_runtime_value()?;
+                                        .try_pop_runtime_value()?;
                                     let value = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
                                     let key = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
 
                                     let source_id = state.source_id_cloned();
 
@@ -1044,7 +1071,7 @@ pub gen fn inner_execution_loop(
                                     exec_block_data,
                                 ) => {
                                     let receivers = collected_results
-                                            .try_pop_value_container(&mut state)?;
+                                        .try_pop_value_container(&mut state)?;
 
                                     // ensure receiver is single endpoint
                                     let receivers_list: Vec<Endpoint> = match receivers {
@@ -1085,13 +1112,13 @@ pub gen fn inner_execution_loop(
                                             }
                                         )
                                     )
-                                    .map(RuntimeValue::ValueContainer)
-                                    .into()
+                                        .map(RuntimeValue::ValueContainer)
+                                        .into()
                                 }
 
                                 RegularInstruction::Apply(ApplyData {
-                                                                ..
-                                                            }) => {
+                                                              ..
+                                                          }) => {
                                     let mut args = collected_results.try_collect_value_containers(&mut state)?;
                                     // last argument is the callee
                                     let callee = args.remove(args.len() - 1);
@@ -1179,7 +1206,7 @@ pub gen fn inner_execution_loop(
                                                     &state.runtime,
                                                     value,
                                                     shared_ref.container_mutability,
-                                                    shared_ref.ref_mutability
+                                                    shared_ref.ref_mutability,
                                                 )?
                                             }
                                         }
@@ -1192,7 +1219,7 @@ pub gen fn inner_execution_loop(
                                             &state.runtime,
                                             value,
                                             shared_ref.container_mutability,
-                                            shared_ref.ref_mutability
+                                            shared_ref.ref_mutability,
                                         )?
                                     };
 

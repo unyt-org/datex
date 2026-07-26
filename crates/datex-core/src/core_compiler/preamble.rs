@@ -782,7 +782,7 @@ mod tests {
                             RegularInstruction::GetStackValueSharedRefMut(
                                 StackIndex(0)
                             ),
-                            RegularInstruction::SetPropertyIndex(UInt32Data(0))
+                            RegularInstruction::SetEntryIndex(UInt32Data(0))
                                 .with_children(instructions!(
                                     RegularInstruction::BorrowStackValue(
                                         StackIndex(1)
@@ -880,7 +880,7 @@ mod tests {
                             RegularInstruction::PushToStack,
                             RegularInstruction::GetStackValueSharedRefMut(StackIndex(0)),
 
-                            RegularInstruction::SetPropertyDynamic.with_children(
+                            RegularInstruction::SetEntryDynamic.with_children(
                                 instructions!(
                                     RegularInstruction::ShortText(ShortTextData("b".to_string())),
                                     RegularInstruction::BorrowStackValue(StackIndex(1)),
@@ -1042,8 +1042,8 @@ mod tests {
                                     ))
                                 )
                             ),
-                            RegularInstruction::SetPropertyDynamic
-                                .with_children(instructions!(
+                            RegularInstruction::SetEntryDynamic.with_children(
+                                instructions!(
                                     RegularInstruction::ShortText(
                                         ShortTextData("b".to_string())
                                     ),
@@ -1053,7 +1053,8 @@ mod tests {
                                     RegularInstruction::BorrowStackValue(
                                         StackIndex(1)
                                     )
-                                )),
+                                )
+                            ),
                             RegularInstruction::PushToStack,
                             RegularInstruction::SharedRefWithValue(
                                 SharedRefWithValue {
@@ -1081,8 +1082,8 @@ mod tests {
                                     ))
                                 )
                             ),
-                            RegularInstruction::SetPropertyDynamic
-                                .with_children(instructions!(
+                            RegularInstruction::SetEntryDynamic.with_children(
+                                instructions!(
                                     RegularInstruction::ShortText(
                                         ShortTextData("c".to_string())
                                     ),
@@ -1092,7 +1093,8 @@ mod tests {
                                     RegularInstruction::BorrowStackValue(
                                         StackIndex(2)
                                     )
-                                )),
+                                )
+                            ),
                             RegularInstruction::list_with_children(
                                 instructions!(
                                     RegularInstruction::TakeStackValue(

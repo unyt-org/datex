@@ -9,12 +9,11 @@ use crate::{
                 ApplyData, ConfirmMoves, Float32Data, Float64Data,
                 FloatAsInt16Data, FloatAsInt32Data, InstantData,
                 InstructionBlockData, Int8Data, Int16Data, Int32Data,
-                Int64Data, Int128Data, ListData, MapData,
-                ModifySharedContainerValue, ModifyStackValue, MoveWithValue,
+                Int64Data, Int128Data, ListData, MapData, MoveWithValue,
                 SharedRef, SharedRefWithValue, ShortListData, ShortMapData,
-                ShortStatementsData, ShortTextData, StackIndex, StatementsData,
-                TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
-                UInt64Data, UInt128Data, UnboundedStatementsData,
+                ShortStatementsData, ShortTextData, SpliceData, StackIndex,
+                StatementsData, TaggedValue, TextData, UInt8Data, UInt16Data,
+                UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -113,16 +112,10 @@ pub enum RegularInstruction {
     Apply(ApplyData),
 
     GetPropertyText(ShortTextData),
-    SetPropertyText(ShortTextData),
-    TakePropertyText(ShortTextData),
 
     GetPropertyIndex(UInt32Data),
-    SetPropertyIndex(UInt32Data),
-    TakePropertyIndex(UInt32Data),
 
     GetPropertyDynamic,
-    SetPropertyDynamic,
-    TakePropertyDynamic,
 
     // comparison operator
     Is,
@@ -131,9 +124,6 @@ pub enum RegularInstruction {
     Equal,
     NotStructuralEqual,
     NotEqual,
-
-    // assignment operator
-    ModifyStackValue(ModifyStackValue),
 
     DeriveSharedReference,
     DeriveSharedReferenceMut,
@@ -167,12 +157,36 @@ pub enum RegularInstruction {
 
     GetRootProperty(RootProperty),
 
-    SetSharedContainerValue,
-    ModifySharedContainerValue(ModifySharedContainerValue),
     Unbox,
 
     TypedValue,
     TypeExpression,
+
+    // modification instructions: will later be mapped to trait impls
+    // UpdateOperation::Replace
+    SetSharedContainerValue,
+
+    // UpdateOperation::AppendEntry
+    AppendEntry,
+    // UpdateOperation::Clear
+    Clear,
+    // UpdateOperation::Splice
+    Splice(SpliceData),
+
+    // UpdateOperation::Increment
+    Increment,
+    // UpdateOperation::Decrement
+    Decrement,
+
+    // UpdateOperation::DeleteEntry
+    TakeEntryText(ShortTextData),
+    TakeEntryIndex(UInt32Data),
+    TakeEntryDynamic,
+
+    // UpdateOperation::SetEntry
+    SetEntryText(ShortTextData),
+    SetEntryIndex(UInt32Data),
+    SetEntryDynamic,
 
     /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
     /// This variant is only used by the disassembler
@@ -280,28 +294,28 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::GetPropertyText(_) => {
                 InstructionCode::GET_PROPERTY_TEXT
             }
-            RegularInstruction::SetPropertyText(_) => {
+            RegularInstruction::SetEntryText(_) => {
                 InstructionCode::SET_PROPERTY_TEXT
             }
-            RegularInstruction::TakePropertyText(_) => {
+            RegularInstruction::TakeEntryText(_) => {
                 InstructionCode::TAKE_PROPERTY_TEXT
             }
             RegularInstruction::GetPropertyIndex(_) => {
                 InstructionCode::GET_PROPERTY_INDEX
             }
-            RegularInstruction::SetPropertyIndex(_) => {
+            RegularInstruction::SetEntryIndex(_) => {
                 InstructionCode::SET_PROPERTY_INDEX
             }
-            RegularInstruction::TakePropertyIndex(_) => {
+            RegularInstruction::TakeEntryIndex(_) => {
                 InstructionCode::TAKE_PROPERTY_INDEX
             }
             RegularInstruction::GetPropertyDynamic => {
                 InstructionCode::GET_PROPERTY_DYNAMIC
             }
-            RegularInstruction::SetPropertyDynamic => {
+            RegularInstruction::SetEntryDynamic => {
                 InstructionCode::SET_PROPERTY_DYNAMIC
             }
-            RegularInstruction::TakePropertyDynamic => {
+            RegularInstruction::TakeEntryDynamic => {
                 InstructionCode::TAKE_PROPERTY_DYNAMIC
             }
             RegularInstruction::Is => InstructionCode::IS,
@@ -368,14 +382,8 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::SetStackValue(_) => {
                 InstructionCode::SET_STACK_VALUE
             }
-            RegularInstruction::ModifyStackValue(_) => {
-                InstructionCode::MODIFY_STACK_VALUE
-            }
             RegularInstruction::GetRootProperty(_) => {
                 InstructionCode::GET_ROOT_PROPERTY
-            }
-            RegularInstruction::ModifySharedContainerValue(_) => {
-                InstructionCode::MODIFY_SHARED_CONTAINER_VALUE
             }
             RegularInstruction::SetSharedContainerValue => {
                 InstructionCode::SET_SHARED_CONTAINER_VALUE
@@ -391,6 +399,11 @@ impl From<&RegularInstruction> for InstructionCode {
             | RegularInstruction::_RemoteExecutionDebugTree(_) => {
                 InstructionCode::REMOTE_EXECUTION
             }
+            RegularInstruction::AppendEntry => InstructionCode::APPEND_ENTRY,
+            RegularInstruction::Clear => InstructionCode::CLEAR,
+            RegularInstruction::Splice(_) => InstructionCode::SPLICE,
+            RegularInstruction::Increment => InstructionCode::INCREMENT,
+            RegularInstruction::Decrement => InstructionCode::DECREMENT,
         }
     }
 }
@@ -450,30 +463,33 @@ impl RegularInstruction {
 
             RegularInstruction::GetPropertyText(_)
             | RegularInstruction::GetPropertyIndex(_)
-            | RegularInstruction::TakePropertyText(_)
-            | RegularInstruction::TakePropertyIndex(_) => {
+            | RegularInstruction::TakeEntryText(_)
+            | RegularInstruction::TakeEntryIndex(_) => {
                 NextExpectedInstructions::Regular(1)
             } // value to get property from
 
             RegularInstruction::GetPropertyDynamic
-            | RegularInstruction::TakePropertyDynamic => {
+            | RegularInstruction::TakeEntryDynamic => {
                 NextExpectedInstructions::Regular(2)
             } // value to get property from + property key
 
-            RegularInstruction::SetPropertyText(_)
-            | RegularInstruction::SetPropertyIndex(_) => {
+            RegularInstruction::SetEntryText(_)
+            | RegularInstruction::SetEntryIndex(_) => {
                 NextExpectedInstructions::Regular(2)
             } // value to set property on and new value
 
-            RegularInstruction::SetPropertyDynamic => {
+            RegularInstruction::SetEntryDynamic => {
                 NextExpectedInstructions::Regular(3)
             } // value to set property on + property key + new value
 
             RegularInstruction::Unbox => NextExpectedInstructions::Regular(1), // value to unbox
 
-            RegularInstruction::ModifySharedContainerValue(_) => {
+            RegularInstruction::AppendEntry => {
                 NextExpectedInstructions::Regular(2)
-            } // container to set value on + new value
+            }
+            RegularInstruction::Splice(SpliceData { insert_count, .. }) => {
+                NextExpectedInstructions::Regular(*insert_count + 1)
+            }
 
             RegularInstruction::SetSharedContainerValue => {
                 NextExpectedInstructions::Regular(2)
@@ -522,10 +538,6 @@ impl RegularInstruction {
             | RegularInstruction::SetStackValue(_) => {
                 NextExpectedInstructions::Regular(1)
             }
-            RegularInstruction::ModifyStackValue(_) => {
-                NextExpectedInstructions::Regular(1)
-            }
-
             RegularInstruction::TypedValue => {
                 NextExpectedInstructions::RegularAndType(1, 1)
             }
@@ -551,6 +563,14 @@ impl RegularInstruction {
             RegularInstruction::MoveWithValue(_) => {
                 NextExpectedInstructions::Regular(1)
             }
+
+            RegularInstruction::Increment => {
+                NextExpectedInstructions::Regular(2)
+            }
+            RegularInstruction::Decrement => {
+                NextExpectedInstructions::Regular(2)
+            }
+
             _ => NextExpectedInstructions::None,
         }
     }
@@ -694,29 +714,30 @@ impl RegularInstruction {
             }
 
             InstructionCode::TAKE_PROPERTY_TEXT => ShortTextData::read(reader)
-                .map(RegularInstruction::TakePropertyText),
+                .map(RegularInstruction::TakeEntryText),
 
-            InstructionCode::TAKE_PROPERTY_INDEX => UInt32Data::read(reader)
-                .map(RegularInstruction::TakePropertyIndex),
+            InstructionCode::TAKE_PROPERTY_INDEX => {
+                UInt32Data::read(reader).map(RegularInstruction::TakeEntryIndex)
+            }
 
             InstructionCode::TAKE_PROPERTY_DYNAMIC => {
-                Ok(RegularInstruction::TakePropertyDynamic)
+                Ok(RegularInstruction::TakeEntryDynamic)
             }
 
             InstructionCode::SET_PROPERTY_TEXT => ShortTextData::read(reader)
-                .map(RegularInstruction::SetPropertyText),
+                .map(RegularInstruction::SetEntryText),
 
-            InstructionCode::SET_PROPERTY_INDEX => UInt32Data::read(reader)
-                .map(RegularInstruction::SetPropertyIndex),
+            InstructionCode::SET_PROPERTY_INDEX => {
+                UInt32Data::read(reader).map(RegularInstruction::SetEntryIndex)
+            }
 
             InstructionCode::SET_PROPERTY_DYNAMIC => {
-                Ok(RegularInstruction::SetPropertyDynamic)
+                Ok(RegularInstruction::SetEntryDynamic)
             }
 
             InstructionCode::UNBOX => Ok(RegularInstruction::Unbox),
-            InstructionCode::MODIFY_SHARED_CONTAINER_VALUE => {
-                ModifySharedContainerValue::read(reader)
-                    .map(RegularInstruction::ModifySharedContainerValue)
+            InstructionCode::SPLICE => {
+                SpliceData::read(reader).map(RegularInstruction::Splice)
             }
 
             InstructionCode::SET_SHARED_CONTAINER_VALUE => {
@@ -826,11 +847,6 @@ impl RegularInstruction {
                 ConfirmMoves::read(reader).map(RegularInstruction::ConfirmMoves)
             }
 
-            InstructionCode::MODIFY_STACK_VALUE => {
-                ModifyStackValue::read(reader)
-                    .map(RegularInstruction::ModifyStackValue)
-            }
-
             InstructionCode::TYPED_VALUE => Ok(RegularInstruction::TypedValue),
             InstructionCode::TYPE_EXPRESSION => {
                 Ok(RegularInstruction::TypeExpression)
@@ -843,8 +859,12 @@ impl RegularInstruction {
             InstructionCode::AND => todo!(),
             InstructionCode::OR => todo!(),
             InstructionCode::NOT => todo!(),
-            InstructionCode::INCREMENT => todo!(),
-            InstructionCode::DECREMENT => todo!(),
+            InstructionCode::INCREMENT => Ok(RegularInstruction::Increment),
+            InstructionCode::DECREMENT => Ok(RegularInstruction::Decrement),
+            InstructionCode::APPEND_ENTRY => {
+                Ok(RegularInstruction::AppendEntry)
+            }
+            InstructionCode::CLEAR => Ok(RegularInstruction::Clear),
         }
     }
 
@@ -983,8 +1003,8 @@ impl RegularInstruction {
             RegularInstruction::SetStackValue(address) => {
                 write!(string, "{}", address.0)
             }
-            RegularInstruction::ModifySharedContainerValue(set_shared_container_value) => {
-                write!(string, "{}", set_shared_container_value.operator)
+            RegularInstruction::Splice(splice_data) => {
+                write!(string, "[start: {}, delete_count: {}, insert_count: {}]", splice_data.start_index, splice_data.delete_count, splice_data.insert_count)
             }
             RegularInstruction::RequestRemoteSharedRef(address) => {
                 write!(
@@ -1073,25 +1093,22 @@ impl RegularInstruction {
                     data.injected_values
                 )
             }
-            RegularInstruction::ModifyStackValue(modify_slot) => {
-                write!(string, "[index: {:?}, operator: {}]", modify_slot.index, modify_slot.operator)
-            }
             RegularInstruction::GetPropertyIndex(uint_32_data) => {
                 write!(string, "{}", uint_32_data.0)
             }
-            RegularInstruction::SetPropertyIndex(uint_32_data) => {
+            RegularInstruction::SetEntryIndex(uint_32_data) => {
                 write!(string, "{}", uint_32_data.0)
             }
-            RegularInstruction::TakePropertyIndex(uint_32_data) => {
+            RegularInstruction::TakeEntryIndex(uint_32_data) => {
                 write!(string, "{}", uint_32_data.0)
             }
             RegularInstruction::GetPropertyText(short_text_data) => {
                 write!(string, "{}", short_text_data.0)
             }
-            RegularInstruction::TakePropertyText(short_text_data) => {
+            RegularInstruction::TakeEntryText(short_text_data) => {
                 write!(string, "{}", short_text_data.0)
             }
-            RegularInstruction::SetPropertyText(short_text_data) => {
+            RegularInstruction::SetEntryText(short_text_data) => {
                 write!(string, "{}", short_text_data.0)
             }
             _ => {

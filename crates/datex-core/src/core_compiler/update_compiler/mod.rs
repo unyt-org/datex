@@ -130,11 +130,19 @@ fn append_replace<T: BufferProvider + ValueVisitor>(
 
 /// Appends an append entry operation on a shared container
 fn append_append_entry<T: BufferProvider + ValueVisitor>(
-    _context: &mut T,
-    _append_entry_update_data: &AppendEntryUpdateData,
+    context: &mut T,
+    append_entry_update_data: &AppendEntryUpdateData,
 ) {
-    // +=
-    todo!()
+    append_regular_instruction(
+        context.cursor_mut(),
+        RegularInstruction::AppendEntry,
+    );
+    context.visit_value_container(append_entry_update_data.value.clone(), None); // TODO: ensure clone is ok here
+    // target
+    append_regular_instruction(
+        context.cursor_mut(),
+        RegularInstruction::BorrowStackValue(StackIndex(0)),
+    );
 }
 
 /// Appends a list splice operation on a shared container
@@ -166,16 +174,16 @@ pub fn append_set_property_value_key<T: BufferProvider + ValueVisitor>(
     match value_key {
         ValueKey::Text(text) => append_regular_instruction(
             context.cursor_mut(),
-            RegularInstruction::SetPropertyText(ShortTextData(text.clone())),
+            RegularInstruction::SetEntryText(ShortTextData(text.clone())),
         ),
         ValueKey::Index(index) => append_regular_instruction(
             context.cursor_mut(),
-            RegularInstruction::SetPropertyIndex(UInt32Data(index as u32)),
+            RegularInstruction::SetEntryIndex(UInt32Data(index as u32)),
         ),
         ValueKey::Value(value) => {
             append_regular_instruction(
                 context.cursor_mut(),
-                RegularInstruction::SetPropertyDynamic,
+                RegularInstruction::SetEntryDynamic,
             );
             context.visit_value_container(value, None);
         }
@@ -255,7 +263,7 @@ mod tests {
                             }
                         ),)
                     ),
-                    RegularInstruction::SetPropertyText(ShortTextData(
+                    RegularInstruction::SetEntryText(ShortTextData(
                         "test_key".to_string()
                     ))
                     .with_children(instructions!(

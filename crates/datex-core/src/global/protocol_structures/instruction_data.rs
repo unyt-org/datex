@@ -365,13 +365,6 @@ pub struct ModifySharedContainerValue {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct ModifyStackValue {
-    pub index: StackIndex,
-    pub operator: ModificationOperator,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
 pub struct InstructionBlockData {
     pub length: u32,
     pub injected_value_count: u32,
@@ -379,6 +372,14 @@ pub struct InstructionBlockData {
     pub injected_values: Vec<InjectedValueDeclaration>,
     #[br(count = length)]
     pub body: Vec<u8>,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct SpliceData {
+    pub start_index: u32,
+    pub delete_count: u32,
+    pub insert_count: u32,
 }
 
 cfg_if! {

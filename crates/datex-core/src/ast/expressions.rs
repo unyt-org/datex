@@ -218,6 +218,9 @@ pub enum DatexExpressionData {
     /// Apply a value to another value, e.g. function call or type cast
     Apply(Apply),
 
+    /// Call an interface method, e.g. obj->method()
+    InterfaceMethodCall(InterfaceMethodCall),
+
     /// Apply a property access to an argument
     PropertyAccess(PropertyAccess),
 
@@ -451,6 +454,13 @@ impl From<&ReferenceMutability> for ValueAccessType {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Apply {
     pub base: DatexExpression,
+    pub arguments: Vec<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct InterfaceMethodCall {
+    pub base: DatexExpression,
+    pub method_name: String,
     pub arguments: Vec<DatexExpression>,
 }
 

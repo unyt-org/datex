@@ -287,10 +287,8 @@ async fn set_remote_endpoint_property(
         .execute_instructions_remote(
             vec![endpoint],
             vec![
-                RegularInstruction::SetPropertyText(ShortTextData(
-                    property_name,
-                ))
-                .into(),
+                RegularInstruction::SetEntryText(ShortTextData(property_name))
+                    .into(),
                 InstructionInput::ValueContainer(value),
                 RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
             ],

@@ -1,8 +1,6 @@
 use crate::{
-    global::operators::ModificationOperator,
     prelude::*,
-    types::{traits::operator_handler::OperatorHandler, r#type::Type},
-    value_updates::update_data::UpdateModificationOperator,
+    types::{r#type::Type},
 };
 use core::fmt::Display;
 
@@ -18,19 +16,6 @@ impl Display for TaggedTypeDefinition {
             write!(f, "#{} {}", self.tag, ty)
         } else {
             write!(f, "#{}", self.tag)
-        }
-    }
-}
-
-impl OperatorHandler for TaggedTypeDefinition {
-    fn get_update_type_for_modification(
-        &self,
-        operator: ModificationOperator,
-    ) -> Result<UpdateModificationOperator, ()> {
-        if let Some(ty) = &self.ty {
-            ty.get_update_type_for_modification(operator)
-        } else {
-            Err(())
         }
     }
 }

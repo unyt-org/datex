@@ -1,9 +1,7 @@
 use crate::{
-    global::operators::ModificationOperator,
     prelude::*,
     shared_values::PointerAddress,
-    types::{traits::operator_handler::OperatorHandler, r#type::Type},
-    value_updates::update_data::UpdateModificationOperator,
+    types::{r#type::Type},
 };
 use core::fmt::Display;
 pub mod serde_dif;
@@ -24,14 +22,6 @@ impl ImplTypeDefinition {
     }
 }
 
-impl OperatorHandler for ImplTypeDefinition {
-    fn get_update_type_for_modification(
-        &self,
-        operator: ModificationOperator,
-    ) -> Result<UpdateModificationOperator, ()> {
-        self.inner_type.get_update_type_for_modification(operator)
-    }
-}
 
 impl Display for ImplTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

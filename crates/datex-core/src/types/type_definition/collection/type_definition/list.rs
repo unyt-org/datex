@@ -1,8 +1,7 @@
 use crate::{
     dif::serde_context::SerdeContext, global::operators::ModificationOperator,
-    types::traits::operator_handler::OperatorHandler,
     utils::serde_serialize_seed::SerializeSeed,
-    value_updates::update_data::UpdateModificationOperator,
+    value_updates::update_data::UpdateOperator,
 };
 use core::fmt::Display;
 use serde::{Deserializer, Serializer, de::DeserializeSeed};
@@ -49,14 +48,5 @@ impl<'de, 'ctx> DeserializeSeed<'de>
     {
         let item_type = self.cast::<Type>().deserialize(deserializer)?;
         Ok(ListCollectionTypeDefinition(Box::new(item_type)))
-    }
-}
-
-impl OperatorHandler for ListCollectionTypeDefinition {
-    fn get_update_type_for_modification(
-        &self,
-        operator: ModificationOperator,
-    ) -> Result<UpdateModificationOperator, ()> {
-        self.0.get_update_type_for_modification(operator)
     }
 }

@@ -46,7 +46,7 @@ use crate::{
             },
             instruction_data::{
                 InstructionBlockData, ModifySharedContainerValue,
-                ModifyStackValue, ShortTextData, StackIndex, TaggedValue,
+                ShortTextData, StackIndex, TaggedValue,
             },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
@@ -994,7 +994,7 @@ fn compile_expression(
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
                     append_regular_instruction(
                         compilation_context.cursor(),
-                        RegularInstruction::SetPropertyText(ShortTextData(
+                        RegularInstruction::SetEntryText(ShortTextData(
                             key.0.clone(),
                         )),
                     );

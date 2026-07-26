@@ -1,8 +1,8 @@
 use crate::{
     global::operators::ModificationOperator,
     shared_values::SharedContainer,
-    types::{traits::operator_handler::OperatorHandler, r#type::Type},
-    value_updates::update_data::UpdateModificationOperator,
+    types::{r#type::Type},
+    value_updates::update_data::UpdateOperator,
     values::core_value::CoreValue,
 };
 use core::ops::Deref;
@@ -19,16 +19,6 @@ impl Deref for SharedContainerContainingType {
     }
 }
 
-impl OperatorHandler for SharedContainerContainingType {
-    fn get_update_type_for_modification(
-        &self,
-        operator: ModificationOperator,
-    ) -> Result<UpdateModificationOperator, ()> {
-        self.with_collapsed_type_value(|ty| {
-            ty.get_update_type_for_modification(operator)
-        })
-    }
-}
 
 impl SharedContainerContainingType {
     /// Creates a new [SharedContainerContainingType] from a [SharedContainer] without checking the constraint.

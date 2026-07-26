@@ -1,19 +1,12 @@
 use strum::AsRefStr;
 pub mod type_definition;
-use crate::{
-    global::operators::ModificationOperator,
-    types::{
-        traits::operator_handler::OperatorHandler,
-        type_definition::{
-            collection::type_definition::{
-                list::ListCollectionTypeDefinition,
-                list_slice::ListSliceCollectionTypeDefinition,
-                map::MapCollectionTypeDefinition,
-            },
-            range::RangeTypeDefinition,
-        },
+use crate::types::type_definition::{
+    collection::type_definition::{
+        list::ListCollectionTypeDefinition,
+        list_slice::ListSliceCollectionTypeDefinition,
+        map::MapCollectionTypeDefinition,
     },
-    value_updates::update_data::UpdateModificationOperator,
+    range::RangeTypeDefinition,
 };
 use core::fmt::Display;
 pub mod serde_dif;
@@ -30,20 +23,6 @@ pub enum CollectionTypeDefinition {
     // e.g. {string: integer}
     Map(MapCollectionTypeDefinition),
     Range(RangeTypeDefinition),
-}
-
-impl OperatorHandler for CollectionTypeDefinition {
-    fn get_update_type_for_modification(
-        &self,
-        operator: ModificationOperator,
-    ) -> Result<UpdateModificationOperator, ()> {
-        match self {
-            CollectionTypeDefinition::List(list_definition) => {
-                list_definition.get_update_type_for_modification(operator)
-            }
-            _ => Err(()),
-        }
-    }
 }
 
 impl Display for CollectionTypeDefinition {
