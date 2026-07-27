@@ -95,7 +95,6 @@ pub enum InstructionCode {
     SHARED_REF_WITH_VALUE, // '/'mut $1234 mut [value]
 
     MOVE_WITH_VALUE,
-    CONFIRM_MOVES,
 
     DERIVE_SHARED_REF,     // dynamic 'x
     DERIVE_SHARED_REF_MUT, // dynamic 'mut x

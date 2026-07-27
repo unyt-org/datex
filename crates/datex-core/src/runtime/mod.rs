@@ -12,7 +12,6 @@ use execution::context::{
 };
 pub mod cache;
 mod config;
-mod confirm_moves;
 pub mod execution;
 mod incoming_sections;
 mod internal;

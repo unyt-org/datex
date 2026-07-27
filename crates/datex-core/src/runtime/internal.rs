@@ -31,7 +31,6 @@ use crate::{
     runtime::{
         Runtime, RuntimeConfig, RuntimeConfigInterface,
         cache::shared_references_cache::SharedReferencesCache,
-        confirm_moves::compile_request_moves,
         execution::{
             ExecutionError, InvalidProgramError,
             context::{
@@ -685,112 +684,6 @@ impl RuntimeInternal {
         }
 
         Ok(())
-    }
-
-    /// Request to move a list of external pointers from an endpoint to the local endpoint
-    /// This only works if the local endpoint has the permission to move the pointers, either because
-    /// it was allowed via a PERFORM_MOVE from the remote endpoint, or because the local endpoint has
-    /// extended permissions
-    pub(crate) async fn request_pointer_move(
-        self: Rc<RuntimeInternal>,
-        from_endpoint: &Endpoint,
-        pointers: Vec<(SharedContainerMutability, SelfOwnedPointerAddress)>,
-    ) -> Result<Vec<OwnedSharedContainer>, ExecutionError> {
-        let pointer_mapping = pointers
-            .into_iter()
-            .map(|original| {
-                (
-                    original,
-                    self.pointer_address_provider
-                        .borrow_mut()
-                        .get_new_self_owned_address(),
-                )
-            })
-            .collect::<Vec<_>>();
-        let body = compile_request_moves(
-            pointer_mapping
-                .iter()
-                .map(|((_, original), new)| (original.clone(), new.clone()))
-                .collect::<Vec<_>>(),
-        );
-        let moved_values = self
-            .clone()
-            .execute_dxb(
-                DXBWithSharedValues::new(body, vec![]),
-                Some(&mut ExecutionContext::Remote(
-                    RemoteExecutionContext::new(
-                        vec![from_endpoint.clone()],
-                        ExecutionMode::Static,
-                        Runtime::from(self),
-                    ),
-                )),
-                true,
-            )
-            .await?;
-
-        // moved values should be list
-        match moved_values {
-            Some(ValueContainer::Local(Value {
-                inner: CoreValue::List(list),
-                ..
-            })) => {
-                let pointer_values = list.into_vec();
-                let owned_values = pointer_values.into_iter()
-                    .zip(pointer_mapping)
-                    .map(|(value, ((mutability, _), new_address))| {
-                        // SAFETY: we got the new address from the pointer address provider above, is ensured to be unique
-                        unsafe {
-                            // TODO: also pass type information
-                            OwnedSharedContainer::new_with_inferred_allowed_type_unsafe(
-                                value,
-                                mutability,
-                                new_address,
-                            )
-                        }
-                }).collect::<Vec<_>>();
-                Ok(owned_values)
-            }
-            _ => Err(ExecutionError::invalid_program(
-                InvalidProgramError::ExpectedValue,
-            )),
-        }
-    }
-
-    pub(crate) fn handle_pointer_move_to_remote(
-        self: Rc<RuntimeInternal>,
-        from_endpoint: &Endpoint,
-        pointer_mapping: Vec<(
-            SelfOwnedPointerAddress,
-            SelfOwnedPointerAddress,
-        )>,
-        memory: &SharedReferencesCache,
-    ) -> Result<(), ExecutionError> {
-        pointer_mapping
-            .into_iter()
-            .try_for_each(|(original_address, new)| {
-                let new_address = PointerAddress::Remote(
-                    RemotePointerAddress::for_endpoint(from_endpoint, &new),
-                );
-
-                // not allowed if new pointer address already in memory
-                if memory.has_reference(&new_address) {
-                    return Err(ExecutionError::InvalidMove);
-                }
-
-                // make sure external pointer does not already exist in memory
-                if let Some(reference) = memory
-                    .get_reference(&PointerAddress::SelfOwned(original_address))
-                {
-                    // Note: safe because we checked before if address is already in memory
-                    unsafe {
-                        reference.change_address(new_address);
-                    }
-                } else {
-                    return Err(ExecutionError::InvalidMove);
-                }
-
-                Ok(())
-            })
     }
 
     pub fn get_env(&self) -> HashMap<String, String> {

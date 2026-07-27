@@ -376,16 +376,6 @@ pub gen fn inner_execution_loop(
                                 ))
                             }
 
-                            RegularInstruction::ConfirmMoves(move_data) => {
-                                interrupt!(
-                                    interrupt_provider,
-                                    ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::ConfirmMoves(move_data.address_mappings)
-                                    )
-                                );
-                                None
-                            }
-
                             RegularInstruction::SharedRef(shared_ref) => {
                                 let address = state.normalize_pointer_address(&shared_ref.address);
                                 // shared ref without value, assumes value already known, otherwise request (todo)

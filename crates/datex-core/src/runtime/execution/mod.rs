@@ -251,26 +251,6 @@ pub async fn execute_dxb(
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
-            ExternalExecutionInterrupt::RequestMove(pointers) => {
-                let moved_values = runtime
-                    .internal
-                    .clone()
-                    .request_pointer_move(&caller_metadata.endpoint, pointers)
-                    .await?
-                    .into_iter()
-                    .map(|v| ValueContainer::Shared(SharedContainer::Owned(v)))
-                    .collect();
-                interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValues(moved_values),
-                );
-            }
-            ExternalExecutionInterrupt::ConfirmMoves(address_mapping) => {
-                runtime.internal.clone().handle_pointer_move_to_remote(
-                    &caller_metadata.endpoint,
-                    address_mapping,
-                    &runtime.memory().borrow(),
-                )?;
-            }
         }
     }
 

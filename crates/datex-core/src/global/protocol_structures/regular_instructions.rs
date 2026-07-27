@@ -6,14 +6,14 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                ApplyData, ConfirmMoves, Float32Data, Float64Data,
-                FloatAsInt16Data, FloatAsInt32Data, InstantData,
-                InstructionBlockData, Int8Data, Int16Data, Int32Data,
-                Int64Data, Int128Data, ListData, MapData, MoveWithValue,
-                SharedRef, SharedRefWithValue, ShortListData, ShortMapData,
-                ShortStatementsData, ShortTextData, SpliceData, StackIndex,
-                StatementsData, TaggedValue, TextData, UInt8Data, UInt16Data,
-                UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
+                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
+                FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
+                Int16Data, Int32Data, Int64Data, Int128Data, ListData, MapData,
+                MoveWithValue, SharedRef, SharedRefWithValue, ShortListData,
+                ShortMapData, ShortStatementsData, ShortTextData, SpliceData,
+                StackIndex, StatementsData, TaggedValue, TextData, UInt8Data,
+                UInt16Data, UInt32Data, UInt64Data, UInt128Data,
+                UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -143,8 +143,6 @@ pub enum RegularInstruction {
     SharedRefWithValue(SharedRefWithValue), // shared ref with current value (only if caller owns the pointer)
 
     MoveWithValue(MoveWithValue),
-
-    ConfirmMoves(ConfirmMoves), // confirms moves from old origin to new, containing both addresses
 
     PushToStack,
     PushListToStack,
@@ -357,9 +355,6 @@ impl From<&RegularInstruction> for InstructionCode {
             }
             RegularInstruction::MoveWithValue(_) => {
                 InstructionCode::MOVE_WITH_VALUE
-            }
-            RegularInstruction::ConfirmMoves(_) => {
-                InstructionCode::CONFIRM_MOVES
             }
             RegularInstruction::PushToStack => InstructionCode::PUSH_TO_STACK,
             RegularInstruction::PushListToStack => {
@@ -853,10 +848,6 @@ impl RegularInstruction {
             InstructionCode::MOVE_WITH_VALUE => MoveWithValue::read(reader)
                 .map(RegularInstruction::MoveWithValue),
 
-            InstructionCode::CONFIRM_MOVES => {
-                ConfirmMoves::read(reader).map(RegularInstruction::ConfirmMoves)
-            }
-
             InstructionCode::TYPED_VALUE => Ok(RegularInstruction::TypedValue),
             InstructionCode::TYPE_EXPRESSION => {
                 Ok(RegularInstruction::TypeExpression)
@@ -1068,13 +1059,6 @@ impl RegularInstruction {
                     "[mutability: {:?}, previous address: {}]",
                     move_with_value.mutability,
                     move_with_value.previous_address
-                )
-            }
-            RegularInstruction::ConfirmMoves(mv) => {
-                write!(
-                    string,
-                    "[pointer_count: {}, mappings: {:?}]",
-                    mv.pointer_count, mv.address_mappings
                 )
             }
             RegularInstruction::RemoteExecution(data) => {

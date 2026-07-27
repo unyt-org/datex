@@ -331,14 +331,6 @@ pub struct MoveWithValue {
     pub previous_address: SelfOwnedPointerAddress,
 }
 
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
-pub struct ConfirmMoves {
-    pub pointer_count: u32,
-    #[br(count = pointer_count)]
-    pub address_mappings:
-        Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>,
-}
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

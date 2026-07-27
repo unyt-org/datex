@@ -76,14 +76,14 @@ impl From<TypeExpression> for CollectedAstResult {
 }
 
 impl
-    CollectionResultsPopper<
-        CollectedAstResult,
-        DatexExpression,
-        DatexExpression,
-        DatexExpression,
-        TypeExpression,
-        TypeExpression,
-    > for CollectedResults<CollectedAstResult>
+CollectionResultsPopper<
+    CollectedAstResult,
+    DatexExpression,
+    DatexExpression,
+    DatexExpression,
+    TypeExpression,
+    TypeExpression,
+> for CollectedResults<CollectedAstResult>
 {
     fn try_extract_type_definition(
         result: CollectedAstResult,
@@ -294,15 +294,7 @@ pub fn ast_from_bytecode(
                             )
                         }
 
-                        RegularInstruction::SharedRef(_shared_ref) => {
-                            DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
-                        }
-
-                        RegularInstruction::SharedRefWithValue(_shared_ref) => {
-                            DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
-                        }
-
-                        RegularInstruction::ConfirmMoves(_move_data) => {
+                        RegularInstruction::SharedRef(shared_ref) => {
                             DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                         }
 
@@ -399,6 +391,7 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::Clear
                         | RegularInstruction::SetSharedContainerValue
                         | RegularInstruction::Unbox
+                        | RegularInstruction::SharedRefWithValue(_)
                         | RegularInstruction::TypedValue
                         | RegularInstruction::Increment
                         | RegularInstruction::Decrement
@@ -600,6 +593,15 @@ pub fn ast_from_bytecode(
                                         expression: (expr),
                                     },
                                 )
+                                    .with_default_span()
+                                    .into()
+                            }
+
+                            RegularInstruction::SharedRefWithValue(shared_ref) => {
+                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                                    address: PointerAddress::from(shared_ref.address),
+                                    mutability: shared_ref.ref_mutability,
+                                })
                                     .with_default_span()
                                     .into()
                             }
@@ -866,8 +868,8 @@ pub fn ast_from_bytecode(
                                 )).with_default_span().into()
                             }
                             RegularInstruction::SpliceDynamic => {
-                                let target = collected_results.pop_value(); 
-                                let values = collected_results.pop_value(); 
+                                let target = collected_results.pop_value();
+                                let values = collected_results.pop_value();
 
                                 let delete_count = collected_results.pop_value();
                                 let start_index = collected_results.pop_value();
@@ -1093,7 +1095,7 @@ mod tests {
                 DatexExpressionData::TypedInteger(TypedInteger::from(21u8))
                     .with_default_span(),
             ]))
-            .with_default_span()
+                .with_default_span()
         );
     }
 
@@ -1121,11 +1123,11 @@ mod tests {
                     DatexExpressionData::TypedInteger(TypedInteger::from(2u8))
                         .with_default_span(),
                 ]))
-                .with_default_span(),
+                    .with_default_span(),
                 DatexExpressionData::TypedInteger(TypedInteger::from(3u8))
                     .with_default_span(),
             ]))
-            .with_default_span()
+                .with_default_span()
         );
     }
 
@@ -1153,7 +1155,7 @@ mod tests {
                 is_terminated: true,
                 unbounded: None,
             })
-            .with_default_span()
+                .with_default_span()
         );
     }
 
@@ -1187,16 +1189,16 @@ mod tests {
                     left: (DatexExpressionData::TypedInteger(
                         TypedInteger::from(3u8)
                     )
-                    .with_default_span()),
+                        .with_default_span()),
                     right: (DatexExpressionData::TypedInteger(
                         TypedInteger::from(4u8)
                     )
-                    .with_default_span()),
+                        .with_default_span()),
                     ty: None
                 })
-                .with_default_span(),
+                    .with_default_span(),
             ]))
-            .with_default_span()
+                .with_default_span()
         );
     }
 
