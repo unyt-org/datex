@@ -2,7 +2,6 @@
 //! It handles the execution of instructions, manages the runtime state, and processes interrupts that can occur during execution.
 mod implementation;
 use implementation::*;
-use std::assert_matches;
 mod execution_result_popper;
 mod internal_slots;
 pub mod interrupts;
@@ -802,7 +801,7 @@ pub gen fn inner_execution_loop(
                                     let values = collected_results.try_pop_value_container(&mut state)?;
                                     let delete_count = collected_results.try_pop_value_container(&mut state)?;
                                     let start_index = collected_results.try_pop_value_container(&mut state)?;
-                                    
+
                                     // values must be a list
                                     let values: List = match values.try_into_value() {
                                         Some(list) => list,
@@ -825,7 +824,7 @@ pub gen fn inner_execution_loop(
                                             None => return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList)),
                                         }
                                     };
-                                    
+
                                     let target_value = target.as_value_container_mut(&mut state.stack)?;
 
                                     let res_values = target_value

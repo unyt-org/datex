@@ -3929,4 +3929,27 @@ pub mod tests {
             ),)
         )
     }
+
+    #[test]
+    fn interface_method_calls() {
+        let datex_script = "var x = []; x->append(true);";
+        let result = compile_and_log(datex_script);
+        assert_regular_instructions_equal!(
+            &result,
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    // var x = []
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::ShortList(ShortListData {
+                        element_count: 0
+                    }),
+                    // x->append(true)
+                    RegularInstruction::AppendEntry,
+                    RegularInstruction::True,
+                    RegularInstruction::BorrowStackValue(StackIndex(0)),
+                )
+            ),)
+        );
+    }
 }
