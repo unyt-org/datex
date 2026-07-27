@@ -22,6 +22,7 @@ use crate::{
     },
     values::value_container::value_key::ValueKey,
 };
+use crate::global::protocol_structures::instruction_data::SpliceData;
 
 /// Compiles an update operation on a shared container into DXB
 /// e.g. [UpdateData::SetEntry] to $x.a = b;
@@ -147,15 +148,29 @@ fn append_append_entry<T: BufferProvider + ValueVisitor>(
 
 /// Appends a list splice operation on a shared container
 fn append_list_splice<T: BufferProvider + ValueVisitor>(
-    _context: &mut T,
-    _list_splice_update_data: &ListSpliceUpdateData,
+    context: &mut T,
+    list_splice_update_data: &ListSpliceUpdateData,
 ) {
-    todo!()
+    append_regular_instruction(
+        context.cursor_mut(),
+        RegularInstruction::Splice(SpliceData {
+            start_index: list_splice_update_data.start,
+            delete_count: list_splice_update_data.delete_count,
+            insert_count: list_splice_update_data.items.len() as u32,
+        }),
+    );
+    
+    for item in &list_splice_update_data.items {
+        context.visit_value_container(item.clone(), None); // TODO: ensure clone is ok here
+    }
 }
 
 /// Appends a clear operation on a shared container
-fn append_clear<T: BufferProvider + ValueVisitor>(_context: &mut T) {
-    todo!()
+fn append_clear<T: BufferProvider + ValueVisitor>(context: &mut T) {
+    append_regular_instruction(
+        context.cursor_mut(),
+        RegularInstruction::Clear,
+    );
 }
 
 /// Appends a delete entry operation on a shared container
