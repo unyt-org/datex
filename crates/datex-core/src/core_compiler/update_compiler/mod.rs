@@ -163,6 +163,12 @@ fn append_list_splice<T: BufferProvider + ValueVisitor>(
     for item in &list_splice_update_data.items {
         context.visit_value_container(item.clone(), None); // TODO: ensure clone is ok here
     }
+
+    // target
+    append_regular_instruction(
+        context.cursor_mut(),
+        RegularInstruction::BorrowStackValue(StackIndex(0)),
+    );
 }
 
 /// Appends a clear operation on a shared container
@@ -170,6 +176,12 @@ fn append_clear<T: BufferProvider + ValueVisitor>(context: &mut T) {
     append_regular_instruction(
         context.cursor_mut(),
         RegularInstruction::Clear,
+    );
+
+    // target
+    append_regular_instruction(
+        context.cursor_mut(),
+        RegularInstruction::BorrowStackValue(StackIndex(0)),
     );
 }
 
