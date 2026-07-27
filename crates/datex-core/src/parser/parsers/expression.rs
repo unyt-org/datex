@@ -3,10 +3,11 @@ use crate::{
         expressions::{
             Apply, BinaryOperation, CloneExpression, ComparisonOperation,
             CreateMut, CreateShared, DatexExpression, DatexExpressionData,
-            DeriveRef, DeriveSharedRef, GenericInstantiation, PropertyAccess,
-            PropertyAssignment, RangeDeclaration, RemoteExecution,
-            RequestSharedRef, StackAssignment, UnaryOperation, Unbox,
-            UnboxAssignment, VariableAssignment,
+            DeriveRef, DeriveSharedRef, GenericInstantiation,
+            InterfaceMethodCall, PropertyAccess, PropertyAssignment,
+            RangeDeclaration, RemoteExecution, RequestSharedRef,
+            StackAssignment, UnaryOperation, Unbox, UnboxAssignment,
+            VariableAssignment,
         },
         spanned::Spanned,
     },
@@ -86,11 +87,25 @@ impl Parser {
         r_bp: u8,
     ) -> Result<DatexExpression, SpannedParserError> {
         Ok(match op.token {
+            Token::Arrow => {
+                self.advance()?; // consume the operator
+
+                let method_name = self.parse_identifier_string()?.0;
+                let (rhs, end_token) = self.parse_apply_arguments()?;
+                let span = lhs.span.start..end_token;
+                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                    base: lhs,
+                    method_name,
+                    arguments: rhs,
+                })
+                .with_span(span)
+            }
             // property access
             Token::Dot => {
                 self.advance()?; // consume the dot
 
                 let rhs = self.parse_key()?;
+                // x->xxx
 
                 let span = lhs.span.start..rhs.span.end;
 
@@ -649,6 +664,7 @@ impl Parser {
             Token::Range => Some((22, 23)),
             // property access
             Token::Dot => Some((30, 31)),
+            Token::Arrow => Some((32, 33)),
             // apply (function call, type cast), which has same binding power as member access
             Token::LeftParen
             | Token::LeftCurly
@@ -667,7 +683,7 @@ impl Parser {
             | Token::DecimalLiteral(_)
             | Token::PointerAddress(_)
             | Token::StackIndex(_)
-            | Token::Endpoint(_) => Some((30, 31)),
+            | Token::Endpoint(_) => Some((33, 34)),
             _ => None,
         }
     }
@@ -681,9 +697,10 @@ mod tests {
             expressions::{
                 Apply, BinaryOperation, ComparisonOperation, CreateMut,
                 CreateShared, DatexExpressionData, DeriveRef, DeriveSharedRef,
-                GenericInstantiation, PropertyAccess, PropertyAssignment,
-                RemoteExecution, RequestSharedRef, StackAssignment, Statements,
-                UnaryOperation, Unbox, UnboxAssignment, VariableAssignment,
+                GenericInstantiation, InterfaceMethodCall, PropertyAccess,
+                PropertyAssignment, RemoteExecution, RequestSharedRef,
+                StackAssignment, Statements, UnaryOperation, Unbox,
+                UnboxAssignment, VariableAssignment,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
@@ -1915,5 +1932,45 @@ mod tests {
         let input = "(".repeat(1_000) + "3" + &")".repeat(1_000);
         let result = try_parse_and_return_on_first_error(&input).unwrap_err();
         assert_matches!(result.error, ParserError::ExpressionNestingTooDeep);
+    }
+
+    #[test]
+    fn interface_function_call() {
+        let input = parse("hello->struct 4");
+        assert_eq!(
+            input.data(),
+            &DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                base: (DatexExpressionData::Identifier("hello".to_string())
+                    .with_default_span()),
+                method_name: "struct".to_string(),
+                arguments: vec![
+                    DatexExpressionData::Integer(4.into()).with_default_span()
+                ],
+            })
+        );
+
+        let input = parse("hello->struct(5, 2)");
+        assert_eq!(
+            input.data(),
+            &DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                base: (DatexExpressionData::Identifier("hello".to_string())
+                    .with_default_span()),
+                method_name: "struct".to_string(),
+                arguments: vec![
+                    DatexExpressionData::Integer(5.into()).with_default_span(),
+                    DatexExpressionData::Integer(2.into()).with_default_span()
+                ],
+            })
+        );
+        let input = parse("hello->struct()");
+        assert_eq!(
+            input.data(),
+            &DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                base: (DatexExpressionData::Identifier("hello".to_string())
+                    .with_default_span()),
+                method_name: "struct".to_string(),
+                arguments: vec![],
+            })
+        );
     }
 }

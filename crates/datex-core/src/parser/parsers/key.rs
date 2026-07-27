@@ -1,13 +1,50 @@
+use core::ops::Range;
+
 use crate::{
     ast::{
         expressions::{DatexExpression, DatexExpressionData},
         spanned::Spanned,
     },
-    parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
+    parser::{
+        Parser, SpannedParserError,
+        errors::ParserError,
+        lexer::{SpannedToken, Token},
+    },
 };
 
 use crate::prelude::*;
 impl Parser {
+    pub(crate) fn parse_identifier_string(
+        &mut self,
+    ) -> Result<(String, Range<usize>), SpannedParserError> {
+        let string = match &self.peek()?.token {
+            // treat plain identifiers as text keys
+            Token::Identifier(name) => Ok(name.clone()),
+
+            // map reserved keywords to text keys
+            // TODO #661: add more keywords as needed
+            t @ Token::True
+            | t @ Token::False
+            | t @ Token::TypeDeclaration
+            | t @ Token::Compile
+            | t @ Token::If
+            | t @ Token::Else
+            | t @ Token::Is
+            | t @ Token::Matches
+            | t @ Token::And
+            | t @ Token::Or => Ok(t.as_const_str().unwrap().into()),
+            _ => Err(SpannedParserError {
+                error: ParserError::UnexpectedToken {
+                    expected: vec![Token::Identifier("".to_string())],
+                    found: self.peek()?.token.clone(),
+                },
+                span: self.peek()?.span.clone(),
+            }),
+        }?;
+
+        Ok((string, self.advance()?.span))
+    }
+
     pub(crate) fn parse_key(
         &mut self,
     ) -> Result<DatexExpression, SpannedParserError> {
@@ -22,40 +59,19 @@ impl Parser {
             // allow parenthesized statements as keys
             Token::LeftParen => self.parse_parenthesized_statements()?,
 
-            // treat plain identifiers as text keys
-            Token::Identifier(name) => DatexExpressionData::Text(name.into())
-                .with_span(self.advance()?.span),
-
-            // map reserved keywords to text keys
-            // TODO #661: add more keywords as needed
-            t @ Token::True
-            | t @ Token::False
-            | t @ Token::TypeDeclaration
-            | t @ Token::Compile
-            | t @ Token::If
-            | t @ Token::Else
-            | t @ Token::Is
-            | t @ Token::Matches
-            | t @ Token::And
-            | t @ Token::Or => {
-                DatexExpressionData::Text(t.as_const_str().unwrap().into())
-                    .with_span(self.advance()?.span)
-            }
-
-            _ => {
-                return Err(SpannedParserError {
-                    error: ParserError::UnexpectedToken {
-                        expected: vec![
-                            Token::Identifier("".to_string()),
-                            Token::IntegerLiteral("".to_string()),
-                            Token::StringLiteral("".to_string()),
-                            Token::LeftParen,
-                        ],
-                        found: self.peek()?.token.clone(),
-                    },
-                    span: self.peek()?.span.clone(),
-                });
-            }
+            _ => self
+                .parse_identifier_string()
+                .map(|(string, span)| {
+                    DatexExpressionData::Text(string.into()).with_span(span)
+                })
+                .map_err(|err| {
+                    err.with_expected_tokens(vec![
+                        Token::IntegerLiteral("".to_string()),
+                        Token::StringLiteral("".to_string()),
+                        Token::Identifier("".to_string()),
+                        Token::LeftParen,
+                    ])
+                })?,
         })
     }
 }

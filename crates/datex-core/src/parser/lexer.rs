@@ -303,7 +303,7 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn as_const_str(&self) -> Option<&str> {
+    pub const fn as_const_str(&self) -> Option<&str> {
         match self {
             Token::LeftParen => Some("("),
             Token::RightParen => Some(")"),
