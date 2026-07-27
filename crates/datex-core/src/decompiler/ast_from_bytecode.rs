@@ -295,7 +295,12 @@ pub fn ast_from_bytecode(
                         }
 
                         RegularInstruction::SharedRef(shared_ref) => {
-                            DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                                address: PointerAddress::from(shared_ref.address),
+                                mutability: shared_ref.ref_mutability,
+                            })
+                                .with_default_span()
+                                .into()
                         }
 
                         RegularInstruction::CloneStackValue(stack_index) => {
