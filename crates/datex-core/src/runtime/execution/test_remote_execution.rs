@@ -556,38 +556,41 @@ pub async fn test_remote_sync() {
             yield_now().await;
             yield_now().await;
 
-            let mut shared_value_on_b =
-                runtime_b.get_endpoint_property_by_name_mut("a").unwrap();
-            let shared_value_on_b = shared_value_on_b.shared_unchecked_mut();
-            // same pointer addresses
-            assert_eq!(
+            {
+                let mut shared_value_on_b =
+                    runtime_b.get_endpoint_property_by_name_mut("a").unwrap();
+                let shared_value_on_b =
+                    shared_value_on_b.shared_unchecked_mut();
+                // same pointer addresses
+                assert_eq!(
+                    shared_value_on_b
+                        .pointer_address()
+                        .normalize_for_local(&endpoint_a),
+                    shared_value_on_a.pointer_address()
+                );
+                // not the same RCs
+                assert_ne!(shared_value_on_b, &shared_value_on_a);
+
+                // same values after sync
+                assert_eq!(
+                    *shared_value_on_a.value_container(),
+                    ValueContainer::from(100)
+                );
+                assert_eq!(
+                    *shared_value_on_b.value_container(),
+                    *shared_value_on_a.value_container()
+                );
+
+                // trigger update b -> a
                 shared_value_on_b
-                    .pointer_address()
-                    .normalize_for_local(&endpoint_a),
-                shared_value_on_a.pointer_address()
-            );
-            // not the same RCs
-            assert_ne!(shared_value_on_b, &shared_value_on_a);
-
-            // same values after sync
-            assert_eq!(
-                *shared_value_on_a.value_container(),
-                ValueContainer::from(100)
-            );
-            assert_eq!(
-                *shared_value_on_b.value_container(),
-                *shared_value_on_a.value_container()
-            );
-
-            // trigger update b -> a
-            shared_value_on_b
-                .try_handle_update(Update::new(
-                    TransceiverId::Local,
-                    UpdateData::new(UpdateOperation::replace(
-                        ValueContainer::from(200),
-                    )),
-                ))
-                .unwrap();
+                    .try_handle_update(Update::new(
+                        TransceiverId::Local,
+                        UpdateData::new(UpdateOperation::replace(
+                            ValueContainer::from(200),
+                        )),
+                    ))
+                    .unwrap();
+            }
 
             // wait for update sync
             yield_now().await;
@@ -595,12 +598,18 @@ pub async fn test_remote_sync() {
             yield_now().await;
 
             assert_eq!(
-                *shared_value_on_b.value_container(),
+                *runtime_b
+                    .get_endpoint_property_by_name("a")
+                    .unwrap()
+                    .maybe_shared()
+                    .unwrap()
+                    .value_container(),
                 ValueContainer::from(200)
             );
+
             assert_eq!(
-                *shared_value_on_b.value_container(),
-                *shared_value_on_a.value_container()
+                *shared_value_on_a.value_container(),
+                ValueContainer::from(200)
             );
         },
     )

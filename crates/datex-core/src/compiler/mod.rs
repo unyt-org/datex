@@ -3937,7 +3937,7 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &result,
             (RegularInstruction::statements_with_children(
-                false,
+                true,
                 instructions!(
                     // var x = []
                     RegularInstruction::PushToStack,
@@ -3945,9 +3945,12 @@ pub mod tests {
                         element_count: 0
                     }),
                     // x->append(true)
-                    RegularInstruction::AppendEntry,
-                    RegularInstruction::True,
-                    RegularInstruction::BorrowStackValue(StackIndex(0)),
+                    RegularInstruction::AppendEntry.with_children(
+                        instructions!(
+                            RegularInstruction::True,
+                            RegularInstruction::BorrowStackValue(StackIndex(0)),
+                        )
+                    )
                 )
             ),)
         );

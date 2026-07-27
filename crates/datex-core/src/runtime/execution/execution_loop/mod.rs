@@ -72,7 +72,8 @@ use crate::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
     value_updates::{
-        update_data::DeleteEntryUpdateData, update_handler::UpdateHandler,
+        update_data::{AppendEntryUpdateData, DeleteEntryUpdateData},
+        update_handler::UpdateHandler,
     },
     values::{
         core_value::CoreValue,
@@ -846,6 +847,18 @@ pub gen fn inner_execution_loop(
                                     // TODO: res?
                                     let _res = target_value
                                         .try_clear(vec![], source_id)
+                                        .map_err(|e| e.into())?;
+
+                                    None.into()
+                                }
+                                RegularInstruction::AppendEntry => {
+                                    let source_id = state.source_id_cloned();
+                                    let mut target = collected_results.try_pop_runtime_value()?;
+                                    let value = collected_results.try_pop_value_container(&mut state)?;
+                                    let target_value = target.as_value_container_mut(&mut state.stack)?;
+
+                                    target_value
+                                        .try_append_entry(vec![], source_id, AppendEntryUpdateData::new(value))
                                         .map_err(|e| e.into())?;
 
                                     None.into()

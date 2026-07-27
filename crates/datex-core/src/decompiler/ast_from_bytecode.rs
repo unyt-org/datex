@@ -1,9 +1,9 @@
 use crate::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, DatexExpression, DatexExpressionData, List,
-            Map, PropertyAssignment, Statements, UnaryOperation,
-            UnboundedStatement, VariableAssignment,
+            Apply, BinaryOperation, DatexExpression, DatexExpressionData,
+            InterfaceMethodCall, List, Map, PropertyAssignment, Statements,
+            UnaryOperation, UnboundedStatement, VariableAssignment,
         },
         spanned::Spanned,
         type_expressions::{TypeExpression, TypeExpressionData},
@@ -23,9 +23,12 @@ use crate::{
         },
     },
     types::literal_type_definition::LiteralTypeDefinition,
-    values::core_values::{
-        decimal::{Decimal, typed_decimal::TypedDecimal},
-        integer::{Integer, typed_integer::TypedInteger},
+    values::{
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            integer::{Integer, typed_integer::TypedInteger},
+        },
+        value_container::ValueContainer,
     },
 };
 
@@ -847,7 +850,55 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::Splice(splice_data) => {
-                                todo!()
+                                let target = collected_results.pop_value();
+                                let values = collected_results.pop_values(
+                                    splice_data.insert_count
+                                );
+                                let splice_args = vec![
+                                    DatexExpressionData::Integer(splice_data.start_index.into()).with_default_span(),
+                                    DatexExpressionData::Integer(splice_data.delete_count.into()).with_default_span(),
+                                    DatexExpressionData::List(List { items: values }).with_default_span()
+                                ];
+                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                    target,
+                                    "splice".to_string(),
+                                    splice_args,
+                                )).with_default_span().into()
+                            }
+                            RegularInstruction::SpliceDynamic => {
+                                let target = collected_results.pop_value(); 
+                                let values = collected_results.pop_value(); 
+
+                                let delete_count = collected_results.pop_value();
+                                let start_index = collected_results.pop_value();
+
+                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                    target,
+                                    "splice".to_string(),
+                                    vec![
+                                        start_index,
+                                        delete_count,
+                                        values,
+                                    ],
+                                )).with_default_span().into()
+                            }
+                            RegularInstruction::AppendEntry => {
+                                let target = collected_results.pop_value();
+                                let value = collected_results.pop_value();
+
+                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                    target,
+                                    "append".to_string(),
+                                    vec![value],
+                                )).with_default_span().into()
+                            }
+                            RegularInstruction::Clear => {
+                                let target = collected_results.pop_value();
+                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                    target,
+                                    "clear".to_string(),
+                                    vec![],
+                                )).with_default_span().into()
                             }
                             RegularInstruction::Increment => {
                                 let base = collected_results.pop_value();

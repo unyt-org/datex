@@ -471,6 +471,20 @@ pub struct InterfaceMethodCall {
     pub arguments: Vec<DatexExpression>,
 }
 
+impl InterfaceMethodCall {
+    pub fn new(
+        target: DatexExpression,
+        method_name: String,
+        arguments: Vec<DatexExpression>,
+    ) -> Self {
+        InterfaceMethodCall {
+            target,
+            method_name,
+            arguments,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PropertyAccess {
     pub base: DatexExpression,

@@ -38,6 +38,14 @@ pub trait CollectionResultsPopper<
         let result = self.pop()?;
         Self::try_extract_key_value_pair(result)
     }
+    fn pop_values(&mut self, count: u32) -> Vec<Val> {
+        let mut values = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            values.push(self.pop_value());
+        }
+        values.reverse();
+        values
+    }
 
     fn pop_value(&mut self) -> Val {
         self.try_pop_value().expect("Expected value result")

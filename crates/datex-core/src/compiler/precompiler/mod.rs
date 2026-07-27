@@ -2,7 +2,7 @@
 //! The precompiler traverses the AST, resolves variable references and shared values.
 
 use crate::{
-    collections::HashSet,
+    ast::expressions::InterfaceMethodCall, collections::HashSet,
     type_inference::infer_expression_type_detailed_errors,
     types::shared_container_containing_nominal_type::SharedContainerContainingNominalType,
     values::core_value::CoreValue,
@@ -915,6 +915,26 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         } else {
             Ok(VisitAction::ContinueRecursion)
         }
+    }
+
+    fn visit_interface_method_call(
+        &mut self,
+        call: &mut InterfaceMethodCall,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        self.visit_datex_expression(&mut call.target)?;
+
+        if let DatexExpressionData::VariableAccess(VariableAccess {
+            access_type,
+            ..
+        }) = call.target.data_mut()
+        {
+            *access_type = ValueAccessType::Borrow
+        };
+        for arg in &mut call.arguments {
+            self.visit_datex_expression(arg)?;
+        }
+        Ok(VisitAction::AbortRecursion)
     }
 
     fn visit_unbox(

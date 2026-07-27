@@ -403,7 +403,9 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::AppendEntry => InstructionCode::APPEND_ENTRY,
             RegularInstruction::Clear => InstructionCode::CLEAR,
             RegularInstruction::Splice(_) => InstructionCode::SPLICE,
-            RegularInstruction::SpliceDynamic => InstructionCode::SPLICE_DYNAMIC,
+            RegularInstruction::SpliceDynamic => {
+                InstructionCode::SPLICE_DYNAMIC
+            }
             RegularInstruction::Increment => InstructionCode::INCREMENT,
             RegularInstruction::Decrement => InstructionCode::DECREMENT,
         }
@@ -493,7 +495,7 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(*insert_count + 1)
             }
             RegularInstruction::SpliceDynamic => {
-                NextExpectedInstructions::Regular(3)
+                NextExpectedInstructions::Regular(4)
             }
 
             RegularInstruction::SetSharedContainerValue => {
