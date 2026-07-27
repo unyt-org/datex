@@ -299,8 +299,6 @@ pub fn ast_from_bytecode(
                                 address: PointerAddress::from(shared_ref.address),
                                 mutability: shared_ref.ref_mutability,
                             })
-                                .with_default_span()
-                                .into()
                         }
 
                         RegularInstruction::CloneStackValue(stack_index) => {
