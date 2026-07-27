@@ -391,6 +391,7 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::PushListToStack
                         | RegularInstruction::SetStackValue(_)
                         | RegularInstruction::Splice(_)
+                        | RegularInstruction::SpliceDynamic
                         | RegularInstruction::AppendEntry
                         | RegularInstruction::Clear
                         | RegularInstruction::SetSharedContainerValue

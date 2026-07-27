@@ -42,6 +42,8 @@ pub enum CompilerError {
     ParserError(Box<ParserError>),
     SharedMutRefToImmutableValue,
     InvalidConversionFromRefToOwnedValue,
+    UnknownInterfaceMethod(String),
+    InvalidInterfaceMethodCall(String),
 }
 impl CompilerError {
     pub fn unexpected_term(expr: DatexExpression) -> Self {
@@ -396,6 +398,18 @@ impl Display for CompilerError {
                 core::write!(
                     f,
                     "Cannot convert reference to owned value without cloning or moving"
+                )
+            }
+            CompilerError::UnknownInterfaceMethod(name) => {
+                core::write!(
+                    f,
+                    "Tried to call unknown interface method: {name}"
+                )
+            }
+            CompilerError::InvalidInterfaceMethodCall(name) => {
+                core::write!(
+                    f,
+                    "Interface method \"{name}\" was called with wrong arguments"
                 )
             }
         }

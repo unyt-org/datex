@@ -466,7 +466,7 @@ pub struct Apply {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct InterfaceMethodCall {
-    pub base: DatexExpression,
+    pub target: DatexExpression,
     pub method_name: String,
     pub arguments: Vec<DatexExpression>,
 }

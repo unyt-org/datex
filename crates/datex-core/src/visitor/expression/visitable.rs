@@ -5,16 +5,15 @@ use crate::{
         DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
         GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
         PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
-        Statements, TagExpression, TypeDeclaration, UnaryOperation, Unbox,
-        UnboxAssignment, UnboxSlotAssignment, VariableAssignment,
-        VariableDeclaration,
+        StackListAssignment, Statements, TagExpression, TypeDeclaration,
+        UnaryOperation, Unbox, UnboxAssignment, UnboxSlotAssignment,
+        VariableAssignment, VariableDeclaration,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
         type_expression::visitable::VisitableTypeExpression,
     },
 };
-use crate::ast::expressions::StackListAssignment;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -193,7 +192,7 @@ impl<E> VisitableExpression<E> for InterfaceMethodCall {
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E> {
-        visitor.visit_datex_expression(&mut self.base)?;
+        visitor.visit_datex_expression(&mut self.target)?;
         for arg in &mut self.arguments {
             visitor.visit_datex_expression(arg)?;
         }
@@ -244,7 +243,6 @@ impl<E> VisitableExpression<E> for StackAssignment {
         Ok(())
     }
 }
-
 
 impl<E> VisitableExpression<E> for StackListAssignment {
     fn walk_children(

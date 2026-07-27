@@ -448,6 +448,7 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::PushListToStack |
                             RegularInstruction::SetStackValue(_) |
                             RegularInstruction::Splice(_) |
+                            RegularInstruction::SpliceDynamic |
                             RegularInstruction::AppendEntry |
                             RegularInstruction::Clear |
                             RegularInstruction::Increment |
@@ -781,7 +782,7 @@ pub gen fn inner_execution_loop(
                                 ) => {
                                     let source_id = state.source_id_cloned();
                                     let mut target = collected_results.try_pop_runtime_value()?;
-                                    let mut values = collected_results.try_collect_value_containers(&mut state)?;
+                                    let values = collected_results.try_collect_value_containers(&mut state)?;
                                     let target_value = target.as_value_container_mut(&mut state.stack)?;
 
                                     let res_values = target_value
@@ -789,6 +790,49 @@ pub gen fn inner_execution_loop(
                                             splice.start_index,
                                             splice.delete_count,
                                             values,
+                                        )).map_err(|e| e.into())?;
+
+                                    // create new list from result values
+                                    ValueContainer::from(res_values).into()
+                                }
+
+                                RegularInstruction::SpliceDynamic => {
+                                    let source_id = state.source_id_cloned();
+                                    let mut target = collected_results.try_pop_runtime_value()?;
+                                    let values = collected_results.try_pop_value_container(&mut state)?;
+                                    let delete_count = collected_results.try_pop_value_container(&mut state)?;
+                                    let start_index = collected_results.try_pop_value_container(&mut state)?;
+                                    
+                                    // values must be a list
+                                    let values: List = match values.try_into_value() {
+                                        Some(list) => list,
+                                        None => return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList))
+                                    };
+                                    // delete count must be integer
+                                    let delete_count: u32 = match delete_count.clone().try_into_value::<Integer>() {
+                                        Some(int) => int.as_wrapped_u32(),
+                                        None => match delete_count.try_into_value::<TypedInteger>() {
+                                            Some(int) => int.as_usize().unwrap() as u32,
+                                            None => return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList)),
+                                        }
+                                    };
+
+                                    // start_index count must be integer
+                                    let start_index: u32 = match start_index.clone().try_into_value::<Integer>() {
+                                        Some(int) => int.as_wrapped_u32(),
+                                        None => match start_index.try_into_value::<TypedInteger>() {
+                                            Some(int) => int.as_usize().unwrap() as u32,
+                                            None => return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList)),
+                                        }
+                                    };
+                                    
+                                    let target_value = target.as_value_container_mut(&mut state.stack)?;
+
+                                    let res_values = target_value
+                                        .try_list_splice(vec![], source_id, ListSpliceUpdateData::new(
+                                            start_index,
+                                            delete_count,
+                                            values.into_vec(),
                                         )).map_err(|e| e.into())?;
 
                                     // create new list from result values

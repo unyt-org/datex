@@ -172,6 +172,7 @@ pub enum RegularInstruction {
     Clear,
     // UpdateOperation::Splice
     Splice(SpliceData),
+    SpliceDynamic,
 
     // UpdateOperation::Increment
     Increment,
@@ -402,6 +403,7 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::AppendEntry => InstructionCode::APPEND_ENTRY,
             RegularInstruction::Clear => InstructionCode::CLEAR,
             RegularInstruction::Splice(_) => InstructionCode::SPLICE,
+            RegularInstruction::SpliceDynamic => InstructionCode::SPLICE_DYNAMIC,
             RegularInstruction::Increment => InstructionCode::INCREMENT,
             RegularInstruction::Decrement => InstructionCode::DECREMENT,
         }
@@ -489,6 +491,9 @@ impl RegularInstruction {
             }
             RegularInstruction::Splice(SpliceData { insert_count, .. }) => {
                 NextExpectedInstructions::Regular(*insert_count + 1)
+            }
+            RegularInstruction::SpliceDynamic => {
+                NextExpectedInstructions::Regular(3)
             }
 
             RegularInstruction::SetSharedContainerValue => {
@@ -738,6 +743,9 @@ impl RegularInstruction {
             InstructionCode::UNBOX => Ok(RegularInstruction::Unbox),
             InstructionCode::SPLICE => {
                 SpliceData::read(reader).map(RegularInstruction::Splice)
+            }
+            InstructionCode::SPLICE_DYNAMIC => {
+                Ok(RegularInstruction::SpliceDynamic)
             }
 
             InstructionCode::SET_SHARED_CONTAINER_VALUE => {

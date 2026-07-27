@@ -67,6 +67,7 @@ pub enum InstructionCode {
     APPEND_ENTRY,
     CLEAR,
     SPLICE,
+    SPLICE_DYNAMIC,
 
     // pointers & variables 0xa0 - 0xbf
 

@@ -48,7 +48,7 @@ use crate::{
             },
             instruction_data::{
                 InstructionBlockData, ModifySharedContainerValue,
-                ShortTextData, StackIndex, TaggedValue,
+                ShortTextData, SpliceData, StackIndex, TaggedValue,
             },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
@@ -944,6 +944,81 @@ fn compile_expression(
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(apply.base, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+        }
+
+        DatexExpressionData::InterfaceMethodCall(mut call) => {
+            compilation_context.mark_has_non_static_value();
+
+            // TODO: replace with trait impls
+            match call.method_name.as_str() {
+                "append" => {
+                    append_regular_instruction(
+                        compilation_context.cursor(),
+                        RegularInstruction::AppendEntry,
+                    );
+                    // must be exactly one element
+                    if call.arguments.len() != 1 {
+                        return Err(CompilerError::InvalidInterfaceMethodCall(
+                            call.method_name.to_string(),
+                        ));
+                    }
+
+                    scope = compile_expression(
+                        compilation_context,
+                        RichAst::new(call.arguments.remove(0), &metadata),
+                        CompileMetadata::default(),
+                        scope,
+                    )?;
+                }
+                "clear" => {
+                    append_regular_instruction(
+                        compilation_context.cursor(),
+                        RegularInstruction::Clear,
+                    );
+
+                    // no arguments allowed
+                    if !call.arguments.is_empty() {
+                        return Err(CompilerError::InvalidInterfaceMethodCall(
+                            call.method_name.to_string(),
+                        ));
+                    }
+                }
+                "splice" => {
+                    // must be exactly three elements
+                    if call.arguments.len() != 3 {
+                        return Err(CompilerError::InvalidInterfaceMethodCall(
+                            call.method_name.to_string(),
+                        ));
+                    }
+
+                    append_regular_instruction(
+                        compilation_context.cursor(),
+                        RegularInstruction::SpliceDynamic,
+                    );
+
+                    for argument in call.arguments.drain(..) {
+                        scope = compile_expression(
+                            compilation_context,
+                            RichAst::new(argument, &metadata),
+                            CompileMetadata::default(),
+                            scope,
+                        )?;
+                    }
+                }
+                _ => {
+                    return Err(CompilerError::UnknownInterfaceMethod(
+                        call.method_name.to_string(),
+                    ));
+                }
+            }
+
+            // compile target expression
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(call.target, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;

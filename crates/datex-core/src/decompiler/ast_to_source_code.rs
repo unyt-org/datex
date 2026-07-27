@@ -565,10 +565,16 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::DeriveRef(create_ref) => {
                 match &create_ref.mutability {
                     LocalReferenceMutability::Mutable => {
-                        format!("&mut {}", self.format_child(&create_ref.expression))
+                        format!(
+                            "&mut {}",
+                            self.format_child(&create_ref.expression)
+                        )
                     }
                     LocalReferenceMutability::Immutable => {
-                        format!("&{}", self.format_child(&create_ref.expression))
+                        format!(
+                            "&{}",
+                            self.format_child(&create_ref.expression)
+                        )
                     }
                 }
             }
@@ -622,10 +628,14 @@ impl AstToSourceCodeConverter {
                     args_source.push(self.format_child(arg));
                 }
 
-                format!("{}({})", self.format_child(base), args_source.join(","))
+                format!(
+                    "{}({})",
+                    self.format_child(base),
+                    args_source.join(",")
+                )
             }
             DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                base,
+                target: base,
                 method_name,
                 arguments,
             }) => {
@@ -675,12 +685,11 @@ impl AstToSourceCodeConverter {
                         }
                     })
                     .collect();
-                
+
                 // no outer parentheses for root statements
                 if is_root {
                     statements_code.join(self.newline())
-                }
-                else {
+                } else {
                     self.wrap_statement_elements(statements_code)
                 }
             }
@@ -831,7 +840,12 @@ impl AstToSourceCodeConverter {
                 index: slot,
                 expression,
             }) => {
-                ast_fmt!(&self, "{}%s=%s{}", slot, self.format_child(expression))
+                ast_fmt!(
+                    &self,
+                    "{}%s=%s{}",
+                    slot,
+                    self.format_child(expression)
+                )
             }
             DatexExpressionData::StackListAssignment(StackListAssignment {
                 expression,

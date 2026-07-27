@@ -94,7 +94,7 @@ impl Parser {
                 let (rhs, end_token) = self.parse_apply_arguments()?;
                 let span = lhs.span.start..end_token;
                 DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                    base: lhs,
+                    target: lhs,
                     method_name,
                     arguments: rhs,
                 })
@@ -1940,7 +1940,7 @@ mod tests {
         assert_eq!(
             input.data(),
             &DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                base: (DatexExpressionData::Identifier("hello".to_string())
+                target: (DatexExpressionData::Identifier("hello".to_string())
                     .with_default_span()),
                 method_name: "struct".to_string(),
                 arguments: vec![
@@ -1953,7 +1953,7 @@ mod tests {
         assert_eq!(
             input.data(),
             &DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                base: (DatexExpressionData::Identifier("hello".to_string())
+                target: (DatexExpressionData::Identifier("hello".to_string())
                     .with_default_span()),
                 method_name: "struct".to_string(),
                 arguments: vec![
@@ -1966,7 +1966,7 @@ mod tests {
         assert_eq!(
             input.data(),
             &DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                base: (DatexExpressionData::Identifier("hello".to_string())
+                target: (DatexExpressionData::Identifier("hello".to_string())
                     .with_default_span()),
                 method_name: "struct".to_string(),
                 arguments: vec![],
