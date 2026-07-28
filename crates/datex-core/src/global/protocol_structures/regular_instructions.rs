@@ -1190,7 +1190,7 @@ mod tests {
     use binrw::{BinResult, BinWrite};
 
     use super::*;
-    use std::io::Cursor;
+    use binrw::io::Cursor;
 
     fn encode(instruction: &RegularInstruction) -> Vec<u8> {
         let mut writer = Cursor::new(Vec::new());

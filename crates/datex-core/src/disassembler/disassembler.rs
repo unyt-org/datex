@@ -1,16 +1,12 @@
 use crate::{
     disassembler::options::DisassemblerOptions,
     dxb_parser::body::{DXBParserError, iterate_instructions},
-    global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::{
-            instruction_data::InstructionBlockDataDebugFlat,
-            instructions::{
-                CountOrUnbounded, Instruction,
-                NestedInstructionResolutionStrategy,
-            },
-            regular_instructions::RegularInstruction,
+    global::protocol_structures::{
+        instruction_data::InstructionBlockDataDebugFlat,
+        instructions::{
+            CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
         },
+        regular_instructions::RegularInstruction,
     },
     prelude::*,
     utils::ansi_colors::{AnsiColor, AnsiWrite},
@@ -532,13 +528,16 @@ mod tests {
     use super::*;
     use crate::{
         core_compiler::value_compiler::append_instruction,
-        global::protocol_structures::{
-            instruction_data::{
-                InstructionBlockData, InstructionBlockDataDebugFlat,
-                InstructionBlockDataDebugTree, StatementsData, UInt8Data,
-                UnboundedStatementsData,
+        global::{
+            instruction_codes::InstructionCode,
+            protocol_structures::{
+                instruction_data::{
+                    InstructionBlockData, InstructionBlockDataDebugFlat,
+                    InstructionBlockDataDebugTree, StatementsData, UInt8Data,
+                    UnboundedStatementsData,
+                },
+                regular_instructions::RegularInstruction,
             },
-            regular_instructions::RegularInstruction,
         },
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
     };

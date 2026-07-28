@@ -8,7 +8,6 @@ use crate::{
     prelude::*,
     shared_values::{
         ReferenceMutability, RemotePointerAddress, SelfOwnedPointerAddress,
-        SharedContainerMutability,
     },
     values::core_values::endpoint::Endpoint,
 };

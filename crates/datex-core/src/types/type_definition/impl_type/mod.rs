@@ -1,8 +1,4 @@
-use crate::{
-    prelude::*,
-    shared_values::PointerAddress,
-    types::{r#type::Type},
-};
+use crate::{prelude::*, shared_values::PointerAddress, types::r#type::Type};
 use core::fmt::Display;
 pub mod serde_dif;
 mod type_match;
@@ -21,7 +17,6 @@ impl ImplTypeDefinition {
         }
     }
 }
-
 
 impl Display for ImplTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

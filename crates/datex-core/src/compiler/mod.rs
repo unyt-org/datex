@@ -33,13 +33,10 @@ use crate::{
             append_text, append_typed_decimal, append_value,
         },
     },
-    dxb_parser::next_instructions_stack::NextInstructionType::Regular,
     global::{
         dxb_block::DXBBlock,
         instruction_codes::InstructionCode,
-        operators::{
-            binary::ArithmeticOperator, modification::ModificationOperator,
-        },
+        operators::modification::ModificationOperator,
         protocol_structures::{
             block_header::BlockHeader,
             encrypted_header::EncryptedHeader,
@@ -47,10 +44,7 @@ use crate::{
                 InjectedValueType, LocalInjectedValueType,
                 SharedInjectedValueType,
             },
-            instruction_data::{
-                InstructionBlockData, ModifySharedContainerValue,
-                ShortTextData, SpliceData, StackIndex, TaggedValue,
-            },
+            instruction_data::{InstructionBlockData, StackIndex},
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
         },
@@ -1562,9 +1556,9 @@ fn compile_maybe_direct_assignment_operation(
             compilation_context.cursor(),
             RegularInstruction::decrement(),
         ),
-        operator => return false,
+        _operator => return false,
     };
-    return true;
+    true
 }
 
 fn compile_key_value_entry(

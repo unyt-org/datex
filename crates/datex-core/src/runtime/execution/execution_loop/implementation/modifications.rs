@@ -1,16 +1,10 @@
 //! This module contains the implementation of modifications that can be performed on [ValueContainer]s
 use crate::{
-    global::operators::ModificationOperator,
     prelude::*,
     runtime::execution::ExecutionError,
     shared_values::base_shared_value_container::observers::TransceiverId,
     value_updates::{
-        UpdateReturn,
-        errors::UpdateError,
-        update_data::{
-            SetEntryUpdateData, Update, UpdateData, UpdateOperation,
-            UpdateOperator,
-        },
+        update_data::{SetEntryUpdateData, UpdateOperation},
         update_handler::UpdateHandler,
     },
     values::value_container::{ValueContainer, value_key::ValueKey},

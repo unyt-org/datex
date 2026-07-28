@@ -32,7 +32,7 @@ use crate::{
         Runtime, RuntimeConfig, RuntimeConfigInterface,
         cache::shared_references_cache::SharedReferencesCache,
         execution::{
-            ExecutionError, InvalidProgramError,
+            ExecutionError,
             context::{
                 ExecutionContext, ExecutionMode, RemoteExecutionContext,
                 ScriptExecutionError,
@@ -46,15 +46,12 @@ use crate::{
         },
     },
     shared_values::{
-        OwnedSharedContainer, PointerAddress, RemotePointerAddress,
-        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
-        base_shared_value_container::observers::TransceiverId,
+        SharedContainer, base_shared_value_container::observers::TransceiverId,
     },
     time::Instant,
     utils::task_manager::TaskManager,
     values::{
-        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
-        value_container::ValueContainer,
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
 use alloc::rc::Rc;

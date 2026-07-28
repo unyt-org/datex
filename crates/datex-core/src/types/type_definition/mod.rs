@@ -24,7 +24,6 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    value_updates::update_data::UpdateOperator,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
 pub mod callable;

@@ -5,11 +5,7 @@ use crate::{
         expressions::{DatexExpression, DatexExpressionData},
         spanned::Spanned,
     },
-    parser::{
-        Parser, SpannedParserError,
-        errors::ParserError,
-        lexer::{SpannedToken, Token},
-    },
+    parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
 };
 
 use crate::prelude::*;

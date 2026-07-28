@@ -4,7 +4,6 @@
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
-    global::operators::ModificationOperator,
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -22,7 +21,6 @@ use crate::{
             TypeMetadata,
         },
     },
-    value_updates::update_data::UpdateOperator,
     values::{core_value::CoreValue, value_container::ValueContainer},
 };
 use core::{fmt::Display, hash::Hash, ops::Deref};

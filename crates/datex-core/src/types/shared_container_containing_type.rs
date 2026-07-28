@@ -1,8 +1,5 @@
 use crate::{
-    global::operators::ModificationOperator,
-    shared_values::SharedContainer,
-    types::{r#type::Type},
-    value_updates::update_data::UpdateOperator,
+    shared_values::SharedContainer, types::r#type::Type,
     values::core_value::CoreValue,
 };
 use core::ops::Deref;
@@ -18,7 +15,6 @@ impl Deref for SharedContainerContainingType {
         &self.0
     }
 }
-
 
 impl SharedContainerContainingType {
     /// Creates a new [SharedContainerContainingType] from a [SharedContainer] without checking the constraint.

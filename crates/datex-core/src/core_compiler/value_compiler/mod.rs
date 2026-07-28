@@ -7,12 +7,9 @@ use crate::{
     },
     global::{
         instruction_codes::InstructionCode,
-        protocol_structures::{
-            instruction_data::{InstantData, TextData},
-            regular_instructions::RegularInstruction,
-        },
+        protocol_structures::regular_instructions::RegularInstruction,
     },
-    utils::buffers::{append_i16, append_i32, append_u8},
+    utils::buffers::{append_i16, append_i32},
     values::{
         core_value::CoreValue,
         core_values::{
@@ -32,15 +29,7 @@ use crate::{
         core_compilation_context::{ByteCursor, CoreCompilationContext},
         value_visitor::{ParentAccessor, ParentContext},
     },
-    global::protocol_structures::{
-        instruction_data::{
-            ApplyData, Float32Data, Float64Data, Int8Data, Int16Data,
-            Int32Data, Int64Data, Int128Data, ListData, MapData, ShortTextData,
-            TaggedValue, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
-            UInt128Data,
-        },
-        instructions::Instruction,
-    },
+    global::protocol_structures::instructions::Instruction,
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdIndex},
         type_id::{CoreLibBaseTypeId, CoreLibTypeId},

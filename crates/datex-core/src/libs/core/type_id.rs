@@ -1,11 +1,9 @@
 use crate::{
-    global::operators::ModificationOperator,
     libs::core::core_lib_id::{
         CoreLibIdIndex, CoreLibIdTrait, TYPE_SPACE_BASE,
         TYPE_VARIANT_SPACE_BASE,
     },
     prelude::*,
-    value_updates::update_data::UpdateOperator,
     values::core_values::{
         decimal::typed_decimal::DecimalTypeVariant,
         integer::typed_integer::IntegerTypeVariant,

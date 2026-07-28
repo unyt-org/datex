@@ -3,7 +3,7 @@ use crate::{
         spanned::Spanned,
         type_expressions::{TypeExpression, TypeExpressionData},
     },
-    parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
+    parser::{Parser, SpannedParserError, lexer::Token},
 };
 
 use crate::prelude::*;

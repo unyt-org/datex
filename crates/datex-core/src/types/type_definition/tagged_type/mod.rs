@@ -1,7 +1,4 @@
-use crate::{
-    prelude::*,
-    types::{r#type::Type},
-};
+use crate::{prelude::*, types::r#type::Type};
 use core::fmt::Display;
 
 pub mod serde_dif;

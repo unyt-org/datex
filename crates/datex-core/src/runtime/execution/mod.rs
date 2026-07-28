@@ -1,10 +1,7 @@
 //! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
     core_compiler::InstructionInput,
-    global::protocol_structures::{
-        instruction_data::ShortTextData,
-        regular_instructions::RegularInstruction,
-    },
+    global::protocol_structures::regular_instructions::RegularInstruction,
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
     runtime::{
@@ -132,7 +129,7 @@ pub async fn execute_dxb(
     input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let runtime = input.runtime.clone();
-    let caller_metadata = input.caller_metadata.clone();
+    let _caller_metadata = input.caller_metadata.clone();
     let (interrupt_provider, execution_loop) = input.execution_loop();
 
     for output in execution_loop {

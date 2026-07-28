@@ -8,7 +8,7 @@ use crate::{
         instructions::{
             CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
         },
-        regular_instructions::{RegularInstruction},
+        regular_instructions::RegularInstruction,
     },
     prelude::*,
 };

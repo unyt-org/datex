@@ -9,9 +9,7 @@ use crate::{
         value_visitor::ValueVisitor,
     },
     global::protocol_structures::{
-        instruction_data::{
-            SharedRef, ShortTextData, SpliceData, StackIndex, UInt32Data,
-        },
+        instruction_data::{SharedRef, StackIndex},
         regular_instructions::RegularInstruction,
     },
     prelude::*,

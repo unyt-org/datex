@@ -52,7 +52,7 @@ pub fn core_lib_string(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(Instruction, attributes(magic, instruction))]
 pub fn derive_instruction(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
-    magic_rw::derive_instruction(input).into()
+    magic_rw::derive_instruction(input)
 }
 
 /// This derive macro generates implementations of the DatexValueContainerProxy trait for a struct or enum,

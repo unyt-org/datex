@@ -10,8 +10,7 @@ use crate::{
     },
     global::protocol_structures::{
         instruction_data::{
-            MoveWithValue, SharedRef, SharedRefWithValue, ShortTextData,
-            StackIndex, UInt32Data,
+            MoveWithValue, SharedRef, SharedRefWithValue, StackIndex,
         },
         regular_instructions::RegularInstruction,
     },

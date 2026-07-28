@@ -94,12 +94,8 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, ops::DerefMut};
 mod collected_execution_result;
-use crate::value_updates::{
-    UpdateReturn,
-    update_data::{
-        DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData, Update,
-        UpdateData, UpdateOperation,
-    },
+use crate::value_updates::update_data::{
+    DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
 };
 use collected_execution_result::CollectedExecutionResult;
 

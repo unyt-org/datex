@@ -1,7 +1,6 @@
 use crate::{
-    dif::serde_context::SerdeContext, global::operators::ModificationOperator,
+    dif::serde_context::SerdeContext,
     utils::serde_serialize_seed::SerializeSeed,
-    value_updates::update_data::UpdateOperator,
 };
 use core::fmt::Display;
 use serde::{Deserializer, Serializer, de::DeserializeSeed};

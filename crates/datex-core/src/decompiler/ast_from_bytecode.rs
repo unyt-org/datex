@@ -23,12 +23,9 @@ use crate::{
         },
     },
     types::literal_type_definition::LiteralTypeDefinition,
-    values::{
-        core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            integer::{Integer, typed_integer::TypedInteger},
-        },
-        value_container::ValueContainer,
+    values::core_values::{
+        decimal::{Decimal, typed_decimal::TypedDecimal},
+        integer::{Integer, typed_integer::TypedInteger},
     },
 };
 
@@ -296,7 +293,7 @@ pub fn ast_from_bytecode(
 
                         RegularInstruction::SharedRef(shared_ref) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                                address: PointerAddress::from(shared_ref.address),
+                                address: shared_ref.address,
                                 mutability: shared_ref.ref_mutability,
                             })
                         }
@@ -547,7 +544,7 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::BinaryOperation(
                                     BinaryOperation {
                                         operator: BinaryOperator::from(
-                                            unsafe { 
+                                            unsafe {
                                                 // Safety: We have already validated that the instruction is a valid binary operator, so this unwrap is safe.
                                                 regular_instruction.code().unwrap_unchecked()
                                             },
@@ -575,8 +572,8 @@ pub fn ast_from_bytecode(
                                         operator: ComparisonOperator::from(
                                             regular_instruction,
                                         ),
-                                        left: left,
-                                        right: right,
+                                        left,
+                                        right,
                                     },
                                 )
                                     .with_default_span()
@@ -777,7 +774,7 @@ pub fn ast_from_bytecode(
                                 let base =
                                     arguments.remove(arguments.len() - 1);
                                 DatexExpressionData::Apply(Apply {
-                                    base: base,
+                                    base,
                                     arguments,
                                 })
                                     .with_default_span()
@@ -787,7 +784,7 @@ pub fn ast_from_bytecode(
                                 let argument = collected_results.pop_value();
                                 let base = collected_results.pop_value();
                                 DatexExpressionData::Apply(Apply {
-                                    base: base,
+                                    base,
                                     arguments: vec![argument],
                                 })
                                     .with_default_span()
@@ -796,7 +793,7 @@ pub fn ast_from_bytecode(
                             RegularInstruction::ApplyZero => {
                                 let base = collected_results.pop_value();
                                 DatexExpressionData::Apply(Apply {
-                                    base: base,
+                                    base,
                                     arguments: vec![],
                                 })
                                     .with_default_span()
