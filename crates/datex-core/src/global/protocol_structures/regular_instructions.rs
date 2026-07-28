@@ -33,11 +33,11 @@ use crate::{
     },
 };
 use binrw::{
-    BinRead, BinResult, BinWrite, Endian,
-    io::{Read, Seek, Write},
-    meta::{EndianKind, ReadEndian},
+    BinRead,
+    io::{Read, Seek},
 };
 use core::fmt::{Display, Write as FmtWrite};
+use datex_macros_internal::Instruction;
 
 impl RegularInstruction {
     pub fn int8(value: i8) -> Self {
@@ -100,52 +100,100 @@ impl RegularInstruction {
     pub fn instant(value: i128) -> Self {
         RegularInstruction::Instant(InstantData(value))
     }
+
+    /// Creates a text instruction, choosing between the short and default variant based on the length of the string.
     pub fn text(value: String) -> Self {
+        match value.len() {
+            0..=255 => Self::short_text(value),
+            _ => Self::text_default(value),
+        }
+    }
+
+    /// Creates a text instruction with the default variant, regardless of the length of the string.
+    pub fn text_default(value: String) -> Self {
         RegularInstruction::Text(TextData(value))
     }
+
+    /// Creates a short text instruction, regardless of the length of the string.
     pub fn short_text(value: String) -> Self {
         RegularInstruction::ShortText(ShortTextData(value))
     }
+
     pub fn tagged_value(tag: String, is_empty: bool) -> Self {
         RegularInstruction::TaggedValue(TaggedValue {
             tag: ShortTextData(tag),
             is_empty,
         })
     }
+
+    /// Creates a list instruction, choosing between the short and default variant based on the count of elements.
     pub fn list(count: u32) -> Self {
         match count {
-            0..=255 => RegularInstruction::ShortList(ShortListData {
-                element_count: count as u8,
-            }),
-            _ => RegularInstruction::List(ListData {
-                element_count: count,
-            }),
+            0..=255 => Self::list_short(count as u8),
+            _ => Self::list_default(count),
         }
     }
+
+    /// Creates a list instruction with the default variant, regardless of the count of elements.
+    pub fn list_default(count: u32) -> Self {
+        RegularInstruction::List(ListData {
+            element_count: count,
+        })
+    }
+
+    /// Creates a list instruction with the short variant, regardless of the count of elements.
+    pub fn list_short(count: u8) -> Self {
+        RegularInstruction::ShortList(ShortListData {
+            element_count: count,
+        })
+    }
+
+    /// Creates a map instruction, choosing between the short and default variant based on the count of elements.
     pub fn map(count: u32) -> Self {
         match count {
-            0..=255 => RegularInstruction::ShortMap(ShortMapData {
-                element_count: count as u8,
-            }),
-            _ => RegularInstruction::Map(MapData {
-                element_count: count,
-            }),
+            0..=255 => Self::map_short(count as u8),
+            _ => Self::map_default(count),
         }
     }
+
+    /// Creates a map instruction with the default variant, regardless of the count of elements.
+    pub fn map_default(count: u32) -> Self {
+        RegularInstruction::Map(MapData {
+            element_count: count,
+        })
+    }
+
+    /// Creates a map instruction with the short variant, regardless of the count of elements.
+    pub fn map_short(count: u8) -> Self {
+        RegularInstruction::ShortMap(ShortMapData {
+            element_count: count,
+        })
+    }
+
+    /// Creates a statements instruction, choosing between the short and default variant based on the count of statements.
     pub fn statements(count: u32, terminated: bool) -> Self {
         match count {
-            0..=255 => {
-                RegularInstruction::ShortStatements(ShortStatementsData {
-                    statements_count: count as u8,
-                    terminated,
-                })
-            }
-            _ => RegularInstruction::Statements(StatementsData {
-                statements_count: count,
-                terminated,
-            }),
+            0..=255 => Self::statements_short(count as u8, terminated),
+            _ => Self::statements_default(count, terminated),
         }
     }
+
+    /// Creates a statements instruction with the default variant, regardless of the count of statements.
+    pub fn statements_default(count: u32, terminated: bool) -> Self {
+        RegularInstruction::Statements(StatementsData {
+            statements_count: count,
+            terminated,
+        })
+    }
+
+    /// Creates a statements instruction with the short variant, regardless of the count of statements.
+    pub fn statements_short(count: u8, terminated: bool) -> Self {
+        RegularInstruction::ShortStatements(ShortStatementsData {
+            statements_count: count,
+            terminated,
+        })
+    }
+
     pub fn unbounded_statements() -> Self {
         RegularInstruction::UnboundedStatements
     }
@@ -154,9 +202,31 @@ impl RegularInstruction {
             terminated,
         })
     }
+
+    /// Creates an apply instruction, choosing between the zero, single, and default variants based on the count of arguments.
     pub fn apply(arg_count: u16) -> Self {
+        match arg_count {
+            0 => Self::apply_zero(),
+            1 => Self::apply_single(),
+            _ => Self::apply_default(arg_count),
+        }
+    }
+
+    /// Creates an apply instruction with the default variant, regardless of the count of arguments.
+    pub fn apply_default(arg_count: u16) -> Self {
         RegularInstruction::Apply(ApplyData { arg_count })
     }
+
+    /// Creates an apply instruction with the single variant.
+    pub fn apply_single() -> Self {
+        RegularInstruction::ApplySingle
+    }
+
+    /// Creates an apply instruction with the zero variant.
+    pub fn apply_zero() -> Self {
+        RegularInstruction::ApplyZero
+    }
+
     pub fn get_property_text(key: String) -> Self {
         RegularInstruction::GetPropertyText(ShortTextData(key))
     }
@@ -260,15 +330,6 @@ impl RegularInstruction {
     }
     pub fn take_entry_dynamic() -> Self {
         RegularInstruction::TakeEntryDynamic
-    }
-    pub fn set_entry_text(key: String) -> Self {
-        RegularInstruction::SetEntryText(ShortTextData(key))
-    }
-    pub fn set_entry_index(index: u32) -> Self {
-        RegularInstruction::SetEntryIndex(UInt32Data(index))
-    }
-    pub fn set_entry_dynamic() -> Self {
-        RegularInstruction::SetEntryDynamic
     }
     pub fn null() -> Self {
         RegularInstruction::Null
@@ -378,280 +439,271 @@ impl RegularInstruction {
     }
 }
 
-// impl From<&RegularInstruction> for InstructionCode {
-//     fn from(instruction: &RegularInstruction) -> Self {
-//         instruction.code()
-//     }
-// }
-
-#[repr(u8)]
-#[derive(Clone, Debug, PartialEq, BinRead, BinWrite)]
-#[brw(little)]
-#[br(import(code: InstructionCode))]
-#[br(return_unexpected_error)]
+#[derive(Clone, Debug, PartialEq, Instruction)]
 pub enum RegularInstruction {
     // signed integers
-    #[br(pre_assert(code == InstructionCode::INT_8))]
-    Int8(Int8Data) = InstructionCode::INT_8.as_u8(),
-    #[br(pre_assert(code == InstructionCode::INT_16))]
-    Int16(Int16Data) = InstructionCode::INT_16.as_u8(),
-    #[br(pre_assert(code == InstructionCode::INT_32))]
-    Int32(Int32Data) = InstructionCode::INT_32.as_u8(),
-    #[br(pre_assert(code == InstructionCode::INT_64))]
-    Int64(Int64Data) = InstructionCode::INT_64.as_u8(),
-    #[br(pre_assert(code == InstructionCode::INT_128))]
-    Int128(Int128Data) = InstructionCode::INT_128.as_u8(),
+    #[magic(InstructionCode::INT_8)]
+    Int8(Int8Data),
+    #[magic(InstructionCode::INT_16)]
+    Int16(Int16Data),
+    #[magic(InstructionCode::INT_32)]
+    Int32(Int32Data),
+    #[magic(InstructionCode::INT_64)]
+    Int64(Int64Data),
+    #[magic(InstructionCode::INT_128)]
+    Int128(Int128Data),
 
     // unsigned integers
-    #[br(pre_assert(code == InstructionCode::UINT_8))]
-    UInt8(UInt8Data) = InstructionCode::UINT_8.as_u8(),
-    #[br(pre_assert(code == InstructionCode::UINT_16))]
-    UInt16(UInt16Data) = InstructionCode::UINT_16.as_u8(),
-    #[br(pre_assert(code == InstructionCode::UINT_32))]
-    UInt32(UInt32Data) = InstructionCode::UINT_32.as_u8(),
-    #[br(pre_assert(code == InstructionCode::UINT_64))]
-    UInt64(UInt64Data) = InstructionCode::UINT_64.as_u8(),
-    #[br(pre_assert(code == InstructionCode::UINT_128))]
-    UInt128(UInt128Data) = InstructionCode::UINT_128.as_u8(),
+    #[magic(InstructionCode::UINT_8)]
+    UInt8(UInt8Data),
+    #[magic(InstructionCode::UINT_16)]
+    UInt16(UInt16Data),
+    #[magic(InstructionCode::UINT_32)]
+    UInt32(UInt32Data),
+    #[magic(InstructionCode::UINT_64)]
+    UInt64(UInt64Data),
+    #[magic(InstructionCode::UINT_128)]
+    UInt128(UInt128Data),
 
     // big integers
-    #[br(pre_assert(code == InstructionCode::INT_BIG))]
-    BigInteger(Integer) = InstructionCode::INT_BIG.as_u8(),
+    #[magic(InstructionCode::INT_BIG)]
+    BigInteger(Integer),
 
     // default integer
-    #[br(pre_assert(code == InstructionCode::INT))]
-    Integer(Integer) = InstructionCode::INT.as_u8(),
-    #[br(pre_assert(code == InstructionCode::RANGE))]
-    Range = InstructionCode::RANGE.as_u8(),
+    #[magic(InstructionCode::INT)]
+    Integer(Integer),
+    #[magic(InstructionCode::RANGE)]
+    Range,
 
-    #[br(pre_assert(code == InstructionCode::ENDPOINT))]
-    Endpoint(Endpoint) = InstructionCode::ENDPOINT.as_u8(),
+    #[magic(InstructionCode::ENDPOINT)]
+    Endpoint(Endpoint),
 
-    #[br(pre_assert(code == InstructionCode::INSTANT))]
-    Instant(InstantData) = InstructionCode::INSTANT.as_u8(),
+    #[magic(InstructionCode::INSTANT)]
+    Instant(InstantData),
 
-    #[br(pre_assert(code == InstructionCode::DECIMAL_F32))]
-    DecimalF32(Float32Data) = InstructionCode::DECIMAL_F32.as_u8(),
-    #[br(pre_assert(code == InstructionCode::DECIMAL_F64))]
-    DecimalF64(Float64Data) = InstructionCode::DECIMAL_F64.as_u8(),
-    #[br(pre_assert(code == InstructionCode::DECIMAL_AS_INT_16))]
-    DecimalAsInt16(FloatAsInt16Data) = InstructionCode::DECIMAL_AS_INT_16.as_u8(),
-    #[br(pre_assert(code == InstructionCode::DECIMAL_AS_INT_32))]
-    DecimalAsInt32(FloatAsInt32Data) = InstructionCode::DECIMAL_AS_INT_32.as_u8(),
-    #[br(pre_assert(code == InstructionCode::DECIMAL_BIG))]
-    BigDecimal(Decimal) = InstructionCode::DECIMAL_BIG.as_u8(),
+    #[magic(InstructionCode::DECIMAL_F32)]
+    DecimalF32(Float32Data),
+    #[magic(InstructionCode::DECIMAL_F64)]
+    DecimalF64(Float64Data),
+    #[magic(InstructionCode::DECIMAL_AS_INT_16)]
+    DecimalAsInt16(FloatAsInt16Data),
+    #[magic(InstructionCode::DECIMAL_AS_INT_32)]
+    DecimalAsInt32(FloatAsInt32Data),
+    #[magic(InstructionCode::DECIMAL_BIG)]
+    BigDecimal(Decimal),
     // default decimal
-    #[br(pre_assert(code == InstructionCode::DECIMAL))]
-    Decimal(Decimal) = InstructionCode::DECIMAL.as_u8(),
+    #[magic(InstructionCode::DECIMAL)]
+    Decimal(Decimal),
 
-    #[br(pre_assert(code == InstructionCode::REMOTE_EXECUTION))]
-    RemoteExecution(InstructionBlockData) = InstructionCode::REMOTE_EXECUTION.as_u8(),
-    #[br(pre_assert(code == InstructionCode::SHORT_TEXT))]
-    ShortText(ShortTextData) = InstructionCode::SHORT_TEXT.as_u8(),
-    #[br(pre_assert(code == InstructionCode::TEXT))]
-    Text(TextData) = InstructionCode::TEXT.as_u8(),
+    #[magic(InstructionCode::REMOTE_EXECUTION)]
+    RemoteExecution(InstructionBlockData),
+    #[magic(InstructionCode::SHORT_TEXT)]
+    ShortText(ShortTextData),
+    #[magic(InstructionCode::TEXT)]
+    Text(TextData),
 
-    #[br(pre_assert(code == InstructionCode::TRUE))]
-    True = InstructionCode::TRUE.as_u8(),
-    #[br(pre_assert(code == InstructionCode::FALSE))]
-    False = InstructionCode::FALSE.as_u8(),
-    #[br(pre_assert(code == InstructionCode::NULL))]
-    Null = InstructionCode::NULL.as_u8(),
-    #[br(pre_assert(code == InstructionCode::STATEMENTS))]
-    Statements(StatementsData) = InstructionCode::STATEMENTS.as_u8(),
-    #[br(pre_assert(code == InstructionCode::SHORT_STATEMENTS))]
-    ShortStatements(ShortStatementsData) = InstructionCode::SHORT_STATEMENTS.as_u8(),
-    #[br(pre_assert(code == InstructionCode::UNBOUNDED_STATEMENTS))]
-    UnboundedStatements = InstructionCode::UNBOUNDED_STATEMENTS.as_u8(),
-    #[br(pre_assert(code == InstructionCode::UNBOUNDED_STATEMENTS_END))]
-    UnboundedStatementsEnd(UnboundedStatementsData) = InstructionCode::UNBOUNDED_STATEMENTS_END.as_u8(),
-    #[br(pre_assert(code == InstructionCode::LIST))]
-    List(ListData) = InstructionCode::LIST.as_u8(),
-    #[br(pre_assert(code == InstructionCode::SHORT_LIST))]
-    ShortList(ShortListData) = InstructionCode::SHORT_LIST.as_u8(),
-    #[br(pre_assert(code == InstructionCode::MAP))]
-    Map(MapData) = InstructionCode::MAP.as_u8(),
-    #[br(pre_assert(code == InstructionCode::SHORT_MAP))]
-    ShortMap(ShortMapData) = InstructionCode::SHORT_MAP.as_u8(),
+    #[magic(InstructionCode::TRUE)]
+    True,
+    #[magic(InstructionCode::FALSE)]
+    False,
+    #[magic(InstructionCode::NULL)]
+    Null,
+    #[magic(InstructionCode::STATEMENTS)]
+    Statements(StatementsData),
+    #[magic(InstructionCode::SHORT_STATEMENTS)]
+    ShortStatements(ShortStatementsData),
+    #[magic(InstructionCode::UNBOUNDED_STATEMENTS)]
+    UnboundedStatements,
+    #[magic(InstructionCode::UNBOUNDED_STATEMENTS_END)]
+    UnboundedStatementsEnd(UnboundedStatementsData),
+    #[magic(InstructionCode::LIST)]
+    List(ListData),
+    #[magic(InstructionCode::SHORT_LIST)]
+    ShortList(ShortListData),
+    #[magic(InstructionCode::MAP)]
+    Map(MapData),
+    #[magic(InstructionCode::SHORT_MAP)]
+    ShortMap(ShortMapData),
 
-    #[br(pre_assert(code == InstructionCode::KEY_VALUE_DYNAMIC))]
-    KeyValueDynamic = InstructionCode::KEY_VALUE_DYNAMIC.as_u8(),
-    #[br(pre_assert(code == InstructionCode::KEY_VALUE_SHORT_TEXT))]
-    KeyValueShortText(ShortTextData) = InstructionCode::KEY_VALUE_SHORT_TEXT.as_u8(),
+    #[magic(InstructionCode::KEY_VALUE_DYNAMIC)]
+    KeyValueDynamic,
+    #[magic(InstructionCode::KEY_VALUE_SHORT_TEXT)]
+    KeyValueShortText(ShortTextData),
 
-    #[br(pre_assert(code == InstructionCode::TAGGED_VALUE))]
-    TaggedValue(TaggedValue) = InstructionCode::TAGGED_VALUE.as_u8(),
+    #[magic(InstructionCode::TAGGED_VALUE)]
+    TaggedValue(TaggedValue),
 
     // binary operator
-    #[br(pre_assert(code == InstructionCode::ADD))]
-    Add = InstructionCode::ADD.as_u8(),
-    #[br(pre_assert(code == InstructionCode::SUBTRACT))]
-    Subtract = InstructionCode::SUBTRACT.as_u8(),
-    #[br(pre_assert(code == InstructionCode::MULTIPLY))]
-    Multiply = InstructionCode::MULTIPLY.as_u8(),
-    #[br(pre_assert(code == InstructionCode::DIVIDE))]
-    Divide = InstructionCode::DIVIDE.as_u8(),
+    #[magic(InstructionCode::ADD)]
+    Add,
+    #[magic(InstructionCode::SUBTRACT)]
+    Subtract,
+    #[magic(InstructionCode::MULTIPLY)]
+    Multiply,
+    #[magic(InstructionCode::DIVIDE)]
+    Divide,
 
     // unary operator
     // TODO #432 add missing unary operators
-    #[br(pre_assert(code == InstructionCode::UNARY_MINUS))]
-    UnaryMinus = InstructionCode::UNARY_MINUS.as_u8(),
+    #[magic(InstructionCode::UNARY_MINUS)]
+    UnaryMinus,
     // TODO #433: Do we need this for op overloading or can we avoid?
-    #[br(pre_assert(code == InstructionCode::UNARY_PLUS))]
-    UnaryPlus = InstructionCode::UNARY_PLUS.as_u8(),
-    #[br(pre_assert(code == InstructionCode::BITWISE_NOT))]
-    BitwiseNot = InstructionCode::BITWISE_NOT.as_u8(),
+    #[magic(InstructionCode::UNARY_PLUS)]
+    UnaryPlus,
+    #[magic(InstructionCode::BITWISE_NOT)]
+    BitwiseNot,
 
-    #[br(pre_assert(code == InstructionCode::APPLY_ZERO))]
-    Apply(ApplyData) = InstructionCode::APPLY_ZERO.as_u8(),
+    #[magic(InstructionCode::APPLY_ZERO)]
+    ApplyZero,
 
-    #[br(pre_assert(code == InstructionCode::GET_PROPERTY_TEXT))]
-    GetPropertyText(ShortTextData) = InstructionCode::GET_PROPERTY_TEXT.as_u8(),
+    #[magic(InstructionCode::APPLY_SINGLE)]
+    ApplySingle,
 
-    #[br(pre_assert(code == InstructionCode::GET_PROPERTY_INDEX))]
-    GetPropertyIndex(UInt32Data) = InstructionCode::GET_PROPERTY_INDEX.as_u8(),
+    #[magic(InstructionCode::APPLY)]
+    Apply(ApplyData),
 
-    #[br(pre_assert(code == InstructionCode::GET_PROPERTY_DYNAMIC))]
-    GetPropertyDynamic = InstructionCode::GET_PROPERTY_DYNAMIC.as_u8(),
+    #[magic(InstructionCode::GET_PROPERTY_TEXT)]
+    GetPropertyText(ShortTextData),
+
+    #[magic(InstructionCode::GET_PROPERTY_INDEX)]
+    GetPropertyIndex(UInt32Data),
+
+    #[magic(InstructionCode::GET_PROPERTY_DYNAMIC)]
+    GetPropertyDynamic,
 
     // comparison operator
-    #[br(pre_assert(code == InstructionCode::IS))]
-    Is = InstructionCode::IS.as_u8(),
-    #[br(pre_assert(code == InstructionCode::MATCHES))]
-    Matches = InstructionCode::MATCHES.as_u8(),
-    #[br(pre_assert(code == InstructionCode::STRUCTURAL_EQUAL))]
-    StructuralEqual = InstructionCode::STRUCTURAL_EQUAL.as_u8(),
-    #[br(pre_assert(code == InstructionCode::EQUAL))]
-    Equal = InstructionCode::EQUAL.as_u8(),
-    #[br(pre_assert(code == InstructionCode::NOT_STRUCTURAL_EQUAL))]
-    NotStructuralEqual = InstructionCode::NOT_STRUCTURAL_EQUAL.as_u8(),
-    #[br(pre_assert(code == InstructionCode::NOT_EQUAL))]
-    NotEqual = InstructionCode::NOT_EQUAL.as_u8(),
+    #[magic(InstructionCode::IS)]
+    Is,
+    #[magic(InstructionCode::MATCHES)]
+    Matches,
+    #[magic(InstructionCode::STRUCTURAL_EQUAL)]
+    StructuralEqual,
+    #[magic(InstructionCode::EQUAL)]
+    Equal,
+    #[magic(InstructionCode::NOT_STRUCTURAL_EQUAL)]
+    NotStructuralEqual,
+    #[magic(InstructionCode::NOT_EQUAL)]
+    NotEqual,
 
-    #[br(pre_assert(code == InstructionCode::DERIVE_SHARED_REF))]
-    DeriveSharedReference = InstructionCode::DERIVE_SHARED_REF.as_u8(),
-    #[br(pre_assert(code == InstructionCode::DERIVE_SHARED_REF_MUT))]
-    DeriveSharedReferenceMut = InstructionCode::DERIVE_SHARED_REF_MUT.as_u8(),
+    #[magic(InstructionCode::DERIVE_SHARED_REF)]
+    DeriveSharedReference,
+    #[magic(InstructionCode::DERIVE_SHARED_REF_MUT)]
+    DeriveSharedReferenceMut,
 
-    #[br(pre_assert(code == InstructionCode::CREATE_SHARED))]
-    CreateShared = InstructionCode::CREATE_SHARED.as_u8(),
-    #[br(pre_assert(code == InstructionCode::CREATE_SHARED_MUT))]
-    CreateSharedMut = InstructionCode::CREATE_SHARED_MUT.as_u8(),
+    #[magic(InstructionCode::CREATE_SHARED)]
+    CreateShared,
+    #[magic(InstructionCode::CREATE_SHARED_MUT)]
+    CreateSharedMut,
 
     // ' $ABCDE
-    #[br(pre_assert(code == InstructionCode::REQUEST_REMOTE_SHARED_REF))]
-    RequestRemoteSharedRef(RemotePointerAddress) = InstructionCode::REQUEST_REMOTE_SHARED_REF.as_u8(),
+    #[magic(InstructionCode::REQUEST_REMOTE_SHARED_REF)]
+    RequestRemoteSharedRef(RemotePointerAddress),
     // 'mut $ABCDE
-    #[br(pre_assert(code == InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT))]
-    RequestRemoteSharedRefMut(RemotePointerAddress) = InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT.as_u8(),
-    #[br(pre_assert(code == InstructionCode::GET_LOCAL_SHARED_REF))]
-    GetLocalSharedRef(SelfOwnedPointerAddress) = InstructionCode::GET_LOCAL_SHARED_REF.as_u8(),
+    #[magic(InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT)]
+    RequestRemoteSharedRefMut(RemotePointerAddress),
+    #[magic(InstructionCode::GET_LOCAL_SHARED_REF)]
+    GetLocalSharedRef(SelfOwnedPointerAddress),
     // get a core lib value, e.g. integer or print by id
-    #[br(pre_assert(code == InstructionCode::GET_CORE_LIB_VALUE))]
-    GetCoreLibValue(CoreLibIdIndex) = InstructionCode::GET_CORE_LIB_VALUE.as_u8(),
+    #[magic(InstructionCode::GET_CORE_LIB_VALUE)]
+    GetCoreLibValue(CoreLibIdIndex),
 
-    #[br(pre_assert(code == InstructionCode::SHARED_REF))]
-    SharedRef(SharedRef) = InstructionCode::SHARED_REF.as_u8(),
-    #[br(pre_assert(code == InstructionCode::SHARED_REF_WITH_VALUE))]
-    SharedRefWithValue(SharedRefWithValue) = InstructionCode::SHARED_REF_WITH_VALUE.as_u8(), // shared ref with current value (only if caller owns the pointer)
+    #[magic(InstructionCode::SHARED_REF)]
+    SharedRef(SharedRef),
+    #[magic(InstructionCode::SHARED_REF_WITH_VALUE)]
+    SharedRefWithValue(SharedRefWithValue),
 
-    #[br(pre_assert(code == InstructionCode::MOVE_WITH_VALUE))]
-    MoveWithValue(MoveWithValue) = InstructionCode::MOVE_WITH_VALUE.as_u8(),
+    #[magic(InstructionCode::MOVE_WITH_VALUE)]
+    MoveWithValue(MoveWithValue),
 
-    #[br(pre_assert(code == InstructionCode::PUSH_TO_STACK))]
-    PushToStack = InstructionCode::PUSH_TO_STACK.as_u8(),
-    #[br(pre_assert(code == InstructionCode::PUSH_LIST_TO_STACK))]
-    PushListToStack = InstructionCode::PUSH_LIST_TO_STACK.as_u8(),
-    #[br(pre_assert(code == InstructionCode::CLONE_STACK_VALUE))]
-    CloneStackValue(StackIndex) = InstructionCode::CLONE_STACK_VALUE.as_u8(),
-    #[br(pre_assert(code == InstructionCode::BORROW_STACK_VALUE))]
-    BorrowStackValue(StackIndex) = InstructionCode::BORROW_STACK_VALUE.as_u8(),
-    #[br(pre_assert(code == InstructionCode::GET_STACK_VALUE_SHARED_REF))]
-    GetStackValueSharedRef(StackIndex) = InstructionCode::GET_STACK_VALUE_SHARED_REF.as_u8(),
-    #[br(pre_assert(code == InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT))]
-    GetStackValueSharedRefMut(StackIndex) = InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT.as_u8(),
-    #[br(pre_assert(code == InstructionCode::TAKE_STACK_VALUE))]
-    TakeStackValue(StackIndex) = InstructionCode::TAKE_STACK_VALUE.as_u8(),
-    #[br(pre_assert(code == InstructionCode::SET_STACK_VALUE))]
-    SetStackValue(StackIndex) = InstructionCode::SET_STACK_VALUE.as_u8(),
+    #[magic(InstructionCode::PUSH_TO_STACK)]
+    PushToStack,
+    #[magic(InstructionCode::PUSH_LIST_TO_STACK)]
+    PushListToStack,
+    #[magic(InstructionCode::CLONE_STACK_VALUE)]
+    CloneStackValue(StackIndex),
+    #[magic(InstructionCode::BORROW_STACK_VALUE)]
+    BorrowStackValue(StackIndex),
+    #[magic(InstructionCode::GET_STACK_VALUE_SHARED_REF)]
+    GetStackValueSharedRef(StackIndex),
+    #[magic(InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT)]
+    GetStackValueSharedRefMut(StackIndex),
+    #[magic(InstructionCode::TAKE_STACK_VALUE)]
+    TakeStackValue(StackIndex),
+    #[magic(InstructionCode::SET_STACK_VALUE)]
+    SetStackValue(StackIndex),
 
-    #[br(pre_assert(code == InstructionCode::GET_ROOT_PROPERTY))]
-    GetRootProperty(RootProperty) = InstructionCode::GET_ROOT_PROPERTY.as_u8(),
+    #[magic(InstructionCode::GET_ROOT_PROPERTY)]
+    GetRootProperty(RootProperty),
 
-    #[br(pre_assert(code == InstructionCode::UNBOX))]
-    Unbox = InstructionCode::UNBOX.as_u8(),
+    #[magic(InstructionCode::UNBOX)]
+    Unbox,
 
-    #[br(pre_assert(code == InstructionCode::TYPED_VALUE))]
-    TypedValue = InstructionCode::TYPED_VALUE.as_u8(),
-    #[br(pre_assert(code == InstructionCode::TYPE_EXPRESSION))]
-    TypeExpression = InstructionCode::TYPE_EXPRESSION.as_u8(),
+    #[magic(InstructionCode::TYPED_VALUE)]
+    TypedValue,
+    #[magic(InstructionCode::TYPE_EXPRESSION)]
+    TypeExpression,
 
     // modification instructions: will later be mapped to trait impls
     // UpdateOperation::Replace
-    #[br(pre_assert(code == InstructionCode::SET_SHARED_CONTAINER_VALUE))]
-    SetSharedContainerValue = InstructionCode::SET_SHARED_CONTAINER_VALUE.as_u8(),
+    #[magic(InstructionCode::SET_SHARED_CONTAINER_VALUE)]
+    SetSharedContainerValue,
 
     // UpdateOperation::AppendEntry
-    #[br(pre_assert(code == InstructionCode::APPEND_ENTRY))]
-    AppendEntry = InstructionCode::APPEND_ENTRY.as_u8(),
+    #[magic(InstructionCode::APPEND_ENTRY)]
+    AppendEntry,
     // UpdateOperation::Clear
-    #[br(pre_assert(code == InstructionCode::CLEAR))]
-    Clear = InstructionCode::CLEAR.as_u8(),
+    #[magic(InstructionCode::CLEAR)]
+    Clear,
     // UpdateOperation::Splice
-    #[br(pre_assert(code == InstructionCode::SPLICE))]
-    Splice(SpliceData) = InstructionCode::SPLICE.as_u8(),
-    #[br(pre_assert(code == InstructionCode::SPLICE_DYNAMIC))]
-    SpliceDynamic = InstructionCode::SPLICE_DYNAMIC.as_u8(),
+    #[magic(InstructionCode::SPLICE)]
+    Splice(SpliceData),
+    #[magic(InstructionCode::SPLICE_DYNAMIC)]
+    SpliceDynamic,
 
     // UpdateOperation::Increment
-    #[br(pre_assert(code == InstructionCode::INCREMENT))]
-    Increment = InstructionCode::INCREMENT.as_u8(),
+    #[magic(InstructionCode::INCREMENT)]
+    Increment,
     // UpdateOperation::Decrement
-    #[br(pre_assert(code == InstructionCode::DECREMENT))]
-    Decrement = InstructionCode::DECREMENT.as_u8(),
+    #[magic(InstructionCode::DECREMENT)]
+    Decrement,
 
     // UpdateOperation::DeleteEntry
-    #[br(pre_assert(code == InstructionCode::TAKE_PROPERTY_TEXT))]
-    TakeEntryText(ShortTextData) = InstructionCode::TAKE_PROPERTY_TEXT.as_u8(),
-    #[br(pre_assert(code == InstructionCode::TAKE_PROPERTY_INDEX))]
-    TakeEntryIndex(UInt32Data) = InstructionCode::TAKE_PROPERTY_INDEX.as_u8(),
-    #[br(pre_assert(code == InstructionCode::TAKE_PROPERTY_DYNAMIC))]
-    TakeEntryDynamic = InstructionCode::TAKE_PROPERTY_DYNAMIC.as_u8(),
+    #[magic(InstructionCode::TAKE_PROPERTY_TEXT)]
+    TakeEntryText(ShortTextData),
+    #[magic(InstructionCode::TAKE_PROPERTY_INDEX)]
+    TakeEntryIndex(UInt32Data),
+    #[magic(InstructionCode::TAKE_PROPERTY_DYNAMIC)]
+    TakeEntryDynamic,
 
     // UpdateOperation::SetEntry
-    #[br(pre_assert(code == InstructionCode::SET_PROPERTY_TEXT))]
-    SetEntryText(ShortTextData) = InstructionCode::SET_PROPERTY_TEXT.as_u8(),
-    #[br(pre_assert(code == InstructionCode::SET_PROPERTY_INDEX))]
-    SetEntryIndex(UInt32Data) = InstructionCode::SET_PROPERTY_INDEX.as_u8(),
-    #[br(pre_assert(code == InstructionCode::SET_PROPERTY_DYNAMIC))]
-    SetEntryDynamic = InstructionCode::SET_PROPERTY_DYNAMIC.as_u8(),
+    #[magic(InstructionCode::SET_PROPERTY_TEXT)]
+    SetEntryText(ShortTextData),
+    #[magic(InstructionCode::SET_PROPERTY_INDEX)]
+    SetEntryIndex(UInt32Data),
+    #[magic(InstructionCode::SET_PROPERTY_DYNAMIC)]
+    SetEntryDynamic,
 
     /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
     /// This variant is only used by the disassembler
     #[cfg(feature = "disassembler")]
-    #[br(pre_assert(false))]
-    _RemoteExecutionDebugFlat(#[brw(ignore)] crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat) = 253,
+    #[instruction(skip)]
+    _RemoteExecutionDebugFlat(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat),
     /// Debug variant for RemoteExecution, includes full remote execution instruction tree instead of raw dxb
     /// This variant is only used by the disassembler
     #[cfg(feature = "disassembler")]
-    #[br(pre_assert(false))]
-    _RemoteExecutionDebugTree(#[brw(ignore)] crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugTree) = 254,
+    #[instruction(skip)]
+    _RemoteExecutionDebugTree(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugTree),
 }
 
 impl RegularInstruction {
-    #[inline]
-    pub fn instruction_code(&self) -> InstructionCode {
-        // SAFETY:
-        //
-        // RegularInstructionData has #[repr(u8)], so we can guarantee
-        // that its discriminant can be read as a u8 from the addr
-        let raw = unsafe { *(self as *const Self).cast::<u8>() };
-
-        InstructionCode::try_from(raw).unwrap_or_else(|_| InstructionCode::ADD)
+    pub fn instruction_code_string(&self) -> String {
+        if let Some(code) = self.code() {
+            format!("{}", code)
+        } else {
+            "".to_string()
+        }
     }
-}
 
-impl RegularInstruction {
     /// Returns how many (if any) regular or type instructions are expected as child instructions for a given instructions
     pub fn get_next_expected_instructions(&self) -> NextExpectedInstructions {
         match self {
@@ -1089,7 +1141,7 @@ impl Serialize for RegularInstruction {
     where
         S: Serializer,
     {
-        let instruction_code = self.instruction_code().to_string();
+        let instruction_code = self.instruction_code_string();
         let metadata_string = self.metadata_string();
 
         if let Some(metadata_string) = metadata_string {
@@ -1119,28 +1171,11 @@ impl Serialize for RegularInstruction {
     }
 }
 
-impl RegularInstruction {
-    pub fn read_from<R>(reader: &mut R) -> BinResult<Self>
-    where
-        R: Read + Seek,
-    {
-        let code = InstructionCode::read_options(reader, Endian::Little, ())?;
-        <Self as BinRead>::read_options(reader, Endian::Little, (code,))
-    }
-
-    pub fn write_to<W>(&self, writer: &mut W) -> BinResult<()>
-    where
-        W: Write + Seek,
-    {
-        self.instruction_code()
-            .write_options(writer, Endian::Little, ())?;
-        <Self as BinWrite>::write_options(self, writer, Endian::Little, ())
-    }
-}
-
 impl Display for RegularInstruction {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.instruction_code())?;
+        if let Some(code) = self.code() {
+            write!(f, "{}", code)?;
+        }
 
         if let Some(metadata_string) = self.metadata_string() {
             write!(f, " {}", metadata_string)?;
@@ -1152,20 +1187,22 @@ impl Display for RegularInstruction {
 
 #[cfg(test)]
 mod tests {
+    use binrw::{BinResult, BinWrite};
+
     use super::*;
     use std::io::Cursor;
 
     fn encode(instruction: &RegularInstruction) -> Vec<u8> {
         let mut writer = Cursor::new(Vec::new());
         instruction
-            .write_to(&mut writer)
+            .write(&mut writer)
             .expect("instruction should serialize");
         writer.into_inner()
     }
 
     fn decode(bytes: &[u8]) -> BinResult<RegularInstruction> {
         let mut reader = Cursor::new(bytes);
-        let instruction = RegularInstruction::read_from(&mut reader)?;
+        let instruction = RegularInstruction::read(&mut reader)?;
         assert_eq!(
             reader.position() as usize,
             bytes.len(),
@@ -1210,19 +1247,19 @@ mod tests {
     #[test]
     fn instruction_code_matches_variant() {
         assert_eq!(
-            RegularInstruction::int8(1).instruction_code(),
+            RegularInstruction::int8(1).code().unwrap(),
             InstructionCode::INT_8,
         );
         assert_eq!(
-            RegularInstruction::int16(1).instruction_code(),
+            RegularInstruction::int16(1).code().unwrap(),
             InstructionCode::INT_16,
         );
         assert_eq!(
-            RegularInstruction::Int32(Int32Data(1),).instruction_code(),
+            RegularInstruction::Int32(Int32Data(1),).code().unwrap(),
             InstructionCode::INT_32,
         );
         assert_eq!(
-            RegularInstruction::UInt8(UInt8Data(1),).instruction_code(),
+            RegularInstruction::UInt8(UInt8Data(1),).code().unwrap(),
             InstructionCode::UINT_8,
         );
     }
@@ -1272,7 +1309,7 @@ mod tests {
         let mut stream = Cursor::new(Vec::new());
         for instruction in &instructions {
             instruction
-                .write_to(&mut stream)
+                .write(&mut stream)
                 .expect("instruction should serialize");
         }
 
@@ -1280,7 +1317,7 @@ mod tests {
 
         let decoded: Vec<_> = (0..instructions.len())
             .map(|_| {
-                RegularInstruction::read_from(&mut stream)
+                RegularInstruction::read(&mut stream)
                     .expect("instruction should deserialize")
             })
             .collect();
@@ -1297,14 +1334,14 @@ mod tests {
             // Missing the second i16 byte
         ];
 
-        let result = RegularInstruction::read_from(&mut Cursor::new(bytes));
+        let result = RegularInstruction::read(&mut Cursor::new(bytes));
         assert!(result.is_err());
     }
 
     #[test]
     fn unknown_opcode() {
         let bytes = [0xff];
-        let result = RegularInstruction::read_from(&mut Cursor::new(bytes));
+        let result = RegularInstruction::read(&mut Cursor::new(bytes));
         assert!(result.is_err());
     }
 
@@ -1315,15 +1352,5 @@ mod tests {
         let decoded = decode(&original).expect("valid INT_32");
         let reencoded = encode(&decoded);
         assert_eq!(reencoded, original);
-    }
-
-    #[test]
-    fn test() {
-        let ins = RegularInstruction::SetStackValue(StackIndex(4));
-        let encoded = encode(&ins);
-        println!("encoded: {:?}", encoded);
-        let mut a = Cursor::new(Vec::new());
-        let endoded2 = ins.write(&mut a).unwrap();
-        println!("encoded2: {:?}", a.into_inner());
     }
 }

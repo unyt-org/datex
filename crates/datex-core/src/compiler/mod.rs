@@ -551,7 +551,6 @@ fn compile_expression(
     let ast = rich_ast.ast;
 
     let DatexExpression { data, span, ty } = ast;
-
     match *data {
         DatexExpressionData::Integer(int) => {
             append_integer(compilation_context.cursor(), &int);
@@ -1064,7 +1063,7 @@ fn compile_expression(
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
                     append_regular_instruction(
                         compilation_context.cursor(),
-                        RegularInstruction::short_text(key.0.clone()),
+                        RegularInstruction::set_property_text(key.0.clone()),
                     );
                 }
                 // index access if integer fits in u32

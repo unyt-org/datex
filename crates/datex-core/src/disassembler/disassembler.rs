@@ -338,7 +338,7 @@ fn write_instruction(
         output,
         "{}",
         match instruction {
-            Instruction::Regular(instr) => instr.instruction_code().to_string(),
+            Instruction::Regular(instr) => instr.instruction_code_string(),
             Instruction::Type(instr) => instr.as_ref().to_string(),
         }
     )
@@ -730,18 +730,12 @@ mod tests {
                             injected_variable_count: 0,
                             injected_values: vec![],
                             body: vec![
+                                Instruction::Regular(RegularInstruction::Add),
                                 Instruction::Regular(
-                                    RegularInstruction::Add
+                                    RegularInstruction::UInt8(UInt8Data(42))
                                 ),
                                 Instruction::Regular(
-                                    RegularInstruction::UInt8(UInt8Data(
-                                        42
-                                    ))
-                                ),
-                                Instruction::Regular(
-                                    RegularInstruction::UInt8(UInt8Data(
-                                        43
-                                    ))
+                                    RegularInstruction::UInt8(UInt8Data(43))
                                 ),
                             ]
                         }
@@ -795,14 +789,14 @@ mod tests {
                                 )),
                                 children: vec![
                                     InstructionTree::new(Instruction::Regular(
-                                        RegularInstruction::UInt8(
-                                            UInt8Data(42)
-                                        )
+                                        RegularInstruction::UInt8(UInt8Data(
+                                            42
+                                        ))
                                     )),
                                     InstructionTree::new(Instruction::Regular(
-                                        RegularInstruction::UInt8(
-                                            UInt8Data(43)
-                                        )
+                                        RegularInstruction::UInt8(UInt8Data(
+                                            43
+                                        ))
                                     )),
                                 ]
                             }

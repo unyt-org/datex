@@ -202,16 +202,16 @@ pub fn append_set_property_value_key<T: BufferProvider + ValueVisitor>(
     match value_key {
         ValueKey::Text(text) => append_regular_instruction(
             context.cursor_mut(),
-            RegularInstruction::set_entry_text(text.clone()),
+            RegularInstruction::set_property_text(text.clone()),
         ),
         ValueKey::Index(index) => append_regular_instruction(
             context.cursor_mut(),
-            RegularInstruction::set_entry_index(index as u32),
+            RegularInstruction::set_property_index(index as u32),
         ),
         ValueKey::Value(value) => {
             append_regular_instruction(
                 context.cursor_mut(),
-                RegularInstruction::set_entry_dynamic(),
+                RegularInstruction::set_property_dynamic(),
             );
             context.visit_value_container(value, None);
         }

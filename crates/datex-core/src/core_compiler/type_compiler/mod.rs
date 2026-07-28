@@ -74,7 +74,7 @@ mod tests {
         let compiled = compile_value(val, compile_input);
         let mut cursor = ByteCursor::new(compiled.dxb.to_vec());
         for expected in expected_instructions {
-            let instruction = RegularInstruction::read_from(&mut cursor)
+            let instruction = RegularInstruction::read(&mut cursor)
                 .expect("Failed to read instruction from compiled bytecode");
             assert_eq!(instruction, expected);
         }

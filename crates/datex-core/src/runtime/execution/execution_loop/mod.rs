@@ -415,6 +415,8 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::UnaryPlus |
                             RegularInstruction::BitwiseNot |
                             RegularInstruction::Apply(_) |
+                            RegularInstruction::ApplySingle |
+                            RegularInstruction::ApplyZero |
                             RegularInstruction::GetPropertyText(_) |
                             RegularInstruction::GetPropertyIndex(_) |
                             RegularInstruction::GetPropertyDynamic |
@@ -1163,7 +1165,7 @@ pub gen fn inner_execution_loop(
 
                                 RegularInstruction::Apply(ApplyData {
                                                               ..
-                                                          }) => {
+                                                          }) | RegularInstruction::ApplySingle | RegularInstruction::ApplyZero => {
                                     let mut args = collected_results.try_collect_value_containers(&mut state)?;
                                     // last argument is the callee
                                     let callee = args.remove(args.len() - 1);

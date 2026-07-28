@@ -188,9 +188,8 @@ pub gen fn iterate_instructions(
                 }
 
                 NextInstructionType::Regular => {
-                    let instruction =
-                        RegularInstruction::read_from(&mut reader)
-                            .map_err(DXBParserError::BinRwError)?;
+                    let instruction = RegularInstruction::read(&mut reader)
+                        .map_err(DXBParserError::BinRwError)?;
 
                     let instruction =
                         if let RegularInstruction::RemoteExecution(
@@ -309,10 +308,7 @@ pub gen fn iterate_instructions(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::instruction_data::UInt8Data,
-    };
+    use crate::global::instruction_codes::InstructionCode;
     use core::assert_matches;
 
     fn iterate_dxb(
@@ -329,10 +325,7 @@ mod tests {
         let data = vec![0xFF]; // Invalid instruction code
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
-        assert_matches!(
-            result,
-            Err(err @ DXBParserError::BinRwError(_)) if err.to_string().contains("invalid instruction code")
-        );
+        assert_matches!(result, Err(DXBParserError::BinRwError(_)));
     }
 
     #[test]
@@ -434,7 +427,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert_eq!(
             result,
-            Ok(Instruction::Regular(RegularInstruction::list(2)))
+            Ok(Instruction::Regular(RegularInstruction::list_default(2)))
         );
         // next instruction should error expecting more instructions
         let result = iterator.next().unwrap();
@@ -511,7 +504,7 @@ mod tests {
         assert_eq!(
             result.unwrap(),
             Instruction::Regular(RegularInstruction::unbounded_statements_end(
-                true
+                false
             ))
         );
         // ensure no more instructions

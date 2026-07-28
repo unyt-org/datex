@@ -366,6 +366,8 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::BitwiseNot
                         | RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. })
                         | RegularInstruction::Apply(_)
+                        | RegularInstruction::ApplySingle
+                        | RegularInstruction::ApplyZero
                         | RegularInstruction::GetPropertyText(_)
                         | RegularInstruction::GetPropertyIndex(_)
                         | RegularInstruction::GetPropertyDynamic
@@ -545,7 +547,10 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::BinaryOperation(
                                     BinaryOperation {
                                         operator: BinaryOperator::from(
-                                            &regular_instruction.instruction_code(),
+                                            unsafe { 
+                                                // Safety: We have already validated that the instruction is a valid binary operator, so this unwrap is safe.
+                                                regular_instruction.code().unwrap_unchecked()
+                                            },
                                         ),
                                         left: (left),
                                         right: (right),
@@ -772,8 +777,27 @@ pub fn ast_from_bytecode(
                                 let base =
                                     arguments.remove(arguments.len() - 1);
                                 DatexExpressionData::Apply(Apply {
-                                    base: (base),
+                                    base: base,
                                     arguments,
+                                })
+                                    .with_default_span()
+                                    .into()
+                            }
+                            RegularInstruction::ApplySingle => {
+                                let argument = collected_results.pop_value();
+                                let base = collected_results.pop_value();
+                                DatexExpressionData::Apply(Apply {
+                                    base: base,
+                                    arguments: vec![argument],
+                                })
+                                    .with_default_span()
+                                    .into()
+                            }
+                            RegularInstruction::ApplyZero => {
+                                let base = collected_results.pop_value();
+                                DatexExpressionData::Apply(Apply {
+                                    base: base,
+                                    arguments: vec![],
                                 })
                                     .with_default_span()
                                     .into()
