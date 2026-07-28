@@ -16,7 +16,7 @@ use crate::{
         value_compiler::{append_instruction, append_value_container},
     },
     global::protocol_structures::{
-        instructions::Instruction, regular_instructions::RegularInstructionData,
+        instructions::Instruction, regular_instructions::RegularInstruction,
         type_instructions::TypeInstruction,
     },
     prelude::*,
@@ -51,8 +51,8 @@ impl From<Instruction> for InstructionInput {
         InstructionInput::Instruction(instruction)
     }
 }
-impl From<RegularInstructionData> for InstructionInput {
-    fn from(instruction: RegularInstructionData) -> Self {
+impl From<RegularInstruction> for InstructionInput {
+    fn from(instruction: RegularInstruction) -> Self {
         InstructionInput::Instruction(Instruction::Regular(instruction))
     }
 }

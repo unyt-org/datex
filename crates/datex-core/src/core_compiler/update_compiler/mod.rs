@@ -12,7 +12,7 @@ use crate::{
         instruction_data::{
             SharedRef, ShortTextData, SpliceData, StackIndex, UInt32Data,
         },
-        regular_instructions::{RegularInstruction, RegularInstructionData},
+        regular_instructions::RegularInstruction,
     },
     prelude::*,
     shared_values::{
@@ -233,7 +233,7 @@ mod tests {
             instruction_data::{
                 SharedRef, ShortTextData, StackIndex, UInt8Data,
             },
-            regular_instructions::RegularInstructionData,
+            regular_instructions::RegularInstruction,
         },
         prelude::*,
         runtime::{
@@ -278,11 +278,11 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb_with_shared_values.dxb,
-            (RegularInstructionData::statements_with_children(
+            (RegularInstruction::statements_with_children(
                 true,
                 instructions!(
-                    RegularInstructionData::PushToStack.with_children(
-                        instructions!(RegularInstructionData::SharedRef(
+                    RegularInstruction::PushToStack.with_children(
+                        instructions!(RegularInstruction::SharedRef(
                             SharedRef {
                                 address,
                                 ref_mutability: ReferenceMutability::Mutable,
@@ -291,12 +291,12 @@ mod tests {
                             }
                         ),)
                     ),
-                    RegularInstructionData::SetEntryText(ShortTextData(
+                    RegularInstruction::SetEntryText(ShortTextData(
                         "test_key".to_string()
                     ))
                     .with_children(instructions!(
-                        RegularInstructionData::UInt8(UInt8Data(100)),
-                        RegularInstructionData::BorrowStackValue(StackIndex(0)),
+                        RegularInstruction::UInt8(UInt8Data(100)),
+                        RegularInstruction::BorrowStackValue(StackIndex(0)),
                     ))
                 )
             ))
@@ -325,11 +325,11 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb_with_shared_values.dxb,
-            (RegularInstructionData::statements_with_children(
+            (RegularInstruction::statements_with_children(
                 true,
                 instructions!(
-                    RegularInstructionData::PushToStack.with_children(
-                        instructions!(RegularInstructionData::SharedRef(
+                    RegularInstruction::PushToStack.with_children(
+                        instructions!(RegularInstruction::SharedRef(
                             SharedRef {
                                 address,
                                 ref_mutability: ReferenceMutability::Mutable,
@@ -338,13 +338,12 @@ mod tests {
                             }
                         ),)
                     ),
-                    RegularInstructionData::SetSharedContainerValue
-                        .with_children(instructions!(
-                            RegularInstructionData::UInt8(UInt8Data(100)),
-                            RegularInstructionData::BorrowStackValue(
-                                StackIndex(0)
-                            )
-                        ))
+                    RegularInstruction::SetSharedContainerValue.with_children(
+                        instructions!(
+                            RegularInstruction::UInt8(UInt8Data(100)),
+                            RegularInstruction::BorrowStackValue(StackIndex(0))
+                        )
+                    )
                 )
             ))
         )

@@ -1,6 +1,6 @@
 use crate::{
     global::protocol_structures::{
-        regular_instructions::{RegularInstruction, RegularInstructionData},
+        regular_instructions::RegularInstruction,
         type_instructions::TypeInstruction,
     },
     prelude::*,

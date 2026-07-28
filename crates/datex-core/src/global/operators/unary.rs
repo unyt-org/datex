@@ -1,6 +1,6 @@
 use crate::global::{
     instruction_codes::InstructionCode,
-    protocol_structures::regular_instructions::RegularInstructionData,
+    protocol_structures::regular_instructions::RegularInstruction,
 };
 use core::fmt::{Display, Formatter};
 
@@ -23,19 +23,19 @@ impl From<&UnaryOperator> for InstructionCode {
     }
 }
 
-impl From<&RegularInstructionData> for UnaryOperator {
-    fn from(instruction: &RegularInstructionData) -> Self {
+impl From<&RegularInstruction> for UnaryOperator {
+    fn from(instruction: &RegularInstruction) -> Self {
         match instruction {
-            RegularInstructionData::UnaryPlus => {
+            RegularInstruction::UnaryPlus => {
                 UnaryOperator::Arithmetic(ArithmeticUnaryOperator::Plus)
             }
-            RegularInstructionData::UnaryMinus => {
+            RegularInstruction::UnaryMinus => {
                 UnaryOperator::Arithmetic(ArithmeticUnaryOperator::Minus)
             }
-            RegularInstructionData::BitwiseNot => {
+            RegularInstruction::BitwiseNot => {
                 UnaryOperator::Bitwise(BitwiseUnaryOperator::Not)
             }
-            RegularInstructionData::Unbox => {
+            RegularInstruction::Unbox => {
                 UnaryOperator::Reference(SharedValueUnaryOperator::Unbox)
             }
             _ => {
@@ -48,8 +48,8 @@ impl From<&RegularInstructionData> for UnaryOperator {
     }
 }
 
-impl From<RegularInstructionData> for UnaryOperator {
-    fn from(instruction: RegularInstructionData) -> Self {
+impl From<RegularInstruction> for UnaryOperator {
+    fn from(instruction: RegularInstruction) -> Self {
         UnaryOperator::from(&instruction)
     }
 }

@@ -40,7 +40,6 @@ use crate::{
             UInt128Data,
         },
         instructions::Instruction,
-        regular_instructions::RegularInstructionData,
     },
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdIndex},
@@ -629,7 +628,7 @@ mod tests {
                 Int32Data, MoveWithValue, SharedRefWithValue, ShortListData,
                 ShortTextData, StackIndex, TaggedValue,
             },
-            regular_instructions::RegularInstructionData,
+            regular_instructions::RegularInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
@@ -657,7 +656,7 @@ mod tests {
 
     fn compile_value_assert_instructions(
         value: Value,
-        expected_instructions: Vec<RegularInstructionData>,
+        expected_instructions: Vec<RegularInstruction>,
     ) {
         let compiled = compile_value(
             value,
@@ -689,7 +688,7 @@ mod tests {
 
         compile_value_assert_instructions(
             value,
-            vec![RegularInstructionData::TaggedValue(TaggedValue {
+            vec![RegularInstruction::TaggedValue(TaggedValue {
                 tag: ShortTextData("Example".to_string()),
                 is_empty: true,
             })],
@@ -709,11 +708,11 @@ mod tests {
         compile_value_assert_instructions(
             value,
             vec![
-                RegularInstructionData::TaggedValue(TaggedValue {
+                RegularInstruction::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstructionData::Null,
+                RegularInstruction::Null,
             ],
         );
     }
@@ -729,7 +728,7 @@ mod tests {
 
         compile_value_assert_instructions(
             value,
-            vec![RegularInstructionData::GetCoreLibValue(
+            vec![RegularInstruction::GetCoreLibValue(
                 CoreLibBaseTypeId::Integer.into(),
             )],
         );
@@ -775,33 +774,29 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &context.into_dxb_with_shared_values().dxb,
-            (RegularInstructionData::statements_with_children(
+            (RegularInstruction::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstructionData::PushListToStack,
-                    RegularInstructionData::statements_with_children(
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::MoveWithValue(
-                                MoveWithValue {
-                                    mutability:
-                                        SharedContainerMutability::Immutable,
-                                    previous_address: pointer_address,
-                                }
-                            ),
-                            RegularInstructionData::Null,
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::GetStackValueSharedRef(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability:
+                                    SharedContainerMutability::Immutable,
+                                previous_address: pointer_address,
+                            }),
+                            RegularInstruction::Null,
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::GetStackValueSharedRef(
                                 StackIndex(0)
                             ),
-                            RegularInstructionData::list(1),
-                            RegularInstructionData::TakeStackValue(StackIndex(
-                                0
-                            )),
+                            RegularInstruction::list(1),
+                            RegularInstruction::TakeStackValue(StackIndex(0)),
                         )
                     ),
-                    RegularInstructionData::TakeStackValue(StackIndex(0))
+                    RegularInstruction::TakeStackValue(StackIndex(0))
                 )
             ),)
         );
@@ -890,28 +885,25 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb,
-            (RegularInstructionData::statements_with_children(
+            (RegularInstruction::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstructionData::PushListToStack,
-                    RegularInstructionData::statements_with_children(
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::MoveWithValue(
-                                MoveWithValue {
-                                    mutability:
-                                        SharedContainerMutability::Mutable,
-                                    previous_address: inner_pointer_address_b,
-                                }
-                            ),
-                            RegularInstructionData::Int32(Int32Data(2)),
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::GetStackValueSharedRefMut(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability: SharedContainerMutability::Mutable,
+                                previous_address: inner_pointer_address_b,
+                            }),
+                            RegularInstruction::Int32(Int32Data(2)),
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::GetStackValueSharedRefMut(
                                 StackIndex(0)
                             ),
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::SharedRefWithValue(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(
                                 SharedRefWithValue {
                                     address: inner_pointer_address_a,
                                     ref_mutability:
@@ -920,39 +912,37 @@ mod tests {
                                         SharedContainerMutability::Mutable,
                                 }
                             ),
-                            RegularInstructionData::Int32(Int32Data(1)),
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::MoveWithValue(
-                                MoveWithValue {
-                                    mutability:
-                                        SharedContainerMutability::Immutable,
-                                    previous_address: outer_pointer_address,
-                                }
-                            ),
-                            RegularInstructionData::list_with_children(
+                            RegularInstruction::Int32(Int32Data(1)),
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability:
+                                    SharedContainerMutability::Immutable,
+                                previous_address: outer_pointer_address,
+                            }),
+                            RegularInstruction::list_with_children(
                                 instructions!(
-                                    RegularInstructionData::BorrowStackValue(
+                                    RegularInstruction::BorrowStackValue(
                                         StackIndex(2)
                                     ),
-                                    RegularInstructionData::TakeStackValue(
+                                    RegularInstruction::TakeStackValue(
                                         StackIndex(0)
                                     ),
                                 )
                             ),
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::GetStackValueSharedRef(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::GetStackValueSharedRef(
                                 StackIndex(3)
                             ),
-                            RegularInstructionData::list_with_children(
+                            RegularInstruction::list_with_children(
                                 instructions!(
-                                    RegularInstructionData::TakeStackValue(
+                                    RegularInstruction::TakeStackValue(
                                         StackIndex(3)
                                     ),
                                 )
                             ),
                         )
                     ),
-                    RegularInstructionData::TakeStackValue(StackIndex(0)),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
                 )
             ),)
         );
@@ -1015,51 +1005,44 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb,
-            (RegularInstructionData::statements_with_children(
+            (RegularInstruction::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstructionData::PushListToStack,
-                    RegularInstructionData::statements_with_children(
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::MoveWithValue(
-                                MoveWithValue {
-                                    mutability:
-                                        SharedContainerMutability::Mutable,
-                                    previous_address: inner_pointer_address,
-                                }
-                            ),
-                            RegularInstructionData::Int32(Int32Data(1)),
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::GetStackValueSharedRefMut(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability: SharedContainerMutability::Mutable,
+                                previous_address: inner_pointer_address,
+                            }),
+                            RegularInstruction::Int32(Int32Data(1)),
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::GetStackValueSharedRefMut(
                                 StackIndex(0)
                             ),
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::MoveWithValue(
-                                MoveWithValue {
-                                    mutability:
-                                        SharedContainerMutability::Immutable,
-                                    previous_address: outer_pointer_address,
-                                }
-                            ),
-                            RegularInstructionData::TakeStackValue(StackIndex(
-                                0
-                            )),
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::GetStackValueSharedRef(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability:
+                                    SharedContainerMutability::Immutable,
+                                previous_address: outer_pointer_address,
+                            }),
+                            RegularInstruction::TakeStackValue(StackIndex(0)),
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::GetStackValueSharedRef(
                                 StackIndex(2)
                             ),
-                            RegularInstructionData::list_with_children(
+                            RegularInstruction::list_with_children(
                                 instructions!(
-                                    RegularInstructionData::TakeStackValue(
+                                    RegularInstruction::TakeStackValue(
                                         StackIndex(2)
                                     ),
                                 )
                             ),
                         )
                     ),
-                    RegularInstructionData::TakeStackValue(StackIndex(0)),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
                 )
             ),)
         );
@@ -1102,15 +1085,15 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb,
-            (RegularInstructionData::statements_with_children(
+            (RegularInstruction::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstructionData::PushListToStack,
-                    RegularInstructionData::statements_with_children(
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::SharedRefWithValue(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(
                                 SharedRefWithValue {
                                     address: pointer_address,
                                     ref_mutability:
@@ -1119,16 +1102,12 @@ mod tests {
                                         SharedContainerMutability::Immutable,
                                 }
                             ),
-                            RegularInstructionData::Int32(Int32Data(5)),
-                            RegularInstructionData::list(1),
-                            RegularInstructionData::TakeStackValue(StackIndex(
-                                0
-                            )),
+                            RegularInstruction::Int32(Int32Data(5)),
+                            RegularInstruction::list(1),
+                            RegularInstruction::TakeStackValue(StackIndex(0)),
                         )
                     ),
-                    RegularInstructionData::GetStackValueSharedRef(StackIndex(
-                        0
-                    ))
+                    RegularInstruction::GetStackValueSharedRef(StackIndex(0))
                 )
             ),)
         );
@@ -1197,57 +1176,53 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb,
-            (RegularInstructionData::statements_with_children(
+            (RegularInstruction::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstructionData::PushListToStack,
-                    RegularInstructionData::statements_with_children(
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::MoveWithValue(
-                                MoveWithValue {
-                                    mutability:
-                                        SharedContainerMutability::Immutable,
-                                    previous_address: b_pointer_address,
-                                }
-                            ),
-                            RegularInstructionData::Int32(Int32Data(2)),
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::GetStackValueSharedRef(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability:
+                                    SharedContainerMutability::Immutable,
+                                previous_address: b_pointer_address,
+                            }),
+                            RegularInstruction::Int32(Int32Data(2)),
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::GetStackValueSharedRef(
                                 StackIndex(0)
                             ),
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::MoveWithValue(
-                                MoveWithValue {
-                                    mutability:
-                                        SharedContainerMutability::Immutable,
-                                    previous_address: a_pointer_address,
-                                }
-                            ),
-                            RegularInstructionData::Int32(Int32Data(1)),
-                            RegularInstructionData::PushToStack,
-                            RegularInstructionData::GetStackValueSharedRef(
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability:
+                                    SharedContainerMutability::Immutable,
+                                previous_address: a_pointer_address,
+                            }),
+                            RegularInstruction::Int32(Int32Data(1)),
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::GetStackValueSharedRef(
                                 StackIndex(2)
                             ),
-                            RegularInstructionData::list_with_children(
+                            RegularInstruction::list_with_children(
                                 instructions!(
-                                    RegularInstructionData::TakeStackValue(
+                                    RegularInstruction::TakeStackValue(
                                         StackIndex(2)
                                     ),
-                                    RegularInstructionData::TakeStackValue(
+                                    RegularInstruction::TakeStackValue(
                                         StackIndex(0)
                                     ),
                                 )
                             )
                         )
                     ),
-                    RegularInstructionData::list_with_children(instructions!(
-                        RegularInstructionData::ShortText(ShortTextData(
+                    RegularInstruction::list_with_children(instructions!(
+                        RegularInstruction::ShortText(ShortTextData(
                             "test".to_string()
                         )),
-                        RegularInstructionData::TakeStackValue(StackIndex(0)),
-                        RegularInstructionData::TakeStackValue(StackIndex(1)),
+                        RegularInstruction::TakeStackValue(StackIndex(0)),
+                        RegularInstruction::TakeStackValue(StackIndex(1)),
                     )),
                 )
             ),)

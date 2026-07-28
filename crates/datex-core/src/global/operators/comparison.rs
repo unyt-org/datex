@@ -1,6 +1,6 @@
 use crate::global::{
     instruction_codes::InstructionCode,
-    protocol_structures::regular_instructions::RegularInstructionData,
+    protocol_structures::regular_instructions::RegularInstruction,
 };
 use core::{fmt::Display, prelude::rust_2024::*};
 
@@ -65,19 +65,19 @@ impl From<ComparisonOperator> for InstructionCode {
         InstructionCode::from(&op)
     }
 }
-impl From<&RegularInstructionData> for ComparisonOperator {
-    fn from(instruction: &RegularInstructionData) -> Self {
+impl From<&RegularInstruction> for ComparisonOperator {
+    fn from(instruction: &RegularInstruction) -> Self {
         match instruction {
-            RegularInstructionData::StructuralEqual => {
+            RegularInstruction::StructuralEqual => {
                 ComparisonOperator::StructuralEqual
             }
-            RegularInstructionData::Equal => ComparisonOperator::Equal,
-            RegularInstructionData::NotStructuralEqual => {
+            RegularInstruction::Equal => ComparisonOperator::Equal,
+            RegularInstruction::NotStructuralEqual => {
                 ComparisonOperator::NotStructuralEqual
             }
-            RegularInstructionData::NotEqual => ComparisonOperator::NotEqual,
-            RegularInstructionData::Is => ComparisonOperator::Is,
-            RegularInstructionData::Matches => ComparisonOperator::Matches,
+            RegularInstruction::NotEqual => ComparisonOperator::NotEqual,
+            RegularInstruction::Is => ComparisonOperator::Is,
+            RegularInstruction::Matches => ComparisonOperator::Matches,
             _ => {
                 core::todo!(
                     "Comparison operator for instruction {:?} not implemented",
@@ -88,8 +88,8 @@ impl From<&RegularInstructionData> for ComparisonOperator {
     }
 }
 
-impl From<RegularInstructionData> for ComparisonOperator {
-    fn from(instruction: RegularInstructionData) -> Self {
+impl From<RegularInstruction> for ComparisonOperator {
+    fn from(instruction: RegularInstruction) -> Self {
         ComparisonOperator::from(&instruction)
     }
 }

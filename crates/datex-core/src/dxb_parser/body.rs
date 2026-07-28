@@ -5,7 +5,7 @@ use crate::dxb_parser::next_instructions_stack::{
 use crate::{
     global::protocol_structures::{
         instructions::{Instruction, NestedInstructionResolutionStrategy},
-        regular_instructions::{RegularInstruction, RegularInstructionData},
+        regular_instructions::RegularInstruction,
         type_instructions::TypeInstruction,
     },
     libs::core::core_lib_id::CoreLibIdIndex,
@@ -188,13 +188,14 @@ pub gen fn iterate_instructions(
                 }
 
                 NextInstructionType::Regular => {
-                    let instruction = RegularInstruction::read(&mut reader)
-                        .map_err(DXBParserError::BinRwError)?;
+                    let instruction =
+                        RegularInstruction::read_from(&mut reader)
+                            .map_err(DXBParserError::BinRwError)?;
 
                     let instruction =
-                        if let RegularInstructionData::RemoteExecution(
+                        if let RegularInstruction::RemoteExecution(
                             instruction_block_data,
-                        ) = instruction.data()
+                        ) = instruction
                         {
                             match nested_instruction_resolution_strategy {
                                 #[cfg(feature = "disassembler")]

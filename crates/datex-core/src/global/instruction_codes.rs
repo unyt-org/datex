@@ -1,7 +1,4 @@
-use std::ops::Deref;
-
 use binrw::{BinRead, BinWrite};
-use num::ToPrimitive;
 use num_enum::TryFromPrimitive;
 use strum::Display;
 use strum_macros::EnumIter;

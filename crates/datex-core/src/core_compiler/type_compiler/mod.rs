@@ -33,9 +33,7 @@ mod tests {
         disassembler::assertions::assert_instructions_equal,
         global::protocol_structures::{
             instructions::Instruction,
-            regular_instructions::{
-                RegularInstruction, RegularInstructionData,
-            },
+            regular_instructions::RegularInstruction,
             type_instructions::TypeInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
@@ -70,14 +68,14 @@ mod tests {
 
     fn assert_regular_instructions_equal(
         val: Value,
-        expected_instructions: Vec<RegularInstructionData>,
+        expected_instructions: Vec<RegularInstruction>,
     ) {
         let compile_input = unsafe { default_compile_input() };
         let compiled = compile_value(val, compile_input);
         let mut cursor = ByteCursor::new(compiled.dxb.to_vec());
         for expected in expected_instructions {
-            let instruction =
-                RegularInstruction::read(&mut cursor).unwrap().into_data();
+            let instruction = RegularInstruction::read_from(&mut cursor)
+                .expect("Failed to read instruction from compiled bytecode");
             assert_eq!(instruction, expected);
         }
     }
@@ -121,7 +119,7 @@ mod tests {
         );
         assert_regular_instructions_equal(
             Value::new(CoreValue::Type(ty), None),
-            vec![RegularInstructionData::GetCoreLibValue(
+            vec![RegularInstruction::GetCoreLibValue(
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean).into(),
             )],
         );

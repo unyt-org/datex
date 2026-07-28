@@ -2,7 +2,7 @@ use crate::{
     global::protocol_structures::{
         instruction_data::StackIndex,
         instructions::{Instruction, NextExpectedInstructions},
-        regular_instructions::{RegularInstruction, RegularInstructionData},
+        regular_instructions::RegularInstruction,
         type_instructions::TypeInstruction,
     },
     prelude::*,
@@ -437,9 +437,9 @@ impl<T> InstructionCollector<T> {
                     statement_result_collection_strategy,
                     StatementResultCollectionStrategy::Last
                 ) && matches!(
-                    regular_instruction.data(),
-                    RegularInstructionData::Statements(_)
-                        | RegularInstructionData::ShortStatements(_)
+                    regular_instruction,
+                    RegularInstruction::Statements(_)
+                        | RegularInstruction::ShortStatements(_)
                 ) {
                     self.collect_last(
                         Instruction::Regular(regular_instruction),
