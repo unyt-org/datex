@@ -37,7 +37,6 @@ use binrw::{
     meta::{EndianKind, ReadEndian},
 };
 use core::fmt::{Display, Write as FmtWrite};
-use serde::{Serialize, Serializer, ser::SerializeTuple};
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -1129,6 +1128,8 @@ impl RegularInstruction {
 }
 
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
+#[cfg(feature = "disassembler")]
+use serde::{Serialize, Serializer, ser::SerializeTuple};
 #[cfg(feature = "disassembler")]
 impl Serialize for RegularInstruction {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
