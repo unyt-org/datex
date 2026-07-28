@@ -45,7 +45,7 @@ use crate::{
                 ShortTextData, StackIndex, TaggedValue, UnboundedStatementsData,
             },
             instructions::NestedInstructionResolutionStrategy,
-            regular_instructions::RegularInstruction,
+            regular_instructions::RegularInstructionData,
             type_instructions::TypeInstruction,
         },
     },
@@ -76,14 +76,14 @@ impl From<TypeExpression> for CollectedAstResult {
 }
 
 impl
-CollectionResultsPopper<
-    CollectedAstResult,
-    DatexExpression,
-    DatexExpression,
-    DatexExpression,
-    TypeExpression,
-    TypeExpression,
-> for CollectedResults<CollectedAstResult>
+    CollectionResultsPopper<
+        CollectedAstResult,
+        DatexExpression,
+        DatexExpression,
+        DatexExpression,
+        TypeExpression,
+        TypeExpression,
+    > for CollectedResults<CollectedAstResult>
 {
     fn try_extract_type_definition(
         result: CollectedAstResult,
@@ -150,186 +150,186 @@ pub fn ast_from_bytecode(
                     );
 
                 let expr = regular_instruction.map(|regular_instruction|
-                    Result::<DatexExpression, DXBParserError>::Ok(match regular_instruction {
+                    Result::<DatexExpression, DXBParserError>::Ok(match regular_instruction.into_data() {
                         // Handle different regular instructions here
-                        RegularInstruction::Int8(integer_data) => {
+                        RegularInstructionData::Int8(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
-                        RegularInstruction::Int16(integer_data) => {
+                        RegularInstructionData::Int16(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
-                        RegularInstruction::Int32(integer_data) => {
+                        RegularInstructionData::Int32(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
-                        RegularInstruction::Instant(instant_data) => {
+                        RegularInstructionData::Instant(instant_data) => {
                             DatexExpressionData::DateTime(
                                 crate::values::core_values::time::Instant(
                                     instant_data.0,
                                 ),
                             )
                         }
-                        RegularInstruction::Int64(integer_data) => {
+                        RegularInstructionData::Int64(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
-                        RegularInstruction::Int128(integer_data) => {
+                        RegularInstructionData::Int128(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
-                        RegularInstruction::UInt8(integer_data) => {
+                        RegularInstructionData::UInt8(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
-                        RegularInstruction::UInt16(integer_data) => {
+                        RegularInstructionData::UInt16(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
-                        RegularInstruction::UInt32(integer_data) => {
+                        RegularInstructionData::UInt32(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
-                        RegularInstruction::UInt64(integer_data) => {
+                        RegularInstructionData::UInt64(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
-                        RegularInstruction::UInt128(integer_data) => {
+                        RegularInstructionData::UInt128(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::from(integer_data.0),
                             )
                         }
-                        RegularInstruction::BigInteger(integer_data) => {
+                        RegularInstructionData::BigInteger(integer_data) => {
                             DatexExpressionData::TypedInteger(
                                 TypedInteger::IBig(integer_data),
                             )
                         }
-                        RegularInstruction::Integer(integer_data) => {
+                        RegularInstructionData::Integer(integer_data) => {
                             DatexExpressionData::Integer(integer_data)
                         }
-                        RegularInstruction::Range => {
+                        RegularInstructionData::Range => {
                             unreachable!("decompiler ast from bytcode ranges not implemented");
                         }
-                        RegularInstruction::Endpoint(endpoint) => {
+                        RegularInstructionData::Endpoint(endpoint) => {
                             DatexExpressionData::Endpoint(endpoint)
                         }
-                        RegularInstruction::DecimalF32(f32_data) => {
+                        RegularInstructionData::DecimalF32(f32_data) => {
                             DatexExpressionData::TypedDecimal(
                                 TypedDecimal::from(f32_data.0),
                             )
                         }
-                        RegularInstruction::DecimalF64(f64_data) => {
+                        RegularInstructionData::DecimalF64(f64_data) => {
                             DatexExpressionData::TypedDecimal(
                                 TypedDecimal::from(f64_data.0),
                             )
                         }
-                        RegularInstruction::DecimalAsInt16(
+                        RegularInstructionData::DecimalAsInt16(
                             decimal_i16_data,
                         ) => DatexExpressionData::Decimal(Decimal::from(
                             decimal_i16_data.0 as f64,
                         )),
-                        RegularInstruction::DecimalAsInt32(
+                        RegularInstructionData::DecimalAsInt32(
                             decimal_i32_data,
                         ) => DatexExpressionData::Decimal(Decimal::from(
                             decimal_i32_data.0 as f64,
                         )),
-                        RegularInstruction::BigDecimal(decimal_data) => {
+                        RegularInstructionData::BigDecimal(decimal_data) => {
                             DatexExpressionData::TypedDecimal(
                                 TypedDecimal::Decimal(decimal_data),
                             )
                         }
-                        RegularInstruction::Decimal(decimal_data) => {
+                        RegularInstructionData::Decimal(decimal_data) => {
                             DatexExpressionData::Decimal(decimal_data)
                         }
-                        RegularInstruction::ShortText(short_text_data) => {
+                        RegularInstructionData::ShortText(short_text_data) => {
                             DatexExpressionData::Text(short_text_data.0.into())
                         }
-                        RegularInstruction::Text(text_data) => {
+                        RegularInstructionData::Text(text_data) => {
                             DatexExpressionData::Text(text_data.0.into())
                         }
-                        RegularInstruction::True => {
+                        RegularInstructionData::True => {
                             DatexExpressionData::Boolean(true.into())
                         }
-                        RegularInstruction::False => {
+                        RegularInstructionData::False => {
                             DatexExpressionData::Boolean(false.into())
                         }
-                        RegularInstruction::Null => {
+                        RegularInstructionData::Null => {
                             DatexExpressionData::Null
                         }
 
-                        RegularInstruction::RequestRemoteSharedRef(raw_address) => {
+                        RegularInstructionData::RequestRemoteSharedRef(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Immutable,
                             })
                         }
 
-                        RegularInstruction::RequestRemoteSharedRefMut(raw_address) => {
+                        RegularInstructionData::RequestRemoteSharedRefMut(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Mutable,
                             })
                         }
 
-                        RegularInstruction::GetLocalSharedRef(raw_address) => {
+                        RegularInstructionData::GetLocalSharedRef(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Immutable,
                             })
                         }
 
-                        RegularInstruction::GetCoreLibValue(id) => {
+                        RegularInstructionData::GetCoreLibValue(id) => {
                             DatexExpressionData::ResolveCoreLibId(
                                 id.try_into().map_err(|_| DXBParserError::InvalidCoreLibId(id))?,
                             )
                         }
 
-                        RegularInstruction::SharedRef(shared_ref) => {
+                        RegularInstructionData::SharedRef(shared_ref) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(shared_ref.address),
                                 mutability: shared_ref.ref_mutability,
                             })
                         }
 
-                        RegularInstruction::CloneStackValue(stack_index) => {
+                        RegularInstructionData::CloneStackValue(stack_index) => {
                             DatexExpressionData::Clone(CloneExpression {
                                 expression: (DatexExpressionData::StackIndex(stack_index).with_default_span())
                             })
                         }
 
-                        RegularInstruction::BorrowStackValue(stack_index) => {
+                        RegularInstructionData::BorrowStackValue(stack_index) => {
                             DatexExpressionData::StackIndex(stack_index)
                         }
 
-                        RegularInstruction::GetStackValueSharedRef(stack_index) => {
+                        RegularInstructionData::GetStackValueSharedRef(stack_index) => {
                             DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Immutable,
                                 expression: (DatexExpressionData::StackIndex(stack_index).with_default_span()),
                             })
                         }
 
-                        RegularInstruction::GetStackValueSharedRefMut(stack_index) => {
+                        RegularInstructionData::GetStackValueSharedRefMut(stack_index) => {
                             DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                                 mutability: ReferenceMutability::Mutable,
                                 expression: (DatexExpressionData::StackIndex(stack_index).with_default_span()),
                             })
                         }
 
-                        RegularInstruction::TakeStackValue(stack_index) => {
+                        RegularInstructionData::TakeStackValue(stack_index) => {
                             DatexExpressionData::StackIndex(stack_index)
                         }
 
-                        RegularInstruction::GetRootProperty(
+                        RegularInstructionData::GetRootProperty(
                             root_property,
                         ) => {
                             DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
@@ -337,7 +337,7 @@ pub fn ast_from_bytecode(
                             })
                         }
 
-                        RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
+                        RegularInstructionData::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
                             DatexExpressionData::Tag(TagExpression {
                                 tag,
                                 expression: None,
@@ -345,66 +345,66 @@ pub fn ast_from_bytecode(
                         }
 
                         // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                        RegularInstruction::Statements(_)
-                        | RegularInstruction::ShortStatements(_)
-                        | RegularInstruction::UnboundedStatements
-                        | RegularInstruction::UnboundedStatementsEnd(
+                        RegularInstructionData::Statements(_)
+                        | RegularInstructionData::ShortStatements(_)
+                        | RegularInstructionData::UnboundedStatements
+                        | RegularInstructionData::UnboundedStatementsEnd(
                             _,
                         )
-                        | RegularInstruction::List(_)
-                        | RegularInstruction::ShortList(_)
-                        | RegularInstruction::Map(_)
-                        | RegularInstruction::ShortMap(_)
-                        | RegularInstruction::KeyValueDynamic
-                        | RegularInstruction::KeyValueShortText(_)
-                        | RegularInstruction::Add
-                        | RegularInstruction::Subtract
-                        | RegularInstruction::Multiply
-                        | RegularInstruction::Divide
-                        | RegularInstruction::UnaryMinus
-                        | RegularInstruction::UnaryPlus
-                        | RegularInstruction::BitwiseNot
-                        | RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. })
-                        | RegularInstruction::Apply(_)
-                        | RegularInstruction::GetPropertyText(_)
-                        | RegularInstruction::GetPropertyIndex(_)
-                        | RegularInstruction::GetPropertyDynamic
-                        | RegularInstruction::TakeEntryText(_)
-                        | RegularInstruction::TakeEntryIndex(_)
-                        | RegularInstruction::TakeEntryDynamic
-                        | RegularInstruction::SetEntryText(_)
-                        | RegularInstruction::SetEntryIndex(_)
-                        | RegularInstruction::SetEntryDynamic
-                        | RegularInstruction::Is
-                        | RegularInstruction::Matches
-                        | RegularInstruction::StructuralEqual
-                        | RegularInstruction::Equal
-                        | RegularInstruction::NotStructuralEqual
-                        | RegularInstruction::NotEqual
-                        | RegularInstruction::DeriveSharedReference
-                        | RegularInstruction::DeriveSharedReferenceMut
-                        | RegularInstruction::CreateShared
-                        | RegularInstruction::CreateSharedMut
-                        | RegularInstruction::PushToStack
-                        | RegularInstruction::PushListToStack
-                        | RegularInstruction::SetStackValue(_)
-                        | RegularInstruction::Splice(_)
-                        | RegularInstruction::SpliceDynamic
-                        | RegularInstruction::AppendEntry
-                        | RegularInstruction::Clear
-                        | RegularInstruction::SetSharedContainerValue
-                        | RegularInstruction::Unbox
-                        | RegularInstruction::SharedRefWithValue(_)
-                        | RegularInstruction::TypedValue
-                        | RegularInstruction::Increment
-                        | RegularInstruction::Decrement
-                        | RegularInstruction::MoveWithValue(_)
-                        | RegularInstruction::RemoteExecution(_)
-                        | RegularInstruction::TypeExpression => {
+                        | RegularInstructionData::List(_)
+                        | RegularInstructionData::ShortList(_)
+                        | RegularInstructionData::Map(_)
+                        | RegularInstructionData::ShortMap(_)
+                        | RegularInstructionData::KeyValueDynamic
+                        | RegularInstructionData::KeyValueShortText(_)
+                        | RegularInstructionData::Add
+                        | RegularInstructionData::Subtract
+                        | RegularInstructionData::Multiply
+                        | RegularInstructionData::Divide
+                        | RegularInstructionData::UnaryMinus
+                        | RegularInstructionData::UnaryPlus
+                        | RegularInstructionData::BitwiseNot
+                        | RegularInstructionData::TaggedValue(TaggedValue { is_empty: false, .. })
+                        | RegularInstructionData::Apply(_)
+                        | RegularInstructionData::GetPropertyText(_)
+                        | RegularInstructionData::GetPropertyIndex(_)
+                        | RegularInstructionData::GetPropertyDynamic
+                        | RegularInstructionData::TakeEntryText(_)
+                        | RegularInstructionData::TakeEntryIndex(_)
+                        | RegularInstructionData::TakeEntryDynamic
+                        | RegularInstructionData::SetEntryText(_)
+                        | RegularInstructionData::SetEntryIndex(_)
+                        | RegularInstructionData::SetEntryDynamic
+                        | RegularInstructionData::Is
+                        | RegularInstructionData::Matches
+                        | RegularInstructionData::StructuralEqual
+                        | RegularInstructionData::Equal
+                        | RegularInstructionData::NotStructuralEqual
+                        | RegularInstructionData::NotEqual
+                        | RegularInstructionData::DeriveSharedReference
+                        | RegularInstructionData::DeriveSharedReferenceMut
+                        | RegularInstructionData::CreateShared
+                        | RegularInstructionData::CreateSharedMut
+                        | RegularInstructionData::PushToStack
+                        | RegularInstructionData::PushListToStack
+                        | RegularInstructionData::SetStackValue(_)
+                        | RegularInstructionData::Splice(_)
+                        | RegularInstructionData::SpliceDynamic
+                        | RegularInstructionData::AppendEntry
+                        | RegularInstructionData::Clear
+                        | RegularInstructionData::SetSharedContainerValue
+                        | RegularInstructionData::Unbox
+                        | RegularInstructionData::SharedRefWithValue(_)
+                        | RegularInstructionData::TypedValue
+                        | RegularInstructionData::Increment
+                        | RegularInstructionData::Decrement
+                        | RegularInstructionData::MoveWithValue(_)
+                        | RegularInstructionData::RemoteExecution(_)
+                        | RegularInstructionData::TypeExpression => {
                             unreachable!()
                         }
                         #[cfg(feature = "disassembler")]
-                        RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => {
+                        RegularInstructionData::_RemoteExecutionDebugFlat(_) | RegularInstructionData::_RemoteExecutionDebugTree(_) => {
                             todo!("also map to ast")
                         }
                     }
@@ -483,25 +483,25 @@ pub fn ast_from_bytecode(
                     let expr: CollectedAstResult = match instruction {
                         Instruction::Regular(
                             regular_instruction,
-                        ) => match regular_instruction {
-                            RegularInstruction::List(_)
-                            | RegularInstruction::ShortList(_) => {
+                        ) => match regular_instruction.into_data() {
+                            RegularInstructionData::List(_)
+                            | RegularInstructionData::ShortList(_) => {
                                 let elements =
                                     collected_results.collect_value_results();
                                 DatexExpressionData::List(List::new(elements))
                                     .with_default_span()
                                     .into()
                             }
-                            RegularInstruction::Map(_)
-                            | RegularInstruction::ShortMap(_) => {
+                            RegularInstructionData::Map(_)
+                            | RegularInstructionData::ShortMap(_) => {
                                 let entries = collected_results
                                     .collect_key_value_pair_results();
                                 DatexExpressionData::Map(Map::new(entries))
                                     .with_default_span()
                                     .into()
                             }
-                            RegularInstruction::Statements(StatementsData { terminated, .. })
-                            | RegularInstruction::ShortStatements(
+                            RegularInstructionData::Statements(StatementsData { terminated, .. })
+                            | RegularInstructionData::ShortStatements(
                                 ShortStatementsData { terminated, .. },
                             ) => {
                                 let statements =
@@ -515,14 +515,14 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::KeyValueDynamic => {
+                            RegularInstructionData::KeyValueDynamic => {
                                 let value =
                                     collected_results.pop_value();
                                 let key = collected_results.pop_value();
                                 CollectedAstResult::KeyValuePair((key, value))
                             }
 
-                            RegularInstruction::KeyValueShortText(
+                            RegularInstructionData::KeyValueShortText(
                                 short_text_data,
                             ) => {
                                 let value =
@@ -534,18 +534,18 @@ pub fn ast_from_bytecode(
                                 CollectedAstResult::KeyValuePair((key, value))
                             }
 
-                            RegularInstruction::Add
-                            | RegularInstruction::Subtract
-                            | RegularInstruction::Multiply
-                            | RegularInstruction::Divide
-                            | RegularInstruction::Matches => {
+                            RegularInstructionData::Add
+                            | RegularInstructionData::Subtract
+                            | RegularInstructionData::Multiply
+                            | RegularInstructionData::Divide
+                            | RegularInstructionData::Matches => {
                                 let right =
                                     collected_results.pop_value();
                                 let left = collected_results.pop_value();
                                 DatexExpressionData::BinaryOperation(
                                     BinaryOperation {
                                         operator: BinaryOperator::from(
-                                            &regular_instruction,
+                                            &regular_instruction.code(),
                                         ),
                                         left: (left),
                                         right: (right),
@@ -556,11 +556,11 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::Is
-                            | RegularInstruction::StructuralEqual
-                            | RegularInstruction::Equal
-                            | RegularInstruction::NotStructuralEqual
-                            | RegularInstruction::NotEqual => {
+                            RegularInstructionData::Is
+                            | RegularInstructionData::StructuralEqual
+                            | RegularInstructionData::Equal
+                            | RegularInstructionData::NotStructuralEqual
+                            | RegularInstructionData::NotEqual => {
                                 let right =
                                     collected_results.pop_value();
                                 let left = collected_results.pop_value();
@@ -568,7 +568,7 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::ComparisonOperation(
                                     ComparisonOperation {
                                         operator: ComparisonOperator::from(
-                                            &regular_instruction,
+                                            regular_instruction.data(),
                                         ),
                                         left: left,
                                         right: right,
@@ -579,16 +579,16 @@ pub fn ast_from_bytecode(
                             }
 
                             instruction @ (
-                            RegularInstruction::CreateShared | RegularInstruction::CreateSharedMut
+                            RegularInstructionData::CreateShared | RegularInstructionData::CreateSharedMut
                             ) => {
                                 let expr = collected_results.pop_value();
                                 DatexExpressionData::CreateShared(
                                     CreateShared {
                                         mutability: match instruction {
-                                            RegularInstruction::CreateShared => {
+                                            RegularInstructionData::CreateShared => {
                                                 SharedContainerMutability::Immutable
                                             }
-                                            RegularInstruction::CreateSharedMut => {
+                                            RegularInstructionData::CreateSharedMut => {
                                                 SharedContainerMutability::Mutable
                                             }
                                             _ => unreachable!(),
@@ -600,7 +600,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::SharedRefWithValue(shared_ref) => {
+                            RegularInstructionData::SharedRefWithValue(shared_ref) => {
                                 DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(shared_ref.address),
                                     mutability: shared_ref.ref_mutability,
@@ -609,7 +609,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::DeriveSharedReference => {
+                            RegularInstructionData::DeriveSharedReference => {
                                 let expr = collected_results.pop_value();
                                 DatexExpressionData::DeriveSharedRef(
                                     DeriveSharedRef {
@@ -620,7 +620,7 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                            RegularInstruction::DeriveSharedReferenceMut => {
+                            RegularInstructionData::DeriveSharedReferenceMut => {
                                 let expr = collected_results.pop_value();
                                 DatexExpressionData::DeriveSharedRef(
                                     DeriveSharedRef {
@@ -631,7 +631,7 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                            RegularInstruction::SetSharedContainerValue => {
+                            RegularInstructionData::SetSharedContainerValue => {
                                 DatexExpressionData::UnboxAssignment(UnboxAssignment {
                                     assigned_expression: (collected_results.pop_value()),
                                     operator: None,
@@ -641,15 +641,15 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::UnaryMinus
-                            | RegularInstruction::UnaryPlus
-                            | RegularInstruction::BitwiseNot
-                            | RegularInstruction::Unbox => {
+                            RegularInstructionData::UnaryMinus
+                            | RegularInstructionData::UnaryPlus
+                            | RegularInstructionData::BitwiseNot
+                            | RegularInstructionData::Unbox => {
                                 let expr = collected_results.pop_value();
                                 DatexExpressionData::UnaryOperation(
                                     UnaryOperation {
                                         operator: UnaryOperator::from(
-                                            &regular_instruction,
+                                            regular_instruction.data(),
                                         ),
                                         expression: (expr),
                                     },
@@ -658,7 +658,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::TypedValue => {
+                            RegularInstructionData::TypedValue => {
                                 let expr = collected_results.pop_value();
                                 let expr_type =
                                     collected_results.pop_type();
@@ -675,7 +675,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::UnboundedStatementsEnd(
+                            RegularInstructionData::UnboundedStatementsEnd(
                                 UnboundedStatementsData { terminated },
                             ) => {
                                 let result = collector.try_pop_unbounded().ok_or(DXBParserError::NotInUnboundedRegularScopeError)?;
@@ -702,13 +702,13 @@ pub fn ast_from_bytecode(
                                 }
                             }
 
-                            RegularInstruction::MoveWithValue(move_with_value) => {
+                            RegularInstructionData::MoveWithValue(move_with_value) => {
                                 DatexExpressionData::MoveSharedValue(move_with_value.previous_address)
                                     .with_default_span()
                                     .into()
                             }
 
-                            RegularInstruction::PushToStack => {
+                            RegularInstructionData::PushToStack => {
                                 let expr = collected_results.pop_value();
 
                                 let res = DatexExpressionData::StackAssignment(
@@ -724,7 +724,7 @@ pub fn ast_from_bytecode(
                                 res
                             }
 
-                            RegularInstruction::PushListToStack => {
+                            RegularInstructionData::PushListToStack => {
                                 let expression = collected_results.pop_value();
                                 DatexExpressionData::StackListAssignment(StackListAssignment {
                                     expression,
@@ -733,7 +733,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::SetStackValue(slot_address) => {
+                            RegularInstructionData::SetStackValue(slot_address) => {
                                 let expr = collected_results.pop_value();
                                 DatexExpressionData::VariableAssignment(
                                     VariableAssignment {
@@ -750,7 +750,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::TaggedValue(TaggedValue {
+                            RegularInstructionData::TaggedValue(TaggedValue {
                                                                 tag: ShortTextData(tag),
                                                                 is_empty
                                                             }) => {
@@ -765,7 +765,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::Apply(_) => {
+                            RegularInstructionData::Apply(_) => {
                                 let mut arguments =
                                     collected_results.collect_value_results();
                                 // base is the last collected argument
@@ -779,9 +779,9 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::TakeEntryIndex(
+                            RegularInstructionData::TakeEntryIndex(
                                 index_data,
-                            ) | RegularInstruction::GetPropertyIndex(
+                            ) | RegularInstructionData::GetPropertyIndex(
                                 index_data,
                             ) => {
                                 let base = collected_results.pop_value();
@@ -800,7 +800,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::TakeEntryText(text_data) | RegularInstruction::GetPropertyText(text_data) => {
+                            RegularInstructionData::TakeEntryText(text_data) | RegularInstructionData::GetPropertyText(text_data) => {
                                 let base = collected_results.pop_value();
                                 DatexExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
@@ -817,7 +817,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::TakeEntryDynamic | RegularInstruction::GetPropertyDynamic => {
+                            RegularInstructionData::TakeEntryDynamic | RegularInstructionData::GetPropertyDynamic => {
                                 let base = collected_results.pop_value();
                                 let property =
                                     collected_results.pop_value();
@@ -831,7 +831,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::SetEntryIndex(
+                            RegularInstructionData::SetEntryIndex(
                                 index_data,
                             ) => {
                                 let base = collected_results.pop_value();
@@ -854,7 +854,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::Splice(splice_data) => {
+                            RegularInstructionData::Splice(splice_data) => {
                                 let target = collected_results.pop_value();
                                 let values = collected_results.pop_values(
                                     splice_data.insert_count
@@ -870,7 +870,7 @@ pub fn ast_from_bytecode(
                                     splice_args,
                                 )).with_default_span().into()
                             }
-                            RegularInstruction::SpliceDynamic => {
+                            RegularInstructionData::SpliceDynamic => {
                                 let target = collected_results.pop_value();
                                 let values = collected_results.pop_value();
 
@@ -887,7 +887,7 @@ pub fn ast_from_bytecode(
                                     ],
                                 )).with_default_span().into()
                             }
-                            RegularInstruction::AppendEntry => {
+                            RegularInstructionData::AppendEntry => {
                                 let target = collected_results.pop_value();
                                 let value = collected_results.pop_value();
 
@@ -897,7 +897,7 @@ pub fn ast_from_bytecode(
                                     vec![value],
                                 )).with_default_span().into()
                             }
-                            RegularInstruction::Clear => {
+                            RegularInstructionData::Clear => {
                                 let target = collected_results.pop_value();
                                 DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
                                     target,
@@ -905,7 +905,7 @@ pub fn ast_from_bytecode(
                                     vec![],
                                 )).with_default_span().into()
                             }
-                            RegularInstruction::Increment => {
+                            RegularInstructionData::Increment => {
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
@@ -917,7 +917,7 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                            RegularInstruction::Decrement => {
+                            RegularInstructionData::Decrement => {
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
@@ -930,7 +930,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::SetEntryText(text_data) => {
+                            RegularInstructionData::SetEntryText(text_data) => {
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
@@ -951,7 +951,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::SetEntryDynamic => {
+                            RegularInstructionData::SetEntryDynamic => {
                                 let base = collected_results.pop_value();
                                 let value =
                                     collected_results.pop_value();
@@ -968,7 +968,7 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                            RegularInstruction::RemoteExecution(remote_execution_data) => {
+                            RegularInstructionData::RemoteExecution(remote_execution_data) => {
                                 let receivers = collected_results.pop_value();
 
                                 let body = DatexExpressionData::Statements(Statements {
@@ -1098,7 +1098,7 @@ mod tests {
                 DatexExpressionData::TypedInteger(TypedInteger::from(21u8))
                     .with_default_span(),
             ]))
-                .with_default_span()
+            .with_default_span()
         );
     }
 
@@ -1126,11 +1126,11 @@ mod tests {
                     DatexExpressionData::TypedInteger(TypedInteger::from(2u8))
                         .with_default_span(),
                 ]))
-                    .with_default_span(),
+                .with_default_span(),
                 DatexExpressionData::TypedInteger(TypedInteger::from(3u8))
                     .with_default_span(),
             ]))
-                .with_default_span()
+            .with_default_span()
         );
     }
 
@@ -1158,7 +1158,7 @@ mod tests {
                 is_terminated: true,
                 unbounded: None,
             })
-                .with_default_span()
+            .with_default_span()
         );
     }
 
@@ -1192,16 +1192,16 @@ mod tests {
                     left: (DatexExpressionData::TypedInteger(
                         TypedInteger::from(3u8)
                     )
-                        .with_default_span()),
+                    .with_default_span()),
                     right: (DatexExpressionData::TypedInteger(
                         TypedInteger::from(4u8)
                     )
-                        .with_default_span()),
+                    .with_default_span()),
                     ty: None
                 })
-                    .with_default_span(),
+                .with_default_span(),
             ]))
-                .with_default_span()
+            .with_default_span()
         );
     }
 

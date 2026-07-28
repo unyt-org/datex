@@ -3,10 +3,10 @@ use crate::{
     ast::{
         expressions::{
             BinaryOperation, ComparisonOperation, DatexExpression,
-            DatexExpressionData, RemoteExecution, RootPropertyAccess,
-            Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
-            ValueAccessType, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariableKind,
+            DatexExpressionData, PropertyAssignment, RemoteExecution,
+            RootPropertyAccess, Statements, UnaryOperation, UnboundedStatement,
+            UnboxAssignment, ValueAccessType, VariableAccess,
+            VariableAssignment, VariableDeclaration, VariableKind,
         },
         resolved_variable::VariableId,
     },
@@ -33,6 +33,7 @@ use crate::{
             append_text, append_typed_decimal, append_value,
         },
     },
+    dxb_parser::next_instructions_stack::NextInstructionType::Regular,
     global::{
         dxb_block::DXBBlock,
         instruction_codes::InstructionCode,
@@ -50,7 +51,9 @@ use crate::{
                 InstructionBlockData, ModifySharedContainerValue,
                 ShortTextData, SpliceData, StackIndex, TaggedValue,
             },
-            regular_instructions::RegularInstruction,
+            regular_instructions::{
+                RegularInstruction, RegularInstructionData,
+            },
             routing_header::RoutingHeader,
         },
         root_properties::RootProperty,
@@ -593,28 +596,14 @@ fn compile_expression(
         DatexExpressionData::Null => {
             append_regular_instruction(
                 compilation_context.cursor(),
-                RegularInstruction::Null,
+                RegularInstruction::null(),
             );
         }
         DatexExpressionData::List(list) => {
-            match list.items.len() {
-                0..=255 => {
-                    compilation_context
-                        .append_instruction_code(InstructionCode::SHORT_LIST);
-                    append_u8(
-                        compilation_context.cursor(),
-                        list.items.len() as u8,
-                    );
-                }
-                _ => {
-                    compilation_context
-                        .append_instruction_code(InstructionCode::LIST);
-                    append_u32(
-                        compilation_context.cursor(),
-                        list.items.len() as u32, // FIXME #671: conversion from usize to u32
-                    );
-                }
-            }
+            append_regular_instruction(
+                compilation_context.cursor(),
+                RegularInstruction::list(list.items.len() as u32),
+            );
             for item in list.items {
                 scope = compile_expression(
                     compilation_context,
@@ -957,7 +946,7 @@ fn compile_expression(
                 "append" => {
                     append_regular_instruction(
                         compilation_context.cursor(),
-                        RegularInstruction::AppendEntry,
+                        RegularInstruction::append_entry(),
                     );
                     // must be exactly one element
                     if call.arguments.len() != 1 {
@@ -976,7 +965,7 @@ fn compile_expression(
                 "clear" => {
                     append_regular_instruction(
                         compilation_context.cursor(),
-                        RegularInstruction::Clear,
+                        RegularInstruction::clear(),
                     );
 
                     // no arguments allowed
@@ -996,7 +985,7 @@ fn compile_expression(
 
                     append_regular_instruction(
                         compilation_context.cursor(),
-                        RegularInstruction::SpliceDynamic,
+                        RegularInstruction::splice_dynamic(),
                     );
 
                     for argument in call.arguments.drain(..) {
@@ -1065,15 +1054,19 @@ fn compile_expression(
         DatexExpressionData::PropertyAssignment(property_assignment) => {
             compilation_context.mark_has_non_static_value();
 
+            let PropertyAssignment {
+                base,
+                property,
+                assigned_expression,
+                ..
+            } = property_assignment;
             // depending on the key, handle different property assignments
-            match &property_assignment.property.data() {
+            match property.data() {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
                     append_regular_instruction(
                         compilation_context.cursor(),
-                        RegularInstruction::SetEntryText(ShortTextData(
-                            key.0.clone(),
-                        )),
+                        RegularInstruction::short_text(key.0.clone()),
                     );
                 }
                 // index access if integer fits in u32
@@ -1088,7 +1081,7 @@ fn compile_expression(
                 _ => {
                     scope = compile_dynamic_property_assignment(
                         compilation_context,
-                        property_assignment.property,
+                        property,
                         scope,
                     )?;
                 }
@@ -1097,10 +1090,7 @@ fn compile_expression(
             // compile assigned expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(
-                    property_assignment.assigned_expression,
-                    &metadata,
-                ),
+                RichAst::new(assigned_expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1108,7 +1098,7 @@ fn compile_expression(
             // compile base expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(property_assignment.base, &metadata),
+                RichAst::new(base, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1200,7 +1190,7 @@ fn compile_expression(
                     );
                     append_regular_instruction(
                         compilation_context.cursor(),
-                        RegularInstruction::SetStackValue(stack_index),
+                        RegularInstruction::set_stack_value(stack_index),
                     );
 
                     // compile expression
@@ -1242,7 +1232,7 @@ fn compile_expression(
 
                         append_regular_instruction(
                             compilation_context.cursor(),
-                            RegularInstruction::BorrowStackValue(stack_index),
+                            RegularInstruction::borrow_stack_value(stack_index),
                         );
                     } else {
                         // Generate x = x * z instructions;
@@ -1271,7 +1261,7 @@ fn compile_expression(
                 }
                 None => append_regular_instruction(
                     compilation_context.cursor(),
-                    RegularInstruction::SetSharedContainerValue,
+                    RegularInstruction::set_shared_container_value(),
                 ),
             };
 
@@ -1385,7 +1375,7 @@ fn compile_expression(
             // insert remote execution instruction
             append_regular_instruction(
                 compilation_context.cursor(),
-                RegularInstruction::RemoteExecution(InstructionBlockData {
+                RegularInstruction::remote_execution(InstructionBlockData {
                     // block size (len of compilation_context.buffer)
                     length: dxb.len() as u32,
                     injected_value_count: external_parent_scope
@@ -1416,7 +1406,7 @@ fn compile_expression(
             if let Ok(root_property) = root_property {
                 append_regular_instruction(
                     compilation_context.cursor(),
-                    RegularInstruction::GetRootProperty(root_property),
+                    RegularInstruction::get_root_property(root_property),
                 );
             } else {
                 return Err(CompilerError::InvalidRootPropertyName(
@@ -1523,11 +1513,10 @@ fn compile_expression(
         }
 
         DatexExpressionData::Tag(tag_expression) => {
-            let tag_instruction =
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData(tag_expression.tag),
-                    is_empty: tag_expression.expression.is_none(),
-                });
+            let tag_instruction = RegularInstruction::tagged_value(
+                tag_expression.tag,
+                tag_expression.expression.is_none(),
+            );
             append_regular_instruction(
                 compilation_context.cursor(),
                 tag_instruction,
@@ -1547,7 +1536,7 @@ fn compile_expression(
         DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
             append_regular_instruction(
                 compilation_context.cursor(),
-                RegularInstruction::GetCoreLibValue(core_lib_id.into()),
+                RegularInstruction::get_core_lib_value(core_lib_id.into()),
             );
         }
 
@@ -1570,11 +1559,11 @@ fn compile_maybe_direct_assignment_operation(
     match operator {
         ModificationOperator::AddAssign => append_regular_instruction(
             compilation_context.cursor(),
-            RegularInstruction::Increment,
+            RegularInstruction::increment(),
         ),
         ModificationOperator::SubtractAssign => append_regular_instruction(
             compilation_context.cursor(),
-            RegularInstruction::Decrement,
+            RegularInstruction::decrement(),
         ),
         operator => return false,
     };
@@ -1702,7 +1691,10 @@ pub mod tests {
         },
         global::{
             instruction_codes::InstructionCode,
-            protocol_structures::type_instructions::TypeInstruction,
+            protocol_structures::{
+                regular_instructions::RegularInstruction,
+                type_instructions::TypeInstruction,
+            },
         },
         runtime::execution::context::ExecutionMode,
         types::literal_type_definition::LiteralTypeDefinition,
@@ -1733,7 +1725,7 @@ pub mod tests {
                     UInt8Data,
                 },
                 instructions::Instruction,
-                regular_instructions::RegularInstruction,
+                regular_instructions::RegularInstructionData,
             },
             root_properties::RootProperty,
         },
@@ -1874,7 +1866,10 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            (RegularInstruction::CreateShared, RegularInstruction::Null)
+            (
+                RegularInstructionData::CreateShared,
+                RegularInstructionData::Null
+            )
         );
     }
 
@@ -1885,8 +1880,8 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &result,
             (
-                RegularInstruction::CreateSharedMut,
-                RegularInstruction::Null,
+                RegularInstructionData::CreateSharedMut,
+                RegularInstructionData::Null,
             )
         );
     }
@@ -2149,11 +2144,11 @@ pub mod tests {
         assert_instructions_equal!(
             &result,
             [
-                Instruction::Regular(RegularInstruction::Range),
-                Instruction::Regular(RegularInstruction::Integer(
+                Instruction::Regular(RegularInstruction::range()),
+                Instruction::Regular(RegularInstruction::integer(
                     Integer::new(start)
                 )),
-                Instruction::Regular(RegularInstruction::Integer(
+                Instruction::Regular(RegularInstruction::integer(
                     Integer::new(end)
                 ))
             ]
@@ -2426,7 +2421,7 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            (RegularInstruction::TaggedValue(TaggedValue {
+            (RegularInstructionData::TaggedValue(TaggedValue {
                 tag: ShortTextData("Example".to_string()),
                 is_empty: true,
             }))
@@ -2440,15 +2435,17 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &result,
             (
-                RegularInstruction::TaggedValue(TaggedValue {
+                RegularInstructionData::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::ShortMap(ShortMapData { element_count: 1 }),
-                RegularInstruction::KeyValueShortText(ShortTextData(
+                RegularInstructionData::ShortMap(ShortMapData {
+                    element_count: 1
+                }),
+                RegularInstructionData::KeyValueShortText(ShortTextData(
                     "a".to_string()
                 )),
-                RegularInstruction::True,
+                RegularInstructionData::True,
             )
         )
     }
@@ -2460,11 +2457,11 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &result,
             (
-                RegularInstruction::TaggedValue(TaggedValue {
+                RegularInstructionData::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::ShortText(ShortTextData(
+                RegularInstructionData::ShortText(ShortTextData(
                     "test".to_string()
                 )),
             )
@@ -2478,11 +2475,11 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &result,
             (
-                RegularInstruction::TaggedValue(TaggedValue {
+                RegularInstructionData::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::Null,
+                RegularInstructionData::Null,
             )
         )
     }
@@ -2835,24 +2832,26 @@ pub mod tests {
         print_disassembled(&res);
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 true,
                 instructions!(
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(1)),
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::UInt8(UInt8Data(1)),
+                    RegularInstructionData::statements_with_children(
                         true,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::UInt8(UInt8Data(2)),
-                            RegularInstruction::CloneStackValue(StackIndex(0)),
-                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::UInt8(UInt8Data(2)),
+                            RegularInstructionData::CloneStackValue(
+                                StackIndex(0)
+                            ),
+                            RegularInstruction::take_stack_value(StackIndex(1)),
                         )
                     ),
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(3)),
-                    RegularInstruction::TakeStackValue(StackIndex(0)),
-                    RegularInstruction::TakeStackValue(StackIndex(1)),
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::UInt8(UInt8Data(3)),
+                    RegularInstruction::take_stack_value(StackIndex(0)),
+                    RegularInstruction::take_stack_value(StackIndex(1)),
                 )
             ),)
         );
@@ -2949,12 +2948,12 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(42)),
-                    RegularInstruction::_RemoteExecutionDebugFlat(
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::UInt8(UInt8Data(42)),
+                    RegularInstructionData::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 5,
                             injected_variable_count: 1,
@@ -2966,13 +2965,13 @@ pub mod tests {
                                 )
                             }],
                             body: vec![Instruction::Regular(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    0
-                                ))
+                                RegularInstruction::take_stack_value(
+                                    StackIndex(0)
+                                )
                             ),]
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstructionData::UInt8(UInt8Data(1)),
                 )
             ),)
         );
@@ -2989,13 +2988,13 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::CreateShared,
-                    RegularInstruction::UInt8(UInt8Data(42)),
-                    RegularInstruction::_RemoteExecutionDebugFlat(
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::CreateShared,
+                    RegularInstructionData::UInt8(UInt8Data(42)),
+                    RegularInstructionData::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 5,
                             injected_variable_count: 1,
@@ -3006,13 +3005,13 @@ pub mod tests {
                                 )
                             }],
                             body: vec![Instruction::Regular(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    0
-                                ))
+                                RegularInstruction::take_stack_value(
+                                    StackIndex(0)
+                                )
                             ),],
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstructionData::UInt8(UInt8Data(1)),
                 )
             ),)
         )
@@ -3027,13 +3026,13 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::CreateShared,
-                    RegularInstruction::UInt8(UInt8Data(42)),
-                    RegularInstruction::_RemoteExecutionDebugFlat(
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::CreateShared,
+                    RegularInstructionData::UInt8(UInt8Data(42)),
+                    RegularInstructionData::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 5,
                             injected_variable_count: 1,
@@ -3044,13 +3043,13 @@ pub mod tests {
                                 )
                             }],
                             body: vec![Instruction::Regular(
-                                RegularInstruction::GetStackValueSharedRef(
+                                RegularInstruction::get_stack_value_shared_ref(
                                     StackIndex(0)
                                 )
                             ),],
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstructionData::UInt8(UInt8Data(1)),
                 )
             ),)
         )
@@ -3065,13 +3064,13 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::CreateShared,
-                    RegularInstruction::UInt8(UInt8Data(42)),
-                    RegularInstruction::_RemoteExecutionDebugTree(
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::CreateShared,
+                    RegularInstructionData::UInt8(UInt8Data(42)),
+                    RegularInstructionData::_RemoteExecutionDebugTree(
                         InstructionBlockDataDebugTree {
                             length: 13,
                             injected_variable_count: 1,
@@ -3081,20 +3080,20 @@ pub mod tests {
                                     SharedInjectedValueType::Move
                                 )
                             }],
-                            body: RegularInstruction::statements_with_children(
+                            body: RegularInstructionData::statements_with_children(
                                 false,
                                 instructions!(
-                                    RegularInstruction::GetStackValueSharedRef(
+                                    RegularInstruction::get_stack_value_shared_ref(
                                         StackIndex(0)
                                     ),
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstruction::take_stack_value(
                                         StackIndex(0)
                                     )
                                 )
                             ),
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstructionData::UInt8(UInt8Data(1)),
                 )
             ),)
         )
@@ -3109,14 +3108,14 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(42)),
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(69)),
-                    RegularInstruction::_RemoteExecutionDebugFlat(
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::UInt8(UInt8Data(42)),
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::UInt8(UInt8Data(69)),
+                    RegularInstructionData::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 11,
                             injected_variable_count: 2,
@@ -3136,21 +3135,21 @@ pub mod tests {
                                 },
                             ],
                             body: vec![
-                                Instruction::Regular(RegularInstruction::Add),
+                                Instruction::Regular(RegularInstruction::add()),
                                 Instruction::Regular(
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstruction::take_stack_value(
                                         StackIndex(0)
                                     )
                                 ),
                                 Instruction::Regular(
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstruction::take_stack_value(
                                         StackIndex(1)
                                     )
                                 ),
                             ],
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstructionData::UInt8(UInt8Data(1)),
                 )
             ),)
         );
@@ -3166,14 +3165,14 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(42)),
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(69)),
-                    RegularInstruction::_RemoteExecutionDebugTree(
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::UInt8(UInt8Data(42)),
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::UInt8(UInt8Data(69)),
+                    RegularInstructionData::_RemoteExecutionDebugTree(
                         InstructionBlockDataDebugTree {
                             length: 17,
                             injected_variable_count: 1,
@@ -3186,23 +3185,26 @@ pub mod tests {
                                     )
                                 },
                             ],
-                            body: RegularInstruction::statements_with_children(
-                                false,
-                                instructions!(
-                                    RegularInstruction::PushToStack,
-                                    RegularInstruction::UInt8(UInt8Data(5)),
-                                    RegularInstruction::Add,
-                                    RegularInstruction::TakeStackValue(
-                                        StackIndex(1)
-                                    ),
-                                    RegularInstruction::TakeStackValue(
-                                        StackIndex(0)
-                                    ),
-                                )
-                            ),
+                            body:
+                                RegularInstructionData::statements_with_children(
+                                    false,
+                                    instructions!(
+                                        RegularInstructionData::PushToStack,
+                                        RegularInstructionData::UInt8(
+                                            UInt8Data(5)
+                                        ),
+                                        RegularInstructionData::Add,
+                                        RegularInstruction::take_stack_value(
+                                            StackIndex(1)
+                                        ),
+                                        RegularInstruction::take_stack_value(
+                                            StackIndex(0)
+                                        ),
+                                    )
+                                ),
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstructionData::UInt8(UInt8Data(1)),
                 )
             ),)
         );
@@ -3421,7 +3423,7 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::GetRootProperty(RootProperty::ENDPOINT))
+            (RegularInstructionData::GetRootProperty(RootProperty::ENDPOINT))
         );
     }
 
@@ -3434,7 +3436,7 @@ pub mod tests {
                 .0;
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::GetRootProperty(RootProperty::CALLER))
+            (RegularInstructionData::GetRootProperty(RootProperty::CALLER))
         );
     }
 
@@ -3495,7 +3497,7 @@ pub mod tests {
         assert_instructions_equal!(
             &res,
             [
-                Instruction::Regular(RegularInstruction::TypeExpression),
+                Instruction::Regular(RegularInstruction::type_expression()),
                 Instruction::Type(TypeInstruction::TypeDefinitionLiteral(
                     LiteralTypeDefinition::Integer(1.into())
                 ))
@@ -3513,7 +3515,7 @@ pub mod tests {
 
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::GetCoreLibValue(
+            (RegularInstructionData::GetCoreLibValue(
                 CoreLibId::Type(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Integer
                 ))
@@ -3866,31 +3868,31 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
                     // var x = 42u8
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::UInt8(UInt8Data(42)),
                     // var x = 43u8;
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::statements_with_children(
                         true,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::UInt8(UInt8Data(43)),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::UInt8(UInt8Data(43)),
                         )
                     ),
                     // var y = 43u8; y
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::UInt8(UInt8Data(43)),
-                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::UInt8(UInt8Data(43)),
+                            RegularInstruction::take_stack_value(StackIndex(1)),
                         )
                     ),
                     // x
-                    RegularInstruction::TakeStackValue(StackIndex(0))
+                    RegularInstruction::take_stack_value(StackIndex(0))
                 )
             ),)
         );
@@ -3902,29 +3904,29 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
                     // var x = 1u8
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::UInt8(UInt8Data(1)),
                     // var y =
-                    RegularInstruction::PushToStack,
+                    RegularInstructionData::PushToStack,
                     // (var x = 2u8; x)
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::UInt8(UInt8Data(2)),
-                            RegularInstruction::TakeStackValue(StackIndex(1)),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::UInt8(UInt8Data(2)),
+                            RegularInstruction::take_stack_value(StackIndex(1)),
                         )
                     ),
                     // [x, y]
-                    RegularInstruction::ShortList(ShortListData {
+                    RegularInstructionData::ShortList(ShortListData {
                         element_count: 2
                     }),
-                    RegularInstruction::TakeStackValue(StackIndex(0)),
-                    RegularInstruction::TakeStackValue(StackIndex(1)),
+                    RegularInstruction::take_stack_value(StackIndex(0)),
+                    RegularInstruction::take_stack_value(StackIndex(1)),
                 )
             ),)
         )
@@ -3936,19 +3938,21 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 true,
                 instructions!(
                     // var x = []
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::ShortList(ShortListData {
+                    RegularInstructionData::PushToStack,
+                    RegularInstructionData::ShortList(ShortListData {
                         element_count: 0
                     }),
                     // x->append(true)
-                    RegularInstruction::AppendEntry.with_children(
+                    RegularInstructionData::AppendEntry.with_children(
                         instructions!(
-                            RegularInstruction::True,
-                            RegularInstruction::BorrowStackValue(StackIndex(0)),
+                            RegularInstructionData::True,
+                            RegularInstructionData::BorrowStackValue(
+                                StackIndex(0)
+                            ),
                         )
                     )
                 )

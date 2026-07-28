@@ -3,7 +3,7 @@ use core::fmt::Display;
 use crate::{
     global::{
         instruction_codes::InstructionCode,
-        protocol_structures::regular_instructions::RegularInstruction,
+        protocol_structures::regular_instructions::RegularInstructionData,
     },
     prelude::*,
 };
@@ -242,22 +242,22 @@ impl From<InstructionCode> for BinaryOperator {
     }
 }
 
-impl From<&RegularInstruction> for BinaryOperator {
-    fn from(instruction: &RegularInstruction) -> Self {
+impl From<&RegularInstructionData> for BinaryOperator {
+    fn from(instruction: &RegularInstructionData) -> Self {
         match instruction {
-            RegularInstruction::Add => {
+            RegularInstructionData::Add => {
                 BinaryOperator::Arithmetic(ArithmeticOperator::Add)
             }
-            RegularInstruction::Subtract => {
+            RegularInstructionData::Subtract => {
                 BinaryOperator::Arithmetic(ArithmeticOperator::Subtract)
             }
-            RegularInstruction::Multiply => {
+            RegularInstructionData::Multiply => {
                 BinaryOperator::Arithmetic(ArithmeticOperator::Multiply)
             }
-            RegularInstruction::Divide => {
+            RegularInstructionData::Divide => {
                 BinaryOperator::Arithmetic(ArithmeticOperator::Divide)
             }
-            RegularInstruction::Range => {
+            RegularInstructionData::Range => {
                 BinaryOperator::Range(RangeOperator::Inclusive)
             }
             _ => {
@@ -270,8 +270,8 @@ impl From<&RegularInstruction> for BinaryOperator {
     }
 }
 
-impl From<RegularInstruction> for BinaryOperator {
-    fn from(instruction: RegularInstruction) -> Self {
+impl From<RegularInstructionData> for BinaryOperator {
+    fn from(instruction: RegularInstructionData) -> Self {
         BinaryOperator::from(&instruction)
     }
 }

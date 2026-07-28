@@ -7,7 +7,10 @@ use crate::{
     },
     global::{
         instruction_codes::InstructionCode,
-        protocol_structures::instruction_data::{InstantData, TextData},
+        protocol_structures::{
+            instruction_data::{InstantData, TextData},
+            regular_instructions::RegularInstruction,
+        },
     },
     utils::buffers::{append_i16, append_i32, append_u8},
     values::{
@@ -37,7 +40,7 @@ use crate::{
             UInt128Data,
         },
         instructions::Instruction,
-        regular_instructions::RegularInstruction,
+        regular_instructions::RegularInstructionData,
     },
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdIndex},
@@ -111,7 +114,7 @@ pub fn compile_panic(
 
     append_apply(
         &mut context,
-        RegularInstruction::GetCoreLibValue(
+        RegularInstruction::get_core_lib_value(
             CoreLibId::Value(CoreLibValueId::Panic).into(),
         ),
         vec![ValueContainer::Local(panic_value.into())],
@@ -133,14 +136,14 @@ pub fn append_shared_container_from_stack(
         context.cursor_mut(),
         match ownership {
             SharedContainerOwnership::Owned => {
-                RegularInstruction::TakeStackValue(index)
+                RegularInstruction::take_stack_value(index)
             }
             SharedContainerOwnership::Referenced(
                 ReferenceMutability::Immutable,
-            ) => RegularInstruction::GetStackValueSharedRef(index),
+            ) => RegularInstruction::get_stack_value_shared_ref(index),
             SharedContainerOwnership::Referenced(
                 ReferenceMutability::Mutable,
-            ) => RegularInstruction::GetStackValueSharedRefMut(index),
+            ) => RegularInstruction::get_stack_value_shared_ref_mut(index),
         },
     );
 }
@@ -184,10 +187,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             }) => {
                 append_regular_instruction(
                     context.cursor_mut(),
-                    RegularInstruction::TaggedValue(TaggedValue {
-                        tag: ShortTextData(tag.clone()),
-                        is_empty: true,
-                    }),
+                    RegularInstruction::tagged_value(tag.clone(), true),
                 );
                 return; // early return, don't append null value; TODO: assert that value is actually null?
             }
@@ -198,10 +198,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             }) => {
                 append_regular_instruction(
                     context.cursor_mut(),
-                    RegularInstruction::TaggedValue(TaggedValue {
-                        tag: ShortTextData(tag.clone()),
-                        is_empty: false,
-                    }),
+                    RegularInstruction::tagged_value(tag.clone(), false),
                 );
             }
             _ => append_type_cast(context, custom_type),
@@ -217,7 +214,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             } else {
                 append_regular_instruction(
                     context.cursor_mut(),
-                    RegularInstruction::TypeExpression,
+                    RegularInstruction::type_expression(),
                 );
                 context.visit_type(ty);
             }
@@ -250,28 +247,15 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
         CoreValue::Boolean(val) => append_boolean(context.cursor_mut(), val.0),
         CoreValue::Null => append_regular_instruction(
             context.cursor_mut(),
-            RegularInstruction::Null,
+            RegularInstruction::null(),
         ),
         CoreValue::Text(val) => append_text(context.cursor_mut(), val.0),
         CoreValue::List(val) => {
             // if list size < 256, use SHORT_LIST
-            match val.len() {
-                0..=255 => {
-                    append_instruction_code(
-                        context.cursor_mut(),
-                        InstructionCode::SHORT_LIST,
-                    );
-                    append_u8(context.cursor_mut(), val.len() as u8);
-                }
-                _ => {
-                    append_regular_instruction(
-                        context.cursor_mut(),
-                        RegularInstruction::List(ListData {
-                            element_count: val.len(),
-                        }),
-                    );
-                }
-            }
+            append_regular_instruction(
+                context.cursor_mut(),
+                RegularInstruction::list(val.len()),
+            );
 
             for (index, item) in val.into_iter().enumerate() {
                 context.visit_value_container(
@@ -285,24 +269,10 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             }
         }
         CoreValue::Map(val) => {
-            // if map size < 256, use SHORT_MAP
-            match val.size() {
-                0..=255 => {
-                    append_instruction_code(
-                        context.cursor_mut(),
-                        InstructionCode::SHORT_MAP,
-                    );
-                    append_u8(context.cursor_mut(), val.size() as u8);
-                }
-                _ => {
-                    append_regular_instruction(
-                        context.cursor_mut(),
-                        RegularInstruction::Map(MapData {
-                            element_count: val.size() as u32, // FIXME #633: casting from usize to u32 here
-                        }),
-                    );
-                }
-            }
+            append_regular_instruction(
+                context.cursor_mut(),
+                RegularInstruction::map(val.size() as u32),
+            );
             for (key, value) in val.into_iter() {
                 append_key_value_pair(
                     context,
@@ -315,7 +285,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
         CoreValue::Range(range) => {
             append_regular_instruction(
                 context.cursor_mut(),
-                RegularInstruction::Range,
+                RegularInstruction::range(),
             );
             context.visit_value_container(*range.start, None);
             context.visit_value_container(*range.end, None);
@@ -341,9 +311,7 @@ pub fn append_apply<T: BufferProvider + ValueVisitor>(
 ) {
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::Apply(ApplyData {
-            arg_count: args.len() as u16,
-        }),
+        RegularInstruction::apply(args.len() as u16),
     );
     for arg in args {
         context.visit_value_container(arg, None);
@@ -357,7 +325,7 @@ pub fn append_type_cast<T: BufferProvider + ValueVisitor>(
 ) {
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::TypedValue,
+        RegularInstruction::typed_value(),
     );
 
     // append type
@@ -367,25 +335,15 @@ pub fn append_type_cast<T: BufferProvider + ValueVisitor>(
 /// Appends a text value, using either the short or regular text instruction depending on the byte length
 /// of the texts string representation
 pub fn append_text(cursor: &mut ByteCursor, string: String) {
-    if string.len() < 256 {
-        append_regular_instruction(
-            cursor,
-            RegularInstruction::ShortText(ShortTextData(string.to_owned())),
-        );
-    } else {
-        append_regular_instruction(
-            cursor,
-            RegularInstruction::Text(TextData(string)),
-        );
-    }
+    append_regular_instruction(cursor, RegularInstruction::text(string));
 }
 
 /// Appends a boolean value using the TRUE or FALSE instruction
 pub fn append_boolean(cursor: &mut ByteCursor, boolean: bool) {
     if boolean {
-        append_regular_instruction(cursor, RegularInstruction::True)
+        append_regular_instruction(cursor, RegularInstruction::r#true());
     } else {
-        append_regular_instruction(cursor, RegularInstruction::False)
+        append_regular_instruction(cursor, RegularInstruction::r#false());
     }
 }
 
@@ -402,7 +360,7 @@ pub fn append_big_decimal(cursor: &mut ByteCursor, decimal: &Decimal) {
 pub fn append_endpoint(cursor: &mut ByteCursor, endpoint: &Endpoint) {
     append_regular_instruction(
         cursor,
-        RegularInstruction::Endpoint(endpoint.clone()), // FIXME: no clone
+        RegularInstruction::endpoint(endpoint.clone()), // FIXME: no clone
     );
 }
 
@@ -419,36 +377,31 @@ pub fn append_typed_integer(
 pub fn append_integer(cursor: &mut ByteCursor, integer: &Integer) {
     append_regular_instruction(
         cursor,
-        RegularInstruction::Integer(integer.clone()), // FIXME: no clone
+        RegularInstruction::integer(integer.clone()), // FIXME: no clone
     );
 }
 
 /// Appends an encoded integer without explicit type casts
 pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) {
     let instruction = match integer {
-        TypedInteger::I8(val) => RegularInstruction::Int8(Int8Data(*val)),
-        TypedInteger::I16(val) => RegularInstruction::Int16(Int16Data(*val)),
-        TypedInteger::I32(val) => RegularInstruction::Int32(Int32Data(*val)),
-        TypedInteger::I64(val) => RegularInstruction::Int64(Int64Data(*val)),
-        TypedInteger::I128(val) => RegularInstruction::Int128(Int128Data(*val)),
-        TypedInteger::U8(val) => RegularInstruction::UInt8(UInt8Data(*val)),
-        TypedInteger::U16(val) => RegularInstruction::UInt16(UInt16Data(*val)),
-        TypedInteger::U32(val) => RegularInstruction::UInt32(UInt32Data(*val)),
-        TypedInteger::U64(val) => RegularInstruction::UInt64(UInt64Data(*val)),
-        TypedInteger::U128(val) => {
-            RegularInstruction::UInt128(UInt128Data(*val))
-        }
-        TypedInteger::IBig(val) => RegularInstruction::BigInteger(val.clone()), // FIXME: no clone
+        TypedInteger::I8(val) => RegularInstruction::int8(*val),
+        TypedInteger::I16(val) => RegularInstruction::int16(*val),
+        TypedInteger::I32(val) => RegularInstruction::int32(*val),
+        TypedInteger::I64(val) => RegularInstruction::int64(*val),
+        TypedInteger::I128(val) => RegularInstruction::int128(*val),
+        TypedInteger::U8(val) => RegularInstruction::uint8(*val),
+        TypedInteger::U16(val) => RegularInstruction::uint16(*val),
+        TypedInteger::U32(val) => RegularInstruction::uint32(*val),
+        TypedInteger::U64(val) => RegularInstruction::uint64(*val),
+        TypedInteger::U128(val) => RegularInstruction::uint128(*val),
+        TypedInteger::IBig(val) => RegularInstruction::big_integer(val.clone()), // FIXME: no clone
     };
 
     append_regular_instruction(cursor, instruction);
 }
 
 pub fn append_instant(cursor: &mut ByteCursor, instant: &Instant) {
-    append_regular_instruction(
-        cursor,
-        RegularInstruction::Instant(InstantData(instant.0)),
-    );
+    append_regular_instruction(cursor, RegularInstruction::instant(instant.0));
 }
 
 /// Appends a typed decimal with explicit type casts
@@ -458,17 +411,13 @@ pub fn append_encoded_decimal(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
             TypedDecimal::F32(val) => {
                 append_regular_instruction(
                     cursor,
-                    RegularInstruction::DecimalF32(Float32Data(
-                        val.into_inner(),
-                    )),
+                    RegularInstruction::decimal_f32(val.into_inner()),
                 );
             }
             TypedDecimal::F64(val) => {
                 append_regular_instruction(
                     cursor,
-                    RegularInstruction::DecimalF64(Float64Data(
-                        val.into_inner(),
-                    )),
+                    RegularInstruction::decimal_f64(val.into_inner()),
                 );
             }
             TypedDecimal::Decimal(val) => {
@@ -539,20 +488,20 @@ pub fn append_get_shared_ref(
         PointerAddress::SelfOwned(local_address) => {
             append_regular_instruction(
                 context.cursor_mut(),
-                RegularInstruction::GetLocalSharedRef(local_address),
+                RegularInstruction::get_local_shared_ref(local_address),
             );
         }
         PointerAddress::Remote(address) => match mutability {
             ReferenceMutability::Immutable => {
                 append_regular_instruction(
                     context.cursor_mut(),
-                    RegularInstruction::RequestRemoteSharedRef(address),
+                    RegularInstruction::request_remote_shared_ref(address),
                 );
             }
             ReferenceMutability::Mutable => {
                 append_regular_instruction(
                     context.cursor_mut(),
-                    RegularInstruction::RequestRemoteSharedRefMut(address),
+                    RegularInstruction::request_remote_shared_ref_mut(address),
                 );
             }
         },
@@ -563,7 +512,7 @@ pub fn append_get_shared_ref(
 pub fn append_get_core_lib_value(cursor: &mut ByteCursor, id: CoreLibId) {
     append_regular_instruction(
         cursor,
-        RegularInstruction::GetCoreLibValue(CoreLibIdIndex::from(id)),
+        RegularInstruction::get_core_lib_value(CoreLibIdIndex::from(id)),
     );
 }
 
@@ -588,7 +537,7 @@ pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
         _ => {
             append_regular_instruction(
                 context.cursor_mut(),
-                RegularInstruction::KeyValueDynamic,
+                RegularInstruction::key_value_dynamic(),
             );
             context.visit_value_container(
                 key,
@@ -612,10 +561,13 @@ pub fn append_key_string(cursor: &mut ByteCursor, key_string: String) {
     if key_string.len() < 256 {
         append_regular_instruction(
             cursor,
-            RegularInstruction::KeyValueShortText(ShortTextData(key_string)),
+            RegularInstruction::key_value_short_text(key_string),
         );
     } else {
-        append_regular_instruction(cursor, RegularInstruction::KeyValueDynamic);
+        append_regular_instruction(
+            cursor,
+            RegularInstruction::key_value_dynamic(),
+        );
         append_text(cursor, key_string);
     }
 }
@@ -625,10 +577,6 @@ pub fn append_regular_instruction(
     cursor: &mut ByteCursor,
     instruction: RegularInstruction,
 ) {
-    // add instruction code
-    cursor
-        .write_all(&[InstructionCode::from(&instruction) as u8])
-        .unwrap();
     // add instruction
     instruction.write(cursor).unwrap();
 }
@@ -681,7 +629,7 @@ mod tests {
                 Int32Data, MoveWithValue, SharedRefWithValue, ShortListData,
                 ShortTextData, StackIndex, TaggedValue,
             },
-            regular_instructions::RegularInstruction,
+            regular_instructions::RegularInstructionData,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
@@ -709,7 +657,7 @@ mod tests {
 
     fn compile_value_assert_instructions(
         value: Value,
-        expected_instructions: Vec<RegularInstruction>,
+        expected_instructions: Vec<RegularInstructionData>,
     ) {
         let compiled = compile_value(
             value,
@@ -741,7 +689,7 @@ mod tests {
 
         compile_value_assert_instructions(
             value,
-            vec![RegularInstruction::TaggedValue(TaggedValue {
+            vec![RegularInstructionData::TaggedValue(TaggedValue {
                 tag: ShortTextData("Example".to_string()),
                 is_empty: true,
             })],
@@ -761,11 +709,11 @@ mod tests {
         compile_value_assert_instructions(
             value,
             vec![
-                RegularInstruction::TaggedValue(TaggedValue {
+                RegularInstructionData::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::Null,
+                RegularInstructionData::Null,
             ],
         );
     }
@@ -781,7 +729,7 @@ mod tests {
 
         compile_value_assert_instructions(
             value,
-            vec![RegularInstruction::GetCoreLibValue(
+            vec![RegularInstructionData::GetCoreLibValue(
                 CoreLibBaseTypeId::Integer.into(),
             )],
         );
@@ -827,29 +775,33 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &context.into_dxb_with_shared_values().dxb,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushListToStack,
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::PushListToStack,
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
-                                mutability:
-                                    SharedContainerMutability::Immutable,
-                                previous_address: pointer_address,
-                            }),
-                            RegularInstruction::Null,
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::MoveWithValue(
+                                MoveWithValue {
+                                    mutability:
+                                        SharedContainerMutability::Immutable,
+                                    previous_address: pointer_address,
+                                }
+                            ),
+                            RegularInstructionData::Null,
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::GetStackValueSharedRef(
                                 StackIndex(0)
                             ),
-                            RegularInstruction::list(1),
-                            RegularInstruction::TakeStackValue(StackIndex(0)),
+                            RegularInstructionData::list(1),
+                            RegularInstructionData::TakeStackValue(StackIndex(
+                                0
+                            )),
                         )
                     ),
-                    RegularInstruction::TakeStackValue(StackIndex(0))
+                    RegularInstructionData::TakeStackValue(StackIndex(0))
                 )
             ),)
         );
@@ -938,25 +890,28 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushListToStack,
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::PushListToStack,
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
-                                mutability: SharedContainerMutability::Mutable,
-                                previous_address: inner_pointer_address_b,
-                            }),
-                            RegularInstruction::Int32(Int32Data(2)),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRefMut(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::MoveWithValue(
+                                MoveWithValue {
+                                    mutability:
+                                        SharedContainerMutability::Mutable,
+                                    previous_address: inner_pointer_address_b,
+                                }
+                            ),
+                            RegularInstructionData::Int32(Int32Data(2)),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::GetStackValueSharedRefMut(
                                 StackIndex(0)
                             ),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::SharedRefWithValue(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::SharedRefWithValue(
                                 SharedRefWithValue {
                                     address: inner_pointer_address_a,
                                     ref_mutability:
@@ -965,37 +920,39 @@ mod tests {
                                         SharedContainerMutability::Mutable,
                                 }
                             ),
-                            RegularInstruction::Int32(Int32Data(1)),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
-                                mutability:
-                                    SharedContainerMutability::Immutable,
-                                previous_address: outer_pointer_address,
-                            }),
-                            RegularInstruction::list_with_children(
+                            RegularInstructionData::Int32(Int32Data(1)),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::MoveWithValue(
+                                MoveWithValue {
+                                    mutability:
+                                        SharedContainerMutability::Immutable,
+                                    previous_address: outer_pointer_address,
+                                }
+                            ),
+                            RegularInstructionData::list_with_children(
                                 instructions!(
-                                    RegularInstruction::BorrowStackValue(
+                                    RegularInstructionData::BorrowStackValue(
                                         StackIndex(2)
                                     ),
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstructionData::TakeStackValue(
                                         StackIndex(0)
                                     ),
                                 )
                             ),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::GetStackValueSharedRef(
                                 StackIndex(3)
                             ),
-                            RegularInstruction::list_with_children(
+                            RegularInstructionData::list_with_children(
                                 instructions!(
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstructionData::TakeStackValue(
                                         StackIndex(3)
                                     ),
                                 )
                             ),
                         )
                     ),
-                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                    RegularInstructionData::TakeStackValue(StackIndex(0)),
                 )
             ),)
         );
@@ -1058,44 +1015,51 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushListToStack,
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::PushListToStack,
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
-                                mutability: SharedContainerMutability::Mutable,
-                                previous_address: inner_pointer_address,
-                            }),
-                            RegularInstruction::Int32(Int32Data(1)),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRefMut(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::MoveWithValue(
+                                MoveWithValue {
+                                    mutability:
+                                        SharedContainerMutability::Mutable,
+                                    previous_address: inner_pointer_address,
+                                }
+                            ),
+                            RegularInstructionData::Int32(Int32Data(1)),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::GetStackValueSharedRefMut(
                                 StackIndex(0)
                             ),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
-                                mutability:
-                                    SharedContainerMutability::Immutable,
-                                previous_address: outer_pointer_address,
-                            }),
-                            RegularInstruction::TakeStackValue(StackIndex(0)),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::MoveWithValue(
+                                MoveWithValue {
+                                    mutability:
+                                        SharedContainerMutability::Immutable,
+                                    previous_address: outer_pointer_address,
+                                }
+                            ),
+                            RegularInstructionData::TakeStackValue(StackIndex(
+                                0
+                            )),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::GetStackValueSharedRef(
                                 StackIndex(2)
                             ),
-                            RegularInstruction::list_with_children(
+                            RegularInstructionData::list_with_children(
                                 instructions!(
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstructionData::TakeStackValue(
                                         StackIndex(2)
                                     ),
                                 )
                             ),
                         )
                     ),
-                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                    RegularInstructionData::TakeStackValue(StackIndex(0)),
                 )
             ),)
         );
@@ -1138,15 +1102,15 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushListToStack,
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::PushListToStack,
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::SharedRefWithValue(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::SharedRefWithValue(
                                 SharedRefWithValue {
                                     address: pointer_address,
                                     ref_mutability:
@@ -1155,12 +1119,16 @@ mod tests {
                                         SharedContainerMutability::Immutable,
                                 }
                             ),
-                            RegularInstruction::Int32(Int32Data(5)),
-                            RegularInstruction::list(1),
-                            RegularInstruction::TakeStackValue(StackIndex(0)),
+                            RegularInstructionData::Int32(Int32Data(5)),
+                            RegularInstructionData::list(1),
+                            RegularInstructionData::TakeStackValue(StackIndex(
+                                0
+                            )),
                         )
                     ),
-                    RegularInstruction::GetStackValueSharedRef(StackIndex(0))
+                    RegularInstructionData::GetStackValueSharedRef(StackIndex(
+                        0
+                    ))
                 )
             ),)
         );
@@ -1229,53 +1197,57 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
-                    RegularInstruction::PushListToStack,
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::PushListToStack,
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
-                                mutability:
-                                    SharedContainerMutability::Immutable,
-                                previous_address: b_pointer_address,
-                            }),
-                            RegularInstruction::Int32(Int32Data(2)),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::MoveWithValue(
+                                MoveWithValue {
+                                    mutability:
+                                        SharedContainerMutability::Immutable,
+                                    previous_address: b_pointer_address,
+                                }
+                            ),
+                            RegularInstructionData::Int32(Int32Data(2)),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::GetStackValueSharedRef(
                                 StackIndex(0)
                             ),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
-                                mutability:
-                                    SharedContainerMutability::Immutable,
-                                previous_address: a_pointer_address,
-                            }),
-                            RegularInstruction::Int32(Int32Data(1)),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::MoveWithValue(
+                                MoveWithValue {
+                                    mutability:
+                                        SharedContainerMutability::Immutable,
+                                    previous_address: a_pointer_address,
+                                }
+                            ),
+                            RegularInstructionData::Int32(Int32Data(1)),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::GetStackValueSharedRef(
                                 StackIndex(2)
                             ),
-                            RegularInstruction::list_with_children(
+                            RegularInstructionData::list_with_children(
                                 instructions!(
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstructionData::TakeStackValue(
                                         StackIndex(2)
                                     ),
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstructionData::TakeStackValue(
                                         StackIndex(0)
                                     ),
                                 )
                             )
                         )
                     ),
-                    RegularInstruction::list_with_children(instructions!(
-                        RegularInstruction::ShortText(ShortTextData(
+                    RegularInstructionData::list_with_children(instructions!(
+                        RegularInstructionData::ShortText(ShortTextData(
                             "test".to_string()
                         )),
-                        RegularInstruction::TakeStackValue(StackIndex(0)),
-                        RegularInstruction::TakeStackValue(StackIndex(1)),
+                        RegularInstructionData::TakeStackValue(StackIndex(0)),
+                        RegularInstructionData::TakeStackValue(StackIndex(1)),
                     )),
                 )
             ),)

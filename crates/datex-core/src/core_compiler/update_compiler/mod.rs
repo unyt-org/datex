@@ -9,8 +9,10 @@ use crate::{
         value_visitor::ValueVisitor,
     },
     global::protocol_structures::{
-        instruction_data::{SharedRef, ShortTextData, StackIndex, UInt32Data},
-        regular_instructions::RegularInstruction,
+        instruction_data::{
+            SharedRef, ShortTextData, SpliceData, StackIndex, UInt32Data,
+        },
+        regular_instructions::{RegularInstruction, RegularInstructionData},
     },
     prelude::*,
     shared_values::{
@@ -22,7 +24,6 @@ use crate::{
     },
     values::value_container::value_key::ValueKey,
 };
-use crate::global::protocol_structures::instruction_data::SpliceData;
 
 /// Compiles an update operation on a shared container into DXB
 /// e.g. [UpdateData::SetEntry] to $x.a = b;
@@ -53,12 +54,12 @@ fn append_updates<T: BufferProvider + ValueVisitor>(
 
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::PushToStack,
+        RegularInstruction::push_to_stack(),
     );
 
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::SharedRef(SharedRef {
+        RegularInstruction::shared_ref(SharedRef {
             address: container.pointer_address(),
             ref_mutability: ReferenceMutability::Mutable, // can always be upgraded to mutable since the executing endpoint is the owner
             container_mutability: SharedContainerMutability::Mutable, // must be mutable for updates
@@ -108,7 +109,7 @@ fn append_set_entry<T: BufferProvider + ValueVisitor>(
     // target
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::BorrowStackValue(StackIndex(0)),
+        RegularInstruction::borrow_stack_value(StackIndex(0)),
     );
 }
 
@@ -119,13 +120,13 @@ fn append_replace<T: BufferProvider + ValueVisitor>(
 ) {
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::SetSharedContainerValue,
+        RegularInstruction::set_shared_container_value(),
     );
     context.visit_value_container(replace_update_data.value.clone(), None); // TODO: ensure clone is ok here
     // target
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::BorrowStackValue(StackIndex(0)),
+        RegularInstruction::borrow_stack_value(StackIndex(0)),
     );
 }
 
@@ -136,13 +137,13 @@ fn append_append_entry<T: BufferProvider + ValueVisitor>(
 ) {
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::AppendEntry,
+        RegularInstruction::append_entry(),
     );
     context.visit_value_container(append_entry_update_data.value.clone(), None); // TODO: ensure clone is ok here
     // target
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::BorrowStackValue(StackIndex(0)),
+        RegularInstruction::borrow_stack_value(StackIndex(0)),
     );
 }
 
@@ -153,13 +154,13 @@ fn append_list_splice<T: BufferProvider + ValueVisitor>(
 ) {
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::Splice(SpliceData {
-            start_index: list_splice_update_data.start,
-            delete_count: list_splice_update_data.delete_count,
-            insert_count: list_splice_update_data.items.len() as u32,
-        }),
+        RegularInstruction::splice(
+            list_splice_update_data.start,
+            list_splice_update_data.delete_count,
+            list_splice_update_data.items.len() as u32,
+        ),
     );
-    
+
     for item in &list_splice_update_data.items {
         context.visit_value_container(item.clone(), None); // TODO: ensure clone is ok here
     }
@@ -167,7 +168,7 @@ fn append_list_splice<T: BufferProvider + ValueVisitor>(
     // target
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::BorrowStackValue(StackIndex(0)),
+        RegularInstruction::borrow_stack_value(StackIndex(0)),
     );
 }
 
@@ -175,13 +176,13 @@ fn append_list_splice<T: BufferProvider + ValueVisitor>(
 fn append_clear<T: BufferProvider + ValueVisitor>(context: &mut T) {
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::Clear,
+        RegularInstruction::clear(),
     );
 
     // target
     append_regular_instruction(
         context.cursor_mut(),
-        RegularInstruction::BorrowStackValue(StackIndex(0)),
+        RegularInstruction::borrow_stack_value(StackIndex(0)),
     );
 }
 
@@ -201,16 +202,16 @@ pub fn append_set_property_value_key<T: BufferProvider + ValueVisitor>(
     match value_key {
         ValueKey::Text(text) => append_regular_instruction(
             context.cursor_mut(),
-            RegularInstruction::SetEntryText(ShortTextData(text.clone())),
+            RegularInstruction::set_entry_text(text.clone()),
         ),
         ValueKey::Index(index) => append_regular_instruction(
             context.cursor_mut(),
-            RegularInstruction::SetEntryIndex(UInt32Data(index as u32)),
+            RegularInstruction::set_entry_index(index as u32),
         ),
         ValueKey::Value(value) => {
             append_regular_instruction(
                 context.cursor_mut(),
-                RegularInstruction::SetEntryDynamic,
+                RegularInstruction::set_entry_dynamic(),
             );
             context.visit_value_container(value, None);
         }
@@ -232,7 +233,7 @@ mod tests {
             instruction_data::{
                 SharedRef, ShortTextData, StackIndex, UInt8Data,
             },
-            regular_instructions::RegularInstruction,
+            regular_instructions::RegularInstructionData,
         },
         prelude::*,
         runtime::{
@@ -277,11 +278,11 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb_with_shared_values.dxb,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 true,
                 instructions!(
-                    RegularInstruction::PushToStack.with_children(
-                        instructions!(RegularInstruction::SharedRef(
+                    RegularInstructionData::PushToStack.with_children(
+                        instructions!(RegularInstructionData::SharedRef(
                             SharedRef {
                                 address,
                                 ref_mutability: ReferenceMutability::Mutable,
@@ -290,12 +291,12 @@ mod tests {
                             }
                         ),)
                     ),
-                    RegularInstruction::SetEntryText(ShortTextData(
+                    RegularInstructionData::SetEntryText(ShortTextData(
                         "test_key".to_string()
                     ))
                     .with_children(instructions!(
-                        RegularInstruction::UInt8(UInt8Data(100)),
-                        RegularInstruction::BorrowStackValue(StackIndex(0)),
+                        RegularInstructionData::UInt8(UInt8Data(100)),
+                        RegularInstructionData::BorrowStackValue(StackIndex(0)),
                     ))
                 )
             ))
@@ -324,11 +325,11 @@ mod tests {
 
         assert_regular_instructions_equal!(
             &dxb_with_shared_values.dxb,
-            (RegularInstruction::statements_with_children(
+            (RegularInstructionData::statements_with_children(
                 true,
                 instructions!(
-                    RegularInstruction::PushToStack.with_children(
-                        instructions!(RegularInstruction::SharedRef(
+                    RegularInstructionData::PushToStack.with_children(
+                        instructions!(RegularInstructionData::SharedRef(
                             SharedRef {
                                 address,
                                 ref_mutability: ReferenceMutability::Mutable,
@@ -337,12 +338,13 @@ mod tests {
                             }
                         ),)
                     ),
-                    RegularInstruction::SetSharedContainerValue.with_children(
-                        instructions!(
-                            RegularInstruction::UInt8(UInt8Data(100)),
-                            RegularInstruction::BorrowStackValue(StackIndex(0))
-                        )
-                    )
+                    RegularInstructionData::SetSharedContainerValue
+                        .with_children(instructions!(
+                            RegularInstructionData::UInt8(UInt8Data(100)),
+                            RegularInstructionData::BorrowStackValue(
+                                StackIndex(0)
+                            )
+                        ))
                 )
             ))
         )

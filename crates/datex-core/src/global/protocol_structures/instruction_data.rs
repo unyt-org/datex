@@ -331,7 +331,6 @@ pub struct MoveWithValue {
     pub previous_address: SelfOwnedPointerAddress,
 }
 
-
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct SharedRef {
@@ -378,7 +377,7 @@ cfg_if! {
     if #[cfg(feature = "disassembler")]{
         use crate::disassembler::InstructionTree;
 
-        #[derive(Clone, Debug, PartialEq)]
+        #[derive(Clone, Debug, PartialEq, Default)]
         pub struct InstructionBlockDataDebugTree {
             pub length: u32,
             pub injected_variable_count: u32,
@@ -386,7 +385,7 @@ cfg_if! {
             pub body: InstructionTree<Instruction>,
         }
 
-        #[derive(Clone, Debug, PartialEq)]
+        #[derive(Clone, Debug, PartialEq, Default)]
         pub struct InstructionBlockDataDebugFlat {
             pub length: u32,
             pub injected_variable_count: u32,

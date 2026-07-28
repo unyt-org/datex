@@ -13,7 +13,7 @@ use crate::{
             MoveWithValue, SharedRef, SharedRefWithValue, ShortTextData,
             StackIndex, UInt32Data,
         },
-        regular_instructions::RegularInstruction,
+        regular_instructions::{RegularInstruction, RegularInstructionData},
     },
     prelude::*,
     shared_values::{
@@ -49,7 +49,7 @@ impl PreambleContext<'_> {
         let index = self.resolve_index(index);
         append_regular_instruction(
             self.cursor,
-            RegularInstruction::BorrowStackValue(index),
+            RegularInstruction::borrow_stack_value(index),
         );
     }
 
@@ -92,7 +92,7 @@ impl ValueVisitor for PreambleContext<'_> {
                         // placeholder, will be later replaced via setter
                         append_regular_instruction(
                             self.cursor,
-                            RegularInstruction::Null,
+                            RegularInstruction::null(),
                         );
                     }
                     Some(VisitedValue::Required {
@@ -102,7 +102,7 @@ impl ValueVisitor for PreambleContext<'_> {
                         // placeholder, will be later replaced via setter
                         append_regular_instruction(
                             self.cursor,
-                            RegularInstruction::Null,
+                            RegularInstruction::null(),
                         );
                     }
                     // shared container has already been inserted, use stack value
@@ -111,7 +111,7 @@ impl ValueVisitor for PreambleContext<'_> {
                         if shared_container.treat_as_move() {
                             append_regular_instruction(
                                 self.cursor,
-                                RegularInstruction::TakeStackValue(
+                                RegularInstruction::take_stack_value(
                                     *stack_index,
                                 ),
                             );
@@ -123,7 +123,7 @@ impl ValueVisitor for PreambleContext<'_> {
                                 .unwrap_or(*stack_index);
                             append_regular_instruction(
                                 self.cursor,
-                                RegularInstruction::BorrowStackValue(index),
+                                RegularInstruction::borrow_stack_value(index),
                             );
                         }
                     }
@@ -216,7 +216,7 @@ pub(super) fn append_injected_values_preamble(
         for stack_index in root_container_stack_indices_sorted {
             append_regular_instruction(
                 context.cursor,
-                RegularInstruction::TakeStackValue(stack_index),
+                RegularInstruction::take_stack_value(stack_index),
             );
         }
 
@@ -234,7 +234,7 @@ pub(super) fn append_injected_values_preamble(
     // the preamble pushes a list of the root shared containers to the stack
     append_regular_instruction(
         &mut byte_cursor,
-        RegularInstruction::PushListToStack,
+        RegularInstruction::push_list_to_stack(),
     );
 
     // the inner preamble statements, which push the shared containers to the stack
@@ -333,23 +333,19 @@ fn append_property_target(
             ValueKey::Index(property) => {
                 append_regular_instruction(
                     context.cursor,
-                    RegularInstruction::GetPropertyIndex(UInt32Data(
-                        property as u32,
-                    )),
+                    RegularInstruction::get_property_index(property as u32),
                 );
             }
             ValueKey::Text(property) => {
                 append_regular_instruction(
                     context.cursor,
-                    RegularInstruction::GetPropertyText(ShortTextData(
-                        property,
-                    )),
+                    RegularInstruction::get_property_text(property),
                 );
             }
             ValueKey::Value(value) => {
                 append_regular_instruction(
                     context.cursor,
-                    RegularInstruction::GetPropertyDynamic,
+                    RegularInstruction::get_property_dynamic(),
                 );
                 context.visit_value_container(value, None);
             }
@@ -373,7 +369,10 @@ fn push_injected_container(
     let index = context.get_next_stack_index();
 
     // append push to stack
-    append_regular_instruction(context.cursor, RegularInstruction::PushToStack);
+    append_regular_instruction(
+        context.cursor,
+        RegularInstruction::push_to_stack(),
+    );
 
     match container {
         SharedContainer::Owned(owned_container) => {
@@ -408,16 +407,21 @@ fn append_additional_reference(
     original_index: StackIndex,
 ) {
     // append push to stack
-    append_regular_instruction(context.cursor, RegularInstruction::PushToStack);
+    append_regular_instruction(
+        context.cursor,
+        RegularInstruction::push_to_stack(),
+    );
     // append push to stack
     append_regular_instruction(
         context.cursor,
         match owned_container.container_mutability() {
             SharedContainerMutability::Mutable => {
-                RegularInstruction::GetStackValueSharedRefMut(original_index)
+                RegularInstruction::get_stack_value_shared_ref_mut(
+                    original_index,
+                )
             }
             SharedContainerMutability::Immutable => {
-                RegularInstruction::GetStackValueSharedRef(original_index)
+                RegularInstruction::get_stack_value_shared_ref(original_index)
             }
         },
     );
@@ -435,7 +439,7 @@ fn append_move_with_value(
 ) {
     append_regular_instruction(
         context.cursor,
-        RegularInstruction::MoveWithValue(MoveWithValue {
+        RegularInstruction::move_with_value(MoveWithValue {
             mutability: owned_container.container_mutability(),
             previous_address: owned_container.pointer_address().clone(),
         }),
@@ -469,7 +473,7 @@ fn append_referenced_shared_container(
         PointerAddress::SelfOwned(pointer_address) => {
             append_regular_instruction(
                 context.cursor,
-                RegularInstruction::SharedRef(SharedRef {
+                RegularInstruction::shared_ref(SharedRef {
                     address: PointerAddress::SelfOwned(pointer_address),
                     ref_mutability: referenced_container.reference_mutability(),
                     container_mutability: referenced_container
@@ -480,7 +484,7 @@ fn append_referenced_shared_container(
         PointerAddress::Remote(pointer_address) => {
             append_regular_instruction(
                 context.cursor,
-                RegularInstruction::SharedRef(SharedRef {
+                RegularInstruction::shared_ref(SharedRef {
                     address: PointerAddress::Remote(pointer_address),
                     ref_mutability: referenced_container.reference_mutability(),
                     container_mutability: referenced_container
@@ -500,7 +504,7 @@ fn append_referenced_shared_container_with_value(
         PointerAddress::SelfOwned(pointer_address) => {
             append_regular_instruction(
                 context.cursor,
-                RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                RegularInstruction::shared_ref_with_value(SharedRefWithValue {
                     address: pointer_address,
                     ref_mutability: referenced_container.reference_mutability(),
                     container_mutability: referenced_container
@@ -519,7 +523,7 @@ fn append_referenced_shared_container_with_value(
         PointerAddress::Remote(pointer_address) => {
             append_regular_instruction(
                 context.cursor,
-                RegularInstruction::SharedRef(SharedRef {
+                RegularInstruction::shared_ref(SharedRef {
                     address: PointerAddress::Remote(pointer_address),
                     ref_mutability: referenced_container.reference_mutability(),
                     container_mutability: referenced_container
@@ -554,7 +558,9 @@ mod tests {
                 UInt32Data,
             },
             instructions::Instruction,
-            regular_instructions::RegularInstruction,
+            regular_instructions::{
+                RegularInstruction, RegularInstructionData,
+            },
         },
         prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -577,7 +583,7 @@ mod tests {
     ) {
         // mock body
         let mut cursor = ByteCursor::new(vec![]);
-        append_regular_instruction(&mut cursor, RegularInstruction::Null);
+        append_regular_instruction(&mut cursor, RegularInstruction::null());
 
         let root_count = tracked_values
             .iter()
@@ -666,7 +672,10 @@ mod tests {
 
     #[test]
     fn preamble_no_injected_values() {
-        assert_preamble_instructions(vec![], vec![RegularInstruction::Null]);
+        assert_preamble_instructions(
+            vec![],
+            vec![RegularInstructionData::Null],
+        );
     }
 
     #[test]
@@ -687,16 +696,16 @@ mod tests {
                     is_known: false,
                 },
             )],
-            vec![RegularInstruction::statements_with_children(
+            vec![RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
                     // preamble
-                    RegularInstruction::PushListToStack,
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::PushListToStack,
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::SharedRefWithValue(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::SharedRefWithValue(
                                 SharedRefWithValue {
                                     address,
                                     ref_mutability:
@@ -705,10 +714,10 @@ mod tests {
                                         SharedContainerMutability::Immutable,
                                 }
                             ),
-                            RegularInstruction::Int32(Int32Data(42)),
-                            RegularInstruction::list_with_children(
+                            RegularInstructionData::Int32(Int32Data(42)),
+                            RegularInstructionData::list_with_children(
                                 instructions!(
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstructionData::TakeStackValue(
                                         StackIndex(0)
                                     )
                                 )
@@ -716,7 +725,7 @@ mod tests {
                         )
                     ),
                     // body
-                    RegularInstruction::Null,
+                    RegularInstructionData::Null,
                 ),
             )],
         );
@@ -753,47 +762,54 @@ mod tests {
                     is_known: false,
                 },
             )],
-            vec![RegularInstruction::statements_with_children(
+            vec![RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
                     // preamble
-                    RegularInstruction::PushListToStack,
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::PushListToStack,
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
                             // shared mut a = [null]
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
-                                mutability: SharedContainerMutability::Mutable,
-                                previous_address: address.clone(),
-                            })
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::MoveWithValue(
+                                MoveWithValue {
+                                    mutability:
+                                        SharedContainerMutability::Mutable,
+                                    previous_address: address.clone(),
+                                }
+                            )
                             .with_children(
                                 instructions!(
-                                    RegularInstruction::ShortList(
+                                    RegularInstructionData::ShortList(
                                         ShortListData { element_count: 1 }
                                     )
                                     .with_children(instructions!(
-                                        RegularInstruction::Null
+                                        RegularInstructionData::Null
                                     ))
                                 )
                             ),
                             // ('mut a).0 = 'mut a
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRefMut(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::GetStackValueSharedRefMut(
                                 StackIndex(0)
                             ),
-                            RegularInstruction::SetEntryIndex(UInt32Data(0))
-                                .with_children(instructions!(
-                                    RegularInstruction::BorrowStackValue(
+                            RegularInstructionData::SetEntryIndex(UInt32Data(
+                                0
+                            ))
+                            .with_children(
+                                instructions!(
+                                    RegularInstructionData::BorrowStackValue(
                                         StackIndex(1)
                                     ),
-                                    RegularInstruction::BorrowStackValue(
+                                    RegularInstructionData::BorrowStackValue(
                                         StackIndex(1)
                                     )
-                                )),
-                            RegularInstruction::list_with_children(
+                                )
+                            ),
+                            RegularInstructionData::list_with_children(
                                 instructions!(
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstructionData::TakeStackValue(
                                         StackIndex(0)
                                     )
                                 )
@@ -801,7 +817,7 @@ mod tests {
                         )
                     ),
                     // body
-                    RegularInstruction::Null
+                    RegularInstructionData::Null
                 ),
             )],
         );
@@ -844,30 +860,30 @@ mod tests {
                     is_known: false,
                 },
             )],
-            vec![RegularInstruction::statements_with_children(
+            vec![RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
                     // preamble
-                    RegularInstruction::PushListToStack,
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::PushListToStack,
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::MoveWithValue(MoveWithValue {
                                 mutability: SharedContainerMutability::Mutable,
                                 previous_address: address.clone(),
                             })
                             .with_children(instructions!(
-                                RegularInstruction::ShortMap(ShortMapData { element_count: 1 }).with_children(instructions!(
-                                    RegularInstruction::KeyValueShortText(ShortTextData("a".to_string())).with_children(
+                                RegularInstructionData::ShortMap(ShortMapData { element_count: 1 }).with_children(instructions!(
+                                    RegularInstructionData::KeyValueShortText(ShortTextData("a".to_string())).with_children(
                                         instructions!(
-                                             RegularInstruction::ShortMap(
+                                             RegularInstructionData::ShortMap(
                                                 ShortMapData { element_count: 1 }
                                             )
                                             .with_children(instructions!(
-                                                RegularInstruction::KeyValueShortText(ShortTextData("b".to_string())).with_children(
+                                                RegularInstructionData::KeyValueShortText(ShortTextData("b".to_string())).with_children(
                                                     instructions!(
-                                                        RegularInstruction::Null
+                                                        RegularInstructionData::Null
                                                     )
                                                 )
                                             ))
@@ -877,24 +893,24 @@ mod tests {
                                 ))
                             )),
 
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRefMut(StackIndex(0)),
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::GetStackValueSharedRefMut(StackIndex(0)),
 
-                            RegularInstruction::SetEntryDynamic.with_children(
+                            RegularInstructionData::SetEntryDynamic.with_children(
                                 instructions!(
-                                    RegularInstruction::ShortText(ShortTextData("b".to_string())),
-                                    RegularInstruction::BorrowStackValue(StackIndex(1)),
-                                    RegularInstruction::GetPropertyDynamic.with_children(
+                                    RegularInstructionData::ShortText(ShortTextData("b".to_string())),
+                                    RegularInstructionData::BorrowStackValue(StackIndex(1)),
+                                    RegularInstructionData::GetPropertyDynamic.with_children(
                                         instructions!(
-                                            RegularInstruction::ShortText(ShortTextData("a".to_string())),
-                                            RegularInstruction::BorrowStackValue(StackIndex(1))
+                                            RegularInstructionData::ShortText(ShortTextData("a".to_string())),
+                                            RegularInstructionData::BorrowStackValue(StackIndex(1))
                                         )
                                     )
                                 )
                             ),
-                            RegularInstruction::list_with_children(
+                            RegularInstructionData::list_with_children(
                                 instructions!(
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstructionData::TakeStackValue(
                                         StackIndex(0)
                                     )
                                 )
@@ -902,7 +918,7 @@ mod tests {
                         )
                     ),
                     // body
-                    RegularInstruction::Null
+                    RegularInstructionData::Null
                 ),
             )],
         );
@@ -985,40 +1001,40 @@ mod tests {
                     },
                 ),
             ],
-            vec![RegularInstruction::statements_with_children(
+            vec![RegularInstructionData::statements_with_children(
                 false,
                 instructions!(
                     // preamble
-                    RegularInstruction::PushListToStack,
-                    RegularInstruction::statements_with_children(
+                    RegularInstructionData::PushListToStack,
+                    RegularInstructionData::statements_with_children(
                         false,
                         instructions!(
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::MoveWithValue(MoveWithValue {
                                 mutability: SharedContainerMutability::Mutable,
                                 previous_address: address_a.clone(),
                             })
                             .with_children(
                                 instructions!(
-                                    RegularInstruction::ShortMap(
+                                    RegularInstructionData::ShortMap(
                                         ShortMapData { element_count: 1 }
                                     )
                                     .with_children(instructions!(
-                                        RegularInstruction::KeyValueShortText(
+                                        RegularInstructionData::KeyValueShortText(
                                             ShortTextData("b".to_string())
                                         )
                                         .with_children(instructions!(
-                                            RegularInstruction::Null
+                                            RegularInstructionData::Null
                                         ))
                                     ))
                                 )
                             ),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRefMut(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::GetStackValueSharedRefMut(
                                 StackIndex(0)
                             ),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::SharedRefWithValue(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::SharedRefWithValue(
                                 SharedRefWithValue {
                                     ref_mutability:
                                         ReferenceMutability::Mutable,
@@ -1029,34 +1045,34 @@ mod tests {
                             )
                             .with_children(
                                 instructions!(
-                                    RegularInstruction::ShortMap(
+                                    RegularInstructionData::ShortMap(
                                         ShortMapData { element_count: 1 }
                                     )
                                     .with_children(instructions!(
-                                        RegularInstruction::KeyValueShortText(
+                                        RegularInstructionData::KeyValueShortText(
                                             ShortTextData("c".to_string())
                                         )
                                         .with_children(instructions!(
-                                            RegularInstruction::Null
+                                            RegularInstructionData::Null
                                         ))
                                     ))
                                 )
                             ),
-                            RegularInstruction::SetEntryDynamic.with_children(
+                            RegularInstructionData::SetEntryDynamic.with_children(
                                 instructions!(
-                                    RegularInstruction::ShortText(
+                                    RegularInstructionData::ShortText(
                                         ShortTextData("b".to_string())
                                     ),
-                                    RegularInstruction::BorrowStackValue(
+                                    RegularInstructionData::BorrowStackValue(
                                         StackIndex(2)
                                     ),
-                                    RegularInstruction::BorrowStackValue(
+                                    RegularInstructionData::BorrowStackValue(
                                         StackIndex(1)
                                     )
                                 )
                             ),
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::SharedRefWithValue(
+                            RegularInstructionData::PushToStack,
+                            RegularInstructionData::SharedRefWithValue(
                                 SharedRefWithValue {
                                     ref_mutability:
                                         ReferenceMutability::Mutable,
@@ -1067,37 +1083,37 @@ mod tests {
                             )
                             .with_children(
                                 instructions!(
-                                    RegularInstruction::ShortMap(
+                                    RegularInstructionData::ShortMap(
                                         ShortMapData { element_count: 1 }
                                     )
                                     .with_children(instructions!(
-                                        RegularInstruction::KeyValueShortText(
+                                        RegularInstructionData::KeyValueShortText(
                                             ShortTextData("a".to_string())
                                         )
                                         .with_children(instructions!(
-                                        RegularInstruction::BorrowStackValue(
+                                        RegularInstructionData::BorrowStackValue(
                                             StackIndex(1)
                                         )
                                     ))
                                     ))
                                 )
                             ),
-                            RegularInstruction::SetEntryDynamic.with_children(
+                            RegularInstructionData::SetEntryDynamic.with_children(
                                 instructions!(
-                                    RegularInstruction::ShortText(
+                                    RegularInstructionData::ShortText(
                                         ShortTextData("c".to_string())
                                     ),
-                                    RegularInstruction::BorrowStackValue(
+                                    RegularInstructionData::BorrowStackValue(
                                         StackIndex(3)
                                     ),
-                                    RegularInstruction::BorrowStackValue(
+                                    RegularInstructionData::BorrowStackValue(
                                         StackIndex(2)
                                     )
                                 )
                             ),
-                            RegularInstruction::list_with_children(
+                            RegularInstructionData::list_with_children(
                                 instructions!(
-                                    RegularInstruction::TakeStackValue(
+                                    RegularInstructionData::TakeStackValue(
                                         StackIndex(0)
                                     )
                                 )
@@ -1105,7 +1121,7 @@ mod tests {
                         )
                     ),
                     // body
-                    RegularInstruction::Null
+                    RegularInstructionData::Null
                 ),
             )],
         );

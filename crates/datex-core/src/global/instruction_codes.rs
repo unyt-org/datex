@@ -1,3 +1,7 @@
+use std::ops::Deref;
+
+use binrw::{BinRead, BinWrite};
+use num::ToPrimitive;
 use num_enum::TryFromPrimitive;
 use strum::Display;
 use strum_macros::EnumIter;
@@ -12,8 +16,11 @@ use strum_macros::EnumIter;
     Copy,
     Clone,
     Display,
+    BinRead,
+    BinWrite,
     num_enum::IntoPrimitive,
 )]
+#[brw(repr = u8)]
 #[repr(u8)]
 pub enum InstructionCode {
     // flow instructions 0x00 - 0x0f
@@ -159,6 +166,11 @@ pub enum InstructionCode {
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key
 
     REMOTE_EXECUTION, // ::
+}
+impl InstructionCode {
+    pub const fn as_u8(&self) -> u8 {
+        *self as u8
+    }
 }
 
 #[cfg(test)]

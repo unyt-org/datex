@@ -33,7 +33,9 @@ mod tests {
         disassembler::assertions::assert_instructions_equal,
         global::protocol_structures::{
             instructions::Instruction,
-            regular_instructions::RegularInstruction,
+            regular_instructions::{
+                RegularInstruction, RegularInstructionData,
+            },
             type_instructions::TypeInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
@@ -55,7 +57,7 @@ mod tests {
     ) {
         let compile_input = unsafe { default_compile_input() };
         let vec =
-            vec![Instruction::Regular(RegularInstruction::TypeExpression)]
+            vec![Instruction::Regular(RegularInstruction::type_expression())]
                 .into_iter()
                 .chain(expected_instruction.into_iter().map(Instruction::Type))
                 .collect::<Vec<_>>();
@@ -68,13 +70,14 @@ mod tests {
 
     fn assert_regular_instructions_equal(
         val: Value,
-        expected_instructions: Vec<RegularInstruction>,
+        expected_instructions: Vec<RegularInstructionData>,
     ) {
         let compile_input = unsafe { default_compile_input() };
         let compiled = compile_value(val, compile_input);
         let mut cursor = ByteCursor::new(compiled.dxb.to_vec());
         for expected in expected_instructions {
-            let instruction = RegularInstruction::read(&mut cursor).unwrap();
+            let instruction =
+                RegularInstruction::read(&mut cursor).unwrap().into_data();
             assert_eq!(instruction, expected);
         }
     }
@@ -118,7 +121,7 @@ mod tests {
         );
         assert_regular_instructions_equal(
             Value::new(CoreValue::Type(ty), None),
-            vec![RegularInstruction::GetCoreLibValue(
+            vec![RegularInstructionData::GetCoreLibValue(
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean).into(),
             )],
         );

@@ -3,7 +3,7 @@ use crate::{
     core_compiler::InstructionInput,
     global::protocol_structures::{
         instruction_data::ShortTextData,
-        regular_instructions::RegularInstruction,
+        regular_instructions::RegularInstructionData,
     },
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
@@ -267,10 +267,10 @@ async fn set_remote_endpoint_property(
         .execute_instructions_remote(
             vec![endpoint],
             vec![
-                RegularInstruction::SetEntryText(ShortTextData(property_name))
+                RegularInstructionData::SetEntryText(ShortTextData(property_name))
                     .into(),
                 InstructionInput::ValueContainer(value),
-                RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
+                RegularInstructionData::Endpoint(Endpoint::LOCAL).into(),
             ],
         )
         .await
@@ -285,11 +285,11 @@ async fn get_remote_endpoint_property(
         .execute_instructions_remote(
             vec![endpoint],
             vec![
-                RegularInstruction::GetPropertyText(ShortTextData(
+                RegularInstructionData::GetPropertyText(ShortTextData(
                     property_name,
                 ))
                 .into(),
-                RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
+                RegularInstructionData::Endpoint(Endpoint::LOCAL).into(),
             ],
         )
         .await

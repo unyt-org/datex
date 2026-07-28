@@ -9,7 +9,7 @@ use crate::{
                 CountOrUnbounded, Instruction,
                 NestedInstructionResolutionStrategy,
             },
-            regular_instructions::RegularInstruction,
+            regular_instructions::RegularInstructionData,
         },
     },
     prelude::*,
@@ -32,6 +32,13 @@ where
     #[serde(skip_serializing_if = "Vec::is_empty")]
     children: Vec<InstructionTree<T>>,
 }
+impl Default for InstructionTree<Instruction> {
+    fn default() -> Self {
+        InstructionTree::new(Instruction::Regular(
+            RegularInstructionData::UnboundedStatements,
+        ))
+    }
+}
 
 impl<T> From<T> for InstructionTree<T>
 where
@@ -42,8 +49,8 @@ where
     }
 }
 
-impl From<RegularInstruction> for InstructionTree<Instruction> {
-    fn from(instruction: RegularInstruction) -> Self {
+impl From<RegularInstructionData> for InstructionTree<Instruction> {
+    fn from(instruction: RegularInstructionData) -> Self {
         InstructionTree::new(Instruction::Regular(instruction))
     }
 }
@@ -107,11 +114,11 @@ impl InstructionTree<Instruction> {
     /// into [RegularInstruction::_RemoteExecutionDebugFlat]
     pub fn flatten_instructions(self) -> Vec<Instruction> {
         if let Instruction::Regular(
-            RegularInstruction::_RemoteExecutionDebugTree(tree),
+            RegularInstructionData::_RemoteExecutionDebugTree(tree),
         ) = *self.instruction
         {
             vec![Instruction::Regular(
-                RegularInstruction::_RemoteExecutionDebugFlat(
+                RegularInstructionData::_RemoteExecutionDebugFlat(
                     InstructionBlockDataDebugFlat {
                         length: tree.length,
                         injected_variable_count: tree.injected_variable_count,
@@ -283,7 +290,7 @@ pub fn get_instruction_tree(
     instructions: impl Iterator<Item = Result<Instruction, DXBParserError>>,
 ) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
     let mut tree = InstructionTree::new(Instruction::Regular(
-        RegularInstruction::UnboundedStatements,
+        RegularInstructionData::UnboundedStatements,
     )); // initial tree root, gets overridden
     let err = disassemble_body_inner(
         &mut instructions.into_iter(),
@@ -331,8 +338,7 @@ fn write_instruction(
         output,
         "{}",
         match instruction {
-            Instruction::Regular(instr) =>
-                InstructionCode::from(instr).to_string(),
+            Instruction::Regular(instr) => instr.instruction_code().to_string(),
             Instruction::Type(instr) => instr.as_ref().to_string(),
         }
     )
@@ -440,7 +446,7 @@ fn get_inner_instructions_as_detailed_tree(
 ) -> Option<DetailedInstructionTree> {
     match instruction {
         Instruction::Regular(
-            RegularInstruction::_RemoteExecutionDebugFlat(data),
+            RegularInstructionData::_RemoteExecutionDebugFlat(data),
         ) => {
             let (tree, err) = get_instruction_tree_from_list(data.body.clone());
             if let Some(err) = err {
@@ -449,7 +455,7 @@ fn get_inner_instructions_as_detailed_tree(
             Some(instruction_tree_to_detailed_tree(tree))
         }
         Instruction::Regular(
-            RegularInstruction::_RemoteExecutionDebugTree(data),
+            RegularInstructionData::_RemoteExecutionDebugTree(data),
         ) => Some(instruction_tree_to_detailed_tree(data.body.clone())),
         _ => None,
     }
@@ -532,7 +538,7 @@ mod tests {
                 InstructionBlockDataDebugTree, StatementsData, UInt8Data,
                 UnboundedStatementsData,
             },
-            regular_instructions::RegularInstruction,
+            regular_instructions::RegularInstructionData,
         },
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
     };
@@ -549,28 +555,28 @@ mod tests {
 
     #[test_case(
         &[],
-        InstructionTree::new(Instruction::Regular(RegularInstruction::UnboundedStatements)),
+        InstructionTree::new(Instruction::Regular(RegularInstructionData::UnboundedStatements)),
         Some(DXBParserError::ExpectingMoreInstructions)
          ; "empty dxb")]
     #[test_case(
         &[
-            Instruction::Regular(RegularInstruction::True),
-            Instruction::Regular(RegularInstruction::False),
+            Instruction::Regular(RegularInstructionData::True),
+            Instruction::Regular(RegularInstructionData::False),
         ],
-        InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
+        InstructionTree::new(Instruction::Regular(RegularInstructionData::True)),
         Some(DXBParserError::UnexpectedBytesAfterEndOfInstructions)
          ; "multiple root nodes")]
     #[test_case(
         &[
-            Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true})),
-            Instruction::Regular(RegularInstruction::True),
-            Instruction::Regular(RegularInstruction::False),
+            Instruction::Regular(RegularInstructionData::Statements(StatementsData {statements_count: 2, terminated: true})),
+            Instruction::Regular(RegularInstructionData::True),
+            Instruction::Regular(RegularInstructionData::False),
         ],
         InstructionTree {
-            instruction: Box::new(Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true}))),
+            instruction: Box::new(Instruction::Regular(RegularInstructionData::Statements(StatementsData {statements_count: 2, terminated: true}))),
             children: vec![
-                InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
-                InstructionTree::new(Instruction::Regular(RegularInstruction::False)),
+                InstructionTree::new(Instruction::Regular(RegularInstructionData::True)),
+                InstructionTree::new(Instruction::Regular(RegularInstructionData::False)),
             ]
         },
         None
@@ -578,17 +584,17 @@ mod tests {
     )]
     #[test_case(
         &[
-            Instruction::Regular(RegularInstruction::UnboundedStatements),
-            Instruction::Regular(RegularInstruction::True),
-            Instruction::Regular(RegularInstruction::False),
-            Instruction::Regular(RegularInstruction::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})),
+            Instruction::Regular(RegularInstructionData::UnboundedStatements),
+            Instruction::Regular(RegularInstructionData::True),
+            Instruction::Regular(RegularInstructionData::False),
+            Instruction::Regular(RegularInstructionData::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})),
         ],
         InstructionTree {
-            instruction: Box::new(Instruction::Regular(RegularInstruction::UnboundedStatements)),
+            instruction: Box::new(Instruction::Regular(RegularInstructionData::UnboundedStatements)),
             children: vec![
-                InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
-                InstructionTree::new(Instruction::Regular(RegularInstruction::False)),
-                InstructionTree::new(Instruction::Regular(RegularInstruction::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})))
+                InstructionTree::new(Instruction::Regular(RegularInstructionData::True)),
+                InstructionTree::new(Instruction::Regular(RegularInstructionData::False)),
+                InstructionTree::new(Instruction::Regular(RegularInstructionData::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})))
             ]
         },
         None
@@ -596,25 +602,25 @@ mod tests {
     )]
     #[test_case(
         &[
-            Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true})),
-            Instruction::Regular(RegularInstruction::UnboundedStatements),
-            Instruction::Regular(RegularInstruction::True),
-            Instruction::Regular(RegularInstruction::False),
-            Instruction::Regular(RegularInstruction::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})),
-            Instruction::Regular(RegularInstruction::Null),
+            Instruction::Regular(RegularInstructionData::Statements(StatementsData {statements_count: 2, terminated: true})),
+            Instruction::Regular(RegularInstructionData::UnboundedStatements),
+            Instruction::Regular(RegularInstructionData::True),
+            Instruction::Regular(RegularInstructionData::False),
+            Instruction::Regular(RegularInstructionData::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})),
+            Instruction::Regular(RegularInstructionData::Null),
         ],
         InstructionTree {
-            instruction: Box::new(Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true}))),
+            instruction: Box::new(Instruction::Regular(RegularInstructionData::Statements(StatementsData {statements_count: 2, terminated: true}))),
             children: vec![
                 InstructionTree {
-                    instruction: Box::new(Instruction::Regular(RegularInstruction::UnboundedStatements)),
+                    instruction: Box::new(Instruction::Regular(RegularInstructionData::UnboundedStatements)),
                     children: vec![
-                        InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
-                        InstructionTree::new(Instruction::Regular(RegularInstruction::False)),
-                        InstructionTree::new(Instruction::Regular(RegularInstruction::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})))
+                        InstructionTree::new(Instruction::Regular(RegularInstructionData::True)),
+                        InstructionTree::new(Instruction::Regular(RegularInstructionData::False)),
+                        InstructionTree::new(Instruction::Regular(RegularInstructionData::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})))
                     ]
                 },
-                InstructionTree::new(Instruction::Regular(RegularInstruction::Null)),
+                InstructionTree::new(Instruction::Regular(RegularInstructionData::Null)),
             ]
         },
         None
@@ -622,21 +628,21 @@ mod tests {
     )]
     #[test_case(
         &[
-            Instruction::Regular(RegularInstruction::True),
+            Instruction::Regular(RegularInstructionData::True),
         ],
-        InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
+        InstructionTree::new(Instruction::Regular(RegularInstructionData::True)),
         None
         ; "single instruction"
     )]
     #[test_case(
         &[
-            Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true})),
-            Instruction::Regular(RegularInstruction::True),
+            Instruction::Regular(RegularInstructionData::Statements(StatementsData {statements_count: 2, terminated: true})),
+            Instruction::Regular(RegularInstructionData::True),
         ],
         InstructionTree {
-            instruction: Box::new(Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true}))),
+            instruction: Box::new(Instruction::Regular(RegularInstructionData::Statements(StatementsData {statements_count: 2, terminated: true}))),
             children: vec![
-                InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
+                InstructionTree::new(Instruction::Regular(RegularInstructionData::True)),
             ]
         },
         Some(DXBParserError::ExpectingMoreInstructions)
@@ -644,7 +650,7 @@ mod tests {
     )]
     #[test_case(
         &[
-            Instruction::Regular(RegularInstruction::RemoteExecution(InstructionBlockData {
+            Instruction::Regular(RegularInstructionData::RemoteExecution(InstructionBlockData {
                 length: 2,
                 injected_value_count: 0,
                 injected_values: vec![],
@@ -653,10 +659,10 @@ mod tests {
                     42,
                 ]
             })),
-            Instruction::Regular(RegularInstruction::True)
+            Instruction::Regular(RegularInstructionData::True)
         ],
         InstructionTree {
-            instruction: Box::new(Instruction::Regular(RegularInstruction::RemoteExecution(InstructionBlockData {
+            instruction: Box::new(Instruction::Regular(RegularInstructionData::RemoteExecution(InstructionBlockData {
                 length: 2,
                 injected_value_count: 0,
                 injected_values: vec![],
@@ -666,7 +672,7 @@ mod tests {
                 ]
             }))),
             children: vec![
-                InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
+                InstructionTree::new(Instruction::Regular(RegularInstructionData::True)),
             ]
         },
         None
@@ -691,7 +697,7 @@ mod tests {
     #[test]
     fn disassemble_nested_flat() {
         let instructions = vec![
-            Instruction::Regular(RegularInstruction::RemoteExecution(
+            Instruction::Regular(RegularInstructionData::RemoteExecution(
                 InstructionBlockData {
                     length: 5,
                     injected_value_count: 0,
@@ -705,7 +711,7 @@ mod tests {
                     ],
                 },
             )),
-            Instruction::Regular(RegularInstruction::True),
+            Instruction::Regular(RegularInstructionData::True),
         ];
         let dxb = instructions_to_bytes(instructions.to_vec());
         let (tree, err) = disassemble_body(
@@ -718,25 +724,31 @@ mod tests {
             tree,
             InstructionTree {
                 instruction: Box::new(Instruction::Regular(
-                    RegularInstruction::_RemoteExecutionDebugFlat(
+                    RegularInstructionData::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 5,
                             injected_variable_count: 0,
                             injected_values: vec![],
                             body: vec![
-                                Instruction::Regular(RegularInstruction::Add),
                                 Instruction::Regular(
-                                    RegularInstruction::UInt8(UInt8Data(42))
+                                    RegularInstructionData::Add
                                 ),
                                 Instruction::Regular(
-                                    RegularInstruction::UInt8(UInt8Data(43))
+                                    RegularInstructionData::UInt8(UInt8Data(
+                                        42
+                                    ))
+                                ),
+                                Instruction::Regular(
+                                    RegularInstructionData::UInt8(UInt8Data(
+                                        43
+                                    ))
                                 ),
                             ]
                         }
                     )
                 )),
                 children: vec![InstructionTree::new(Instruction::Regular(
-                    RegularInstruction::True
+                    RegularInstructionData::True
                 )),]
             }
         );
@@ -745,7 +757,7 @@ mod tests {
     #[test]
     fn disassemble_nested_tree() {
         let instructions = vec![
-            Instruction::Regular(RegularInstruction::RemoteExecution(
+            Instruction::Regular(RegularInstructionData::RemoteExecution(
                 InstructionBlockData {
                     length: 5,
                     injected_value_count: 0,
@@ -759,7 +771,7 @@ mod tests {
                     ],
                 },
             )),
-            Instruction::Regular(RegularInstruction::True),
+            Instruction::Regular(RegularInstructionData::True),
         ];
         let dxb = instructions_to_bytes(instructions.to_vec());
         let (tree, err) = disassemble_body(
@@ -772,25 +784,25 @@ mod tests {
             tree,
             InstructionTree {
                 instruction: Box::new(Instruction::Regular(
-                    RegularInstruction::_RemoteExecutionDebugTree(
+                    RegularInstructionData::_RemoteExecutionDebugTree(
                         InstructionBlockDataDebugTree {
                             length: 5,
                             injected_variable_count: 0,
                             injected_values: vec![],
                             body: InstructionTree {
                                 instruction: Box::new(Instruction::Regular(
-                                    RegularInstruction::Add
+                                    RegularInstructionData::Add
                                 )),
                                 children: vec![
                                     InstructionTree::new(Instruction::Regular(
-                                        RegularInstruction::UInt8(UInt8Data(
-                                            42
-                                        ))
+                                        RegularInstructionData::UInt8(
+                                            UInt8Data(42)
+                                        )
                                     )),
                                     InstructionTree::new(Instruction::Regular(
-                                        RegularInstruction::UInt8(UInt8Data(
-                                            43
-                                        ))
+                                        RegularInstructionData::UInt8(
+                                            UInt8Data(43)
+                                        )
                                     )),
                                 ]
                             }
@@ -798,7 +810,7 @@ mod tests {
                     )
                 )),
                 children: vec![InstructionTree::new(Instruction::Regular(
-                    RegularInstruction::True
+                    RegularInstructionData::True
                 )),]
             }
         );

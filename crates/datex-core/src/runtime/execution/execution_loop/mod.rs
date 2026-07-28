@@ -30,7 +30,7 @@ use crate::{
                 UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
-            regular_instructions::RegularInstruction,
+            regular_instructions::RegularInstructionData,
             type_instructions::TypeInstruction,
         },
     },
@@ -201,108 +201,108 @@ pub gen fn inner_execution_loop(
                     > = try {
                         match regular_instruction {
                             // boolean
-                            RegularInstruction::True => Some(ValueContainer::from(true).into()),
-                            RegularInstruction::False => Some(ValueContainer::from(false).into()),
+                            RegularInstructionData::True => Some(ValueContainer::from(true).into()),
+                            RegularInstructionData::False => Some(ValueContainer::from(false).into()),
 
                             // integers
-                            RegularInstruction::Int8(integer) => {
+                            RegularInstructionData::Int8(integer) => {
                                 Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
                             }
-                            RegularInstruction::Int16(integer) => {
+                            RegularInstructionData::Int16(integer) => {
                                 Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
                             }
-                            RegularInstruction::Int32(integer) => {
+                            RegularInstructionData::Int32(integer) => {
                                 Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
                             }
-                            RegularInstruction::Int64(integer) => {
+                            RegularInstructionData::Int64(integer) => {
                                 Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
                             }
-                            RegularInstruction::Int128(integer) => {
+                            RegularInstructionData::Int128(integer) => {
                                 Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
                             }
 
                             // unsigned integers
-                            RegularInstruction::UInt8(integer) => {
+                            RegularInstructionData::UInt8(integer) => {
                                 Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
                             }
-                            RegularInstruction::UInt16(integer) => {
+                            RegularInstructionData::UInt16(integer) => {
                                 Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
                             }
-                            RegularInstruction::UInt32(integer) => {
+                            RegularInstructionData::UInt32(integer) => {
                                 Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
                             }
-                            RegularInstruction::UInt64(integer) => {
+                            RegularInstructionData::UInt64(integer) => {
                                 Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
                             }
-                            RegularInstruction::UInt128(integer) => {
+                            RegularInstructionData::UInt128(integer) => {
                                 Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
                             }
 
                             // big integers
-                            RegularInstruction::BigInteger(integer) => {
+                            RegularInstructionData::BigInteger(integer) => {
                                 Some(ValueContainer::from(TypedInteger::IBig(integer)).into())
                             }
 
                             // default integer
-                            RegularInstruction::Integer(integer) => {
+                            RegularInstructionData::Integer(integer) => {
                                 Some(ValueContainer::from(integer).into())
                             }
 
                             // specific floats
-                            RegularInstruction::DecimalF32(Float32Data(f32)) => {
+                            RegularInstructionData::DecimalF32(Float32Data(f32)) => {
                                 Some(ValueContainer::from(TypedDecimal::from(f32)).into())
                             }
-                            RegularInstruction::DecimalF64(Float64Data(f64)) => {
+                            RegularInstructionData::DecimalF64(Float64Data(f64)) => {
                                 Some(ValueContainer::from(TypedDecimal::from(f64)).into())
                             }
                             // big decimal
-                            RegularInstruction::BigDecimal(big_decimal) => {
+                            RegularInstructionData::BigDecimal(big_decimal) => {
                                 Some(ValueContainer::from(TypedDecimal::Decimal(big_decimal)).into())
                             }
 
                             // default decimals
-                            RegularInstruction::DecimalAsInt16(FloatAsInt16Data(i16)) => {
+                            RegularInstructionData::DecimalAsInt16(FloatAsInt16Data(i16)) => {
                                 Some(ValueContainer::from(Decimal::from(i16 as f32)).into())
                             }
-                            RegularInstruction::DecimalAsInt32(FloatAsInt32Data(i32)) => {
+                            RegularInstructionData::DecimalAsInt32(FloatAsInt32Data(i32)) => {
                                 Some(ValueContainer::from(Decimal::from(i32 as f32)).into())
                             }
-                            RegularInstruction::Decimal(big_decimal) => {
+                            RegularInstructionData::Decimal(big_decimal) => {
                                 Some(ValueContainer::from(big_decimal).into())
                             }
 
                             // endpoint
-                            RegularInstruction::Endpoint(endpoint) => Some(ValueContainer::from(endpoint).into()),
+                            RegularInstructionData::Endpoint(endpoint) => Some(ValueContainer::from(endpoint).into()),
 
                             // instant (datetime), stored as i128, convert to Integer
-                            RegularInstruction::Instant(InstantData(timestamp)) => {
+                            RegularInstructionData::Instant(InstantData(timestamp)) => {
                                 Some(ValueContainer::from(Integer::new(timestamp)).into())
                             }
 
                             // null
-                            RegularInstruction::Null => Some(ValueContainer::from(Value::null()).into()),
+                            RegularInstructionData::Null => Some(ValueContainer::from(Value::null()).into()),
 
                             // text
-                            RegularInstruction::ShortText(ShortTextData(text)) => {
+                            RegularInstructionData::ShortText(ShortTextData(text)) => {
                                 Some(ValueContainer::from(text).into())
                             }
-                            RegularInstruction::Text(TextData(text)) => Some(ValueContainer::from(text).into()),
+                            RegularInstructionData::Text(TextData(text)) => Some(ValueContainer::from(text).into()),
 
-                            RegularInstruction::RequestRemoteSharedRef(address) => Some(interrupt_with_value!(
+                            RegularInstructionData::RequestRemoteSharedRef(address) => Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
                                         ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, ReferenceMutability::Immutable)
                                     )
                                 ).into()),
 
-                            RegularInstruction::RequestRemoteSharedRefMut(address) => Some(interrupt_with_value!(
+                            RegularInstructionData::RequestRemoteSharedRefMut(address) => Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
                                         ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, ReferenceMutability::Mutable)
                                     )
                                 ).into()),
 
-                            RegularInstruction::GetLocalSharedRef(address) => {
+                            RegularInstructionData::GetLocalSharedRef(address) => {
                                 let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
@@ -318,7 +318,7 @@ pub gen fn inner_execution_loop(
                                 }
                             }
 
-                            RegularInstruction::GetCoreLibValue(id) => {
+                            RegularInstructionData::GetCoreLibValue(id) => {
                                 Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
@@ -329,18 +329,18 @@ pub gen fn inner_execution_loop(
                                 ).into())
                             }
 
-                            RegularInstruction::GetRootProperty(stack_index) => {
+                            RegularInstructionData::GetRootProperty(stack_index) => {
                                 Some(RuntimeValue::ValueContainer(get_root_property(
                                     &state,
                                     stack_index,
                                 )?))
                             }
 
-                            RegularInstruction::BorrowStackValue(index) => {
+                            RegularInstructionData::BorrowStackValue(index) => {
                                 Some(RuntimeValue::StackValue(index))
                             }
 
-                            RegularInstruction::GetStackValueSharedRef(index) => {
+                            RegularInstructionData::GetStackValueSharedRef(index) => {
                                 let value = state.stack.get_stack_value(index)?;
                                 match value {
                                     ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
@@ -349,7 +349,7 @@ pub gen fn inner_execution_loop(
                                     _ => return yield Err(ExecutionError::ExpectedSharedValue)
                                 }
                             }
-                            RegularInstruction::GetStackValueSharedRefMut(index) => {
+                            RegularInstructionData::GetStackValueSharedRefMut(index) => {
                                 let value = state.stack.get_stack_value(index)?;
                                 match value {
                                     ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
@@ -363,20 +363,20 @@ pub gen fn inner_execution_loop(
                                 }
                             }
 
-                            RegularInstruction::CloneStackValue(index) => {
+                            RegularInstructionData::CloneStackValue(index) => {
                                 let value = state.stack.get_stack_value(index)?;
                                 Some(RuntimeValue::ValueContainer(
                                     value.get_cloned()
                                 ))
                             }
 
-                            RegularInstruction::TakeStackValue(index) => {
+                            RegularInstructionData::TakeStackValue(index) => {
                                 Some(RuntimeValue::ValueContainer(
                                     state.stack.take_stack_value(index)?
                                 ))
                             }
 
-                            RegularInstruction::SharedRef(shared_ref) => {
+                            RegularInstructionData::SharedRef(shared_ref) => {
                                 let address = state.normalize_pointer_address(&shared_ref.address);
                                 // shared ref without value, assumes value already known, otherwise request (todo)
                                 let container = resolve_cache_value(
@@ -387,7 +387,7 @@ pub gen fn inner_execution_loop(
                                 Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container)))
                             }
 
-                            RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
+                            RegularInstructionData::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
                                 Some(RuntimeValue::ValueContainer(ValueContainer::Local(Value::new(CoreValue::Null, Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                     tag,
                                     ty: Some(Box::new(TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into()).into())),
@@ -395,63 +395,63 @@ pub gen fn inner_execution_loop(
                             }
 
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                            RegularInstruction::Statements(_) |
-                            RegularInstruction::ShortStatements(_) |
-                            RegularInstruction::UnboundedStatements |
-                            RegularInstruction::UnboundedStatementsEnd(_) |
-                            RegularInstruction::List(_) |
-                            RegularInstruction::Range |
-                            RegularInstruction::ShortList(_) |
-                            RegularInstruction::Map(_) |
-                            RegularInstruction::ShortMap(_) |
-                            RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. }) |
-                            RegularInstruction::KeyValueDynamic |
-                            RegularInstruction::KeyValueShortText(_) |
-                            RegularInstruction::Add |
-                            RegularInstruction::Subtract |
-                            RegularInstruction::Multiply |
-                            RegularInstruction::Divide |
-                            RegularInstruction::UnaryMinus |
-                            RegularInstruction::UnaryPlus |
-                            RegularInstruction::BitwiseNot |
-                            RegularInstruction::Apply(_) |
-                            RegularInstruction::GetPropertyText(_) |
-                            RegularInstruction::GetPropertyIndex(_) |
-                            RegularInstruction::GetPropertyDynamic |
-                            RegularInstruction::TakeEntryText(_) |
-                            RegularInstruction::TakeEntryIndex(_) |
-                            RegularInstruction::TakeEntryDynamic |
-                            RegularInstruction::SetEntryText(_) |
-                            RegularInstruction::SetEntryIndex(_) |
-                            RegularInstruction::SetEntryDynamic |
-                            RegularInstruction::Is |
-                            RegularInstruction::Matches |
-                            RegularInstruction::StructuralEqual |
-                            RegularInstruction::Equal |
-                            RegularInstruction::NotStructuralEqual |
-                            RegularInstruction::NotEqual |
-                            RegularInstruction::DeriveSharedReference |
-                            RegularInstruction::DeriveSharedReferenceMut |
-                            RegularInstruction::CreateShared |
-                            RegularInstruction::CreateSharedMut |
-                            RegularInstruction::PushToStack |
-                            RegularInstruction::PushListToStack |
-                            RegularInstruction::SetStackValue(_) |
-                            RegularInstruction::Splice(_) |
-                            RegularInstruction::SpliceDynamic |
-                            RegularInstruction::AppendEntry |
-                            RegularInstruction::Clear |
-                            RegularInstruction::Increment |
-                            RegularInstruction::Decrement |
-                            RegularInstruction::SetSharedContainerValue |
-                            RegularInstruction::Unbox |
-                            RegularInstruction::TypedValue |
-                            RegularInstruction::RemoteExecution(_) |
-                            RegularInstruction::MoveWithValue(_) |
-                            RegularInstruction::SharedRefWithValue(_) |
-                            RegularInstruction::TypeExpression => unreachable!(),
+                            RegularInstructionData::Statements(_) |
+                            RegularInstructionData::ShortStatements(_) |
+                            RegularInstructionData::UnboundedStatements |
+                            RegularInstructionData::UnboundedStatementsEnd(_) |
+                            RegularInstructionData::List(_) |
+                            RegularInstructionData::Range |
+                            RegularInstructionData::ShortList(_) |
+                            RegularInstructionData::Map(_) |
+                            RegularInstructionData::ShortMap(_) |
+                            RegularInstructionData::TaggedValue(TaggedValue { is_empty: false, .. }) |
+                            RegularInstructionData::KeyValueDynamic |
+                            RegularInstructionData::KeyValueShortText(_) |
+                            RegularInstructionData::Add |
+                            RegularInstructionData::Subtract |
+                            RegularInstructionData::Multiply |
+                            RegularInstructionData::Divide |
+                            RegularInstructionData::UnaryMinus |
+                            RegularInstructionData::UnaryPlus |
+                            RegularInstructionData::BitwiseNot |
+                            RegularInstructionData::Apply(_) |
+                            RegularInstructionData::GetPropertyText(_) |
+                            RegularInstructionData::GetPropertyIndex(_) |
+                            RegularInstructionData::GetPropertyDynamic |
+                            RegularInstructionData::TakeEntryText(_) |
+                            RegularInstructionData::TakeEntryIndex(_) |
+                            RegularInstructionData::TakeEntryDynamic |
+                            RegularInstructionData::SetEntryText(_) |
+                            RegularInstructionData::SetEntryIndex(_) |
+                            RegularInstructionData::SetEntryDynamic |
+                            RegularInstructionData::Is |
+                            RegularInstructionData::Matches |
+                            RegularInstructionData::StructuralEqual |
+                            RegularInstructionData::Equal |
+                            RegularInstructionData::NotStructuralEqual |
+                            RegularInstructionData::NotEqual |
+                            RegularInstructionData::DeriveSharedReference |
+                            RegularInstructionData::DeriveSharedReferenceMut |
+                            RegularInstructionData::CreateShared |
+                            RegularInstructionData::CreateSharedMut |
+                            RegularInstructionData::PushToStack |
+                            RegularInstructionData::PushListToStack |
+                            RegularInstructionData::SetStackValue(_) |
+                            RegularInstructionData::Splice(_) |
+                            RegularInstructionData::SpliceDynamic |
+                            RegularInstructionData::AppendEntry |
+                            RegularInstructionData::Clear |
+                            RegularInstructionData::Increment |
+                            RegularInstructionData::Decrement |
+                            RegularInstructionData::SetSharedContainerValue |
+                            RegularInstructionData::Unbox |
+                            RegularInstructionData::TypedValue |
+                            RegularInstructionData::RemoteExecution(_) |
+                            RegularInstructionData::MoveWithValue(_) |
+                            RegularInstructionData::SharedRefWithValue(_) |
+                            RegularInstructionData::TypeExpression => unreachable!(),
                             #[cfg(feature = "disassembler")]
-                            RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => unreachable!(),
+                            RegularInstructionData::_RemoteExecutionDebugFlat(_) | RegularInstructionData::_RemoteExecutionDebugTree(_) => unreachable!(),
                         }
                     };
                     Some(match regular_result {
@@ -560,8 +560,8 @@ pub gen fn inner_execution_loop(
                             Instruction::Regular(
                                 regular_instruction,
                             ) => match regular_instruction {
-                                RegularInstruction::List(_)
-                                | RegularInstruction::ShortList(_) => {
+                                RegularInstructionData::List(_)
+                                | RegularInstructionData::ShortList(_) => {
                                     let elements = collected_results.try_collect_value_containers(&mut state)?;
                                     RuntimeValue::ValueContainer(
                                         ValueContainer::from(List::new(
@@ -570,8 +570,8 @@ pub gen fn inner_execution_loop(
                                     )
                                         .into()
                                 }
-                                RegularInstruction::Map(_)
-                                | RegularInstruction::ShortMap(_) => {
+                                RegularInstructionData::Map(_)
+                                | RegularInstructionData::ShortMap(_) => {
                                     let entries = collected_results.try_collect_key_value_pair()?;
                                     RuntimeValue::ValueContainer(
                                         ValueContainer::from(Map::from(
@@ -581,7 +581,7 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
 
-                                RegularInstruction::KeyValueDynamic => {
+                                RegularInstructionData::KeyValueDynamic => {
                                     let value = collected_results.try_pop_value_container(&mut state)?;
                                     let key = collected_results
                                         .try_pop_value_container(&mut state)?;
@@ -591,7 +591,7 @@ pub gen fn inner_execution_loop(
                                     )
                                 }
 
-                                RegularInstruction::KeyValueShortText(
+                                RegularInstructionData::KeyValueShortText(
                                     short_text_data,
                                 ) => {
                                     let value = collected_results.try_pop_value_container(&mut state)?;
@@ -601,7 +601,7 @@ pub gen fn inner_execution_loop(
                                     )
                                 }
 
-                                RegularInstruction::TaggedValue(TaggedValue {
+                                RegularInstructionData::TaggedValue(TaggedValue {
                                                                     tag: ShortTextData(tag),
                                                                     is_empty
                                                                 }) => {
@@ -613,11 +613,11 @@ pub gen fn inner_execution_loop(
                                     )?.into()
                                 }
 
-                                RegularInstruction::Add
-                                | RegularInstruction::Subtract
-                                | RegularInstruction::Multiply
-                                | RegularInstruction::Range
-                                | RegularInstruction::Divide => {
+                                RegularInstructionData::Add
+                                | RegularInstructionData::Subtract
+                                | RegularInstructionData::Multiply
+                                | RegularInstructionData::Range
+                                | RegularInstructionData::Divide => {
                                     let right = collected_results
                                         .try_pop_value_container(&mut state)?;
                                     let left = collected_results
@@ -633,11 +633,11 @@ pub gen fn inner_execution_loop(
                                     res.into()
                                 }
 
-                                RegularInstruction::Is
-                                | RegularInstruction::StructuralEqual
-                                | RegularInstruction::Equal
-                                | RegularInstruction::NotStructuralEqual
-                                | RegularInstruction::NotEqual => {
+                                RegularInstructionData::Is
+                                | RegularInstructionData::StructuralEqual
+                                | RegularInstructionData::Equal
+                                | RegularInstructionData::NotStructuralEqual
+                                | RegularInstructionData::NotEqual => {
                                     let right = collected_results
                                         .try_pop_value_container(&mut state)?;
                                     let left = collected_results
@@ -653,7 +653,7 @@ pub gen fn inner_execution_loop(
                                     res.into()
                                 }
 
-                                RegularInstruction::Matches => {
+                                RegularInstructionData::Matches => {
                                     let _target = collected_results
                                         .try_pop_runtime_value()?;
                                     let _type_pattern =
@@ -663,14 +663,14 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 instruction @ (
-                                RegularInstruction::CreateShared |
-                                RegularInstruction::CreateSharedMut
+                                RegularInstructionData::CreateShared |
+                                RegularInstructionData::CreateSharedMut
                                 ) => {
                                     let value = collected_results
                                         .try_pop_value_container(&mut state)?;
                                     let mutability = match instruction {
-                                        RegularInstruction::CreateShared => SharedContainerMutability::Immutable,
-                                        RegularInstruction::CreateSharedMut => SharedContainerMutability::Mutable,
+                                        RegularInstructionData::CreateShared => SharedContainerMutability::Immutable,
+                                        RegularInstructionData::CreateSharedMut => SharedContainerMutability::Mutable,
                                         _ => unreachable!(),
                                     };
 
@@ -681,7 +681,7 @@ pub gen fn inner_execution_loop(
                                     ).into()
                                 }
 
-                                RegularInstruction::DeriveSharedReference => {
+                                RegularInstructionData::DeriveSharedReference => {
                                     let target = collected_results
                                         .try_pop_value_container(&mut state)?;
 
@@ -691,7 +691,7 @@ pub gen fn inner_execution_loop(
                                     )?.into()
                                 }
 
-                                RegularInstruction::DeriveSharedReferenceMut => {
+                                RegularInstructionData::DeriveSharedReferenceMut => {
                                     let target = collected_results
                                         .try_pop_value_container(&mut state)?;
                                     derive_shared_reference(
@@ -700,10 +700,10 @@ pub gen fn inner_execution_loop(
                                     )?.into()
                                 }
 
-                                RegularInstruction::UnaryMinus
-                                | RegularInstruction::UnaryPlus
-                                | RegularInstruction::BitwiseNot
-                                | RegularInstruction::Unbox => {
+                                RegularInstructionData::UnaryMinus
+                                | RegularInstructionData::UnaryPlus
+                                | RegularInstructionData::BitwiseNot
+                                | RegularInstructionData::Unbox => {
                                     let target = collected_results
                                         .try_pop_runtime_value()?;
                                     let value_container = target.as_value_container(
@@ -721,7 +721,7 @@ pub gen fn inner_execution_loop(
                                     ).into()
                                 }
 
-                                RegularInstruction::TypedValue => {
+                                RegularInstructionData::TypedValue => {
                                     let mut value_container = collected_results
                                         .try_pop_value_container(&mut state)?;
                                     let ty =
@@ -742,7 +742,7 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 // type(...)
-                                RegularInstruction::TypeExpression => {
+                                RegularInstructionData::TypeExpression => {
                                     let ty =
                                         collected_results.pop_type();
                                     RuntimeValue::ValueContainer(
@@ -751,7 +751,7 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
 
-                                RegularInstruction::SetSharedContainerValue => {
+                                RegularInstructionData::SetSharedContainerValue => {
                                     let mut target = collected_results
                                         .try_pop_runtime_value()?;
                                     let new_value: ValueContainer = collected_results
@@ -767,7 +767,7 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::Splice(
+                                RegularInstructionData::Splice(
                                     splice,
                                 ) => {
                                     let source_id = state.source_id_cloned();
@@ -786,7 +786,7 @@ pub gen fn inner_execution_loop(
                                     ValueContainer::from(res_values).into()
                                 }
 
-                                RegularInstruction::SpliceDynamic => {
+                                RegularInstructionData::SpliceDynamic => {
                                     let source_id = state.source_id_cloned();
                                     let mut target = collected_results.try_pop_runtime_value()?;
                                     let values = collected_results.try_pop_value_container(&mut state)?;
@@ -829,7 +829,7 @@ pub gen fn inner_execution_loop(
                                     ValueContainer::from(res_values).into()
                                 }
 
-                                RegularInstruction::Clear => {
+                                RegularInstructionData::Clear => {
                                     let source_id = state.source_id_cloned();
                                     let mut target = collected_results.try_pop_runtime_value()?;
                                     let target_value = target.as_value_container_mut(&mut state.stack)?;
@@ -841,7 +841,7 @@ pub gen fn inner_execution_loop(
 
                                     None.into()
                                 }
-                                RegularInstruction::AppendEntry => {
+                                RegularInstructionData::AppendEntry => {
                                     let source_id = state.source_id_cloned();
                                     let mut target = collected_results.try_pop_runtime_value()?;
                                     let value = collected_results.try_pop_value_container(&mut state)?;
@@ -854,7 +854,7 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::Increment => {
+                                RegularInstructionData::Increment => {
                                     let source_id = state.source_id_cloned();
                                     let mut target = collected_results.try_pop_runtime_value()?;
                                     let value = collected_results.try_pop_value_container(&mut state)?;
@@ -868,7 +868,7 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::Decrement => {
+                                RegularInstructionData::Decrement => {
                                     let source_id = state.source_id_cloned();
                                     let mut target = collected_results.try_pop_runtime_value()?;
                                     let value = collected_results.try_pop_value_container(&mut state)?;
@@ -881,7 +881,7 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::SetStackValue(index) => {
+                                RegularInstructionData::SetStackValue(index) => {
                                     let value = collected_results
                                         .try_pop_value_container(&mut state)?;
                                     state
@@ -890,7 +890,7 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::PushToStack => {
+                                RegularInstructionData::PushToStack => {
                                     let value = collected_results
                                         .try_pop_value_container(&mut state)?;
 
@@ -901,7 +901,7 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::PushListToStack => {
+                                RegularInstructionData::PushListToStack => {
                                     let value = collected_results
                                         .try_pop_value_container(&mut state)?;
 
@@ -922,7 +922,7 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::GetPropertyText(
+                                RegularInstructionData::GetPropertyText(
                                     property_data,
                                 ) => {
                                     let mut target = collected_results
@@ -953,7 +953,7 @@ pub gen fn inner_execution_loop(
                                     res.into()
                                 }
 
-                                RegularInstruction::GetPropertyIndex(
+                                RegularInstructionData::GetPropertyIndex(
                                     property_data,
                                 ) => {
                                     let target = collected_results
@@ -969,7 +969,7 @@ pub gen fn inner_execution_loop(
                                     res.into()
                                 }
 
-                                RegularInstruction::GetPropertyDynamic => {
+                                RegularInstructionData::GetPropertyDynamic => {
                                     let key = collected_results
                                         .try_pop_value_container(&mut state)?;
                                     let target = collected_results
@@ -983,7 +983,7 @@ pub gen fn inner_execution_loop(
                                     res.into()
                                 }
 
-                                RegularInstruction::TakeEntryIndex(
+                                RegularInstructionData::TakeEntryIndex(
                                     property_data,
                                 ) => {
                                     let mut target = collected_results
@@ -1001,7 +1001,7 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
 
-                                RegularInstruction::SetEntryText(
+                                RegularInstructionData::SetEntryText(
                                     property_data,
                                 ) => {
                                     let mut target_runtime_value = collected_results
@@ -1038,7 +1038,7 @@ pub gen fn inner_execution_loop(
                                     ValueContainer::new_from_option(res).into()
                                 }
 
-                                RegularInstruction::SetEntryIndex(
+                                RegularInstructionData::SetEntryIndex(
                                     property_data,
                                 ) => {
                                     let mut target = collected_results
@@ -1060,7 +1060,7 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::SetEntryDynamic => {
+                                RegularInstructionData::SetEntryDynamic => {
                                     let mut target = collected_results
                                         .try_pop_runtime_value()?;
                                     let value = collected_results
@@ -1082,7 +1082,7 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::MoveWithValue(move_with_value) => {
+                                RegularInstructionData::MoveWithValue(move_with_value) => {
                                     let address = state.normalize_pointer_address(&PointerAddress::SelfOwned(move_with_value.previous_address));
 
                                     // for local addresses, if first value is in cache, assume all values are in cache and resolve
@@ -1112,7 +1112,7 @@ pub gen fn inner_execution_loop(
                                     }
                                 }
 
-                                RegularInstruction::RemoteExecution(
+                                RegularInstructionData::RemoteExecution(
                                     exec_block_data,
                                 ) => {
                                     let receivers = collected_results
@@ -1161,7 +1161,7 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
 
-                                RegularInstruction::Apply(ApplyData {
+                                RegularInstructionData::Apply(ApplyData {
                                                               ..
                                                           }) => {
                                     let mut args = collected_results.try_collect_value_containers(&mut state)?;
@@ -1190,7 +1190,7 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
 
-                                RegularInstruction::UnboundedStatementsEnd(
+                                RegularInstructionData::UnboundedStatementsEnd(
                                     UnboundedStatementsData { terminated },
                                 ) => {
                                     let result = collector.try_pop_unbounded()
@@ -1223,7 +1223,7 @@ pub gen fn inner_execution_loop(
                                     }
                                 }
 
-                                RegularInstruction::SharedRefWithValue(shared_ref) => {
+                                RegularInstructionData::SharedRefWithValue(shared_ref) => {
                                     let address = state.normalize_pointer_address(&PointerAddress::SelfOwned(shared_ref.address.clone()));
 
                                     let value = collected_results
@@ -1329,12 +1329,12 @@ pub gen fn inner_execution_loop(
                         match instruction {
                             Instruction::Regular(regular_instruction) => {
                                 match regular_instruction {
-                                    RegularInstruction::ShortStatements(
+                                    RegularInstructionData::ShortStatements(
                                         ShortStatementsData {
                                             terminated, ..
                                         },
                                     )
-                                    | RegularInstruction::Statements(
+                                    | RegularInstructionData::Statements(
                                         StatementsData { terminated, .. },
                                     ) => {
                                         if terminated {

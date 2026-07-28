@@ -5,7 +5,7 @@ use crate::dxb_parser::next_instructions_stack::{
 use crate::{
     global::protocol_structures::{
         instructions::{Instruction, NestedInstructionResolutionStrategy},
-        regular_instructions::RegularInstruction,
+        regular_instructions::{RegularInstruction, RegularInstructionData},
         type_instructions::TypeInstruction,
     },
     libs::core::core_lib_id::CoreLibIdIndex,
@@ -192,9 +192,9 @@ pub gen fn iterate_instructions(
                         .map_err(DXBParserError::BinRwError)?;
 
                     let instruction =
-                        if let RegularInstruction::RemoteExecution(
+                        if let RegularInstructionData::RemoteExecution(
                             instruction_block_data,
-                        ) = instruction
+                        ) = instruction.data()
                         {
                             match nested_instruction_resolution_strategy {
                                 #[cfg(feature = "disassembler")]
@@ -224,7 +224,7 @@ pub gen fn iterate_instructions(
                                             ResolveNestedScopesFlat
                                     {
                                         RegularInstruction::
-                                            _RemoteExecutionDebugFlat(
+                                            remote_execution_debug_flat(
                                                 InstructionBlockDataDebugFlat {
                                                     length:
                                                         instruction_block_data
@@ -234,14 +234,14 @@ pub gen fn iterate_instructions(
                                                             .injected_value_count,
                                                     injected_values:
                                                         instruction_block_data
-                                                            .injected_values,
+                                                            .injected_values.clone(),
                                                     body: inner_instructions
                                                         .flatten(),
                                                 },
                                             )
                                     } else {
                                         RegularInstruction::
-                                            _RemoteExecutionDebugTree(
+                                            remote_execution_debug_tree(
                                                 InstructionBlockDataDebugTree {
                                                     length:
                                                         instruction_block_data
@@ -251,7 +251,7 @@ pub gen fn iterate_instructions(
                                                             .injected_value_count,
                                                     injected_values:
                                                         instruction_block_data
-                                                            .injected_values,
+                                                            .injected_values.clone(),
                                                     body: inner_instructions,
                                                 },
                                             )
@@ -259,8 +259,8 @@ pub gen fn iterate_instructions(
                                 }
 
                                 _ => {
-                                    RegularInstruction::RemoteExecution(
-                                        instruction_block_data,
+                                    RegularInstruction::remote_execution(
+                                        instruction_block_data.clone(),
                                     )
                                 }
                             }
@@ -347,9 +347,9 @@ mod tests {
         let data = vec![InstructionCode::UINT_8 as u8, 42];
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
-        match result {
-            Ok(Instruction::Regular(RegularInstruction::UInt8(value))) => {
-                assert_eq!(value.0, 42);
+        match result.expect("Expected a valid instruction") {
+            Instruction::Regular(instr) => {
+                assert_eq!(instr, RegularInstruction::uint8(42));
             }
             _ => panic!("Expected UINT_8 instruction"),
         }
@@ -365,10 +365,16 @@ mod tests {
             vec![InstructionCode::SHORT_TEXT as u8, text_bytes.len() as u8];
         data.extend_from_slice(text_bytes);
         let mut iterator = iterate_dxb(data);
-        let result = iterator.next().unwrap();
+        let result = iterator
+            .next()
+            .unwrap()
+            .expect("Expected a valid instruction");
         match result {
-            Ok(Instruction::Regular(RegularInstruction::ShortText(value))) => {
-                assert_eq!(value.0, "Hello");
+            Instruction::Regular(instr) => {
+                assert_eq!(
+                    instr,
+                    RegularInstruction::short_text("Hello".to_string())
+                );
             }
             _ => panic!("Expected SHORT_TEXT instruction"),
         }
@@ -389,24 +395,20 @@ mod tests {
         ];
         let mut iterator = iterate_dxb(data);
         // first instruction should be ADD
-        assert!(matches!(
+        assert_eq!(
             iterator.next().unwrap(),
-            Ok(Instruction::Regular(RegularInstruction::Add))
-        ));
+            Ok(Instruction::Regular(RegularInstruction::add()))
+        );
         // next instruction should be first UINT_8
-        assert!(matches!(
+        assert_eq!(
             iterator.next().unwrap(),
-            Ok(Instruction::Regular(RegularInstruction::UInt8(UInt8Data(
-                10
-            ))))
-        ));
+            Ok(Instruction::Regular(RegularInstruction::uint8(10)))
+        );
         // next instruction should be second UINT_8
-        assert!(matches!(
+        assert_eq!(
             iterator.next().unwrap(),
-            Ok(Instruction::Regular(RegularInstruction::UInt8(UInt8Data(
-                20
-            ))))
-        ));
+            Ok(Instruction::Regular(RegularInstruction::uint8(20)))
+        );
         // ensure no more instructions
         assert!(iterator.next().is_none());
     }
@@ -429,10 +431,10 @@ mod tests {
         );
         // first instruction should be LIST
         let result = iterator.next().unwrap();
-        assert!(matches!(
+        assert_eq!(
             result,
-            Ok(Instruction::Regular(RegularInstruction::List(_)))
-        ));
+            Ok(Instruction::Regular(RegularInstruction::list(2)))
+        );
         // next instruction should error expecting more instructions
         let result = iterator.next().unwrap();
         assert!(matches!(
@@ -452,16 +454,16 @@ mod tests {
 
         // next instruction should be first UINT_8
         let result = iterator.next().unwrap();
-        assert!(matches!(
+        assert_eq!(
             result,
-            Ok(Instruction::Regular(RegularInstruction::UInt8(_)))
-        ));
+            Ok(Instruction::Regular(RegularInstruction::uint8(10)))
+        );
         // next instruction should be second UINT_8
         let result = iterator.next().unwrap();
-        assert!(matches!(
+        assert_eq!(
             result,
-            Ok(Instruction::Regular(RegularInstruction::UInt8(_)))
-        ));
+            Ok(Instruction::Regular(RegularInstruction::uint8(20)))
+        );
         // ensure no more instructions
         assert!(iterator.next().is_none());
     }
@@ -476,12 +478,10 @@ mod tests {
         );
         // first instruction should be UNBOUNDED_STATEMENTS
         let result = iterator.next().unwrap();
-        assert!(matches!(
-            result,
-            Ok(Instruction::Regular(
-                RegularInstruction::UnboundedStatements
-            ))
-        ));
+        assert_eq!(
+            result.unwrap(),
+            Instruction::Regular(RegularInstruction::unbounded_statements())
+        );
         // next instruction should error expecting more instructions
         let result = iterator.next().unwrap();
         assert!(matches!(
@@ -501,18 +501,18 @@ mod tests {
 
         // next instruction should be first UINT_8
         let result = iterator.next().unwrap();
-        assert!(matches!(
-            result,
-            Ok(Instruction::Regular(RegularInstruction::UInt8(_)))
-        ));
+        assert_eq!(
+            result.unwrap(),
+            Instruction::Regular(RegularInstruction::uint8(42))
+        );
         // next instruction should be UNBOUNDED_STATEMENTS_END
         let result = iterator.next().unwrap();
-        assert!(matches!(
-            result,
-            Ok(Instruction::Regular(
-                RegularInstruction::UnboundedStatementsEnd(_)
+        assert_eq!(
+            result.unwrap(),
+            Instruction::Regular(RegularInstruction::unbounded_statements_end(
+                true
             ))
-        ));
+        );
         // ensure no more instructions
         assert!(iterator.next().is_none());
     }
