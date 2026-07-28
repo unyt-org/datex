@@ -120,20 +120,17 @@ pub fn append_shared_container_from_stack(
     let index = context
         .shared_value_tracking
         .register_shared_value(shared_container);
-    append_regular_instruction(
-        context.cursor_mut(),
-        match ownership {
-            SharedContainerOwnership::Owned => {
-                RegularInstruction::take_stack_value(index)
-            }
-            SharedContainerOwnership::Referenced(
-                ReferenceMutability::Immutable,
-            ) => RegularInstruction::get_stack_value_shared_ref(index),
-            SharedContainerOwnership::Referenced(
-                ReferenceMutability::Mutable,
-            ) => RegularInstruction::get_stack_value_shared_ref_mut(index),
-        },
-    );
+    context.write(match ownership {
+        SharedContainerOwnership::Owned => {
+            RegularInstruction::take_stack_value(index)
+        }
+        SharedContainerOwnership::Referenced(
+            ReferenceMutability::Immutable,
+        ) => RegularInstruction::get_stack_value_shared_ref(index),
+        SharedContainerOwnership::Referenced(ReferenceMutability::Mutable) => {
+            RegularInstruction::get_stack_value_shared_ref_mut(index)
+        }
+    });
 }
 
 pub fn append_local_pointer_address(
@@ -173,10 +170,8 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                     })),
                 tag,
             }) => {
-                append_regular_instruction(
-                    context.cursor_mut(),
-                    RegularInstruction::tagged_value(tag.clone(), true),
-                );
+                context
+                    .write(RegularInstruction::tagged_value(tag.clone(), true));
                 return; // early return, don't append null value; TODO: assert that value is actually null?
             }
             // tagged value with actual value (e.g. #Example(null))
@@ -184,10 +179,10 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                 ty: Option::None,
                 tag,
             }) => {
-                append_regular_instruction(
-                    context.cursor_mut(),
-                    RegularInstruction::tagged_value(tag.clone(), false),
-                );
+                context.write(RegularInstruction::tagged_value(
+                    tag.clone(),
+                    false,
+                ));
             }
             _ => append_type_cast(context, custom_type),
         }
@@ -200,10 +195,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                     CoreLibId::Type(core_id),
                 );
             } else {
-                append_regular_instruction(
-                    context.cursor_mut(),
-                    RegularInstruction::type_expression(),
-                );
+                context.write(RegularInstruction::type_expression());
                 context.visit_type(ty);
             }
         }
@@ -217,14 +209,14 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             // for all integers for now
             // let integer = integer.to_smallest_fitting();
             // append_encoded_integer(buffer, &integer);
-            append_integer(context.cursor_mut(), &integer)
+            context.write(RegularInstruction::integer(integer));
         }
         CoreValue::TypedInteger(integer) => {
             append_encoded_integer(context.cursor_mut(), &integer)
         }
 
         CoreValue::Endpoint(endpoint) => {
-            append_endpoint(context.cursor_mut(), &endpoint)
+            context.write(RegularInstruction::endpoint(endpoint));
         }
         CoreValue::Decimal(decimal) => {
             append_decimal(context.cursor_mut(), &decimal)
@@ -233,17 +225,11 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             append_encoded_decimal(context.cursor_mut(), &val)
         }
         CoreValue::Boolean(val) => append_boolean(context.cursor_mut(), val.0),
-        CoreValue::Null => append_regular_instruction(
-            context.cursor_mut(),
-            RegularInstruction::null(),
-        ),
-        CoreValue::Text(val) => append_text(context.cursor_mut(), val.0),
+        CoreValue::Null => context.write(RegularInstruction::null()),
+        CoreValue::Text(val) => context.write(RegularInstruction::text(val.0)),
         CoreValue::List(val) => {
             // if list size < 256, use SHORT_LIST
-            append_regular_instruction(
-                context.cursor_mut(),
-                RegularInstruction::list(val.len()),
-            );
+            context.write(RegularInstruction::list(val.len()));
 
             for (index, item) in val.into_iter().enumerate() {
                 context.visit_value_container(
@@ -257,10 +243,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             }
         }
         CoreValue::Map(val) => {
-            append_regular_instruction(
-                context.cursor_mut(),
-                RegularInstruction::map(val.size() as u32),
-            );
+            context.write(RegularInstruction::map(val.size() as u32));
             for (key, value) in val.into_iter() {
                 append_key_value_pair(
                     context,
@@ -271,10 +254,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             }
         }
         CoreValue::Range(range) => {
-            append_regular_instruction(
-                context.cursor_mut(),
-                RegularInstruction::range(),
-            );
+            context.write(RegularInstruction::range());
             context.visit_value_container(*range.start, None);
             context.visit_value_container(*range.end, None);
         }
@@ -297,41 +277,29 @@ pub fn append_apply<T: BufferProvider + ValueVisitor>(
     callee: RegularInstruction,
     args: Vec<ValueContainer>,
 ) {
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::apply(args.len() as u16),
-    );
+    context.write(RegularInstruction::apply(args.len() as u16));
     for arg in args {
         context.visit_value_container(arg, None);
     }
-    append_regular_instruction(context.cursor_mut(), callee);
+    context.write(callee);
 }
 
 pub fn append_type_cast<T: BufferProvider + ValueVisitor>(
     context: &mut T,
     ty: &TypeDefinition,
 ) {
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::typed_value(),
-    );
+    context.write(RegularInstruction::typed_value());
 
     // append type
     context.visit_type(Type::from(ty.clone()));
 }
 
-/// Appends a text value, using either the short or regular text instruction depending on the byte length
-/// of the texts string representation
-pub fn append_text(cursor: &mut ByteCursor, string: String) {
-    append_regular_instruction(cursor, RegularInstruction::text(string));
-}
-
 /// Appends a boolean value using the TRUE or FALSE instruction
 pub fn append_boolean(cursor: &mut ByteCursor, boolean: bool) {
     if boolean {
-        append_regular_instruction(cursor, RegularInstruction::r#true());
+        RegularInstruction::r#true().write(cursor).unwrap();
     } else {
-        append_regular_instruction(cursor, RegularInstruction::r#false());
+        RegularInstruction::r#false().write(cursor).unwrap();
     }
 }
 
@@ -345,13 +313,6 @@ pub fn append_big_decimal(cursor: &mut ByteCursor, decimal: &Decimal) {
     decimal.write_le(cursor).unwrap();
 }
 
-pub fn append_endpoint(cursor: &mut ByteCursor, endpoint: &Endpoint) {
-    append_regular_instruction(
-        cursor,
-        RegularInstruction::endpoint(endpoint.clone()), // FIXME: no clone
-    );
-}
-
 /// Appends a typed integer with explicit type casts
 pub fn append_typed_integer(
     context: &mut impl BufferProvider,
@@ -359,14 +320,6 @@ pub fn append_typed_integer(
 ) {
     append_core_type_cast(context, CoreLibTypeId::from(integer));
     append_encoded_integer(context.cursor_mut(), integer);
-}
-
-/// Appends a default, unsized integer
-pub fn append_integer(cursor: &mut ByteCursor, integer: &Integer) {
-    append_regular_instruction(
-        cursor,
-        RegularInstruction::integer(integer.clone()), // FIXME: no clone
-    );
 }
 
 /// Appends an encoded integer without explicit type casts
@@ -385,11 +338,13 @@ pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) {
         TypedInteger::IBig(val) => RegularInstruction::big_integer(val.clone()), // FIXME: no clone
     };
 
-    append_regular_instruction(cursor, instruction);
+    instruction.write(cursor).unwrap();
 }
 
 pub fn append_instant(cursor: &mut ByteCursor, instant: &Instant) {
-    append_regular_instruction(cursor, RegularInstruction::instant(instant.0));
+    RegularInstruction::instant(instant.0)
+        .write(cursor)
+        .unwrap();
 }
 
 /// Appends a typed decimal with explicit type casts
@@ -397,16 +352,14 @@ pub fn append_encoded_decimal(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
     fn append_f32_or_f64(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
         match decimal {
             TypedDecimal::F32(val) => {
-                append_regular_instruction(
-                    cursor,
-                    RegularInstruction::decimal_f32(val.into_inner()),
-                );
+                RegularInstruction::decimal_f32(val.into_inner())
+                    .write(cursor)
+                    .unwrap();
             }
             TypedDecimal::F64(val) => {
-                append_regular_instruction(
-                    cursor,
-                    RegularInstruction::decimal_f64(val.into_inner()),
-                );
+                RegularInstruction::decimal_f64(val.into_inner())
+                    .write(cursor)
+                    .unwrap();
             }
             TypedDecimal::Decimal(val) => {
                 append_instruction_code(cursor, InstructionCode::DECIMAL_BIG);
@@ -474,21 +427,17 @@ pub fn append_get_shared_ref(
 ) {
     match address {
         PointerAddress::SelfOwned(local_address) => {
-            append_regular_instruction(
-                context.cursor_mut(),
-                RegularInstruction::get_local_shared_ref(local_address),
-            );
+            context
+                .write(RegularInstruction::get_local_shared_ref(local_address));
         }
         PointerAddress::Remote(address) => match mutability {
             ReferenceMutability::Immutable => {
-                append_regular_instruction(
-                    context.cursor_mut(),
-                    RegularInstruction::request_remote_shared_ref(address),
-                );
+                context.write(RegularInstruction::request_remote_shared_ref(
+                    address,
+                ));
             }
             ReferenceMutability::Mutable => {
-                append_regular_instruction(
-                    context.cursor_mut(),
+                context.write(
                     RegularInstruction::request_remote_shared_ref_mut(address),
                 );
             }
@@ -498,10 +447,9 @@ pub fn append_get_shared_ref(
 
 /// Appends a GET_CORE_LIB_VALUE instruction with the given core library id
 pub fn append_get_core_lib_value(cursor: &mut ByteCursor, id: CoreLibId) {
-    append_regular_instruction(
-        cursor,
-        RegularInstruction::get_core_lib_value(CoreLibIdIndex::from(id)),
-    );
+    RegularInstruction::get_core_lib_value(CoreLibIdIndex::from(id))
+        .write(cursor)
+        .unwrap();
 }
 
 /// Appends a key-value pair for map entries, optimizing for short text keys
@@ -520,13 +468,10 @@ pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
             inner: CoreValue::Text(text),
             ..
         }) => {
-            append_key_string(context.cursor_mut(), text.0);
+            append_key_string(context, text.0);
         }
         _ => {
-            append_regular_instruction(
-                context.cursor_mut(),
-                RegularInstruction::key_value_dynamic(),
-            );
+            context.write(RegularInstruction::key_value_dynamic());
             context.visit_value_container(
                 key,
                 parent_context.clone().map(|parent_context| {
@@ -545,34 +490,22 @@ pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
 }
 
 /// Appends a key string for map entries, optimizing for short text keys
-pub fn append_key_string(cursor: &mut ByteCursor, key_string: String) {
-    if key_string.len() < 256 {
-        append_regular_instruction(
-            cursor,
-            RegularInstruction::key_value_short_text(key_string),
-        );
-    } else {
-        append_regular_instruction(
-            cursor,
-            RegularInstruction::key_value_dynamic(),
-        );
-        append_text(cursor, key_string);
-    }
-}
-
-#[inline]
-pub fn append_regular_instruction(
-    cursor: &mut ByteCursor,
-    instruction: RegularInstruction,
+pub fn append_key_string<T: BufferProvider>(
+    context: &mut T,
+    key_string: String,
 ) {
-    // add instruction
-    instruction.write(cursor).unwrap();
+    if key_string.len() < 256 {
+        context.write(RegularInstruction::key_value_short_text(key_string));
+    } else {
+        context.write(RegularInstruction::key_value_dynamic());
+        context.write(RegularInstruction::text(key_string));
+    }
 }
 
 pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
     match instruction {
         Instruction::Regular(instruction) => {
-            append_regular_instruction(cursor, instruction)
+            instruction.write(cursor).unwrap();
         }
         Instruction::Type(instruction) => {
             append_type_instruction(cursor, instruction)
@@ -580,19 +513,9 @@ pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
     }
 }
 
+#[deprecated(note = "Use context.write(RegularInstruction) instead")]
 pub fn append_instruction_code(cursor: &mut ByteCursor, code: InstructionCode) {
     cursor.write_all(&[code as u8]).unwrap();
-}
-
-pub fn append_statements_preamble(
-    cursor: &mut ByteCursor,
-    statements_count: usize,
-    terminated: bool,
-) {
-    append_regular_instruction(
-        cursor,
-        RegularInstruction::statements(statements_count as u32, terminated),
-    );
 }
 
 #[cfg(test)]

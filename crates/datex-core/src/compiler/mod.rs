@@ -21,16 +21,16 @@ use crate::{
         scope::CompilationScope,
     },
     core_compiler::{
+        buffer_provider::BufferProvider,
         core_compilation_context::{CompileInput, DXBWithSharedValues},
         to_instructions::ToInstructions,
         type_compiler::append_type_instruction,
         value_compiler::{
             append_boolean, append_decimal, append_encoded_integer,
-            append_endpoint, append_float_as_i16, append_float_as_i32,
-            append_get_shared_ref, append_instant, append_integer,
-            append_key_string, append_regular_instruction,
-            append_shared_container_from_stack, append_statements_preamble,
-            append_text, append_typed_decimal, append_value,
+            append_float_as_i16, append_float_as_i32, append_get_shared_ref,
+            append_instant, append_key_string,
+            append_shared_container_from_stack, append_typed_decimal,
+            append_value,
         },
     },
     global::{
@@ -547,7 +547,9 @@ fn compile_expression(
     let DatexExpression { data, span, ty } = ast;
     match *data {
         DatexExpressionData::Integer(int) => {
-            append_integer(compilation_context.cursor(), &int);
+            compilation_context
+                .core_context
+                .write(RegularInstruction::Integer(int));
         }
         DatexExpressionData::TypedInteger(typed_int) => {
             append_encoded_integer(compilation_context.cursor(), &typed_int);
@@ -576,25 +578,27 @@ fn compile_expression(
             );
         }
         DatexExpressionData::Text(text) => {
-            append_text(compilation_context.cursor(), text.0);
+            compilation_context
+                .core_context
+                .write(RegularInstruction::text(text.0));
         }
         DatexExpressionData::Boolean(boolean) => {
             append_boolean(compilation_context.cursor(), boolean.0);
         }
         DatexExpressionData::Endpoint(endpoint) => {
-            append_endpoint(compilation_context.cursor(), &endpoint);
+            compilation_context
+                .core_context
+                .write(RegularInstruction::endpoint(endpoint));
         }
         DatexExpressionData::Null => {
-            append_regular_instruction(
-                compilation_context.cursor(),
-                RegularInstruction::null(),
-            );
+            compilation_context
+                .core_context
+                .write(RegularInstruction::null());
         }
         DatexExpressionData::List(list) => {
-            append_regular_instruction(
-                compilation_context.cursor(),
-                RegularInstruction::list(list.items.len() as u32),
-            );
+            compilation_context
+                .core_context
+                .write(RegularInstruction::list(list.items.len() as u32));
             for item in list.items {
                 scope = compile_expression(
                     compilation_context,
@@ -778,11 +782,10 @@ fn compile_expression(
                 }
                 // otherwise, statements with fixed length
                 else {
-                    append_statements_preamble(
-                        compilation_context.cursor(),
-                        statements.len(),
+                    compilation_context.write(RegularInstruction::statements(
+                        statements.len() as u32,
                         is_terminated,
-                    );
+                    ));
                 }
 
                 for statement in statements.into_iter() {
@@ -935,10 +938,9 @@ fn compile_expression(
             // TODO: replace with trait impls
             match call.method_name.as_str() {
                 "append" => {
-                    append_regular_instruction(
-                        compilation_context.cursor(),
-                        RegularInstruction::append_entry(),
-                    );
+                    compilation_context
+                        .core_context
+                        .write(RegularInstruction::append_entry());
                     // must be exactly one element
                     if call.arguments.len() != 1 {
                         return Err(CompilerError::InvalidInterfaceMethodCall(
@@ -954,10 +956,9 @@ fn compile_expression(
                     )?;
                 }
                 "clear" => {
-                    append_regular_instruction(
-                        compilation_context.cursor(),
-                        RegularInstruction::clear(),
-                    );
+                    compilation_context
+                        .core_context
+                        .write(RegularInstruction::clear());
 
                     // no arguments allowed
                     if !call.arguments.is_empty() {
@@ -974,10 +975,9 @@ fn compile_expression(
                         ));
                     }
 
-                    append_regular_instruction(
-                        compilation_context.cursor(),
-                        RegularInstruction::splice_dynamic(),
-                    );
+                    compilation_context
+                        .core_context
+                        .write(RegularInstruction::splice_dynamic());
 
                     for argument in call.arguments.drain(..) {
                         scope = compile_expression(
@@ -1055,8 +1055,7 @@ fn compile_expression(
             match property.data() {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
-                    append_regular_instruction(
-                        compilation_context.cursor(),
+                    compilation_context.write(
                         RegularInstruction::set_property_text(key.0.clone()),
                     );
                 }
@@ -1179,8 +1178,7 @@ fn compile_expression(
                     info!(
                         "append variable - stack index: {stack_index:?}, name: {name}"
                     );
-                    append_regular_instruction(
-                        compilation_context.cursor(),
+                    compilation_context.write(
                         RegularInstruction::set_stack_value(stack_index),
                     );
 
@@ -1221,8 +1219,7 @@ fn compile_expression(
                             scope,
                         )?;
 
-                        append_regular_instruction(
-                            compilation_context.cursor(),
+                        compilation_context.write(
                             RegularInstruction::borrow_stack_value(stack_index),
                         );
                     } else {
@@ -1250,10 +1247,9 @@ fn compile_expression(
                         todo!()
                     }
                 }
-                None => append_regular_instruction(
-                    compilation_context.cursor(),
-                    RegularInstruction::set_shared_container_value(),
-                ),
+                None => compilation_context
+                    .core_context
+                    .write(RegularInstruction::set_shared_container_value()),
             };
 
             // compile assigned expression
@@ -1364,9 +1360,8 @@ fn compile_expression(
                 shared_values: _,
             } = execution_block_ctx.into_dxb_with_shared_values();
             // insert remote execution instruction
-            append_regular_instruction(
-                compilation_context.cursor(),
-                RegularInstruction::remote_execution(InstructionBlockData {
+            compilation_context.write(RegularInstruction::remote_execution(
+                InstructionBlockData {
                     // block size (len of compilation_context.buffer)
                     length: dxb.len() as u32,
                     injected_value_count: external_parent_scope
@@ -1374,8 +1369,8 @@ fn compile_expression(
                         .len() as u32,
                     injected_values: external_parent_scope.injected_values,
                     body: dxb,
-                }),
-            );
+                },
+            ));
 
             // TODO what to do with the shared values? [shared_values]
 
@@ -1395,8 +1390,7 @@ fn compile_expression(
             let root_property = RootProperty::from_str(&property_name);
 
             if let Ok(root_property) = root_property {
-                append_regular_instruction(
-                    compilation_context.cursor(),
+                compilation_context.write(
                     RegularInstruction::get_root_property(root_property),
                 );
             } else {
@@ -1508,10 +1502,7 @@ fn compile_expression(
                 tag_expression.tag,
                 tag_expression.expression.is_none(),
             );
-            append_regular_instruction(
-                compilation_context.cursor(),
-                tag_instruction,
-            );
+            compilation_context.write(tag_instruction);
 
             // append expression
             if let Some(inner_expression) = tag_expression.expression {
@@ -1525,10 +1516,9 @@ fn compile_expression(
         }
 
         DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
-            append_regular_instruction(
-                compilation_context.cursor(),
-                RegularInstruction::get_core_lib_value(core_lib_id.into()),
-            );
+            compilation_context.write(RegularInstruction::get_core_lib_value(
+                core_lib_id.into(),
+            ));
         }
 
         _ => {
@@ -1548,14 +1538,12 @@ fn compile_maybe_direct_assignment_operation(
     operator: ModificationOperator,
 ) -> bool {
     match operator {
-        ModificationOperator::AddAssign => append_regular_instruction(
-            compilation_context.cursor(),
-            RegularInstruction::increment(),
-        ),
-        ModificationOperator::SubtractAssign => append_regular_instruction(
-            compilation_context.cursor(),
-            RegularInstruction::decrement(),
-        ),
+        ModificationOperator::AddAssign => compilation_context
+            .core_context
+            .write(RegularInstruction::increment()),
+        ModificationOperator::SubtractAssign => compilation_context
+            .core_context
+            .write(RegularInstruction::decrement()),
         _operator => return false,
     };
     true
@@ -1571,7 +1559,7 @@ fn compile_key_value_entry(
     match *key.data {
         // text -> insert key string
         DatexExpressionData::Text(text) => {
-            append_key_string(compilation_context.cursor(), text.0);
+            append_key_string(compilation_context.core_context(), text.0);
         }
         // other -> insert key as dynamic
         _ => {
@@ -2821,18 +2809,18 @@ pub mod tests {
                 true,
                 instructions!(
                     RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstruction::uint8(1),
                     RegularInstruction::statements_with_children(
                         true,
                         instructions!(
                             RegularInstruction::PushToStack,
-                            RegularInstruction::UInt8(UInt8Data(2)),
+                            RegularInstruction::uint8(2),
                             RegularInstruction::CloneStackValue(StackIndex(0)),
                             RegularInstruction::take_stack_value(StackIndex(1)),
                         )
                     ),
                     RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(3)),
+                    RegularInstruction::uint8(3),
                     RegularInstruction::take_stack_value(StackIndex(0)),
                     RegularInstruction::take_stack_value(StackIndex(1)),
                 )
@@ -2935,7 +2923,7 @@ pub mod tests {
                 false,
                 instructions!(
                     RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::uint8(42),
                     RegularInstruction::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 5,
@@ -2954,7 +2942,7 @@ pub mod tests {
                             ),]
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstruction::uint8(1),
                 )
             ),)
         );
@@ -2976,7 +2964,7 @@ pub mod tests {
                 instructions!(
                     RegularInstruction::PushToStack,
                     RegularInstruction::CreateShared,
-                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::uint8(42),
                     RegularInstruction::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 5,
@@ -2994,7 +2982,7 @@ pub mod tests {
                             ),],
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstruction::uint8(1),
                 )
             ),)
         )
@@ -3014,7 +3002,7 @@ pub mod tests {
                 instructions!(
                     RegularInstruction::PushToStack,
                     RegularInstruction::CreateShared,
-                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::uint8(42),
                     RegularInstruction::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 5,
@@ -3032,7 +3020,7 @@ pub mod tests {
                             ),],
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstruction::uint8(1),
                 )
             ),)
         )
@@ -3052,7 +3040,7 @@ pub mod tests {
                 instructions!(
                     RegularInstruction::PushToStack,
                     RegularInstruction::CreateShared,
-                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::uint8(42),
                     RegularInstruction::_RemoteExecutionDebugTree(
                         InstructionBlockDataDebugTree {
                             length: 13,
@@ -3076,7 +3064,7 @@ pub mod tests {
                             ),
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstruction::uint8(1),
                 )
             ),)
         )
@@ -3095,9 +3083,9 @@ pub mod tests {
                 false,
                 instructions!(
                     RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::uint8(42),
                     RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(69)),
+                    RegularInstruction::uint8(69),
                     RegularInstruction::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 11,
@@ -3132,7 +3120,7 @@ pub mod tests {
                             ],
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstruction::uint8(1),
                 )
             ),)
         );
@@ -3152,9 +3140,9 @@ pub mod tests {
                 false,
                 instructions!(
                     RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::uint8(42),
                     RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(69)),
+                    RegularInstruction::uint8(69),
                     RegularInstruction::_RemoteExecutionDebugTree(
                         InstructionBlockDataDebugTree {
                             length: 17,
@@ -3172,7 +3160,7 @@ pub mod tests {
                                 false,
                                 instructions!(
                                     RegularInstruction::PushToStack,
-                                    RegularInstruction::UInt8(UInt8Data(5)),
+                                    RegularInstruction::uint8(5),
                                     RegularInstruction::Add,
                                     RegularInstruction::take_stack_value(
                                         StackIndex(1)
@@ -3184,7 +3172,7 @@ pub mod tests {
                             ),
                         }
                     ),
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstruction::uint8(1),
                 )
             ),)
         );
@@ -3853,13 +3841,13 @@ pub mod tests {
                 instructions!(
                     // var x = 42u8
                     RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(42)),
+                    RegularInstruction::uint8(42),
                     // var x = 43u8;
                     RegularInstruction::statements_with_children(
                         true,
                         instructions!(
                             RegularInstruction::PushToStack,
-                            RegularInstruction::UInt8(UInt8Data(43)),
+                            RegularInstruction::uint8(43),
                         )
                     ),
                     // var y = 43u8; y
@@ -3867,7 +3855,7 @@ pub mod tests {
                         false,
                         instructions!(
                             RegularInstruction::PushToStack,
-                            RegularInstruction::UInt8(UInt8Data(43)),
+                            RegularInstruction::uint8(43),
                             RegularInstruction::take_stack_value(StackIndex(1)),
                         )
                     ),
@@ -3889,7 +3877,7 @@ pub mod tests {
                 instructions!(
                     // var x = 1u8
                     RegularInstruction::PushToStack,
-                    RegularInstruction::UInt8(UInt8Data(1)),
+                    RegularInstruction::uint8(1),
                     // var y =
                     RegularInstruction::PushToStack,
                     // (var x = 2u8; x)
@@ -3897,14 +3885,12 @@ pub mod tests {
                         false,
                         instructions!(
                             RegularInstruction::PushToStack,
-                            RegularInstruction::UInt8(UInt8Data(2)),
+                            RegularInstruction::uint8(2),
                             RegularInstruction::take_stack_value(StackIndex(1)),
                         )
                     ),
                     // [x, y]
-                    RegularInstruction::ShortList(ShortListData {
-                        element_count: 2
-                    }),
+                    RegularInstruction::list(2),
                     RegularInstruction::take_stack_value(StackIndex(0)),
                     RegularInstruction::take_stack_value(StackIndex(1)),
                 )
@@ -3923,9 +3909,7 @@ pub mod tests {
                 instructions!(
                     // var x = []
                     RegularInstruction::PushToStack,
-                    RegularInstruction::ShortList(ShortListData {
-                        element_count: 0
-                    }),
+                    RegularInstruction::list(0),
                     // x->append(true)
                     RegularInstruction::AppendEntry.with_children(
                         instructions!(

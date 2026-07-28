@@ -15,7 +15,7 @@ use crate::{
     utils::buffers::append_u32,
     values::value_container::ValueContainer,
 };
-use binrw::io::Cursor;
+use binrw::{BinWrite, io::Cursor, meta::WriteEndian};
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext<'a> {
@@ -75,6 +75,14 @@ impl<'a> CompilationContext<'a> {
         self.has_non_static_value = true;
     }
 
+    pub fn write<T: BinWrite + WriteEndian>(&mut self, value: T)
+    where
+        for<'b> <T as binrw::BinWrite>::Args<'b>: core::default::Default,
+    {
+        self.core_context.write(value);
+    }
+
+    #[deprecated(note = "use write() instead")]
     pub fn append_instruction_code(&mut self, code: InstructionCode) {
         append_instruction_code(self.cursor(), code);
     }

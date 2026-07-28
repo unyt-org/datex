@@ -1,11 +1,11 @@
 //! Compiler for update operations on shared containers into DXB instructions.
+
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{
             CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
-        value_compiler::append_regular_instruction,
         value_visitor::ValueVisitor,
     },
     global::protocol_structures::{
@@ -30,8 +30,10 @@ pub fn compile_updates(
     updates: &[&UpdateData],
     compile_input: CompileInput,
 ) -> DXBWithSharedValues {
-    let mut context =
-        CoreCompilationContext::new(Vec::with_capacity(256), compile_input);
+    let mut context = CoreCompilationContext::new(
+        Vec::with_capacity(updates.len() * 50),
+        compile_input,
+    );
     append_updates(&mut context, container, updates);
     context.into_dxb_with_shared_values()
 }
@@ -45,24 +47,13 @@ fn append_updates<T: BufferProvider + ValueVisitor>(
 ) {
     let statements_count = 1 + updates.len() as u32; // 1 for the push to stack, and 1 for each update operation
 
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::statements(statements_count, true),
-    );
-
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::push_to_stack(),
-    );
-
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::shared_ref(SharedRef {
-            address: container.pointer_address(),
-            ref_mutability: ReferenceMutability::Mutable, // can always be upgraded to mutable since the executing endpoint is the owner
-            container_mutability: SharedContainerMutability::Mutable, // must be mutable for updates
-        }),
-    );
+    context.write(RegularInstruction::statements(statements_count, true));
+    context.write(RegularInstruction::push_to_stack());
+    context.write(RegularInstruction::shared_ref(SharedRef {
+        address: container.pointer_address(),
+        ref_mutability: ReferenceMutability::Mutable, // can always be upgraded to mutable since the executing endpoint is the owner
+        container_mutability: SharedContainerMutability::Mutable, // must be mutable for updates
+    }));
 
     for update in updates {
         // TODO append update.path
@@ -105,10 +96,7 @@ fn append_set_entry<T: BufferProvider + ValueVisitor>(
     // value
     context.visit_value_container(set_entry_update_data.value.clone(), None); // TODO: ensure clone is ok here
     // target
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::borrow_stack_value(StackIndex(0)),
-    );
+    context.write(RegularInstruction::borrow_stack_value(StackIndex(0)));
 }
 
 /// Appends a replace operation on a shared container
@@ -116,16 +104,10 @@ fn append_replace<T: BufferProvider + ValueVisitor>(
     context: &mut T,
     replace_update_data: &ReplaceUpdateData,
 ) {
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::set_shared_container_value(),
-    );
+    context.write(RegularInstruction::set_shared_container_value());
     context.visit_value_container(replace_update_data.value.clone(), None); // TODO: ensure clone is ok here
     // target
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::borrow_stack_value(StackIndex(0)),
-    );
+    context.write(RegularInstruction::borrow_stack_value(StackIndex(0)));
 }
 
 /// Appends an append entry operation on a shared container
@@ -133,16 +115,10 @@ fn append_append_entry<T: BufferProvider + ValueVisitor>(
     context: &mut T,
     append_entry_update_data: &AppendEntryUpdateData,
 ) {
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::append_entry(),
-    );
+    context.write(RegularInstruction::append_entry());
     context.visit_value_container(append_entry_update_data.value.clone(), None); // TODO: ensure clone is ok here
     // target
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::borrow_stack_value(StackIndex(0)),
-    );
+    context.write(RegularInstruction::borrow_stack_value(StackIndex(0)));
 }
 
 /// Appends a list splice operation on a shared container
@@ -150,38 +126,26 @@ fn append_list_splice<T: BufferProvider + ValueVisitor>(
     context: &mut T,
     list_splice_update_data: &ListSpliceUpdateData,
 ) {
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::splice(
-            list_splice_update_data.start,
-            list_splice_update_data.delete_count,
-            list_splice_update_data.items.len() as u32,
-        ),
-    );
+    context.write(RegularInstruction::splice(
+        list_splice_update_data.start,
+        list_splice_update_data.delete_count,
+        list_splice_update_data.items.len() as u32,
+    ));
 
     for item in &list_splice_update_data.items {
         context.visit_value_container(item.clone(), None); // TODO: ensure clone is ok here
     }
 
     // target
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::borrow_stack_value(StackIndex(0)),
-    );
+    context.write(RegularInstruction::borrow_stack_value(StackIndex(0)));
 }
 
 /// Appends a clear operation on a shared container
 fn append_clear<T: BufferProvider + ValueVisitor>(context: &mut T) {
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::clear(),
-    );
+    context.write(RegularInstruction::clear());
 
     // target
-    append_regular_instruction(
-        context.cursor_mut(),
-        RegularInstruction::borrow_stack_value(StackIndex(0)),
-    );
+    context.write(RegularInstruction::borrow_stack_value(StackIndex(0)));
 }
 
 /// Appends a delete entry operation on a shared container
@@ -198,19 +162,14 @@ pub fn append_set_property_value_key<T: BufferProvider + ValueVisitor>(
     value_key: ValueKey,
 ) {
     match value_key {
-        ValueKey::Text(text) => append_regular_instruction(
-            context.cursor_mut(),
-            RegularInstruction::set_property_text(text.clone()),
-        ),
-        ValueKey::Index(index) => append_regular_instruction(
-            context.cursor_mut(),
-            RegularInstruction::set_property_index(index as u32),
-        ),
+        ValueKey::Text(text) => {
+            context.write(RegularInstruction::set_property_text(text))
+        }
+        ValueKey::Index(index) => {
+            context.write(RegularInstruction::set_property_index(index as u32))
+        }
         ValueKey::Value(value) => {
-            append_regular_instruction(
-                context.cursor_mut(),
-                RegularInstruction::set_property_dynamic(),
-            );
+            context.write(RegularInstruction::set_property_dynamic());
             context.visit_value_container(value, None);
         }
     }
