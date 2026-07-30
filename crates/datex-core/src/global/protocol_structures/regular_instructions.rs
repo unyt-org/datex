@@ -426,12 +426,14 @@ impl RegularInstruction {
         RegularInstruction::Range
     }
 
+    #[cfg(feature = "disassembler")]
     pub fn remote_execution_debug_tree(
         tree: InstructionBlockDataDebugTree,
     ) -> Self {
         RegularInstruction::_RemoteExecutionDebugTree(tree)
     }
 
+    #[cfg(feature = "disassembler")]
     pub fn remote_execution_debug_flat(
         tree: InstructionBlockDataDebugFlat,
     ) -> Self {
