@@ -26,6 +26,7 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
+use crate::shared_values::base_shared_value_container::observers::ObserverData;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -42,8 +43,8 @@ pub struct OwnedSharedContainer {
     inner: Rc<RefCell<SharedContainerInner>>,
     /// This reflects the container mutability of the inner container, which is guaranteed to stay the same
     container_mutability: SharedContainerMutability,
-    /// Stored queued updates that will be applied when the borrow of the inner value is dropped
-    queued_updates: RefCell<Vec<Update>>,
+    /// Observer data (e.g. observer list) for this shared container. Can be borrowed separately from the [SharedContainerInner]
+    observer_data: Rc<RefCell<ObserverData>>,
 }
 
 impl OwnedSharedContainer {
@@ -57,7 +58,7 @@ impl OwnedSharedContainer {
                 container,
             ))),
             container_mutability,
-            queued_updates: RefCell::new(Vec::new()),
+            observer_data: Rc::new(RefCell::new(ObserverData::default())),
         }
     }
 
@@ -138,7 +139,7 @@ impl OwnedSharedContainer {
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
     pub fn derive_immutable_reference(&self) -> ReferencedSharedContainer {
-        ReferencedSharedContainer::new_immutable(self.inner.clone())
+        ReferencedSharedContainer::new_immutable(self.inner.clone(), self.observer_data.clone())
     }
 
     /// Tries to create a new mutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
@@ -156,6 +157,7 @@ impl OwnedSharedContainer {
         // new_mutable_unchecked is safe to call here since we checked the container mutability before
         Ok(ReferencedSharedContainer::new_mutable_unchecked(
             self.inner.clone(),
+            self.observer_data.clone(),
         ))
     }
 

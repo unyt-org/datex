@@ -56,8 +56,7 @@ impl DIFInterface {
         let shared_container = self
             .cache
             .try_get_shared_container_immutable_reference(address)?;
-        let base_container = shared_container.base_shared_container();
-        Ok(base_container.get_current_observers(source_id))
+        Ok(shared_container.get_current_observers(source_id))
     }
 
     /// Executes an apply operation, applying the `value` to the `callee`.
@@ -118,7 +117,7 @@ impl DIFInterface {
             .cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
-        Ok(shared_container_ref.base_shared_container_mut().observe(
+        Ok(shared_container_ref.observe(
             Observer {
                 transceiver_id: self.transceiver_id.clone(),
                 options,
@@ -140,7 +139,6 @@ impl DIFInterface {
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         shared_container_ref
-            .base_shared_container_mut()
             .update_observer_options(observer_id, options)?;
         Ok(())
     }
@@ -157,7 +155,6 @@ impl DIFInterface {
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         shared_container_ref
-            .base_shared_container_mut()
             .unobserve(observer_id)?;
         Ok(())
     }

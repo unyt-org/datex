@@ -12,6 +12,8 @@ use crate::{
 use core::cell::{Ref, RefMut};
 
 use crate::prelude::*;
+use crate::shared_values::base_shared_value_container::observers::ObserverData;
+
 impl SharedContainerCommon for SharedContainer {
     /// Get the [SharedContainerMutability] of the inner container.
     fn container_mutability(&self) -> SharedContainerMutability {
@@ -111,11 +113,17 @@ impl SharedContainerCommon for SharedContainer {
         }
     }
 
-    fn queued_updates_mut(&self) -> RefMut<'_, Vec<Update>> {
+    fn observer_data(&self) -> Ref<'_, ObserverData> {
         match self {
-            SharedContainer::Owned(owned) => owned.queued_updates_mut(),
+            SharedContainer::Owned(owned) => owned.observer_data(),
+            SharedContainer::Referenced(referenced) => referenced.observer_data(),
+        }
+    }
+    fn observer_data_mut(&self) -> RefMut<'_, ObserverData> {
+        match self {
+            SharedContainer::Owned(owned) => owned.observer_data_mut(),
             SharedContainer::Referenced(referenced) => {
-                referenced.queued_updates_mut()
+                referenced.observer_data_mut()
             }
         }
     }

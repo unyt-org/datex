@@ -10,6 +10,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::cell::{Ref, RefMut};
+use crate::shared_values::base_shared_value_container::observers::{ObserverCallback, ObserverData, TransceiverId};
 
 pub trait SharedContainerCommon {
     /// Get the [SharedContainerMutability] of the container
@@ -43,6 +44,15 @@ pub trait SharedContainerCommon {
     /// Returns the [SharedContainerOwnership] of this shared container
     fn ownership(&self) -> SharedContainerOwnership;
 
-    /// Returns a mutable reference to the queued updates of this shared container
-    fn queued_updates_mut(&self) -> RefMut<'_, Vec<Update>>;
+    /// Returns a reference to the observer data of the shared container
+    fn observer_data(&self) -> Ref<'_, ObserverData>;
+    
+    /// Returns a mutable reference to the observer data of the shared container
+    fn observer_data_mut(&self) -> RefMut<'_, ObserverData>;
+    
+    /// Returns a list of all [ObserverCallback]s that are currently active for the given [TransceiverId]
+    fn get_current_observers(&self, source_id: &TransceiverId) -> Vec<ObserverCallback> {
+        self.observer_data()
+            .get_current_observers(source_id)
+    }
 }

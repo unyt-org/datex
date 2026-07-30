@@ -2,7 +2,6 @@
 use crate::{
     traits::value_eq::ValueEq,
     types::type_definition::TypeDefinition,
-    utils::freemap::FreeHashMap,
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
@@ -35,9 +34,6 @@ pub struct BaseSharedValueContainer {
     value_container: ValueContainer,
     /// The [TypeDefinition] that is allowed to be assigned to the shared container. This is used for type checking when assigning a new value container to the shared container.
     allowed_type: TypeDefinition,
-    /// List of observer callbacks
-    observers: FreeHashMap<ObserverId, Observer>,
-    local_observers_enabled: bool,
     mutability: SharedContainerMutability,
 }
 
@@ -64,9 +60,7 @@ impl BaseSharedValueContainer {
         Ok(BaseSharedValueContainer {
             value_container,
             allowed_type,
-            observers: FreeHashMap::new(),
             mutability,
-            local_observers_enabled: false,
         })
     }
 
@@ -83,9 +77,7 @@ impl BaseSharedValueContainer {
         BaseSharedValueContainer {
             value_container,
             allowed_type,
-            observers: FreeHashMap::new(),
             mutability,
-            local_observers_enabled: false,
         }
     }
 
@@ -117,14 +109,6 @@ impl BaseSharedValueContainer {
     pub fn mutability(&self) -> &SharedContainerMutability {
         &self.mutability
     }
-
-    pub fn get_local_observers_enabled(&self) -> bool {
-        self.local_observers_enabled
-    }
-
-    pub fn set_local_observers_enabled(&mut self, enabled: bool) {
-        self.local_observers_enabled = enabled;
-    }
 }
 
 impl Debug for BaseSharedValueContainer {
@@ -133,7 +117,6 @@ impl Debug for BaseSharedValueContainer {
             .field("value_container", &self.value_container)
             .field("allowed_type", &self.allowed_type)
             .field("mutability", &self.mutability)
-            .field("observers", &self.observers.len())
             .finish()
     }
 }

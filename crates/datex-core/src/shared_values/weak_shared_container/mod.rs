@@ -5,7 +5,11 @@ use crate::shared_values::{
 use alloc::rc::Weak;
 use core::cell::RefCell;
 
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    shared_values::base_shared_value_container::observers::ObserverData,
+};
+
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
 /// The inner value can either be a [SharedContainerInner::EndpointOwned] or [SharedContainerInner::External]
@@ -21,6 +25,7 @@ pub struct WeakSharedContainer {
     pub(super) container_mutability: SharedContainerMutability,
     /// Field used internally to indicate that this reference should be treated as a move in the context of the compiler
     pub(super) move_indicator: bool,
+    pub(super) observer_data: Rc<RefCell<ObserverData>>,
 }
 
 impl WeakSharedContainer {
@@ -32,7 +37,7 @@ impl WeakSharedContainer {
             reference_mutability: self.reference_mutability,
             container_mutability: self.container_mutability,
             move_indicator: self.move_indicator,
-            queued_updates: RefCell::new(Vec::new()),
+            observer_data: self.observer_data.clone(),
         })
     }
 }

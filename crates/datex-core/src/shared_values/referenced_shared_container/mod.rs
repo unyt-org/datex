@@ -24,6 +24,7 @@ use core::{
     fmt::Display,
     hash::{Hash, Hasher},
 };
+use crate::shared_values::base_shared_value_container::observers::ObserverData;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -38,8 +39,8 @@ pub struct ReferencedSharedContainer {
     pub(super) container_mutability: SharedContainerMutability,
     /// Field used internally to indicate that this reference should be treated as a move in the context of the compiler
     pub(super) move_indicator: bool,
-    /// Stored queued updates that will be applied when the borrow of the inner value is dropped
-    pub(super) queued_updates: RefCell<Vec<Update>>,
+    /// Observer data (e.g. observer list) for this shared container. Can be borrowed separately from the [SharedContainerInner]
+    pub(super) observer_data: Rc<RefCell<ObserverData>>,
 }
 
 impl Clone for ReferencedSharedContainer {
@@ -49,7 +50,7 @@ impl Clone for ReferencedSharedContainer {
             reference_mutability: self.reference_mutability,
             container_mutability: self.container_mutability,
             move_indicator: self.move_indicator,
-            queued_updates: RefCell::new(Vec::new()),
+            observer_data: self.observer_data.clone(),
         }
     }
 }
@@ -61,19 +62,21 @@ impl ReferencedSharedContainer {
     /// the [SharedContainerMutability] of the inner container is mutable.
     pub(crate) fn new_mutable_unchecked(
         inner: Rc<RefCell<SharedContainerInner>>,
+        observer_data: Rc<RefCell<ObserverData>>,
     ) -> Self {
         ReferencedSharedContainer {
             inner,
             reference_mutability: ReferenceMutability::Mutable,
             container_mutability: SharedContainerMutability::Mutable,
             move_indicator: false,
-            queued_updates: RefCell::new(Vec::new()),
+            observer_data,
         }
     }
 
     /// Creates a new immutable [ReferencedSharedContainer] from an existing mutable or immutable [Rc<RefCell<SharedContainerInner>>]
     pub(crate) fn new_immutable(
         inner: Rc<RefCell<SharedContainerInner>>,
+        observer_data: Rc<RefCell<ObserverData>>,
     ) -> Self {
         let container_mutability =
             *inner.borrow().base_shared_container().mutability();
@@ -83,7 +86,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Immutable,
             container_mutability,
             move_indicator: false,
-            queued_updates: RefCell::new(Vec::new()),
+            observer_data,
         }
     }
 
@@ -95,6 +98,7 @@ impl ReferencedSharedContainer {
             reference_mutability: self.reference_mutability,
             container_mutability: self.container_mutability,
             move_indicator: self.move_indicator,
+            observer_data: self.observer_data.clone(),
         }
     }
 
@@ -123,7 +127,7 @@ impl ReferencedSharedContainer {
             reference_mutability,
             container_mutability,
             move_indicator: false,
-            queued_updates: RefCell::new(Vec::new()),
+            observer_data: Rc::new(RefCell::new(ObserverData::default())),
         })
     }
 
@@ -189,7 +193,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Immutable,
             container_mutability: self.container_mutability(),
             move_indicator: false,
-            queued_updates: RefCell::new(Vec::new()),
+            observer_data: self.observer_data.clone()
         }
     }
 

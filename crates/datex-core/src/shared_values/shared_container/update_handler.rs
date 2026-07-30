@@ -19,7 +19,6 @@ impl UpdateHandler for SharedContainer {
         let (source_id, operation, path) = update.into_parts();
 
         let observers = self
-            .base_shared_container()
             .get_current_observers(&source_id);
 
         let result = self
