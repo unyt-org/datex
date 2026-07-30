@@ -18,8 +18,7 @@ impl UpdateHandler for SharedContainer {
         let update_clone = update.clone();
         let (source_id, operation, path) = update.into_parts();
 
-        let observers = self
-            .get_current_observers(&source_id);
+        let observers = self.get_current_observers(&source_id);
 
         let result = self
             .base_shared_container_mut()
@@ -47,7 +46,10 @@ mod tests {
             },
         },
         value_updates::update_data::{UpdateData, UpdateOperation},
-        values::{core_values::list::List, value_container::ValueContainer},
+        values::{
+            core_values::list::List,
+            value_container::{ValueContainer, value_key::ValueKey},
+        },
     };
     use alloc::rc::Rc;
     use core::cell::RefCell;
@@ -98,7 +100,7 @@ mod tests {
         {
             let updates = updates.borrow();
             assert_eq!(updates.len(), 1);
-            assert_eq!(updates.get(0).unwrap(), &update)
+            assert_eq!(updates.first().unwrap(), &update);
         }
     }
 
@@ -111,19 +113,49 @@ mod tests {
 
         {
             let mut list = shared.try_as_mut::<List>().unwrap();
-            list.push(2); // FIXME: only trigger observers after ref drop
+            list.push(2);
         }
 
         {
             let updates = updates.borrow();
             assert_eq!(updates.len(), 1);
             assert_eq!(
-                updates.get(0).unwrap(),
+                updates.first().unwrap(),
                 &Update::new(
                     TransceiverId::Local,
                     UpdateData::new(UpdateOperation::append_entry(
                         ValueContainer::from(2)
                     ))
+                )
+            )
+        }
+    }
+
+    #[test]
+    fn update_bottom_up_trigger_observer_nested_children() {
+        let (shared, updates) =
+            get_shared_container_with_observer(List::from(vec![
+                ValueContainer::from(List::from(vec![ValueContainer::from(1)])),
+            ]));
+
+        {
+            let mut list = shared.try_as_mut::<List>().unwrap();
+            let inner_list =
+                list.try_get_mut(0).unwrap().try_as_mut::<List>().unwrap();
+            inner_list.push(2);
+        }
+
+        {
+            let updates = updates.borrow();
+            assert_eq!(updates.len(), 1);
+            assert_eq!(
+                updates.first().unwrap(),
+                &Update::new(
+                    TransceiverId::Local,
+                    UpdateData::new_with_path(
+                        UpdateOperation::append_entry(ValueContainer::from(2),),
+                        vec![ValueKey::Index(0)]
+                    )
                 )
             )
         }
