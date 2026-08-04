@@ -7,14 +7,13 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, InstructionBlockData,
-                InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree,
-                Int8Data, Int16Data, Int32Data, Int64Data, Int128Data,
-                ListData, MapData, MoveWithValue, SharedRef,
-                SharedRefWithValue, ShortListData, ShortMapData,
-                ShortStatementsData, ShortTextData, SpliceData, StackIndex,
-                StatementsData, TaggedValue, TextData, UInt8Data, UInt16Data,
-                UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
+                FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
+                Int16Data, Int32Data, Int64Data, Int128Data, ListData, MapData,
+                MoveWithValue, SharedRef, SharedRefWithValue, ShortListData,
+                ShortMapData, ShortStatementsData, ShortTextData, SpliceData,
+                StackIndex, StatementsData, TaggedValue, TextData, UInt8Data,
+                UInt16Data, UInt32Data, UInt64Data, UInt128Data,
+                UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -428,14 +427,14 @@ impl RegularInstruction {
 
     #[cfg(feature = "disassembler")]
     pub fn remote_execution_debug_tree(
-        tree: InstructionBlockDataDebugTree,
+        tree: super::instruction_data::InstructionBlockDataDebugTree,
     ) -> Self {
         RegularInstruction::_RemoteExecutionDebugTree(tree)
     }
 
     #[cfg(feature = "disassembler")]
     pub fn remote_execution_debug_flat(
-        tree: InstructionBlockDataDebugFlat,
+        tree: super::instruction_data::InstructionBlockDataDebugFlat,
     ) -> Self {
         RegularInstruction::_RemoteExecutionDebugFlat(tree)
     }
