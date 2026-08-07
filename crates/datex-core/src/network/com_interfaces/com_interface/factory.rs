@@ -32,6 +32,8 @@ pub struct SocketProperties {
     pub direct_endpoint: Option<Endpoint>,
     pub connection_timestamp: u64,
     uuid: ComInterfaceSocketUUID,
+    pub pub_sig_key: Option<[u8; 32]>,
+    pub pub_cry_key: Option<[u8; 32]>,
 }
 
 impl SocketProperties {
@@ -42,6 +44,8 @@ impl SocketProperties {
             direct_endpoint: None,
             connection_timestamp: crate::time::now_ms(),
             uuid: ComInterfaceSocketUUID::new(),
+            pub_sig_key: None,
+            pub_cry_key: None,
         }
     }
     pub fn new_with_direct_endpoint(
@@ -55,6 +59,8 @@ impl SocketProperties {
             direct_endpoint: Some(endpoint),
             connection_timestamp: crate::time::now_ms(),
             uuid: ComInterfaceSocketUUID::new(),
+            pub_sig_key: None,
+            pub_cry_key: None,
         }
     }
 
@@ -69,6 +75,8 @@ impl SocketProperties {
             direct_endpoint: maybe_endpoint,
             connection_timestamp: crate::time::now_ms(),
             uuid: ComInterfaceSocketUUID::new(),
+            pub_sig_key: None,
+            pub_cry_key: None,
         }
     }
 

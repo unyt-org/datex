@@ -12,8 +12,8 @@ pub struct CryptoVault {
     // 25519 static keys
     pub pri_sig_key: [u8; 32],
     pub pub_sig_key: [u8; 32],
-    pri_cry_key: [u8; 32],
-    pub_cry_key: [u8; 32],
+    pub pri_cry_key: [u8; 32],
+    pub pub_cry_key: [u8; 32],
     // mlkem and mldsa- experimental
     pub dsa_seed: Vec<u8>,
     pub kem_seed: Vec<u8>,
@@ -219,6 +219,26 @@ pub trait PQCrypto: Send + Sync {
     ) -> (Vec<u8>, Vec<u8>);
 
     fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError>;
+    fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError>;
+    fn derive_x25519_cheat(
+        pri_key: &[u8; 32],
+        peer_raw: &[u8; 32],
+    ) -> Result<[u8; 32], BackendError>;
+    fn hkdf_cheat(ikm: &[u8], salt: &[u8]) -> Result<[u8; 32], BackendError>;
+    fn aes_cheat(
+        key: &[u8; 32],
+        iv: &[u8; 16],
+        data: &[u8],
+    ) -> Result<Vec<u8>, BackendError>;
+
+    fn aes_kw_wrap_cheat(
+        kek_bytes: &[u8; 32],
+        rb: &[u8; 32],
+    ) -> Result<[u8; 40], BackendError>;
+    fn aes_kw_unwrap_cheat(
+        kek_bytes: &[u8; 32],
+        cipher: &[u8; 40],
+    ) -> Result<[u8; 32], BackendError>;
 }
 
 #[cfg(test)]

@@ -152,6 +152,124 @@ impl PQCrypto for CryptoNative {
             })?;
 
         Ok((public_key, private_key))
+    } // Generate encryption keypair
+    fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
+        let key = PKey::generate_x25519()
+            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?;
+
+        let public_key: [u8; 32] = key
+            .raw_public_key()
+            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?
+            .try_into()
+            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?;
+        let private_key: [u8; 32] = key
+            .raw_private_key()
+            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?
+            .try_into()
+            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?;
+        Ok((public_key, private_key))
+    }
+    // Derive shared secret on x255109
+    fn derive_x25519_cheat(
+        pri_key: &[u8; 32],
+        peer_raw: &[u8; 32],
+    ) -> Result<[u8; 32], BackendError> {
+        let my_priv = PKey::private_key_from_raw_bytes(pri_key, Id::X25519)
+            .map_err(|_| BackendError::Unavailable("x25519 derive cheat"))?;
+        let peer_pub = PKey::public_key_from_raw_bytes(peer_raw, Id::X25519)
+            .map_err(|_| BackendError::Unavailable("x25519 derive cheat"))?;
+
+        let mut deriver = Deriver::new(&my_priv)
+            .map_err(|_| BackendError::Unavailable("x25519 deriver"))?;
+        deriver
+            .set_peer(&peer_pub)
+            .map_err(|_| BackendError::Unavailable("x25519 set_peer"))?;
+
+        let shared = deriver
+            .derive_to_vec()
+            .map_err(|_| BackendError::Unavailable("x25519 derive"))?;
+
+        if shared.len() != 32 {
+            return Err(BackendError::Unavailable("x25519 shared len"));
+        }
+
+        let mut out = [0u8; 32];
+        out.copy_from_slice(&shared);
+        Ok(out)
+    }
+
+    fn hkdf_cheat(ikm: &[u8], salt: &[u8]) -> Result<[u8; 32], BackendError> {
+        let info = b"";
+        let mut ctx = PkeyCtx::new_id(Id::HKDF)
+            .map_err(|_| BackendError::Unavailable("openssl hkdf ctx"))?;
+        ctx.derive_init()
+            .map_err(|_| BackendError::Unavailable("openssl hkdf init"))?;
+        ctx.set_hkdf_mode(HkdfMode::EXTRACT_THEN_EXPAND)
+            .map_err(|_| BackendError::Unavailable("openssl hkdf mode"))?;
+        ctx.set_hkdf_md(Md::sha256())
+            .map_err(|_| BackendError::Unavailable("openssl hkdf md"))?;
+        ctx.set_hkdf_salt(salt)
+            .map_err(|_| BackendError::Unavailable("openssl hkdf salt"))?;
+        ctx.set_hkdf_key(ikm)
+            .map_err(|_| BackendError::Unavailable("openssl hkdf key"))?;
+        ctx.add_hkdf_info(info)
+            .map_err(|_| BackendError::Unavailable("openssl hkdf info"))?;
+
+        let mut okm = [0u8; 32];
+        ctx.derive(Some(&mut okm))
+            .map_err(|_| BackendError::Unavailable("openssl hkdf derive"))?;
+        Ok(okm)
+    }
+
+    fn aes_cheat(
+        key: &[u8; 32],
+        iv: &[u8; 16],
+        data: &[u8],
+    ) -> Result<Vec<u8>, BackendError> {
+        let cipher = Cipher::aes_256_ctr();
+        let mut crypter = Crypter::new(cipher, Mode::Decrypt, key, Some(iv))
+            .map_err(|_| BackendError::Unavailable("openssl aes-ctr"))?;
+
+        let mut out = vec![0u8; data.len() + cipher.block_size()];
+        let mut count = crypter
+            .update(data, &mut out)
+            .map_err(|_| BackendError::Unavailable("aes-ctr update"))?;
+
+        count += crypter
+            .finalize(&mut out[count..])
+            .map_err(|_| BackendError::Unavailable("aes-ctr finalize"))?;
+
+        out.truncate(count);
+        Ok(out)
+    }
+
+    fn aes_kw_wrap_cheat(
+        kek_bytes: &[u8; 32],
+        rb: &[u8; 32],
+    ) -> Result<[u8; 40], BackendError> {
+        // Key encryption key
+        let kek = AesKey::new_encrypt(kek_bytes)
+            .map_err(|_| BackendError::Unavailable("openssl aes-kw"))?;
+
+        // Key wrap
+        let mut wrapped = [0u8; 40];
+        let _length = wrap_key(&kek, None, &mut wrapped, rb);
+
+        Ok(wrapped)
+    }
+
+    fn aes_kw_unwrap_cheat(
+        kek_bytes: &[u8; 32],
+        cipher: &[u8; 40],
+    ) -> Result<[u8; 32], BackendError> {
+        // Key encryption key
+        let kek = AesKey::new_decrypt(kek_bytes)
+            .map_err(|_| BackendError::Unavailable("openssl aes-kw"))?;
+
+        // Unwrap key
+        let mut unwrapped: [u8; 32] = [0u8; 32];
+        let _length = unwrap_key(&kek, None, &mut unwrapped, cipher);
+        Ok(unwrapped)
     }
 }
 

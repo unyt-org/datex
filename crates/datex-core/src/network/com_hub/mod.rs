@@ -248,11 +248,16 @@ impl ComHub {
             // note: mldsa currently replaced with ed25519
             // let (seed_dsa, _pri_key_dsa, _pub_key_dsa) = CryptoImpl::gen_mldsa();
             let dsa_seed = Vec::from([0u8; 32]);
-
             let (kem_seed, _, _) = CryptoImpl::gen_mlkem();
+            vault.set_pqc_keys(dsa_seed, kem_seed);
+
             let (pub_key, pri_key) = CryptoImpl::gen_ed25519_cheat().unwrap();
             vault.set_sig_keys(pri_key, pub_key);
-            vault.set_pqc_keys(dsa_seed, kem_seed);
+
+            // note: x25519 keys as alternative to mlkem seed
+            let (pub_cry_key, pri_cry_key) =
+                CryptoImpl::gen_x25519_cheat().unwrap();
+            vault.set_cry_keys(pri_cry_key, pub_cry_key);
             vault
         }
         #[cfg(not(feature = "crypto_enabled"))]
@@ -635,11 +640,44 @@ impl ComHub {
         let preprocess_result =
             self.receive_block_preprocess(&socket_uuid, block);
 
+        // get keys for decryption and validation from socketdata and vault
+        let (peer_pub_sig_key, peer_pub_cry_key, pri_cry_key) = {
+            let socket_properties = &self
+                .socket_manager()
+                .get_socket_by_uuid(&socket_uuid)
+                .unwrap()
+                .socket_properties;
+            let sig_key = socket_properties.pub_sig_key.unwrap();
+            let cry_key = socket_properties.pub_cry_key.unwrap();
+
+            cfg_if::cfg_if! {
+                // note: mutex works differently on embedded...
+                if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
+                    let pri_cry_key = self.vault.lock().pri_cry_key;
+                } else {
+                    let pri_cry_key = self.vault.lock().unwrap().pri_cry_key;
+                }
+            }
+            info!(
+                "Peer pub sig key for val of rec dxb: {:?}",
+                sig_key.to_vec()
+            );
+            info!(
+                "Peer pub cry key for val of rec dxb: {:?}",
+                cry_key.to_vec()
+            );
+            (sig_key, cry_key, pri_cry_key)
+        };
+
         // validate block signature if sent to own endpoint
         let validation_result = match preprocess_result.own_received_block {
             // if block is for own endpoint, validate signature if set
             Some(block) => block
-                .validate_signature()
+                .validate_signature(
+                    peer_pub_sig_key,
+                    peer_pub_cry_key,
+                    pri_cry_key,
+                )
                 .map(|validation| validation.map(Some)),
             // if block is not for own endpoint, don't validate signature and don't return own received block
             None => MaybeAsync::Sync(Ok(None)),
@@ -721,57 +759,84 @@ impl ComHub {
         }
 
         let all_receivers = block.receiver_endpoints();
-        let (relayed_block, own_received_block, is_for_own) =
-            if !all_receivers.is_empty() {
-                let is_for_own = all_receivers.iter().any(|e| {
-                    self.is_local_endpoint_exact(e)
-                        || e == &Endpoint::ANY
-                        || e == &Endpoint::ANY_ALL_INSTANCES
-                });
+        let (relayed_block, own_received_block, is_for_own) = if !all_receivers
+            .is_empty()
+        {
+            let is_for_own = all_receivers.iter().any(|e| {
+                self.is_local_endpoint_exact(e)
+                    || e == &Endpoint::ANY
+                    || e == &Endpoint::ANY_ALL_INSTANCES
+            });
 
-                // TODO #177: handle this via TTL, not explicitly for Hello blocks
-                let relay_receivers = {
-                    let should_relay =
+            // TODO #177: handle this via TTL, not explicitly for Hello blocks
+            let relay_receivers = {
+                let should_relay =
                     // don't relay "Hello" blocks sent to own endpoint
                     !(
                         is_for_own && block_type == BlockType::Hello
                     );
 
-                    // relay the block to other endpoints
-                    if should_relay {
-                        let relay_receivers = if is_for_own {
-                            // get all receivers that the block must be relayed to
-                            self.get_remote_receivers(&all_receivers)
-                        } else {
-                            all_receivers
-                        };
-                        if relay_receivers.is_empty() {
-                            None
-                        } else {
-                            Some(relay_receivers)
-                        }
+                // relay the block to other endpoints
+                if should_relay {
+                    let relay_receivers = if is_for_own {
+                        // get all receivers that the block must be relayed to
+                        self.get_remote_receivers(&all_receivers)
                     } else {
+                        all_receivers
+                    };
+                    if relay_receivers.is_empty() {
                         None
+                    } else {
+                        Some(relay_receivers)
                     }
+                } else {
+                    match block.block_type() {
+                        BlockType::Hello => {
+                            // setting up peers pub keys as corresponding sockets socket_properties
+                            info!(
+                                "Preprocess received Hello block!: {:?}",
+                                block.body
+                            );
+                            let mut peer_socket = self
+                                .socket_manager()
+                                .get_socket_by_uuid_mut(socket_uuid);
+                            let keys = block.body.clone();
+                            let (pub_sig_key, pub_cry_key) = keys.split_at(32);
+                            let peer_pub_sig_key =
+                                pub_sig_key.try_into().unwrap();
+                            let peer_pub_cry_key =
+                                pub_cry_key.try_into().unwrap();
+                            peer_socket.socket_properties.pub_sig_key =
+                                Some(peer_pub_sig_key);
+                            peer_socket.socket_properties.pub_cry_key =
+                                Some(peer_pub_cry_key);
+                        }
+                        BlockType::HelloBack => {
+                            info!("Preprocess received HelloBack block!");
+                        }
+                        _ => {}
+                    }
+                    None
+                }
+            };
+
+            let relayed_block = relay_receivers
+                .map(|receivers| block.clone_with_new_receivers(receivers));
+
+            // handle blocks for own endpoint
+            let own_received_block =
+                if is_for_own && block_type != BlockType::Hello {
+                    info!("Block is for this endpoint ({})", self.endpoint);
+
+                    Some(block) // FIXME #733: no clone
+                } else {
+                    None
                 };
 
-                let relayed_block = relay_receivers
-                    .map(|receivers| block.clone_with_new_receivers(receivers));
-
-                // handle blocks for own endpoint
-                let own_received_block =
-                    if is_for_own && block_type != BlockType::Hello {
-                        info!("Block is for this endpoint ({})", self.endpoint);
-
-                        Some(block) // FIXME #733: no clone
-                    } else {
-                        None
-                    };
-
-                (relayed_block, own_received_block, is_for_own)
-            } else {
-                (None, None, false)
-            };
+            (relayed_block, own_received_block, is_for_own)
+        } else {
+            (None, None, false)
+        };
 
         // add to block history
         let block_id_for_history =
@@ -1071,14 +1136,20 @@ impl ComHub {
                 let vault = self.vault.lock();
                 let pub_sig_key = vault.pub_sig_key;
                 let pri_sig_key = vault.pri_sig_key;
+                let pub_cry_key = vault.pub_cry_key;
+                let pri_cry_key = vault.pri_cry_key;
                 info!("pub_key, pri_key: {:?}; {:?}", pub_sig_key, pri_sig_key);
                 info!("kem_seed: {:?}", vault.kem_seed);
                 let pub_key = pub_sig_key.to_vec();
                 let pri_key = pri_sig_key.to_vec();
+                let pub_cry_key = pub_cry_key.to_vec();
+                let pri_cry_key = pri_cry_key.to_vec();
             } else { // non-embedded
                 let vault = self.vault.lock().unwrap();
                 let pub_sig_key = vault.pub_sig_key;
                 let pri_sig_key = vault.pri_sig_key;
+                let pub_cry_key = vault.pub_cry_key;
+                let pri_cry_key = vault.pri_cry_key;
                 info!("pub_key, pri_key: {:?}; {:?}", pub_sig_key, pri_sig_key);
                 info!("kem_seed: {:?}", vault.kem_seed);
                 let pub_key = pub_sig_key.to_vec();
@@ -1086,90 +1157,54 @@ impl ComHub {
             }
         }
 
-        SyncOrAsync::Async(Box::pin(async move {
-            #[cfg(feature = "crypto_enabled")]
-            {
-                // Prepare future encryption
-                let fut_block =
-                    match block.routing_header.flags.encryption_type() {
-                        EncryptionType::None => {
-                            info!("Prepare not encrypted dxb");
-                            SyncOrAsync::Sync(block)
-                        }
-                        EncryptionType::Encrypted => {
-                            info!("Prepare encrypted dxb");
-                            SyncOrAsync::Async(Box::pin(async move {
-                                let key: [u8; 32] =
-                                    CryptoImpl::random_bytes(32)
-                                        .try_into()
-                                        .unwrap();
-                                let iv = [0u8; 16];
-                                let enc_body = CryptoImpl::aes_ctr_encrypt(
-                                    &key,
-                                    &iv,
-                                    block.body.as_slice(),
-                                )
-                                .await
-                                .unwrap();
-                                let new_body =
-                                    [key.to_vec(), enc_body].concat();
-                                block.body = new_body.to_vec();
-                                block
-                            }))
-                        }
-                    };
+        //
+        if block.block_type() == BlockType::Hello {
+            let keys = [pub_key, pub_cry_key.to_vec()].concat();
+            block.body = keys;
+        }
 
-                // Execute future encryption
-                block = match fut_block {
-                    SyncOrAsync::Sync(block) => block,
-                    SyncOrAsync::Async(block) => block.await,
-                };
+        match block.routing_header.flags.signature_type() {
+            // SignatureType::None exits early
+            SignatureType::None => {
+                info!("Setting no signature");
+                SyncOrAsync::Sync(Self::update_sender_and_timestamp(
+                    block,
+                    self.endpoint.clone(),
+                ))
             }
 
-            match block.routing_header.flags.signature_type() {
-                // SignatureType::None exits early
-                SignatureType::None => {
-                    info!("Setting no signature");
-                    Self::update_sender_and_timestamp(
-                        block,
-                        self.endpoint.clone(),
-                    )
-                }
-
-                // SignatureType::Unencrypted and SignatureType::Encrypted handled below
-                sig_ty => {
-                    let data = {
-                        CryptoImpl::hash_sha256(block.body.as_slice())
-                            .await
-                            .map_err(|_| ComHubError::SignatureCreationError)?
-                    };
-
-                    let signature = CryptoImpl::sig_ed25519(&pri_key, &data)
+            // SignatureType::Unencrypted and SignatureType::Encrypted handled below
+            sig_ty => SyncOrAsync::Async(Box::pin(async move {
+                let data = {
+                    CryptoImpl::hash_sha256(block.body.as_slice())
                         .await
-                        .map_err(|_| ComHubError::SignatureCreationError)?;
+                        .map_err(|_| ComHubError::SignatureCreationError)?
+                };
 
-                    let sig_bytes: Vec<u8> = match sig_ty {
-                        SignatureType::Unencrypted => {
-                            info!("Setting not encrypted signature");
-                            signature.to_vec()
-                        }
+                let signature = CryptoImpl::sig_ed25519(&pri_key, &data)
+                    .await
+                    .map_err(|_| ComHubError::SignatureCreationError)?;
 
-                        SignatureType::Encrypted => {
-                            info!("Setting encrypted signature");
-                            unimplemented!();
-                        }
+                let sig_bytes: Vec<u8> = match sig_ty {
+                    SignatureType::Unencrypted => {
+                        info!("Setting not encrypted signature");
+                        signature.to_vec()
+                    }
 
-                        SignatureType::None => unreachable!("handled above"),
-                    };
+                    SignatureType::Encrypted => {
+                        info!("Setting encrypted signature");
+                        unimplemented!();
+                    }
 
-                    block.signature =
-                        Some([sig_bytes, pub_key.to_vec()].concat());
+                    SignatureType::None => unreachable!("handled above"),
+                };
 
-                    let endpoint = self.endpoint.clone();
-                    Self::update_sender_and_timestamp(block, endpoint)
-                }
-            }
-        }))
+                block.signature = Some(sig_bytes);
+
+                let endpoint = self.endpoint.clone();
+                Self::update_sender_and_timestamp(block, endpoint)
+            })),
+        }
     }
 
     /// Public method to send an outgoing block from this endpoint. Called by the runtime.
@@ -1482,6 +1517,51 @@ impl ComHub {
 
         for (receiver_socket, endpoints) in outbound_receiver_groups {
             if let Some(socket_uuid) = receiver_socket {
+                // maybe do encryption here?
+                info!("Sending stuffs...");
+                // derive key encryption key
+
+                cfg_if::cfg_if! {
+                    // note: mutex works differently on embedded...
+                    if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
+                        let pri_cry_key = self.vault.lock().pri_cry_key;
+                    } else {
+                        let pri_cry_key = self.vault.lock().unwrap().pri_cry_key;
+                    }
+                }
+                let peer_pub_cry_key = self
+                    .socket_manager()
+                    .get_socket_by_uuid(&socket_uuid)
+                    .unwrap()
+                    .socket_properties
+                    .pub_cry_key
+                    .unwrap();
+                let shared_sec = CryptoImpl::derive_x25519_cheat(
+                    &pri_cry_key,
+                    &peer_pub_cry_key,
+                )
+                .unwrap();
+                info!("Shared sec: {:?}", shared_sec.to_vec());
+                let kek_bytes =
+                    CryptoImpl::hkdf_cheat(&shared_sec, &[0u8; 16]).unwrap();
+
+                // define data key and wrap it with kek
+                let data_key: [u8; 32] =
+                    CryptoImpl::random_bytes(32).try_into().unwrap();
+
+                let wrapped_key =
+                    CryptoImpl::aes_kw_wrap_cheat(&kek_bytes, &data_key)
+                        .unwrap();
+
+                // encrypt the body and prepend wrapped key
+                let encrypted_body = CryptoImpl::aes_cheat(
+                    &data_key,
+                    &[0u8; 16],
+                    block.body.as_ref(),
+                )
+                .unwrap();
+                block.body = [wrapped_key.to_vec(), encrypted_body].concat();
+
                 results.push((
                     endpoints.clone(),
                     self.send_block_to_endpoints_via_socket(
@@ -1686,23 +1766,8 @@ impl ComHub {
             .flags_and_timestamp
             .set_block_type(BlockType::Hello);
         // TODO #182 include fingerprint of the own public key into body
-        // note: embedded mutex behaves differently...
-        /*
-        cfg_if::cfg_if! {
-            if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
-                let vault = self.vault.lock();
-                let (pub_key, pri_key) = vault.dsa_seed.split_at(32);
-                info!("pub_key, pri_key: {:?}; {:?}", pub_key, pri_key);
-                info!("kem_seed: {:?}", vault.kem_seed);
-                // (vault.dsa_seed.clone(), vault.kem_seed.clone())
-            } else { // non-embedded
-                let vault = self.vault.lock().unwrap();
-                info!("dsa_seed: {:?}", vault.clone().dsa_seed);
-                info!("kem_seed: {:?}", vault.kem_seed);
-                // (vault.dsa_seed.clone(), vault.kem_seed.clone())
-            }
-        }
-        */
+        // -> done in prepare_own_block (for now?)
+
         let block = self
             .prepare_own_block(block)
             .into_result()

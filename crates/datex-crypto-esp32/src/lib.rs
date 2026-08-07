@@ -388,7 +388,7 @@ impl PQCrypto for CryptoEsp32 {
         ver.is_ok()
     }
 
-    // Hack around asnc implementation
+    // hack around async implementation
     fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
         let key: [u8; 32] = Self::random_bytes(32)
             .try_into()
@@ -396,6 +396,77 @@ impl PQCrypto for CryptoEsp32 {
         let pri_key = SigningKey::from_bytes(&key);
         let pub_key = pri_key.verifying_key().to_bytes();
         Ok((pub_key, pri_key.to_bytes()))
+    }
+
+    fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
+        let key: [u8; 32] = Self::random_bytes(32)
+            .try_into()
+            .map_err(|_| BackendError::Unavailable("x25519 key gen rng"))?;
+        let pri_key = StaticSecret::from(key);
+        let pub_key = PublicKey::from(&pri_key).to_bytes();
+        Ok((pub_key, pri_key.to_bytes()))
+    }
+
+    fn derive_x25519_cheat(
+        pri_key: &[u8; 32],
+        peer_pub: &[u8; 32],
+    ) -> Result<[u8; 32], BackendError> {
+        let x: [u8; 32] = pri_key.to_vec().try_into().map_err(|_| {
+            BackendError::Unavailable(
+                "x25519 private key (shared secret derivation)",
+            )
+        })?;
+        let y: [u8; 32] = peer_pub.to_vec().try_into().map_err(|_| {
+            BackendError::Unavailable(
+                "x25519 public key (shared secret derivation)",
+            )
+        })?;
+        let private_key = StaticSecret::from(x);
+        let public_key = PublicKey::from(y);
+        Ok(private_key.diffie_hellman(&public_key).to_bytes())
+    }
+
+    fn hkdf_cheat(ikm: &[u8], salt: &[u8]) -> Result<[u8; 32], BackendError> {
+        let mut okm = [0u8; 32];
+        let ctx = Hkdf::<Sha256>::new(None, ikm);
+        ctx.expand(b"", &mut okm)
+            .map_err(|_| BackendError::Unavailable("hkdf ctx"))?;
+        Ok(okm)
+    }
+
+    fn aes_cheat(
+        key: &[u8; 32],
+        iv: &[u8; 16],
+        data: &[u8],
+    ) -> Result<Vec<u8>, BackendError> {
+        type Aes128Ctr64LE = ctr::Ctr64LE<aes::Aes256>;
+        let mut msg = data.to_vec();
+        let mut cipher = Aes128Ctr64LE::new(key.into(), iv.into());
+        cipher.apply_keystream(msg.as_mut_slice());
+        Ok(msg)
+    }
+
+    fn aes_kw_wrap_cheat(
+        kek: &[u8; 32],
+        key_to_wrap: &[u8; 32],
+    ) -> Result<[u8; 40], BackendError> {
+        let x = KekAes256::new(kek.into());
+        let mut buf = [0u8; 40];
+        x.wrap(key_to_wrap.as_slice(), &mut buf)
+            .map_err(|_| BackendError::Unavailable("aes-kw"))?;
+        Ok(buf)
+    }
+
+    fn aes_kw_unwrap_cheat(
+        kek: &[u8; 32],
+        wrapped: &[u8; 40],
+    ) -> Result<[u8; 32], BackendError> {
+        let x = KekAes256::new(kek.into());
+        let mut buf = [0u8; 32];
+        let _ = x
+            .unwrap(wrapped.as_slice(), &mut buf)
+            .map_err(|_| BackendError::Unavailable("aes-kw"));
+        Ok(buf)
     }
 }
 
