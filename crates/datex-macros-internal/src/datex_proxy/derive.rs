@@ -1151,9 +1151,12 @@ fn generate_unnamed_field_type_code(
     }
 }
 
+/// Tries to resolve the datex-core crate to a resolvable name in the current context.
 fn get_datex_core_crate_name() -> Ident {
-    // otherwise, find the crate name of datex_core and use it as an identifier
-    let found = crate_name("datex-core").unwrap();
+    let found = crate_name("datex-core").unwrap_or_else(|_| {
+        // TODO: decide which namespace to use, for now, fall back to datex-embedded
+        FoundCrate::Name("datex_embedded::core".to_string())
+    });
     match found {
         FoundCrate::Itself => format_ident!("crate"),
         FoundCrate::Name(name) => Ident::new(&name, Span::call_site()),
