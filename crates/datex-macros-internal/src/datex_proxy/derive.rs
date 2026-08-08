@@ -64,8 +64,11 @@ pub struct TopLevelAttributes {
     /// instead of inferring it. This is required for doctests to work.
     force_datex_core_namespace: bool,
 
-    /// Optional override for the exported nameme of the type. Defaults to the Rust struct or enum name.
+    /// Optional override for the exported name of the type. Defaults to the Rust struct or enum name.
     datex_name: Option<String>,
+
+    /// If the decorated struct or enum should not be deserializable from a Datex value.
+    no_deserialize: bool,
 
     /// If the decorated struct or enum should be exported to the Datex registry.
     /// `#[datex(export)]`
@@ -106,6 +109,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     };
 
     let ident = input.ident;
+    let generics = &input.generics;
+
     let datex_name = top_level_attributes
         .datex_name
         .clone()
@@ -152,21 +157,21 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         false => {
             quote! {
                 #[automatically_derived]
-                impl From<#ident> for Value {
+                impl #generics From<#ident> for Value #generics {
                     fn from(value: #ident) -> Self {
                         #into_datex_fields_inner
                     }
                 }
 
                 #[automatically_derived]
-                impl DatexValueProxySerialize for #ident {
+                impl #generics DatexValueProxySerialize for #ident #generics {
                     fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
                         Ok(self.into())
                     }
                 }
 
                 #[automatically_derived]
-                impl DatexValueProxyInfallibleSerialize for #ident {
+                impl #generics DatexValueProxyInfallibleSerialize for #ident #generics {
                     fn to_value(self) -> Value {
                        self.into()
                     }
@@ -176,7 +181,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         true => {
             quote! {
                 #[automatically_derived]
-                impl TryFrom<#ident> for Value {
+                impl #generics TryFrom<#ident> for Value #generics {
                     type Error = TryToDatexValueError;
 
                     fn try_from(value: #ident) -> Result<Self, Self::Error> {
@@ -185,7 +190,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 }
 
                 #[automatically_derived]
-                impl TryFrom<#ident> for ValueContainer {
+                impl #generics TryFrom<#ident> for ValueContainer #generics {
                     type Error = TryToDatexValueError;
 
                     fn try_from(value: #ident) -> Result<Self, Self::Error> {
@@ -194,9 +199,54 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 }
 
                 #[automatically_derived]
-                impl DatexValueProxySerialize for #ident {
+                impl #generics DatexValueProxySerialize for #ident #generics {
                     fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
                         self.try_into()
+                    }
+                }
+            }
+        }
+    };
+
+    let deserialize = if top_level_attributes.no_deserialize {
+        quote! {
+            #[automatically_derived]
+            impl #generics DatexValueProxyDeserialize for #ident #generics {
+                fn try_from_value(
+                    value: Value,
+                ) -> Result<Self, TryFromDatexValueError> {
+                    Err(TryFromDatexValueError("Deserialization is disabled for this type".to_string()))
+                }
+            }
+        }
+    } else {
+        quote! {
+            #[automatically_derived]
+            impl #generics DatexValueProxyDeserialize for #ident #generics {
+                fn try_from_value(
+                    value: Value,
+                ) -> Result<Self, TryFromDatexValueError> {
+                   value.try_into()
+                }
+            }
+
+            #[automatically_derived]
+            impl #generics TryFrom<Value> for #ident #generics {
+                type Error = TryFromDatexValueError;
+
+                fn try_from(value: Value) -> Result<Self, Self::Error> {
+                    Ok(#from_datex_fields_inner)
+                }
+            }
+
+            #[automatically_derived]
+            impl #generics TryFrom<ValueContainer> for #ident #generics {
+                type Error = TryFromDatexValueError;
+
+                fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
+                    match value {
+                        ValueContainer::Local(value) => value.try_into(),
+                        _ => Err(TryFromDatexValueError("Expected ValueContainer::Local".to_string())),
                     }
                 }
             }
@@ -241,44 +291,16 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             };
 
             #[automatically_derived]
-            impl DatexValueProxy for #ident {}
+            impl #generics DatexValueProxy for #ident #generics {}
 
             #helpers
 
             #serialize
 
-            #[automatically_derived]
-            impl DatexValueProxyDeserialize for #ident {
-                fn try_from_value(
-                    value: Value,
-                ) -> Result<Self, TryFromDatexValueError> {
-                   value.try_into()
-                }
-            }
+            #deserialize
 
             #[automatically_derived]
-            impl TryFrom<Value> for #ident {
-                type Error = TryFromDatexValueError;
-
-                fn try_from(value: Value) -> Result<Self, Self::Error> {
-                    Ok(#from_datex_fields_inner)
-                }
-            }
-
-            #[automatically_derived]
-            impl TryFrom<ValueContainer> for #ident {
-                type Error = TryFromDatexValueError;
-
-                fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
-                    match value {
-                        ValueContainer::Local(value) => value.try_into(),
-                        _ => Err(TryFromDatexValueError("Expected ValueContainer::Local".to_string())),
-                    }
-                }
-            }
-
-            #[automatically_derived]
-            impl DatexProxyTypes for #ident {
+            impl #generics DatexProxyTypes for #ident #generics {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     (#datex_type).with_name(#datex_name)
                 }
@@ -1014,6 +1036,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
     let mut datex_name = None;
     let mut export = false;
     let mut namespace = None;
+    let mut no_deserialize = false;
 
     for attr in attrs {
         if !attr.path().is_ident("datex") {
@@ -1037,6 +1060,10 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
                 }
                 Meta::Path(path) if path.is_ident("export") => {
                     export = true;
+                }
+
+                Meta::Path(path) if path.is_ident("no_deserialize") => {
+                    no_deserialize = true;
                 }
 
                 Meta::NameValue(name_value)
@@ -1068,6 +1095,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
 
     TopLevelAttributes {
         force_datex_core_namespace,
+        no_deserialize,
         datex_name,
         export,
         namespace,
