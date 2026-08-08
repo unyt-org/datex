@@ -346,6 +346,7 @@ impl DXBBlock {
         peer_pub_sig_key: [u8; 32],
         peer_pub_cry_key: [u8; 32],
         own_pri_cry_key: [u8; 32],
+        shared_sec: [u8; 32],
     ) -> MaybeAsync<
         Result<DXBBlock, SignatureValidationError>,
         impl Future<Output = Result<DXBBlock, SignatureValidationError>>,
@@ -370,25 +371,32 @@ impl DXBBlock {
             signature_type @ (SignatureType::Encrypted
             | SignatureType::Unencrypted) => MaybeAsync::Async(async move {
                 // derive key encryption key
+                /*
                 let shared_sec = CryptoImpl::derive_x25519_cheat(
                     &own_pri_cry_key,
                     &peer_pub_cry_key,
                 )
                 .unwrap();
+                */
 
-                let kek_bytes =
-                    CryptoImpl::hkdf_cheat(&shared_sec, &[0u8; 16]).unwrap();
-                // split wrapped key from following body
-                let (wrapped_key, enc_body) = self.body.split_at(40);
-                let w_key: [u8; 40] = wrapped_key.try_into().unwrap();
-                let data_key =
-                    CryptoImpl::aes_kw_unwrap_cheat(&kek_bytes, &w_key)
-                        .unwrap();
-                let decrypted_body =
-                    CryptoImpl::aes_cheat(&data_key, &[0u8; 16], enc_body)
-                        .unwrap();
+                if (self.block_type() != BlockType::HelloBack)
+                    && (self.block_type() != BlockType::Hello)
+                {
+                    let kek_bytes =
+                        CryptoImpl::hkdf_cheat(&shared_sec, &[0u8; 16])
+                            .unwrap();
+                    // split wrapped key from following body
+                    let (wrapped_key, enc_body) = self.body.split_at(40);
+                    let w_key: [u8; 40] = wrapped_key.try_into().unwrap();
+                    let data_key =
+                        CryptoImpl::aes_kw_unwrap_cheat(&kek_bytes, &w_key)
+                            .unwrap();
+                    let decrypted_body =
+                        CryptoImpl::aes_cheat(&data_key, &[0u8; 16], enc_body)
+                            .unwrap();
 
-                self.body = decrypted_body;
+                    self.body = decrypted_body;
+                }
 
                 let is_valid = match signature_type {
                     SignatureType::Unencrypted => {

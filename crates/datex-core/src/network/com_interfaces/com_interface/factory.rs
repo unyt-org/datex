@@ -34,6 +34,9 @@ pub struct SocketProperties {
     uuid: ComInterfaceSocketUUID,
     pub pub_sig_key: Option<[u8; 32]>,
     pub pub_cry_key: Option<[u8; 32]>,
+    pub pub_mlkem_key: Option<Vec<u8>>,
+    pub shared_sec_send: Option<[u8; 32]>,
+    pub shared_sec_received: Option<[u8; 32]>,
 }
 
 impl SocketProperties {
@@ -46,6 +49,9 @@ impl SocketProperties {
             uuid: ComInterfaceSocketUUID::new(),
             pub_sig_key: None,
             pub_cry_key: None,
+            pub_mlkem_key: None,
+            shared_sec_send: None,
+            shared_sec_received: None,
         }
     }
     pub fn new_with_direct_endpoint(
@@ -61,6 +67,9 @@ impl SocketProperties {
             uuid: ComInterfaceSocketUUID::new(),
             pub_sig_key: None,
             pub_cry_key: None,
+            pub_mlkem_key: None,
+            shared_sec_send: None,
+            shared_sec_received: None,
         }
     }
 
@@ -77,6 +86,9 @@ impl SocketProperties {
             uuid: ComInterfaceSocketUUID::new(),
             pub_sig_key: None,
             pub_cry_key: None,
+            pub_mlkem_key: None,
+            shared_sec_send: None,
+            shared_sec_received: None,
         }
     }
 
