@@ -32,17 +32,19 @@ pub mod type_match;
 /// at runtime.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
-    Alias(TypeDefinitionWithMetadata),
+    /// A type definition with metadata, corresponding to `type x = X`. Treated as a structural type
+    Definition(TypeDefinitionWithMetadata),
+    /// A nominal type, corresponding to `entity x = X`.
     Entity(SharedContainerContainingEntityType),
 }
 
 impl Type {
-    pub const UNIT: Type = Type::Alias(TypeDefinitionWithMetadata::unit());
-    pub const NULL: Type = Type::Alias(TypeDefinitionWithMetadata::null());
+    pub const UNIT: Type = Type::Definition(TypeDefinitionWithMetadata::unit());
+    pub const NULL: Type = Type::Definition(TypeDefinitionWithMetadata::null());
 
     pub fn with_name(mut self, name: impl Into<String>) -> Self {
         match &mut self {
-            Type::Alias(alias) => {
+            Type::Definition(alias) => {
                 alias.set_reference_name(name.into());
             }
             _ => unimplemented!(
@@ -53,7 +55,7 @@ impl Type {
     }
     pub fn name(&self) -> Option<&str> {
         match self {
-            Type::Alias(alias) => alias.reference_name(),
+            Type::Definition(alias) => alias.reference_name(),
             Type::Entity(_) => None,
         }
     }
@@ -70,7 +72,7 @@ impl Type {
 
     /// Creates a new core type
     pub fn core(id: impl Into<CoreLibTypeId>) -> Type {
-        Type::Alias(TypeDefinition::core(id).into())
+        Type::Definition(TypeDefinition::core(id).into())
     }
 
     /// Checks if the type is a simple alias to a core library type with default local metadata
@@ -84,7 +86,7 @@ impl Type {
         f: impl FnOnce(&TypeDefinitionWithMetadata) -> R,
     ) -> R {
         match self {
-            Type::Alias(type_def) => f(type_def),
+            Type::Definition(type_def) => f(type_def),
             Type::Entity(nominal_def) => {
                 nominal_def.with_collapsed_definition(|def| {
                     def.definition_type()
@@ -104,7 +106,9 @@ impl Type {
 
     pub fn base_core_lib_type(&self) -> CoreLibTypeId {
         match self {
-            Type::Alias(type_def) => type_def.definition.base_core_lib_type(),
+            Type::Definition(type_def) => {
+                type_def.definition.base_core_lib_type()
+            }
             Type::Entity(_nominal_def) => {
                 todo!()
             }
@@ -116,7 +120,7 @@ impl Type {
     pub fn box_with_metadata(self, metadata: TypeMetadata) -> Type {
         match self {
             // if simple transparent with default local metadata, just update metadata without adding another nesting layer
-            Type::Alias(TypeDefinitionWithMetadata {
+            Type::Definition(TypeDefinitionWithMetadata {
                 metadata:
                     TypeMetadata::Local {
                         ownership: LocalOwnership::Owned,
@@ -124,11 +128,11 @@ impl Type {
                     },
                 definition,
                 ..
-            }) => Type::Alias(TypeDefinitionWithMetadata::new(
+            }) => Type::Definition(TypeDefinitionWithMetadata::new(
                 definition, metadata,
             )),
             // box otherwise
-            _ => Type::Alias(TypeDefinitionWithMetadata::new(
+            _ => Type::Definition(TypeDefinitionWithMetadata::new(
                 TypeDefinition::Nested(Box::new(self)),
                 metadata,
             )),
@@ -144,7 +148,7 @@ impl Type {
     ) -> Result<Type, ()> {
         match self {
             // if simple transparent with default local metadata, just update metadata without adding another nesting layer
-            Type::Alias(TypeDefinitionWithMetadata {
+            Type::Definition(TypeDefinitionWithMetadata {
                 metadata:
                     TypeMetadata::Shared {
                         ownership,
@@ -169,7 +173,7 @@ impl Type {
                 };
 
                 if reference_mutability <= max_mutability {
-                    Ok(Type::Alias(TypeDefinitionWithMetadata::new(
+                    Ok(Type::Definition(TypeDefinitionWithMetadata::new(
                         definition,
                         TypeMetadata::Shared {
                             ownership: SharedContainerOwnership::Referenced(
@@ -190,11 +194,12 @@ impl Type {
     /// Converts the given [Type] to an equivalent [TypeDefinition]
     pub fn convert_to_definition(self) -> TypeDefinition {
         // just collapse to definition
-        if let Type::Alias(TypeDefinitionWithMetadata { metadata, .. }) = &self
+        if let Type::Definition(TypeDefinitionWithMetadata { metadata, .. }) =
+            &self
             && metadata == &TypeMetadata::default()
         {
             match self {
-                Type::Alias(TypeDefinitionWithMetadata {
+                Type::Definition(TypeDefinitionWithMetadata {
                     metadata: _,
                     definition,
                     ..
@@ -211,7 +216,7 @@ impl Type {
     /// Tries to extract the core library type id if the type is a simple alias to a core library type with default local metadata.
     pub fn try_as_core_lib_type(&self) -> Option<CoreLibTypeId> {
         match self {
-            Type::Alias(TypeDefinitionWithMetadata {
+            Type::Definition(TypeDefinitionWithMetadata {
                 definition: TypeDefinition::CoreType(core_lib_type_id),
                 metadata,
                 ..
@@ -225,7 +230,7 @@ impl Type {
 
 impl<T: Into<TypeDefinitionWithMetadata>> From<T> for Type {
     fn from(definition: T) -> Self {
-        Type::Alias(definition.into())
+        Type::Definition(definition.into())
     }
 }
 
@@ -335,7 +340,7 @@ pub mod serde_dif;
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Type::Alias(def) => write!(f, "{}", def),
+            Type::Definition(def) => write!(f, "{}", def),
             Type::Entity(nom) => write!(f, "{}", nom.deref()),
         }
     }

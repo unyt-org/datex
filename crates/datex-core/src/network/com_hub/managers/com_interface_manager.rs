@@ -398,6 +398,7 @@ mod tests {
     use datex_macros_internal::Datex;
 
     #[derive(Datex)]
+    #[datex(structural)]
     struct MockSetupData {
         name: String,
     }

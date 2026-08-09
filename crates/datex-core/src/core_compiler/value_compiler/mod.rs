@@ -161,7 +161,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             // unit tagged value (e.g. #Example)
             TypeDefinition::TaggedType(TaggedTypeDefinition {
                 ty:
-                    Some(box Type::Alias(TypeDefinitionWithMetadata {
+                    Some(box Type::Definition(TypeDefinitionWithMetadata {
                         definition:
                             TypeDefinition::CoreType(CoreLibTypeId::Base(
                                 CoreLibBaseTypeId::Unit,
@@ -588,7 +588,7 @@ mod tests {
         let value = Value::new(
             CoreValue::Null,
             Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: Some(Box::new(Type::Alias(
+                ty: Some(Box::new(Type::Definition(
                     TypeDefinition::CoreType(CoreLibTypeId::Base(
                         CoreLibBaseTypeId::Unit,
                     ))

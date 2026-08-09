@@ -27,7 +27,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Debug, Clone)]
-
+#[datex(structural)]
 pub struct ComHubMetadataInterfaceSocket {
     pub uuid: String,
     pub direction: InterfaceDirection,

@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn type_definition_with_metadata() {
-        let ty = Type::Alias(TypeDefinitionWithMetadata::new(
+        let ty = Type::Definition(TypeDefinitionWithMetadata::new(
             TypeDefinition::CoreType(CoreLibTypeId::Base(
                 CoreLibBaseTypeId::Boolean,
             )),
@@ -111,7 +111,7 @@ mod tests {
     fn core_type() {
         // We shortcut the type compilation for aliased core types, that don't have any metadata or a custom type
         // to just directly return the core lib value instruction, since the execution will treat them as the same type anyway
-        let ty = Type::Alias(
+        let ty = Type::Definition(
             TypeDefinition::CoreType(CoreLibTypeId::Base(
                 CoreLibBaseTypeId::Boolean,
             ))

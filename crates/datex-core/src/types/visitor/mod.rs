@@ -34,7 +34,7 @@ where
     F: TypeFolder,
 {
     match ty {
-        Type::Alias(alias) => {
+        Type::Definition(alias) => {
             let Some(name) = alias.reference_name() else {
                 return fold_definition(folder, &alias.definition);
             };

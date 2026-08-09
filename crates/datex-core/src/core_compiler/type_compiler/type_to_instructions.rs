@@ -17,7 +17,7 @@ impl<'a> ToInstructions<'a> for Type {
         Box::new(gen move {
             match self {
                 Type::Entity(_) => unreachable!(),
-                Type::Alias(def) => {
+                Type::Definition(def) => {
                     for instruction in
                         def.to_instructions(shared_value_tracking)
                     {

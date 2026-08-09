@@ -32,7 +32,9 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
         S: Serializer,
     {
         match value {
-            Type::Alias(type_definition) => match type_definition.definition {
+            Type::Definition(type_definition) => match type_definition
+                .definition
+            {
                 TypeDefinition::CoreType(_core)
                     if type_definition.metadata == TypeMetadata::default() =>
                 {
@@ -83,7 +85,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
         let definition = seq
             .next_element_seed(self.cast::<TypeDefinition>())?
             .ok_or_else(|| serde::de::Error::custom("missing definition"))?;
-        Ok(Type::Alias(TypeDefinitionWithMetadata::new(
+        Ok(Type::Definition(TypeDefinitionWithMetadata::new(
             definition, metadata,
         )))
     }
@@ -110,7 +112,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
     where
         E: serde::de::Error,
     {
-        Ok(Type::Alias(
+        Ok(Type::Definition(
             TypeDefinition::core(
                 CoreLibTypeId::try_from(CoreLibIdIndex(v)).map_err(|_| {
                     serde::de::Error::custom(format!(

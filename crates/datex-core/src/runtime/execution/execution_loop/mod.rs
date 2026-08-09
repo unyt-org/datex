@@ -1325,7 +1325,7 @@ pub gen fn inner_execution_loop(
                                             collected_results.pop_type();
                                         let type_end =
                                             collected_results.pop_type();
-                                        let x = Type::Alias(
+                                        let x = Type::Definition(
                                             TypeDefinition::Range(RangeTypeDefinition {
                                                 start: Box::new(type_start),
                                                 end: Box::new(type_end),
@@ -1335,7 +1335,7 @@ pub gen fn inner_execution_loop(
                                     }
                                     TypeInstruction::TypeDefinitionWithMetadata(metadata) => {
                                         let definition = collected_results.pop_type_definition();
-                                        Type::Alias(TypeDefinitionWithMetadata::new(definition, metadata)).into()
+                                        Type::Definition(TypeDefinitionWithMetadata::new(definition, metadata)).into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),
                                 }

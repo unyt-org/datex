@@ -1864,6 +1864,7 @@ pub mod tests {
     }
 
     #[derive(Datex, Debug, Clone)]
+    #[datex(structural)]
     struct MockupInterfaceSetupData {
         pub name: String,
     }

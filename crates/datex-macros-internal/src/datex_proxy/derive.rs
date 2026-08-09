@@ -568,15 +568,15 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
 
         let datex_type_for_variant = match datex_type {
             None => quote! {
-                Type::Alias(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                Type::Definition(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: #variant_name.to_string(),
                     ty: None,
                 }).into())
             },
             Some(type_definition) => quote! {
-                Type::Alias(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                Type::Definition(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: #variant_name.to_string(),
-                    ty: Some(Box::new(#type_definition)),
+                    ty: Some(Box::new(Type::Definition(#type_definition.into()))),
                 }).into())
             },
         };
@@ -910,16 +910,22 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
     let datex_type = match fields_type {
         FieldsType::Unit => None,
         FieldsType::Named => Some(quote! {
-            Type::Alias(TypeDefinition::Map(MapTypeDefinition(vec![
+            TypeDefinition::Map(MapTypeDefinition(vec![
                 #(#field_types),*
-            ])).into())
+            ]))
         }),
         FieldsType::Unnamed => Some(quote! {
-            Type::Alias(TypeDefinition::List(ListTypeDefinition(vec![
+            TypeDefinition::List(ListTypeDefinition(vec![
                 #(#field_types),*
-            ])).into())
+            ]))
         }),
-        FieldsType::Transparent => Some(field_types.remove(0)),
+        FieldsType::Transparent => {
+            let first_field = field_types.remove(0);
+            // FIXME: no nesting?
+            Some(quote! {
+                TypeDefinition::Nested(Box::new(#first_field))
+            })
+        }
     };
 
     FieldDeriveData {
@@ -1141,16 +1147,17 @@ fn wrap_type_definition(
 ) -> TokenStream {
     if use_nominal_type {
         quote! {
-            Type::Alias(#type_definition.into())
+            Type::Definition(#type_definition.into())
         }
     } else {
+        // FIXME: calculate pointer address statically in macro at compile time
         let unique_name = format!("{}::{}", namespace, name);
         quote! {
             Type::Entity(unsafe {
                 SharedContainerContainingEntityType::new_base_with_address(
                     #name.to_string(),
                     SelfOwnedPointerAddress::new_static_from_name(#unique_name),
-                    Type::core(CoreLibBaseTypeId::Unknown)
+                    Type::Definition(#type_definition.into())
                 )
             })
         }
@@ -1196,7 +1203,7 @@ fn generate_named_field_type_code(
         SerdeMode::None => {
             quote! {
                 (
-                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
+                    Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
                     <#field_type as DatexProxyTypes>::datex_type(cache)
                 )
             }
@@ -1205,8 +1212,8 @@ fn generate_named_field_type_code(
         SerdeMode::Fallible | SerdeMode::Infallible => {
             quote! {
                 (
-                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
-                    Type::Alias(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
+                    Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
+                    Type::Definition(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
                 )
             }
         }
@@ -1227,7 +1234,7 @@ fn generate_unnamed_field_type_code(
         // Cannot infer type
         SerdeMode::Fallible | SerdeMode::Infallible => {
             quote! {
-               Type::Alias(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
+               Type::Definition(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
             }
         }
     }

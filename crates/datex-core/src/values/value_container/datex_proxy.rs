@@ -34,7 +34,7 @@ impl DatexValueContainerProxyDeserialize for ValueContainer {
 
 impl DatexProxyTypes for ValueContainer {
     fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
-        Type::Alias(
+        Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()).into(),
         )
     }

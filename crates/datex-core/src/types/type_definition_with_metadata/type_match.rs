@@ -13,7 +13,7 @@ use crate::{
 impl TypeSuperset<Type> for TypeDefinitionWithMetadata {
     fn is_superset_of(&self, other: &Type) -> bool {
         match other {
-            Type::Alias(other_definition) => {
+            Type::Definition(other_definition) => {
                 self.is_superset_of(other_definition)
             }
             Type::Entity(_) => {

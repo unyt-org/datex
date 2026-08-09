@@ -158,7 +158,7 @@ macro_rules! derive_try_from_chain {
 
         impl DatexProxyTypes for $type {
             fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
-                Type::Alias(TypeDefinition::CoreType($dx_type.into()).into())
+                Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
     };
@@ -188,7 +188,7 @@ macro_rules! impl_datex_direct_via_value_container {
 
         impl DatexProxyTypes for $type {
             fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
-                Type::Alias(TypeDefinition::CoreType($dx_type.into()).into())
+                Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
     };
@@ -401,9 +401,9 @@ impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
 impl<T: DatexValueContainerProxy> DatexProxyTypes for Option<T> {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         // null | T
-        Type::Alias(
+        Type::Definition(
             TypeDefinition::Union(UnionTypeDefinition(vec![
-                Type::Alias(
+                Type::Definition(
                     TypeDefinition::CoreType(CoreLibBaseTypeId::Null.into())
                         .into(),
                 ),
@@ -456,7 +456,7 @@ where
     T: DatexValueContainerProxy + DatexProxyTypes,
 {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
-        Type::Alias(
+        Type::Definition(
             TypeDefinition::Collection(CollectionTypeDefinition::List(
                 ListCollectionTypeDefinition(Box::new(T::datex_type(memory))),
             ))
@@ -528,7 +528,7 @@ impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
     DatexProxyTypes for HashMap<K, V>
 {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
-        Type::Alias(
+        Type::Definition(
             TypeDefinition::Collection(CollectionTypeDefinition::Map(
                 MapCollectionTypeDefinition {
                     key_type: Box::new(K::datex_type(memory)),

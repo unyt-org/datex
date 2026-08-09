@@ -201,7 +201,7 @@ fn type_cast_expression(
         TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag,
             ty:
-                Some(box Type::Alias(TypeDefinitionWithMetadata {
+                Some(box Type::Definition(TypeDefinitionWithMetadata {
                     definition:
                         TypeDefinition::CoreType(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Unit,
@@ -218,11 +218,9 @@ fn type_cast_expression(
 
 fn type_to_type_expression(ty: &Type) -> TypeExpression {
     match ty {
-        Type::Entity(_container) => todo!(),
-        Type::Alias(_definition) => {
-            ty.with_collapsed_definition_with_metadata(|def| {
-                type_definition_to_type_expression(def)
-            })
+        Type::Entity(container) => panic!("con: {:#?}", container),
+        Type::Definition(definition) => {
+            type_definition_to_type_expression(definition)
         }
     }
 }

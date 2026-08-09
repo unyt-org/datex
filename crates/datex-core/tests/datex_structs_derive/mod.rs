@@ -13,6 +13,7 @@ use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Debug)]
+#[datex(structural)]
 enum ExampleEnum {
     VariantA,
     VariantB(u8, u8),
@@ -21,6 +22,7 @@ enum ExampleEnum {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
+#[datex(structural)]
 struct Example {
     a: u8,
     b: String,
@@ -34,6 +36,7 @@ struct SerdeExample {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
+#[datex(structural)]
 struct SerdeDatexExample {
     a: u8,
     #[datex(serde)]
@@ -41,6 +44,7 @@ struct SerdeDatexExample {
 }
 
 #[derive(Datex, Debug, PartialEq)]
+#[datex(structural)]
 struct ExampleNewType(Example);
 
 fn assert_round_trip<T>(value: T)
@@ -130,6 +134,7 @@ fn struct_to_value_container() {
 #[test]
 fn skip() {
     #[derive(Datex, Debug, PartialEq)]
+    #[datex(structural)]
     struct SerdeDatexWithSkip {
         a: u8,
 
@@ -161,6 +166,7 @@ fn skip2() {
         b: String,
     }
     #[derive(Datex, Debug, PartialEq)]
+    #[datex(structural)]
     struct SerdeDatexWithSkip2 {
         a: u8,
         #[datex(skip)]
@@ -182,6 +188,7 @@ fn skip2() {
 #[test]
 fn default() {
     #[derive(Datex, Debug, PartialEq)]
+    #[datex(structural)]
     struct SerdeDatexWithDefault {
         a: u8,
         #[datex(default)]
@@ -450,6 +457,7 @@ fn struct_with_serde_to_value_container() {
 #[test]
 fn struct_with_serde_infallible_to_value_container() {
     #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural)]
     struct SerdeDatexExampleInfallible {
         a: u8,
         #[datex(serde_infallible)]
@@ -490,6 +498,7 @@ fn struct_with_value_container() {
     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
     #[derive(Datex, Debug, PartialEq)]
+    #[datex(structural)]
     struct ExampleWithValueContainer {
         a: u8,
         val: ValueContainer,
@@ -538,6 +547,7 @@ fn struct_with_owned_shared_value_container() {
     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
     #[derive(Datex, Debug, PartialEq)]
+    #[datex(structural)]
     struct ExampleWithOwnedContainer {
         owned: OwnedSharedContainer,
     }
@@ -574,16 +584,16 @@ fn get_datex_type_from_struct() {
 
     assert_eq!(
         dx_type,
-        Type::Alias(
+        Type::Definition(
             TypeDefinition::Map(MapTypeDefinition(vec![
                 (
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::Literal(LiteralTypeDefinition::Text(
                             "a".into()
                         ))
                         .into()
                     ),
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::CoreType(
                             CoreLibVariantTypeId::Integer(
                                 IntegerTypeVariant::U8
@@ -594,13 +604,13 @@ fn get_datex_type_from_struct() {
                     )
                 ),
                 (
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::Literal(LiteralTypeDefinition::Text(
                             "b".into()
                         ))
                         .into()
                     ),
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::CoreType(
                             CoreLibBaseTypeId::Text.into()
                         )
@@ -608,13 +618,13 @@ fn get_datex_type_from_struct() {
                     )
                 ),
                 (
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::Literal(LiteralTypeDefinition::Text(
                             "c".into()
                         ))
                         .into()
                     ),
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::CoreType(
                             CoreLibBaseTypeId::Endpoint.into()
                         )
@@ -635,7 +645,7 @@ fn get_datex_type_from_enum() {
 
     assert_eq!(
         dx_type,
-        Type::Alias(
+        Type::Definition(
             TypeDefinition::Union(UnionTypeDefinition(vec![
                 TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "VariantA".to_string(),
@@ -646,7 +656,7 @@ fn get_datex_type_from_enum() {
                     tag: "VariantB".to_string(),
                     ty: Some(Box::new(
                         TypeDefinition::List(ListTypeDefinition(vec![
-                            Type::Alias(
+                            Type::Definition(
                                 TypeDefinition::CoreType(
                                     CoreLibVariantTypeId::Integer(
                                         IntegerTypeVariant::U8
@@ -655,7 +665,7 @@ fn get_datex_type_from_enum() {
                                 )
                                 .into()
                             ),
-                            Type::Alias(
+                            Type::Definition(
                                 TypeDefinition::CoreType(
                                     CoreLibVariantTypeId::Integer(
                                         IntegerTypeVariant::U8
@@ -674,13 +684,13 @@ fn get_datex_type_from_enum() {
                     ty: Some(Box::new(
                         TypeDefinition::Map(MapTypeDefinition(vec![
                             (
-                                Type::Alias(
+                                Type::Definition(
                                     TypeDefinition::Literal(
                                         LiteralTypeDefinition::Text("x".into())
                                     )
                                     .into()
                                 ),
-                                Type::Alias(
+                                Type::Definition(
                                     TypeDefinition::CoreType(
                                         CoreLibVariantTypeId::Integer(
                                             IntegerTypeVariant::U8
@@ -691,13 +701,13 @@ fn get_datex_type_from_enum() {
                                 )
                             ),
                             (
-                                Type::Alias(
+                                Type::Definition(
                                     TypeDefinition::Literal(
                                         LiteralTypeDefinition::Text("y".into())
                                     )
                                     .into()
                                 ),
-                                Type::Alias(
+                                Type::Definition(
                                     TypeDefinition::CoreType(
                                         CoreLibBaseTypeId::Text.into()
                                     )

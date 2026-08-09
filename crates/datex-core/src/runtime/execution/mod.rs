@@ -605,7 +605,7 @@ mod tests {
                 &value.custom_type,
                 &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "Example".to_string(),
-                    ty: Some(Box::new(Type::Alias(
+                    ty: Some(Box::new(Type::Definition(
                         TypeDefinition::CoreType(
                             CoreLibBaseTypeId::Unit.into()
                         )

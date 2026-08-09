@@ -323,7 +323,7 @@ impl<'a> Precompiler<'a> {
                     ),
                 )
             }),
-            TypeDeclarationKind::Alias => Type::Alias(
+            TypeDeclarationKind::Alias => Type::Definition(
                 TypeDefinition::Shared(unsafe {
                     SharedContainerContainingType::new_unchecked(
                         SharedContainer::new_owned_with_inferred_allowed_type(

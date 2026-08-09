@@ -14,6 +14,7 @@ pub fn is_priority_none(v: &InterfacePriority) -> bool {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq, Eq)]
+#[datex(structural)]
 /// A generic interface configuration to setup a runtime interface.
 pub struct RuntimeConfigInterface {
     #[datex(rename = "type")]
@@ -52,6 +53,7 @@ impl RuntimeConfigInterface {
 }
 
 #[derive(Datex, Debug, Default, Clone)]
+#[datex(structural)]
 pub struct RuntimeConfig {
     pub endpoint: Endpoint,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
@@ -135,6 +137,7 @@ pub mod tests {
     };
 
     #[derive(Datex)]
+    #[datex(structural)]
     struct MySetupData {
         field1: String,
         field2: i32,

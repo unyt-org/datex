@@ -312,13 +312,13 @@ impl<'a> TypeInference<'a> {
 fn mark_type_definition<E>(
     definition: TypeDefinition,
 ) -> Result<VisitAction<E>, SpannedTypeError> {
-    mark_type(Type::Alias(definition.into()))
+    mark_type(Type::Definition(definition.into()))
 }
 
 fn mark_literal_type<E>(
     definition: LiteralTypeDefinition,
 ) -> Result<VisitAction<E>, SpannedTypeError> {
-    mark_type(Type::Alias(definition.into()))
+    mark_type(Type::Definition(definition.into()))
 }
 fn mark_type<E>(ty: Type) -> Result<VisitAction<E>, SpannedTypeError> {
     Ok(VisitAction::SetTypeSkipChildren(ty))
@@ -945,7 +945,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                         }
                     }
                 }
-                Type::Alias(_r) => {
+                Type::Definition(_r) => {
                     // FIXME #620 is this necessary?
                     // reference.borrow_mut().type_value = Type::new(
                     //     TypeDefinition::Shared(r.clone()),
@@ -1043,7 +1043,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         let property = self.infer_expression(&mut _property_access.property)?;
         base.with_collapsed_type_definition(|d| match d {
             // TODO handle structural access, add null to union for dynamic maps
-            TypeDefinition::Map(map) => mark_type(Type::Alias(
+            TypeDefinition::Map(map) => mark_type(Type::Definition(
                 TypeDefinition::union(
                     map.iter().map(|(_, v)| v.clone()).collect::<Vec<_>>(),
                 )
@@ -1070,7 +1070,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 }
                 // FIXME handle out of bounds access for structural lists and infer correct type at index
                 // handle union null case for non-structural lists
-                mark_type(Type::Alias(
+                mark_type(Type::Definition(
                     TypeDefinition::union(members.to_vec()).into(),
                 ))
             }
@@ -1124,12 +1124,14 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_expression(&mut unbox.expression)?;
         // remove most outer &/' if applicable
-        let unbox_type = if let Type::Alias(definition) = inner_type {
+        let unbox_type = if let Type::Definition(definition) = inner_type {
             match definition.metadata {
                 // non-unboxable local value
                 TypeMetadata::Local { .. } => {
                     self.record_error(SpannedTypeError::new_with_span(
-                        TypeError::invalid_unbox_type(Type::Alias(definition)),
+                        TypeError::invalid_unbox_type(Type::Definition(
+                            definition,
+                        )),
                         span.clone(),
                     ))?;
                     Type::core(CoreLibBaseTypeId::Never)
@@ -1141,10 +1143,12 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                         // if nested type, collapse
                         TypeDefinition::Nested(ty) => *ty,
                         // else, just remove ref
-                        def => Type::Alias(TypeDefinitionWithMetadata::new(
-                            def,
-                            TypeMetadata::default(),
-                        )),
+                        def => {
+                            Type::Definition(TypeDefinitionWithMetadata::new(
+                                def,
+                                TypeMetadata::default(),
+                            ))
+                        }
                     }
                 }
             }
@@ -1158,7 +1162,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         // check if type is actually unboxable (must be a shared container, TODO: maybe also copyable values)
         match unbox_type {
-            Type::Alias(TypeDefinitionWithMetadata {
+            Type::Definition(TypeDefinitionWithMetadata {
                 metadata: TypeMetadata::Shared { .. },
                 ..
             }) => mark_type(unbox_type),
@@ -1358,7 +1362,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                             span,
                         )
                     }
-                    Type::Alias(alias) => {
+                    Type::Definition(alias) => {
                         match &alias.definition {
                             TypeDefinition::CoreType(core_lib_id) => {
                                 variant_type_id(CoreLibId::Type(*core_lib_id), variant_access, span)
@@ -1896,7 +1900,7 @@ mod tests {
                 ]))
                 .with_default_span()
             ),
-            Type::Alias(
+            Type::Definition(
                 TypeDefinition::List(
                     vec![
                         Type::from(LiteralTypeDefinition::Integer(
@@ -1925,13 +1929,13 @@ mod tests {
                 )]))
                 .with_default_span()
             ),
-            Type::Alias(
+            Type::Definition(
                 TypeDefinition::Map(
                     vec![(
-                        Type::Alias(
+                        Type::Definition(
                             LiteralTypeDefinition::Text("a".into()).into()
                         ),
-                        Type::Alias(
+                        Type::Definition(
                             LiteralTypeDefinition::Integer(Integer::from(1))
                                 .into()
                         )
@@ -1984,7 +1988,7 @@ mod tests {
 
         assert_matches!(
             var_type,
-            Type::Alias(TypeDefinitionWithMetadata {
+            Type::Definition(TypeDefinitionWithMetadata {
                 definition: TypeDefinition::CoreType(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Integer
                 )),
