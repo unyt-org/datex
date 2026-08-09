@@ -31,8 +31,8 @@ use crate::{
         traits::SharedContainerCommon,
     },
     types::type_definition::TypeDefinition,
-    value_updates::{
-        update_handler::{InternalMutabilityUpdateHandler, UpdateCallbackData},
+    value_updates::update_handler::{
+        InternalMutabilityUpdateHandler, UpdateCallbackData,
     },
     values::core_value::CoreValue,
 };
@@ -483,7 +483,7 @@ impl _ExposeRcInternal for SharedContainer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::assert_matches;
+    use core::assert_matches;
 
     #[test]
     fn immutable_reference_observe_fails() {
