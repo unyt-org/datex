@@ -207,7 +207,7 @@ fn type_expression() {
 
 #[test]
 fn structural_type_declaration() {
-    let src = "typealias A = integer";
+    let src = "type A = integer";
     let result = parse_print_error(src);
     let expr = result.unwrap();
     assert_matches!(expr,
@@ -2286,7 +2286,7 @@ fn nested_apply_and_property_access() {
 
 #[test]
 fn type_declaration_statement() {
-    let src = "type User = { age: 42, name: \"John\" };";
+    let src = "entity User = { age: 42, name: \"John\" };";
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,

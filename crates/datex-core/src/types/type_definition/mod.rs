@@ -54,8 +54,8 @@ pub enum TypeDefinition {
     /// e.g. [integer], [integer; 5], Map<string, integer>
     Collection(CollectionTypeDefinition),
 
-    /// typealias A = {b: B} // $A
-    /// typealias B = {a: $A}
+    /// type A = {b: B} // $A
+    /// type B = {a: $A}
     Shared(SharedContainerContainingType), // integer
 
     /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X)

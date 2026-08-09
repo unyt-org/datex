@@ -258,7 +258,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             context.visit_value_container(*range.start, None);
             context.visit_value_container(*range.end, None);
         }
-        CoreValue::NominalTypeDefinition(_) => {
+        CoreValue::EntityTypeDefinition(_) => {
             todo!()
         }
     };

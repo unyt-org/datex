@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     types::{
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+        shared_container_containing_nominal_type::SharedContainerContainingEntityType,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition::{
@@ -45,7 +45,7 @@ where
             folder.fold_named_alias_reference(name)
         }
 
-        Type::Nominal(nominal) => folder.fold_nominal_reference(nominal),
+        Type::Entity(nominal) => folder.fold_entity_reference(nominal),
     }
 }
 
@@ -279,10 +279,10 @@ pub trait TypeFolder {
         shared: &SharedContainerContainingType,
     ) -> Result<Self::Output, Self::Error>;
 
-    /// Called when a reference to a shared container containing a nominal type is encountered. The shared container is provided as an argument.
-    fn fold_nominal_reference(
+    /// Called when a reference to a shared container containing a entity type is encountered. The shared container is provided as an argument.
+    fn fold_entity_reference(
         &mut self,
-        nominal: &SharedContainerContainingNominalType,
+        entity: &SharedContainerContainingEntityType,
     ) -> Result<Self::Output, Self::Error>;
 
     /// Called when a reference to a core type is encountered. The core type ID is provided as an argument.

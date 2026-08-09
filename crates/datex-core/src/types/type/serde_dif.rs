@@ -4,7 +4,7 @@ use crate::{
     prelude::*,
     shared_values::SharedContainer,
     types::{
-        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+        shared_container_containing_nominal_type::SharedContainerContainingEntityType,
         r#type::Type,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
@@ -43,7 +43,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
                     .cast::<TypeDefinitionWithMetadata>()
                     .serialize(type_definition, serializer),
             },
-            Type::Nominal(shared_container_containing_nominal_type) => {
+            Type::Entity(shared_container_containing_nominal_type) => {
                 self.cast::<SharedContainer>().serialize(
                     shared_container_containing_nominal_type.deref(),
                     serializer,
@@ -92,8 +92,8 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
     where
         E: serde::de::Error,
     {
-        Ok(Type::Nominal(unsafe {
-            SharedContainerContainingNominalType::new_unchecked(
+        Ok(Type::Entity(unsafe {
+            SharedContainerContainingEntityType::new_unchecked(
                 self.cast::<SharedContainer>()
                     .deserialize(v.into_deserializer())?,
             )

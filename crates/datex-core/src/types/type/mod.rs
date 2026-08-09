@@ -1,5 +1,5 @@
 //! This module contains the implementation of the [Type] enum, which represents a type in the DATEX type system.
-//! A [Type] can either be an alias to a [TypeDefinitionWithMetadata] or a nominal type represented by a [SharedContainerContainingNominalType].
+//! A [Type] can either be an alias to a [TypeDefinitionWithMetadata] or a nominal type represented by a [SharedContainerContainingEntityType].
 
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
@@ -12,9 +12,9 @@ use crate::{
         SharedContainerOwnership,
     },
     types::{
+        entity_type_definition::EntityTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
-        nominal_type_definition::NominalTypeDefinition,
-        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+        shared_container_containing_nominal_type::SharedContainerContainingEntityType,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
             LocalMutability, LocalOwnership, TypeDefinitionWithMetadata,
@@ -33,7 +33,7 @@ pub mod type_match;
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
     Alias(TypeDefinitionWithMetadata),
-    Nominal(SharedContainerContainingNominalType),
+    Entity(SharedContainerContainingEntityType),
 }
 
 impl Type {
@@ -54,20 +54,18 @@ impl Type {
     pub fn name(&self) -> Option<&str> {
         match self {
             Type::Alias(alias) => alias.reference_name(),
-            Type::Nominal(_) => None,
+            Type::Entity(_) => None,
         }
     }
 
-    pub fn nominal(
-        definition: NominalTypeDefinition,
+    pub fn entity(
+        definition: EntityTypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
     ) -> Type {
-        Type::Nominal(
-            SharedContainerContainingNominalType::new_from_definition(
-                definition,
-                address_provider,
-            ),
-        )
+        Type::Entity(SharedContainerContainingEntityType::new_from_definition(
+            definition,
+            address_provider,
+        ))
     }
 
     /// Creates a new core type
@@ -87,11 +85,12 @@ impl Type {
     ) -> R {
         match self {
             Type::Alias(type_def) => f(type_def),
-            Type::Nominal(nominal_def) => nominal_def
-                .with_collapsed_definition(|def| {
+            Type::Entity(nominal_def) => {
+                nominal_def.with_collapsed_definition(|def| {
                     def.definition_type()
                         .with_collapsed_definition_with_metadata(f)
-                }),
+                })
+            }
         }
     }
 
@@ -106,7 +105,7 @@ impl Type {
     pub fn base_core_lib_type(&self) -> CoreLibTypeId {
         match self {
             Type::Alias(type_def) => type_def.definition.base_core_lib_type(),
-            Type::Nominal(_nominal_def) => {
+            Type::Entity(_nominal_def) => {
                 todo!()
             }
         }
@@ -337,7 +336,7 @@ impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Type::Alias(def) => write!(f, "{}", def),
-            Type::Nominal(nom) => write!(f, "{}", nom.deref()),
+            Type::Entity(nom) => write!(f, "{}", nom.deref()),
         }
     }
 }
@@ -462,8 +461,8 @@ impl TryFrom<ValueContainer> for Type {
     fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
         match value {
             ValueContainer::Shared(shared) => {
-                SharedContainerContainingNominalType::try_from(shared)
-                    .map(Type::Nominal)
+                SharedContainerContainingEntityType::try_from(shared)
+                    .map(Type::Entity)
             }
             ValueContainer::Local(value) => match value.inner {
                 CoreValue::Type(ty) => Ok(ty),

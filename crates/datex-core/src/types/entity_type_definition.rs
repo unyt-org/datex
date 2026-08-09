@@ -1,30 +1,32 @@
 use crate::{
     prelude::*,
     types::{
-        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+        shared_container_containing_nominal_type::SharedContainerContainingEntityType,
         r#type::Type,
     },
 };
 use core::fmt::Display;
 
+/// Represents a definition of an "entity" type, 
+/// which describes a nominal type identified by a unique pointer id.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum NominalTypeDefinition {
+pub enum EntityTypeDefinition {
     Base {
         definition_type: Type,
         name: String,
     },
     Variant {
         definition_type: Type,
-        base: SharedContainerContainingNominalType,
+        base: SharedContainerContainingEntityType,
         variant_name: String,
     },
 }
 
-impl Display for NominalTypeDefinition {
+impl Display for EntityTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            NominalTypeDefinition::Base { name, .. } => write!(f, "{}", name),
-            NominalTypeDefinition::Variant {
+            EntityTypeDefinition::Base { name, .. } => write!(f, "{}", name),
+            EntityTypeDefinition::Variant {
                 base, variant_name, ..
             } => write!(
                 f,
@@ -36,9 +38,9 @@ impl Display for NominalTypeDefinition {
     }
 }
 
-impl NominalTypeDefinition {
-    pub fn new_base(definition: Type, name: String) -> NominalTypeDefinition {
-        NominalTypeDefinition::Base {
+impl EntityTypeDefinition {
+    pub fn new_base(definition: Type, name: String) -> EntityTypeDefinition {
+        EntityTypeDefinition::Base {
             definition_type: definition,
             name,
         }
@@ -46,10 +48,10 @@ impl NominalTypeDefinition {
 
     pub fn new_variant(
         definition: Type,
-        base: SharedContainerContainingNominalType,
+        base: SharedContainerContainingEntityType,
         variant_name: String,
-    ) -> NominalTypeDefinition {
-        NominalTypeDefinition::Variant {
+    ) -> EntityTypeDefinition {
+        EntityTypeDefinition::Variant {
             definition_type: definition,
             base,
             variant_name,
@@ -59,11 +61,11 @@ impl NominalTypeDefinition {
     /// Get the inner [Type]
     pub fn definition_type(&self) -> &Type {
         match self {
-            NominalTypeDefinition::Base {
+            EntityTypeDefinition::Base {
                 definition_type: definition,
                 ..
             } => definition,
-            NominalTypeDefinition::Variant {
+            EntityTypeDefinition::Variant {
                 definition_type: definition,
                 ..
             } => definition,
@@ -73,11 +75,11 @@ impl NominalTypeDefinition {
     /// Replace the inner [Type] with a new one and return the old one
     pub fn replace_definition_type(&mut self, new_definition: Type) {
         match self {
-            NominalTypeDefinition::Base {
+            EntityTypeDefinition::Base {
                 definition_type: definition,
                 ..
             } => *definition = new_definition,
-            NominalTypeDefinition::Variant {
+            EntityTypeDefinition::Variant {
                 definition_type: definition,
                 ..
             } => *definition = new_definition,
@@ -87,11 +89,11 @@ impl NominalTypeDefinition {
     /// Convert to the inner [Type]
     pub fn into_definition_type(self) -> Type {
         match self {
-            NominalTypeDefinition::Base {
+            EntityTypeDefinition::Base {
                 definition_type: definition,
                 ..
             } => definition,
-            NominalTypeDefinition::Variant {
+            EntityTypeDefinition::Variant {
                 definition_type: definition,
                 ..
             } => definition,

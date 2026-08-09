@@ -236,9 +236,9 @@ pub enum Token {
     #[token("else")] Else,
     #[token("compile")] Compile,
 
-    #[token("type")] TypeDeclaration,
+    #[token("entity")] EntityTypeDeclaration,
     #[token("type<")] TypeExpressionStart,
-    #[token("typealias")] TypeAlias,
+    #[token("type")] TypeAlias,
 
     #[token(".")]
     Dot,
@@ -360,10 +360,10 @@ impl Token {
             Token::Procedure => Some("procedure"),
             Token::Infinity => Some("infinity"),
             Token::Nan => Some("nan"),
-            Token::TypeDeclaration => Some("type"),
+            Token::EntityTypeDeclaration => Some("entity"),
             Token::Compile => Some("compile"),
             Token::TypeExpressionStart => Some("type<"),
-            Token::TypeAlias => Some("typealias"),
+            Token::TypeAlias => Some("type"),
             Token::Shared => Some("shared"),
             Token::RefMut => Some("&mut"),
             Token::SharedRef => Some("'"),

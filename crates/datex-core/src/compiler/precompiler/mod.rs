@@ -4,7 +4,7 @@
 use crate::{
     ast::expressions::InterfaceMethodCall, collections::HashSet,
     type_inference::infer_expression_type_detailed_errors,
-    types::shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+    types::shared_container_containing_nominal_type::SharedContainerContainingEntityType,
     values::core_value::CoreValue,
 };
 
@@ -50,7 +50,7 @@ use crate::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
     types::{
-        nominal_type_definition::NominalTypeDefinition,
+        entity_type_definition::EntityTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type, type_definition::TypeDefinition,
     },
@@ -309,11 +309,11 @@ impl<'a> Precompiler<'a> {
             // creating a nominal type containing an endpoint owned shared container type here
             // the inner value will be replaced, once the type declaration is fully visited in
             // during the type inference (visit_type_declaration in type_inference::type_inference_visitor)
-            TypeDeclarationKind::Nominal => Type::Nominal(unsafe {
-                SharedContainerContainingNominalType::new_unchecked(
+            TypeDeclarationKind::Nominal => Type::Entity(unsafe {
+                SharedContainerContainingEntityType::new_unchecked(
                     SharedContainer::new_owned_with_inferred_allowed_type(
-                        CoreValue::NominalTypeDefinition(
-                            NominalTypeDefinition::new_base(
+                        CoreValue::EntityTypeDefinition(
+                            EntityTypeDefinition::new_base(
                                 Type::core(CoreLibBaseTypeId::Unknown),
                                 data.name.clone(),
                             ),
@@ -1179,7 +1179,7 @@ mod tests {
 
     #[test]
     fn nominal_type_declaration() {
-        let result = parse_and_precompile("type User = {a: integer}; User");
+        let result = parse_and_precompile("entity User = {a: integer}; User");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
@@ -1319,13 +1319,13 @@ mod tests {
         assert_matches!(result, Err(CompilerError::UndeclaredVariable(var_name)) if var_name == "invalid");
 
         // a variant access without declaring the super type should error
-        let result = parse_and_precompile("type User/admin = {}; User/admin");
+        let result = parse_and_precompile("entity User/admin = {}; User/admin");
         assert!(result.is_err());
         assert_matches!(result, Err(CompilerError::UndeclaredVariable(var_name)) if var_name == "User");
 
         // declared subtype should work
         let result = parse_and_precompile(
-            "type User = {}; type User/admin = {}; User/admin",
+            "entity User = {}; entity User/admin = {}; User/admin",
         );
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
@@ -1400,7 +1400,7 @@ mod tests {
 
         // type with value should be interpreted as division
         let result =
-            parse_and_precompile("var a = 10; type b = 42; a/b").unwrap();
+            parse_and_precompile("var a = 10; entity b = 42; a/b").unwrap();
         let statements =
             if let DatexExpressionData::Statements(stmts) = result.ast.data() {
                 stmts
@@ -1433,7 +1433,7 @@ mod tests {
 
     #[test]
     fn type_declaration_assigment() {
-        let result = parse_and_precompile("type MyInt = 1; var x = MyInt;");
+        let result = parse_and_precompile("entity MyInt = 1; var x = MyInt;");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
@@ -1470,8 +1470,8 @@ mod tests {
     }
 
     #[test]
-    fn type_declaration_hoisted_assigment() {
-        let result = parse_and_precompile("var x = MyInt; type MyInt = 1;");
+    fn entity_declaration_hoisted_assigment() {
+        let result = parse_and_precompile("var x = MyInt; entity MyInt = 1;");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
@@ -1508,8 +1508,9 @@ mod tests {
     }
 
     #[test]
-    fn type_declaration_hoisted_cross_assigment() {
-        let result = parse_and_precompile("type x = MyInt; type MyInt = x;");
+    fn entity_declaration_hoisted_cross_assigment() {
+        let result =
+            parse_and_precompile("entity x = MyInt; entity MyInt = x;");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
@@ -1561,7 +1562,7 @@ mod tests {
     #[test]
     fn type_valid_nested_type_declaration() {
         let result =
-            parse_and_precompile("type x = 10; (1; type NestedVar = x;)");
+            parse_and_precompile("entity x = 10; (1; entity NestedVar = x;)");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(
@@ -1613,7 +1614,7 @@ mod tests {
 
     #[test]
     fn core_reference_type() {
-        let result = parse_and_precompile("type x = integer");
+        let result = parse_and_precompile("entity x = integer");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(

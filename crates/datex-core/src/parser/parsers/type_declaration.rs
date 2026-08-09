@@ -16,9 +16,11 @@ impl Parser {
     ) -> Result<DatexExpression, SpannedParserError> {
         Ok(match self.peek()?.token.clone() {
             // handle var and const declarations
-            Token::TypeDeclaration | Token::TypeAlias => {
+            Token::EntityTypeDeclaration | Token::TypeAlias => {
                 let kind = match self.advance()?.token {
-                    Token::TypeDeclaration => TypeDeclarationKind::Nominal,
+                    Token::EntityTypeDeclaration => {
+                        TypeDeclarationKind::Nominal
+                    }
                     Token::TypeAlias => TypeDeclarationKind::Alias,
                     _ => unreachable!(),
                 };
@@ -89,8 +91,8 @@ mod tests {
     };
 
     #[test]
-    fn parse_type_declaration() {
-        let expr = parse("type myType = true");
+    fn parse_entity_type_declaration() {
+        let expr = parse("entity myType = true");
         assert_eq!(
             expr.data(),
             &DatexExpressionData::TypeDeclaration(TypeDeclaration {
@@ -106,7 +108,7 @@ mod tests {
 
     #[test]
     fn parse_type_alias_declaration() {
-        let expr = parse("typealias myAlias = false");
+        let expr = parse("type myAlias = false");
         assert_eq!(
             expr.data(),
             &DatexExpressionData::TypeDeclaration(TypeDeclaration {
@@ -121,8 +123,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_type_declaration_with_variant() {
-        let expr = parse("type myType/variantA = null");
+    fn parse_entity_type_declaration_with_variant() {
+        let expr = parse("entity myType/variantA = null");
         assert_eq!(
             expr.data(),
             &DatexExpressionData::TypeDeclaration(TypeDeclaration {
@@ -137,8 +139,8 @@ mod tests {
 
     // TODO #665: generic parameters parsing
     #[test]
-    fn parse_type_declaration_with_generic_parameters() {
-        let expr = parse("type myType<T, U> = true");
+    fn parse_entity_type_declaration_with_generic_parameters() {
+        let expr = parse("entity myType<T, U> = true");
         assert_eq!(
             expr.data(),
             &DatexExpressionData::TypeDeclaration(TypeDeclaration {
@@ -153,8 +155,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_type_declaration_with_variant_and_generic_parameters() {
-        let expr = parse("type myType/variantA<T> = false");
+    fn parse_entity_type_declaration_with_variant_and_generic_parameters() {
+        let expr = parse("entity myType/variantA<T> = false");
         assert_eq!(
             expr.data(),
             &DatexExpressionData::TypeDeclaration(TypeDeclaration {

@@ -101,7 +101,7 @@ impl Parser {
     ) -> Result<DatexExpression, SpannedParserError> {
         match self.peek()?.token {
             Token::Variable | Token::Const => self.parse_variable_declaration(),
-            Token::TypeDeclaration | Token::TypeAlias => {
+            Token::EntityTypeDeclaration | Token::TypeAlias => {
                 self.parse_type_declaration()
             }
             _ => self.parse_expression(0),

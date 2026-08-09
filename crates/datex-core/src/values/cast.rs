@@ -6,7 +6,7 @@ use crate::{
     prelude::*,
     shared_values::errors::KeyNotFoundError,
     types::{
-        nominal_type_definition::NominalTypeDefinition,
+        entity_type_definition::EntityTypeDefinition,
         r#type::Type,
         type_definition::collection::{
             CollectionTypeDefinition,
@@ -99,7 +99,7 @@ impl_try_from_core_value! {
     List                => List,
     Map                 => Map,
     Type                => Type,
-    NominalTypeDefinition => NominalTypeDefinition,
+    EntityTypeDefinition => EntityTypeDefinition,
     Range               => Range,
     Callable            => Callable,
 }
@@ -200,7 +200,7 @@ impl_datex_direct_via_value_container!(List, CoreLibBaseTypeId::List);
 impl_datex_direct_via_value_container!(Range, CoreLibBaseTypeId::Range);
 impl_datex_direct_via_value_container!(Type, CoreLibBaseTypeId::Type);
 impl_datex_direct_via_value_container!(
-    NominalTypeDefinition,
+    EntityTypeDefinition,
     CoreLibBaseTypeId::Unknown
 );
 impl_datex_direct_via_value_container!(Callable, CoreLibBaseTypeId::Callable);

@@ -20,7 +20,7 @@ impl TypeSuperset<Type> for Type {
             Type::Alias(self_definition) => {
                 self_definition.is_superset_of(other)
             }
-            Type::Nominal(_self_nominal_definition) => {
+            Type::Entity(_self_nominal_definition) => {
                 todo!()
             }
         }
@@ -33,7 +33,7 @@ impl TypeSuperset<TypeDefinition> for Type {
             Type::Alias(self_definition) => {
                 self_definition.is_superset_of(other)
             }
-            Type::Nominal(_self_nominal_definition) => {
+            Type::Entity(_self_nominal_definition) => {
                 todo!()
             }
         }
@@ -46,7 +46,7 @@ impl TypeSatisfiesValueContainer for Type {
             Type::Alias(definition) => {
                 definition.satisfies_value_container(value)
             }
-            Type::Nominal(definition) => {
+            Type::Entity(definition) => {
                 definition.satisfies_value_container(value)
             }
         }

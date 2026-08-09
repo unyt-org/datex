@@ -406,8 +406,8 @@ pub enum TypeDeclarationKind {
 impl Display for TypeDeclarationKind {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            TypeDeclarationKind::Nominal => core::write!(f, "type"),
-            TypeDeclarationKind::Alias => core::write!(f, "typealias"),
+            TypeDeclarationKind::Nominal => core::write!(f, "entity"),
+            TypeDeclarationKind::Alias => core::write!(f, "type"),
         }
     }
 }

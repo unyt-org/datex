@@ -931,10 +931,10 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         if type_declaration.kind.is_nominal() {
             match &type_def {
-                Type::Nominal(definition) => {
+                Type::Entity(definition) => {
                     let mut val = definition.collapsed_value_mut();
                     match &mut val.borrow_mut().inner {
-                        CoreValue::NominalTypeDefinition(nominal_def) => {
+                        CoreValue::EntityTypeDefinition(nominal_def) => {
                             nominal_def
                                 .replace_definition_type(inferred_type_def);
                         }
@@ -1351,7 +1351,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 // if it's a Type::Nominal, and it has the pointer address set, we can
                 // remap the expression to a GetReference
                 match base_type {
-                    Type::Nominal(reference) => {
+                    Type::Entity(reference) => {
                         variant_type_id_from_pointer_address(
                             &reference.pointer_address(),
                             variant_access,
@@ -1561,10 +1561,10 @@ mod tests {
             infer_expression_type_with_errors,
         },
         types::{
+            entity_type_definition::EntityTypeDefinition,
             error::TypeError,
             literal_type_definition::LiteralTypeDefinition,
-            nominal_type_definition::NominalTypeDefinition,
-            shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+            shared_container_containing_nominal_type::SharedContainerContainingEntityType,
             shared_container_containing_type::SharedContainerContainingType,
             r#type::Type,
             type_definition::{
@@ -1754,7 +1754,7 @@ mod tests {
 
         // variant access on type alias (inline)
         let src = r#"
-        typealias x = integer/u8
+        type x = integer/u8
         "#;
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
@@ -1764,7 +1764,7 @@ mod tests {
 
         // variant access on type alias (separate)
         let src = r#"
-        typealias x = integer;
+        type x = integer;
         x/u8
         "#;
         let res = infer_type_from_script_ignore_errors(src);
@@ -1775,7 +1775,7 @@ mod tests {
 
         // invalid variant access on type alias
         let src = r#"
-        typealias x = integer;
+        type x = integer;
         x/whatever
         "#;
         let res = errors_for_script(src);
@@ -1947,15 +1947,15 @@ mod tests {
     #[test]
     fn nominal_type_declaration() {
         let src = r#"
-        type A = integer;
+        entity A = integer;
         "#;
         let metadata = ast_for_script(src).metadata;
         let metadata = metadata.borrow();
         let var_a = metadata.variable_metadata(0).unwrap();
 
-        if let Some(Type::Nominal(container)) = &var_a.var_type {
+        if let Some(Type::Entity(container)) = &var_a.var_type {
             container.with_collapsed_definition(|v| match v {
-                NominalTypeDefinition::Base {
+                EntityTypeDefinition::Base {
                     name,
                     definition_type,
                 } => {
@@ -1975,7 +1975,7 @@ mod tests {
     #[test]
     fn structural_type_declaration() {
         let src = r#"
-        typealias A = integer;
+        type A = integer;
         "#;
         let metadata = ast_for_script(src).metadata;
         let metadata = metadata.borrow();
@@ -1993,22 +1993,22 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script_ignore_errors("typealias X = integer/u8");
+            infer_type_from_script_ignore_errors("type X = integer/u8");
         assert_eq!(
             inferred_type,
             Type::core(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
         );
 
         let inferred_type =
-            infer_type_from_script_ignore_errors("typealias X = decimal");
+            infer_type_from_script_ignore_errors("type X = decimal");
         assert_eq!(inferred_type, Type::core(CoreLibBaseTypeId::Decimal));
 
         let inferred_type =
-            infer_type_from_script_ignore_errors("typealias X = boolean");
+            infer_type_from_script_ignore_errors("type X = boolean");
         assert_eq!(inferred_type, Type::core(CoreLibBaseTypeId::Boolean));
 
         let inferred_type =
-            infer_type_from_script_ignore_errors("typealias X = text");
+            infer_type_from_script_ignore_errors("type X = text");
         assert_eq!(inferred_type, Type::core(CoreLibBaseTypeId::Text));
     }
 
@@ -2029,7 +2029,7 @@ mod tests {
     #[test]
     fn recursive_nominal_type() {
         let src = r#"
-        type LinkedList = {
+        entity LinkedList = {
             value: text,
             next: LinkedList | null
         };
@@ -2038,7 +2038,7 @@ mod tests {
         let metadata = metadata.borrow();
         let var = metadata.variable_metadata(0).unwrap();
         let var_type = var.var_type.as_ref().unwrap();
-        assert_matches!(var_type, Type::Nominal(_));
+        assert_matches!(var_type, Type::Entity(_));
 
         // get next field, as wrapped in union
         assert_eq!(
@@ -2334,11 +2334,11 @@ mod tests {
     #[test]
     fn infer_suffix_typed_literal() {
         let inferred_type =
-            infer_type_from_script_ignore_errors("type X = 42u8");
+            infer_type_from_script_ignore_errors("entity X = 42u8");
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                NominalTypeDefinition::new_base(
+                EntityTypeDefinition::new_base(
                     Type::from(LiteralTypeDefinition::TypedInteger(
                         TypedInteger::U8(42)
                     ),),
@@ -2350,11 +2350,11 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script_ignore_errors("type X = 42i32");
+            infer_type_from_script_ignore_errors("entity X = 42i32");
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                NominalTypeDefinition::new_base(
+                EntityTypeDefinition::new_base(
                     Type::from(LiteralTypeDefinition::TypedInteger(
                         TypedInteger::I32(42)
                     ),),
@@ -2366,11 +2366,11 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script_ignore_errors("type X = 42.69f32");
+            infer_type_from_script_ignore_errors("entity X = 42.69f32");
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                NominalTypeDefinition::new_base(
+                EntityTypeDefinition::new_base(
                     Type::from(LiteralTypeDefinition::TypedDecimal(
                         TypedDecimal::from(42.69_f32)
                     ),),
@@ -2384,9 +2384,9 @@ mod tests {
 
     fn has_nominal_type_definition(
         ty: &Type,
-        expected_definition: NominalTypeDefinition,
+        expected_definition: EntityTypeDefinition,
     ) -> bool {
-        if let Type::Nominal(container) = ty {
+        if let Type::Entity(container) = ty {
             container.with_collapsed_definition(|v| v == &expected_definition)
         } else {
             false
@@ -2395,12 +2395,13 @@ mod tests {
 
     #[test]
     fn infer_type_simple_literal() {
-        let inferred_type = infer_type_from_script_ignore_errors("type X = 42");
+        let inferred_type =
+            infer_type_from_script_ignore_errors("entity X = 42");
 
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                NominalTypeDefinition::new_base(
+                EntityTypeDefinition::new_base(
                     Type::from(LiteralTypeDefinition::Integer(Integer::from(
                         42
                     ))),
@@ -2412,11 +2413,11 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script_ignore_errors("type X = 3/4");
+            infer_type_from_script_ignore_errors("entity X = 3/4");
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                NominalTypeDefinition::new_base(
+                EntityTypeDefinition::new_base(
                     Type::from(LiteralTypeDefinition::Decimal(
                         Decimal::try_from_string("3/4").unwrap()
                     ),),
@@ -2428,11 +2429,11 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script_ignore_errors("type X = true");
+            infer_type_from_script_ignore_errors("entity X = true");
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                NominalTypeDefinition::new_base(
+                EntityTypeDefinition::new_base(
                     Type::from(LiteralTypeDefinition::Boolean(true.into()),),
                     "X".to_string()
                 )
@@ -2442,11 +2443,11 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script_ignore_errors("type X = false");
+            infer_type_from_script_ignore_errors("entity X = false");
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                NominalTypeDefinition::new_base(
+                EntityTypeDefinition::new_base(
                     Type::from(LiteralTypeDefinition::Boolean(false.into())),
                     "X".to_string(),
                 ),
@@ -2456,11 +2457,11 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script_ignore_errors(r#"type X = "hello""#);
+            infer_type_from_script_ignore_errors(r#"entity X = "hello""#);
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                NominalTypeDefinition::new_base(
+                EntityTypeDefinition::new_base(
                     Type::from(LiteralTypeDefinition::Text(
                         "hello".to_string().into()
                     ),),
@@ -2477,11 +2478,11 @@ mod tests {
     // by merging the member types if one is base (one level higher) than the other
     fn infer_intersection_type_expression() {
         let inferred_type =
-            infer_type_from_script_ignore_errors("type X = integer/u8 & 42");
+            infer_type_from_script_ignore_errors("entity X = integer/u8 & 42");
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                NominalTypeDefinition::new_base(
+                EntityTypeDefinition::new_base(
                     Type::from(TypeDefinition::Intersection(
                         IntersectionTypeDefinition(vec![
                             Type::core(CoreLibVariantTypeId::Integer(
@@ -2503,11 +2504,11 @@ mod tests {
     #[test]
     fn infer_union_type_expression() {
         let inferred_type = infer_type_from_script_ignore_errors(
-            "type X = integer/u8 | decimal",
+            "entity X = integer/u8 | decimal",
         );
         assert!(has_nominal_type_definition(
             &inferred_type,
-            NominalTypeDefinition::new_base(
+            EntityTypeDefinition::new_base(
                 Type::from(TypeDefinition::Union(UnionTypeDefinition(vec![
                     Type::core(CoreLibVariantTypeId::Integer(
                         IntegerTypeVariant::U8
@@ -2521,10 +2522,11 @@ mod tests {
 
     #[test]
     fn infer_empty_struct_type_expression() {
-        let inferred_type = infer_type_from_script_ignore_errors("type X = {}");
+        let inferred_type =
+            infer_type_from_script_ignore_errors("entity X = {}");
         assert!(has_nominal_type_definition(
             &inferred_type,
-            NominalTypeDefinition::new_base(
+            EntityTypeDefinition::new_base(
                 Type::from(TypeDefinition::Map(vec![].into_iter().collect())),
                 "X".to_string(),
             ),
@@ -2534,11 +2536,11 @@ mod tests {
     #[test]
     fn infer_struct_type_expression() {
         let inferred_type = infer_type_from_script_ignore_errors(
-            "type X = { a: integer/u8, b: decimal }",
+            "entity X = { a: integer/u8, b: decimal }",
         );
         assert!(has_nominal_type_definition(
             &inferred_type,
-            NominalTypeDefinition::new_base(
+            EntityTypeDefinition::new_base(
                 Type::from(
                     TypeDefinition::Map(
                         vec![

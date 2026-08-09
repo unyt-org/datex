@@ -174,7 +174,7 @@ fn core_value_to_datex_expression(
                 },
             ))
         }
-        CoreValue::NominalTypeDefinition(_) => {
+        CoreValue::EntityTypeDefinition(_) => {
             todo!()
         }
     }
@@ -215,7 +215,7 @@ fn type_cast_expression(
 
 fn type_to_type_expression(ty: &Type) -> TypeExpression {
     match ty {
-        Type::Nominal(_container) => todo!(),
+        Type::Entity(_container) => todo!(),
         Type::Alias(_definition) => {
             ty.with_collapsed_definition_with_metadata(|def| {
                 type_definition_to_type_expression(def)

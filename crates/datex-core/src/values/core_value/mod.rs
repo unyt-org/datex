@@ -7,7 +7,7 @@ use crate::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
     },
     prelude::*,
-    types::nominal_type_definition::NominalTypeDefinition,
+    types::entity_type_definition::EntityTypeDefinition,
 };
 use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
@@ -50,7 +50,7 @@ pub enum CoreValue {
     List(List),
     Map(Map),
     Type(Type),
-    NominalTypeDefinition(NominalTypeDefinition),
+    EntityTypeDefinition(EntityTypeDefinition),
     Callable(Callable),
     Range(Range),
 }
@@ -214,7 +214,7 @@ impl From<&CoreValue> for CoreLibTypeId {
             CoreValue::Range(_) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Range)
             }
-            CoreValue::NominalTypeDefinition(_nominal_type) => {
+            CoreValue::EntityTypeDefinition(_nominal_type) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never) // TODO: what is the type of nominal type? do we even need to handle this?
             }
         }
@@ -455,7 +455,7 @@ impl Display for CoreValue {
             CoreValue::Decimal(decimal) => write!(f, "{decimal}"),
             CoreValue::List(list) => write!(f, "{list}"),
             CoreValue::Callable(_callable) => write!(f, "[[ callable ]]"),
-            CoreValue::NominalTypeDefinition(container) => {
+            CoreValue::EntityTypeDefinition(container) => {
                 write!(f, "{container}")
             }
         }

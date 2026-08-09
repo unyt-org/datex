@@ -211,7 +211,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 serializer,
                 false,
             ),
-            CoreValue::NominalTypeDefinition(_nominal_type_definition) => {
+            CoreValue::EntityTypeDefinition(_nominal_type_definition) => {
                 todo!()
             }
             CoreValue::Callable(_callable) => todo!(),
