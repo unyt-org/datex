@@ -1958,18 +1958,12 @@ mod tests {
         let var_a = metadata.variable_metadata(0).unwrap();
 
         if let Some(Type::Entity(container)) = &var_a.var_type {
-            container.with_collapsed_definition(|v| match v {
-                EntityTypeDefinition::Base {
-                    name,
-                    definition_type,
-                } => {
-                    assert_eq!(name, "A");
-                    assert_eq!(
-                        definition_type,
-                        &Type::core(CoreLibBaseTypeId::Integer)
-                    );
-                }
-                _ => panic!("expected nominal type value"),
+            container.with_collapsed_definition(|def| {
+                assert_eq!(&def.name, "A");
+                assert_eq!(
+                    &def.definition_type,
+                    &Type::core(CoreLibBaseTypeId::Integer)
+                );
             })
         } else {
             panic!("expected nominal type");
@@ -2342,7 +2336,7 @@ mod tests {
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                EntityTypeDefinition::new_base(
+                EntityTypeDefinition::new(
                     Type::from(LiteralTypeDefinition::TypedInteger(
                         TypedInteger::U8(42)
                     ),),
@@ -2358,7 +2352,7 @@ mod tests {
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                EntityTypeDefinition::new_base(
+                EntityTypeDefinition::new(
                     Type::from(LiteralTypeDefinition::TypedInteger(
                         TypedInteger::I32(42)
                     ),),
@@ -2374,7 +2368,7 @@ mod tests {
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                EntityTypeDefinition::new_base(
+                EntityTypeDefinition::new(
                     Type::from(LiteralTypeDefinition::TypedDecimal(
                         TypedDecimal::from(42.69_f32)
                     ),),
@@ -2405,7 +2399,7 @@ mod tests {
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                EntityTypeDefinition::new_base(
+                EntityTypeDefinition::new(
                     Type::from(LiteralTypeDefinition::Integer(Integer::from(
                         42
                     ))),
@@ -2421,7 +2415,7 @@ mod tests {
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                EntityTypeDefinition::new_base(
+                EntityTypeDefinition::new(
                     Type::from(LiteralTypeDefinition::Decimal(
                         Decimal::try_from_string("3/4").unwrap()
                     ),),
@@ -2437,7 +2431,7 @@ mod tests {
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                EntityTypeDefinition::new_base(
+                EntityTypeDefinition::new(
                     Type::from(LiteralTypeDefinition::Boolean(true.into()),),
                     "X".to_string()
                 )
@@ -2451,7 +2445,7 @@ mod tests {
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                EntityTypeDefinition::new_base(
+                EntityTypeDefinition::new(
                     Type::from(LiteralTypeDefinition::Boolean(false.into())),
                     "X".to_string(),
                 ),
@@ -2465,7 +2459,7 @@ mod tests {
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                EntityTypeDefinition::new_base(
+                EntityTypeDefinition::new(
                     Type::from(LiteralTypeDefinition::Text(
                         "hello".to_string().into()
                     ),),
@@ -2486,7 +2480,7 @@ mod tests {
         assert!(
             has_nominal_type_definition(
                 &inferred_type,
-                EntityTypeDefinition::new_base(
+                EntityTypeDefinition::new(
                     Type::from(TypeDefinition::Intersection(
                         IntersectionTypeDefinition(vec![
                             Type::core(CoreLibVariantTypeId::Integer(
@@ -2512,7 +2506,7 @@ mod tests {
         );
         assert!(has_nominal_type_definition(
             &inferred_type,
-            EntityTypeDefinition::new_base(
+            EntityTypeDefinition::new(
                 Type::from(TypeDefinition::Union(UnionTypeDefinition(vec![
                     Type::core(CoreLibVariantTypeId::Integer(
                         IntegerTypeVariant::U8
@@ -2530,7 +2524,7 @@ mod tests {
             infer_type_from_script_ignore_errors("entity X = {}");
         assert!(has_nominal_type_definition(
             &inferred_type,
-            EntityTypeDefinition::new_base(
+            EntityTypeDefinition::new(
                 Type::from(TypeDefinition::Map(vec![].into_iter().collect())),
                 "X".to_string(),
             ),
@@ -2544,7 +2538,7 @@ mod tests {
         );
         assert!(has_nominal_type_definition(
             &inferred_type,
-            EntityTypeDefinition::new_base(
+            EntityTypeDefinition::new(
                 Type::from(
                     TypeDefinition::Map(
                         vec![

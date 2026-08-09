@@ -66,9 +66,9 @@ impl SharedContainerContainingEntityType {
         unsafe {
             SharedContainerContainingEntityType::new_unchecked(
                 SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
-                    CoreValue::EntityTypeDefinition(
-                        EntityTypeDefinition::new_base(ty, name),
-                    ),
+                    CoreValue::EntityTypeDefinition(EntityTypeDefinition::new(
+                        ty, name,
+                    )),
                     SharedContainerMutability::Immutable,
                     address,
                 ),
@@ -138,18 +138,7 @@ impl TypeSuperset<SharedContainerContainingEntityType>
         other: &SharedContainerContainingEntityType,
     ) -> bool {
         // if it is directly the same nominal type definition
-        if self.pointer_address() == other.pointer_address() {
-            return true;
-        }
-        // if other is a subvariant of the nominal type definition, no recursion
-        other.with_collapsed_definition(|inner_definition| {
-            match inner_definition {
-                EntityTypeDefinition::Variant { base, .. } => {
-                    base.pointer_address() == self.pointer_address()
-                }
-                _ => false,
-            }
-        })
+        self.pointer_address() == other.pointer_address()
     }
 }
 

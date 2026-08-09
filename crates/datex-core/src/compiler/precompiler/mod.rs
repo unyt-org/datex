@@ -313,7 +313,7 @@ impl<'a> Precompiler<'a> {
                 SharedContainerContainingEntityType::new_unchecked(
                     SharedContainer::new_owned_with_inferred_allowed_type(
                         CoreValue::EntityTypeDefinition(
-                            EntityTypeDefinition::new_base(
+                            EntityTypeDefinition::new(
                                 Type::core(CoreLibBaseTypeId::Unknown),
                                 data.name.clone(),
                             ),
