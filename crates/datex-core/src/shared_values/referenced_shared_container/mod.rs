@@ -6,7 +6,9 @@ use crate::{
     shared_values::{
         ExternalSharedContainer, PointerAddress, ReferenceMutability,
         RemotePointerAddress, SharedContainerInner, SharedContainerMutability,
-        base_shared_value_container::BaseSharedValueContainer,
+        base_shared_value_container::{
+            BaseSharedValueContainer, observers::ObserverData,
+        },
         errors::{SharedValueCreationError, UnexpectedImmutableReferenceError},
         traits::{_ExposeRcInternal, SharedContainerCommon},
         weak_shared_container::WeakSharedContainer,
@@ -24,12 +26,11 @@ use core::{
     fmt::Display,
     hash::{Hash, Hasher},
 };
-use crate::shared_values::base_shared_value_container::observers::ObserverData;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
 /// The inner value can either be a [SharedContainerInner::EndpointOwned] or [SharedContainerInner::External]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ReferencedSharedContainer {
     /// The inner container contains the actual value which can be shared between multiple owners.
     /// This can either be a [SharedContainerInner::EndpointOwned] or a [SharedContainerInner::External]
@@ -41,18 +42,6 @@ pub struct ReferencedSharedContainer {
     pub(super) move_indicator: bool,
     /// Observer data (e.g. observer list) for this shared container. Can be borrowed separately from the [SharedContainerInner]
     pub(super) observer_data: Rc<RefCell<ObserverData>>,
-}
-
-impl Clone for ReferencedSharedContainer {
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-            reference_mutability: self.reference_mutability,
-            container_mutability: self.container_mutability,
-            move_indicator: self.move_indicator,
-            observer_data: self.observer_data.clone(),
-        }
-    }
 }
 
 impl ReferencedSharedContainer {
@@ -193,7 +182,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Immutable,
             container_mutability: self.container_mutability(),
             move_indicator: false,
-            observer_data: self.observer_data.clone()
+            observer_data: self.observer_data.clone(),
         }
     }
 
