@@ -10,19 +10,22 @@ use core::{fmt::Debug, ops::Deref, result::Result};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
+pub mod cache;
 mod config;
 pub mod execution;
 mod incoming_sections;
 mod internal;
-pub mod pointer_availability_lookup;
-mod runner;
-
-pub mod cache;
-mod confirm_moves;
+mod logger;
 pub mod pointer_address_provider;
+pub mod pointer_availability_lookup;
+pub mod remote_value_sync;
+mod runner;
 #[cfg(test)]
 pub mod test_utils;
 
+use crate::{
+    core_compiler::InstructionInput, values::core_values::endpoint::Endpoint,
+};
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
@@ -126,6 +129,19 @@ impl Runtime {
             self.internal(),
             remote_execution_context,
             input,
+        )
+        .await
+    }
+
+    async fn execute_instructions_remote(
+        &self,
+        endpoints: Vec<Endpoint>,
+        instructions_input: Vec<InstructionInput>,
+    ) -> Result<Option<ValueContainer>, ExecutionError> {
+        RuntimeInternal::execute_instructions_remote(
+            self.internal(),
+            endpoints,
+            instructions_input,
         )
         .await
     }

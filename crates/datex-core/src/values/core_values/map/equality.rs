@@ -7,6 +7,24 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use core::hash::{Hash, Hasher};
+
+impl PartialEq for Map {
+    fn eq(&self, other: &Self) -> bool {
+        self.entries == other.entries
+    }
+}
+
+impl Eq for Map {}
+
+impl Hash for Map {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for (k, v) in self.iter() {
+            k.hash(state);
+            v.hash(state);
+        }
+    }
+}
 
 impl StructuralEq for BorrowedMapKey<'_> {
     fn structural_eq(&self, other: &Self) -> bool {

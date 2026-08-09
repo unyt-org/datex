@@ -171,7 +171,7 @@ mod tests {
         let com_hub = runtime.unwrap().com_hub();
         let interface_map = com_hub.interfaces_manager().interfaces.borrow();
         let local_loopback_interface =
-            interface_map.iter().find(|(uuid, interface)| {
+            interface_map.iter().find(|(_uuid, interface)| {
                 interface.properties.interface_type == "local"
             });
         let (local_loopback_interface_uuid, _) = local_loopback_interface
@@ -179,7 +179,7 @@ mod tests {
 
         // check if socket for the local loopback interface is present in the com hub
         let socket_map = com_hub.socket_manager().sockets.borrow();
-        let local_loopback_socket = socket_map
+        socket_map
             .values()
             .find(|socket| {
                 &socket.interface_uuid == local_loopback_interface_uuid

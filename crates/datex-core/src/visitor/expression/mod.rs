@@ -5,10 +5,10 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
         CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-        DeriveSharedRef, GenericInstantiation, List, Map, PropertyAccess,
-        PropertyAssignment, RemoteExecution, RequestSharedRef,
-        RootPropertyAccess, StackAssignment, Statements, TagExpression,
-        TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
+        DeriveSharedRef, GenericInstantiation, InterfaceMethodCall, List, Map,
+        PropertyAccess, PropertyAssignment, RemoteExecution, RequestSharedRef,
+        RootPropertyAccess, StackAssignment, StackListAssignment, Statements,
+        TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
@@ -125,7 +125,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::TypeExpression(type_expression) => self
                 .visit_type_expression(type_expression)
-                .map(|_| VisitAction::SkipChildren),
+                .map(|_| VisitAction::AbortRecursion),
             DatexExpressionData::CallableDeclaration(callable_declaration) => {
                 self.visit_callable_declaration(
                     callable_declaration,
@@ -153,8 +153,14 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::StackIndex(slot) => {
                 self.visit_stack_index(slot, &expr.span)
             }
-            DatexExpressionData::SlotAssignment(slot_assignment) => {
-                self.visit_slot_assignment(slot_assignment, &expr.span)
+            DatexExpressionData::StackAssignment(stack_assignment) => {
+                self.visit_stack_assignment(stack_assignment, &expr.span)
+            }
+            DatexExpressionData::StackListAssignment(stack_list_assignment) => {
+                self.visit_stack_list_assignment(
+                    stack_list_assignment,
+                    &expr.span,
+                )
             }
             DatexExpressionData::BinaryOperation(binary_operation) => {
                 self.visit_binary_operation(binary_operation, &expr.span)
@@ -174,8 +180,11 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                     &expr.span,
                 )
             }
-            DatexExpressionData::Apply(apply_chain) => {
-                self.visit_apply(apply_chain, &expr.span)
+            DatexExpressionData::Apply(apply) => {
+                self.visit_apply(apply, &expr.span)
+            }
+            DatexExpressionData::InterfaceMethodCall(call) => {
+                self.visit_interface_method_call(call, &expr.span)
             }
             DatexExpressionData::PropertyAccess(property_access) => {
                 self.visit_property_access(property_access, &expr.span)
@@ -198,9 +207,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                     "Placeholder and Recover expressions should not be visited"
                 )
             }
-            DatexExpressionData::Noop => Ok(VisitAction::SkipChildren),
+            DatexExpressionData::Noop => Ok(VisitAction::AbortRecursion),
             DatexExpressionData::NativeImplementationIndicator => {
-                Ok(VisitAction::SkipChildren)
+                Ok(VisitAction::AbortRecursion)
             }
             DatexExpressionData::Compile(compile_expression) => {
                 self.visit_compile_expression(compile_expression, &expr.span)
@@ -220,6 +229,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::OmitRecursive => {
                 unreachable!("Omit expressions should not be visited")
             }
+            DatexExpressionData::MoveSharedValue(_) => {
+                todo!("Move shared value visit?");
+            }
         };
 
         let action = match visit_result {
@@ -236,12 +248,12 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                 expr.ty = Some(type_annotation);
                 Ok(())
             }
-            VisitAction::SkipChildren => Ok(()),
+            VisitAction::AbortRecursion => Ok(()),
             VisitAction::ToNoop => {
                 *expr.data = DatexExpressionData::Noop;
                 Ok(())
             }
-            VisitAction::VisitChildren => {
+            VisitAction::ContinueRecursion => {
                 expr.walk_children(self)?;
                 Ok(())
             }
@@ -272,7 +284,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = statements;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit unary operation
@@ -283,7 +295,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = unary_operation;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit variant access
@@ -294,7 +306,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = variant_access;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit property assignment
@@ -305,7 +317,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = property_assignment;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit conditional expression
@@ -316,7 +328,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = conditional;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit type declaration
@@ -327,7 +339,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = type_declaration;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit binary operation
@@ -338,7 +350,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = binary_operation;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit comparison operation
@@ -349,7 +361,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = comparison_operation;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit unbox assignment
@@ -360,7 +372,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = unbox_assignment;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit unbox slot assignment
@@ -371,10 +383,10 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = unbox_slot_assignment;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
-    /// Visit apply chain
+    /// Visit apply
     fn visit_apply(
         &mut self,
         apply: &mut Apply,
@@ -382,7 +394,18 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = apply;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
+    }
+
+    /// Visit interface method call
+    fn visit_interface_method_call(
+        &mut self,
+        call: &mut InterfaceMethodCall,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = call;
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit property access
@@ -393,7 +416,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = property_access;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit generic instantiation
@@ -404,7 +427,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = generic_instantiation;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit remote execution
@@ -415,7 +438,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = remote_execution;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit callable declaration
@@ -426,7 +449,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = function_declaration;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     fn visit_compile_expression(
@@ -436,7 +459,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = compile_expression;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     fn visit_tag_expression(
@@ -446,7 +469,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = tag;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     fn visit_root_property_access(
@@ -456,18 +479,29 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = root_property_access;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
-    /// Visit slot assignment
-    fn visit_slot_assignment(
+    /// Visit stack assignment
+    fn visit_stack_assignment(
         &mut self,
-        slot_assignment: &mut StackAssignment,
+        stack_assignment: &mut StackAssignment,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
-        let _ = slot_assignment;
-        Ok(VisitAction::VisitChildren)
+        let _ = stack_assignment;
+        Ok(VisitAction::ContinueRecursion)
+    }
+
+    /// Visit stack list assignment
+    fn visit_stack_list_assignment(
+        &mut self,
+        stack_list_assignment: &mut StackListAssignment,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = stack_list_assignment;
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit variable declaration
@@ -478,7 +512,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = variable_declaration;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit variable assignment
@@ -489,7 +523,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = variable_assignment;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit variable access
@@ -500,7 +534,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = var_access;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit create reference expression
@@ -511,7 +545,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = create_ref;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit create shared reference expression
@@ -522,7 +556,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = get_shared_ref;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit create shared value expression
@@ -533,7 +567,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = create_shared;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit create mut value expression
@@ -544,7 +578,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = create_mut;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit unbox expression
@@ -555,7 +589,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = unbox;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit clone expression
@@ -566,7 +600,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = clone;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit list expression
@@ -577,7 +611,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = list;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit map expression
@@ -588,7 +622,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = map;
         let _ = span;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit integer literal
@@ -599,7 +633,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = integer;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit datetime literal
@@ -609,7 +643,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit typed integer literal
@@ -620,7 +654,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = typed_integer;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit decimal literal
@@ -631,7 +665,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = decimal;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit typed decimal literal
@@ -642,7 +676,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = typed_decimal;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit identifier
@@ -653,7 +687,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = identifier;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     fn visit_placeholder(
@@ -663,7 +697,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = placeholder_type;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     fn visit_get_core_lib_id(
@@ -673,7 +707,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = core_lib_id;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit text literal
@@ -684,7 +718,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = text;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit request reference expression
@@ -695,7 +729,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = get_shared_ref;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     /// Visit boolean literal
@@ -706,7 +740,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = boolean;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit endpoint expression
@@ -717,13 +751,13 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = endpoint;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit null literal
     fn visit_null(&mut self, span: &Range<usize>) -> ExpressionVisitResult<E> {
         let _ = span;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     /// Visit stack index expression
@@ -734,7 +768,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = stack_index;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     fn visit_range(
@@ -744,6 +778,6 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = range;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 }

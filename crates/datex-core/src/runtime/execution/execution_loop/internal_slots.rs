@@ -1,21 +1,11 @@
 use crate::{
     datex_proxy::DatexValueContainerProxyInfallibleSerialize,
-    global::{
-        protocol_structures::instruction_data::StackIndex,
-        root_properties::RootProperty,
-    },
+    global::root_properties::RootProperty,
     runtime::execution::{
         ExecutionError, execution_loop::state::RuntimeExecutionState,
     },
     values::{core_values::map::Map, value_container::ValueContainer},
 };
-
-pub fn get_stack_value(
-    runtime_state: &RuntimeExecutionState,
-    index: StackIndex,
-) -> Result<&ValueContainer, ExecutionError> {
-    runtime_state.stack.get_stack_value(index)
-}
 
 pub fn get_root_property(
     runtime_state: &RuntimeExecutionState,

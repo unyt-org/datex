@@ -1,14 +1,17 @@
 //! This module contains the implementation of the [ValueContainer] enum, which represents a container for values in the DATEX type system.
 //! A [ValueContainer] can either be a local value, which directly contains a [Value], or a shared value, which contains a reference to a [SharedContainer].
-use crate::values::value_container::value_key::BorrowedValueKey;
+use crate::{
+    datex_proxy::DatexValueContainerProxy, utils::sheep::Sheep,
+    values::value_container::value_key::BorrowedValueKey,
+};
 pub mod equality;
 pub mod identity;
-use core::result::Result;
+use core::ops::Deref;
 pub mod serde_dif;
 use super::value::Value;
 use crate::{
     prelude::*,
-    shared_values::{SharedContainer, errors::AccessError},
+    shared_values::SharedContainer,
     types::{
         r#type::Type,
         type_definition::TypeDefinition,
@@ -23,7 +26,12 @@ pub mod apply;
 pub mod ops;
 pub mod update_handler;
 pub mod value_key;
-use crate::shared_values::traits::SharedContainerCommon;
+use crate::shared_values::{
+    collapsed_container_value::{
+        CollapsedContainerValue, CollapsedContainerValueMut,
+    },
+    traits::SharedContainerCommon,
+};
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
@@ -40,29 +48,35 @@ pub enum ValueContainer {
 }
 
 impl ValueContainer {
+    /// Unwraps an [Option<ValueContainer>] and returns a [ValueContainer].
+    /// If the Option is None, returns a ValueContainer containing a null value.
+    pub fn new_from_option(value: Option<ValueContainer>) -> ValueContainer {
+        match value {
+            Some(value) => value,
+            None => ValueContainer::Local(Value::null()),
+        }
+    }
+
     /// Creates a new [ValueContainer::Local] from a [Value]
     pub fn local(value: impl Into<Value>) -> Self {
         ValueContainer::Local(value.into())
     }
 
-    /// Calls a fn with a reference to the current inner collapsed value of the  container
-    pub fn with_collapsed_value<R, F: FnOnce(&Value) -> R>(&self, f: F) -> R {
+    pub fn collapsed_value(&self) -> CollapsedContainerValue<'_> {
         match self {
-            ValueContainer::Local(value) => f(value),
-            ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
+            ValueContainer::Local(value) => {
+                CollapsedContainerValue::new_local(value)
+            }
+            ValueContainer::Shared(shared) => shared.collapsed_value(),
         }
     }
 
-    /// Calls a fn with a mutable reference to the current inner collapsed value of the container
-    pub(crate) fn with_collapsed_value_mut<R, F: FnOnce(&mut Value) -> R>(
-        &mut self,
-        f: F,
-    ) -> R {
+    pub fn collapsed_value_mut(&mut self) -> CollapsedContainerValueMut<'_> {
         match self {
-            ValueContainer::Local(value) => f(value),
-            ValueContainer::Shared(shared) => {
-                shared.with_collapsed_value_mut(f)
+            ValueContainer::Local(value) => {
+                CollapsedContainerValueMut::new_local(value)
             }
+            ValueContainer::Shared(shared) => shared.collapsed_value_mut(),
         }
     }
 
@@ -70,7 +84,8 @@ impl ValueContainer {
     /// Use [ValueContainer::with_collapsed_value] instead whenever possible
     /// or match the [ValueContainer]
     pub fn get_cloned_value(&self) -> Value {
-        self.with_collapsed_value(|value| value.clone())
+        let val = self.collapsed_value();
+        val.borrow().clone()
     }
 
     /// Tries to get an immutable reference to the value as a specified type.
@@ -101,17 +116,6 @@ impl ValueContainer {
 
     /// Tries to get the current collapsed value as a specified type.
     /// Does not perform any type conversion.
-    /// Runs the provided closure with a reference to the typed value if the conversion was successful, otherwise returns None.
-    pub fn try_with<T, R, F>(&self, f: F) -> Option<R>
-    where
-        F: for<'a> FnOnce(&'a T) -> R,
-        for<'a> &'a T: TryFrom<&'a CoreValue>,
-    {
-        self.with_collapsed_value(|value| value.inner.try_as().map(f))
-    }
-
-    /// Tries to get the current collapsed value as a specified type.
-    /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
     pub fn try_into_value<T>(self) -> Option<T>
     where
@@ -120,6 +124,17 @@ impl ValueContainer {
         match self {
             ValueContainer::Local(value) => value.inner.try_into().ok(),
             ValueContainer::Shared(_) => None,
+        }
+    }
+
+    /// Strips any local observers from the given value container.
+    /// This method should be called when a value is moved from its [SharedContainer] parent.
+    pub fn without_local_observers(self) -> ValueContainer {
+        match self {
+            ValueContainer::Local(value) => {
+                ValueContainer::Local(value.without_local_observers())
+            }
+            val => val,
         }
     }
 
@@ -136,49 +151,54 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_type(&self) -> TypeDefinition {
+    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
         match self {
-            ValueContainer::Local(local) => local.actual_type().clone(),
-            ValueContainer::Shared(shared) => shared.actual_type().clone(),
+            ValueContainer::Local(local) => local.actual_type(),
+            ValueContainer::Shared(shared) => shared.actual_type(),
         }
     }
 
     /// Returns the actual type that describes the value container (e.g. integer or 'mut shared mut integer).
     pub fn actual_container_type(&self) -> TypeDefinitionWithMetadata {
         match self {
-            ValueContainer::Local(value) => TypeDefinitionWithMetadata {
-                definition: value.actual_type(),
-                metadata: TypeMetadata::default(),
-                reference_name: None,
-            },
+            ValueContainer::Local(value) => TypeDefinitionWithMetadata::new(
+                value.actual_type().into_owned(),
+                TypeMetadata::default(),
+            ),
             ValueContainer::Shared(shared) => {
                 let inner_type =
                     shared.value_container().actual_container_type();
-                TypeDefinitionWithMetadata {
-                    definition: TypeDefinition::Nested(Box::new(Type::from(
-                        inner_type,
-                    ))),
-                    metadata: TypeMetadata::Shared {
+                TypeDefinitionWithMetadata::new(
+                    TypeDefinition::Nested(Box::new(Type::from(inner_type))),
+                    TypeMetadata::Shared {
                         mutability: shared.container_mutability(),
                         ownership: shared.ownership(),
                     },
-                    reference_name: None,
-                }
+                )
             }
         }
     }
 
     /// For local values, returns the actual type of the value container
     /// For shared values, returns the allowed type of the value container
-    pub fn allowed_or_actual_type(&self) -> TypeDefinition {
+    pub fn allowed_or_actual_type(&self) -> Sheep<'_, TypeDefinition> {
         match self {
             ValueContainer::Local(value) => value.actual_type(),
-            ValueContainer::Shared(shared) => shared.allowed_type().clone(),
+            ValueContainer::Shared(shared) => Sheep::Ref(shared.allowed_type()),
         }
     }
 
     /// Returns the contained SharedContainer if it is a SharedContainer, otherwise returns None.
     pub fn maybe_shared(&self) -> Option<&SharedContainer> {
+        if let ValueContainer::Shared(shared) = self {
+            Some(shared)
+        } else {
+            None
+        }
+    }
+
+    /// Returns a mutable reference to the contained SharedContainer if it is a SharedContainer, otherwise returns None.
+    pub fn maybe_shared_mut(&mut self) -> Option<&mut SharedContainer> {
         if let ValueContainer::Shared(shared) = self {
             Some(shared)
         } else {
@@ -207,15 +227,11 @@ impl ValueContainer {
             }
         }
     }
-
-    pub fn try_get_property<'a>(
-        &self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, AccessError> {
+    pub fn shared_unchecked_mut(&mut self) -> &mut SharedContainer {
         match self {
-            ValueContainer::Local(value) => value.try_get_property(key),
-            ValueContainer::Shared(reference) => {
-                reference.try_get_property(key)
+            ValueContainer::Shared(shared) => shared,
+            _ => {
+                core::panic!("Cannot convert ValueContainer to SharedContainer")
             }
         }
     }
@@ -261,9 +277,8 @@ impl Display for ValueContainer {
                 if shared.is_borrowed() {
                     write!(f, "{}", shared.to_string_omit_content())
                 } else {
-                    shared.with_collapsed_value(|reference| {
-                        write!(f, "shared ({})", reference)
-                    })
+                    let value = shared.collapsed_value();
+                    write!(f, "shared ({})", value.borrow().as_ref())
                 }
             }
         }

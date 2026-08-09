@@ -481,7 +481,6 @@ mod tests {
     fn addition() {
         let a = CoreValue::from(42i32);
         let b = CoreValue::from(11i32);
-        let c = CoreValue::from("11");
 
         let a_plus_b = (a.clone() + b.clone()).unwrap();
         assert_eq!(a_plus_b.clone(), CoreValue::from(53));

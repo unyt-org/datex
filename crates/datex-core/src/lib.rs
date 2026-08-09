@@ -18,15 +18,20 @@
 #![feature(const_cmp)]
 #![feature(const_trait_impl)]
 #![feature(custom_test_frameworks)]
-#![feature(specialization)]
+#![feature(min_specialization)]
 #![feature(const_default)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
+#![feature(try_blocks)]
 #![rustfmt::skip::macros(assert_instructions_equal)]
 #![rustfmt::skip::macros(assert_regular_instructions_equal)]
 
 extern crate alloc;
 extern crate num_integer;
+
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
 
 #[cfg(feature = "std")]
 extern crate std;

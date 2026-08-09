@@ -8,13 +8,15 @@ impl Apply for BaseSharedValueContainer {
         &self,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        self.with_collapsed_value(|value| value.try_apply(args))
+        let value = self.collapsed_value();
+        value.borrow().try_apply(args)
     }
 
     fn try_apply_single(
         &self,
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        self.with_collapsed_value(|value| value.try_apply_single(arg))
+        let value = self.collapsed_value();
+        value.borrow().try_apply_single(arg)
     }
 }

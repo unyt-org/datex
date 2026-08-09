@@ -1,10 +1,7 @@
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
-use syn::{
-    Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta, Token,
-    punctuated::Punctuated,
-};
+use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta, Path, Token, punctuated::Punctuated, PathSegment};
 
 use crate::utils::get_project_relative_file_path;
 
@@ -64,8 +61,11 @@ pub struct TopLevelAttributes {
     /// instead of inferring it. This is required for doctests to work.
     force_datex_core_namespace: bool,
 
-    /// Optional override for the exported nameme of the type. Defaults to the Rust struct or enum name.
+    /// Optional override for the exported name of the type. Defaults to the Rust struct or enum name.
     datex_name: Option<String>,
+
+    /// If the decorated struct or enum should not be deserializable from a Datex value.
+    no_deserialize: bool,
 
     /// If the decorated struct or enum should be exported to the Datex registry.
     /// `#[datex(export)]`
@@ -88,7 +88,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
     let datex_core_crate_name =
         if top_level_attributes.force_datex_core_namespace {
-            Ident::new("datex_core", Span::call_site())
+            PathSegment::from(Ident::new("datex_core", Span::call_site())).into()
         } else {
             get_datex_core_crate_name()
         };
@@ -106,6 +106,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     };
 
     let ident = input.ident;
+    let generics = &input.generics;
+
     let datex_name = top_level_attributes
         .datex_name
         .clone()
@@ -152,21 +154,21 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         false => {
             quote! {
                 #[automatically_derived]
-                impl From<#ident> for Value {
+                impl #generics From<#ident> for Value #generics {
                     fn from(value: #ident) -> Self {
                         #into_datex_fields_inner
                     }
                 }
 
                 #[automatically_derived]
-                impl DatexValueProxySerialize for #ident {
+                impl #generics DatexValueProxySerialize for #ident #generics {
                     fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
                         Ok(self.into())
                     }
                 }
 
                 #[automatically_derived]
-                impl DatexValueProxyInfallibleSerialize for #ident {
+                impl #generics DatexValueProxyInfallibleSerialize for #ident #generics {
                     fn to_value(self) -> Value {
                        self.into()
                     }
@@ -176,7 +178,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         true => {
             quote! {
                 #[automatically_derived]
-                impl TryFrom<#ident> for Value {
+                impl #generics TryFrom<#ident> for Value #generics {
                     type Error = TryToDatexValueError;
 
                     fn try_from(value: #ident) -> Result<Self, Self::Error> {
@@ -185,7 +187,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 }
 
                 #[automatically_derived]
-                impl TryFrom<#ident> for ValueContainer {
+                impl #generics TryFrom<#ident> for ValueContainer #generics {
                     type Error = TryToDatexValueError;
 
                     fn try_from(value: #ident) -> Result<Self, Self::Error> {
@@ -194,9 +196,54 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 }
 
                 #[automatically_derived]
-                impl DatexValueProxySerialize for #ident {
+                impl #generics DatexValueProxySerialize for #ident #generics {
                     fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
                         self.try_into()
+                    }
+                }
+            }
+        }
+    };
+
+    let deserialize = if top_level_attributes.no_deserialize {
+        quote! {
+            #[automatically_derived]
+            impl #generics DatexValueProxyDeserialize for #ident #generics {
+                fn try_from_value(
+                    value: Value,
+                ) -> Result<Self, TryFromDatexValueError> {
+                    Err(TryFromDatexValueError("Deserialization is disabled for this type".to_string()))
+                }
+            }
+        }
+    } else {
+        quote! {
+            #[automatically_derived]
+            impl #generics DatexValueProxyDeserialize for #ident #generics {
+                fn try_from_value(
+                    value: Value,
+                ) -> Result<Self, TryFromDatexValueError> {
+                   value.try_into()
+                }
+            }
+
+            #[automatically_derived]
+            impl #generics TryFrom<Value> for #ident #generics {
+                type Error = TryFromDatexValueError;
+
+                fn try_from(value: Value) -> Result<Self, Self::Error> {
+                    Ok(#from_datex_fields_inner)
+                }
+            }
+
+            #[automatically_derived]
+            impl #generics TryFrom<ValueContainer> for #ident #generics {
+                type Error = TryFromDatexValueError;
+
+                fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
+                    match value {
+                        ValueContainer::Local(value) => value.try_into(),
+                        _ => Err(TryFromDatexValueError("Expected ValueContainer::Local".to_string())),
                     }
                 }
             }
@@ -241,44 +288,16 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             };
 
             #[automatically_derived]
-            impl DatexValueProxy for #ident {}
+            impl #generics DatexValueProxy for #ident #generics {}
 
             #helpers
 
             #serialize
 
-            #[automatically_derived]
-            impl DatexValueProxyDeserialize for #ident {
-                fn try_from_value(
-                    value: Value,
-                ) -> Result<Self, TryFromDatexValueError> {
-                   value.try_into()
-                }
-            }
+            #deserialize
 
             #[automatically_derived]
-            impl TryFrom<Value> for #ident {
-                type Error = TryFromDatexValueError;
-
-                fn try_from(value: Value) -> Result<Self, Self::Error> {
-                    Ok(#from_datex_fields_inner)
-                }
-            }
-
-            #[automatically_derived]
-            impl TryFrom<ValueContainer> for #ident {
-                type Error = TryFromDatexValueError;
-
-                fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
-                    match value {
-                        ValueContainer::Local(value) => value.try_into(),
-                        _ => Err(TryFromDatexValueError("Expected ValueContainer::Local".to_string())),
-                    }
-                }
-            }
-
-            #[automatically_derived]
-            impl DatexProxyTypes for #ident {
+            impl #generics DatexProxyTypes for #ident #generics {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     (#datex_type).with_name(#datex_name)
                 }
@@ -302,7 +321,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
 
     let into_datex_fields_inner = match fields_type {
         FieldsType::Named => quote! {
-            Value::from(Map::StructuralWithStringKeys(vec![
+            Value::from(Map::structural_with_string_keys(vec![
                 #(#into_datex_fields),*
             ]))
         },
@@ -421,16 +440,14 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             FieldsType::Named => quote! {
                 #ident::#variant_ident {..} => {
                     let value: #helper_struct_ident = value.into();
-                    let map = Map::StructuralWithStringKeys(vec![
+                    let map = Map::structural_with_string_keys(vec![
                         #(#into_datex_fields),*
                     ]);
-                    Value {
-                        inner: CoreValue::Map(map),
-                        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    Value::new(CoreValue::Map(map), Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                             tag: #variant_name.to_string(),
                             ty: None,
-                        })),
-                    }
+                        }))
+                    )
                 }
             },
             FieldsType::Transparent => {
@@ -439,14 +456,11 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                     #ident::#variant_ident {..} => {
                         let value: #helper_struct_ident = value.into();
                         let container = #into_field;
-                        if let ValueContainer::Local(Value {custom_type: None, inner}) = container {
-                            Value {
-                                inner,
-                                custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                                    tag: #variant_name.to_string(),
-                                    ty: None,
-                                })),
-                            }
+                        if let ValueContainer::Local(value) = container && value.custom_type().is_none() {
+                            Value::new(value.into_inner(), Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                                tag: #variant_name.to_string(),
+                                ty: None,
+                            })))
                         }
                         else {
                             unreachable!("Expected ValueContainer::Local without custom type");
@@ -461,25 +475,19 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                         let list = List::from(vec![
                             #(#into_datex_fields),*
                         ]);
-                        Value {
-                            inner: CoreValue::List(list),
-                            custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                                tag: #variant_name.to_string(),
-                                ty: None,
-                            })),
-                        }
+                        Value::new(CoreValue::List(list), Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                            tag: #variant_name.to_string(),
+                            ty: None,
+                        })))
                     }
                 }
             }
             FieldsType::Unit => quote! {
                 #ident::#variant_ident => {
-                    Value {
-                        inner: CoreValue::Null,
-                        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                            tag: #variant_name.to_string(),
-                            ty: None,
-                        })),
-                    }
+                    Value::new(CoreValue::Null, Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                        tag: #variant_name.to_string(),
+                        ty: None,
+                    })))
                 }
             },
         };
@@ -771,7 +779,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                     SerdeMode::None => {
                         if field_attributes.datex_default {
                             quote! {
-                                match unsafe { map.try_delete_unsafe(#field_name) } {
+                                match unsafe { map.try_delete_unchecked(#field_name) } {
                                     Ok(value_container) => {
                                         DatexValueContainerProxyDeserialize::try_from_value_container(
                                             value_container
@@ -784,7 +792,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                             quote! {
                                 DatexValueContainerProxyDeserialize::try_from_map_property(
                                     unsafe {
-                                        map.try_delete_unsafe(#field_name)
+                                        map.try_delete_unchecked(#field_name)
                                     }
                                 )?
                             }
@@ -794,7 +802,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                     SerdeMode::Fallible | SerdeMode::Infallible => {
                         if field_attributes.datex_default {
                             quote! {
-                                match unsafe { map.try_delete_unsafe(#field_name) } {
+                                match unsafe { map.try_delete_unchecked(#field_name) } {
                                     Ok(value_container) => {
                                         try_serde_from_value_container(value_container)?
                                     }
@@ -805,7 +813,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                             quote! {
                                 try_serde_from_value_container(
                                     unsafe {
-                                        map.try_delete_unsafe(#field_name)
+                                        map.try_delete_unchecked(#field_name)
                                             .map_err(|err| {
                                                 TryFromDatexValueError(err.to_string())
                                             })?
@@ -1025,6 +1033,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
     let mut datex_name = None;
     let mut export = false;
     let mut namespace = None;
+    let mut no_deserialize = false;
 
     for attr in attrs {
         if !attr.path().is_ident("datex") {
@@ -1048,6 +1057,10 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
                 }
                 Meta::Path(path) if path.is_ident("export") => {
                     export = true;
+                }
+
+                Meta::Path(path) if path.is_ident("no_deserialize") => {
+                    no_deserialize = true;
                 }
 
                 Meta::NameValue(name_value)
@@ -1079,6 +1092,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
 
     TopLevelAttributes {
         force_datex_core_namespace,
+        no_deserialize,
         datex_name,
         export,
         namespace,
@@ -1162,11 +1176,23 @@ fn generate_unnamed_field_type_code(
     }
 }
 
-fn get_datex_core_crate_name() -> Ident {
-    // otherwise, find the crate name of datex_core and use it as an identifier
-    let found = crate_name("datex-core").unwrap();
+/// Tries to resolve the datex-core crate to a resolvable name in the current context.
+fn get_datex_core_crate_name() -> Path {
+    let found = match crate_name("datex-core") {
+        Ok(found) => found,
+        Err(_) =>
+        // TODO: decide which namespace to use, for now, fall back to datex-embedded
+        {
+            return Path {
+                leading_colon: None,
+                segments: Punctuated::from_iter(
+                    [PathSegment::from(format_ident!("datex_embedded")), PathSegment::from(format_ident!("core"))].into_iter()
+                )
+            }
+        }
+    };
     match found {
-        FoundCrate::Itself => format_ident!("crate"),
-        FoundCrate::Name(name) => Ident::new(&name, Span::call_site()),
+        FoundCrate::Itself => PathSegment::from(format_ident!("crate")).into(),
+        FoundCrate::Name(name) => PathSegment::from(Ident::new(&name, Span::call_site())).into(),
     }
 }

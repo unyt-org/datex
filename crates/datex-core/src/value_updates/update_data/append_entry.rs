@@ -9,9 +9,14 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct AppendEntryUpdateData {
     pub value: ValueContainer,
+}
+impl AppendEntryUpdateData {
+    pub fn new(value: ValueContainer) -> Self {
+        AppendEntryUpdateData { value }
+    }
 }
 
 impl<'ctx> SerdeContext<'ctx, AppendEntryUpdateData> {

@@ -7,6 +7,7 @@ impl CloneUnsafe for OwnedSharedContainer {
         OwnedSharedContainer {
             inner: self.inner.clone(),
             container_mutability: self.container_mutability,
+            observer_data: self.observer_data.clone(),
         }
     }
 }

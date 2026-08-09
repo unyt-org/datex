@@ -12,6 +12,10 @@ mod compile;
 mod execute;
 mod utils;
 
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
+
 #[proc_macro]
 pub fn precompile(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as PrecompileInput);
@@ -53,7 +57,8 @@ pub fn datex_main(attr: TokenStream, item: TokenStream) -> TokenStream {
         func: original_function,
         datex_core_namespace: "datex_core",
         setup: None,
-        init: None,
+        init_scoped: None,
+        init_unscoped: None,
         pre_body: None,
         additional_attributes: vec![parse_quote! {#[tokio::main]}],
         custom_main_inputs: vec![],

@@ -6,9 +6,13 @@ use crate::{
         traits::SharedContainerCommon,
     },
     types::type_definition::TypeDefinition,
+    value_updates::update_data::Update,
     values::value_container::ValueContainer,
 };
 use core::cell::{Ref, RefMut};
+
+use crate::prelude::*;
+use crate::shared_values::base_shared_value_container::observers::ObserverData;
 
 impl SharedContainerCommon for OwnedSharedContainer {
     /// Get the [SharedContainerMutability] of the container
@@ -67,5 +71,13 @@ impl SharedContainerCommon for OwnedSharedContainer {
 
     fn ownership(&self) -> SharedContainerOwnership {
         SharedContainerOwnership::Owned
+    }
+
+    fn observer_data(&self) -> Ref<'_, ObserverData> {
+        self.observer_data.borrow()
+    }
+    
+    fn observer_data_mut(&self) -> RefMut<'_, ObserverData> {
+        self.observer_data.borrow_mut()
     }
 }

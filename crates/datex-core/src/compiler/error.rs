@@ -38,10 +38,23 @@ pub enum CompilerError {
     AssignmentToImmutableReference(String),
     AssignmentToImmutableValue(String),
     OnceScopeUsedMultipleTimes,
-    TypeError(TypeError),
-    ParserError(ParserError),
+    TypeError(Box<TypeError>),
+    ParserError(Box<ParserError>),
     SharedMutRefToImmutableValue,
     InvalidConversionFromRefToOwnedValue,
+    UnknownInterfaceMethod(String),
+    InvalidInterfaceMethodCall(String),
+}
+impl CompilerError {
+    pub fn unexpected_term(expr: DatexExpression) -> Self {
+        CompilerError::UnexpectedTerm(Box::new(expr))
+    }
+    pub fn type_error(err: TypeError) -> Self {
+        CompilerError::TypeError(Box::new(err))
+    }
+    pub fn parser_error(err: ParserError) -> Self {
+        CompilerError::ParserError(Box::new(err))
+    }
 }
 
 impl From<InjectedValueValidationError> for CompilerError {
@@ -97,7 +110,7 @@ impl From<SpannedTypeError> for SpannedCompilerError {
     fn from(value: SpannedTypeError) -> Self {
         SpannedCompilerError {
             span: value.span,
-            error: value.error.into(),
+            error: (*value.error).into(),
         }
     }
 }
@@ -106,7 +119,7 @@ impl From<SpannedParserError> for SpannedCompilerError {
     fn from(value: SpannedParserError) -> Self {
         SpannedCompilerError {
             span: Some(value.span),
-            error: CompilerError::ParserError(value.error),
+            error: CompilerError::ParserError(Box::new(value.error)),
         }
     }
 }
@@ -272,7 +285,7 @@ impl From<TypeError> for SimpleOrDetailedCompilerError {
 
 impl From<TypeError> for CompilerError {
     fn from(value: TypeError) -> Self {
-        CompilerError::TypeError(value)
+        CompilerError::TypeError(Box::new(value))
     }
 }
 
@@ -385,6 +398,18 @@ impl Display for CompilerError {
                 core::write!(
                     f,
                     "Cannot convert reference to owned value without cloning or moving"
+                )
+            }
+            CompilerError::UnknownInterfaceMethod(name) => {
+                core::write!(
+                    f,
+                    "Tried to call unknown interface method: {name}"
+                )
+            }
+            CompilerError::InvalidInterfaceMethodCall(name) => {
+                core::write!(
+                    f,
+                    "Interface method \"{name}\" was called with wrong arguments"
                 )
             }
         }

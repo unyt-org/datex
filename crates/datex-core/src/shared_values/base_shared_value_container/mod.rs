@@ -2,18 +2,14 @@
 use crate::{
     traits::value_eq::ValueEq,
     types::type_definition::TypeDefinition,
-    utils::freemap::FreeHashMap,
     values::{
-        core_value::CoreValue,
-        value::Value,
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
+        core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
 pub mod update_handler;
 use crate::{
     shared_values::{
-        SharedContainerMutability,
-        errors::{AccessError, SharedValueCreationError},
+        SharedContainerMutability, errors::SharedValueCreationError,
     },
     value_updates::errors::UpdateError,
 };
@@ -21,6 +17,9 @@ pub mod apply;
 pub mod observers;
 pub mod serde_dif;
 
+use crate::shared_values::collapsed_container_value::{
+    CollapsedContainerValue, CollapsedContainerValueMut,
+};
 use core::{
     fmt::{Debug, Display},
     prelude::rust_2024::*,
@@ -35,9 +34,6 @@ pub struct BaseSharedValueContainer {
     value_container: ValueContainer,
     /// The [TypeDefinition] that is allowed to be assigned to the shared container. This is used for type checking when assigning a new value container to the shared container.
     allowed_type: TypeDefinition,
-    /// List of observer callbacks
-    /// TODO: move observers to ValueContainer?
-    observers: FreeHashMap<ObserverId, Observer>,
     mutability: SharedContainerMutability,
 }
 
@@ -45,10 +41,7 @@ impl BaseSharedValueContainer {
     /// Returns a new [BaseSharedValueContainer] with a [ValueContainer] containing a [CoreValue::Null], an allowed type of [CoreLibTypeId::Base(CoreLibBaseTypeId::Null)] and a mutability of [SharedContainerMutability::Immutable].
     pub fn null() -> Self {
         Self::new_with_inferred_allowed_type(
-            ValueContainer::Local(Value {
-                inner: CoreValue::Null,
-                custom_type: None,
-            }),
+            ValueContainer::Local(Value::new(CoreValue::Null, None)),
             SharedContainerMutability::Immutable,
         )
     }
@@ -67,7 +60,6 @@ impl BaseSharedValueContainer {
         Ok(BaseSharedValueContainer {
             value_container,
             allowed_type,
-            observers: FreeHashMap::new(),
             mutability,
         })
     }
@@ -80,41 +72,29 @@ impl BaseSharedValueContainer {
         mutability: SharedContainerMutability,
     ) -> Self {
         let value_container = value_container.into();
-        let allowed_type = value_container.allowed_or_actual_type();
+        let allowed_type =
+            value_container.allowed_or_actual_type().into_owned();
         BaseSharedValueContainer {
             value_container,
             allowed_type,
-            observers: FreeHashMap::new(),
             mutability,
         }
     }
 
-    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value_mut<R>(
-        &mut self,
-        f: impl FnOnce(&mut Value) -> R,
-    ) -> R {
-        match &mut self.value_container {
-            ValueContainer::Local(v) => f(v),
-            ValueContainer::Shared(shared) => {
-                shared.with_collapsed_value_mut(f)
-            }
-        }
-    }
-
-    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
+    pub fn collapsed_value(&self) -> CollapsedContainerValue<'_> {
         match &self.value_container {
-            ValueContainer::Local(v) => f(v),
-            ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
+            ValueContainer::Local(v) => CollapsedContainerValue::new_local(v),
+            ValueContainer::Shared(shared) => shared.collapsed_value(),
         }
     }
 
-    pub fn try_get_property<'a>(
-        &self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, AccessError> {
-        self.with_collapsed_value(|value| value.try_get_property(key))
+    pub fn collapsed_value_mut(&mut self) -> CollapsedContainerValueMut<'_> {
+        match &mut self.value_container {
+            ValueContainer::Local(v) => {
+                CollapsedContainerValueMut::new_local(v)
+            }
+            ValueContainer::Shared(shared) => shared.collapsed_value_mut(),
+        }
     }
 
     pub fn value_container(&self) -> &ValueContainer {
@@ -137,7 +117,6 @@ impl Debug for BaseSharedValueContainer {
             .field("value_container", &self.value_container)
             .field("allowed_type", &self.allowed_type)
             .field("mutability", &self.mutability)
-            .field("observers", &self.observers.len())
             .finish()
     }
 }

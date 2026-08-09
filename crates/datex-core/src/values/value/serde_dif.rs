@@ -16,7 +16,7 @@ use num::ToPrimitive;
 use serde::{
     Deserializer, Serialize, Serializer,
     de::{DeserializeSeed, Error as DeError, Visitor},
-    ser::{SerializeMap, SerializeStruct, SerializeTuple},
+    ser::SerializeTuple,
 };
 
 impl<'ctx> SerdeContext<'ctx, Value> {
@@ -204,7 +204,13 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 serializer,
                 false,
             ),
-            CoreValue::Type(_ty) => todo!(),
+            CoreValue::Type(ty) => self.serialize_with_core_type_serde(
+                ty,
+                core_lib_type,
+                &value.custom_type,
+                serializer,
+                false,
+            ),
             CoreValue::NominalTypeDefinition(_nominal_type_definition) => {
                 todo!()
             }
@@ -385,7 +391,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
                 ))
             })?;
 
-        Ok(Value { custom_type, inner })
+        Ok(Value::new(inner, custom_type))
     }
 }
 
@@ -415,7 +421,7 @@ mod tests {
                 decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
                 endpoint::Endpoint,
                 integer::{Integer, typed_integer::IntegerTypeVariant},
-                map::Map,
+                map::{Map, MapEntries},
             },
             value_container::ValueContainer,
         },
@@ -426,10 +432,7 @@ mod tests {
     #[test]
     fn endpoint_serialization() {
         let endpoint = Endpoint::from_str("@jonas").unwrap();
-        let value = Value {
-            inner: CoreValue::Endpoint(endpoint.clone()),
-            custom_type: None,
-        };
+        let value = Value::new(CoreValue::Endpoint(endpoint.clone()), None);
         let mut cache = SharedValuesCache::default();
         let serialized =
             SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
@@ -450,13 +453,14 @@ mod tests {
         let mut cache = SharedValuesCache::default();
 
         // { endpoint: "@jonas" } -> [<map-idx>, { endpoint: [<endpoint-idx>, "@jonas"] }]
-        let value =
-            Value::from(CoreValue::Map(Map::StructuralWithStringKeys(vec![(
+        let value = Value::from(CoreValue::Map(
+            Map::structural_with_string_keys(vec![(
                 "endpoint".into(),
                 ValueContainer::Local(Value::from(
                     Endpoint::from_str("@jonas").unwrap(),
                 )),
-            )])));
+            )]),
+        ));
         let serialized =
             SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
         assert_eq!(
@@ -473,7 +477,7 @@ mod tests {
         );
 
         // { "endpoint": "@jonas" } -> [<map-idx>, [[<endpoint-idx>, "@jonas"]]]
-        let value = Value::from(CoreValue::Map(Map::Structural(vec![(
+        let value = Value::from(CoreValue::Map(Map::structural(vec![(
             "endpoint".into(),
             Value::from(Endpoint::from_str("@jonas").unwrap()).into(),
         )])));
@@ -601,7 +605,7 @@ mod tests {
         CoreValue::Endpoint(Endpoint::from_str("@jonas").unwrap()) ; "endpoint"
     )]
     #[test_case(
-        CoreValue::Map(Map::StructuralWithStringKeys(vec![(
+        CoreValue::Map(Map::structural_with_string_keys(vec![(
             "endpoint".into(),
             ValueContainer::Local(Value::from(Endpoint::from_str("@jonas").unwrap())),
         )])) ; "map with string keys"

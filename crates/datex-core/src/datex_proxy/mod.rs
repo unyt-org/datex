@@ -30,32 +30,32 @@ pub struct TryToDatexValueError(pub String);
 #[derive(Debug)]
 pub enum DeserializationError {
     NoValue,
-    InvalidValue(TryFromDatexValueError),
-    ExecutionError(ExecutionError),
+    InvalidValue(Box<TryFromDatexValueError>),
+    ExecutionError(Box<ExecutionError>),
     CanNotReadFile(String),
     #[cfg(feature = "parser")]
-    ParserError(SpannedParserError),
+    ParserError(Box<SpannedParserError>),
     #[cfg(feature = "compiler")]
-    CompilerError(SpannedCompilerError),
+    CompilerError(Box<SpannedCompilerError>),
     NoStaticValueFound,
 }
 
 impl From<ExecutionError> for DeserializationError {
     fn from(err: ExecutionError) -> DeserializationError {
-        DeserializationError::ExecutionError(err)
+        DeserializationError::ExecutionError(Box::new(err))
     }
 }
 
 #[cfg(feature = "parser")]
 impl From<SpannedParserError> for DeserializationError {
     fn from(err: SpannedParserError) -> DeserializationError {
-        DeserializationError::ParserError(err)
+        DeserializationError::ParserError(Box::new(err))
     }
 }
 
 impl From<TryFromDatexValueError> for DeserializationError {
     fn from(err: TryFromDatexValueError) -> DeserializationError {
-        DeserializationError::InvalidValue(err)
+        DeserializationError::InvalidValue(Box::new(err))
     }
 }
 

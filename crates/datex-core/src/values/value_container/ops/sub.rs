@@ -17,17 +17,15 @@ impl Sub<&ValueContainer> for &ValueContainer {
             (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
                 lhs - rhs
             }
-            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => lhs
-                .with_collapsed_value_mut(|lhs| {
-                    rhs.with_collapsed_value_mut(|rhs| {
-                        lhs.clone() - rhs.clone()
-                    })
-                }),
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
+                lhs.collapsed_value().borrow().as_ref()
+                    - rhs.collapsed_value().borrow().as_ref()
+            }
             (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
-                rhs.with_collapsed_value_mut(|rhs| lhs - rhs)
+                lhs - rhs.collapsed_value().borrow().as_ref()
             }
             (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
-                lhs.with_collapsed_value_mut(|lhs| lhs.clone() - rhs.clone())
+                lhs.collapsed_value().borrow().as_ref() - rhs
             }
         }
         .map(ValueContainer::Local)

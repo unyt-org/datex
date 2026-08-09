@@ -12,7 +12,6 @@ pub struct SelfOwnedSharedContainer {
     value: BaseSharedValueContainer,
     address: SelfOwnedPointerAddress,
     // TODO #766: additional fields will probably be added later, e.g. previous owners
-    // subscribers: Vec<(Endpoint, Permissions)>,
 }
 
 impl SelfOwnedSharedContainer {
@@ -29,6 +28,8 @@ impl SelfOwnedSharedContainer {
     }
 
     /// Creates a new [SelfOwnedSharedContainer]
+    /// # Safety
+    /// The caller must ensure, that the address is not used by another [SelfOwnedSharedContainer]
     pub unsafe fn new_with_address(
         shared_value_container: BaseSharedValueContainer,
         address: SelfOwnedPointerAddress,

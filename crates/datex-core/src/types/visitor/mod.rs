@@ -35,7 +35,7 @@ where
 {
     match ty {
         Type::Alias(alias) => {
-            let Some(name) = alias.reference_name.as_deref() else {
+            let Some(name) = alias.reference_name() else {
                 return fold_definition(folder, &alias.definition);
             };
             if folder.begin_named_alias(name)? {

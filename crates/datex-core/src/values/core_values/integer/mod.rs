@@ -18,7 +18,7 @@ use num_integer::Integer as NumInteger;
 use serde::Deserialize;
 pub mod binrw;
 pub mod primitive;
-
+pub mod update_handler;
 #[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]
 pub struct Integer(pub BigInt);
 

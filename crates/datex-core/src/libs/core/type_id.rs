@@ -204,6 +204,15 @@ pub enum CoreLibTypeId {
     Base(CoreLibBaseTypeId),
     Variant(CoreLibVariantTypeId),
 }
+impl CoreLibTypeId {
+    pub fn base_type_id(&self) -> CoreLibBaseTypeId {
+        match self {
+            CoreLibTypeId::Base(base_id) => *base_id,
+            CoreLibTypeId::Variant(variant_id) => variant_id.base_type_id(),
+        }
+    }
+}
+
 use binrw::io::{Read, Seek, Write};
 impl BinWrite for CoreLibTypeId {
     type Args<'a> = ();

@@ -1,11 +1,15 @@
 use core::fmt::Display;
 
-use serde::{Serialize, de::DeserializeSeed, ser::SerializeMap};
+use serde::{
+    Serialize,
+    de::DeserializeSeed,
+    ser::{SerializeMap, SerializeSeq},
+};
 
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    utils::serde_serialize_seed::SerializeSeed,
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
@@ -42,10 +46,36 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
             ValueKey::Index(index) => index.serialize(serializer),
             ValueKey::Value(value_container) => {
                 let mut map_serializer = serializer.serialize_map(Some(1))?;
-                map_serializer.serialize_entry("value", value_container)?;
+                map_serializer.serialize_entry(
+                    "value",
+                    &ValueWithSeed::new(
+                        value_container,
+                        &mut self.cast::<ValueContainer>(),
+                    ),
+                )?;
+
                 map_serializer.end()
             }
         }
+    }
+}
+
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, &'ctx [ValueKey]> {
+    type Value = &'ctx [ValueKey];
+
+    fn serialize<S: serde::Serializer>(
+        &mut self,
+        value: &Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let mut seq_serializer = serializer.serialize_seq(Some(value.len()))?;
+        for key in *value {
+            seq_serializer.serialize_element(&ValueWithSeed::new(
+                key,
+                self.cast::<ValueKey>(),
+            ))?;
+        }
+        seq_serializer.end()
     }
 }
 
@@ -59,6 +89,37 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueKey> {
         deserializer.deserialize_any(self)
     }
 }
+
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Vec<ValueKey>> {
+    type Value = Vec<ValueKey>;
+
+    fn deserialize<D: serde::Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<Self::Value, D::Error> {
+        deserializer.deserialize_any(self)
+    }
+}
+
+impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, Vec<ValueKey>> {
+    type Value = Vec<ValueKey>;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "a sequence of value keys")
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(
+        mut self,
+        mut seq: A,
+    ) -> Result<Self::Value, A::Error> {
+        let mut keys = Vec::new();
+        while let Some(key) = seq.next_element_seed(self.cast::<ValueKey>())? {
+            keys.push(key);
+        }
+        Ok(keys)
+    }
+}
+
 impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, ValueKey> {
     type Value = ValueKey;
 
@@ -82,12 +143,14 @@ impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, ValueKey> {
     }
 
     fn visit_map<A: serde::de::MapAccess<'de>>(
-        self,
+        mut self,
         mut map_access: A,
     ) -> Result<Self::Value, A::Error> {
-        let entry = map_access.next_entry::<String, ValueContainer>()?;
-        if let Some((key, value)) = entry {
+        let key = map_access.next_key::<String>()?;
+        if let Some(key) = key {
             if key == "value" {
+                let value = map_access
+                    .next_value_seed(self.cast::<ValueContainer>())?;
                 Ok(ValueKey::Value(value))
             } else {
                 Err(serde::de::Error::custom(format!(
@@ -117,6 +180,18 @@ impl<'a> From<ValueKey> for BorrowedValueKey<'a> {
             ValueKey::Index(index) => BorrowedValueKey::Index(index),
             ValueKey::Value(value_container) => {
                 BorrowedValueKey::Value(Cow::Owned(value_container))
+            }
+        }
+    }
+}
+
+impl<'a> From<&'a ValueKey> for BorrowedValueKey<'a> {
+    fn from(owned: &'a ValueKey) -> Self {
+        match owned {
+            ValueKey::Text(text) => BorrowedValueKey::Text(Cow::Borrowed(text)),
+            ValueKey::Index(index) => BorrowedValueKey::Index(*index),
+            ValueKey::Value(value_container) => {
+                BorrowedValueKey::Value(Cow::Borrowed(value_container))
             }
         }
     }

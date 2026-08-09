@@ -35,7 +35,7 @@ impl ExpressionVisitor<()> for VariableDeclarationFinder {
             // early abort
             Err(())
         } else {
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
         }
     }
 }

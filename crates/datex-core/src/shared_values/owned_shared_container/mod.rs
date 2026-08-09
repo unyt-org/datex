@@ -16,7 +16,8 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    values::{value::Value, value_container::ValueContainer},
+    value_updates::update_data::Update,
+    values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
 use core::{
@@ -25,6 +26,7 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
+use crate::shared_values::base_shared_value_container::observers::ObserverData;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -41,6 +43,8 @@ pub struct OwnedSharedContainer {
     inner: Rc<RefCell<SharedContainerInner>>,
     /// This reflects the container mutability of the inner container, which is guaranteed to stay the same
     container_mutability: SharedContainerMutability,
+    /// Observer data (e.g. observer list) for this shared container. Can be borrowed separately from the [SharedContainerInner]
+    observer_data: Rc<RefCell<ObserverData>>,
 }
 
 impl OwnedSharedContainer {
@@ -54,6 +58,7 @@ impl OwnedSharedContainer {
                 container,
             ))),
             container_mutability,
+            observer_data: Rc::new(RefCell::new(ObserverData::default())),
         }
     }
 
@@ -98,21 +103,6 @@ impl OwnedSharedContainer {
         })
     }
 
-    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value_mut<R>(
-        &self,
-        f: impl FnOnce(&mut Value) -> R,
-    ) -> R {
-        self.inner_mut()
-            .base_shared_container_mut()
-            .with_collapsed_value_mut(f)
-    }
-
-    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
-        self.inner().base_shared_container().with_collapsed_value(f)
-    }
-
     /// Get a [Ref] to the inner [SelfOwnedSharedContainer].
     /// It is guaranteed that the contained [SharedContainerInner] is always a [SharedContainerInner::EndpointOwned].
     pub fn as_self_owned_shared_container(
@@ -149,7 +139,7 @@ impl OwnedSharedContainer {
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
     pub fn derive_immutable_reference(&self) -> ReferencedSharedContainer {
-        ReferencedSharedContainer::new_immutable(self.inner.clone())
+        ReferencedSharedContainer::new_immutable(self.inner.clone(), self.observer_data.clone())
     }
 
     /// Tries to create a new mutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
@@ -167,6 +157,7 @@ impl OwnedSharedContainer {
         // new_mutable_unchecked is safe to call here since we checked the container mutability before
         Ok(ReferencedSharedContainer::new_mutable_unchecked(
             self.inner.clone(),
+            self.observer_data.clone(),
         ))
     }
 

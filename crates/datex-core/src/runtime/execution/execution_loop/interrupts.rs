@@ -8,7 +8,6 @@ use crate::{
     prelude::*,
     shared_values::{
         ReferenceMutability, RemotePointerAddress, SelfOwnedPointerAddress,
-        SharedContainerMutability,
     },
     values::core_values::endpoint::Endpoint,
 };
@@ -32,11 +31,16 @@ pub enum ExternalExecutionInterrupt {
         input: DXBWithSharedValues,
         receivers: Vec<Endpoint>,
     },
+    SetEndpointProperty {
+        endpoint: Endpoint,
+        property_name: String,
+        value: ValueContainer,
+    },
+    GetEndpointProperty {
+        endpoint: Endpoint,
+        property_name: String,
+    },
     Apply(ValueContainer, Vec<ValueContainer>),
-    /// Request to move a list of pointers from the current caller endpoint to the local endpoint
-    RequestMove(Vec<(SharedContainerMutability, SelfOwnedPointerAddress)>),
-    /// Move a list of pointers from the local endpoint to the caller
-    ConfirmMoves(Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>),
 }
 
 #[derive(Debug)]

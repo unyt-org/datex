@@ -1,3 +1,4 @@
+use binrw::{BinRead, BinWrite};
 use num_enum::TryFromPrimitive;
 use strum::Display;
 use strum_macros::EnumIter;
@@ -12,8 +13,11 @@ use strum_macros::EnumIter;
     Copy,
     Clone,
     Display,
+    BinRead,
+    BinWrite,
     num_enum::IntoPrimitive,
 )]
+#[brw(repr = u8)]
 #[repr(u8)]
 pub enum InstructionCode {
     // flow instructions 0x00 - 0x0f
@@ -26,17 +30,17 @@ pub enum InstructionCode {
     APPLY_SINGLE,
     APPLY,
 
-    GET_PROPERTY_DYNAMIC, // get property with arbitrary key value
-    GET_PROPERTY_INDEX,   // get property with integer index
-    GET_PROPERTY_TEXT,    // get property with text key
+    GET_ENTRY_DYNAMIC, // get property with arbitrary key value
+    GET_ENTRY_INDEX,   // get property with integer index
+    GET_ENTRY_TEXT,    // get property with text key
 
-    TAKE_PROPERTY_DYNAMIC, // take property with arbitrary key value
-    TAKE_PROPERTY_INDEX,   // take property with integer index
-    TAKE_PROPERTY_TEXT,    // take property with text key
+    TAKE_ENTRY_DYNAMIC, // take property with arbitrary key value
+    TAKE_ENTRY_INDEX,   // take property with integer index
+    TAKE_ENTRY_TEXT,    // take property with text key
 
-    SET_PROPERTY_DYNAMIC, // set property with arbitrary key value
-    SET_PROPERTY_INDEX,   // set property with integer index
-    SET_PROPERTY_TEXT,    // set property with text key
+    SET_ENTRY_DYNAMIC, // set property with arbitrary key value
+    SET_ENTRY_INDEX,   // set property with integer index
+    SET_ENTRY_TEXT,    // set property with text key
 
     MATCHES, // matches
 
@@ -64,6 +68,11 @@ pub enum InstructionCode {
     INCREMENT,
     DECREMENT,
 
+    APPEND_ENTRY,
+    CLEAR,
+    SPLICE,
+    SPLICE_DYNAMIC,
+
     // pointers & variables 0xa0 - 0xbf
 
     // stack value
@@ -73,7 +82,6 @@ pub enum InstructionCode {
     GET_STACK_VALUE_SHARED_REF, // '#stack[i]
     GET_STACK_VALUE_SHARED_REF_MUT, // 'mut #stack[i]
     SET_STACK_VALUE,   // #stack[i] = ...
-    MODIFY_STACK_VALUE, // #stack[i] += ..., ...
     PUSH_TO_STACK,     // #stack += ...
     PUSH_LIST_TO_STACK, // #stack ...+= [x]
     TAKE_STACK_VALUE,  // #stack[i]
@@ -91,16 +99,14 @@ pub enum InstructionCode {
     SHARED_REF_WITH_VALUE, // '/'mut $1234 mut [value]
 
     MOVE_WITH_VALUE,
-    CONFIRM_MOVES,
 
-    GET_SHARED_REF,     // dynamic 'x
-    GET_SHARED_REF_MUT, // dynamic 'mut x
+    DERIVE_SHARED_REF,     // dynamic 'x
+    DERIVE_SHARED_REF_MUT, // dynamic 'mut x
 
     CREATE_SHARED,     // shared x
     CREATE_SHARED_MUT, // shared mut x
 
-    MODIFY_SHARED_CONTAINER_VALUE, // *x += 10;
-    SET_SHARED_CONTAINER_VALUE,    // *x = 10;
+    SET_SHARED_CONTAINER_VALUE, // *x = 10;
 
     UNBOX, // *x
 
@@ -157,6 +163,11 @@ pub enum InstructionCode {
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key
 
     REMOTE_EXECUTION, // ::
+}
+impl InstructionCode {
+    pub const fn as_u8(&self) -> u8 {
+        *self as u8
+    }
 }
 
 #[cfg(test)]
