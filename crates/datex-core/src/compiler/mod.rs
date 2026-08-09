@@ -1056,7 +1056,7 @@ fn compile_expression(
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
                     compilation_context.write(
-                        RegularInstruction::set_property_text(key.0.clone()),
+                        RegularInstruction::set_entry_text(key.0.clone()),
                     );
                 }
                 // index access if integer fits in u32
@@ -1588,7 +1588,7 @@ fn compile_text_property_access(
     key: &str,
 ) {
     compilation_context
-        .append_instruction_code(InstructionCode::GET_PROPERTY_TEXT);
+        .append_instruction_code(InstructionCode::GET_ENTRY_TEXT);
     // append key length as u8
     append_u8(compilation_context.cursor(), key.len() as u8);
     // append key bytes
@@ -1603,7 +1603,7 @@ fn compile_index_property_access(
     index: u32,
 ) {
     compilation_context
-        .append_instruction_code(InstructionCode::GET_PROPERTY_INDEX);
+        .append_instruction_code(InstructionCode::GET_ENTRY_INDEX);
     append_u32(compilation_context.cursor(), index);
 }
 
@@ -1612,7 +1612,7 @@ fn compile_index_property_assignment(
     index: u32,
 ) {
     compilation_context
-        .append_instruction_code(InstructionCode::SET_PROPERTY_INDEX);
+        .append_instruction_code(InstructionCode::SET_ENTRY_INDEX);
     append_u32(compilation_context.cursor(), index);
 }
 
@@ -1622,7 +1622,7 @@ fn compile_dynamic_property_access(
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     compilation_context
-        .append_instruction_code(InstructionCode::GET_PROPERTY_DYNAMIC);
+        .append_instruction_code(InstructionCode::GET_ENTRY_DYNAMIC);
     // compile key expression
     compile_expression(
         compilation_context,
@@ -1641,7 +1641,7 @@ fn compile_dynamic_property_assignment(
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     compilation_context
-        .append_instruction_code(InstructionCode::SET_PROPERTY_DYNAMIC);
+        .append_instruction_code(InstructionCode::SET_ENTRY_DYNAMIC);
     // compile key expression
     compile_expression(
         compilation_context,
@@ -3567,7 +3567,7 @@ pub mod tests {
         let datex_script = r#""test".example"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::GET_PROPERTY_TEXT.into(),
+            InstructionCode::GET_ENTRY_TEXT.into(),
             7, // length of "example"
             b'e',
             b'x',
@@ -3592,7 +3592,7 @@ pub mod tests {
         let datex_script = r#""test"."example""#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::GET_PROPERTY_TEXT.into(),
+            InstructionCode::GET_ENTRY_TEXT.into(),
             7, // length of "example"
             b'e',
             b'x',
@@ -3617,7 +3617,7 @@ pub mod tests {
         let datex_script = r#""test".42"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::GET_PROPERTY_INDEX.into(),
+            InstructionCode::GET_ENTRY_INDEX.into(),
             // u32 index 42
             42,
             0,
@@ -3639,7 +3639,7 @@ pub mod tests {
         let datex_script = r#""test".(1u8 + 2u8)"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::GET_PROPERTY_DYNAMIC.into(),
+            InstructionCode::GET_ENTRY_DYNAMIC.into(),
             // property expression: 1 + 2
             InstructionCode::ADD.into(),
             InstructionCode::UINT_8.into(),
@@ -3662,7 +3662,7 @@ pub mod tests {
         let datex_script = r#""test".example = 42u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::SET_PROPERTY_TEXT.into(),
+            InstructionCode::SET_ENTRY_TEXT.into(),
             7, // length of "example"
             b'e',
             b'x',
@@ -3690,7 +3690,7 @@ pub mod tests {
         let datex_script = r#""test".42 = 43u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::SET_PROPERTY_INDEX.into(),
+            InstructionCode::SET_ENTRY_INDEX.into(),
             // u32 index 42
             42,
             0,
@@ -3715,7 +3715,7 @@ pub mod tests {
         let datex_script = r#""test".(1u8 + 2u8) = 43u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::SET_PROPERTY_DYNAMIC.into(),
+            InstructionCode::SET_ENTRY_DYNAMIC.into(),
             // property expression: 1 + 2
             InstructionCode::ADD.into(),
             InstructionCode::UINT_8.into(),

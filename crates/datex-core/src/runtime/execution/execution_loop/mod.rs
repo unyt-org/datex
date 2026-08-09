@@ -413,9 +413,9 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::Apply(_) |
                             RegularInstruction::ApplySingle |
                             RegularInstruction::ApplyZero |
-                            RegularInstruction::GetPropertyText(_) |
-                            RegularInstruction::GetPropertyIndex(_) |
-                            RegularInstruction::GetPropertyDynamic |
+                            RegularInstruction::GetEntryText(_) |
+                            RegularInstruction::GetEntryIndex(_) |
+                            RegularInstruction::GetEntryDynamic |
                             RegularInstruction::TakeEntryText(_) |
                             RegularInstruction::TakeEntryIndex(_) |
                             RegularInstruction::TakeEntryDynamic |
@@ -920,7 +920,7 @@ pub gen fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::GetPropertyText(
+                                RegularInstruction::GetEntryText(
                                     property_data,
                                 ) => {
                                     let mut target = collected_results
@@ -951,7 +951,7 @@ pub gen fn inner_execution_loop(
                                     res.into()
                                 }
 
-                                RegularInstruction::GetPropertyIndex(
+                                RegularInstruction::GetEntryIndex(
                                     property_data,
                                 ) => {
                                     let target = collected_results
@@ -967,7 +967,7 @@ pub gen fn inner_execution_loop(
                                     res.into()
                                 }
 
-                                RegularInstruction::GetPropertyDynamic => {
+                                RegularInstruction::GetEntryDynamic => {
                                     let key = collected_results
                                         .try_pop_value_container(&mut state)?;
                                     let target = collected_results

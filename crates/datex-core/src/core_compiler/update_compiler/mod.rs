@@ -163,13 +163,13 @@ pub fn append_set_property_value_key<T: BufferProvider + ValueVisitor>(
 ) {
     match value_key {
         ValueKey::Text(text) => {
-            context.write(RegularInstruction::set_property_text(text))
+            context.write(RegularInstruction::set_entry_text(text))
         }
         ValueKey::Index(index) => {
-            context.write(RegularInstruction::set_property_index(index as u32))
+            context.write(RegularInstruction::set_entry_index(index as u32))
         }
         ValueKey::Value(value) => {
-            context.write(RegularInstruction::set_property_dynamic());
+            context.write(RegularInstruction::set_entry_dynamic());
             context.visit_value_container(value, None);
         }
     }

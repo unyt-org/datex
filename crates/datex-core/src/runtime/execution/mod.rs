@@ -264,7 +264,7 @@ async fn set_remote_endpoint_property(
         .execute_instructions_remote(
             vec![endpoint],
             vec![
-                RegularInstruction::set_property_text(property_name).into(),
+                RegularInstruction::set_entry_text(property_name).into(),
                 InstructionInput::ValueContainer(value),
                 RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
             ],
@@ -281,7 +281,7 @@ async fn get_remote_endpoint_property(
         .execute_instructions_remote(
             vec![endpoint],
             vec![
-                RegularInstruction::get_property_text(property_name).into(),
+                RegularInstruction::get_entry_text(property_name).into(),
                 RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
             ],
         )

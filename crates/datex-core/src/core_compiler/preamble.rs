@@ -310,15 +310,15 @@ fn append_property_target(
     match accessor {
         ParentAccessor::ValueKey(key) => match key {
             ValueKey::Index(property) => {
-                context.write(RegularInstruction::get_property_index(
+                context.write(RegularInstruction::get_entry_index(
                     property as u32,
                 ));
             }
             ValueKey::Text(property) => {
-                context.write(RegularInstruction::get_property_text(property));
+                context.write(RegularInstruction::get_entry_text(property));
             }
             ValueKey::Value(value) => {
-                context.write(RegularInstruction::get_property_dynamic());
+                context.write(RegularInstruction::get_entry_dynamic());
                 context.visit_value_container(value, None);
             }
         },
@@ -837,7 +837,7 @@ mod tests {
                                 instructions!(
                                     RegularInstruction::ShortText(ShortTextData("b".to_string())),
                                     RegularInstruction::BorrowStackValue(StackIndex(1)),
-                                    RegularInstruction::GetPropertyDynamic.with_children(
+                                    RegularInstruction::GetEntryDynamic.with_children(
                                         instructions!(
                                             RegularInstruction::ShortText(ShortTextData("a".to_string())),
                                             RegularInstruction::BorrowStackValue(StackIndex(1))

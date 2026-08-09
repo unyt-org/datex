@@ -226,31 +226,22 @@ impl RegularInstruction {
         RegularInstruction::ApplyZero
     }
 
-    pub fn get_property_text(key: String) -> Self {
-        RegularInstruction::GetPropertyText(ShortTextData(key))
+    pub fn get_entry_text(key: String) -> Self {
+        RegularInstruction::GetEntryText(ShortTextData(key))
     }
-    pub fn get_property_index(index: u32) -> Self {
-        RegularInstruction::GetPropertyIndex(UInt32Data(index))
+    pub fn get_entry_index(index: u32) -> Self {
+        RegularInstruction::GetEntryIndex(UInt32Data(index))
     }
-    pub fn get_property_dynamic() -> Self {
-        RegularInstruction::GetPropertyDynamic
+    pub fn get_entry_dynamic() -> Self {
+        RegularInstruction::GetEntryDynamic
     }
-    pub fn take_property_text(key: String) -> Self {
-        RegularInstruction::TakeEntryText(ShortTextData(key))
-    }
-    pub fn take_property_index(index: u32) -> Self {
-        RegularInstruction::TakeEntryIndex(UInt32Data(index))
-    }
-    pub fn take_property_dynamic() -> Self {
-        RegularInstruction::TakeEntryDynamic
-    }
-    pub fn set_property_text(key: String) -> Self {
-        RegularInstruction::SetEntryText(ShortTextData(key))
-    }
-    pub fn set_property_index(index: u32) -> Self {
+    pub fn set_entry_index(index: u32) -> Self {
         RegularInstruction::SetEntryIndex(UInt32Data(index))
     }
-    pub fn set_property_dynamic() -> Self {
+    pub fn set_entry_text(key: String) -> Self {
+        RegularInstruction::SetEntryText(ShortTextData(key))
+    }
+    pub fn set_entry_dynamic() -> Self {
         RegularInstruction::SetEntryDynamic
     }
     pub fn matches() -> Self {
@@ -563,14 +554,14 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::APPLY)]
     Apply(ApplyData),
 
-    #[magic(InstructionCode::GET_PROPERTY_TEXT)]
-    GetPropertyText(ShortTextData),
+    #[magic(InstructionCode::GET_ENTRY_TEXT)]
+    GetEntryText(ShortTextData),
 
-    #[magic(InstructionCode::GET_PROPERTY_INDEX)]
-    GetPropertyIndex(UInt32Data),
+    #[magic(InstructionCode::GET_ENTRY_INDEX)]
+    GetEntryIndex(UInt32Data),
 
-    #[magic(InstructionCode::GET_PROPERTY_DYNAMIC)]
-    GetPropertyDynamic,
+    #[magic(InstructionCode::GET_ENTRY_DYNAMIC)]
+    GetEntryDynamic,
 
     // comparison operator
     #[magic(InstructionCode::IS)]
@@ -669,19 +660,19 @@ pub enum RegularInstruction {
     Decrement,
 
     // UpdateOperation::DeleteEntry
-    #[magic(InstructionCode::TAKE_PROPERTY_TEXT)]
+    #[magic(InstructionCode::TAKE_ENTRY_TEXT)]
     TakeEntryText(ShortTextData),
-    #[magic(InstructionCode::TAKE_PROPERTY_INDEX)]
+    #[magic(InstructionCode::TAKE_ENTRY_INDEX)]
     TakeEntryIndex(UInt32Data),
-    #[magic(InstructionCode::TAKE_PROPERTY_DYNAMIC)]
+    #[magic(InstructionCode::TAKE_ENTRY_DYNAMIC)]
     TakeEntryDynamic,
 
     // UpdateOperation::SetEntry
-    #[magic(InstructionCode::SET_PROPERTY_TEXT)]
+    #[magic(InstructionCode::SET_ENTRY_TEXT)]
     SetEntryText(ShortTextData),
-    #[magic(InstructionCode::SET_PROPERTY_INDEX)]
+    #[magic(InstructionCode::SET_ENTRY_INDEX)]
     SetEntryIndex(UInt32Data),
-    #[magic(InstructionCode::SET_PROPERTY_DYNAMIC)]
+    #[magic(InstructionCode::SET_ENTRY_DYNAMIC)]
     SetEntryDynamic,
 
     /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
@@ -757,14 +748,14 @@ impl RegularInstruction {
                 )
             } // arguments plus base to apply to
 
-            RegularInstruction::GetPropertyText(_)
-            | RegularInstruction::GetPropertyIndex(_)
+            RegularInstruction::GetEntryText(_)
+            | RegularInstruction::GetEntryIndex(_)
             | RegularInstruction::TakeEntryText(_)
             | RegularInstruction::TakeEntryIndex(_) => {
                 NextExpectedInstructions::Regular(1)
             } // value to get property from
 
-            RegularInstruction::GetPropertyDynamic
+            RegularInstruction::GetEntryDynamic
             | RegularInstruction::TakeEntryDynamic => {
                 NextExpectedInstructions::Regular(2)
             } // value to get property from + property key
@@ -1092,7 +1083,7 @@ impl RegularInstruction {
                     data.injected_values
                 )
             }
-            RegularInstruction::GetPropertyIndex(uint_32_data) => {
+            RegularInstruction::GetEntryIndex(uint_32_data) => {
                 write!(string, "{}", uint_32_data.0)
             }
             RegularInstruction::SetEntryIndex(uint_32_data) => {
@@ -1101,7 +1092,7 @@ impl RegularInstruction {
             RegularInstruction::TakeEntryIndex(uint_32_data) => {
                 write!(string, "{}", uint_32_data.0)
             }
-            RegularInstruction::GetPropertyText(short_text_data) => {
+            RegularInstruction::GetEntryText(short_text_data) => {
                 write!(string, "{}", short_text_data.0)
             }
             RegularInstruction::TakeEntryText(short_text_data) => {

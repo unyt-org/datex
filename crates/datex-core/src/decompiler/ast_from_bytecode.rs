@@ -365,9 +365,9 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::Apply(_)
                         | RegularInstruction::ApplySingle
                         | RegularInstruction::ApplyZero
-                        | RegularInstruction::GetPropertyText(_)
-                        | RegularInstruction::GetPropertyIndex(_)
-                        | RegularInstruction::GetPropertyDynamic
+                        | RegularInstruction::GetEntryText(_)
+                        | RegularInstruction::GetEntryIndex(_)
+                        | RegularInstruction::GetEntryDynamic
                         | RegularInstruction::TakeEntryText(_)
                         | RegularInstruction::TakeEntryIndex(_)
                         | RegularInstruction::TakeEntryDynamic
@@ -802,7 +802,7 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::TakeEntryIndex(
                                 index_data,
-                            ) | RegularInstruction::GetPropertyIndex(
+                            ) | RegularInstruction::GetEntryIndex(
                                 index_data,
                             ) => {
                                 let base = collected_results.pop_value();
@@ -821,7 +821,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::TakeEntryText(text_data) | RegularInstruction::GetPropertyText(text_data) => {
+                            RegularInstruction::TakeEntryText(text_data) | RegularInstruction::GetEntryText(text_data) => {
                                 let base = collected_results.pop_value();
                                 DatexExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
@@ -838,7 +838,7 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::TakeEntryDynamic | RegularInstruction::GetPropertyDynamic => {
+                            RegularInstruction::TakeEntryDynamic | RegularInstruction::GetEntryDynamic => {
                                 let base = collected_results.pop_value();
                                 let property =
                                     collected_results.pop_value();
