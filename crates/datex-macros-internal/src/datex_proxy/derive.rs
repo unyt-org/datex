@@ -1,10 +1,7 @@
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
-use syn::{
-    Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta, Token,
-    punctuated::Punctuated,
-};
+use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta, Path, Token, punctuated::Punctuated, PathSegment};
 
 use crate::utils::get_project_relative_file_path;
 
@@ -91,7 +88,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
     let datex_core_crate_name =
         if top_level_attributes.force_datex_core_namespace {
-            Ident::new("datex_core", Span::call_site())
+            PathSegment::from(Ident::new("datex_core", Span::call_site())).into()
         } else {
             get_datex_core_crate_name()
         };
@@ -1180,13 +1177,22 @@ fn generate_unnamed_field_type_code(
 }
 
 /// Tries to resolve the datex-core crate to a resolvable name in the current context.
-fn get_datex_core_crate_name() -> Ident {
-    let found = crate_name("datex-core").unwrap_or_else(|_| {
+fn get_datex_core_crate_name() -> Path {
+    let found = match crate_name("datex-core") {
+        Ok(found) => found,
+        Err(_) =>
         // TODO: decide which namespace to use, for now, fall back to datex-embedded
-        FoundCrate::Name("datex_embedded::core".to_string())
-    });
+        {
+            return Path {
+                leading_colon: None,
+                segments: Punctuated::from_iter(
+                    [PathSegment::from(format_ident!("datex_embedded")), PathSegment::from(format_ident!("core"))].into_iter()
+                )
+            }
+        }
+    };
     match found {
-        FoundCrate::Itself => format_ident!("crate"),
-        FoundCrate::Name(name) => Ident::new(&name, Span::call_site()),
+        FoundCrate::Itself => PathSegment::from(format_ident!("crate")).into(),
+        FoundCrate::Name(name) => PathSegment::from(Ident::new(&name, Span::call_site())).into(),
     }
 }
