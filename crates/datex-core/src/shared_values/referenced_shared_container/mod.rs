@@ -6,15 +6,19 @@ use crate::{
     shared_values::{
         ExternalSharedContainer, PointerAddress, ReferenceMutability,
         RemotePointerAddress, SharedContainerInner, SharedContainerMutability,
-        base_shared_value_container::BaseSharedValueContainer,
+        base_shared_value_container::{
+            BaseSharedValueContainer, observers::ObserverData,
+        },
         errors::{SharedValueCreationError, UnexpectedImmutableReferenceError},
         traits::{_ExposeRcInternal, SharedContainerCommon},
+        weak_shared_container::WeakSharedContainer,
     },
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
     types::type_definition::TypeDefinition,
-    values::{value::Value, value_container::ValueContainer},
+    value_updates::update_data::Update,
+    values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
 use core::{
@@ -30,12 +34,14 @@ use core::{
 pub struct ReferencedSharedContainer {
     /// The inner container contains the actual value which can be shared between multiple owners.
     /// This can either be a [SharedContainerInner::EndpointOwned] or a [SharedContainerInner::External]
-    inner: Rc<RefCell<SharedContainerInner>>,
+    pub(super) inner: Rc<RefCell<SharedContainerInner>>,
     /// The mutability of the reference (either `'mut shared X` or `'shared X`)
-    reference_mutability: ReferenceMutability,
-    container_mutability: SharedContainerMutability,
+    pub(super) reference_mutability: ReferenceMutability,
+    pub(super) container_mutability: SharedContainerMutability,
     /// Field used internally to indicate that this reference should be treated as a move in the context of the compiler
-    move_indicator: bool,
+    pub(super) move_indicator: bool,
+    /// Observer data (e.g. observer list) for this shared container. Can be borrowed separately from the [SharedContainerInner]
+    pub(super) observer_data: Rc<RefCell<ObserverData>>,
 }
 
 impl ReferencedSharedContainer {
@@ -45,21 +51,21 @@ impl ReferencedSharedContainer {
     /// the [SharedContainerMutability] of the inner container is mutable.
     pub(crate) fn new_mutable_unchecked(
         inner: Rc<RefCell<SharedContainerInner>>,
+        observer_data: Rc<RefCell<ObserverData>>,
     ) -> Self {
-        let container_mutability =
-            *inner.borrow().base_shared_container().mutability();
-
         ReferencedSharedContainer {
             inner,
             reference_mutability: ReferenceMutability::Mutable,
-            container_mutability,
+            container_mutability: SharedContainerMutability::Mutable,
             move_indicator: false,
+            observer_data,
         }
     }
 
     /// Creates a new immutable [ReferencedSharedContainer] from an existing mutable or immutable [Rc<RefCell<SharedContainerInner>>]
     pub(crate) fn new_immutable(
         inner: Rc<RefCell<SharedContainerInner>>,
+        observer_data: Rc<RefCell<ObserverData>>,
     ) -> Self {
         let container_mutability =
             *inner.borrow().base_shared_container().mutability();
@@ -69,6 +75,19 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Immutable,
             container_mutability,
             move_indicator: false,
+            observer_data,
+        }
+    }
+
+    /// Downgrades the [ReferencedSharedContainer] to a [WeakSharedContainer],
+    /// which can be upgraded back to a strong reference if the inner value is still alive.
+    pub fn downgrade(&self) -> WeakSharedContainer {
+        WeakSharedContainer {
+            inner: Rc::downgrade(&self.inner),
+            reference_mutability: self.reference_mutability,
+            container_mutability: self.container_mutability,
+            move_indicator: self.move_indicator,
+            observer_data: self.observer_data.clone(),
         }
     }
 
@@ -97,6 +116,7 @@ impl ReferencedSharedContainer {
             reference_mutability,
             container_mutability,
             move_indicator: false,
+            observer_data: Rc::new(RefCell::new(ObserverData::default())),
         })
     }
 
@@ -150,21 +170,6 @@ impl ReferencedSharedContainer {
         })
     }
 
-    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value_mut<R>(
-        &self,
-        f: impl FnOnce(&mut Value) -> R,
-    ) -> R {
-        self.inner_mut()
-            .base_shared_container_mut()
-            .with_collapsed_value_mut(f)
-    }
-
-    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
-        self.inner().base_shared_container().with_collapsed_value(f)
-    }
-
     /// Get the inner [PointerAddress].
     pub fn pointer_address(&self) -> PointerAddress {
         self.inner().pointer_address()
@@ -177,6 +182,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Immutable,
             container_mutability: self.container_mutability(),
             move_indicator: false,
+            observer_data: self.observer_data.clone(),
         }
     }
 

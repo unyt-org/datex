@@ -65,6 +65,7 @@ pub fn assert_instruction_lists_eq(
     if output_instructions != expected_instructions {
         let (expected_tree, expected_err) =
             get_instruction_tree_from_list(expected_instructions);
+
         panic!(
             "Output did not match expected instructions:\n\nOutput:\n{}\n\nExpected:\n{}\n",
             disassemble_body_to_string(

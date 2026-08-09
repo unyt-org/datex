@@ -8,13 +8,14 @@ use crate::{
     global::{
         operators::{
             ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
-            UnaryOperator, assignment::AssignmentOperator,
+            UnaryOperator, modification::ModificationOperator,
         },
         protocol_structures::instruction_data::StackIndex,
     },
     libs::core::core_lib_id::CoreLibId,
     shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainerMutability,
+        PointerAddress, ReferenceMutability, SelfOwnedPointerAddress,
+        SharedContainerMutability,
     },
     types::{
         r#type::Type, type_definition::callable::CallableKind,
@@ -142,6 +143,9 @@ pub enum DatexExpressionData {
     /// reference access to shared value, e.g. '$ABC / 'mut $ABC
     RequestSharedRef(RequestSharedRef),
 
+    /// move a shared value, e.g. $ABC
+    MoveSharedValue(SelfOwnedPointerAddress),
+
     ResolveCoreLibId(CoreLibId),
 
     /// compile ( ... )
@@ -196,8 +200,11 @@ pub enum DatexExpressionData {
     /// Property access on the root, e.g. $.print
     RootPropertyAccess(RootPropertyAccess),
 
-    /// Slot assignment
-    SlotAssignment(StackAssignment),
+    /// Stack assignment e.g. {0} = ...
+    StackAssignment(StackAssignment),
+
+    /// Push list to stack, e.g. {...} = ...
+    StackListAssignment(StackListAssignment),
 
     /// Binary operation, e.g. x + y
     BinaryOperation(BinaryOperation),
@@ -217,6 +224,9 @@ pub enum DatexExpressionData {
 
     /// Apply a value to another value, e.g. function call or type cast
     Apply(Apply),
+
+    /// Call an interface method, e.g. obj->method()
+    InterfaceMethodCall(InterfaceMethodCall),
 
     /// Apply a property access to an argument
     PropertyAccess(PropertyAccess),
@@ -361,21 +371,21 @@ pub struct ComparisonOperation {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboxAssignment {
-    pub operator: Option<AssignmentOperator>,
+    pub operator: Option<ModificationOperator>,
     pub unbox_expression: DatexExpression,
     pub assigned_expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboxSlotAssignment {
-    pub operator: Option<AssignmentOperator>,
+    pub operator: Option<ModificationOperator>,
     pub stack_index: StackIndex,
     pub assigned_expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PropertyAssignment {
-    pub operator: Option<AssignmentOperator>,
+    pub operator: Option<ModificationOperator>,
     pub base: DatexExpression,
     pub property: DatexExpression,
     pub assigned_expression: DatexExpression,
@@ -425,7 +435,7 @@ pub struct UnaryOperation {
     pub expression: DatexExpression,
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, Hash, Eq)]
 pub enum ValueAccessType {
     /// 'mut x
     SharedRefMut,
@@ -452,6 +462,27 @@ impl From<&ReferenceMutability> for ValueAccessType {
 pub struct Apply {
     pub base: DatexExpression,
     pub arguments: Vec<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct InterfaceMethodCall {
+    pub target: DatexExpression,
+    pub method_name: String,
+    pub arguments: Vec<DatexExpression>,
+}
+
+impl InterfaceMethodCall {
+    pub fn new(
+        target: DatexExpression,
+        method_name: String,
+        arguments: Vec<DatexExpression>,
+    ) -> Self {
+        InterfaceMethodCall {
+            target,
+            method_name,
+            arguments,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -523,7 +554,7 @@ pub struct VariableDeclaration {
 pub struct VariableAssignment {
     pub id: Option<VariableId>,
     pub name: String,
-    pub operator: Option<AssignmentOperator>,
+    pub operator: Option<ModificationOperator>,
     pub expression: DatexExpression,
 }
 
@@ -615,8 +646,11 @@ pub struct RootPropertyAccess {
 pub struct StackAssignment {
     pub index: StackIndex,
     pub expression: DatexExpression,
-    // TODO: operator for stack assignment, e.g. \\1 += 2
-    // pub operator: Option<AssignmentOperator>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StackListAssignment {
+    pub expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]

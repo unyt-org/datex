@@ -262,10 +262,6 @@ fn structural_type_definition_to_type_expression(
                 TypeExpressionData::Endpoint(endpoint.clone())
                     .with_default_span()
             }
-            _ => TypeExpressionData::Text(
-                format!("[[STRUCTURAL TYPE {:?}]]", struct_type).into(),
-            )
-            .with_default_span(),
         },
         TypeDefinition::Range(RangeTypeDefinition { start, end }) => {
             let x = type_to_type_expression(start);

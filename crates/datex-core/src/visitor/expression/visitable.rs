@@ -3,10 +3,11 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, Conditional, CreateMut, CreateShared,
         DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
-        GenericInstantiation, List, Map, PropertyAccess, PropertyAssignment,
-        RangeDeclaration, RemoteExecution, StackAssignment, Statements,
-        TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
-        UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
+        GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
+        PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
+        StackListAssignment, Statements, TagExpression, TypeDeclaration,
+        UnaryOperation, Unbox, UnboxAssignment, UnboxSlotAssignment,
+        VariableAssignment, VariableDeclaration,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
@@ -186,6 +187,19 @@ impl<E> VisitableExpression<E> for Apply {
     }
 }
 
+impl<E> VisitableExpression<E> for InterfaceMethodCall {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.target)?;
+        for arg in &mut self.arguments {
+            visitor.visit_datex_expression(arg)?;
+        }
+        Ok(())
+    }
+}
+
 impl<E> VisitableExpression<E> for PropertyAccess {
     fn walk_children(
         &mut self,
@@ -229,6 +243,17 @@ impl<E> VisitableExpression<E> for StackAssignment {
         Ok(())
     }
 }
+
+impl<E> VisitableExpression<E> for StackListAssignment {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.expression)?;
+        Ok(())
+    }
+}
+
 impl<E> VisitableExpression<E> for CallableDeclaration {
     fn walk_children(
         &mut self,
@@ -370,8 +395,11 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::Clone(datex_expression) => {
                 datex_expression.walk_children(visitor)
             }
-            DatexExpressionData::SlotAssignment(slot_assignment) => {
-                slot_assignment.walk_children(visitor)
+            DatexExpressionData::StackAssignment(stack_assignment) => {
+                stack_assignment.walk_children(visitor)
+            }
+            DatexExpressionData::StackListAssignment(stack_list_assignment) => {
+                stack_list_assignment.walk_children(visitor)
             }
             DatexExpressionData::ComparisonOperation(comparison_operation) => {
                 comparison_operation.walk_children(visitor)
@@ -385,8 +413,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::UnaryOperation(unary_operation) => {
                 unary_operation.walk_children(visitor)
             }
-            DatexExpressionData::Apply(apply_chain) => {
-                apply_chain.walk_children(visitor)
+            DatexExpressionData::Apply(apply) => apply.walk_children(visitor),
+            DatexExpressionData::InterfaceMethodCall(call) => {
+                call.walk_children(visitor)
             }
             DatexExpressionData::PropertyAccess(property_access) => {
                 property_access.walk_children(visitor)
@@ -425,6 +454,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
             | DatexExpressionData::RootPropertyAccess(_)
             | DatexExpressionData::ResolveCoreLibId(_)
             | DatexExpressionData::Endpoint(_)
+            | DatexExpressionData::MoveSharedValue(_)
             | DatexExpressionData::DateTime(_) => Ok(()),
         }
     }

@@ -1,7 +1,7 @@
 use crate::{
     core_compiler::value_compiler::append_instruction,
     global::{
-        operators::AssignmentOperator,
+        operators::ModificationOperator,
         protocol_structures::{
             injected_values::InjectedValueDeclaration,
             instructions::Instruction,
@@ -307,7 +307,7 @@ pub struct StackIndex(pub u32);
 
 impl Display for StackIndex {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "\\{}", self.0)
+        write!(f, "{{{}}}", self.0)
     }
 }
 
@@ -333,19 +333,11 @@ pub struct MoveWithValue {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct ConfirmMoves {
-    pub pointer_count: u32,
-    #[br(count = pointer_count)]
-    pub address_mappings:
-        Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
 pub struct SharedRef {
     pub address: PointerAddress,
     pub ref_mutability: ReferenceMutability,
     pub container_mutability: SharedContainerMutability,
+    // TODO: hash
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -359,14 +351,7 @@ pub struct SharedRefWithValue {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct ModifySharedContainerValue {
-    pub operator: AssignmentOperator,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
-pub struct ModifyStackValue {
-    pub index: StackIndex,
-    pub operator: AssignmentOperator,
+    pub operator: ModificationOperator,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -380,11 +365,19 @@ pub struct InstructionBlockData {
     pub body: Vec<u8>,
 }
 
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct SpliceData {
+    pub start_index: u32,
+    pub delete_count: u32,
+    pub insert_count: u32,
+}
+
 cfg_if! {
     if #[cfg(feature = "disassembler")]{
         use crate::disassembler::InstructionTree;
 
-        #[derive(Clone, Debug, PartialEq)]
+        #[derive(Clone, Debug, PartialEq, Default)]
         pub struct InstructionBlockDataDebugTree {
             pub length: u32,
             pub injected_variable_count: u32,
@@ -392,7 +385,7 @@ cfg_if! {
             pub body: InstructionTree<Instruction>,
         }
 
-        #[derive(Clone, Debug, PartialEq)]
+        #[derive(Clone, Debug, PartialEq, Default)]
         pub struct InstructionBlockDataDebugFlat {
             pub length: u32,
             pub injected_variable_count: u32,
@@ -485,6 +478,7 @@ pub struct TypeMetadataBin {
     pub ownership: TypeOwnershipCode,
     pub mutability: TypeMutabilityCode,
     pub type_local_or_shared: TypeLocalOrShared,
+    #[skip]
     _unused: B4,
 }
 

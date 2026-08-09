@@ -5,7 +5,7 @@ use crate::{types::error::TypeError, utils::maybe_action::ErrorCollector};
 
 #[derive(Debug)]
 pub struct SpannedTypeError {
-    pub error: TypeError,
+    pub error: Box<TypeError>,
     pub span: Option<Range<usize>>,
 }
 
@@ -16,12 +16,21 @@ impl PartialEq for SpannedTypeError {
 }
 
 impl SpannedTypeError {
+    pub fn new(
+        error: TypeError,
+        span: Option<Range<usize>>,
+    ) -> SpannedTypeError {
+        SpannedTypeError {
+            error: Box::new(error),
+            span,
+        }
+    }
     pub fn new_with_span(
         error: TypeError,
         span: Range<usize>,
     ) -> SpannedTypeError {
         SpannedTypeError {
-            error,
+            error: Box::new(error),
             span: Some(span),
         }
     }
@@ -30,7 +39,7 @@ impl SpannedTypeError {
 impl From<TypeError> for SpannedTypeError {
     fn from(value: TypeError) -> Self {
         SpannedTypeError {
-            error: value,
+            error: Box::new(value),
             span: None,
         }
     }

@@ -1,47 +1,30 @@
+//! This module contains the implementation of operations that can be performed on [ValueContainer]s
 use crate::{
     global::operators::{
-        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-        ComparisonOperator, LogicalUnaryOperator, SharedValueUnaryOperator,
-        UnaryOperator,
+        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
+        LogicalUnaryOperator, SharedValueUnaryOperator, UnaryOperator,
         binary::{
             ArithmeticOperator, BitwiseOperator, LogicalOperator, RangeOperator,
         },
     },
     runtime::execution::ExecutionError,
+    shared_values::{ReferenceMutability, SharedContainer},
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    values::{
-        core_values::range::Range,
-        value_container::{ValueContainer, value_key::ValueKey},
-    },
+    values::{core_values::range::Range, value_container::ValueContainer},
 };
 use core::cell::RefCell;
 
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    shared_values::{
-        base_shared_value_container::observers::TransceiverId,
-        traits::SharedContainerCommon,
-    },
+    shared_values::traits::SharedContainerCommon,
     types::{traits::type_match::TypeSatisfiesValueContainer, r#type::Type},
-    value_updates::{
-        update_data::SetEntryUpdateData, update_handler::UpdateHandler,
-    },
 };
 
-pub fn set_property(
-    target: &mut ValueContainer,
-    key: ValueKey,
-    value: ValueContainer,
-) -> Result<(), ExecutionError> {
-    target
-        .try_set_entry(SetEntryUpdateData { key, value }, TransceiverId(0)) // TODO #644: set correct source id
-        .map_err(ExecutionError::from)
-}
-
-pub fn handle_unary_shared_value_operation(
+/// Handles a binary operation between two [ValueContainer]s based on the specified [BinaryOperator].
+fn handle_unary_shared_value_operation(
     operator: SharedValueUnaryOperator,
     value_container: ValueContainer,
     _memory: &RefCell<SharedReferencesCache>,
@@ -56,7 +39,9 @@ pub fn handle_unary_shared_value_operation(
         }
     })
 }
-pub fn handle_unary_logical_operation(
+
+/// Handles a unary operation on a [ValueContainer] based on the specified [UnaryOperator].
+fn handle_unary_logical_operation(
     operator: LogicalUnaryOperator,
     _value_container: ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
@@ -64,7 +49,9 @@ pub fn handle_unary_logical_operation(
         "Logical unary operations are not implemented yet: {operator:?}"
     )
 }
-pub fn handle_unary_arithmetic_operation(
+
+/// Handles an arithmetic unary operation on a [ValueContainer] based on the specified [ArithmeticUnaryOperator].
+fn handle_unary_arithmetic_operation(
     operator: ArithmeticUnaryOperator,
     value_container: ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
@@ -77,6 +64,7 @@ pub fn handle_unary_arithmetic_operation(
     }
 }
 
+/// Handles a unary operation on a [ValueContainer] based on the specified [UnaryOperator].
 pub fn handle_unary_operation(
     operator: UnaryOperator,
     value_container: ValueContainer,
@@ -102,6 +90,7 @@ pub fn handle_unary_operation(
     }
 }
 
+/// Handles a comparison operation between two [ValueContainer]s based on the specified [ComparisonOperator].
 pub fn handle_comparison_operation(
     operator: ComparisonOperator,
     lhs: &ValueContainer,
@@ -146,21 +135,8 @@ pub fn handle_comparison_operation(
     }
 }
 
-pub fn handle_assignment_operation(
-    operator: AssignmentOperator,
-    lhs: &ValueContainer,
-    rhs: ValueContainer,
-) -> Result<ValueContainer, ExecutionError> {
-    match operator {
-        AssignmentOperator::AddAssign => Ok((lhs + &rhs)?),
-        AssignmentOperator::SubtractAssign => Ok((lhs - &rhs)?),
-        _ => {
-            unreachable!("Instruction {:?} is not a valid operation", operator);
-        }
-    }
-}
-
-pub fn handle_arithmetic_operation(
+/// Handles an arithmetic operation between two [ValueContainer]s based on the specified [ArithmeticOperator].
+fn handle_arithmetic_operation(
     operator: ArithmeticOperator,
     lhs: &ValueContainer,
     rhs: &ValueContainer,
@@ -184,7 +160,8 @@ pub fn handle_arithmetic_operation(
     }
 }
 
-pub fn handle_bitwise_operation(
+/// Handles a bitwise operation between two [ValueContainer]s based on the specified [BitwiseOperator].
+fn handle_bitwise_operation(
     operator: BitwiseOperator,
     _lhs: &ValueContainer,
     _rhs: &ValueContainer,
@@ -195,7 +172,8 @@ pub fn handle_bitwise_operation(
     }
 }
 
-pub fn handle_logical_operation(
+/// Handles a logical operation between two [ValueContainer]s based on the specified [LogicalOperator].
+fn handle_logical_operation(
     operator: LogicalOperator,
     _lhs: &ValueContainer,
     _rhs: &ValueContainer,
@@ -206,7 +184,8 @@ pub fn handle_logical_operation(
     }
 }
 
-pub fn handle_range_operation(
+/// Handles a range operation between two [ValueContainer]s based on the specified [RangeOperator].
+fn handle_range_operation(
     operator: RangeOperator,
     lhs: &ValueContainer,
     rhs: &ValueContainer,
@@ -223,6 +202,7 @@ pub fn handle_range_operation(
     }
 }
 
+/// Handles a binary operation between two [ValueContainer]s based on the specified [BinaryOperator].
 pub fn handle_binary_operation(
     operator: BinaryOperator,
     lhs: &ValueContainer,
@@ -241,5 +221,32 @@ pub fn handle_binary_operation(
         BinaryOperator::Range(range_op) => {
             handle_range_operation(range_op, lhs, rhs)
         }
+    }
+}
+
+/// Derives a shared reference from the given target [ValueContainer].
+/// If the target is not a shared container, an [ExecutionError::ExpectedSharedValue] is returned.
+/// The derived reference will have the specified [ReferenceMutability].
+/// If a mutable reference is requested for a non-mutable shared container, an [ExecutionError::MutableReferenceToNonMutableValue] is returned.
+pub fn derive_shared_reference(
+    target: &ValueContainer,
+    mutability: ReferenceMutability,
+) -> Result<ValueContainer, ExecutionError> {
+    // value_container must be a shared value, otherwise we cannot create a reference to it
+    if let ValueContainer::Shared(shared) = target {
+        Ok(ValueContainer::Shared(SharedContainer::Referenced(
+            match mutability {
+                ReferenceMutability::Immutable => {
+                    Ok(shared.derive_immutable_reference())
+                }
+                ReferenceMutability::Mutable => {
+                    shared.try_derive_mutable_reference().map_err(|_| {
+                        ExecutionError::MutableReferenceToNonMutableValue
+                    })
+                }
+            }?,
+        )))
+    } else {
+        Err(ExecutionError::ExpectedSharedValue)
     }
 }

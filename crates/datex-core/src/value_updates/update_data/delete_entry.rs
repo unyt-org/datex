@@ -9,9 +9,14 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct DeleteEntryUpdateData {
     pub key: ValueKey,
+}
+impl DeleteEntryUpdateData {
+    pub fn new(key: ValueKey) -> Self {
+        DeleteEntryUpdateData { key }
+    }
 }
 
 impl<'ctx> SerdeContext<'ctx, DeleteEntryUpdateData> {

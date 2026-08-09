@@ -43,13 +43,16 @@ impl RemotePointerAddress {
 
     /// Normalizes the pointer address to a self-owned address if it is a
     /// remote address with the same endpoint as the provided local endpoint.
-    pub fn normalize(self, local_endpoint: &Endpoint) -> PointerAddress {
-        if &self.endpoint() == local_endpoint {
+    pub fn normalize_for_local(
+        &self,
+        local_endpoint: &Endpoint,
+    ) -> PointerAddress {
+        if self.endpoint().is_local_or_equals_endpoint(local_endpoint) {
             let mut id = [0u8; 5];
             id.copy_from_slice(&self.0[21..26]);
             PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(id))
         } else {
-            PointerAddress::Remote(self)
+            PointerAddress::Remote(self.clone())
         }
     }
 }
@@ -67,6 +70,14 @@ impl SelfOwnedPointerAddress {
 
     pub fn to_address_string(&self) -> String {
         hex::encode(self.0)
+    }
+
+    /// Returns a [RemotePointerAddress] for the given endpoint and his self-owned pointer address.
+    pub fn remote_for_endpoint(
+        &self,
+        endpoint: &Endpoint,
+    ) -> RemotePointerAddress {
+        RemotePointerAddress::for_endpoint(endpoint, self)
     }
 }
 
@@ -122,24 +133,33 @@ impl PointerAddress {
 
     /// Normalizes the pointer address to a self-owned address if it is a
     /// remote address with the same endpoint as the provided local endpoint.
-    pub fn normalize(self, local_endpoint: &Endpoint) -> Self {
+    pub fn normalize_for_local(self, local_endpoint: &Endpoint) -> Self {
         match self {
             PointerAddress::Remote(remote_address) => {
-                remote_address.normalize(local_endpoint)
+                remote_address.normalize_for_local(local_endpoint)
             }
             _ => self,
+        }
+    }
+
+    /// Returns the endpoint part of the remote pointer address
+    /// or @@local for self owned pointer addresses
+    pub fn endpoint(&self) -> Endpoint {
+        match self {
+            PointerAddress::SelfOwned(_) => Endpoint::LOCAL,
+            PointerAddress::Remote(remote_address) => remote_address.endpoint(),
         }
     }
 }
 
 impl TryFrom<String> for PointerAddress {
-    type Error = &'static str;
+    type Error = String;
     fn try_from(s: String) -> Result<Self, Self::Error> {
         PointerAddress::try_from(s.as_str())
     }
 }
 impl TryFrom<&str> for PointerAddress {
-    type Error = &'static str;
+    type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let hex_str = if let Some(stripped) = s.strip_prefix('$') {
             stripped
@@ -147,7 +167,8 @@ impl TryFrom<&str> for PointerAddress {
             s
         };
 
-        let bytes = hex::decode(hex_str).map_err(|_| "Invalid hex string")?;
+        let bytes = hex::decode(hex_str)
+            .map_err(|_| format!("Invalid hex string: {s}"))?;
         match bytes.len() {
             5 => {
                 let mut arr = [0u8; 5];
@@ -159,7 +180,7 @@ impl TryFrom<&str> for PointerAddress {
                 arr.copy_from_slice(&bytes);
                 Ok(PointerAddress::Remote(RemotePointerAddress(arr)))
             }
-            _ => Err("PointerAddress must be 5 or 26 bytes long"),
+            _ => Err("PointerAddress must be 5 or 26 bytes long".to_string()),
         }
     }
 }

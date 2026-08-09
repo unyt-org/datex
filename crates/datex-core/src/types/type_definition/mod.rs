@@ -256,6 +256,9 @@ impl TypeDefinition {
     pub const UNIT: TypeDefinition =
         TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit));
 
+    pub const NULL: TypeDefinition =
+        TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Null));
+
     /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
     pub fn with_collapsed<R>(&self, f: impl FnOnce(&TypeDefinition) -> R) -> R {
         match self {
@@ -364,20 +367,18 @@ impl TypeDefinition {
 
 impl From<TypeDefinition> for TypeDefinitionWithMetadata {
     fn from(structural_definition: TypeDefinition) -> Self {
-        TypeDefinitionWithMetadata {
-            definition: structural_definition,
-            metadata: TypeMetadata::default(),
-            reference_name: None,
-        }
+        TypeDefinitionWithMetadata::new(
+            structural_definition,
+            TypeMetadata::default(),
+        )
     }
 }
 
 impl From<LiteralTypeDefinition> for TypeDefinitionWithMetadata {
     fn from(literal_definition: LiteralTypeDefinition) -> Self {
-        TypeDefinitionWithMetadata {
-            definition: literal_definition.into(),
-            metadata: TypeMetadata::default(),
-            reference_name: None,
-        }
+        TypeDefinitionWithMetadata::new(
+            literal_definition.into(),
+            TypeMetadata::default(),
+        )
     }
 }

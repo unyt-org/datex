@@ -2,7 +2,7 @@
 //! The precompiler traverses the AST, resolves variable references and shared values.
 
 use crate::{
-    collections::HashSet,
+    ast::expressions::InterfaceMethodCall, collections::HashSet,
     type_inference::infer_expression_type_detailed_errors,
     types::shared_container_containing_nominal_type::SharedContainerContainingNominalType,
     values::core_value::CoreValue,
@@ -10,7 +10,12 @@ use crate::{
 
 use crate::prelude::*;
 use alloc::format;
-use core::{cell::RefCell, ops::Range, unreachable};
+use core::{
+    cell::RefCell,
+    ops::{DerefMut, Range},
+    unreachable,
+};
+
 pub mod options;
 pub mod precompiled_ast;
 pub mod scope;
@@ -29,11 +34,14 @@ use crate::{
         spanned::Spanned,
         type_expressions::{TypeExpressionData, TypeVariantAccess},
     },
-    compiler::error::{
-        CompilerError, DetailedCompilerErrors,
-        DetailedCompilerErrorsWithRichAst,
-        SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
-        SpannedCompilerError,
+    compiler::{
+        error::{
+            CompilerError, DetailedCompilerErrors,
+            DetailedCompilerErrorsWithRichAst,
+            SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
+            SpannedCompilerError,
+        },
+        precompiler::scope::ExternalVariable,
     },
     global::operators::{BinaryOperator, binary::ArithmeticOperator},
     libs::core::{core_lib_id::CoreLibId, type_id::CoreLibBaseTypeId},
@@ -311,10 +319,7 @@ impl<'a> Precompiler<'a> {
                             ),
                         ),
                         SharedContainerMutability::Immutable,
-                        &mut self
-                            .runtime
-                            .pointer_address_provider()
-                            .borrow_mut(),
+                        self.runtime.pointer_address_provider_mut().deref_mut(),
                     ),
                 )
             }),
@@ -324,10 +329,9 @@ impl<'a> Precompiler<'a> {
                         SharedContainer::new_owned_with_inferred_allowed_type(
                             Type::core(CoreLibBaseTypeId::Unknown),
                             SharedContainerMutability::Mutable,
-                            &mut self
-                                .runtime
-                                .pointer_address_provider()
-                                .borrow_mut(),
+                            self.runtime
+                                .pointer_address_provider_mut()
+                                .deref_mut(),
                         ),
                     )
                 })
@@ -417,7 +421,7 @@ impl Precompiler<'_> {
     /// - Err() is returned if early abort for errors is enabled
     fn get_identifier_with_access_type(
         &mut self,
-        identifier: &String,
+        identifier: &str,
         span: &Range<usize>,
         access_type: ValueAccessType,
     ) -> Result<Option<DatexExpression>, SpannedCompilerError> {
@@ -430,7 +434,7 @@ impl Precompiler<'_> {
                 ResolvedVariable::VariableId(id) => {
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id,
-                        name: identifier.clone(),
+                        name: identifier.to_owned(),
                         access_type,
                     })
                     .with_span(span.clone())
@@ -454,7 +458,7 @@ impl Precompiler<'_> {
 
     fn visit_identifier_with_access_type(
         &mut self,
-        identifier: &String,
+        identifier: &str,
         span: &Range<usize>,
         access_type: ValueAccessType,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
@@ -466,7 +470,7 @@ impl Precompiler<'_> {
 
         Ok(match expression {
             Some(expression) => VisitAction::Replace(expression),
-            None => VisitAction::SkipChildren,
+            None => VisitAction::AbortRecursion,
         })
     }
 }
@@ -481,7 +485,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     ) -> Result<VisitAction<DatexExpression>, SpannedCompilerError> {
         if let Some(collected_errors) = self.collected_errors.as_mut() {
             collected_errors.record_error(error);
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
         } else {
             Err(error)
         }
@@ -520,7 +524,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     fn visit_remote_execution(
         &mut self,
         remote_execution: &mut RemoteExecution,
-        _: &Range<usize>,
+        span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         self.visit_datex_expression(&mut remote_execution.left)?;
 
@@ -531,7 +535,64 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         let scope = self.scope_stack.pop_scope();
         remote_execution.injected_variable_count =
             Some(scope.external_variables.len() as u32);
-        Ok(VisitAction::SkipChildren)
+
+        // if root level scope, create new variables for inner placeholder values
+        if self.scope_stack.current_realm_index() == 0 {
+            let unresolved_variables = scope
+                .external_variables
+                .into_iter()
+                .filter_map(|var| match var {
+                    ExternalVariable::UnresolvedPlaceholder(
+                        id,
+                        access_type,
+                    ) => Some((id, access_type)),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            if !unresolved_variables.is_empty() {
+                let mut statements = vec![];
+                for (variable_id, access_type) in unresolved_variables {
+                    let placeholder_var_name = "__placeholder".to_string();
+                    statements.push(
+                        DatexExpressionData::VariableDeclaration(
+                            VariableDeclaration {
+                                id: Some(variable_id),
+                                name: placeholder_var_name,
+                                type_annotation: None,
+                                kind: VariableKind::Const,
+                                init_expression:
+                                    DatexExpressionData::Placeholder(
+                                        access_type,
+                                    )
+                                    .with_default_span(),
+                            },
+                        )
+                        .with_span(span.clone()),
+                    );
+                }
+
+                statements.push(
+                    DatexExpressionData::RemoteExecution(
+                        remote_execution.clone(),
+                    )
+                    .with_span(span.clone()),
+                );
+
+                Ok(VisitAction::Replace(
+                    DatexExpressionData::Statements(Statements {
+                        statements,
+                        is_terminated: false,
+                        unbounded: None,
+                    })
+                    .with_span(span.clone()),
+                ))
+            } else {
+                Ok(VisitAction::AbortRecursion)
+            }
+        } else {
+            Ok(VisitAction::AbortRecursion)
+        }
     }
 
     fn visit_property_assignment(
@@ -548,7 +609,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         {
             variable_access.access_type = ValueAccessType::Borrow;
         }
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     fn visit_get_ref(
@@ -574,7 +635,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             _ => {}
         }
 
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     fn visit_statements(
@@ -628,7 +689,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 _ => {}
             }
         }
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     fn visit_type_declaration(
@@ -648,7 +709,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             type_declaration.id =
                 Some(self.add_new_variable(name, VariableShape::Type));
         }
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     fn visit_binary_operation(
@@ -667,13 +728,13 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 if let DatexExpressionData::Identifier(name) = left.data() {
                     name.clone()
                 } else {
-                    return Ok(VisitAction::VisitChildren);
+                    return Ok(VisitAction::ContinueRecursion);
                 };
             let lit_right =
                 if let DatexExpressionData::Identifier(name) = right.data() {
                     name.clone()
                 } else {
-                    return Ok(VisitAction::VisitChildren);
+                    return Ok(VisitAction::ContinueRecursion);
                 };
             // both of the sides are identifiers
             let left_var = self.resolve_variable(lit_left.as_str());
@@ -687,7 +748,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     // same for right side
                     // could be variant access if the left side is a type and right side does exist as subvariant,
                     // otherwise we try division
-                    Ok(VisitAction::VisitChildren)
+                    Ok(VisitAction::ContinueRecursion)
                 } else {
                     // is right is not defined, fallback to variant access
                     // could be divison though, where user misspelled rhs (unhandled, will throw)
@@ -701,10 +762,10 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     )))
                 }
             } else {
-                Ok(VisitAction::VisitChildren)
+                Ok(VisitAction::ContinueRecursion)
             }
         } else {
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
         }
     }
 
@@ -735,7 +796,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             variable_declaration.name.clone(),
             VariableShape::Value(variable_declaration.kind),
         ));
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     fn visit_variable_assignment(
@@ -768,7 +829,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 ))?;
             };
         }
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::ContinueRecursion)
     }
 
     fn visit_get_shared_ref(
@@ -788,12 +849,44 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             get_shared_ref.expression.data()
         {
             let access_type = ValueAccessType::from(&get_shared_ref.mutability);
-            Ok(VisitAction::Replace(
+            Ok(VisitAction::ReplaceRecurse(
                 DatexExpressionData::Placeholder(access_type)
                     .with_span(span.clone()),
             ))
         } else {
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
+        }
+    }
+
+    fn visit_placeholder(
+        &mut self,
+        placeholder_type: &mut ValueAccessType,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        // if placeholder is inside a remote realm, pass placeholder variable from top level scope.
+        if self.scope_stack.current_realm_index() > 0 {
+            let variable_id = self.add_new_variable(
+                "__placeholder".to_string(),
+                VariableShape::Value(VariableKind::Const),
+            );
+            self.scope_stack
+                .get_active_scope_mut()
+                .register_external_variable(
+                    ExternalVariable::UnresolvedPlaceholder(
+                        variable_id,
+                        placeholder_type.clone(),
+                    ),
+                );
+            Ok(VisitAction::Replace(
+                DatexExpressionData::VariableAccess(VariableAccess {
+                    id: variable_id,
+                    name: "__placeholder".to_string(),
+                    access_type: placeholder_type.clone(),
+                })
+                .with_span(span.clone()),
+            ))
+        } else {
+            Ok(VisitAction::ContinueRecursion)
         }
     }
 
@@ -820,8 +913,28 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     .with_span(span.clone()),
             ))
         } else {
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
         }
+    }
+
+    fn visit_interface_method_call(
+        &mut self,
+        call: &mut InterfaceMethodCall,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        self.visit_datex_expression(&mut call.target)?;
+
+        if let DatexExpressionData::VariableAccess(VariableAccess {
+            access_type,
+            ..
+        }) = call.target.data_mut()
+        {
+            *access_type = ValueAccessType::Borrow
+        };
+        for arg in &mut call.arguments {
+            self.visit_datex_expression(arg)?;
+        }
+        Ok(VisitAction::AbortRecursion)
     }
 
     fn visit_unbox(
@@ -842,7 +955,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     DatexExpressionData::Unbox(Unbox { expression })
                         .with_span(span.clone()),
                 )),
-                None => Ok(VisitAction::SkipChildren),
+                None => Ok(VisitAction::AbortRecursion),
             }
         }
         // if expression is placeholder, set access type to clone
@@ -854,7 +967,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     .with_span(span.clone()),
             ))
         } else {
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
         }
     }
 
@@ -883,10 +996,10 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     })
                     .with_span(span.clone()),
                 )),
-                None => Ok(VisitAction::SkipChildren),
+                None => Ok(VisitAction::AbortRecursion),
             }
         } else {
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
         }
     }
 
@@ -898,25 +1011,23 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         self.visit_datex_expression(&mut comparison_operation.left)?;
         self.visit_datex_expression(&mut comparison_operation.right)?;
 
-        match comparison_operation.left.data_mut() {
-            DatexExpressionData::VariableAccess(VariableAccess {
-                access_type,
-                ..
-            }) => *access_type = ValueAccessType::Borrow,
-            // Add PropertyAccess
-            _ => {}
+        if let DatexExpressionData::VariableAccess(VariableAccess {
+            access_type,
+            ..
+        }) = comparison_operation.left.data_mut()
+        {
+            *access_type = ValueAccessType::Borrow
         };
 
-        match comparison_operation.right.data_mut() {
-            DatexExpressionData::VariableAccess(VariableAccess {
-                access_type,
-                ..
-            }) => *access_type = ValueAccessType::Borrow,
-            // Add PropertyAccess
-            _ => {}
+        if let DatexExpressionData::VariableAccess(VariableAccess {
+            access_type,
+            ..
+        }) = comparison_operation.right.data_mut()
+        {
+            *access_type = ValueAccessType::Borrow
         };
 
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::AbortRecursion)
     }
 
     fn visit_identifier(
@@ -934,30 +1045,49 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
         ast::{
             expressions::{
-                CreateShared, DeriveRef, DeriveSharedRef, Map, PropertyAccess,
-                PropertyAssignment, RequestSharedRef, Unbox,
+                BinaryOperation, CreateShared, DatexExpression,
+                DatexExpressionData, DeriveRef, DeriveSharedRef, Map,
+                PropertyAccess, PropertyAssignment, RemoteExecution,
+                Statements, TypeDeclaration, TypeDeclarationKind, Unbox,
+                ValueAccessType, VariableAccess, VariableDeclaration,
+                VariableKind, VariantAccess,
             },
             resolved_variable::ResolvedVariable,
+            spanned::Spanned,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
-        compiler::ComparisonOperation,
-        libs::core::type_id::{
-            CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
+        compiler::{
+            ComparisonOperation,
+            error::{
+                CompilerError,
+                SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
+                SpannedCompilerError,
+            },
+            precompiler::{
+                Precompiler,
+                options::PrecompilerOptions,
+                precompile_ast_simple_error,
+                precompiled_ast::{AstMetadata, RichAst, VariableShape},
+                scope_stack::PrecompilerScopeStack,
+            },
+        },
+        global::operators::{BinaryOperator, binary::ArithmeticOperator},
+        libs::core::{
+            core_lib_id::CoreLibId,
+            type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         },
         parser::Parser,
-        runtime::{RuntimeConfig, RuntimeRunner},
-        shared_values::{PointerAddress, SharedContainerMutability},
+        prelude::*,
+        runtime::Runtime,
+        shared_values::{ReferenceMutability, SharedContainerMutability},
         types::type_definition_with_metadata::LocalReferenceMutability,
-        values::core_values::{
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::IntegerTypeVariant},
-        },
+        values::core_values::{endpoint::Endpoint, integer::Integer},
     };
-    use core::{assert_matches, str::FromStr};
+    use alloc::rc::Rc;
+    use core::{assert_matches, cell::RefCell, str::FromStr};
 
     fn precompile(
         ast: DatexExpression,
@@ -1015,10 +1145,6 @@ mod tests {
             result,
             Err(SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst::Simple(SpannedCompilerError{span, error: CompilerError::InvalidRedeclaration(name)})) if name == "A"
         );
-    }
-
-    fn parse_unwrap(src: &str) -> DatexExpression {
-        Parser::parse_with_default_options(src).unwrap()
     }
 
     fn parse_and_precompile_spanned_result(

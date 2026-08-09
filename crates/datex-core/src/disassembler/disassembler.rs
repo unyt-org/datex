@@ -1,16 +1,12 @@
 use crate::{
     disassembler::options::DisassemblerOptions,
     dxb_parser::body::{DXBParserError, iterate_instructions},
-    global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::{
-            instruction_data::InstructionBlockDataDebugFlat,
-            instructions::{
-                CountOrUnbounded, Instruction,
-                NestedInstructionResolutionStrategy,
-            },
-            regular_instructions::RegularInstruction,
+    global::protocol_structures::{
+        instruction_data::InstructionBlockDataDebugFlat,
+        instructions::{
+            CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
         },
+        regular_instructions::RegularInstruction,
     },
     prelude::*,
     utils::ansi_colors::{AnsiColor, AnsiWrite},
@@ -31,6 +27,13 @@ where
     instruction: Box<T>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     children: Vec<InstructionTree<T>>,
+}
+impl Default for InstructionTree<Instruction> {
+    fn default() -> Self {
+        InstructionTree::new(Instruction::Regular(
+            RegularInstruction::UnboundedStatements,
+        ))
+    }
 }
 
 impl<T> From<T> for InstructionTree<T>
@@ -331,8 +334,7 @@ fn write_instruction(
         output,
         "{}",
         match instruction {
-            Instruction::Regular(instr) =>
-                InstructionCode::from(instr).to_string(),
+            Instruction::Regular(instr) => instr.instruction_code_string(),
             Instruction::Type(instr) => instr.as_ref().to_string(),
         }
     )
@@ -526,13 +528,16 @@ mod tests {
     use super::*;
     use crate::{
         core_compiler::value_compiler::append_instruction,
-        global::protocol_structures::{
-            instruction_data::{
-                InstructionBlockData, InstructionBlockDataDebugFlat,
-                InstructionBlockDataDebugTree, StatementsData, UInt8Data,
-                UnboundedStatementsData,
+        global::{
+            instruction_codes::InstructionCode,
+            protocol_structures::{
+                instruction_data::{
+                    InstructionBlockData, InstructionBlockDataDebugFlat,
+                    InstructionBlockDataDebugTree, StatementsData, UInt8Data,
+                    UnboundedStatementsData,
+                },
+                regular_instructions::RegularInstruction,
             },
-            regular_instructions::RegularInstruction,
         },
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
     };

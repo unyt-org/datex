@@ -1,5 +1,9 @@
 //! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
+    core_compiler::InstructionInput,
+    global::protocol_structures::regular_instructions::RegularInstruction,
+    libs::core::core_lib_id::CoreLibId,
+    prelude::*,
     runtime::{
         Runtime,
         execution::{
@@ -9,15 +13,13 @@ use crate::{
             },
         },
     },
-    traits::apply::{Apply, ApplyError},
-    values::value_container::ValueContainer,
-};
-
-use crate::{
-    libs::core::core_lib_id::CoreLibId,
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         RemotePointerAddress, SelfOwnedPointerAddress, SharedContainer,
+    },
+    traits::apply::{Apply, ApplyError},
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
 use core::{result::Result, unreachable};
@@ -43,6 +45,41 @@ pub fn execute_dxb_sync(
 
     for output in execution_loop {
         match output? {
+            ExternalExecutionInterrupt::SetEndpointProperty {
+                endpoint,
+                property_name,
+                value,
+            } => {
+                if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(
+                            runtime
+                                .endpoint_properties_mut()
+                                .insert(property_name, value),
+                        ),
+                    );
+                } else {
+                    return Err(ExecutionError::RequiresAsyncExecution);
+                }
+            }
+            ExternalExecutionInterrupt::GetEndpointProperty {
+                endpoint,
+                property_name,
+            } => {
+                if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
+                    let value = runtime
+                        .endpoint_properties()
+                        .get(&property_name)
+                        .cloned();
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(Some(
+                            ValueContainer::new_from_option(value),
+                        )),
+                    );
+                } else {
+                    return Err(ExecutionError::RequiresAsyncExecution);
+                }
+            }
             ExternalExecutionInterrupt::Result(result) => return Ok(result),
             ExternalExecutionInterrupt::GetReferenceToRemotePointer(
                 address,
@@ -92,11 +129,65 @@ pub async fn execute_dxb(
     input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let runtime = input.runtime.clone();
-    let caller_metadata = input.caller_metadata.clone();
+    let _caller_metadata = input.caller_metadata.clone();
     let (interrupt_provider, execution_loop) = input.execution_loop();
 
     for output in execution_loop {
         match output? {
+            ExternalExecutionInterrupt::SetEndpointProperty {
+                endpoint,
+                property_name,
+                value,
+            } => {
+                if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(
+                            runtime
+                                .endpoint_properties_mut()
+                                .insert(property_name, value),
+                        ),
+                    );
+                } else {
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(
+                            set_remote_endpoint_property(
+                                &runtime,
+                                endpoint,
+                                property_name,
+                                value,
+                            )
+                            .await?,
+                        ),
+                    );
+                }
+            }
+            ExternalExecutionInterrupt::GetEndpointProperty {
+                endpoint,
+                property_name,
+            } => {
+                if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
+                    let value = runtime
+                        .endpoint_properties()
+                        .get(&property_name)
+                        .cloned();
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(Some(
+                            ValueContainer::new_from_option(value),
+                        )),
+                    );
+                } else {
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(
+                            get_remote_endpoint_property(
+                                &runtime,
+                                endpoint,
+                                property_name,
+                            )
+                            .await?,
+                        ),
+                    );
+                }
+            }
             ExternalExecutionInterrupt::Result(result) => return Ok(result),
             ExternalExecutionInterrupt::GetReferenceToRemotePointer(
                 address,
@@ -136,13 +227,13 @@ pub async fn execute_dxb(
             }
             ExternalExecutionInterrupt::RemoteExecution {
                 input,
-                mut receivers,
+                receivers,
             } => {
                 // assert that receivers is a single endpoint
                 assert_eq!(receivers.len(), 1);
 
                 let mut remote_execution_context = RemoteExecutionContext::new(
-                    receivers.remove(0),
+                    receivers,
                     ExecutionMode::Static,
                     runtime.clone(),
                 );
@@ -157,30 +248,44 @@ pub async fn execute_dxb(
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
-            ExternalExecutionInterrupt::RequestMove(pointers) => {
-                let moved_values = runtime
-                    .internal
-                    .clone()
-                    .request_pointer_move(&caller_metadata.endpoint, pointers)
-                    .await?
-                    .into_iter()
-                    .map(|v| ValueContainer::Shared(SharedContainer::Owned(v)))
-                    .collect();
-                interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValues(moved_values),
-                );
-            }
-            ExternalExecutionInterrupt::ConfirmMoves(address_mapping) => {
-                runtime.internal.clone().handle_pointer_move_to_remote(
-                    &caller_metadata.endpoint,
-                    address_mapping,
-                    &runtime.memory().borrow(),
-                )?;
-            }
         }
     }
 
     unreachable!("Execution loop should always return a result");
+}
+
+async fn set_remote_endpoint_property(
+    runtime: &Runtime,
+    endpoint: Endpoint,
+    property_name: String,
+    value: ValueContainer,
+) -> Result<Option<ValueContainer>, ExecutionError> {
+    runtime
+        .execute_instructions_remote(
+            vec![endpoint],
+            vec![
+                RegularInstruction::set_entry_text(property_name).into(),
+                InstructionInput::ValueContainer(value),
+                RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
+            ],
+        )
+        .await
+}
+
+async fn get_remote_endpoint_property(
+    runtime: &Runtime,
+    endpoint: Endpoint,
+    property_name: String,
+) -> Result<Option<ValueContainer>, ExecutionError> {
+    runtime
+        .execute_instructions_remote(
+            vec![endpoint],
+            vec![
+                RegularInstruction::get_entry_text(property_name).into(),
+                RegularInstruction::Endpoint(Endpoint::LOCAL).into(),
+            ],
+        )
+        .await
 }
 
 fn handle_apply(
@@ -201,12 +306,12 @@ fn get_remote_shared_container_reference(
     address: RemotePointerAddress,
     _mutability: ReferenceMutability,
 ) -> Result<Option<ReferencedSharedContainer>, ExecutionError> {
-    let address_provider = runtime.pointer_address_provider().borrow();
+    let address_provider = runtime.pointer_address_provider_mut();
     let memory = runtime.memory().borrow();
     let resolved_address = address_provider.normalize_address(address);
     // convert slot to InternalSlot enum
     // TODO #770: resolve from remote, handle mutability
-    Ok(memory.get_reference(&resolved_address).cloned())
+    Ok(memory.get_reference(&resolved_address))
 }
 
 fn get_core_lib_value_container(
@@ -226,7 +331,6 @@ fn get_local_pointer_value(
         .memory()
         .borrow()
         .get_reference(&PointerAddress::SelfOwned(address))
-        .cloned()
 }
 
 #[cfg(test)]
@@ -521,7 +625,7 @@ mod tests {
         if let ValueContainer::Local(value) = result {
             assert_eq!(
                 &value.inner,
-                &CoreValue::Map(Map::StructuralWithStringKeys(vec![(
+                &CoreValue::Map(Map::structural_with_string_keys(vec![(
                     "a".to_string(),
                     ValueContainer::from(true)
                 )]))
@@ -674,9 +778,9 @@ mod tests {
         info!("Map: {:?}", map);
 
         // access by key
-        assert_eq!(map.get("x"), Ok(&Integer::from(1).into()));
-        assert_eq!(map.get("y"), Ok(&Integer::from(2).into()));
-        assert_eq!(map.get("z"), Ok(&Integer::from(42).into()));
+        assert_eq!(map.try_get("x"), Ok(&Integer::from(1).into()));
+        assert_eq!(map.try_get("y"), Ok(&Integer::from(2).into()));
+        assert_eq!(map.try_get("z"), Ok(&Integer::from(42).into()));
 
         // structural equality checks
         let expected_se: Map = Map::from(vec![
@@ -867,7 +971,7 @@ mod tests {
         .unwrap();
         assert!(res.is_some());
         let env = res.unwrap().try_into_value::<Map>().unwrap();
-        assert_eq!(env.get("TEST_ENV_VAR"), Ok(&"test_value".into()));
+        assert_eq!(env.try_get("TEST_ENV_VAR"), Ok(&"test_value".into()));
     }
 
     #[test]

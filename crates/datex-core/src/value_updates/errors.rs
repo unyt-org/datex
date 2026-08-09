@@ -6,6 +6,7 @@ use core::fmt::Display;
 #[derive(Debug, PartialEq, Clone)]
 pub enum UpdateError {
     ImmutableValue,
+    ImmutableReference,
     InvalidUpdate,
     AccessError(Box<AccessError>),
     TypeError(Box<TypeError>),
@@ -13,6 +14,9 @@ pub enum UpdateError {
 impl UpdateError {
     pub fn access_error<T: Into<AccessError>>(err: T) -> Self {
         UpdateError::AccessError(Box::new(err.into()))
+    }
+    pub fn type_error<T: Into<TypeError>>(err: T) -> Self {
+        UpdateError::TypeError(Box::new(err.into()))
     }
 }
 
@@ -42,6 +46,9 @@ impl Display for UpdateError {
             }
             UpdateError::ImmutableValue => {
                 core::write!(f, "Cannot update an immutable value")
+            }
+            UpdateError::ImmutableReference => {
+                core::write!(f, "Cannot update an immutable reference")
             }
         }
     }

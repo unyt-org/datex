@@ -571,7 +571,7 @@ impl ComHub {
     /// Returns a MaybeAsync which is async in the following cases:
     /// * the block signature is validated because the block is for own endpoint and signature is set
     /// * the block needs to be relayed to other endpoints or is a trace block, which requires async handling for the relay/trace logic
-    /// The MaybeAsync returns the own received block if the block is for own endpoint and signature is valid, otherwise None
+    ///   The MaybeAsync returns the own received block if the block is for own endpoint and signature is valid, otherwise None
     // FIXME #732: this seams to generate a very big future which causes heap allocation to fail on embedded targets (!?)
     pub(crate) fn receive_block(
         self: Rc<Self>,
@@ -836,9 +836,6 @@ impl ComHub {
                     "Socket already registered for endpoint {sender}",
                 );
             }
-            Err(error) => {
-                core::panic!("Failed to register socket endpoint {sender}: {error:?}");
-            },
             Ok(_) => { }
         }
     }
@@ -1201,8 +1198,8 @@ impl ComHub {
                     // add to response for matching endpoint
                     else if let Some(matches_endpoint) = self.try_match_sender(&mut responses, &sender) {
                         let response = responses.get_mut(&matches_endpoint).unwrap();
-                        info!("Received resolved response from {} -> {}", sender, sender.any_instance_endpoint());
-                        sender = sender.any_instance_endpoint();
+                        info!("Received resolved response from {} -> {}", sender, sender.any_instance());
+                        sender = sender.any_instance();
                         // check if the receiver is already set (= current set response is Err)
                         if response.is_err() {
                             *response = Ok(Response::ResolvedResponse(sender.clone(), section));
@@ -1287,7 +1284,7 @@ impl ComHub {
     ) -> Option<Endpoint> {
         let matches = gen {
             // match sender but with any wildcard instance
-            yield sender.any_instance_endpoint();
+            yield sender.any_instance();
             // match @@local if endpoint is local endpoint
             if self.is_local_endpoint_exact(sender) {
                 yield Endpoint::LOCAL;
