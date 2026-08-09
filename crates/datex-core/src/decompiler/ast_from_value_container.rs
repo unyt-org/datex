@@ -14,8 +14,11 @@ use crate::{
 };
 
 use crate::{
-    ast::expressions::{
-        CallableDeclaration, CreateShared, DeriveSharedRef, TagExpression,
+    ast::{
+        expressions::{
+            CallableDeclaration, CreateShared, DeriveSharedRef, TagExpression,
+        },
+        type_expressions::{StructuralList, StructuralMap},
     },
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
@@ -294,6 +297,28 @@ fn structural_type_definition_to_type_expression(
         TypeDefinition::CoreType(core_type) => {
             TypeExpressionData::Identifier(core_type.to_string())
                 .with_default_span()
+        }
+        TypeDefinition::Map(map_type) => {
+            TypeExpressionData::StructuralMap(StructuralMap(
+                map_type
+                    .0
+                    .iter()
+                    .map(|(k, v)| {
+                        (type_to_type_expression(k), type_to_type_expression(v))
+                    })
+                    .collect::<Vec<_>>(),
+            ))
+            .with_default_span()
+        }
+        TypeDefinition::List(list_type) => {
+            TypeExpressionData::StructuralList(StructuralList(
+                list_type
+                    .0
+                    .iter()
+                    .map(type_to_type_expression)
+                    .collect::<Vec<TypeExpression>>(),
+            ))
+            .with_default_span()
         }
         _ => TypeExpressionData::Text(
             format!("[[TYPE {:?}]]", type_definition).into(),

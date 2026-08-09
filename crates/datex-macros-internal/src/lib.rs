@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use syn::parse_macro_input;
+use syn::{Item, parse_macro_input};
 
 mod bitfield_macros;
 mod core_lib;
@@ -113,4 +113,19 @@ pub fn derive_instruction(input: TokenStream) -> TokenStream {
 pub fn datex_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     datex_proxy::derive(input).into()
+}
+
+#[proc_macro_attribute]
+pub fn datex(_args: TokenStream, item: TokenStream) -> TokenStream {
+    let item_clone = item.clone();
+    let parsed_item = parse_macro_input!(item_clone as Item);
+
+    match &parsed_item {
+        Item::Impl(item_impl) => {}
+        _ => {
+            // TODO
+        }
+    }
+
+    item
 }
