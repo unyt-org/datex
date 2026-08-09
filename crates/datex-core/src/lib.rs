@@ -79,6 +79,8 @@ pub use datex_macros_internal as macros;
 extern crate core;
 
 pub mod datex_registry;
+pub mod inspector;
+
 pub use inventory;
 
 /// HashMap and HashSet that work in both std and no_std environments.

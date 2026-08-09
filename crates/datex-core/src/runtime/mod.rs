@@ -24,7 +24,8 @@ mod runner;
 pub mod test_utils;
 
 use crate::{
-    core_compiler::InstructionInput, values::core_values::endpoint::Endpoint,
+    core_compiler::InstructionInput, inspector::register_inspector_namespace,
+    values::core_values::endpoint::Endpoint,
 };
 pub use config::*;
 pub use internal::*;
@@ -47,9 +48,11 @@ impl Deref for Runtime {
 /// around RuntimeInternal
 impl Runtime {
     pub(crate) fn new(runtime_internal: RuntimeInternal) -> Runtime {
-        Runtime {
+        let runtime = Runtime {
             internal: Rc::new(runtime_internal),
-        }
+        };
+        register_inspector_namespace(&runtime);
+        runtime
     }
 
     pub fn stub() -> Runtime {
