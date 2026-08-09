@@ -1,7 +1,10 @@
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
-use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta, Path, Token, punctuated::Punctuated, PathSegment};
+use syn::{
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta, Path,
+    PathSegment, Token, punctuated::Punctuated,
+};
 
 use crate::utils::get_project_relative_file_path;
 
@@ -67,6 +70,9 @@ pub struct TopLevelAttributes {
     /// If the decorated struct or enum should not be deserializable from a Datex value.
     no_deserialize: bool,
 
+    /// When set to true, the struct/enum will map to a DATEX structural type instead of a nominal entity type.
+    structural_type: bool,
+
     /// If the decorated struct or enum should be exported to the Datex registry.
     /// `#[datex(export)]`
     export: bool,
@@ -86,12 +92,13 @@ pub struct DeriveData {
 pub fn derive(input: DeriveInput) -> TokenStream {
     let top_level_attributes = parse_top_level_attributes(&input.attrs);
 
-    let datex_core_crate_name =
-        if top_level_attributes.force_datex_core_namespace {
-            PathSegment::from(Ident::new("datex_core", Span::call_site())).into()
-        } else {
-            get_datex_core_crate_name()
-        };
+    let datex_core_crate_name = if top_level_attributes
+        .force_datex_core_namespace
+    {
+        PathSegment::from(Ident::new("datex_core", Span::call_site())).into()
+    } else {
+        get_datex_core_crate_name()
+    };
 
     let DeriveData {
         into_datex_fields_inner,
@@ -130,6 +137,13 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             .expect("Failed to convert file path to string")
             .to_string()
     });
+
+    let wrapped_datex_type = wrap_type_definition(
+        datex_type,
+        namespace,
+        &datex_name,
+        top_level_attributes.structural_type,
+    );
 
     let registration = if export {
         quote! {
@@ -250,6 +264,26 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         }
     };
 
+    let types_impl = if top_level_attributes.structural_type {
+        quote! {
+            #[automatically_derived]
+            impl #generics DatexProxyTypes for #ident #generics {
+                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
+                    (#wrapped_datex_type).with_name(#datex_name)
+                }
+            }
+        }
+    } else {
+        quote! {
+            #[automatically_derived]
+            impl #generics DatexProxyTypes for #ident #generics {
+                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
+                    #wrapped_datex_type
+                }
+            }
+        }
+    };
+
     quote! {
         const _: () = {
             use #datex_core_crate_name::{
@@ -271,9 +305,11 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     }
                 },
                 types::r#type::Type,
+                types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
                 types::literal_type_definition::LiteralTypeDefinition,
                 runtime::cache::shared_references_cache::SharedReferencesCache,
                 libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+                shared_values::SelfOwnedPointerAddress,
                 values::value_container::ValueContainer,
                 values::value::Value,
                 values::core_value::CoreValue,
@@ -296,12 +332,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
             #deserialize
 
-            #[automatically_derived]
-            impl #generics DatexProxyTypes for #ident #generics {
-                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
-                    (#datex_type).with_name(#datex_name)
-                }
-            }
+            #types_impl
 
             #registration
         };
@@ -384,11 +415,9 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         },
     };
 
-    let type_definition = datex_type.unwrap_or_else(|| {
-        quote! {
-            Type::Alias(TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into()))
-        }
-    });
+    let type_definition = datex_type.unwrap_or_else(
+        || quote! {TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into())},
+    );
 
     DeriveData {
         is_fallible_serialization,
@@ -580,11 +609,9 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
     };
 
     let type_definition = quote! {
-        Type::Alias(
-            TypeDefinition::Union(UnionTypeDefinition(vec![
-                #(#variants_datex_types),*
-            ])).into()
-        )
+        TypeDefinition::Union(UnionTypeDefinition(vec![
+            #(#variants_datex_types),*
+        ]))
     };
 
     DeriveData {
@@ -1034,6 +1061,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
     let mut export = false;
     let mut namespace = None;
     let mut no_deserialize = false;
+    let mut structural_type = false;
 
     for attr in attrs {
         if !attr.path().is_ident("datex") {
@@ -1057,6 +1085,10 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
                 }
                 Meta::Path(path) if path.is_ident("export") => {
                     export = true;
+                }
+
+                Meta::Path(path) if path.is_ident("structural") => {
+                    structural_type = true;
                 }
 
                 Meta::Path(path) if path.is_ident("no_deserialize") => {
@@ -1094,9 +1126,34 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
         force_datex_core_namespace,
         no_deserialize,
         datex_name,
+        structural_type,
         export,
         namespace,
         docs: parse_doc_comments(attrs),
+    }
+}
+
+fn wrap_type_definition(
+    type_definition: TokenStream,
+    namespace: &str,
+    name: &str,
+    use_nominal_type: bool,
+) -> TokenStream {
+    if use_nominal_type {
+        quote! {
+            Type::Alias(#type_definition.into())
+        }
+    } else {
+        let unique_name = format!("{}::{}", namespace, name);
+        quote! {
+            Type::Entity(unsafe {
+                SharedContainerContainingEntityType::new_base_with_address(
+                    #name.to_string(),
+                    SelfOwnedPointerAddress::new_static_from_name(#unique_name),
+                    Type::core(CoreLibBaseTypeId::Unknown)
+                )
+            })
+        }
     }
 }
 
@@ -1186,13 +1243,19 @@ fn get_datex_core_crate_name() -> Path {
             return Path {
                 leading_colon: None,
                 segments: Punctuated::from_iter(
-                    [PathSegment::from(format_ident!("datex_embedded")), PathSegment::from(format_ident!("core"))].into_iter()
-                )
-            }
+                    [
+                        PathSegment::from(format_ident!("datex_embedded")),
+                        PathSegment::from(format_ident!("core")),
+                    ]
+                    .into_iter(),
+                ),
+            };
         }
     };
     match found {
         FoundCrate::Itself => PathSegment::from(format_ident!("crate")).into(),
-        FoundCrate::Name(name) => PathSegment::from(Ident::new(&name, Span::call_site())).into(),
+        FoundCrate::Name(name) => {
+            PathSegment::from(Ident::new(&name, Span::call_site())).into()
+        }
     }
 }

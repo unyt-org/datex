@@ -4,7 +4,7 @@
 use crate::{
     ast::expressions::InterfaceMethodCall, collections::HashSet,
     type_inference::infer_expression_type_detailed_errors,
-    types::shared_container_containing_nominal_type::SharedContainerContainingEntityType,
+    types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
     values::core_value::CoreValue,
 };
 

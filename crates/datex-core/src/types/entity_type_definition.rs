@@ -1,13 +1,13 @@
 use crate::{
     prelude::*,
     types::{
-        shared_container_containing_nominal_type::SharedContainerContainingEntityType,
+        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         r#type::Type,
     },
 };
 use core::fmt::Display;
 
-/// Represents a definition of an "entity" type, 
+/// Represents a definition of an "entity" type,
 /// which describes a nominal type identified by a unique pointer id.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum EntityTypeDefinition {

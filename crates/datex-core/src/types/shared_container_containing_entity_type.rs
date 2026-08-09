@@ -1,13 +1,16 @@
 use crate::{
+    libs::core::type_id::CoreLibBaseTypeId,
+    prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
-        SharedContainer, SharedContainerMutability,
+        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
         traits::SharedContainerCommon,
     },
     types::{
         entity_type_definition::EntityTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+        r#type::Type,
     },
     values::{core_value::CoreValue, value_container::ValueContainer},
 };
@@ -49,6 +52,28 @@ impl SharedContainerContainingEntityType {
                 address_provider,
             ),
         )
+    }
+
+    /// Creates a new [SharedContainerContainingEntityType] with the
+    /// given address, type and name.
+    /// # Safety
+    /// The caller must ensure that the address is not used anywhere else.
+    pub unsafe fn new_base_with_address(
+        name: String,
+        address: SelfOwnedPointerAddress,
+        ty: Type,
+    ) -> SharedContainerContainingEntityType {
+        unsafe {
+            SharedContainerContainingEntityType::new_unchecked(
+                SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
+                    CoreValue::EntityTypeDefinition(
+                        EntityTypeDefinition::new_base(ty, name),
+                    ),
+                    SharedContainerMutability::Immutable,
+                    address,
+                ),
+            )
+        }
     }
 
     /// Converts the [SharedContainerContainingEntityType] into a [SharedContainer], consuming the wrapper.

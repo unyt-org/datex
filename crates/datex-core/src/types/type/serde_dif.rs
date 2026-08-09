@@ -4,7 +4,7 @@ use crate::{
     prelude::*,
     shared_values::SharedContainer,
     types::{
-        shared_container_containing_nominal_type::SharedContainerContainingEntityType,
+        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         r#type::Type,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{

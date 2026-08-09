@@ -4,17 +4,17 @@
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
-    libs::core::type_id::CoreLibTypeId,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
-        ReferenceMutability, SharedContainerMutability,
-        SharedContainerOwnership,
+        ReferenceMutability, SelfOwnedPointerAddress, SharedContainer,
+        SharedContainerMutability, SharedContainerOwnership,
     },
     types::{
         entity_type_definition::EntityTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_nominal_type::SharedContainerContainingEntityType,
+        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
             LocalMutability, LocalOwnership, TypeDefinitionWithMetadata,
