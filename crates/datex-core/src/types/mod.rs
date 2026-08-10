@@ -1,5 +1,5 @@
 //! This module provides a type system implementation.
-pub mod entity_type_definition;
+pub mod entities;
 pub mod error;
 pub mod literal_type_definition;
 pub mod shared_container_containing_entity_type;

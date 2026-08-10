@@ -19,13 +19,14 @@ use crate::{
             CallableDeclaration, CreateShared, DeriveSharedRef,
             EntityDeclarationExpression, TagExpression,
         },
-        type_expressions::{StructuralList, StructuralMap},
+        type_expressions::{
+            IdentifierWithPointerAddress, StructuralList, StructuralMap,
+        },
     },
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     types::{
-        entity_type_definition::EntityTypeDefinition,
         shared_container_containing_entity_type::SharedContainerContainingEntityType,
         r#type::Type,
         type_definition::{
@@ -37,7 +38,6 @@ use crate::{
 };
 use alloc::format;
 use core::ops::Deref;
-use crate::ast::type_expressions::IdentifierWithPointerAddress;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -236,10 +236,12 @@ fn entity_type_container_to_type_expression(
     container: &SharedContainerContainingEntityType,
 ) -> TypeExpression {
     let pointer_address = container.pointer_address();
-    TypeExpressionData::IdentifierWithPointerAddress(IdentifierWithPointerAddress {
-        name: container.entity_definition().name.clone(),
-        pointer_address,
-    })
+    TypeExpressionData::IdentifierWithPointerAddress(
+        IdentifierWithPointerAddress {
+            name: container.entity_definition().name.clone(),
+            pointer_address,
+        },
+    )
     .with_default_span()
 }
 

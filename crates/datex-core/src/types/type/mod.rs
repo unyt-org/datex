@@ -12,7 +12,7 @@ use crate::{
         SharedContainerMutability, SharedContainerOwnership,
     },
     types::{
-        entity_type_definition::EntityTypeDefinition,
+        entities::entity_type_definition::EntityTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
         shared_container_containing_entity_type::SharedContainerContainingEntityType,
         type_definition::TypeDefinition,

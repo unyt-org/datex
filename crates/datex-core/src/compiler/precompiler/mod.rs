@@ -51,7 +51,7 @@ use crate::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
     types::{
-        entity_type_definition::EntityTypeDefinition,
+        entities::entity_type_definition::EntityTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type, type_definition::TypeDefinition,
     },

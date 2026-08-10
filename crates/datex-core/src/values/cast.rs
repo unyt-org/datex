@@ -6,7 +6,7 @@ use crate::{
     prelude::*,
     shared_values::errors::KeyNotFoundError,
     types::{
-        entity_type_definition::EntityTypeDefinition,
+        entities::entity_type_definition::EntityTypeDefinition,
         r#type::Type,
         type_definition::collection::{
             CollectionTypeDefinition,

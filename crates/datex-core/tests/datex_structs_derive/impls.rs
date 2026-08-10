@@ -9,7 +9,7 @@ use datex_core::{
         SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
     },
     types::{
-        entity_type_definition::EntityTypeDefinition,
+        entities::entity_type_definition::EntityTypeDefinition,
         shared_container_containing_entity_type::SharedContainerContainingEntityType,
         r#type::Type,
     },
@@ -39,16 +39,23 @@ fn impl_functions() {
     println!(
         "{}",
         decompile_value(
-            &example_type.into(),
+            &example_type.clone().into(),
             DecompileOptions::colorized_pretty()
         )
     );
 
     // when calling the datex_type function multiple times, it should return the same type definition from cache
-    assert_eq!(
-        Example::datex_type(memory.deref_mut()),
-        Example::datex_type(memory.deref_mut())
-    );
+    assert_eq!(example_type, Example::datex_type(memory.deref_mut()));
+
+    match example_type {
+        Type::Entity(entity) => {
+            let definition = entity.entity_definition();
+            println!("def: {:#?}", definition);
+        }
+        _ => {
+            panic!("Expected entity type, got {:?}", example_type);
+        }
+    }
 
     // println!("reg {:#?}", all_datex_registrations().collect::<Vec<_>>());
 

@@ -307,7 +307,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 types::r#type::Type,
                 types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
                 types::literal_type_definition::LiteralTypeDefinition,
-                types::entity_type_definition::EntityTypeDefinition,
+                types::entities::entity_type_definition::EntityTypeDefinition,
                 runtime::cache::shared_references_cache::SharedReferencesCache,
                 libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
                 shared_values::SelfOwnedPointerAddress,

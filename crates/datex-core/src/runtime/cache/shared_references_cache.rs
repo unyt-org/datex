@@ -7,7 +7,7 @@ use crate::{
         weak_shared_container::WeakSharedContainer,
     },
     types::{
-        entity_type_definition::EntityTypeDefinition,
+        entities::entity_type_definition::EntityTypeDefinition,
         shared_container_containing_entity_type::SharedContainerContainingEntityType,
     },
     values::{

@@ -1,12 +1,6 @@
-use crate::{
-    prelude::*,
-    types::{
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
-        r#type::Type,
-    },
-};
+use super::entity_impls::EntityImpl;
+use crate::{prelude::*, types::type_definition::TypeDefinition};
 use core::fmt::Display;
-use crate::types::type_definition::TypeDefinition;
 
 /// Represents a definition of an "entity" type,
 /// which describes a nominal type identified by a unique pointer id.
@@ -15,7 +9,7 @@ pub struct EntityTypeDefinition {
     pub(crate) definition: TypeDefinition,
     pub(crate) name: String,
     pub(crate) allowed_variants: Vec<String>,
-    // TODO: impls
+    pub(crate) impls: Vec<EntityImpl>,
 }
 
 impl Display for EntityTypeDefinition {
@@ -25,11 +19,15 @@ impl Display for EntityTypeDefinition {
 }
 
 impl EntityTypeDefinition {
-    pub fn new(definition: TypeDefinition, name: String) -> EntityTypeDefinition {
+    pub fn new(
+        definition: TypeDefinition,
+        name: String,
+    ) -> EntityTypeDefinition {
         EntityTypeDefinition {
             definition,
             name,
             allowed_variants: Vec::new(),
+            impls: Vec::new(),
         }
     }
 }

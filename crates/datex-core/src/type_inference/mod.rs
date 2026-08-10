@@ -18,9 +18,10 @@ use crate::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, CreateShared, DatexExpression, DatexExpressionData,
-            DeriveRef, DeriveSharedRef, GenericInstantiation, List, Map,
-            PropertyAccess, PropertyAssignment, RangeDeclaration,
-            RemoteExecution, RequestSharedRef, StackAssignment, Statements,
+            DeriveRef, DeriveSharedRef, EntityDeclarationExpression,
+            GenericInstantiation, List, Map, PropertyAccess,
+            PropertyAssignment, RangeDeclaration, RemoteExecution,
+            RequestSharedRef, StackAssignment, Statements,
             TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
             ValueAccessType, VariableAccess, VariableAssignment,
             VariableDeclaration, VariantAccess,
@@ -78,7 +79,6 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic};
-use crate::ast::expressions::EntityDeclarationExpression;
 
 pub mod error;
 pub mod options;
@@ -924,9 +924,9 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             "TypeDeclarationExpression should have an id assigned during precompilation",
         );
         let var_type = self.variable_type(type_id);
-        let type_def = var_type
-            .as_ref()
-            .expect("TypeDeclarationExpression type should have been inferred already");
+        let type_def = var_type.as_ref().expect(
+            "TypeDeclarationExpression type should have been inferred already",
+        );
         let inferred_type_def =
             self.infer_type_expression(&mut type_declaration.definition)?;
 
@@ -934,7 +934,11 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         mark_type(inferred_type_def.clone())
     }
 
-    fn visit_entity_declaration(&mut self, entity_declaration: &mut EntityDeclarationExpression, span: &Range<usize>) -> ExpressionVisitResult<SpannedTypeError> {
+    fn visit_entity_declaration(
+        &mut self,
+        entity_declaration: &mut EntityDeclarationExpression,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedTypeError> {
         let type_id = entity_declaration.id.expect(
             "EntityDeclarationExpression should have an id assigned during precompilation",
         );
@@ -1572,7 +1576,7 @@ mod tests {
             infer_expression_type_with_errors,
         },
         types::{
-            entity_type_definition::EntityTypeDefinition,
+            entities::entity_type_definition::EntityTypeDefinition,
             error::TypeError,
             literal_type_definition::LiteralTypeDefinition,
             shared_container_containing_entity_type::SharedContainerContainingEntityType,

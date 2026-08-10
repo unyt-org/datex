@@ -7,7 +7,7 @@ use crate::{
         traits::SharedContainerCommon,
     },
     types::{
-        entity_type_definition::EntityTypeDefinition,
+        entities::entity_type_definition::EntityTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
         r#type::Type,

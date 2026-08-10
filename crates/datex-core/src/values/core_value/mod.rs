@@ -7,7 +7,7 @@ use crate::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
     },
     prelude::*,
-    types::entity_type_definition::EntityTypeDefinition,
+    types::entities::entity_type_definition::EntityTypeDefinition,
 };
 use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
