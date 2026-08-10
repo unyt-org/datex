@@ -249,6 +249,16 @@ pub struct CallableDataBody {
     pub body: Vec<u8>,
 }
 
+impl Display for CallableDataBody {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "[length: {}, injected_value_count: {}, body_len: {} bytes]",
+            self.length,
+            self.injected_value_count,
+            self.body.len()
+        )
+    }
+}
+
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct TextDataRaw {
@@ -446,6 +456,17 @@ pub struct InstructionBlockData {
     pub body: Vec<u8>,
 }
 
+impl Display for InstructionBlockData {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "[length: {}, injected_value_count: {}, injected_values: [{}], body_len: {} bytes]",
+            self.length,
+            self.injected_value_count,
+            self.injected_values.iter().map(|v| format!("{}", v)).join(", "),
+            self.body.len()
+        )
+    }
+}
+
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct SpliceData {
@@ -466,12 +487,32 @@ cfg_if! {
             pub body: InstructionTree<Instruction>,
         }
 
+        impl Display for InstructionBlockDataDebugTree {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                write!(f, "[length: {}, injected_variable_count: {}, injected_values: [{}]]",
+                    self.length,
+                    self.injected_variable_count,
+                    self.injected_values.iter().map(|v| format!("{}", v)).join(", "),
+                )
+            }
+        }
+
         #[derive(Clone, Debug, PartialEq, Default)]
         pub struct InstructionBlockDataDebugFlat {
             pub length: u32,
             pub injected_variable_count: u32,
             pub injected_values: Vec<InjectedValueDeclaration>,
             pub body: Vec<Instruction>,
+        }
+
+        impl Display for InstructionBlockDataDebugFlat {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                write!(f, "[length: {}, injected_variable_count: {}, injected_values: [{}]]",
+                    self.length,
+                    self.injected_variable_count,
+                    self.injected_values.iter().map(|v| format!("{}", v)).join(", "),
+                )
+            }
         }
 
         #[derive(BinWrite, Clone, Debug, PartialEq)]

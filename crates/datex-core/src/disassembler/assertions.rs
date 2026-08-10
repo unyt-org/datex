@@ -35,7 +35,7 @@ pub macro assert_regular_instructions_equal {
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
         use $crate::disassembler::{InstructionTree};
         use $crate::global::protocol_structures::instructions::Instruction;
-
+        
         let dxb = $dxb;
         assert_instruction_lists_eq(
             resolve_instructions(dxb),

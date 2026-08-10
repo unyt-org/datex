@@ -4,6 +4,7 @@ use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::instruction_data::{CallableDeclarationData, CallableDeclarationDataDebugFlat, CallableDeclarationDataDebugTree, InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree};
 use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+use crate::prelude::*;
 
 impl RegularInstruction {
     pub fn remote_execution_debug_tree(

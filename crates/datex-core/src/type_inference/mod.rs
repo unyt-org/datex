@@ -1607,7 +1607,7 @@ mod tests {
         },
     };
     use core::{assert_matches, cell::RefCell, str::FromStr};
-    use std::ops::Deref;
+    use core::ops::Deref;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.

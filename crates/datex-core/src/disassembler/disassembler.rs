@@ -118,17 +118,18 @@ impl InstructionTree<Instruction> {
     /// also recursively flattens instructions like [RegularInstruction::_RemoteExecutionDebugTree]
     /// into [RegularInstruction::_RemoteExecutionDebugFlat]
     pub fn flatten_instructions(self) -> Vec<Instruction> {
-        if let Instruction::Regular(instruction) = &*self.instruction
+        let mut result = if let Instruction::Regular(instruction) = &*self.instruction
             && let Some(flattened) = instruction.clone().flatten_instruction(){
             vec![Instruction::Regular(flattened)]
         }
         else {
-            let mut result = vec![*self.instruction];
-            for child in self.children {
-                result.extend(child.flatten_instructions());
-            }
-            result
+            vec![*self.instruction]
+        };
+        
+        for child in self.children {
+            result.extend(child.flatten_instructions());
         }
+        result
     }
 }
 

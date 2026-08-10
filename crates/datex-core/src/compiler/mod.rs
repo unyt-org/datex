@@ -1919,6 +1919,7 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+    use crate::global::protocol_structures::injected_values::LocalInjectedValueType;
 
     fn compile_unwrap(script: &str) -> Vec<u8> {
         compile_script(script, CompileOptions::default(), Runtime::stub())
@@ -3597,35 +3598,76 @@ pub mod tests {
                         rest_parameter_name: None,
                     },
                     body: InstructionBlockDataDebugTree {
-                        length: 13,
-                        injected_variable_count: 2,
-                        injected_values: vec![
-                            InjectedValueDeclaration {
-                                index: StackIndex(0),
-                                ty: InjectedValueType::Shared(
-                                    SharedInjectedValueType::Move
-                                )
-                            },
-                            InjectedValueDeclaration {
-                                index: StackIndex(2),
-                                ty: InjectedValueType::Shared(
-                                    SharedInjectedValueType::Move
-                                )
-                            }
-                        ],
-                        body: RegularInstruction::Add.with_children(instructions!(
-                            RegularInstruction::TakeStackValue(StackIndex(0)),
-                            RegularInstruction::TakeStackValue(StackIndex(1)),
-                        ))
+                        length: 11,
+                        injected_variable_count: 0,
+                        injected_values: vec![],
+                        body: RegularInstruction::Add
+                            .with_children(instructions!(
+                                RegularInstruction::TakeStackValue(StackIndex(0)),
+                                RegularInstruction::TakeStackValue(StackIndex(1)),
+                            ))
                     }
 
                 }
             ).with_children(instructions!(
+                // parameter types
                 TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into()),
                 TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into()),
+                // return type
                 TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())
             )))
         )
+    }
+
+    #[test]
+    fn callable_declaration_with_injected_value() {
+        let script = "const x = 42; function add(a: integer) -> integer (x + a)";
+        let res = compile_unwrap(script);
+        assert_regular_instructions_equal!(
+            &res,
+            (RegularInstruction::statements_with_children(false, instructions!(
+                RegularInstruction::PushToStack.with_children(instructions!(
+                    RegularInstruction::Integer(Integer::from(42))
+                )),
+                RegularInstruction::_CallableDeclarationDebugTree(
+                    CallableDeclarationDataDebugTree {
+                        signature: CallableSignatureData {
+                            has_rest_parameter: false,
+                            name: ShortTextData("add".to_string()),
+                            kind: CallableKind::Function,
+                            parameter_names: vec![
+                                ShortTextData("a".to_string()),
+                            ],
+                            has_return_type: true,
+                            has_yeet_type: false,
+                            parameter_count: 1,
+                            rest_parameter_name: None,
+                        },
+                        body: InstructionBlockDataDebugTree {
+                            length: 11,
+                            injected_variable_count: 1,
+                            injected_values: vec![
+                                InjectedValueDeclaration {
+                                    index: StackIndex(0),
+                                    ty: InjectedValueType::Shared(SharedInjectedValueType::Move),
+                                }
+                            ],
+                            body: RegularInstruction::Add
+                                .with_children(instructions!(
+                                    RegularInstruction::TakeStackValue(StackIndex(1)),
+                                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                                ))
+                        }
+
+                    }
+                ).with_children(instructions!(
+                    // parameter types
+                    TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into()),
+                    // return type
+                    TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())
+                ))
+            )))
+        );
     }
 
     // this is not a valid Datex script, just testing the compiler

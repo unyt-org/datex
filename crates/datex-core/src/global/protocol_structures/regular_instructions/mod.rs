@@ -1124,55 +1124,56 @@ impl RegularInstruction {
             RegularInstruction::RemoteExecution(data) => {
                 write!(
                     string,
-                    "[length: {}, injected_variables: {:?}]",
-                    data.length,
-                    data.injected_values
+                    "{}",
+                    data
                 )
             }
             RegularInstruction::CallableDeclaration(data) => {
                 write!(
                     string,
-                    "{}",
-                    data.signature
+                    "[signature: {}, body: {}]",
+                    data.signature,
+                    data.body
                 )
             }
             RegularInstruction::_CallableDeclarationDebugTree(data) => {
                 write!(
                     string,
-                    "{}",
-                    data.signature
+                    "[signature: {}, body: {}]",
+                    data.signature,
+                    data.body
                 )
             }
             RegularInstruction::_CallableDeclarationDebugFlat(data) => {
                 write!(
                     string,
-                    "{}",
-                    data.signature
+                    "[signature: {}, body: {}]",
+                    data.signature,
+                    data.body
                 )
             }
             RegularInstruction::Callable(data) => {
                 write!(
                     string,
-                    "{}",
-                    data.signature
+                    "[signature: {}, body: {}]",
+                    data.signature,
+                    data.body
                 )
             }
             #[cfg(feature = "disassembler")]
             RegularInstruction::_RemoteExecutionDebugTree(data) => {
                 write!(
                     string,
-                    "[length: {}, injected_variables: {:?}]",
-                    data.length,
-                    data.injected_values
+                    "{}",
+                    data
                 )
             }
             #[cfg(feature = "disassembler")]
             RegularInstruction::_RemoteExecutionDebugFlat(data) => {
                 write!(
                     string,
-                    "[length: {}, injected_variables: {:?}]",
-                    data.length,
-                    data.injected_values
+                    "{}",
+                    data
                 )
             }
             RegularInstruction::GetEntryIndex(uint_32_data) => {
