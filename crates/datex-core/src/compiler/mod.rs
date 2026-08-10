@@ -1770,8 +1770,8 @@ pub mod tests {
         compile_script, compile_script_or_return_static_value,
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
-
     use crate::{
+        ast::expressions::{CallableDeclaration, CallableSignature},
         compiler::scope::CompilationScope,
         core_compiler::core_compilation_context::{
             CompileInput, DXBWithSharedValues, default_compile_input,
@@ -1779,12 +1779,18 @@ pub mod tests {
         global::{
             instruction_codes::InstructionCode,
             protocol_structures::{
+                instruction_data::{
+                    CallableDeclarationData, CallableSignatureData,
+                },
                 regular_instructions::RegularInstruction,
                 type_instructions::TypeInstruction,
             },
         },
         runtime::execution::context::ExecutionMode,
-        types::literal_type_definition::LiteralTypeDefinition,
+        types::{
+            literal_type_definition::LiteralTypeDefinition,
+            type_definition::callable::CallableKind,
+        },
         values::value_container::ValueContainer,
     };
 
@@ -1827,6 +1833,12 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+
+    fn compile_unwrap(script: &str) -> Vec<u8> {
+        compile_script(script, CompileOptions::default(), Runtime::stub())
+            .unwrap()
+            .0
+    }
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
@@ -2906,10 +2918,7 @@ pub mod tests {
             x;
             z;
         "#;
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         print_disassembled(&res);
         assert_regular_instructions_equal!(
             &res,
@@ -2939,10 +2948,7 @@ pub mod tests {
     #[test]
     fn remote_execution() {
         let script = "42u8 :: 43u8";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_eq!(
             res,
             vec![
@@ -2972,10 +2978,7 @@ pub mod tests {
     #[test]
     fn remote_execution_expression() {
         let script = "42u8 :: 1u8 + 2u8";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_eq!(
             res,
             vec![
@@ -3021,10 +3024,7 @@ pub mod tests {
     #[test]
     fn remote_execution_injected_const() {
         let script = "const x = 42u8; 1u8 :: x";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
@@ -3061,10 +3061,7 @@ pub mod tests {
         // var x only refers to a value, not a ref, but since it is transferred to a
         // remote context, its state is synced via a ref (VariableReference model)
         let script = "const x = shared 42u8; 1u8 :: x";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
@@ -3099,10 +3096,7 @@ pub mod tests {
     #[test]
     fn remote_execution_injected_shared_ref() {
         let script = "const x = shared 42u8; 1u8 :: 'x";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
@@ -3137,10 +3131,7 @@ pub mod tests {
     #[test]
     fn remote_execution_injected_shared_ref_and_move() {
         let script = "const x = shared 42u8; 1u8 :: ('x; x)";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
@@ -3181,10 +3172,7 @@ pub mod tests {
     #[test]
     fn remote_execution_injected_consts() {
         let script = "const x = 42u8; const y = 69u8; 1u8 :: x + y";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
@@ -3238,10 +3226,7 @@ pub mod tests {
     fn remote_execution_shadow_const() {
         let script =
             "const x = 42u8; const y = 69u8; 1u8 :: (const x = 5u8; x + y)";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
@@ -3289,10 +3274,7 @@ pub mod tests {
     #[test]
     fn remote_execution_nested() {
         let script = "const x = 42u8; (1u8 :: (2u8 :: x))";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
 
         assert_eq!(
             res,
@@ -3363,10 +3345,7 @@ pub mod tests {
     #[test]
     fn remote_execution_nested2() {
         let script = "const x = 42u8; const y = 43u8; (1u8 :: (y :: x))";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
 
         assert_eq!(
             res,
@@ -3493,10 +3472,7 @@ pub mod tests {
     #[test]
     fn root_property_endpoint() {
         let script = "$.endpoint";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::GetRootProperty(RootProperty::ENDPOINT))
@@ -3506,24 +3482,50 @@ pub mod tests {
     #[test]
     fn root_property_caller() {
         let script = "$.caller";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::GetRootProperty(RootProperty::CALLER))
         );
     }
 
+    #[test]
+    fn callable_declaration() {
+        let script = "function add(a: integer, b: integer) -> integer (a + b)";
+        let res = compile_unwrap(script);
+        assert_regular_instructions_equal!(
+            &res,
+            (RegularInstruction::CallableDeclaration(
+                CallableDeclarationData {
+                    signature: CallableSignatureData {
+                        has_rest_parameter: false,
+                        name: ShortTextData("add".to_string()),
+                        kind: CallableKind::Function,
+                        parameter_names: vec![
+                            ShortTextData("a".to_string()),
+                            ShortTextData("b".to_string())
+                        ],
+                        has_return_type: true,
+                        has_yeet_type: false,
+                        parameter_count: 2,
+                        rest_parameter_name: None,
+                    },
+                    body: InstructionBlockData {
+                        length: 0,
+                        injected_value_count: 0,
+                        injected_values: vec![],
+                        body: vec![],
+                    },
+                }
+            ))
+        )
+    }
+
     // this is not a valid Datex script, just testing the compiler
     #[test]
     fn unbox() {
         let script = "*10u8";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_eq!(
             res,
             vec![
@@ -3538,10 +3540,7 @@ pub mod tests {
     #[test]
     fn unbox_slot() {
         let script = "const x = 10u8; *x";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
         assert_eq!(
             res,
             vec![
@@ -3565,10 +3564,7 @@ pub mod tests {
     #[test]
     fn type_literal_integer() {
         let script = "type<1>";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
 
         assert_instructions_equal!(
             &res,
@@ -3584,10 +3580,7 @@ pub mod tests {
     #[test]
     fn type_core_type_integer() {
         let script = "integer";
-        let res =
-            compile_script(script, CompileOptions::default(), Runtime::stub())
-                .unwrap()
-                .0;
+        let res = compile_unwrap(script);
 
         assert_regular_instructions_equal!(
             &res,
