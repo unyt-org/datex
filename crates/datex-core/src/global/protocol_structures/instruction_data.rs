@@ -1,5 +1,4 @@
 use crate::{
-    ast::{expressions::DatexExpression, type_expressions::TypeExpression},
     core_compiler::value_compiler::append_instruction,
     global::{
         operators::ModificationOperator,
@@ -30,6 +29,7 @@ use binrw::{
 };
 use cfg_if::cfg_if;
 use core::{fmt::Display, ops::AddAssign};
+use itertools::Itertools;
 use modular_bitfield::{bitfield, prelude::B4};
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -192,6 +192,22 @@ pub struct CallableSignatureData {
     #[br(if(has_rest_parameter))]
     pub rest_parameter_name: Option<ShortTextData>,
 }
+
+impl Display for CallableSignatureData {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        write!(formatter, "[")?;
+        write!(formatter, "kind: {}, ", self.kind)?;
+        write!(formatter, "parameters: [{}], ", self.parameter_names.iter().map(|n| &n.0).join(", "))?;
+        if let Some(rest) = &self.rest_parameter_name {
+            write!(formatter, ", rest_parameter: {}, ", rest.0)?;
+        }
+        write!(formatter, "has_return_type: {}, ", self.has_return_type)?;
+        write!(formatter, "has_yeet_type: {}", self.has_yeet_type)?;
+        write!(formatter, "]")?;
+        Ok(())
+    }
+}
+
 
 impl CallableSignatureData {
     /// Returns the total number of types in the signature, including parameters, rest parameter, return type, and yeet type.
@@ -456,6 +472,20 @@ cfg_if! {
             pub injected_variable_count: u32,
             pub injected_values: Vec<InjectedValueDeclaration>,
             pub body: Vec<Instruction>,
+        }
+
+        #[derive(BinWrite, Clone, Debug, PartialEq)]
+        #[brw(little)]
+        pub struct CallableDeclarationDataDebugTree {
+            pub signature: CallableSignatureData,
+            pub body: InstructionBlockDataDebugTree,
+        }
+
+        #[derive(BinWrite, Clone, Debug, PartialEq)]
+        #[brw(little)]
+        pub struct CallableDeclarationDataDebugFlat {
+            pub signature: CallableSignatureData,
+            pub body: InstructionBlockDataDebugFlat,
         }
 
         impl From<&InstructionBlockDataDebugTree> for InstructionBlockDataDebugFlat {

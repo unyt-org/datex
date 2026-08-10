@@ -17,6 +17,7 @@ use core::{
     fmt::{Debug, Write},
 };
 use serde::Serialize;
+use crate::global::protocol_structures::instruction_data::CallableDeclarationDataDebugFlat;
 
 /// A generic tree structure for instructions with child instructions.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -106,24 +107,14 @@ impl From<Vec<InstructionTree<Instruction>>> for InstructionTree<Instruction> {
 
 impl InstructionTree<Instruction> {
     /// Flattens the tree into a list of instructions,
-    /// also recursively flattens [RegularInstruction::_RemoteExecutionDebugTree]
+    /// also recursively flattens instructions like [RegularInstruction::_RemoteExecutionDebugTree]
     /// into [RegularInstruction::_RemoteExecutionDebugFlat]
     pub fn flatten_instructions(self) -> Vec<Instruction> {
-        if let Instruction::Regular(
-            RegularInstruction::_RemoteExecutionDebugTree(tree),
-        ) = *self.instruction
-        {
-            vec![Instruction::Regular(
-                RegularInstruction::_RemoteExecutionDebugFlat(
-                    InstructionBlockDataDebugFlat {
-                        length: tree.length,
-                        injected_variable_count: tree.injected_variable_count,
-                        injected_values: tree.injected_values,
-                        body: tree.body.flatten_instructions(),
-                    },
-                ),
-            )]
-        } else {
+        if let Instruction::Regular(instruction) = &*self.instruction
+            && let Some(flattened) = instruction.clone().flatten_instruction(){
+            vec![Instruction::Regular(flattened)]
+        }
+        else {
             let mut result = vec![*self.instruction];
             for child in self.children {
                 result.extend(child.flatten_instructions());
@@ -441,18 +432,19 @@ fn get_inner_instructions_as_detailed_tree(
     instruction: &Instruction,
 ) -> Option<DetailedInstructionTree> {
     match instruction {
-        Instruction::Regular(
-            RegularInstruction::_RemoteExecutionDebugFlat(data),
-        ) => {
-            let (tree, err) = get_instruction_tree_from_list(data.body.clone());
-            if let Some(err) = err {
-                panic!("{}", err);
+        Instruction::Regular(instruction) => match instruction.inner_instructions_from_debug_instruction() {
+            InnerInstructions::Tree(tree) => {
+                Some(instruction_tree_to_detailed_tree(tree.clone()))
             }
-            Some(instruction_tree_to_detailed_tree(tree))
+            InnerInstructions::Flat(flat) => {
+                let (tree, err) = get_instruction_tree_from_list(flat.clone());
+                if let Some(err) = err {
+                    panic!("{}", err);
+                }
+                Some(instruction_tree_to_detailed_tree(tree))
+            }
+            InnerInstructions::None => None,
         }
-        Instruction::Regular(
-            RegularInstruction::_RemoteExecutionDebugTree(data),
-        ) => Some(instruction_tree_to_detailed_tree(data.body.clone())),
         _ => None,
     }
 }

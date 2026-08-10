@@ -213,83 +213,17 @@ pub gen fn iterate_instructions_with_seek(
                     let instruction = RegularInstruction::read(&mut reader)
                         .map_err(DXBParserError::BinRwError)?;
 
-                    let instruction =
-                        if let RegularInstruction::RemoteExecution(
-                            instruction_block_data,
-                        ) = instruction
-                        {
-                            match nested_instruction_resolution_strategy {
-                                #[cfg(feature = "disassembler")]
-                                NestedInstructionResolutionStrategy::
-                                    ResolveNestedScopesFlat
-                                | NestedInstructionResolutionStrategy::
-                                    ResolveNestedScopesTree => {
-                                    use crate::global::
-                                        protocol_structures::
-                                        instruction_data::{
-                                            InstructionBlockDataDebugFlat,
-                                            InstructionBlockDataDebugTree,
-                                        };
-
-                                    let (inner_instructions, err) =
-                                        crate::disassembler::disassemble_body(
-                                            &instruction_block_data.body,
-                                            nested_instruction_resolution_strategy,
-                                        );
-
-                                    if let Some(err) = err {
-                                        Err(err)?;
-                                    }
-
-                                    if nested_instruction_resolution_strategy
-                                        == NestedInstructionResolutionStrategy::
-                                            ResolveNestedScopesFlat
-                                    {
-                                        RegularInstruction::
-                                            remote_execution_debug_flat(
-                                                InstructionBlockDataDebugFlat {
-                                                    length:
-                                                        instruction_block_data
-                                                            .length,
-                                                    injected_variable_count:
-                                                        instruction_block_data
-                                                            .injected_value_count,
-                                                    injected_values:
-                                                        instruction_block_data
-                                                            .injected_values.clone(),
-                                                    body: inner_instructions
-                                                        .flatten(),
-                                                },
-                                            )
-                                    } else {
-                                        RegularInstruction::
-                                            remote_execution_debug_tree(
-                                                InstructionBlockDataDebugTree {
-                                                    length:
-                                                        instruction_block_data
-                                                            .length,
-                                                    injected_variable_count:
-                                                        instruction_block_data
-                                                            .injected_value_count,
-                                                    injected_values:
-                                                        instruction_block_data
-                                                            .injected_values.clone(),
-                                                    body: inner_instructions,
-                                                },
-                                            )
-                                    }
-                                }
-
-                                _ => {
-                                    RegularInstruction::remote_execution(
-                                        instruction_block_data.clone(),
-                                    )
-                                }
-                            }
-                        } else {
+                    
+                    let instruction = cfg_select! {
+                        feature = "disassembler" => {
+                             instruction
+                                .convert_to_nested(nested_instruction_resolution_strategy)
+                        }
+                        _ => {
                             instruction
-                        };
-
+                        }
+                    }?;
+                    
                     next_instructions_stack
                         .handle_next_expected_instructions(
                             instruction.get_next_expected_instructions(),

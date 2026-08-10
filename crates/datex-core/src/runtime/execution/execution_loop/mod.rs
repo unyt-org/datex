@@ -472,7 +472,11 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::TypeExpression => unreachable!(),
                             #[cfg(feature = "disassembler")]
-                            RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => unreachable!(),
+                            RegularInstruction::_RemoteExecutionDebugFlat(_) |
+                            RegularInstruction::_RemoteExecutionDebugTree(_) |
+                            RegularInstruction::_CallableDeclarationDebugFlat(_) |
+                            RegularInstruction::_CallableDeclarationDebugTree(_)
+                            => unreachable!(),
                         }
                         };
                         Some(match regular_result {

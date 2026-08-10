@@ -16,6 +16,9 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Cursor, meta::WriteEndian};
+use crate::ast::type_expressions::TypeExpression;
+use crate::core_compiler::to_instructions::ToInstructions;
+use crate::core_compiler::type_compiler::append_type_instruction;
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext<'a> {
@@ -80,6 +83,24 @@ impl<'a> CompilationContext<'a> {
         for<'b> <T as binrw::BinWrite>::Args<'b>: core::default::Default,
     {
         self.core_context.write(value);
+    }
+
+    /// Converts a [TypeExpression] to [TypeInstruction]s and appends them to the current buffer.
+    pub fn append_compiled_type_expression(
+        &mut self,
+        type_expression: &TypeExpression,
+    ) {
+        let instructions = type_expression
+            .to_instructions(
+                &mut self.core_context.shared_value_tracking,
+            )
+            .collect::<Vec<_>>();
+        for instruction in instructions {
+            append_type_instruction(
+                self.cursor(),
+                instruction,
+            );
+        }
     }
 
     #[deprecated(note = "use write() instead")]

@@ -1,4 +1,5 @@
 use crate::values::core_values::callable::Callable;
+use crate::prelude::*;
 
 /// Definition of an entity implementation, defining the methods that can be called on an entity.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]

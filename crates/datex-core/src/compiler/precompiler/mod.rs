@@ -71,6 +71,7 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
+use crate::ast::type_expressions::TypeExpression;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -441,6 +442,20 @@ impl<'a> TypeExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     }
 }
 
+struct ParameterData {
+    name: String,
+    kind: VariableKind,
+}
+
+impl ParameterData {
+    pub fn new(name: String) -> ParameterData {
+        ParameterData {
+            name,
+            kind: VariableKind::Var, // Todo
+        }
+    }
+}
+
 impl Precompiler<'_> {
     /// Returns a new DATEX expression for getting an identifier either as variable access or as pointer.
     /// If the variable could not be resolved
@@ -504,12 +519,17 @@ impl Precompiler<'_> {
     fn visit_child_realm(
         &mut self,
         expression: &mut DatexExpression,
+        vars: Vec<ParameterData>
     ) -> Result<
         (Result<Vec<DatexExpression>, VisitAction<DatexExpression>>, u32),
         SpannedCompilerError,
     > {
         self.scope_stack.push_scope();
         self.scope_stack.increment_realm_index();
+
+        for var in vars {
+            self.add_new_variable(var.name, VariableShape::Value(var.kind));
+        }
 
         self.visit_datex_expression(expression)?;
         let scope = self.scope_stack.pop_scope();
@@ -617,7 +637,16 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         callable_declaration.signature.walk_children(self)?;
 
-        let (result, injected_variable_count) = self.visit_child_realm(&mut callable_declaration.body)?;
+        // generate variables from parameters
+        let mut variables: Vec<ParameterData> = callable_declaration.signature.parameters.iter().map(|(name, _)| ParameterData::new(name.clone())).collect();
+        if let Some((name, _)) = &callable_declaration.signature.rest_parameter {
+            variables.push(ParameterData::new(name.clone()));
+        }
+
+        let (result, injected_variable_count) = self.visit_child_realm(
+            &mut callable_declaration.body,
+            variables,
+        )?;
         callable_declaration.injected_variable_count = Some(injected_variable_count);
 
         match result {
@@ -650,7 +679,10 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         self.visit_datex_expression(&mut remote_execution.left)?;
 
-        let (result, injected_variable_count) = self.visit_child_realm(&mut remote_execution.right)?;
+        let (result, injected_variable_count) = self.visit_child_realm(
+            &mut remote_execution.right,
+            vec![],
+        )?;
         remote_execution.injected_variable_count = Some(injected_variable_count);
 
         match result {
@@ -2190,6 +2222,96 @@ mod tests {
                             }
                         )
                             .with_default_span(),
+                        injected_variable_count: Some(1),
+                    })
+                        .with_default_span(),
+                ]
+            ))
+        )
+    }
+
+    #[test]
+    fn function_declaration_injected_variables_and_params() {
+        let result = parse_and_precompile("var x = 10; function y(a: integer, b: integer) (a + b + x)");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data(),
+            &DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
+                            name: "x".to_string(),
+                            init_expression: DatexExpressionData::Integer(
+                                Integer::from(10)
+                            )
+                                .with_default_span(),
+                            type_annotation: None,
+                        }
+                    )
+                        .with_default_span(),
+                    DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                        signature: CallableSignature {
+                            name: Some("y".to_string()),
+                            kind: CallableKind::Function,
+                            parameters: vec![
+                                (
+                                    "a".to_string(),
+                                    TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Integer.into()).with_default_span()
+                                ),
+                                (
+                                    "b".to_string(),
+                                    TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Integer.into()).with_default_span()
+                                )
+                            ],
+                            rest_parameter: None,
+                            return_type: None,
+                            yeet_type: None,
+                        },
+                        body: DatexExpressionData::BinaryOperation(
+                            BinaryOperation {
+                                operator: BinaryOperator::Arithmetic(
+                                    ArithmeticOperator::Add
+                                ),
+                                left: DatexExpressionData::BinaryOperation(
+                                    BinaryOperation {
+                                        operator: BinaryOperator::Arithmetic(
+                                            ArithmeticOperator::Add
+                                        ),
+                                        left: DatexExpressionData::VariableAccess(
+                                            VariableAccess {
+                                                id: 1,
+                                                name: "a".to_string(),
+                                                access_type: ValueAccessType::MoveOrCopy,
+                                            }
+                                        )
+                                        .with_default_span(),
+                                        right: DatexExpressionData::VariableAccess(
+                                            VariableAccess {
+                                                id: 2,
+                                                name: "b".to_string(),
+                                                access_type: ValueAccessType::MoveOrCopy,
+                                            }
+                                        )
+                                        .with_default_span(),
+                                        ty: None,
+                                    }
+                                )
+                                .with_default_span(),
+                                right: DatexExpressionData::VariableAccess(
+                                    VariableAccess {
+                                        id: 0,
+                                        name: "x".to_string(),
+                                        access_type: ValueAccessType::MoveOrCopy,
+                                    }
+                                )
+                                .with_default_span(),
+                                ty: None,
+                            }
+                        )
+                        .with_default_span(),
                         injected_variable_count: Some(1),
                     })
                         .with_default_span(),

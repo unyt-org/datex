@@ -31,6 +31,11 @@ impl<'a> ToInstructions<'a> for TypeExpression {
                         LiteralTypeDefinition::Boolean(boolean.clone()),
                     )
                 }
+                TypeExpressionData::GetCoreLibType(core_lib_id) => {
+                    yield TypeInstruction::TypeDefinitionCoreType(
+                        core_lib_id.clone(),
+                    )
+                }
                 TypeExpressionData::Range(range) => {
                     yield TypeInstruction::TypeDefinitionRange;
                     for instr in

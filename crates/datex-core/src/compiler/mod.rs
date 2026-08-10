@@ -75,6 +75,9 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::ast::expressions::CallableDeclaration;
+use crate::global::protocol_structures::instruction_data::{CallableDeclarationData, CallableSignatureData, ShortTextData};
+use crate::types::type_definition::callable::CallableKind;
 
 pub mod context;
 pub mod error;
@@ -1328,54 +1331,24 @@ fn compile_expression(
         // remote execution
         DatexExpressionData::RemoteExecution(RemoteExecution {
             left: caller,
-            right: script,
+            right: ast,
             injected_variable_count,
         }) => {
             compilation_context.mark_has_non_static_value();
-            let input = compilation_context.core_context.input.clone();
-            // compile remote execution block
-            let mut execution_block_ctx = CompilationContext::new(
-                Vec::with_capacity(256),
+
+            let (instruction_block_data, new_scope) = compile_child_realm_instructions(
+                compilation_context,
+                scope,
+                ast,
+                injected_variable_count.unwrap(), // must be set by precompiler
+                &metadata,
                 vec![],
-                ExecutionMode::Static,
-                input,
-            );
-
-            let stack_index_offset =
-                StackIndex(injected_variable_count.unwrap()); // must be set by precompiler
-
-            let external_scope = compile_rich_ast(
-                &mut execution_block_ctx,
-                RichAst::new(script, &metadata),
-                CompilationScope::new_with_external_parent_scope(
-                    scope,
-                    stack_index_offset,
-                ),
             )?;
-            // reset to current scope
-            let external_parent_scope = external_scope
-                .pop_external()
-                .ok_or(CompilerError::ScopePopError)?;
 
-            scope = *external_parent_scope.scope;
-            let DXBWithSharedValues {
-                dxb,
-                shared_values: _,
-            } = execution_block_ctx.into_dxb_with_shared_values();
+            scope = new_scope;
+
             // insert remote execution instruction
-            compilation_context.write(RegularInstruction::remote_execution(
-                InstructionBlockData {
-                    // block size (len of compilation_context.buffer)
-                    length: dxb.len() as u32,
-                    injected_value_count: external_parent_scope
-                        .injected_values
-                        .len() as u32,
-                    injected_values: external_parent_scope.injected_values,
-                    body: dxb,
-                },
-            ));
-
-            // TODO what to do with the shared values? [shared_values]
+            compilation_context.write(RegularInstruction::remote_execution(instruction_block_data));
 
             // insert compiled caller expression
             scope = compile_expression(
@@ -1459,18 +1432,9 @@ fn compile_expression(
 
         DatexExpressionData::TypeExpression(type_expression) => {
             compilation_context
-                .append_instruction_code(InstructionCode::TYPE_EXPRESSION);
-            let instructions = type_expression
-                .to_instructions(
-                    &mut compilation_context.core_context.shared_value_tracking,
-                )
-                .collect::<Vec<_>>();
-            for instruction in instructions {
-                append_type_instruction(
-                    compilation_context.cursor(),
-                    instruction,
-                );
-            }
+                .write(RegularInstruction::TypeExpression);
+            compilation_context.append_compiled_type_expression(&type_expression);
+
         }
         DatexExpressionData::Range(range_dec) => {
             compilation_context.append_instruction_code(InstructionCode::RANGE);
@@ -1625,8 +1589,69 @@ fn compile_expression(
             ));
         }
 
-        DatexExpressionData::CallableDeclaration(callable_declaration) => {
-            // TODO
+        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+            signature,
+            body,
+            injected_variable_count,
+        }) => {
+            compilation_context.mark_has_non_static_value();
+
+            // generate variables for parameters
+            let mut variables = vec![];
+            let mut index = StackIndex(0);
+            for (name, _) in &signature.parameters {
+                variables.push(
+                    Variable::new_const(name.clone(), index) // TODO: allow var
+                );
+                index += 1;
+            }
+            if let Some((name, _)) = &signature.rest_parameter {
+                variables.push(
+                    Variable::new_const(name.clone(), index) // TODO: allow var
+                );
+            }
+
+            let (instruction_block_data, new_scope) = compile_child_realm_instructions(
+                compilation_context,
+                scope,
+                body,
+                injected_variable_count.unwrap(), // must be set by precompiler
+                &metadata,
+                variables,
+            )?;
+
+            scope = new_scope;
+
+            compilation_context.write(RegularInstruction::CallableDeclaration(CallableDeclarationData {
+                signature: CallableSignatureData {
+                    name: ShortTextData(signature.name.unwrap_or_default()),
+                    kind: signature.kind,
+                    parameter_count: signature.parameters.len() as u8,
+                    has_rest_parameter: signature.rest_parameter.is_some(),
+                    has_return_type: signature.return_type.is_some(),
+                    has_yeet_type: signature.yeet_type.is_some(),
+                    parameter_names: signature.parameters.iter().map(|(name, _)| ShortTextData(name.clone())).collect(),
+                    rest_parameter_name: signature.rest_parameter.clone().map(|(name, _)| ShortTextData(name)),
+                },
+                body: instruction_block_data
+            }));
+
+            // add parameter types
+            for (_, param) in signature.parameters {
+                compilation_context.append_compiled_type_expression(&param);
+            }
+            // add rest parameter type
+            if let Some((_, param)) = signature.rest_parameter {
+                compilation_context.append_compiled_type_expression(&param);
+            }
+            // add return type
+            if let Some(ty) = signature.return_type {
+                compilation_context.append_compiled_type_expression(&ty);
+            }
+            // add yield type
+            if let Some(ty) = signature.yeet_type {
+                compilation_context.append_compiled_type_expression(&ty);
+            }
         }
 
         _ => {
@@ -1637,6 +1662,67 @@ fn compile_expression(
     }
 
     Ok(scope)
+}
+
+
+fn compile_child_realm_instructions(
+    compilation_context: &mut CompilationContext,
+    scope: CompilationScope,
+    ast: DatexExpression,
+    injected_variable_count: u32,
+    metadata: &Rc<RefCell<AstMetadata>>,
+    existing_variables: Vec<Variable>,
+) -> Result<(InstructionBlockData, CompilationScope), CompilerError> {
+    let input = compilation_context.core_context.input.clone();
+    // compile remote execution block
+    let mut execution_block_ctx = CompilationContext::new(
+        Vec::with_capacity(256),
+        vec![],
+        ExecutionMode::Static,
+        input,
+    );
+
+    let stack_index_offset =
+        StackIndex(injected_variable_count);
+
+    let mut child_scope = CompilationScope::new_with_external_parent_scope(
+        scope,
+        stack_index_offset,
+    );
+
+    for variable in existing_variables {
+        child_scope.register_variable_slot(variable);
+    }
+
+    let external_scope = compile_rich_ast(
+        &mut execution_block_ctx,
+        RichAst::new(ast, metadata),
+        child_scope,
+    )?;
+    // reset to current scope
+    let external_parent_scope = external_scope
+        .pop_external()
+        .ok_or(CompilerError::ScopePopError)?;
+
+    // TODO: what to do with the shared values? [shared_values]
+    let DXBWithSharedValues {
+        dxb,
+        shared_values: _,
+    } = execution_block_ctx.into_dxb_with_shared_values();
+
+    // insert remote execution instruction
+    Ok((
+        InstructionBlockData {
+            // block size (len of compilation_context.buffer)
+            length: dxb.len() as u32,
+            injected_value_count: external_parent_scope
+                .injected_values
+                .len() as u32,
+            injected_values: external_parent_scope.injected_values,
+            body: dxb,
+        },
+       *external_parent_scope.scope
+    ))
 }
 
 /// Compiles a direct assignment operation (e.g., `+=`, `-=`) into the corresponding regular instruction (e.g. [RegularInstruction::Increment]).
@@ -1794,7 +1880,7 @@ pub mod tests {
         values::value_container::ValueContainer,
     };
 
-    use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
+    use crate::global::protocol_structures::instruction_data::{CallableDeclarationDataDebugTree, InstructionBlockDataDebugFlat};
 
     use crate::{
         compiler::error::CompilerError,
@@ -3495,8 +3581,8 @@ pub mod tests {
         let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::CallableDeclaration(
-                CallableDeclarationData {
+            (RegularInstruction::_CallableDeclarationDebugTree(
+                CallableDeclarationDataDebugTree {
                     signature: CallableSignatureData {
                         has_rest_parameter: false,
                         name: ShortTextData("add".to_string()),
@@ -3510,12 +3596,29 @@ pub mod tests {
                         parameter_count: 2,
                         rest_parameter_name: None,
                     },
-                    body: InstructionBlockData {
-                        length: 0,
-                        injected_value_count: 0,
-                        injected_values: vec![],
-                        body: vec![],
-                    },
+                    body: InstructionBlockDataDebugTree {
+                        length: 13,
+                        injected_variable_count: 2,
+                        injected_values: vec![
+                            InjectedValueDeclaration {
+                                index: StackIndex(0),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Move
+                                )
+                            },
+                            InjectedValueDeclaration {
+                                index: StackIndex(2),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Move
+                                )
+                            }
+                        ],
+                        body: RegularInstruction::Add.with_children(instructions!(
+                            RegularInstruction::BorrowStackValue(StackIndex(0)),
+                            RegularInstruction::BorrowStackValue(StackIndex(1)),
+                        ))
+                    }
+
                 }
             ))
         )

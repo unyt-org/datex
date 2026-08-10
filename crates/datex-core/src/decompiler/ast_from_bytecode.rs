@@ -411,7 +411,10 @@ pub fn ast_from_bytecode(
                             unreachable!()
                         }
                         #[cfg(feature = "disassembler")]
-                        RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => {
+                        RegularInstruction::_RemoteExecutionDebugFlat(_) |
+                        RegularInstruction::_RemoteExecutionDebugTree(_)  |
+                        RegularInstruction::_CallableDeclarationDebugFlat(_) |
+                        RegularInstruction::_CallableDeclarationDebugTree(_) => {
                             todo!("also map to ast")
                         }
                     }
