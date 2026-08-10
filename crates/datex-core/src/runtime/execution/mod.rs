@@ -827,6 +827,28 @@ mod tests {
     }
 
     #[test]
+    fn empty_function() {
+        let result = execute_datex_script_debug_with_result("function test() ()");
+        let callable: Callable = result.try_into_value().unwrap();
+
+        assert_eq!(callable, Callable {
+            name: Some("test".to_string()),
+            signature: CallableTypeDefinition {
+                kind: CallableKind::Function,
+                parameters: vec![],
+                rest_parameter: None,
+                return_type: None,
+                yeet_type: None,
+            },
+            body: CallableBody::DatexBytecode {
+                injected_values: vec![],
+                body: compile_instruction(RegularInstruction::statements(0, false)),
+            },
+            creator: Endpoint::LOCAL,
+        })
+    }
+
+    #[test]
     fn function_no_params() {
         let result = execute_datex_script_debug_with_result("function test() (null)");
         let callable: Callable = result.try_into_value().unwrap();
