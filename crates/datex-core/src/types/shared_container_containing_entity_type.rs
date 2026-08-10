@@ -55,28 +55,6 @@ impl SharedContainerContainingEntityType {
         )
     }
 
-    /// Creates a new [SharedContainerContainingEntityType] with the
-    /// given address, type and name.
-    /// # Safety
-    /// The caller must ensure that the address is not used anywhere else.
-    pub unsafe fn new_base_with_address(
-        name: String,
-        address: SelfOwnedPointerAddress,
-        ty: TypeDefinition,
-    ) -> SharedContainerContainingEntityType {
-        unsafe {
-            SharedContainerContainingEntityType::new_unchecked(
-                SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
-                    CoreValue::EntityTypeDefinition(EntityTypeDefinition::new(
-                        ty, name,
-                    )),
-                    SharedContainerMutability::Immutable,
-                    address,
-                ),
-            )
-        }
-    }
-
     /// Converts the [SharedContainerContainingEntityType] into a [SharedContainer], consuming the wrapper.
     pub fn to_shared_container(self) -> SharedContainer {
         self.0

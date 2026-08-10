@@ -26,6 +26,7 @@ use crate::{
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     types::{
         entity_type_definition::EntityTypeDefinition,
+        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         r#type::Type,
         type_definition::{
             TypeDefinition, range::RangeTypeDefinition,
@@ -36,6 +37,7 @@ use crate::{
 };
 use alloc::format;
 use core::ops::Deref;
+use crate::ast::type_expressions::IdentifierWithPointerAddress;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -221,20 +223,24 @@ fn type_cast_expression(
 
 fn type_to_type_expression(ty: &Type) -> TypeExpression {
     match ty {
-        Type::Entity(container) => entity_type_to_type_expression(
-            container.entity_definition().deref(),
-        ),
+        Type::Entity(container) => {
+            entity_type_container_to_type_expression(container)
+        }
         Type::Definition(definition) => {
             type_definition_with_metadata_to_type_expression(definition)
         }
     }
 }
 
-fn entity_type_to_type_expression(
-    entity_type_definition: &EntityTypeDefinition,
+fn entity_type_container_to_type_expression(
+    container: &SharedContainerContainingEntityType,
 ) -> TypeExpression {
-    TypeExpressionData::Identifier(entity_type_definition.name.clone())
-        .with_default_span()
+    let pointer_address = container.pointer_address();
+    TypeExpressionData::IdentifierWithPointerAddress(IdentifierWithPointerAddress {
+        name: container.entity_definition().name.clone(),
+        pointer_address,
+    })
+    .with_default_span()
 }
 
 fn type_definition_with_metadata_to_type_expression(

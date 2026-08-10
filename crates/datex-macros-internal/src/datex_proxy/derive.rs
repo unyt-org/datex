@@ -307,6 +307,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 types::r#type::Type,
                 types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
                 types::literal_type_definition::LiteralTypeDefinition,
+                types::entity_type_definition::EntityTypeDefinition,
                 runtime::cache::shared_references_cache::SharedReferencesCache,
                 libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
                 shared_values::SelfOwnedPointerAddress,
@@ -1152,13 +1153,25 @@ fn wrap_type_definition(
         // FIXME: calculate pointer address statically in macro at compile time
         let unique_name = format!("{}::{}", namespace, name);
         quote! {
-            Type::Entity(unsafe {
-                SharedContainerContainingEntityType::new_base_with_address(
-                    #name.to_string(),
-                    SelfOwnedPointerAddress::new_static_from_name(#unique_name),
-                    #type_definition.into()
-                )
-            })
+            {
+                let address = unsafe {
+                    SelfOwnedPointerAddress::new_static_from_name(#unique_name)
+                };
+                // first try to get existing def from cache
+                if let Some(ty) = cache.try_get_shared_type(address.clone()) {
+                    Type::Entity(ty)
+                }
+                // if not found, create new def and register in cache
+                else {
+                    let definition = EntityTypeDefinition::new(#type_definition.into(), #name.to_string());
+                    Type::Entity(unsafe {
+                        cache.register_shared_type(
+                            address,
+                            definition
+                        )
+                    })
+                }
+            }
         }
     }
 }

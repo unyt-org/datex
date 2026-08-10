@@ -61,7 +61,8 @@ pub enum IndentType {
     Tabs,
 }
 
-#[derive(Debug, Clone, Default, Datex)]
+#[derive(Datex, Debug, Clone, Default)]
+#[datex(structural)]
 pub enum FormattingMode {
     /// compact formatting, no unnecessary spaces or newlines
     #[default]

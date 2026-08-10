@@ -21,15 +21,18 @@ use alloc::format;
 use core::fmt::{self};
 
 use crate::{
-    ast::expressions::{
-        InterfaceMethodCall, RootPropertyAccess, StackListAssignment,
-        UnboxSlotAssignment, ValueAccessType,
+    ast::{
+        expressions::{
+            EntityDeclarationExpression, InterfaceMethodCall,
+            RootPropertyAccess, StackListAssignment, UnboxSlotAssignment,
+            ValueAccessType,
+        },
+        type_expressions::IdentifierWithPointerAddress,
     },
     decompiler::{FormattingMode, FormattingOptions, IndentType},
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
 };
-use crate::ast::expressions::EntityDeclarationExpression;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -240,6 +243,14 @@ impl AstToSourceCodeConverter {
                 format!("mut {}", self.type_expression_to_source_code(inner,))
             }
             TypeExpressionData::Identifier(literal) => literal.to_string(),
+            TypeExpressionData::IdentifierWithPointerAddress(
+                IdentifierWithPointerAddress {
+                    name,
+                    pointer_address,
+                },
+            ) => {
+                format!("{}{}", name, pointer_address)
+            }
             TypeExpressionData::VariableAccess(VariableAccess {
                 name, ..
             }) => name.to_string(),

@@ -44,7 +44,13 @@ fn impl_functions() {
         )
     );
 
-    println!("reg {:#?}", all_datex_registrations().collect::<Vec<_>>());
+    // when calling the datex_type function multiple times, it should return the same type definition from cache
+    assert_eq!(
+        Example::datex_type(memory.deref_mut()),
+        Example::datex_type(memory.deref_mut())
+    );
+
+    // println!("reg {:#?}", all_datex_registrations().collect::<Vec<_>>());
 
     let mut example = Example { a: 1, b: 2 };
     example.set_a(2);

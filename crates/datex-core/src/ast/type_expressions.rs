@@ -38,6 +38,9 @@ pub enum TypeExpressionData {
     // a variable name or generic type identifier, e.g. integer, string, User, MyType, T
     Identifier(String),
 
+    // a type name uniquely identified by a pointer address, e.g. User$1235
+    IdentifierWithPointerAddress(IdentifierWithPointerAddress),
+
     VariableAccess(VariableAccess),
     GetReference(PointerAddress),
 
@@ -163,6 +166,12 @@ impl PartialEq for TypeExpression {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct StructuralList(pub Vec<TypeExpression>);
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct IdentifierWithPointerAddress {
+    pub name: String,
+    pub pointer_address: PointerAddress,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FixedSizeList {

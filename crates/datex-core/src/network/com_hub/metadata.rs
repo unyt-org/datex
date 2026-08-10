@@ -42,7 +42,8 @@ pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
     pub direction: InterfaceDirection,
 }
 
-#[derive(Debug, Datex, Clone)]
+#[derive(Datex, Debug, Clone)]
+#[datex(structural)]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
     pub properties: ComInterfaceProperties,
@@ -50,7 +51,8 @@ pub struct ComHubMetadataInterface {
     pub is_waiting_for_socket_connections: bool,
 }
 
-#[derive(Debug, Datex, Clone)]
+#[derive(Datex, Debug, Clone)]
+#[datex(structural)]
 pub struct ComHubMetadata {
     pub endpoint: Endpoint,
     pub interfaces: Vec<ComHubMetadataInterface>,
