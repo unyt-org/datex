@@ -377,7 +377,7 @@ impl<'a> Precompiler<'a> {
 }
 
 impl<'a> TypeExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
-    fn visit_literal_type(
+    fn visit_type_identifier(
         &mut self,
         literal: &mut String,
         span: &Range<usize>,

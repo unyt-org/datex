@@ -10,9 +10,10 @@ use crate::{
     ast::{
         expressions::VariableAccess,
         type_expressions::{
-            CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
-            SliceList, StructuralList, StructuralMap, TypeExpression,
-            TypeExpressionData, TypeVariantAccess, Union,
+            CallableTypeExpression, FixedSizeList, GenericAccess,
+            IdentifierWithPointerAddress, Intersection, SliceList,
+            StructuralList, StructuralMap, TypeExpression, TypeExpressionData,
+            TypeVariantAccess, Union,
         },
     },
     libs::core::type_id::CoreLibTypeId,
@@ -61,7 +62,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
         expr: &mut TypeExpression,
     ) -> Result<(), E> {
         self.before_visit_type_expression(expr);
-        
+
         let span = expr.span.clone();
 
         let visit_result = match expr.data_mut() {
@@ -91,9 +92,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
             TypeExpressionData::Boolean(boolean) => {
                 self.visit_boolean_type(boolean, &span)
             }
-            TypeExpressionData::Text(text) => {
-                self.visit_text_type(text, &span)
-            }
+            TypeExpressionData::Text(text) => self.visit_text_type(text, &span),
             TypeExpressionData::Endpoint(endpoint) => {
                 self.visit_endpoint_type(endpoint, &span)
             }
@@ -133,8 +132,13 @@ pub trait TypeExpressionVisitor<E>: Sized {
             TypeExpressionData::Mut(type_mut) => {
                 self.visit_mut_type(type_mut, &span)
             }
-            TypeExpressionData::Identifier(literal) => {
-                self.visit_literal_type(literal, &span)
+            TypeExpressionData::Identifier(identifier) => {
+                self.visit_type_identifier(identifier, &span)
+            }
+            TypeExpressionData::IdentifierWithPointerAddress(identifier) => {
+                self.visit_type_identifier_with_pointer_address(
+                    identifier, &span,
+                )
             }
             TypeExpressionData::Range(range) => {
                 self.visit_range_type(range, &span)
@@ -186,14 +190,25 @@ pub trait TypeExpressionVisitor<E>: Sized {
         result
     }
 
-    /// Visit literal type expression
-    fn visit_literal_type(
+    /// Visit identifier expression
+    fn visit_type_identifier(
         &mut self,
         literal: &mut String,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = literal;
+        Ok(VisitAction::AbortRecursion)
+    }
+
+    /// Visit identifier with pointer address expression
+    fn visit_type_identifier_with_pointer_address(
+        &mut self,
+        identifier_with_pointer_address: &mut IdentifierWithPointerAddress,
+        span: &Range<usize>,
+    ) -> TypeExpressionVisitResult<E> {
+        let _ = span;
+        let _ = identifier_with_pointer_address;
         Ok(VisitAction::AbortRecursion)
     }
 

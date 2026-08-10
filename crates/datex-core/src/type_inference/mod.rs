@@ -535,7 +535,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             span.clone(),
         ))
     }
-    fn visit_literal_type(
+    fn visit_type_identifier(
         &mut self,
         _literal: &mut String,
         _span: &Range<usize>,

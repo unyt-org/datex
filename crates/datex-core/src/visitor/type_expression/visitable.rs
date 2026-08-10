@@ -169,6 +169,7 @@ impl<E> VisitableTypeExpression<E> for TypeExpression {
             | TypeExpressionData::Null
             | TypeExpressionData::Unit
             | TypeExpressionData::Identifier(_)
+            | TypeExpressionData::IdentifierWithPointerAddress(_)
             | TypeExpressionData::VariableAccess(_)
             | TypeExpressionData::GetReference(_)
             | TypeExpressionData::Integer(_)

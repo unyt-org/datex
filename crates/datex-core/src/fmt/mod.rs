@@ -5,8 +5,8 @@ use crate::{
     ast::{
         expressions::{DatexExpression, VariableAccess},
         type_expressions::{
-            CallableTypeExpression, TypeExpression, TypeExpressionData,
-            TypeVariantAccess,
+            CallableTypeExpression, IdentifierWithPointerAddress,
+            TypeExpression, TypeExpressionData, TypeVariantAccess,
         },
     },
     compiler::{
@@ -163,6 +163,13 @@ impl<'a> Formatter<'a> {
                 a.text("mut") + a.space() + self.format_type_expression(inner)
             }
             TypeExpressionData::Identifier(lit) => a.text(lit.to_string()),
+            TypeExpressionData::IdentifierWithPointerAddress(
+                IdentifierWithPointerAddress {
+                    name,
+                    pointer_address,
+                },
+            ) => a.text(format!("{}{}", name, pointer_address)),
+
             TypeExpressionData::VariableAccess(VariableAccess {
                 name, ..
             }) => a.text(name.clone()),
