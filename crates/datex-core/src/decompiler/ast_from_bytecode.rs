@@ -31,15 +31,17 @@ use crate::{
 
 use crate::{
     ast::expressions::{
-        CloneExpression, ComparisonOperation, CreateShared, DeriveSharedRef,
-        RemoteExecution, RequestSharedRef, RootPropertyAccess, StackAssignment,
+        CallableDeclaration, CallableSignature, CloneExpression,
+        ComparisonOperation, CreateShared, DeriveSharedRef, RemoteExecution,
+        RequestSharedRef, RootPropertyAccess, StackAssignment,
         StackListAssignment, TagExpression, UnboxAssignment,
     },
     global::{
         operators::{ComparisonOperator, ModificationOperator},
         protocol_structures::{
             instruction_data::{
-                ShortTextData, StackIndex, TaggedValue, UnboundedStatementsData,
+                CallableSignatureData, ShortTextData, StackIndex, TaggedValue,
+                UnboundedStatementsData,
             },
             instructions::NestedInstructionResolutionStrategy,
             regular_instructions::RegularInstruction,
@@ -50,6 +52,7 @@ use crate::{
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
+    types::type_definition::callable::CallableKind,
 };
 use alloc::format;
 use core::cell::RefCell;
@@ -402,6 +405,8 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::Decrement
                         | RegularInstruction::MoveWithValue(_)
                         | RegularInstruction::RemoteExecution(_)
+                        | RegularInstruction::Callable(_)
+                        | RegularInstruction::CallableDeclaration(_)
                         | RegularInstruction::TypeExpression => {
                             unreachable!()
                         }
@@ -659,6 +664,46 @@ pub fn ast_from_bytecode(
                                         expression: (expr),
                                     },
                                 )
+                                    .with_default_span()
+                                    .into()
+                            }
+
+                            RegularInstruction::Callable(callable) => {
+                                let injected_values = collected_results.pop_values(callable.body.injected_value_count);
+
+                                let types = collected_results.pop_types(callable.signature.total_type_count());
+                                let signature = resolve_signature(types, callable.signature);
+
+                                let body = DatexExpressionData::Statements(Statements {
+                                    statements: vec![ast_from_bytecode(&callable.body.body)?],
+                                    is_terminated: false,
+                                    unbounded: None,
+                                }).with_default_span();
+
+                                DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                                    signature,
+                                    body,
+                                    injected_variable_count: Some(injected_values.len() as u32),
+                                })
+                                    .with_default_span()
+                                    .into()
+                            }
+
+                            RegularInstruction::CallableDeclaration(callable_declaration) => {
+                                let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
+                                let signature = resolve_signature(types, callable_declaration.signature);
+
+                                let body = DatexExpressionData::Statements(Statements {
+                                    statements: vec![ast_from_bytecode(&callable_declaration.body.body)?],
+                                    is_terminated: false,
+                                    unbounded: None,
+                                }).with_default_span();
+
+                                DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                                    signature,
+                                    body,
+                                    injected_variable_count: None,
+                                })
                                     .with_default_span()
                                     .into()
                             }
@@ -1036,6 +1081,51 @@ pub fn ast_from_bytecode(
         }
     } else {
         panic!("Execution finished without root result");
+    }
+}
+
+fn resolve_signature(
+    mut types: Vec<TypeExpression>,
+    signature_data: CallableSignatureData,
+) -> CallableSignature {
+    let yeet_type = if signature_data.has_yeet_type {
+        Some(types.pop().expect("Expected yeet type"))
+    } else {
+        None
+    };
+    let return_type = if signature_data.has_return_type {
+        Some(types.pop().expect("Expected return type"))
+    } else {
+        None
+    };
+
+    let rest_parameter = if signature_data.has_rest_parameter {
+        Some((
+            signature_data.rest_parameter_name.unwrap().0,
+            types.pop().expect("Expected rest parameter type"),
+        ))
+    } else {
+        None
+    };
+
+    let parameters = signature_data
+        .parameter_names
+        .into_iter()
+        .zip(types.into_iter())
+        .map(|(name, param_type)| (name.0, param_type))
+        .collect::<Vec<_>>();
+
+    CallableSignature {
+        name: if signature_data.name.0.is_empty() {
+            None
+        } else {
+            Some(signature_data.name.0.into())
+        },
+        kind: signature_data.kind,
+        parameters,
+        rest_parameter,
+        return_type,
+        yeet_type,
     }
 }
 

@@ -92,7 +92,8 @@ pub enum InstructionCode {
 
     GET_ROOT_PROPERTY, // e.g. $.endpoint
 
-    CALLABLE, // for function/procedure declarations
+    CALLABLE,             // for functions/procedures
+    CALLABLE_DECLARATION, // for inline DATEX script function/procedure declarations
 
     // Note: fix to sync with PointerAddress
     REQUEST_REMOTE_SHARED_REF,     // '$x

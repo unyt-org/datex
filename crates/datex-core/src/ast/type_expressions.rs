@@ -206,6 +206,7 @@ pub struct CallableTypeExpression {
     pub yeet_type: Option<Box<TypeExpression>>,
 }
 
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TypeVariantAccess {
     pub name: String,

@@ -4,7 +4,7 @@ use crate::{
     global::{
         operators::ModificationOperator,
         protocol_structures::{
-            injected_values::InjectedValueDeclaration,
+            injected_values::{InjectedValueDeclaration, InjectedValueType},
             instructions::Instruction,
         },
         type_instruction_codes::{
@@ -212,9 +212,25 @@ impl CallableSignatureData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct CallableData {
+pub struct CallableDeclarationData {
     pub signature: CallableSignatureData,
     pub body: InstructionBlockData,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct CallableData {
+    pub signature: CallableSignatureData,
+    pub body: CallableDataBody,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct CallableDataBody {
+    pub injected_value_count: u32,
+    pub length: u32,
+    #[br(count = length)]
+    pub body: Vec<u8>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

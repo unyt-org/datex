@@ -646,6 +646,9 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::UNBOX)]
     Unbox,
 
+    #[magic(InstructionCode::CALLABLE_DECLARATION)]
+    CallableDeclaration(CallableDeclarationData),
+
     #[magic(InstructionCode::CALLABLE)]
     Callable(CallableData),
 
@@ -883,8 +886,15 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(2)
             }
 
-            RegularInstruction::Callable(data) => {
+            RegularInstruction::CallableDeclaration(data) => {
                 NextExpectedInstructions::Type(
+                    data.signature.total_type_count(),
+                )
+            }
+
+            RegularInstruction::Callable(data) => {
+                NextExpectedInstructions::RegularAndType(
+                    data.body.injected_value_count,
                     data.signature.total_type_count(),
                 )
             }
@@ -1099,6 +1109,12 @@ impl RegularInstruction {
                     data.injected_values
                 )
             }
+            RegularInstruction::CallableDeclaration(data) => {
+                write!(
+                    string,
+                    "todo"
+                )
+            }
             RegularInstruction::Callable(data) => {
                 write!(
                     string,
@@ -1164,7 +1180,9 @@ impl RegularInstruction {
     }
 }
 
-use crate::global::protocol_structures::instruction_data::CallableData;
+use crate::global::protocol_structures::instruction_data::{
+    CallableData, CallableDeclarationData,
+};
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
 #[cfg(feature = "disassembler")]
 use serde::{Serialize, Serializer, ser::SerializeTuple};

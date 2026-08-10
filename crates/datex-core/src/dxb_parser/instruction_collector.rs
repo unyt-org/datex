@@ -47,6 +47,14 @@ pub trait CollectionResultsPopper<
         values
     }
 
+    fn pop_types(&mut self, count: u32) -> Vec<Type> {
+        let mut types = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            types.push(self.pop_type());
+        }
+        types.reverse();
+        types
+    }
     fn pop_value(&mut self) -> Val {
         self.try_pop_value().expect("Expected value result")
     }

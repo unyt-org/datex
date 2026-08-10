@@ -1198,14 +1198,14 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let annotated_return_type =
-            if let Some(return_type) = &mut callable_declaration.return_type {
+            if let Some(return_type) = &mut callable_declaration.signature.return_type {
                 Some(Box::new(self.infer_type_expression(return_type)?))
             } else {
                 None
             };
 
         let annotated_yeet_type =
-            if let Some(yeet_type) = &mut callable_declaration.yeet_type {
+            if let Some(yeet_type) = &mut callable_declaration.signature.yeet_type {
                 Some(Box::new(self.infer_type_expression(yeet_type)?))
             } else {
                 None
@@ -1216,7 +1216,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             .unwrap_or_else(|_| Type::core(CoreLibBaseTypeId::Never));
 
         let rest_parameter_type = if let Some((name, rest_param)) =
-            &mut callable_declaration.rest_parameter
+            &mut callable_declaration.signature.rest_parameter
         {
             Some((
                 Some(name.clone()),
@@ -1227,6 +1227,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         };
 
         let parameters = callable_declaration
+            .signature
             .parameters
             .iter_mut()
             .map(|(name, param_type_expr)| {
@@ -1238,7 +1239,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             .collect();
 
         let signature = CallableTypeDefinition {
-            kind: callable_declaration.kind.clone(),
+            kind: callable_declaration.signature.kind.clone(),
             parameter_types: parameters,
             rest_parameter_type,
             return_type: annotated_return_type,

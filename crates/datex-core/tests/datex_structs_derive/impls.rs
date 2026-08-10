@@ -57,7 +57,7 @@ fn impl_functions() {
         }
     }
 
-    // println!("reg {:#?}", all_datex_registrations().collect::<Vec<_>>());
+    println!("reg {:#?}", all_datex_registrations().collect::<Vec<_>>());
 
     let mut example = Example { a: 1, b: 2 };
     example.set_a(2);

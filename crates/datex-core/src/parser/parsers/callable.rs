@@ -9,7 +9,10 @@ use crate::{
     parser::{Parser, SpannedParserError, lexer::Token},
 };
 
-use crate::{prelude::*, types::type_definition::callable::CallableKind};
+use crate::{
+    ast::expressions::CallableSignature, prelude::*,
+    types::type_definition::callable::CallableKind,
+};
 
 impl Parser {
     pub(crate) fn parse_callable_definition(
@@ -44,12 +47,14 @@ impl Parser {
         let body = self.parse_parenthesized_statements()?;
         Ok(
             DatexExpressionData::CallableDeclaration(CallableDeclaration {
-                name: Some(name),
-                kind,
-                parameters,
-                rest_parameter: None, // TODO #662
-                return_type,
-                yeet_type: None, // TODO #663
+                signature: CallableSignature {
+                    name: Some(name),
+                    kind,
+                    parameters,
+                    rest_parameter: None, // TODO #662
+                    return_type,
+                    yeet_type: None, // TODO #663
+                },
                 body: (body),
                 injected_variable_count: None,
             })
@@ -91,8 +96,8 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, CallableDeclaration, DatexExpressionData,
-                Statements,
+                BinaryOperation, CallableDeclaration, CallableSignature,
+                DatexExpressionData, Statements,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
@@ -110,12 +115,14 @@ mod tests {
             expr.data(),
             &DatexExpressionData::CallableDeclaration(
                 (CallableDeclaration {
-                    name: Some(String::from("test")),
-                    kind: CallableKind::Function,
-                    parameters: vec![],
-                    rest_parameter: None,
-                    return_type: None,
-                    yeet_type: None,
+                    signature: CallableSignature {
+                        name: Some(String::from("test")),
+                        kind: CallableKind::Function,
+                        parameters: vec![],
+                        rest_parameter: None,
+                        return_type: None,
+                        yeet_type: None,
+                    },
                     body: (DatexExpressionData::Statements(Statements {
                         statements: vec![],
                         is_terminated: false,

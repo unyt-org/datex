@@ -14,18 +14,18 @@ use crate::{
     },
 };
 use core::ops::{Deref, DerefMut};
-use datex_macros_internal::Datex;
+use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug)]
 pub struct Inspector {}
 
-// #[datex]
-// impl Inspector {
-//     /// Creates a new Inspector instance.
-//     pub fn create() -> Self {
-//         Inspector {}
-//     }
-// }
+#[datex]
+impl Inspector {
+    /// Creates a new Inspector instance.
+    pub fn create() -> Self {
+        Inspector {}
+    }
+}
 
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.
 pub fn register_inspector_namespace(runtime: &Runtime) {

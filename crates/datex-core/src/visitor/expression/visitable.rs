@@ -3,18 +3,18 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, Conditional, CreateMut, CreateShared,
         DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
-        GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
-        PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
-        StackListAssignment, Statements, TagExpression,
-        TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
-        UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
+        EntityDeclarationExpression, GenericInstantiation, InterfaceMethodCall,
+        List, Map, PropertyAccess, PropertyAssignment, RangeDeclaration,
+        RemoteExecution, StackAssignment, StackListAssignment, Statements,
+        TagExpression, TypeDeclarationExpression, UnaryOperation, Unbox,
+        UnboxAssignment, UnboxSlotAssignment, VariableAssignment,
+        VariableDeclaration,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
         type_expression::visitable::VisitableTypeExpression,
     },
 };
-use crate::ast::expressions::EntityDeclarationExpression;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -271,11 +271,17 @@ impl<E> VisitableExpression<E> for CallableDeclaration {
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E> {
-        if let Some(return_type) = &mut self.return_type {
+        if let Some(return_type) = &mut self.signature.return_type {
             visitor.visit_type_expression(return_type)?;
         }
-        for (_, param_type) in &mut self.parameters {
+        if let Some(yeet_type) = &mut self.signature.yeet_type {
+            visitor.visit_type_expression(yeet_type)?;
+        }
+        for (_, param_type) in &mut self.signature.parameters {
             visitor.visit_type_expression(param_type)?;
+        }
+        if let Some(rest_parameter) = &mut self.signature.rest_parameter {
+            visitor.visit_type_expression(&mut rest_parameter.1)?;
         }
         visitor.visit_datex_expression(&mut self.body)?;
         Ok(())

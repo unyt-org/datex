@@ -566,14 +566,19 @@ pub struct RequestSharedRef {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CallableDeclaration {
+    pub signature: CallableSignature,
+    pub body: DatexExpression,
+    pub injected_variable_count: Option<u32>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CallableSignature {
     pub name: Option<String>,
     pub kind: CallableKind,
     pub parameters: Vec<(String, TypeExpression)>,
     pub rest_parameter: Option<(String, TypeExpression)>,
     pub return_type: Option<TypeExpression>,
     pub yeet_type: Option<TypeExpression>,
-    pub body: DatexExpression,
-    pub injected_variable_count: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

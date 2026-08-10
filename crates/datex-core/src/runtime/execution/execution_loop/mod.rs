@@ -346,6 +346,12 @@ pub gen fn inner_execution_loop(
                                     stack_index,
                                 )?))
                             }
+                            RegularInstruction::CallableDeclaration(_) => {
+                                todo!()
+                            }
+                            RegularInstruction::Callable(_) => {
+                                todo!()
+                            }
 
                             RegularInstruction::BorrowStackValue(index) => {
                                 Some(RuntimeValue::StackValue(index))
