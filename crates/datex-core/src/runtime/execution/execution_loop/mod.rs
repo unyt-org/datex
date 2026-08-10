@@ -102,6 +102,8 @@ use crate::value_updates::update_data::{
     DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
 };
 use collected_execution_result::CollectedExecutionResult;
+use crate::global::protocol_structures::instruction_data::CallableSignatureData;
+use crate::types::type_definition::callable::CallableTypeDefinition;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -133,7 +135,7 @@ pub fn execution_loop(
                 Err(err) => {
                     match err {
                         ExecutionError::DXBParserError(
-                            box DXBParserError::ExpectingMoreInstructions,
+                            box DXBParserError::ExpectingMoreInstructions(_),
                         ) => {
                             yield Err(
                                 ExecutionError::IntermediateResultWithState(
@@ -172,8 +174,8 @@ pub gen fn inner_execution_loop(
     ) {
         let instruction = match instruction_result {
             Ok(instruction) => instruction,
-            Err(DXBParserError::ExpectingMoreInstructions) => {
-                yield Err(DXBParserError::ExpectingMoreInstructions.into());
+            Err(DXBParserError::ExpectingMoreInstructions(stack)) => {
+                yield Err(DXBParserError::ExpectingMoreInstructions(stack).into());
                 // assume that when continuing after this yield, more instructions will have been loaded
                 // so we run the loop again to try to get the next instruction
                 continue;
@@ -346,12 +348,6 @@ pub gen fn inner_execution_loop(
                                     stack_index,
                                 )?))
                             }
-                            RegularInstruction::CallableDeclaration(_) => {
-                                todo!()
-                            }
-                            RegularInstruction::Callable(_) => {
-                                todo!()
-                            }
 
                             RegularInstruction::BorrowStackValue(index) => {
                                 Some(RuntimeValue::StackValue(index))
@@ -470,6 +466,8 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::MoveWithValue(_) |
                             RegularInstruction::SharedRefWithValue(_) |
+                            RegularInstruction::CallableDeclaration(_) |
+                            RegularInstruction::Callable(_) |
                             RegularInstruction::TypeExpression => unreachable!(),
                             #[cfg(feature = "disassembler")]
                             RegularInstruction::_RemoteExecutionDebugFlat(_) |
@@ -677,6 +675,48 @@ pub gen fn inner_execution_loop(
                                         right.as_value_container(&state.stack)?,
                                     )?;
                                     res.into()
+                                }
+
+                                RegularInstruction::CallableDeclaration(callable_declaration) => {
+                                    let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
+                                    let signature = resolve_callable_type_definition(types, &callable_declaration.signature);
+                                    let body = callable_declaration.body;
+
+                                    ValueContainer::from(Callable {
+                                        name: if callable_declaration.signature.name.0.is_empty() {
+                                            None
+                                        } else {
+                                            Some(callable_declaration.signature.name.0)
+                                        },
+                                        signature,
+                                        body: CallableBody::DatexBytecode {
+                                            injected_values: vec![],
+                                            body: body.body,
+                                        },
+                                        creator: state.caller_metadata.endpoint.clone(),
+                                    })
+                                        .into()
+                                }
+                                RegularInstruction::Callable(callable_declaration) => {
+                                    let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
+                                    let signature = resolve_callable_type_definition(types, &callable_declaration.signature);
+
+                                    let body = callable_declaration.body;
+
+                                    ValueContainer::from(Callable {
+                                        name: if callable_declaration.signature.name.0.is_empty() {
+                                            None
+                                        } else {
+                                            Some(callable_declaration.signature.name.0)
+                                        },
+                                        signature,
+                                        body: CallableBody::DatexBytecode {
+                                            injected_values: vec![],
+                                            body: body.body,
+                                        },
+                                        creator: state.caller_metadata.endpoint.clone(),
+                                    })
+                                        .into()
                                 }
 
                                 RegularInstruction::Matches => {
@@ -1459,6 +1499,48 @@ pub gen fn inner_execution_loop(
         ));
     } else {
         panic!("Execution finished without root result");
+    }
+}
+
+fn resolve_callable_type_definition(
+    mut types: Vec<Type>,
+    signature_data: &CallableSignatureData,
+) -> CallableTypeDefinition {
+
+    let yeet_type = if signature_data.has_yeet_type {
+        Some(Box::new(types.pop().expect("Expected yeet type")))
+    } else {
+        None
+    };
+    let return_type = if signature_data.has_return_type {
+        Some(Box::new(types.pop().expect("Expected return type")))
+    } else {
+        None
+    };
+
+    let rest_parameter = if signature_data.has_rest_parameter {
+        Some((
+            signature_data.rest_parameter_name.as_ref().map(|name| name.0.clone()),
+            Box::new(types.pop().expect("Expected rest parameter type")),
+        ))
+    } else {
+        None
+    };
+
+    let parameters = signature_data
+        .parameter_names
+        .iter()
+        .zip(types)
+        .map(|(name, param_type)| (Some(name.0.clone()), param_type))
+        .collect::<Vec<_>>();
+
+
+    CallableTypeDefinition {
+        kind: signature_data.kind,
+        parameters,
+        rest_parameter,
+        return_type,
+        yeet_type,
     }
 }
 

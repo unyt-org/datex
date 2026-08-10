@@ -1,3 +1,4 @@
+use std::io::Cursor;
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
@@ -500,6 +501,13 @@ pub fn append_key_string<T: BufferProvider>(
         context.write(RegularInstruction::key_value_dynamic());
         context.write(RegularInstruction::text(key_string));
     }
+}
+
+/// Helper function to directly compile an instruction into a byte vector
+pub fn compile_instruction(instruction: impl Into<Instruction>) -> Vec<u8> {
+    let mut cursor = Cursor::new(Vec::new());
+    append_instruction(&mut cursor, instruction.into());
+    cursor.into_inner()
 }
 
 pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {

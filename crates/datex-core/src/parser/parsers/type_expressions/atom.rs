@@ -97,7 +97,7 @@ impl Parser {
     pub(crate) fn parse_type_null(
         &mut self,
     ) -> Result<TypeExpression, SpannedParserError> {
-        Ok(TypeExpressionData::Null.with_span(self.advance()?.span))
+        Ok(TypeExpressionData::null().with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_type_identifier(
@@ -287,7 +287,7 @@ mod tests {
     #[test]
     fn parse_null() {
         let expr = parse_type_expression("null");
-        assert_eq!(expr.data(), &TypeExpressionData::Null);
+        assert_eq!(expr.data(), &TypeExpressionData::null());
     }
 
     #[test]

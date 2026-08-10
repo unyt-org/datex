@@ -8,6 +8,7 @@ use crate::prelude::*;
 
 #[derive(
     Clone,
+    Copy,
     Debug,
     PartialEq,
     Eq,
@@ -39,8 +40,8 @@ impl Display for CallableKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CallableTypeDefinition {
     pub kind: CallableKind,
-    pub parameter_types: Vec<(Option<String>, Type)>,
-    pub rest_parameter_type: Option<(Option<String>, Box<Type>)>,
+    pub parameters: Vec<(Option<String>, Type)>,
+    pub rest_parameter: Option<(Option<String>, Box<Type>)>,
     pub return_type: Option<Box<Type>>,
     pub yeet_type: Option<Box<Type>>,
 }
@@ -48,13 +49,13 @@ pub struct CallableTypeDefinition {
 impl Display for CallableTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let params = self
-            .parameter_types
+            .parameters
             .iter()
             .map(|(name, ty)| match name {
                 Some(name) => format!("{}: {}", name, ty),
                 None => format!("{}", ty),
             })
-            .chain(self.rest_parameter_type.iter().map(
+            .chain(self.rest_parameter.iter().map(
                 |(name, ty)| match name {
                     Some(name) => format!("...{}: {}", name, ty),
                     None => format!("...{}", ty),

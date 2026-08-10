@@ -45,8 +45,8 @@ impl Default for CoreLibraryValues {
                 Some("print".to_string()),
                 CallableTypeDefinition {
                     kind: CallableKind::Function,
-                    parameter_types: vec![],
-                    rest_parameter_type: Some((
+                    parameters: vec![],
+                    rest_parameter: Some((
                         Some("values".to_string()),
                         Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
                     )),
@@ -60,8 +60,8 @@ impl Default for CoreLibraryValues {
                 Some("panic".to_string()),
                 CallableTypeDefinition {
                     kind: CallableKind::Function,
-                    parameter_types: vec![],
-                    rest_parameter_type: Some((
+                    parameters: vec![],
+                    rest_parameter: Some((
                         Some("values".to_string()),
                         Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
                     )),

@@ -1,3 +1,5 @@
+use core::fmt::Debug;
+use log::info;
 use crate::{
     global::protocol_structures::{
         instruction_data::StackIndex,
@@ -9,7 +11,7 @@ use crate::{
 };
 
 pub trait CollectionResultsPopper<
-    Result,
+    Result: Debug,
     Val,
     Key,
     KeyVal,
@@ -60,7 +62,7 @@ pub trait CollectionResultsPopper<
     }
     fn pop_type(&mut self) -> Type {
         self.try_pop_type()
-            .expect("Expected type definition result")
+            .expect("Expected type result")
     }
     fn pop_type_definition(&mut self) -> TypeDefinition {
         self.try_pop_type_definition()

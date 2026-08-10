@@ -59,7 +59,7 @@ mod tests {
             &TypeExpressionData::StructuralList(StructuralList(vec![
                 TypeExpressionData::Boolean(true.into()).with_default_span(),
                 TypeExpressionData::Boolean(false.into()).with_default_span(),
-                TypeExpressionData::Null.with_default_span(),
+                TypeExpressionData::null().with_default_span(),
             ]))
         );
     }
@@ -72,7 +72,7 @@ mod tests {
             &TypeExpressionData::StructuralList(StructuralList(vec![
                 TypeExpressionData::Boolean(true.into()).with_default_span(),
                 TypeExpressionData::Boolean(false.into()).with_default_span(),
-                TypeExpressionData::Null.with_default_span(),
+                TypeExpressionData::null().with_default_span(),
             ]))
         );
     }

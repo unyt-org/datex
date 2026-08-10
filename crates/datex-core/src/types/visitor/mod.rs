@@ -103,7 +103,7 @@ where
         }
         TypeDefinition::Callable(callable) => {
             let parameters = callable
-                .parameter_types
+                .parameters
                 .iter()
                 .map(|(name, ty)| {
                     fold_type(folder, ty).map(|ty| (name.clone(), ty))
@@ -111,7 +111,7 @@ where
                 .collect::<Result<Vec<_>, _>>()?;
 
             let rest_parameter = callable
-                .rest_parameter_type
+                .rest_parameter
                 .as_ref()
                 .map(|(name, ty)| {
                     fold_type(folder, ty).map(|ty| (name.clone(), ty))

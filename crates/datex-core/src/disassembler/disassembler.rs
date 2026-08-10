@@ -17,7 +17,6 @@ use core::{
     fmt::{Debug, Write},
 };
 use serde::Serialize;
-use crate::global::protocol_structures::instruction_data::CallableDeclarationDataDebugFlat;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 /// A generic tree structure for instructions with child instructions.
@@ -125,7 +124,7 @@ impl InstructionTree<Instruction> {
         else {
             vec![*self.instruction]
         };
-        
+
         for child in self.children {
             result.extend(child.flatten_instructions());
         }
@@ -544,6 +543,7 @@ mod tests {
     };
     use binrw::io::Cursor;
     use test_case::test_case;
+    use crate::dxb_parser::next_instructions_stack::{NextInstructionsStack, NextScopeInstruction};
 
     fn instructions_to_bytes(instructions: Vec<Instruction>) -> Vec<u8> {
         let mut cursor = Cursor::new(Vec::new());
@@ -556,7 +556,7 @@ mod tests {
     #[test_case(
         &[],
         InstructionTree::new(Instruction::Regular(RegularInstruction::UnboundedStatements)),
-        Some(DXBParserError::ExpectingMoreInstructions)
+        Some(DXBParserError::ExpectingMoreInstructions(NextInstructionsStack(vec![NextScopeInstruction::Regular(1)])))
          ; "empty dxb")]
     #[test_case(
         &[
@@ -645,7 +645,7 @@ mod tests {
                 InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
             ]
         },
-        Some(DXBParserError::ExpectingMoreInstructions)
+        Some(DXBParserError::ExpectingMoreInstructions(NextInstructionsStack(vec![NextScopeInstruction::Regular(1)])))
         ; "statements with missing instructions"
     )]
     #[test_case(

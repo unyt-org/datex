@@ -24,16 +24,13 @@ use crate::{
     types::{r#type::Type, type_definition::callable::CallableKind},
 };
 use core::ops;
+use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 #[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST
 pub enum TypeExpressionData {
     // used for error recovery
     Recover,
-
-    Null,
-
-    Unit,
 
     // a variable name or generic type identifier, e.g. integer, string, User, MyType, T
     Identifier(String),
@@ -91,6 +88,16 @@ pub enum TypeExpressionData {
     Mut(Box<TypeExpression>),
 
     VariantAccess(TypeVariantAccess),
+}
+
+impl TypeExpressionData {
+    pub fn null() -> Self {
+        TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Null.into())
+    }
+
+    pub fn unit() -> Self {
+        TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Unit.into())
+    }
 }
 
 impl Spanned for TypeExpressionData {

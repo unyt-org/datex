@@ -147,7 +147,7 @@ fn core_value_to_datex_expression(
                     kind: callable.signature.kind.clone(),
                     parameters: callable
                         .signature
-                        .parameter_types
+                        .parameters
                         .iter()
                         .map(|(maybe_name, ty)| {
                             (
@@ -158,7 +158,7 @@ fn core_value_to_datex_expression(
                         .collect(),
                     rest_parameter: callable
                         .signature
-                        .rest_parameter_type
+                        .rest_parameter
                         .as_ref()
                         .map(|(maybe_name, ty)| {
                             (

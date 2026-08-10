@@ -145,8 +145,6 @@ impl<'a> Formatter<'a> {
             TypeExpressionData::Boolean(b) => a.text(b.to_string()),
             TypeExpressionData::Text(t) => a.text(format!("{:?}", t)),
             TypeExpressionData::Endpoint(ep) => a.text(ep.to_string()),
-            TypeExpressionData::Null => a.text("null"),
-            TypeExpressionData::Unit => a.text("()"),
 
             TypeExpressionData::Ref(inner) => {
                 a.text("&") + self.format_type_expression(inner)

@@ -72,8 +72,6 @@ pub trait TypeExpressionVisitor<E>: Sized {
             TypeExpressionData::GetReference(pointer_address) => {
                 self.visit_get_reference_type(pointer_address, &span)
             }
-            TypeExpressionData::Null => self.visit_null_type(&span),
-            TypeExpressionData::Unit => self.visit_unit_type(&span),
             TypeExpressionData::VariableAccess(variable_access) => {
                 self.visit_variable_access_type(variable_access, &span)
             }
@@ -167,7 +165,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
             }
             VisitAction::AbortRecursion => Ok(()),
             VisitAction::ToNoop => {
-                expr.data = Box::new(TypeExpressionData::Null);
+                expr.data = Box::new(TypeExpressionData::null());
                 Ok(())
             }
             VisitAction::ContinueRecursion => expr.walk_children(self),
@@ -438,24 +436,6 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = endpoint;
-        Ok(VisitAction::AbortRecursion)
-    }
-
-    /// Visit null literal
-    fn visit_null_type(
-        &mut self,
-        span: &Range<usize>,
-    ) -> TypeExpressionVisitResult<E> {
-        let _ = span;
-        Ok(VisitAction::AbortRecursion)
-    }
-
-    // Visit unit type
-    fn visit_unit_type(
-        &mut self,
-        span: &Range<usize>,
-    ) -> TypeExpressionVisitResult<E> {
-        let _ = span;
         Ok(VisitAction::AbortRecursion)
     }
 

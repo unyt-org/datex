@@ -382,12 +382,6 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         mark_literal_type(LiteralTypeDefinition::Text(text.clone()))
     }
-    fn visit_null_type(
-        &mut self,
-        _: &Range<usize>,
-    ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_type(Type::core(CoreLibBaseTypeId::Null))
-    }
     fn visit_endpoint_type(
         &mut self,
         endpoint: &mut Endpoint,
@@ -516,8 +510,8 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         mark_type(Type::from(TypeDefinition::Callable(
             CallableTypeDefinition {
                 kind: callable_type.kind.clone(),
-                parameter_types,
-                rest_parameter_type,
+                parameters: parameter_types,
+                rest_parameter: rest_parameter_type,
                 return_type: return_type.map(Box::new),
                 yeet_type: yeet_type.map(Box::new),
             },
@@ -1240,8 +1234,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         let signature = CallableTypeDefinition {
             kind: callable_declaration.signature.kind.clone(),
-            parameter_types: parameters,
-            rest_parameter_type,
+            parameters: parameters,
+            rest_parameter: rest_parameter_type,
             return_type: annotated_return_type,
             yeet_type: annotated_yeet_type,
         };
@@ -1823,7 +1817,7 @@ mod tests {
             res,
             Type::from(TypeDefinition::Callable(CallableTypeDefinition {
                 kind: CallableKind::Function,
-                parameter_types: vec![
+                parameters: vec![
                     (
                         Some("a".to_string()),
                         Type::core(CoreLibBaseTypeId::Integer),
@@ -1833,7 +1827,7 @@ mod tests {
                         Type::core(CoreLibBaseTypeId::Integer)
                     ),
                 ],
-                rest_parameter_type: None,
+                rest_parameter: None,
                 return_type: Some(Box::new(Type::core(
                     CoreLibBaseTypeId::Integer
                 ))),
@@ -1852,7 +1846,7 @@ mod tests {
             res,
             Type::from(TypeDefinition::Callable(CallableTypeDefinition {
                 kind: CallableKind::Function,
-                parameter_types: vec![
+                parameters: vec![
                     (
                         Some("a".to_string()),
                         Type::core(CoreLibBaseTypeId::Integer)
@@ -1862,7 +1856,7 @@ mod tests {
                         Type::core(CoreLibBaseTypeId::Integer)
                     ),
                 ],
-                rest_parameter_type: None,
+                rest_parameter: None,
                 return_type: None,
                 yeet_type: None,
             },))

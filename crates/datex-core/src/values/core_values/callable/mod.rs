@@ -18,7 +18,10 @@ pub type NativeCallable =
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CallableBody {
     Native(NativeCallable),
-    DatexBytecode,
+    DatexBytecode {
+        injected_values: Vec<ValueContainer>,
+        body: Vec<u8>,
+    },
     CoreStub(CoreStub),
 }
 
@@ -43,7 +46,7 @@ impl Callable {
     ) -> Result<Option<ValueContainer>, CallableError> {
         match &self.body {
             CallableBody::Native(func) => func(args),
-            CallableBody::DatexBytecode => {
+            CallableBody::DatexBytecode {..} => {
                 todo!("#606 Calling Datex bytecode is not yet implemented")
             }
             CallableBody::CoreStub(_stub) => {

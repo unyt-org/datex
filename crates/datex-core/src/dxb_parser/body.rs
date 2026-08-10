@@ -25,7 +25,7 @@ pub enum DXBParserError {
     FailedToReadInstructionCode,
     InvalidInstructionCode(u8),
     /// Returned when the end of the DXB body is reached, but further instructions are expected.
-    ExpectingMoreInstructions,
+    ExpectingMoreInstructions(NextInstructionsStack),
     UnexpectedBytesAfterEndOfInstructions,
     FmtError(fmt::Error),
     BinRwError(binrw::Error),
@@ -55,9 +55,9 @@ impl PartialEq for DXBParserError {
                 DXBParserError::InvalidInstructionCode(b),
             ) => a == b,
             (
-                DXBParserError::ExpectingMoreInstructions,
-                DXBParserError::ExpectingMoreInstructions,
-            ) => true,
+                DXBParserError::ExpectingMoreInstructions(a),
+                DXBParserError::ExpectingMoreInstructions(b),
+            ) => a == b,
             (
                 DXBParserError::UnexpectedBytesAfterEndOfInstructions,
                 DXBParserError::UnexpectedBytesAfterEndOfInstructions,
@@ -133,8 +133,8 @@ impl Display for DXBParserError {
             DXBParserError::FromUtf8Error(err) => {
                 core::write!(f, "UTF-8 conversion error: {err}")
             }
-            DXBParserError::ExpectingMoreInstructions => {
-                core::write!(f, "Expecting more instructions")
+            DXBParserError::ExpectingMoreInstructions(stack) => {
+                core::write!(f, "Expecting more instructions: {stack}")
             }
             DXBParserError::UnexpectedBytesAfterEndOfInstructions => {
                 core::write!(f, "Unexpected bytes after end of instructions")
@@ -182,7 +182,7 @@ pub gen fn iterate_instructions_with_seek(
 
         if reader.position() as usize >= len {
             if !next_instructions_stack.is_end() {
-                yield Err(DXBParserError::ExpectingMoreInstructions);
+                yield Err(DXBParserError::ExpectingMoreInstructions(next_instructions_stack.clone()));
 
                 dxb_body = core::mem::take(&mut *dxb_body_ref.borrow_mut());
                 len = dxb_body.len();
@@ -213,7 +213,7 @@ pub gen fn iterate_instructions_with_seek(
                     let instruction = RegularInstruction::read(&mut reader)
                         .map_err(DXBParserError::BinRwError)?;
 
-                    
+
                     let instruction = cfg_select! {
                         feature = "disassembler" => {
                              instruction
@@ -223,7 +223,7 @@ pub gen fn iterate_instructions_with_seek(
                             instruction
                         }
                     }?;
-                    
+
                     next_instructions_stack
                         .handle_next_expected_instructions(
                             instruction.get_next_expected_instructions(),
@@ -289,7 +289,7 @@ mod tests {
         let data = vec![]; // Empty data
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
-        assert_matches!(result, Err(DXBParserError::ExpectingMoreInstructions));
+        assert_matches!(result, Err(DXBParserError::ExpectingMoreInstructions(_)));
     }
 
     #[test]
@@ -389,7 +389,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Err(DXBParserError::ExpectingMoreInstructions)
+            Err(DXBParserError::ExpectingMoreInstructions(_))
         ));
 
         // now provide more data for the two elements
@@ -436,7 +436,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Err(DXBParserError::ExpectingMoreInstructions)
+            Err(DXBParserError::ExpectingMoreInstructions(_))
         ));
 
         // now provide more data for the statements

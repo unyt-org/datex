@@ -226,8 +226,6 @@ impl AstToSourceCodeConverter {
             TypeExpressionData::Boolean(boolean) => boolean.to_string(),
             TypeExpressionData::Text(text) => self.text_to_source_code(text),
             TypeExpressionData::Endpoint(endpoint) => endpoint.to_string(),
-            TypeExpressionData::Null => "null".to_string(),
-            TypeExpressionData::Unit => "()".to_string(),
             TypeExpressionData::Ref(inner) => {
                 format!("&{}", self.type_expression_to_source_code(inner,))
             }

@@ -128,11 +128,11 @@ impl Hash for TypeDefinition {
             }
             TypeDefinition::Callable(callable) => {
                 callable.kind.hash(state);
-                for (name, ty) in callable.parameter_types.iter() {
+                for (name, ty) in callable.parameters.iter() {
                     name.hash(state);
                     ty.hash(state);
                 }
-                callable.rest_parameter_type.hash(state);
+                callable.rest_parameter.hash(state);
                 callable.return_type.hash(state);
                 callable.yeet_type.hash(state);
             }
@@ -198,7 +198,7 @@ impl Display for TypeDefinition {
             }
             TypeDefinition::Callable(callable) => {
                 let mut params_code: Vec<String> = callable
-                    .parameter_types
+                    .parameters
                     .iter()
                     .map(|(param_name, param_type)| match param_name {
                         Some(name) => format!("{}: {}", name, param_type),
@@ -207,7 +207,7 @@ impl Display for TypeDefinition {
                     .collect();
                 // handle rest parameter
                 if let Some((param_name, param_type)) =
-                    &callable.rest_parameter_type
+                    &callable.rest_parameter
                 {
                     params_code.push(match param_name {
                         Some(name) => format!("...{}: {}", name, param_type),
@@ -341,6 +341,17 @@ impl TypeDefinition {
                 Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Callable))
             }
             _ => None,
+        }
+    }
+    
+    /// Convert this type definition into a [Type] by wrapping it in a [Type::Definition] variant.
+    /// If the type definition is a [TypeDefinition::Nested] variant, it will be unwrapped and returned as the inner [Type].
+    pub fn convert_to_type(self) -> Type {
+        match self {
+            TypeDefinition::Nested(ty) => {
+                *ty
+            }
+            _ => Type::Definition(self.into()),
         }
     }
 }
