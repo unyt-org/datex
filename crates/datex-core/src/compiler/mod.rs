@@ -1683,11 +1683,14 @@ fn compile_child_realm_instructions(
     );
 
     let stack_index_offset =
-        StackIndex(injected_variable_count);
+        StackIndex(injected_variable_count + existing_variables.len() as u32);
+
+    let injected_values_offset = StackIndex(existing_variables.len() as u32);
 
     let mut child_scope = CompilationScope::new_with_external_parent_scope(
         scope,
         stack_index_offset,
+        injected_values_offset
     );
 
     for variable in existing_variables {
