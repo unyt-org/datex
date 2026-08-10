@@ -809,7 +809,7 @@ impl AstToSourceCodeConverter {
                     yeet_type,
                     body,
                     ..
-                } = &**callable;
+                } = callable;
                 let mut params_code: Vec<String> = parameters
                     .iter()
                     .map(|(param_name, param_type)| {

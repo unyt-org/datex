@@ -1,10 +1,25 @@
 use crate::types::r#type::Type;
+use binrw::{BinRead, BinWrite};
 use core::fmt::{Display, Formatter};
+use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 pub mod serde_dif;
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    TryFromPrimitive,
+    BinRead,
+    BinWrite,
+)]
+#[brw(repr(u8))]
+#[repr(u8)]
 pub enum CallableKind {
     // A pure function
     Function,

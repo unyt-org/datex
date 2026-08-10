@@ -42,8 +42,8 @@ impl Parser {
 
         // parse function body
         let body = self.parse_parenthesized_statements()?;
-        Ok(DatexExpressionData::CallableDeclaration(Box::new(
-            CallableDeclaration {
+        Ok(
+            DatexExpressionData::CallableDeclaration(CallableDeclaration {
                 name: Some(name),
                 kind,
                 parameters,
@@ -52,9 +52,9 @@ impl Parser {
                 yeet_type: None, // TODO #663
                 body: (body),
                 injected_variable_count: None,
-            },
-        ))
-        .with_span(start_pos..self.get_current_source_position()))
+            })
+            .with_span(start_pos..self.get_current_source_position()),
+        )
     }
 
     fn parse_callable_parameters(
@@ -108,8 +108,8 @@ mod tests {
         let expr = parse("function test() ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(Box::new(
-                CallableDeclaration {
+            &DatexExpressionData::CallableDeclaration(
+                (CallableDeclaration {
                     name: Some(String::from("test")),
                     kind: CallableKind::Function,
                     parameters: vec![],
@@ -123,8 +123,8 @@ mod tests {
                     })
                     .with_default_span()),
                     injected_variable_count: None,
-                }
-            ))
+                })
+            )
         );
     }
 
@@ -133,8 +133,8 @@ mod tests {
         let expr = parse("procedure doSomething() ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(Box::new(
-                CallableDeclaration {
+            &DatexExpressionData::CallableDeclaration(
+                (CallableDeclaration {
                     name: Some(String::from("doSomething")),
                     kind: CallableKind::Procedure,
                     parameters: vec![],
@@ -148,8 +148,8 @@ mod tests {
                     })
                     .with_default_span()),
                     injected_variable_count: None,
-                }
-            ))
+                })
+            )
         );
     }
 
@@ -158,8 +158,8 @@ mod tests {
         let expr = parse("function add(a: integer, b: integer) -> integer ( )");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(Box::new(
-                CallableDeclaration {
+            &DatexExpressionData::CallableDeclaration(
+                (CallableDeclaration {
                     name: Some("add".to_string()),
                     kind: CallableKind::Function,
                     parameters: vec![
@@ -191,8 +191,8 @@ mod tests {
                     })
                     .with_default_span()),
                     injected_variable_count: None,
-                }
-            ))
+                })
+            )
         );
     }
 
@@ -202,8 +202,8 @@ mod tests {
             parse("function greet(name: text) -> text ( \"Hello, \" + name )");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(Box::new(
-                CallableDeclaration {
+            &DatexExpressionData::CallableDeclaration(
+                (CallableDeclaration {
                     name: Some("greet".to_string()),
                     kind: CallableKind::Function,
                     parameters: vec![(
@@ -233,8 +233,8 @@ mod tests {
                     )
                     .with_default_span()),
                     injected_variable_count: None,
-                }
-            ))
+                })
+            )
         );
     }
 }

@@ -175,7 +175,7 @@ pub enum DatexExpressionData {
     TypeExpression(TypeExpression),
 
     /// callable (function/procedure) declaration, e.g. function my_function() -> type ( ... )
-    CallableDeclaration(Box<CallableDeclaration>),
+    CallableDeclaration(CallableDeclaration),
 
     /// Create a new shared container
     CreateShared(CreateShared),

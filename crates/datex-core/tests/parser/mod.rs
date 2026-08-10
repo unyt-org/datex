@@ -424,8 +424,8 @@ fn function_simple() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(Box::new(
-            CallableDeclaration {
+        DatexExpressionData::CallableDeclaration(
+            (CallableDeclaration {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
                 parameters: Vec::new(),
@@ -435,8 +435,8 @@ fn function_simple() {
                 body: (DatexExpressionData::Integer(Integer::from(42))
                     .with_default_span()),
                 injected_variable_count: None,
-            }
-        ))
+            })
+        )
     );
 }
 
@@ -450,8 +450,8 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(Box::new(
-            CallableDeclaration {
+        DatexExpressionData::CallableDeclaration(
+            (CallableDeclaration {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
                 parameters: vec![(
@@ -465,8 +465,8 @@ fn function_with_params() {
                 body: (DatexExpressionData::Integer(Integer::from(42))
                     .with_default_span()),
                 injected_variable_count: None,
-            }
-        ))
+            })
+        )
     );
 
     let src = r#"
@@ -477,8 +477,8 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(Box::new(
-            CallableDeclaration {
+        DatexExpressionData::CallableDeclaration(
+            (CallableDeclaration {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
                 parameters: vec![
@@ -517,8 +517,8 @@ fn function_with_params() {
                 )
                 .with_default_span()),
                 injected_variable_count: None,
-            }
-        ))
+            })
+        )
     );
 }
 
@@ -532,8 +532,8 @@ fn function_with_return_type() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(Box::new(
-            CallableDeclaration {
+        DatexExpressionData::CallableDeclaration(
+            (CallableDeclaration {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
                 parameters: vec![(
@@ -555,8 +555,8 @@ fn function_with_return_type() {
                 body: (DatexExpressionData::Integer(Integer::from(42))
                     .with_default_span()),
                 injected_variable_count: None,
-            }
-        ))
+            })
+        )
     );
 }
 

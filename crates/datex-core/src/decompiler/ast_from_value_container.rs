@@ -141,46 +141,44 @@ fn core_value_to_datex_expression(
             type_to_type_expression(type_value),
         ),
         CoreValue::Callable(callable) => {
-            DatexExpressionData::CallableDeclaration(Box::new(
-                CallableDeclaration {
-                    name: callable.name.clone(),
-                    kind: callable.signature.kind.clone(),
-                    parameters: callable
-                        .signature
-                        .parameter_types
-                        .iter()
-                        .map(|(maybe_name, ty)| {
-                            (
-                                maybe_name.clone().unwrap_or("_".to_string()),
-                                type_to_type_expression(ty),
-                            )
-                        })
-                        .collect(),
-                    rest_parameter: callable
-                        .signature
-                        .rest_parameter_type
-                        .as_ref()
-                        .map(|(maybe_name, ty)| {
-                            (
-                                maybe_name.clone().unwrap_or("_".to_string()),
-                                type_to_type_expression(ty),
-                            )
-                        }),
-                    return_type: callable
-                        .signature
-                        .return_type
-                        .as_ref()
-                        .map(|ty| type_to_type_expression(ty)),
-                    yeet_type: callable
-                        .signature
-                        .yeet_type
-                        .as_ref()
-                        .map(|ty| type_to_type_expression(ty)),
-                    body: (DatexExpressionData::NativeImplementationIndicator
-                        .with_default_span()),
-                    injected_variable_count: None,
-                },
-            ))
+            DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                name: callable.name.clone(),
+                kind: callable.signature.kind.clone(),
+                parameters: callable
+                    .signature
+                    .parameter_types
+                    .iter()
+                    .map(|(maybe_name, ty)| {
+                        (
+                            maybe_name.clone().unwrap_or("_".to_string()),
+                            type_to_type_expression(ty),
+                        )
+                    })
+                    .collect(),
+                rest_parameter: callable
+                    .signature
+                    .rest_parameter_type
+                    .as_ref()
+                    .map(|(maybe_name, ty)| {
+                        (
+                            maybe_name.clone().unwrap_or("_".to_string()),
+                            type_to_type_expression(ty),
+                        )
+                    }),
+                return_type: callable
+                    .signature
+                    .return_type
+                    .as_ref()
+                    .map(|ty| type_to_type_expression(ty)),
+                yeet_type: callable
+                    .signature
+                    .yeet_type
+                    .as_ref()
+                    .map(|ty| type_to_type_expression(ty)),
+                body: (DatexExpressionData::NativeImplementationIndicator
+                    .with_default_span()),
+                injected_variable_count: None,
+            })
         }
         CoreValue::EntityTypeDefinition(_) => {
             todo!()

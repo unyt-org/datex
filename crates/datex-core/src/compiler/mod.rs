@@ -1625,6 +1625,10 @@ fn compile_expression(
             ));
         }
 
+        DatexExpressionData::CallableDeclaration(callable_declaration) => {
+            // TODO
+        }
+
         _ => {
             log::error!("Unhandled expression in compiler: {:?}", data);
             let ast = DatexExpression { data, span, ty };

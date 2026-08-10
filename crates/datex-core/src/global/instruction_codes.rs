@@ -92,6 +92,8 @@ pub enum InstructionCode {
 
     GET_ROOT_PROPERTY, // e.g. $.endpoint
 
+    CALLABLE, // for function/procedure declarations
+
     // Note: fix to sync with PointerAddress
     REQUEST_REMOTE_SHARED_REF,     // '$x
     REQUEST_REMOTE_SHARED_REF_MUT, // 'mut $x

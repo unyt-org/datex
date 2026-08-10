@@ -1,4 +1,5 @@
 use crate::{
+    ast::{expressions::DatexExpression, type_expressions::TypeExpression},
     core_compiler::value_compiler::append_instruction,
     global::{
         operators::ModificationOperator,
@@ -15,11 +16,11 @@ use crate::{
         PointerAddress, ReferenceMutability, RemotePointerAddress,
         SelfOwnedPointerAddress, SharedContainerMutability,
     },
-    types::type_definition_with_metadata::TypeMetadata,
-    values::{
-        core_values::{decimal::Decimal, integer::Integer},
-        value_container::ValueContainer,
+    types::{
+        type_definition::callable::CallableKind,
+        type_definition_with_metadata::TypeMetadata,
     },
+    values::core_values::{decimal::Decimal, integer::Integer},
 };
 use alloc::string::FromUtf8Error;
 use binrw::{
@@ -169,6 +170,51 @@ pub struct TaggedValue {
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
     pub(crate) is_empty: bool,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct CallableSignatureData {
+    pub name: ShortTextData, // empty string if anonymous
+    pub kind: CallableKind,
+    pub parameter_count: u8,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub has_rest_parameter: bool,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub has_return_type: bool,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub has_yeet_type: bool,
+    #[br(count = parameter_count)]
+    pub parameter_names: Vec<ShortTextData>,
+    #[br(if(has_rest_parameter))]
+    pub rest_parameter_name: Option<ShortTextData>,
+}
+
+impl CallableSignatureData {
+    /// Returns the total number of types in the signature, including parameters, rest parameter, return type, and yeet type.
+    pub fn total_type_count(&self) -> u32 {
+        let mut count = self.parameter_count as u32;
+        if self.has_rest_parameter {
+            count += 1;
+        }
+        if self.has_return_type {
+            count += 1;
+        }
+        if self.has_yeet_type {
+            count += 1;
+        }
+        count
+    }
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct CallableData {
+    pub signature: CallableSignatureData,
+    pub body: InstructionBlockData,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
