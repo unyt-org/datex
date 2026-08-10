@@ -2,7 +2,10 @@ use alloc::str::FromStr;
 use core::assert_matches;
 use datex_core::{
     ast::{
-        expressions::{RemoteExecution, Statements, TypeDeclarationExpression},
+        expressions::{
+            CallableSignature, RemoteExecution, Statements,
+            TypeDeclarationExpression,
+        },
         type_expressions::StructuralMap,
     },
     collections::HashMap,
@@ -424,19 +427,19 @@ fn function_simple() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(
-            (CallableDeclaration {
+        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+            signature: CallableSignature {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
                 parameters: Vec::new(),
                 rest_parameter: None,
                 return_type: None,
                 yeet_type: None,
-                body: (DatexExpressionData::Integer(Integer::from(42))
-                    .with_default_span()),
-                injected_variable_count: None,
-            })
-        )
+            },
+            body: (DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span()),
+            injected_variable_count: None,
+        })
     );
 }
 
@@ -450,8 +453,8 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(
-            (CallableDeclaration {
+        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+            signature: CallableSignature {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
                 parameters: vec![(
@@ -462,11 +465,11 @@ fn function_with_params() {
                 rest_parameter: None,
                 return_type: None,
                 yeet_type: None,
-                body: (DatexExpressionData::Integer(Integer::from(42))
-                    .with_default_span()),
-                injected_variable_count: None,
-            })
-        )
+            },
+            body: (DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span()),
+            injected_variable_count: None,
+        })
     );
 
     let src = r#"
@@ -477,8 +480,8 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(
-            (CallableDeclaration {
+        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+            signature: CallableSignature {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
                 parameters: vec![
@@ -496,29 +499,25 @@ fn function_with_params() {
                 rest_parameter: None,
                 return_type: None,
                 yeet_type: None,
-                body: (DatexExpressionData::Statements(
-                    Statements::new_terminated(vec![
-                        DatexExpressionData::BinaryOperation(BinaryOperation {
-                            operator: BinaryOperator::Arithmetic(
-                                ArithmeticOperator::Add
-                            ),
-                            left: (DatexExpressionData::Integer(
-                                Integer::from(1)
-                            )
+            },
+            body: (DatexExpressionData::Statements(
+                Statements::new_terminated(vec![
+                    DatexExpressionData::BinaryOperation(BinaryOperation {
+                        operator: BinaryOperator::Arithmetic(
+                            ArithmeticOperator::Add
+                        ),
+                        left: (DatexExpressionData::Integer(Integer::from(1))
                             .with_default_span()),
-                            right: (DatexExpressionData::Integer(
-                                Integer::from(2)
-                            )
+                        right: (DatexExpressionData::Integer(Integer::from(2))
                             .with_default_span()),
-                            ty: None
-                        })
-                        .with_default_span()
-                    ])
-                )
-                .with_default_span()),
-                injected_variable_count: None,
-            })
-        )
+                        ty: None
+                    })
+                    .with_default_span()
+                ])
+            )
+            .with_default_span()),
+            injected_variable_count: None,
+        })
     );
 }
 
@@ -532,8 +531,8 @@ fn function_with_return_type() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(
-            (CallableDeclaration {
+        DatexExpressionData::CallableDeclaration(CallableDeclaration {
+            signature: CallableSignature {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
                 parameters: vec![(
@@ -552,11 +551,11 @@ fn function_with_return_type() {
                     .with_default_span()
                 ),
                 yeet_type: None,
-                body: (DatexExpressionData::Integer(Integer::from(42))
-                    .with_default_span()),
-                injected_variable_count: None,
-            })
-        )
+            },
+            body: (DatexExpressionData::Integer(Integer::from(42))
+                .with_default_span()),
+            injected_variable_count: None,
+        })
     );
 }
 
