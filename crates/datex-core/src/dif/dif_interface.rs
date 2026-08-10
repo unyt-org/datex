@@ -25,6 +25,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
+use crate::runtime::Runtime;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
@@ -62,10 +63,11 @@ impl DIFInterface {
     /// Executes an apply operation, applying the `value` to the `callee`.
     pub fn apply(
         &self,
+        runtime: &Runtime,
         callee: ValueContainer,
         value: ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        callee.try_apply_single(&value)
+        callee.try_apply_single(runtime, &value)
     }
 
     /// Creates a new owned local pointer and stores it in memory.

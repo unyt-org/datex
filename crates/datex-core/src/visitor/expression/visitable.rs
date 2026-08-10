@@ -15,6 +15,7 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
+use crate::ast::expressions::CallableSignature;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -271,19 +272,29 @@ impl<E> VisitableExpression<E> for CallableDeclaration {
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E> {
-        if let Some(return_type) = &mut self.signature.return_type {
+        self.signature.walk_children(visitor)?;
+        visitor.visit_datex_expression(&mut self.body)?;
+        Ok(())
+    }
+}
+
+impl<E> VisitableExpression<E> for CallableSignature {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        if let Some(return_type) = &mut self.return_type {
             visitor.visit_type_expression(return_type)?;
         }
-        if let Some(yeet_type) = &mut self.signature.yeet_type {
+        if let Some(yeet_type) = &mut self.yeet_type {
             visitor.visit_type_expression(yeet_type)?;
         }
-        for (_, param_type) in &mut self.signature.parameters {
+        for (_, param_type) in &mut self.parameters {
             visitor.visit_type_expression(param_type)?;
         }
-        if let Some(rest_parameter) = &mut self.signature.rest_parameter {
+        if let Some(rest_parameter) = &mut self.rest_parameter {
             visitor.visit_type_expression(&mut rest_parameter.1)?;
         }
-        visitor.visit_datex_expression(&mut self.body)?;
         Ok(())
     }
 }

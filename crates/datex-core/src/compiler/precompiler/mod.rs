@@ -23,8 +23,8 @@ pub mod scope_stack;
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, CloneExpression, DatexExpression,
-            DatexExpressionData, DeriveRef, DeriveSharedRef,
+            BinaryOperation, CallableDeclaration, CloneExpression,
+            DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
             EntityDeclarationExpression, PropertyAssignment, RemoteExecution,
             RequestSharedRef, Statements, TypeDeclarationExpression, Unbox,
             UnboxAssignment, ValueAccessType, VariableAccess,
@@ -500,6 +500,68 @@ impl Precompiler<'_> {
             None => VisitAction::AbortRecursion,
         })
     }
+
+    fn visit_child_realm(
+        &mut self,
+        expression: &mut DatexExpression,
+    ) -> Result<
+        (Result<Vec<DatexExpression>, VisitAction<DatexExpression>>, u32),
+        SpannedCompilerError,
+    > {
+        self.scope_stack.push_scope();
+        self.scope_stack.increment_realm_index();
+
+        self.visit_datex_expression(expression)?;
+        let scope = self.scope_stack.pop_scope();
+
+        let var_count = scope.external_variables.len() as u32;
+
+        // if root level scope, create new variables for inner placeholder values
+        let res = if self.scope_stack.current_realm_index() == 0 {
+            let unresolved_variables = scope
+                .external_variables
+                .into_iter()
+                .filter_map(|var| match var {
+                    ExternalVariable::UnresolvedPlaceholder(
+                        id,
+                        access_type,
+                    ) => Some((id, access_type)),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            if !unresolved_variables.is_empty() {
+                let mut statements = vec![];
+                for (variable_id, access_type) in unresolved_variables {
+                    let placeholder_var_name = "__placeholder".to_string();
+                    statements.push(
+                        DatexExpressionData::VariableDeclaration(
+                            VariableDeclaration {
+                                id: Some(variable_id),
+                                name: placeholder_var_name,
+                                type_annotation: None,
+                                kind: VariableKind::Const,
+                                init_expression:
+                                DatexExpressionData::Placeholder(
+                                    access_type,
+                                )
+                                    .with_default_span(),
+                            },
+                        )
+                            .with_default_span(),
+                    );
+                }
+
+                Ok(statements)
+            } else {
+                Err(VisitAction::AbortRecursion)
+            }
+        } else {
+            Err(VisitAction::AbortRecursion)
+        };
+
+        Ok((res, var_count))
+    }
 }
 
 impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
@@ -548,6 +610,39 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         };
     }
 
+    fn visit_callable_declaration(
+        &mut self,
+        callable_declaration: &mut CallableDeclaration,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        callable_declaration.signature.walk_children(self)?;
+
+        let (result, injected_variable_count) = self.visit_child_realm(&mut callable_declaration.body)?;
+        callable_declaration.injected_variable_count = Some(injected_variable_count);
+
+        match result {
+            Ok(mut statements) => {
+
+                statements.push(
+                    DatexExpressionData::CallableDeclaration(
+                        callable_declaration.clone(),
+                    )
+                        .with_span(span.clone()),
+                );
+
+                Ok(VisitAction::Replace(
+                    DatexExpressionData::Statements(Statements {
+                        statements,
+                        is_terminated: false,
+                        unbounded: None,
+                    })
+                        .with_span(span.clone()),
+                ))
+            }
+            Err(action) => Ok(action),
+        }
+    }
+
     fn visit_remote_execution(
         &mut self,
         remote_execution: &mut RemoteExecution,
@@ -555,49 +650,11 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         self.visit_datex_expression(&mut remote_execution.left)?;
 
-        self.scope_stack.push_scope();
-        self.scope_stack.increment_realm_index();
+        let (result, injected_variable_count) = self.visit_child_realm(&mut remote_execution.right)?;
+        remote_execution.injected_variable_count = Some(injected_variable_count);
 
-        self.visit_datex_expression(&mut remote_execution.right)?;
-        let scope = self.scope_stack.pop_scope();
-        remote_execution.injected_variable_count =
-            Some(scope.external_variables.len() as u32);
-
-        // if root level scope, create new variables for inner placeholder values
-        if self.scope_stack.current_realm_index() == 0 {
-            let unresolved_variables = scope
-                .external_variables
-                .into_iter()
-                .filter_map(|var| match var {
-                    ExternalVariable::UnresolvedPlaceholder(
-                        id,
-                        access_type,
-                    ) => Some((id, access_type)),
-                    _ => None,
-                })
-                .collect::<Vec<_>>();
-
-            if !unresolved_variables.is_empty() {
-                let mut statements = vec![];
-                for (variable_id, access_type) in unresolved_variables {
-                    let placeholder_var_name = "__placeholder".to_string();
-                    statements.push(
-                        DatexExpressionData::VariableDeclaration(
-                            VariableDeclaration {
-                                id: Some(variable_id),
-                                name: placeholder_var_name,
-                                type_annotation: None,
-                                kind: VariableKind::Const,
-                                init_expression:
-                                    DatexExpressionData::Placeholder(
-                                        access_type,
-                                    )
-                                    .with_default_span(),
-                            },
-                        )
-                        .with_span(span.clone()),
-                    );
-                }
+        match result {
+            Ok(mut statements) => {
 
                 statements.push(
                     DatexExpressionData::RemoteExecution(
@@ -614,11 +671,8 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     })
                     .with_span(span.clone()),
                 ))
-            } else {
-                Ok(VisitAction::AbortRecursion)
             }
-        } else {
-            Ok(VisitAction::AbortRecursion)
+            Err(action) => Ok(action),
         }
     }
 
@@ -638,6 +692,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         }
         Ok(VisitAction::AbortRecursion)
     }
+
 
     fn visit_get_ref(
         &mut self,
@@ -1147,6 +1202,8 @@ mod tests {
     };
     use alloc::rc::Rc;
     use core::{assert_matches, cell::RefCell, str::FromStr};
+    use crate::ast::expressions::{CallableDeclaration, CallableSignature};
+    use crate::types::type_definition::callable::CallableKind;
 
     fn precompile(
         ast: DatexExpression,
@@ -2089,6 +2146,53 @@ mod tests {
                         injected_variable_count: Some(1),
                     })
                     .with_default_span(),
+                ]
+            ))
+        )
+    }
+
+    #[test]
+    fn function_declaration_injected_variables() {
+        let result = parse_and_precompile("var x = 10; function y() (x)");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data(),
+            &DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Var,
+                            name: "x".to_string(),
+                            init_expression: DatexExpressionData::Integer(
+                                Integer::from(10)
+                            )
+                                .with_default_span(),
+                            type_annotation: None,
+                        }
+                    )
+                        .with_default_span(),
+                    DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                        signature: CallableSignature {
+                            name: Some("y".to_string()),
+                            kind: CallableKind::Function,
+                            parameters: vec![],
+                            rest_parameter: None,
+                            return_type: None,
+                            yeet_type: None,
+                        },
+                        body: DatexExpressionData::VariableAccess(
+                            VariableAccess {
+                                id: 0,
+                                name: "x".to_string(),
+                                access_type: ValueAccessType::MoveOrCopy,
+                            }
+                        )
+                            .with_default_span(),
+                        injected_variable_count: Some(1),
+                    })
+                        .with_default_span(),
                 ]
             ))
         )

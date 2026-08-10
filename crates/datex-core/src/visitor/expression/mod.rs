@@ -459,11 +459,11 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit callable declaration
     fn visit_callable_declaration(
         &mut self,
-        function_declaration: &mut CallableDeclaration,
+        callable_declaration: &mut CallableDeclaration,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
-        let _ = function_declaration;
+        let _ = callable_declaration;
         Ok(VisitAction::ContinueRecursion)
     }
 

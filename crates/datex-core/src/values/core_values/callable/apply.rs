@@ -4,18 +4,21 @@ use crate::{
         core_values::callable::Callable, value_container::ValueContainer,
     },
 };
+use crate::runtime::Runtime;
 
 impl Apply for Callable {
     fn try_apply(
         &self,
+        runtime: &Runtime,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        Ok(self.call(args)?)
+        Ok(self.call(runtime, args)?)
     }
     fn try_apply_single(
         &self,
+        runtime: &Runtime,
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        Ok(self.call(core::slice::from_ref(arg))?)
+        Ok(self.call(runtime, core::slice::from_ref(arg))?)
     }
 }

@@ -1,8 +1,11 @@
 use core::fmt::Display;
 
-use crate::values::{
-    core_values::callable::error::CallableError,
-    value_container::ValueContainer,
+use crate::{
+    runtime::Runtime,
+    values::{
+        core_values::callable::error::CallableError,
+        value_container::ValueContainer,
+    },
 };
 use alloc::boxed::Box;
 
@@ -34,11 +37,13 @@ pub trait Apply {
     /// Applies multiple ValueContainer arguments to self
     fn try_apply(
         &self,
+        runtime: &Runtime,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ApplyError>;
     /// Applies a single ValueContainer argument to self
     fn try_apply_single(
         &self,
+        runtime: &Runtime,
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError>;
 }

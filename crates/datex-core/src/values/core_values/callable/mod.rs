@@ -1,5 +1,6 @@
 use crate::{
     prelude::*,
+    runtime::Runtime,
     types::type_definition::callable::CallableTypeDefinition,
     values::{
         core_values::{callable::error::CallableError, endpoint::Endpoint},
@@ -37,6 +38,7 @@ pub struct Callable {
 impl Callable {
     pub fn call(
         &self,
+        runtime: &Runtime,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, CallableError> {
         match &self.body {

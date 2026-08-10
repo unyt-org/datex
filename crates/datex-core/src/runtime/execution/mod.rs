@@ -114,7 +114,7 @@ pub fn execute_dxb_sync(
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&callee, &args)?;
+                let res = handle_apply(&runtime, &callee, &args)?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -244,7 +244,7 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&callee, &args)?;
+                let res = handle_apply(&runtime, &callee, &args)?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -289,15 +289,16 @@ async fn get_remote_endpoint_property(
 }
 
 fn handle_apply(
+    runtime: &Runtime,
     callee: &ValueContainer,
     args: &[ValueContainer],
 ) -> Result<Option<ValueContainer>, ApplyError> {
     // callee is guaranteed to be Some here
     // apply_single if one arg, apply otherwise
     Ok(if args.len() == 1 {
-        callee.try_apply_single(&args[0])?
+        callee.try_apply_single(runtime, &args[0])?
     } else {
-        callee.try_apply(args)?
+        callee.try_apply(runtime, args)?
     })
 }
 
