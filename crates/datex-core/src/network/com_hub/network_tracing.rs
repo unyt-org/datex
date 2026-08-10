@@ -76,7 +76,7 @@ impl NetworkTraceHopSocket {
     Clone,
     strum_macros::Display,
 )]
-
+#[datex(structural)]
 pub enum NetworkTraceHopDirection {
     Outgoing,
     Incoming,

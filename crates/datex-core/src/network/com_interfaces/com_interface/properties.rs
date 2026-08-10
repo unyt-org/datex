@@ -9,6 +9,7 @@ use strum::EnumString;
 #[derive(
     Datex, PartialEq, Eq, Debug, Clone, EnumString, Serialize, Deserialize,
 )]
+#[datex(structural)]
 pub enum InterfaceDirection {
     In,
     Out,
