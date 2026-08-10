@@ -140,23 +140,23 @@ mod tests {
         let expr = parse("procedure doSomething() ()");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(
-                (CallableDeclaration {
+            &DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                signature: CallableSignature {
                     name: Some(String::from("doSomething")),
                     kind: CallableKind::Procedure,
                     parameters: vec![],
                     rest_parameter: None,
                     return_type: None,
                     yeet_type: None,
-                    body: (DatexExpressionData::Statements(Statements {
-                        statements: vec![],
-                        is_terminated: false,
-                        unbounded: None,
-                    })
-                    .with_default_span()),
-                    injected_variable_count: None,
+                },
+                body: (DatexExpressionData::Statements(Statements {
+                    statements: vec![],
+                    is_terminated: false,
+                    unbounded: None,
                 })
-            )
+                .with_default_span()),
+                injected_variable_count: None,
+            })
         );
     }
 
@@ -165,8 +165,8 @@ mod tests {
         let expr = parse("function add(a: integer, b: integer) -> integer ( )");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(
-                (CallableDeclaration {
+            &DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                signature: CallableSignature {
                     name: Some("add".to_string()),
                     kind: CallableKind::Function,
                     parameters: vec![
@@ -191,15 +191,15 @@ mod tests {
                             .with_default_span()
                     ),
                     yeet_type: None,
-                    body: (DatexExpressionData::Statements(Statements {
-                        statements: vec![],
-                        is_terminated: false,
-                        unbounded: None,
-                    })
-                    .with_default_span()),
-                    injected_variable_count: None,
+                },
+                body: (DatexExpressionData::Statements(Statements {
+                    statements: vec![],
+                    is_terminated: false,
+                    unbounded: None,
                 })
-            )
+                .with_default_span()),
+                injected_variable_count: None,
+            })
         );
     }
 
@@ -209,8 +209,8 @@ mod tests {
             parse("function greet(name: text) -> text ( \"Hello, \" + name )");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::CallableDeclaration(
-                (CallableDeclaration {
+            &DatexExpressionData::CallableDeclaration(CallableDeclaration {
+                signature: CallableSignature {
                     name: Some("greet".to_string()),
                     kind: CallableKind::Function,
                     parameters: vec![(
@@ -224,24 +224,22 @@ mod tests {
                             .with_default_span()
                     ),
                     yeet_type: None,
-                    body: (DatexExpressionData::BinaryOperation(
-                        BinaryOperation {
-                            left: (DatexExpressionData::Text("Hello, ".into())
-                                .with_default_span()),
-                            operator: BinaryOperator::Arithmetic(
-                                ArithmeticOperator::Add
-                            ),
-                            right: (DatexExpressionData::Identifier(
-                                "name".to_string()
-                            )
-                            .with_default_span()),
-                            ty: None,
-                        }
+                },
+                body: (DatexExpressionData::BinaryOperation(BinaryOperation {
+                    left: (DatexExpressionData::Text("Hello, ".into())
+                        .with_default_span()),
+                    operator: BinaryOperator::Arithmetic(
+                        ArithmeticOperator::Add
+                    ),
+                    right: (DatexExpressionData::Identifier(
+                        "name".to_string()
                     )
                     .with_default_span()),
-                    injected_variable_count: None,
+                    ty: None,
                 })
-            )
+                .with_default_span()),
+                injected_variable_count: None,
+            })
         );
     }
 }
