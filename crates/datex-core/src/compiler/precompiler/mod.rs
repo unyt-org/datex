@@ -314,7 +314,9 @@ impl<'a> Precompiler<'a> {
                     SharedContainer::new_owned_with_inferred_allowed_type(
                         CoreValue::EntityTypeDefinition(
                             EntityTypeDefinition::new(
-                                Type::core(CoreLibBaseTypeId::Unknown),
+                                TypeDefinition::core(
+                                    CoreLibBaseTypeId::Unknown,
+                                ),
                                 data.name.clone(),
                             ),
                         ),

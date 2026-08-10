@@ -24,6 +24,7 @@ use crate::{
     prelude::*,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     types::{
+        entity_type_definition::EntityTypeDefinition,
         r#type::Type,
         type_definition::{
             TypeDefinition, range::RangeTypeDefinition,
@@ -33,6 +34,7 @@ use crate::{
     },
 };
 use alloc::format;
+use core::ops::Deref;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -218,11 +220,19 @@ fn type_cast_expression(
 
 fn type_to_type_expression(ty: &Type) -> TypeExpression {
     match ty {
-        Type::Entity(container) => panic!("con: {:#?}", container),
+        Type::Entity(container) => entity_type_to_type_expression(
+            container.entity_definition().deref(),
+        ),
         Type::Definition(definition) => {
             type_definition_to_type_expression(definition)
         }
     }
+}
+
+fn entity_type_to_type_expression(
+    entity_type_definition: &EntityTypeDefinition,
+) -> TypeExpression {
+    todo!()
 }
 
 fn type_definition_to_type_expression(

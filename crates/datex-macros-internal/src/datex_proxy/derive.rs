@@ -921,9 +921,8 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
         }),
         FieldsType::Transparent => {
             let first_field = field_types.remove(0);
-            // FIXME: no nesting?
             Some(quote! {
-                TypeDefinition::Nested(Box::new(#first_field))
+                #first_field.convert_to_definition()
             })
         }
     };
@@ -1157,7 +1156,7 @@ fn wrap_type_definition(
                 SharedContainerContainingEntityType::new_base_with_address(
                     #name.to_string(),
                     SelfOwnedPointerAddress::new_static_from_name(#unique_name),
-                    Type::Definition(#type_definition.into())
+                    #type_definition.into()
                 )
             })
         }

@@ -11,10 +11,11 @@ use crate::{
         shared_container_containing_type::SharedContainerContainingType,
         traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
         r#type::Type,
+        type_definition::TypeDefinition,
     },
     values::{core_value::CoreValue, value_container::ValueContainer},
 };
-use core::ops::Deref;
+use core::{cell::Ref, ops::Deref};
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SharedContainerContainingEntityType(SharedContainer);
@@ -61,7 +62,7 @@ impl SharedContainerContainingEntityType {
     pub unsafe fn new_base_with_address(
         name: String,
         address: SelfOwnedPointerAddress,
-        ty: Type,
+        ty: TypeDefinition,
     ) -> SharedContainerContainingEntityType {
         unsafe {
             SharedContainerContainingEntityType::new_unchecked(
@@ -89,21 +90,16 @@ impl SharedContainerContainingEntityType {
         SharedContainerContainingEntityType(container)
     }
 
-    /// Calls the provided callback with a reference to the recursively collapsed inner [EntityTypeDefinition] value of the shared container
+    /// Returns a reference to the inner [EntityTypeDefinition] contained in the [SharedContainer].
     /// The [SharedContainerContainingEntityType] guarantees that the inner value is always a [CoreValue::EntityTypeDefinition], so this method can never panic.
-    pub fn with_collapsed_definition<R>(
-        &self,
-        f: impl FnOnce(&EntityTypeDefinition) -> R,
-    ) -> R {
-        let val = self.0.collapsed_value();
-        let val_sheep = val.borrow();
-        let ty = match &val_sheep.inner {
-            CoreValue::EntityTypeDefinition(ty) => ty,
+    pub fn entity_definition(&self) -> Ref<'_, EntityTypeDefinition> {
+        let val = self.0.value_container();
+        Ref::map(val, |v| match v.try_as::<EntityTypeDefinition>() {
+            Some(ty) => ty,
             _ => unreachable!(
-                "The constraint for SharedContainerContainingNominalType guarantees that the inner value is always a CoreValue::NominalType"
+                "The constraint for SharedContainerContainingEntityType guarantees that the inner value is always a CoreValue::EntityTypeDefinition"
             ),
-        };
-        f(ty)
+        })
     }
 }
 

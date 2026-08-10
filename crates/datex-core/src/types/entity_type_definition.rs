@@ -6,12 +6,13 @@ use crate::{
     },
 };
 use core::fmt::Display;
+use crate::types::type_definition::TypeDefinition;
 
 /// Represents a definition of an "entity" type,
 /// which describes a nominal type identified by a unique pointer id.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct EntityTypeDefinition {
-    pub(crate) definition_type: Type,
+    pub(crate) definition: TypeDefinition,
     pub(crate) name: String,
     pub(crate) allowed_variants: Vec<String>,
     // TODO: impls
@@ -24,9 +25,9 @@ impl Display for EntityTypeDefinition {
 }
 
 impl EntityTypeDefinition {
-    pub fn new(definition: Type, name: String) -> EntityTypeDefinition {
+    pub fn new(definition: TypeDefinition, name: String) -> EntityTypeDefinition {
         EntityTypeDefinition {
-            definition_type: definition,
+            definition,
             name,
             allowed_variants: Vec::new(),
         }
@@ -34,13 +35,13 @@ impl EntityTypeDefinition {
 }
 
 impl EntityTypeDefinition {
-    /// Get the inner [Type]
-    pub fn definition_type(&self) -> &Type {
-        &self.definition_type
+    /// Get the inner [TypeDefinition]
+    pub fn definition(&self) -> &TypeDefinition {
+        &self.definition
     }
 
-    /// Replace the inner [Type] with a new one and return the old one
-    pub fn replace_definition_type(&mut self, new_definition: Type) {
-        self.definition_type = new_definition;
+    /// Replace the inner [TypeDefinition] with a new one and return the old one
+    pub fn replace_definition(&mut self, new_definition: TypeDefinition) {
+        self.definition = new_definition;
     }
 }

@@ -81,17 +81,14 @@ impl Type {
     }
 
     /// Collapses nominal type definitions to their underlying type definitions with metadata
-    pub fn with_collapsed_definition_with_metadata<R>(
+    pub fn as_definition_with_metadata<R>(
         &self,
         f: impl FnOnce(&TypeDefinitionWithMetadata) -> R,
     ) -> R {
         match self {
             Type::Definition(type_def) => f(type_def),
             Type::Entity(nominal_def) => {
-                nominal_def.with_collapsed_definition(|def| {
-                    def.definition_type()
-                        .with_collapsed_definition_with_metadata(f)
-                })
+                f(&(nominal_def.entity_definition().definition.clone().into()))
             }
         }
     }
@@ -101,7 +98,7 @@ impl Type {
         &self,
         f: impl FnOnce(&TypeDefinition) -> R,
     ) -> R {
-        self.with_collapsed_definition_with_metadata(|def| f(&def.definition))
+        self.as_definition_with_metadata(|def| f(&def.definition))
     }
 
     pub fn base_core_lib_type(&self) -> CoreLibTypeId {

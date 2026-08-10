@@ -935,8 +935,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                     let mut val = definition.collapsed_value_mut();
                     match &mut val.borrow_mut().inner {
                         CoreValue::EntityTypeDefinition(nominal_def) => {
-                            nominal_def
-                                .replace_definition_type(inferred_type_def);
+                            nominal_def.replace_definition(inferred_type_def.convert_to_definition());
                         }
                         _ => {
                             panic!(
@@ -1443,35 +1442,32 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         let expression_type =
             self.infer_expression(&mut unbox_assignment.unbox_expression)?;
 
-        let inner_type = expression_type
-            .with_collapsed_definition_with_metadata(|e| {
-                let ownership = e.metadata.shared_container_ownership();
-                let _mutability = e.metadata.shared_mutability();
+        let inner_type = expression_type.as_definition_with_metadata(|e| {
+            let ownership = e.metadata.shared_container_ownership();
+            let _mutability = e.metadata.shared_mutability();
 
-                if ownership
-                    != Some(&SharedContainerOwnership::Referenced(
-                        ReferenceMutability::Mutable,
-                    ))
-                    && ownership != Some(&SharedContainerOwnership::Owned)
-                {
-                    return Err(SpannedTypeError::new_with_span(
-                        TypeError::AssignmentToImmutableReference(
-                            "".to_string(),
-                        ),
-                        span.clone(),
-                    ));
+            if ownership
+                != Some(&SharedContainerOwnership::Referenced(
+                    ReferenceMutability::Mutable,
+                ))
+                && ownership != Some(&SharedContainerOwnership::Owned)
+            {
+                return Err(SpannedTypeError::new_with_span(
+                    TypeError::AssignmentToImmutableReference("".to_string()),
+                    span.clone(),
+                ));
+            }
+            match &e.definition {
+                TypeDefinition::Nested(ty) => Ok(*ty.clone()),
+                TypeDefinition::Shared(sh) => {
+                    Ok(sh.with_collapsed_type_value(|ty| ty.clone()))
                 }
-                match &e.definition {
-                    TypeDefinition::Nested(ty) => Ok(*ty.clone()),
-                    TypeDefinition::Shared(sh) => {
-                        Ok(sh.with_collapsed_type_value(|ty| ty.clone()))
-                    }
-                    _ => Err(SpannedTypeError::new_with_span(
-                        TypeError::invalid_unbox_type(expression_type.clone()),
-                        span.clone(),
-                    )),
-                }
-            })?;
+                _ => Err(SpannedTypeError::new_with_span(
+                    TypeError::invalid_unbox_type(expression_type.clone()),
+                    span.clone(),
+                )),
+            }
+        })?;
 
         let assigned_type =
             self.infer_expression(&mut unbox_assignment.assigned_expression)?;
@@ -1528,8 +1524,6 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 #[cfg(test)]
 #[allow(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
 mod tests {
-    use core::{assert_matches, cell::RefCell, str::FromStr};
-
     use crate::{
         ast::{
             expressions::{
@@ -1594,6 +1588,8 @@ mod tests {
             },
         },
     };
+    use core::{assert_matches, cell::RefCell, str::FromStr};
+    use std::ops::Deref;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.
@@ -1958,13 +1954,12 @@ mod tests {
         let var_a = metadata.variable_metadata(0).unwrap();
 
         if let Some(Type::Entity(container)) = &var_a.var_type {
-            container.with_collapsed_definition(|def| {
-                assert_eq!(&def.name, "A");
-                assert_eq!(
-                    &def.definition_type,
-                    &Type::core(CoreLibBaseTypeId::Integer)
-                );
-            })
+            let def = container.entity_definition();
+            assert_eq!(&def.name, "A");
+            assert_eq!(
+                &def.definition,
+                &TypeDefinition::core(CoreLibBaseTypeId::Integer)
+            );
         } else {
             panic!("expected nominal type");
         }
@@ -2334,12 +2329,11 @@ mod tests {
         let inferred_type =
             infer_type_from_script_ignore_errors("entity X = 42u8");
         assert!(
-            has_nominal_type_definition(
+            has_entity_type_definition(
                 &inferred_type,
                 EntityTypeDefinition::new(
-                    Type::from(LiteralTypeDefinition::TypedInteger(
-                        TypedInteger::U8(42)
-                    ),),
+                    LiteralTypeDefinition::TypedInteger(TypedInteger::U8(42))
+                        .into(),
                     "X".to_string()
                 )
             ),
@@ -2350,12 +2344,11 @@ mod tests {
         let inferred_type =
             infer_type_from_script_ignore_errors("entity X = 42i32");
         assert!(
-            has_nominal_type_definition(
+            has_entity_type_definition(
                 &inferred_type,
                 EntityTypeDefinition::new(
-                    Type::from(LiteralTypeDefinition::TypedInteger(
-                        TypedInteger::I32(42)
-                    ),),
+                    LiteralTypeDefinition::TypedInteger(TypedInteger::I32(42))
+                        .into(),
                     "X".to_string()
                 )
             ),
@@ -2366,12 +2359,13 @@ mod tests {
         let inferred_type =
             infer_type_from_script_ignore_errors("entity X = 42.69f32");
         assert!(
-            has_nominal_type_definition(
+            has_entity_type_definition(
                 &inferred_type,
                 EntityTypeDefinition::new(
-                    Type::from(LiteralTypeDefinition::TypedDecimal(
-                        TypedDecimal::from(42.69_f32)
-                    ),),
+                    LiteralTypeDefinition::TypedDecimal(TypedDecimal::from(
+                        42.69_f32
+                    ))
+                    .into(),
                     "X".to_string()
                 )
             ),
@@ -2380,12 +2374,12 @@ mod tests {
         );
     }
 
-    fn has_nominal_type_definition(
+    fn has_entity_type_definition(
         ty: &Type,
         expected_definition: EntityTypeDefinition,
     ) -> bool {
         if let Type::Entity(container) = ty {
-            container.with_collapsed_definition(|v| v == &expected_definition)
+            container.entity_definition().deref() == &expected_definition
         } else {
             false
         }
@@ -2397,12 +2391,10 @@ mod tests {
             infer_type_from_script_ignore_errors("entity X = 42");
 
         assert!(
-            has_nominal_type_definition(
+            has_entity_type_definition(
                 &inferred_type,
                 EntityTypeDefinition::new(
-                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
-                        42
-                    ))),
+                    LiteralTypeDefinition::Integer(Integer::from(42)).into(),
                     "X".to_string()
                 )
             ),
@@ -2413,12 +2405,13 @@ mod tests {
         let inferred_type =
             infer_type_from_script_ignore_errors("entity X = 3/4");
         assert!(
-            has_nominal_type_definition(
+            has_entity_type_definition(
                 &inferred_type,
                 EntityTypeDefinition::new(
-                    Type::from(LiteralTypeDefinition::Decimal(
+                    LiteralTypeDefinition::Decimal(
                         Decimal::try_from_string("3/4").unwrap()
-                    ),),
+                    )
+                    .into(),
                     "X".to_string()
                 )
             ),
@@ -2429,10 +2422,10 @@ mod tests {
         let inferred_type =
             infer_type_from_script_ignore_errors("entity X = true");
         assert!(
-            has_nominal_type_definition(
+            has_entity_type_definition(
                 &inferred_type,
                 EntityTypeDefinition::new(
-                    Type::from(LiteralTypeDefinition::Boolean(true.into()),),
+                    LiteralTypeDefinition::Boolean(true.into()).into(),
                     "X".to_string()
                 )
             ),
@@ -2443,10 +2436,10 @@ mod tests {
         let inferred_type =
             infer_type_from_script_ignore_errors("entity X = false");
         assert!(
-            has_nominal_type_definition(
+            has_entity_type_definition(
                 &inferred_type,
                 EntityTypeDefinition::new(
-                    Type::from(LiteralTypeDefinition::Boolean(false.into())),
+                    LiteralTypeDefinition::Boolean(false.into()).into(),
                     "X".to_string(),
                 ),
             ),
@@ -2457,12 +2450,11 @@ mod tests {
         let inferred_type =
             infer_type_from_script_ignore_errors(r#"entity X = "hello""#);
         assert!(
-            has_nominal_type_definition(
+            has_entity_type_definition(
                 &inferred_type,
                 EntityTypeDefinition::new(
-                    Type::from(LiteralTypeDefinition::Text(
-                        "hello".to_string().into()
-                    ),),
+                    LiteralTypeDefinition::Text("hello".to_string().into())
+                        .into(),
                     "X".to_string()
                 )
             ),
@@ -2478,19 +2470,20 @@ mod tests {
         let inferred_type =
             infer_type_from_script_ignore_errors("entity X = integer/u8 & 42");
         assert!(
-            has_nominal_type_definition(
+            has_entity_type_definition(
                 &inferred_type,
                 EntityTypeDefinition::new(
-                    Type::from(TypeDefinition::Intersection(
-                        IntersectionTypeDefinition(vec![
+                    TypeDefinition::Intersection(IntersectionTypeDefinition(
+                        vec![
                             Type::core(CoreLibVariantTypeId::Integer(
                                 IntegerTypeVariant::U8
                             )),
                             Type::from(LiteralTypeDefinition::Integer(
                                 Integer::from(42)
                             ),)
-                        ])
-                    )),
+                        ]
+                    ))
+                    .into(),
                     "X".to_string()
                 )
             ),
@@ -2504,15 +2497,16 @@ mod tests {
         let inferred_type = infer_type_from_script_ignore_errors(
             "entity X = integer/u8 | decimal",
         );
-        assert!(has_nominal_type_definition(
+        assert!(has_entity_type_definition(
             &inferred_type,
             EntityTypeDefinition::new(
-                Type::from(TypeDefinition::Union(UnionTypeDefinition(vec![
+                TypeDefinition::Union(UnionTypeDefinition(vec![
                     Type::core(CoreLibVariantTypeId::Integer(
                         IntegerTypeVariant::U8
                     )),
                     Type::core(CoreLibBaseTypeId::Decimal)
-                ]))),
+                ]))
+                .into(),
                 "X".to_string()
             )
         ));
@@ -2522,10 +2516,10 @@ mod tests {
     fn infer_empty_struct_type_expression() {
         let inferred_type =
             infer_type_from_script_ignore_errors("entity X = {}");
-        assert!(has_nominal_type_definition(
+        assert!(has_entity_type_definition(
             &inferred_type,
             EntityTypeDefinition::new(
-                Type::from(TypeDefinition::Map(vec![].into_iter().collect())),
+                TypeDefinition::Map(vec![].into_iter().collect()).into(),
                 "X".to_string(),
             ),
         ));
@@ -2536,10 +2530,10 @@ mod tests {
         let inferred_type = infer_type_from_script_ignore_errors(
             "entity X = { a: integer/u8, b: decimal }",
         );
-        assert!(has_nominal_type_definition(
-            &inferred_type,
-            EntityTypeDefinition::new(
-                Type::from(
+        assert!(
+            has_entity_type_definition(
+                &inferred_type,
+                EntityTypeDefinition::new(
                     TypeDefinition::Map(
                         vec![
                             (
@@ -2560,10 +2554,11 @@ mod tests {
                         .into_iter()
                         .collect()
                     )
-                ),
-                "X".to_string()
+                    .into(),
+                    "X".to_string()
+                )
             )
-        ));
+        );
     }
 
     #[test]
