@@ -5,15 +5,16 @@ use crate::{
         DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
         GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
         PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
-        StackListAssignment, Statements, TagExpression, TypeDeclaration,
-        UnaryOperation, Unbox, UnboxAssignment, UnboxSlotAssignment,
-        VariableAssignment, VariableDeclaration,
+        StackListAssignment, Statements, TagExpression,
+        TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
+        UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
         type_expression::visitable::VisitableTypeExpression,
     },
 };
+use crate::ast::expressions::EntityDeclarationExpression;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -122,7 +123,7 @@ impl<E> VisitableExpression<E> for UnaryOperation {
         Ok(())
     }
 }
-impl<E> VisitableExpression<E> for TypeDeclaration {
+impl<E> VisitableExpression<E> for TypeDeclarationExpression {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -131,6 +132,17 @@ impl<E> VisitableExpression<E> for TypeDeclaration {
         Ok(())
     }
 }
+
+impl<E> VisitableExpression<E> for EntityDeclarationExpression {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_type_expression(&mut self.definition)?;
+        Ok(())
+    }
+}
+
 impl<E> VisitableExpression<E> for ComparisonOperation {
     fn walk_children(
         &mut self,
@@ -370,6 +382,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             }
             DatexExpressionData::TypeDeclaration(type_declaration) => {
                 type_declaration.walk_children(visitor)
+            }
+            DatexExpressionData::EntityDeclaration(entity_declaration) => {
+                entity_declaration.walk_children(visitor)
             }
             DatexExpressionData::TypeExpression(type_expression) => {
                 type_expression.walk_children(visitor)

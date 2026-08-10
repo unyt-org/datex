@@ -16,7 +16,8 @@ use crate::{
 use crate::{
     ast::{
         expressions::{
-            CallableDeclaration, CreateShared, DeriveSharedRef, TagExpression,
+            CallableDeclaration, CreateShared, DeriveSharedRef,
+            EntityDeclarationExpression, TagExpression,
         },
         type_expressions::{StructuralList, StructuralMap},
     },
@@ -224,7 +225,7 @@ fn type_to_type_expression(ty: &Type) -> TypeExpression {
             container.entity_definition().deref(),
         ),
         Type::Definition(definition) => {
-            type_definition_to_type_expression(definition)
+            type_definition_with_metadata_to_type_expression(definition)
         }
     }
 }
@@ -232,19 +233,18 @@ fn type_to_type_expression(ty: &Type) -> TypeExpression {
 fn entity_type_to_type_expression(
     entity_type_definition: &EntityTypeDefinition,
 ) -> TypeExpression {
-    todo!()
+    TypeExpressionData::Identifier(entity_type_definition.name.clone())
+        .with_default_span()
 }
 
-fn type_definition_to_type_expression(
+fn type_definition_with_metadata_to_type_expression(
     type_def_with_metadata: &TypeDefinitionWithMetadata,
 ) -> TypeExpression {
     // TODO: handle type metadata
-    structural_type_definition_to_type_expression(
-        &type_def_with_metadata.definition,
-    )
+    type_definition_to_type_expression(&type_def_with_metadata.definition)
 }
 // FIXME can we make this consuming?
-fn structural_type_definition_to_type_expression(
+fn type_definition_to_type_expression(
     type_definition: &TypeDefinition,
 ) -> TypeExpression {
     match type_definition {

@@ -5,10 +5,11 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
         CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-        DeriveSharedRef, GenericInstantiation, InterfaceMethodCall, List, Map,
-        PropertyAccess, PropertyAssignment, RemoteExecution, RequestSharedRef,
-        RootPropertyAccess, StackAssignment, StackListAssignment, Statements,
-        TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
+        DeriveSharedRef, EntityDeclarationExpression, GenericInstantiation,
+        InterfaceMethodCall, List, Map, PropertyAccess, PropertyAssignment,
+        RemoteExecution, RequestSharedRef, RootPropertyAccess, StackAssignment,
+        StackListAssignment, Statements, TagExpression,
+        TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
@@ -122,6 +123,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::TypeDeclaration(type_declaration) => {
                 self.visit_type_declaration(type_declaration, &expr.span)
+            }
+            DatexExpressionData::EntityDeclaration(entity_declaration) => {
+                self.visit_entity_declaration(entity_declaration, &expr.span)
             }
             DatexExpressionData::TypeExpression(type_expression) => self
                 .visit_type_expression(type_expression)
@@ -334,11 +338,22 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit type declaration
     fn visit_type_declaration(
         &mut self,
-        type_declaration: &mut TypeDeclaration,
+        type_declaration: &mut TypeDeclarationExpression,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = type_declaration;
+        Ok(VisitAction::ContinueRecursion)
+    }
+
+    /// Visit entity declaration
+    fn visit_entity_declaration(
+        &mut self,
+        entity_declaration: &mut EntityDeclarationExpression,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = entity_declaration;
         Ok(VisitAction::ContinueRecursion)
     }
 

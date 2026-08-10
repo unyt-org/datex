@@ -2,9 +2,7 @@ use alloc::str::FromStr;
 use core::assert_matches;
 use datex_core::{
     ast::{
-        expressions::{
-            RemoteExecution, Statements, TypeDeclaration, TypeDeclarationKind,
-        },
+        expressions::{RemoteExecution, Statements, TypeDeclarationExpression},
         type_expressions::StructuralMap,
     },
     collections::HashMap,
@@ -29,10 +27,11 @@ use datex_core::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, CreateMut, CreateShared, DatexExpression,
-            DatexExpressionData, DeriveRef, GenericInstantiation, List, Map,
-            PropertyAccess, PropertyAssignment, RequestSharedRef,
-            RootPropertyAccess, UnaryOperation, Unbox, ValueAccessType,
-            VariableAssignment, VariableDeclaration, VariableKind,
+            DatexExpressionData, DeriveRef, EntityDeclarationExpression,
+            GenericInstantiation, List, Map, PropertyAccess,
+            PropertyAssignment, RequestSharedRef, RootPropertyAccess,
+            UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
+            VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
         type_expressions::{
@@ -212,7 +211,7 @@ fn structural_type_declaration() {
     let expr = result.unwrap();
     assert_matches!(expr,
         DatexExpression {
-            data: box DatexExpressionData::TypeDeclaration(TypeDeclaration { name, .. }), ..
+            data: box DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
         }
         if name == "A"
     );
@@ -225,7 +224,7 @@ fn nominal_type_declaration() {
     let expr = result.unwrap();
     assert_matches!(expr,
         DatexExpression {
-            data: box DatexExpressionData::TypeDeclaration(TypeDeclaration { name, .. }), ..
+            data: box DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
         }
         if name == "B"
     );
@@ -235,19 +234,9 @@ fn nominal_type_declaration() {
     let expr = result.unwrap();
     assert_matches!(expr,
         DatexExpression {
-            data: box DatexExpressionData::TypeDeclaration(TypeDeclaration { name, .. }), ..
+            data: box DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
         }
         if name == "User"
-    );
-
-    let src = "type User/admin = {id: integer}";
-    let result = parse_print_error(src);
-    let expr = result.unwrap();
-    assert_matches!(expr,
-        DatexExpression {
-            data: box DatexExpressionData::TypeDeclaration(TypeDeclaration { name, .. }), ..
-        }
-        if name == "User/admin"
     );
 }
 
@@ -2285,35 +2274,36 @@ fn nested_apply_and_property_access() {
 }
 
 #[test]
-fn type_declaration_statement() {
+fn entity_declaration_statement() {
     let src = "entity User = { age: 42, name: \"John\" };";
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
         DatexExpressionData::Statements(Statements::new_terminated(vec![
-            DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                id: None,
-                name: "User".to_string(),
-                definition: TypeExpressionData::StructuralMap(StructuralMap(
-                    vec![
-                        (
-                            TypeExpressionData::Text("age".into())
-                                .with_default_span(),
-                            TypeExpressionData::Integer(Integer::from(42))
-                                .with_default_span()
-                        ),
-                        (
-                            TypeExpressionData::Text("name".into())
-                                .with_default_span(),
-                            TypeExpressionData::Text("John".into())
-                                .with_default_span()
-                        ),
-                    ]
-                ))
-                .with_default_span(),
-                hoisted: false,
-                kind: TypeDeclarationKind::Nominal
-            })
+            DatexExpressionData::EntityDeclaration(
+                EntityDeclarationExpression {
+                    id: None,
+                    name: "User".to_string(),
+                    definition: TypeExpressionData::StructuralMap(
+                        StructuralMap(vec![
+                            (
+                                TypeExpressionData::Text("age".into())
+                                    .with_default_span(),
+                                TypeExpressionData::Integer(Integer::from(42))
+                                    .with_default_span()
+                            ),
+                            (
+                                TypeExpressionData::Text("name".into())
+                                    .with_default_span(),
+                                TypeExpressionData::Text("John".into())
+                                    .with_default_span()
+                            ),
+                        ])
+                    )
+                    .with_default_span(),
+                    hoisted: false,
+                }
+            )
             .with_default_span()
         ]))
     );

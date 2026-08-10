@@ -134,7 +134,7 @@ impl<'a> Formatter<'a> {
         type_expr: &'a TypeExpression,
     ) -> Format<'a> {
         let a = &self.alloc;
-        match &type_expr.data {
+        match type_expr.data() {
             TypeExpressionData::VariantAccess(TypeVariantAccess {
                 name,
                 variant,

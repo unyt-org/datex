@@ -15,7 +15,7 @@ impl<'a> ToInstructions<'a> for TypeExpression {
         _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            match &self.data {
+            match self.data() {
                 TypeExpressionData::Integer(integer) => {
                     yield TypeInstruction::TypeDefinitionLiteral(
                         LiteralTypeDefinition::Integer(integer.clone()),

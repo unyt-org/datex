@@ -25,10 +25,11 @@ use crate::{
         expressions::{
             BinaryOperation, CloneExpression, DatexExpression,
             DatexExpressionData, DeriveRef, DeriveSharedRef,
-            PropertyAssignment, RemoteExecution, RequestSharedRef, Statements,
-            TypeDeclaration, TypeDeclarationKind, Unbox, UnboxAssignment,
-            ValueAccessType, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariableKind, VariantAccess,
+            EntityDeclarationExpression, PropertyAssignment, RemoteExecution,
+            RequestSharedRef, Statements, TypeDeclarationExpression, Unbox,
+            UnboxAssignment, ValueAccessType, VariableAccess,
+            VariableAssignment, VariableDeclaration, VariableKind,
+            VariantAccess,
         },
         resolved_variable::ResolvedVariable,
         spanned::Spanned,
@@ -209,7 +210,14 @@ impl<'a> Precompiler<'a> {
         if let DatexExpressionData::TypeDeclaration(type_declaration) =
             ast.data_mut()
         {
-            self.hoist_variable(type_declaration);
+            self.hoist_type_variable(type_declaration);
+        }
+
+        // Hoist top-level entity declaration if any
+        if let DatexExpressionData::EntityDeclaration(entity_declaration) =
+            ast.data_mut()
+        {
+            self.hoist_entity_variable(entity_declaration);
         }
 
         // visit ast recursively
@@ -295,9 +303,47 @@ impl<'a> Precompiler<'a> {
         }
     }
 
+    fn hoist_entity_variable(
+        &mut self,
+        data: &mut EntityDeclarationExpression,
+    ) {
+        // set hoisted to true
+        data.hoisted = true;
+
+        // register variable
+        let type_id =
+            self.add_new_variable(data.name.clone(), VariableShape::Entity);
+
+        // creating a nominal type containing an endpoint owned shared container type here
+        // the inner value will be replaced, once the type declaration is fully visited in
+        // during the type inference (visit_type_declaration in type_inference::type_inference_visitor)
+        let type_def = Type::Entity(unsafe {
+            SharedContainerContainingEntityType::new_unchecked(
+                SharedContainer::new_owned_with_inferred_allowed_type(
+                    CoreValue::EntityTypeDefinition(EntityTypeDefinition::new(
+                        TypeDefinition::core(CoreLibBaseTypeId::Unknown),
+                        data.name.clone(),
+                    )),
+                    SharedContainerMutability::Immutable,
+                    self.runtime.pointer_address_provider_mut().deref_mut(),
+                ),
+            )
+        });
+
+        {
+            self.ast_metadata
+                .borrow_mut()
+                .variable_metadata_mut(type_id)
+                .expect(
+                    "EntityDeclarationExpression should have variable metadata",
+                )
+                .var_type = Some(type_def);
+        }
+    }
+
     /// Hoist a variable declaration by marking it as hoisted and
     /// registering it in the current scope and metadata.
-    fn hoist_variable(&mut self, data: &mut TypeDeclaration) {
+    fn hoist_type_variable(&mut self, data: &mut TypeDeclarationExpression) {
         // set hoisted to true
         data.hoisted = true;
 
@@ -305,48 +351,27 @@ impl<'a> Precompiler<'a> {
         let type_id =
             self.add_new_variable(data.name.clone(), VariableShape::Type);
 
-        let type_def = match data.kind {
-            // creating a nominal type containing an endpoint owned shared container type here
-            // the inner value will be replaced, once the type declaration is fully visited in
-            // during the type inference (visit_type_declaration in type_inference::type_inference_visitor)
-            TypeDeclarationKind::Nominal => Type::Entity(unsafe {
-                SharedContainerContainingEntityType::new_unchecked(
+        let type_def = Type::Definition(
+            TypeDefinition::Shared(unsafe {
+                SharedContainerContainingType::new_unchecked(
                     SharedContainer::new_owned_with_inferred_allowed_type(
-                        CoreValue::EntityTypeDefinition(
-                            EntityTypeDefinition::new(
-                                TypeDefinition::core(
-                                    CoreLibBaseTypeId::Unknown,
-                                ),
-                                data.name.clone(),
-                            ),
-                        ),
-                        SharedContainerMutability::Immutable,
+                        Type::core(CoreLibBaseTypeId::Unknown),
+                        SharedContainerMutability::Mutable,
                         self.runtime.pointer_address_provider_mut().deref_mut(),
                     ),
                 )
-            }),
-            TypeDeclarationKind::Alias => Type::Definition(
-                TypeDefinition::Shared(unsafe {
-                    SharedContainerContainingType::new_unchecked(
-                        SharedContainer::new_owned_with_inferred_allowed_type(
-                            Type::core(CoreLibBaseTypeId::Unknown),
-                            SharedContainerMutability::Mutable,
-                            self.runtime
-                                .pointer_address_provider_mut()
-                                .deref_mut(),
-                        ),
-                    )
-                })
-                .into(),
-            ),
-        };
+            })
+            .into(),
+        );
 
         {
             self.ast_metadata
                 .borrow_mut()
                 .variable_metadata_mut(type_id)
-                .expect("TypeDeclaration should have variable metadata")
-                .var_type = Some(type_def.clone());
+                .expect(
+                    "TypeDeclarationExpression should have variable metadata",
+                )
+                .var_type = Some(type_def);
         }
     }
 }
@@ -661,7 +686,18 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                         )?
                     }
                     registered_names.insert(name.clone());
-                    self.hoist_variable(type_declaration);
+                    self.hoist_type_variable(type_declaration);
+                }
+                DatexExpressionData::EntityDeclaration(entity_declaration) => {
+                    let name = &entity_declaration.name;
+                    if registered_names.contains(name) {
+                        self.collect_error(
+                            CompilerError::InvalidRedeclaration(name.clone())
+                                .into(),
+                        )?
+                    }
+                    registered_names.insert(name.clone());
+                    self.hoist_entity_variable(entity_declaration);
                 }
                 // also terminate execution block for remote execution if the result is not used
                 DatexExpressionData::RemoteExecution(remote_execution)
@@ -696,7 +732,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
     fn visit_type_declaration(
         &mut self,
-        type_declaration: &mut TypeDeclaration,
+        type_declaration: &mut TypeDeclarationExpression,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         let name = type_declaration.name.clone();
@@ -710,6 +746,26 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         } else {
             type_declaration.id =
                 Some(self.add_new_variable(name, VariableShape::Type));
+        }
+        Ok(VisitAction::ContinueRecursion)
+    }
+
+    fn visit_entity_declaration(
+        &mut self,
+        entity_declaration: &mut EntityDeclarationExpression,
+        _: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        let name = entity_declaration.name.clone();
+        if entity_declaration.hoisted {
+            let id = self
+                .get_variable_and_update_metadata(
+                    &entity_declaration.name.clone(),
+                )
+                .ok();
+            entity_declaration.id = id;
+        } else {
+            entity_declaration.id =
+                Some(self.add_new_variable(name, VariableShape::Entity));
         }
         Ok(VisitAction::ContinueRecursion)
     }
@@ -1051,11 +1107,12 @@ mod tests {
         ast::{
             expressions::{
                 BinaryOperation, CreateShared, DatexExpression,
-                DatexExpressionData, DeriveRef, DeriveSharedRef, Map,
-                PropertyAccess, PropertyAssignment, RemoteExecution,
-                Statements, TypeDeclaration, TypeDeclarationKind, Unbox,
-                ValueAccessType, VariableAccess, VariableDeclaration,
-                VariableKind, VariantAccess,
+                DatexExpressionData, DeriveRef, DeriveSharedRef,
+                EntityDeclarationExpression, Map, PropertyAccess,
+                PropertyAssignment, RemoteExecution, Statements,
+                TypeDeclarationExpression, Unbox, ValueAccessType,
+                VariableAccess, VariableDeclaration, VariableKind,
+                VariantAccess,
             },
             resolved_variable::ResolvedVariable,
             spanned::Spanned,
@@ -1180,7 +1237,7 @@ mod tests {
     }
 
     #[test]
-    fn nominal_type_declaration() {
+    fn entity_type_declaration() {
         let result = parse_and_precompile("entity User = {a: integer}; User");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
@@ -1188,25 +1245,26 @@ mod tests {
             rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
-                    DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                        id: Some(0),
-                        name: "User".to_string(),
-                        definition: TypeExpressionData::StructuralMap(
-                            StructuralMap(vec![(
-                                TypeExpressionData::Text("a".into())
-                                    .with_default_span(),
-                                TypeExpressionData::GetCoreLibType(
-                                    CoreLibTypeId::Base(
-                                        CoreLibBaseTypeId::Integer
+                    DatexExpressionData::EntityDeclaration(
+                        EntityDeclarationExpression {
+                            id: Some(0),
+                            name: "User".to_string(),
+                            definition: TypeExpressionData::StructuralMap(
+                                StructuralMap(vec![(
+                                    TypeExpressionData::Text("a".into())
+                                        .with_default_span(),
+                                    TypeExpressionData::GetCoreLibType(
+                                        CoreLibTypeId::Base(
+                                            CoreLibBaseTypeId::Integer
+                                        )
                                     )
-                                )
-                                .with_default_span(),
-                            )])
-                        )
-                        .with_default_span(),
-                        hoisted: true,
-                        kind: TypeDeclarationKind::Nominal,
-                    })
+                                    .with_default_span(),
+                                )])
+                            )
+                            .with_default_span(),
+                            hoisted: true,
+                        }
+                    )
                     .with_default_span(),
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
@@ -1220,7 +1278,7 @@ mod tests {
         );
         let metadata = rich_ast.metadata.borrow();
         let var_meta = metadata.variable_metadata(0).unwrap();
-        assert_eq!(var_meta.shape, VariableShape::Type);
+        assert_eq!(var_meta.shape, VariableShape::Entity);
     }
 
     #[test]
@@ -1320,54 +1378,6 @@ mod tests {
         let result = parse_and_precompile("invalid/u8");
         assert_matches!(result, Err(CompilerError::UndeclaredVariable(var_name)) if var_name == "invalid");
 
-        // a variant access without declaring the super type should error
-        let result = parse_and_precompile("entity User/admin = {}; User/admin");
-        assert!(result.is_err());
-        assert_matches!(result, Err(CompilerError::UndeclaredVariable(var_name)) if var_name == "User");
-
-        // declared subtype should work
-        let result = parse_and_precompile(
-            "entity User = {}; entity User/admin = {}; User/admin",
-        );
-        assert!(result.is_ok());
-        let rich_ast = result.unwrap();
-        assert_eq!(
-            rich_ast.ast,
-            DatexExpressionData::Statements(Statements::new_unterminated(
-                vec![
-                    DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                        id: Some(0),
-                        name: "User".to_string(),
-                        definition: TypeExpressionData::StructuralMap(
-                            StructuralMap(vec![])
-                        )
-                        .with_default_span(),
-                        hoisted: true,
-                        kind: TypeDeclarationKind::Nominal,
-                    })
-                    .with_default_span(),
-                    DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                        id: Some(1),
-                        name: "User/admin".to_string(),
-                        definition: TypeExpressionData::StructuralMap(
-                            StructuralMap(vec![])
-                        )
-                        .with_default_span(),
-                        hoisted: true,
-                        kind: TypeDeclarationKind::Nominal
-                    })
-                    .with_default_span(),
-                    DatexExpressionData::VariantAccess(VariantAccess {
-                        base: ResolvedVariable::VariableId(0),
-                        name: "User".to_string(),
-                        variant: "admin".to_string(),
-                    })
-                    .with_default_span()
-                ]
-            ))
-            .with_default_span()
-        );
-
         // value shall be interpreted as division
         let result =
             parse_and_precompile("var a = 42; var b = 69; a/b").unwrap();
@@ -1441,14 +1451,17 @@ mod tests {
         assert_eq!(
             rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_terminated(vec![
-                DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                    id: Some(0),
-                    name: "MyInt".to_string(),
-                    definition: TypeExpressionData::Integer(Integer::from(1))
+                DatexExpressionData::EntityDeclaration(
+                    EntityDeclarationExpression {
+                        id: Some(0),
+                        name: "MyInt".to_string(),
+                        definition: TypeExpressionData::Integer(Integer::from(
+                            1
+                        ))
                         .with_default_span(),
-                    hoisted: true,
-                    kind: TypeDeclarationKind::Nominal
-                })
+                        hoisted: true,
+                    }
+                )
                 .with_default_span(),
                 DatexExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(1),
@@ -1495,14 +1508,17 @@ mod tests {
                     type_annotation: None,
                 })
                 .with_default_span(),
-                DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                    id: Some(0),
-                    name: "MyInt".to_string(),
-                    definition: TypeExpressionData::Integer(Integer::from(1))
+                DatexExpressionData::EntityDeclaration(
+                    EntityDeclarationExpression {
+                        id: Some(0),
+                        name: "MyInt".to_string(),
+                        definition: TypeExpressionData::Integer(Integer::from(
+                            1
+                        ))
                         .with_default_span(),
-                    hoisted: true,
-                    kind: TypeDeclarationKind::Nominal
-                })
+                        hoisted: true,
+                    }
+                )
                 .with_default_span(),
             ]))
             .with_default_span()
@@ -1518,35 +1534,37 @@ mod tests {
         assert_eq!(
             rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_terminated(vec![
-                DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                    id: Some(0),
-                    name: "x".to_string(),
-                    definition: TypeExpressionData::VariableAccess(
-                        VariableAccess {
-                            id: 1,
-                            name: "MyInt".to_string(),
-                            access_type: ValueAccessType::MoveOrCopy,
-                        }
-                    )
-                    .with_default_span(),
-                    hoisted: true,
-                    kind: TypeDeclarationKind::Nominal
-                })
+                DatexExpressionData::EntityDeclaration(
+                    EntityDeclarationExpression {
+                        id: Some(0),
+                        name: "x".to_string(),
+                        definition: TypeExpressionData::VariableAccess(
+                            VariableAccess {
+                                id: 1,
+                                name: "MyInt".to_string(),
+                                access_type: ValueAccessType::MoveOrCopy,
+                            }
+                        )
+                        .with_default_span(),
+                        hoisted: true,
+                    }
+                )
                 .with_default_span(),
-                DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                    id: Some(1),
-                    name: "MyInt".to_string(),
-                    definition: TypeExpressionData::VariableAccess(
-                        VariableAccess {
-                            id: 0,
-                            name: "x".to_string(),
-                            access_type: ValueAccessType::MoveOrCopy,
-                        }
-                    )
-                    .with_default_span(),
-                    hoisted: true,
-                    kind: TypeDeclarationKind::Nominal
-                })
+                DatexExpressionData::EntityDeclaration(
+                    EntityDeclarationExpression {
+                        id: Some(1),
+                        name: "MyInt".to_string(),
+                        definition: TypeExpressionData::VariableAccess(
+                            VariableAccess {
+                                id: 0,
+                                name: "x".to_string(),
+                                access_type: ValueAccessType::MoveOrCopy,
+                            }
+                        )
+                        .with_default_span(),
+                        hoisted: true,
+                    }
+                )
                 .with_default_span(),
             ]))
             .with_default_span()
@@ -1571,23 +1589,24 @@ mod tests {
             rich_ast.ast,
             DatexExpressionData::Statements(Statements::new_unterminated(
                 vec![
-                    DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                        id: Some(0),
-                        name: "x".to_string(),
-                        definition: TypeExpressionData::Integer(Integer::from(
-                            10
-                        ))
-                        .with_default_span(),
-                        hoisted: true,
-                        kind: TypeDeclarationKind::Nominal
-                    })
+                    DatexExpressionData::EntityDeclaration(
+                        EntityDeclarationExpression {
+                            id: Some(0),
+                            name: "x".to_string(),
+                            definition: TypeExpressionData::Integer(
+                                Integer::from(10)
+                            )
+                            .with_default_span(),
+                            hoisted: true,
+                        }
+                    )
                     .with_default_span(),
                     DatexExpressionData::Statements(
                         Statements::new_terminated(vec![
                             DatexExpressionData::Integer(Integer::from(1))
                                 .with_default_span(),
-                            DatexExpressionData::TypeDeclaration(
-                                TypeDeclaration {
+                            DatexExpressionData::EntityDeclaration(
+                                EntityDeclarationExpression {
                                     id: Some(1),
                                     name: "NestedVar".to_string(),
                                     definition:
@@ -1601,7 +1620,6 @@ mod tests {
                                         )
                                         .with_default_span(),
                                     hoisted: true,
-                                    kind: TypeDeclarationKind::Nominal
                                 }
                             )
                             .with_default_span(),
@@ -1621,16 +1639,17 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast,
-            DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                id: Some(0),
-                name: "x".to_string(),
-                definition: TypeExpressionData::GetCoreLibType(
-                    CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)
-                )
-                .with_default_span(),
-                hoisted: true,
-                kind: TypeDeclarationKind::Nominal
-            })
+            DatexExpressionData::EntityDeclaration(
+                EntityDeclarationExpression {
+                    id: Some(0),
+                    name: "x".to_string(),
+                    definition: TypeExpressionData::GetCoreLibType(
+                        CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)
+                    )
+                    .with_default_span(),
+                    hoisted: true,
+                }
+            )
             .with_default_span()
         );
     }

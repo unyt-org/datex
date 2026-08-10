@@ -126,7 +126,7 @@ impl<E> VisitableTypeExpression<E> for TypeExpression {
         &mut self,
         visitor: &mut impl TypeExpressionVisitor<E>,
     ) -> Result<(), E> {
-        match &mut self.data {
+        match self.data_mut() {
             TypeExpressionData::StructuralList(structural_list) => {
                 structural_list.walk_children(visitor)
             }

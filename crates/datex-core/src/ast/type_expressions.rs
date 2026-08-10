@@ -16,6 +16,9 @@ use crate::{
 };
 
 use crate::{
+    ast::expressions::{
+        DatexExpression, DatexExpressionData, EntityDeclarationExpression,
+    },
     libs::core::type_id::CoreLibTypeId,
     shared_values::PointerAddress,
     types::{r#type::Type, type_definition::callable::CallableKind},
@@ -92,6 +95,26 @@ impl Spanned for TypeExpressionData {
 
     fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
         TypeExpression {
+            data: Box::new(self),
+            span: span.into(),
+            ty: None,
+        }
+    }
+
+    fn with_default_span(self) -> Self::Output {
+        TypeExpression {
+            data: Box::new(self),
+            span: 0..0,
+            ty: None,
+        }
+    }
+}
+
+impl Spanned for Box<TypeExpressionData> {
+    type Output = TypeExpression;
+
+    fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
+        TypeExpression {
             data: self,
             span: span.into(),
             ty: None,
@@ -110,17 +133,25 @@ impl Spanned for TypeExpressionData {
 #[derive(Clone, Debug)]
 /// A type expression in the AST
 pub struct TypeExpression {
-    pub data: TypeExpressionData,
+    pub data: Box<TypeExpressionData>,
     pub span: ops::Range<usize>,
     pub ty: Option<Type>,
 }
 impl TypeExpression {
     pub fn new(data: TypeExpressionData, span: ops::Range<usize>) -> Self {
         Self {
-            data,
+            data: Box::new(data),
             span,
             ty: None,
         }
+    }
+
+    pub fn data(&self) -> &TypeExpressionData {
+        &self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut TypeExpressionData {
+        &mut self.data
     }
 }
 

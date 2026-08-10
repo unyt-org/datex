@@ -1,41 +1,22 @@
 use crate::{
     ast::{
         expressions::{
-            DatexExpression, DatexExpressionData, TypeDeclaration,
-            TypeDeclarationKind,
+            DatexExpression, DatexExpressionData, EntityDeclarationExpression,
+            TypeDeclarationExpression,
         },
         spanned::Spanned,
     },
     parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
+    prelude::*,
 };
-
-use crate::prelude::*;
 impl Parser {
-    pub(crate) fn parse_type_declaration(
+    pub(crate) fn parse_entity_declaration(
         &mut self,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(match self.peek()?.token.clone() {
+        Ok(match self.advance()?.token {
             // handle var and const declarations
-            Token::EntityTypeDeclaration | Token::TypeAlias => {
-                let kind = match self.advance()?.token {
-                    Token::EntityTypeDeclaration => {
-                        TypeDeclarationKind::Nominal
-                    }
-                    Token::TypeAlias => TypeDeclarationKind::Alias,
-                    _ => unreachable!(),
-                };
-
-                let (mut name, _) = self.expect_identifier()?;
-
-                // optional /variant
-                if self.peek()?.token == Token::Slash {
-                    // consume slash
-                    self.advance()?;
-                    let (variant, _) = self.expect_identifier()?;
-                    // append to name
-                    let full_name = format!("{}/{}", name, variant);
-                    name = full_name;
-                }
+            Token::EntityTypeDeclaration => {
+                let (name, _) = self.expect_identifier()?;
 
                 // optional generic parameters
                 // TODO #664: use generic parameters
@@ -52,20 +33,67 @@ impl Parser {
                 // initializer expression
                 let definition = self.parse_type_expression(0)?;
 
-                DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                    id: None,
-                    kind,
-                    name,
-                    definition,
-                    hoisted: false,
-                })
+                DatexExpressionData::EntityDeclaration(
+                    EntityDeclarationExpression {
+                        id: None,
+                        name,
+                        definition,
+                        hoisted: false,
+                    },
+                )
                 .with_default_span()
             }
 
             _ => {
                 return Err(SpannedParserError {
                     error: ParserError::UnexpectedToken {
-                        expected: vec![Token::Variable, Token::Const],
+                        expected: vec![Token::EntityTypeDeclaration],
+                        found: self.peek()?.token.clone(),
+                    },
+                    span: self.peek()?.span.clone(),
+                });
+            }
+        })
+    }
+
+    pub(crate) fn parse_type_declaration(
+        &mut self,
+    ) -> Result<DatexExpression, SpannedParserError> {
+        Ok(match self.advance()?.token {
+            // handle var and const declarations
+            Token::TypeAlias => {
+                let (name, _) = self.expect_identifier()?;
+
+                // optional generic parameters
+                // TODO #664: use generic parameters
+                let _generic_params = if self.peek()?.token == Token::LeftAngle
+                {
+                    Some(self.parse_generic_parameters()?)
+                } else {
+                    None
+                };
+
+                // expect equals sign
+                self.expect(Token::Assign)?;
+
+                // initializer expression
+                let definition = self.parse_type_expression(0)?;
+
+                DatexExpressionData::TypeDeclaration(
+                    TypeDeclarationExpression {
+                        id: None,
+                        name,
+                        definition,
+                        hoisted: false,
+                    },
+                )
+                .with_default_span()
+            }
+
+            _ => {
+                return Err(SpannedParserError {
+                    error: ParserError::UnexpectedToken {
+                        expected: vec![Token::TypeAlias],
                         found: self.peek()?.token.clone(),
                     },
                     span: self.peek()?.span.clone(),
@@ -80,13 +108,13 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                DatexExpressionData, TypeDeclaration, TypeDeclarationKind,
-                VariableDeclaration, VariableKind,
+                DatexExpressionData, EntityDeclarationExpression,
+                TypeDeclarationExpression,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
         },
-        parser::tests::{parse, try_parse_and_return_on_first_error},
+        parser::tests::parse,
         prelude::*,
     };
 
@@ -95,14 +123,15 @@ mod tests {
         let expr = parse("entity myType = true");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                id: None,
-                kind: TypeDeclarationKind::Nominal,
-                name: "myType".to_string(),
-                definition: TypeExpressionData::Boolean(true.into())
-                    .with_default_span(),
-                hoisted: false,
-            })
+            &DatexExpressionData::EntityDeclaration(
+                EntityDeclarationExpression {
+                    id: None,
+                    name: "myType".to_string(),
+                    definition: TypeExpressionData::Boolean(true.into())
+                        .with_default_span(),
+                    hoisted: false,
+                }
+            )
         );
     }
 
@@ -111,27 +140,11 @@ mod tests {
         let expr = parse("type myAlias = false");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclaration {
+            &DatexExpressionData::TypeDeclaration(TypeDeclarationExpression {
                 id: None,
-                kind: TypeDeclarationKind::Alias,
                 name: "myAlias".to_string(),
                 definition: TypeExpressionData::Boolean(false.into())
                     .with_default_span(),
-                hoisted: false,
-            })
-        );
-    }
-
-    #[test]
-    fn parse_entity_type_declaration_with_variant() {
-        let expr = parse("entity myType/variantA = null");
-        assert_eq!(
-            expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                id: None,
-                kind: TypeDeclarationKind::Nominal,
-                name: "myType/variantA".to_string(),
-                definition: TypeExpressionData::Null.with_default_span(),
                 hoisted: false,
             })
         );
@@ -143,30 +156,15 @@ mod tests {
         let expr = parse("entity myType<T, U> = true");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                id: None,
-                kind: TypeDeclarationKind::Nominal,
-                name: "myType".to_string(),
-                definition: TypeExpressionData::Boolean(true.into())
-                    .with_default_span(),
-                hoisted: false,
-            })
-        );
-    }
-
-    #[test]
-    fn parse_entity_type_declaration_with_variant_and_generic_parameters() {
-        let expr = parse("entity myType/variantA<T> = false");
-        assert_eq!(
-            expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                id: None,
-                kind: TypeDeclarationKind::Nominal,
-                name: "myType/variantA".to_string(),
-                definition: TypeExpressionData::Boolean(false.into())
-                    .with_default_span(),
-                hoisted: false,
-            })
+            &DatexExpressionData::EntityDeclaration(
+                EntityDeclarationExpression {
+                    id: None,
+                    name: "myType".to_string(),
+                    definition: TypeExpressionData::Boolean(true.into())
+                        .with_default_span(),
+                    hoisted: false,
+                }
+            )
         );
     }
 }

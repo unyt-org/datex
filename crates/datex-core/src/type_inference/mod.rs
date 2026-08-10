@@ -21,7 +21,7 @@ use crate::{
             DeriveRef, DeriveSharedRef, GenericInstantiation, List, Map,
             PropertyAccess, PropertyAssignment, RangeDeclaration,
             RemoteExecution, RequestSharedRef, StackAssignment, Statements,
-            TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
+            TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
             ValueAccessType, VariableAccess, VariableAssignment,
             VariableDeclaration, VariantAccess,
         },
@@ -78,6 +78,7 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic};
+use crate::ast::expressions::EntityDeclarationExpression;
 
 pub mod error;
 pub mod options;
@@ -916,53 +917,65 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
     fn visit_type_declaration(
         &mut self,
-        type_declaration: &mut TypeDeclaration,
+        type_declaration: &mut TypeDeclarationExpression,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let type_id = type_declaration.id.expect(
-            "TypeDeclaration should have an id assigned during precompilation",
+            "TypeDeclarationExpression should have an id assigned during precompilation",
         );
         let var_type = self.variable_type(type_id);
         let type_def = var_type
             .as_ref()
-            .expect("TypeDeclaration type should have been inferred already");
+            .expect("TypeDeclarationExpression type should have been inferred already");
         let inferred_type_def =
             self.infer_type_expression(&mut type_declaration.definition)?;
 
-        if type_declaration.kind.is_nominal() {
-            match &type_def {
-                Type::Entity(definition) => {
-                    let mut val = definition.collapsed_value_mut();
-                    match &mut val.borrow_mut().inner {
-                        CoreValue::EntityTypeDefinition(nominal_def) => {
-                            nominal_def.replace_definition(inferred_type_def.convert_to_definition());
-                        }
-                        _ => {
-                            panic!(
-                                "Expected nominal type to be an alias during type declaration inference"
-                            )
-                        }
+        self.update_variable_type(type_id, inferred_type_def.clone());
+        mark_type(inferred_type_def.clone())
+    }
+
+    fn visit_entity_declaration(&mut self, entity_declaration: &mut EntityDeclarationExpression, span: &Range<usize>) -> ExpressionVisitResult<SpannedTypeError> {
+        let type_id = entity_declaration.id.expect(
+            "EntityDeclarationExpression should have an id assigned during precompilation",
+        );
+        let var_type = self.variable_type(type_id);
+        let type_def = var_type
+            .as_ref()
+            .expect("EntityDeclarationExpression type should have been inferred already");
+        let inferred_type_def =
+            self.infer_type_expression(&mut entity_declaration.definition)?;
+
+        match &type_def {
+            Type::Entity(definition) => {
+                let mut val = definition.collapsed_value_mut();
+                match &mut val.borrow_mut().inner {
+                    CoreValue::EntityTypeDefinition(nominal_def) => {
+                        nominal_def.replace_definition(
+                            inferred_type_def.convert_to_definition(),
+                        );
+                    }
+                    _ => {
+                        panic!(
+                            "Expected nominal type to be an alias during type declaration inference"
+                        )
                     }
                 }
-                Type::Definition(_r) => {
-                    // FIXME #620 is this necessary?
-                    // reference.borrow_mut().type_value = Type::new(
-                    //     TypeDefinition::Shared(r.clone()),
-                    //     TypeMetadata::default(),
-                    // );
-                    unreachable!(
-                        "Type aliases should have been resolved during precompilation"
-                    );
-                    // r.definition = TypeDefinition::Shared(SharedContainerContainingType::new_unchecked(
-                    //     SharedContainer::
-                    // ));
-                }
             }
-            mark_type(type_def.clone())
-        } else {
-            self.update_variable_type(type_id, inferred_type_def.clone());
-            mark_type(inferred_type_def.clone())
+            Type::Definition(_r) => {
+                // FIXME #620 is this necessary?
+                // reference.borrow_mut().type_value = Type::new(
+                //     TypeDefinition::Shared(r.clone()),
+                //     TypeMetadata::default(),
+                // );
+                unreachable!(
+                    "Type aliases should have been resolved during precompilation"
+                );
+                // r.definition = TypeDefinition::Shared(SharedContainerContainingType::new_unchecked(
+                //     SharedContainer::
+                // ));
+            }
         }
+        mark_type(type_def.clone())
     }
 
     fn visit_list(

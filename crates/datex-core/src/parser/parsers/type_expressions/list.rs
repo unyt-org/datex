@@ -46,8 +46,8 @@ mod tests {
     fn parse_empty_list() {
         let expr = parse_type_expression("[]");
         assert_eq!(
-            expr.data,
-            TypeExpressionData::StructuralList(StructuralList(vec![]))
+            expr.data(),
+            &TypeExpressionData::StructuralList(StructuralList(vec![]))
         );
     }
 
@@ -55,8 +55,8 @@ mod tests {
     fn parse_simple_list() {
         let expr = parse_type_expression("[true, false, null]");
         assert_eq!(
-            expr.data,
-            TypeExpressionData::StructuralList(StructuralList(vec![
+            expr.data(),
+            &TypeExpressionData::StructuralList(StructuralList(vec![
                 TypeExpressionData::Boolean(true.into()).with_default_span(),
                 TypeExpressionData::Boolean(false.into()).with_default_span(),
                 TypeExpressionData::Null.with_default_span(),
@@ -68,8 +68,8 @@ mod tests {
     fn parse_list_with_trailing_comma() {
         let expr = parse_type_expression("[true, false, null,]");
         assert_eq!(
-            expr.data,
-            TypeExpressionData::StructuralList(StructuralList(vec![
+            expr.data(),
+            &TypeExpressionData::StructuralList(StructuralList(vec![
                 TypeExpressionData::Boolean(true.into()).with_default_span(),
                 TypeExpressionData::Boolean(false.into()).with_default_span(),
                 TypeExpressionData::Null.with_default_span(),

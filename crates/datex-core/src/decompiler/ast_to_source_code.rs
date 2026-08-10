@@ -4,9 +4,9 @@ use crate::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, DatexExpression, DatexExpressionData, List, Map,
             PropertyAccess, PropertyAssignment, RangeDeclaration,
-            RemoteExecution, StackAssignment, TypeDeclaration, UnboxAssignment,
-            VariableAccess, VariableAssignment, VariableDeclaration,
-            VariantAccess,
+            RemoteExecution, StackAssignment, TypeDeclarationExpression,
+            UnboxAssignment, VariableAccess, VariableAssignment,
+            VariableDeclaration, VariantAccess,
         },
         type_expressions::{
             CallableTypeExpression, TypeExpression, TypeExpressionData,
@@ -29,6 +29,7 @@ use crate::{
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
 };
+use crate::ast::expressions::EntityDeclarationExpression;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -189,7 +190,7 @@ impl AstToSourceCodeConverter {
         &self,
         key: &TypeExpression,
     ) -> String {
-        match &key.data {
+        match key.data() {
             TypeExpressionData::Text(t) => self.key_to_string(t),
             TypeExpressionData::Integer(i) => i.to_string(),
             TypeExpressionData::TypedInteger(ti) => {
@@ -208,7 +209,7 @@ impl AstToSourceCodeConverter {
         &self,
         type_expr: &TypeExpression,
     ) -> String {
-        match &type_expr.data {
+        match type_expr.data() {
             TypeExpressionData::VariantAccess(TypeVariantAccess {
                 name,
                 variant,
@@ -759,17 +760,30 @@ impl AstToSourceCodeConverter {
                 name,
                 ..
             }) => name.to_string(),
-            DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                id: _,
-                name,
-                definition: value,
-                hoisted: _,
-                kind,
-            }) => {
+            DatexExpressionData::TypeDeclaration(
+                TypeDeclarationExpression {
+                    name,
+                    definition: value,
+                    ..
+                },
+            ) => {
                 ast_fmt!(
                     &self,
-                    "{} {}%s=%s{}",
-                    kind,
+                    "type {}%s=%s{}",
+                    name,
+                    self.type_expression_to_source_code(value)
+                )
+            }
+            DatexExpressionData::EntityDeclaration(
+                EntityDeclarationExpression {
+                    name,
+                    definition: value,
+                    ..
+                },
+            ) => {
+                ast_fmt!(
+                    &self,
+                    "entity {}%s=%s{}",
                     name,
                     self.type_expression_to_source_code(value)
                 )

@@ -166,7 +166,10 @@ pub enum DatexExpressionData {
     // This would remove the ability to have recursive type
     // definitions.
     /// Type declaration, e.g. type MyType = { x: 42, y: "John" };
-    TypeDeclaration(TypeDeclaration),
+    TypeDeclaration(TypeDeclarationExpression),
+
+    /// Entity declaration, e.g. entity MyEntity = { x: 42, y: "John" };
+    EntityDeclaration(EntityDeclarationExpression),
 
     /// Type expression, e.g. type(1 | 2)
     TypeExpression(TypeExpression),
@@ -399,34 +402,11 @@ pub struct Conditional {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum TypeDeclarationKind {
-    Nominal,
-    Alias,
-}
-impl Display for TypeDeclarationKind {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            TypeDeclarationKind::Nominal => core::write!(f, "entity"),
-            TypeDeclarationKind::Alias => core::write!(f, "type"),
-        }
-    }
-}
-impl TypeDeclarationKind {
-    pub fn is_nominal(&self) -> bool {
-        matches!(self, TypeDeclarationKind::Nominal)
-    }
-    pub fn is_alias(&self) -> bool {
-        matches!(self, TypeDeclarationKind::Alias)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct TypeDeclaration {
+pub struct TypeDeclarationExpression {
     pub id: Option<VariableId>,
     pub name: String, // TODO #614: separate variant from name
     pub definition: TypeExpression,
     pub hoisted: bool,
-    pub kind: TypeDeclarationKind,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -556,6 +536,14 @@ pub struct VariableAssignment {
     pub name: String,
     pub operator: Option<ModificationOperator>,
     pub expression: DatexExpression,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct EntityDeclarationExpression {
+    pub id: Option<VariableId>,
+    pub name: String,
+    pub definition: TypeExpression,
+    pub hoisted: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
