@@ -17,27 +17,27 @@ impl<'a> ToInstructions<'a> for TypeExpression {
         Box::new(gen {
             match self.data() {
                 TypeExpressionData::Integer(integer) => {
-                    yield TypeInstruction::TypeDefinitionLiteral(
+                    yield TypeInstruction::Literal(
                         LiteralTypeDefinition::Integer(integer.clone()),
                     )
                 }
                 TypeExpressionData::Text(text) => {
-                    yield TypeInstruction::TypeDefinitionLiteral(
+                    yield TypeInstruction::Literal(
                         LiteralTypeDefinition::Text(text.clone()),
                     )
                 }
                 TypeExpressionData::Boolean(boolean) => {
-                    yield TypeInstruction::TypeDefinitionLiteral(
+                    yield TypeInstruction::Literal(
                         LiteralTypeDefinition::Boolean(boolean.clone()),
                     )
                 }
                 TypeExpressionData::GetCoreLibType(core_lib_id) => {
-                    yield TypeInstruction::TypeDefinitionCoreType(
+                    yield TypeInstruction::CoreType(
                         core_lib_id.clone(),
                     )
                 }
                 TypeExpressionData::Range(range) => {
-                    yield TypeInstruction::TypeDefinitionRange;
+                    yield TypeInstruction::Range;
                     for instr in
                         range.start.to_instructions(_shared_value_tracking)
                     {

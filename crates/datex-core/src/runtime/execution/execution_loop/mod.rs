@@ -496,18 +496,18 @@ pub gen fn inner_execution_loop(
 
                 if let Some(type_instruction) = type_instruction {
                     Some(match type_instruction {
-                        TypeInstruction::TypeDefinitionCoreType(
+                        TypeInstruction::CoreType(
                             core_lib_type_id,
                         ) => CollectedExecutionResult::type_definition(
                             TypeDefinition::CoreType(core_lib_type_id),
                         ),
-                        TypeInstruction::TypeDefinitionLiteral(literal) => {
+                        TypeInstruction::Literal(literal) => {
                             CollectedExecutionResult::type_definition(
                                 literal.into(),
                             )
                         }
 
-                        TypeInstruction::TypeDefinitionSharedTypeReference(
+                        TypeInstruction::SharedTypeReference(
                             type_ref,
                         ) => {
                             let val = interrupt_with_maybe_value!(
@@ -556,11 +556,11 @@ pub gen fn inner_execution_loop(
                         }
 
                         // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                        TypeInstruction::TypeDefinitionList(_)
-                        | TypeInstruction::TypeDefinitionMap(_)
-                        | TypeInstruction::TypeDefinitionWithMetadata(_)
-                        | TypeInstruction::TypeDefinitionRange
-                        | TypeInstruction::TypeDefinitionImplType(_) => {
+                        TypeInstruction::List(_)
+                        | TypeInstruction::Map(_)
+                        | TypeInstruction::DefinitionWithMetadata(_)
+                        | TypeInstruction::Range
+                        | TypeInstruction::ImplType(_) => {
                             unreachable!()
                         }
                     })
@@ -1316,7 +1316,7 @@ pub gen fn inner_execution_loop(
 
                             Instruction::Type(type_instruction) => {
                                 match type_instruction {
-                                    TypeInstruction::TypeDefinitionImplType(
+                                    TypeInstruction::ImplType(
                                         impl_type_data,
                                     ) => {
                                         let def =
@@ -1329,7 +1329,7 @@ pub gen fn inner_execution_loop(
                                                 .into_iter().collect(),
                                         )).into()
                                     }
-                                    TypeInstruction::TypeDefinitionRange => {
+                                    TypeInstruction::Range => {
                                         // TODO: add metadata everywhere
                                         let type_start =
                                             collected_results.pop_type();
@@ -1343,7 +1343,7 @@ pub gen fn inner_execution_loop(
                                         );
                                         x.into()
                                     }
-                                    TypeInstruction::TypeDefinitionWithMetadata(metadata) => {
+                                    TypeInstruction::DefinitionWithMetadata(metadata) => {
                                         let definition = collected_results.pop_type_definition();
                                         Type::Definition(TypeDefinitionWithMetadata::new(definition, metadata)).into()
                                     }

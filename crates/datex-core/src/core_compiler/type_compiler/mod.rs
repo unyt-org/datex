@@ -94,13 +94,13 @@ mod tests {
         assert_type_instructions(
             ty,
             vec![
-                TypeInstruction::TypeDefinitionWithMetadata(
+                TypeInstruction::DefinitionWithMetadata(
                     TypeMetadata::Local {
                         mutability: LocalMutability::Mutable,
                         ownership: LocalOwnership::Owned,
                     },
                 ),
-                TypeInstruction::TypeDefinitionCoreType(CoreLibTypeId::Base(
+                TypeInstruction::CoreType(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Boolean,
                 )),
             ],

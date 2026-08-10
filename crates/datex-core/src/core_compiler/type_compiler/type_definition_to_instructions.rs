@@ -40,7 +40,7 @@ impl<'a> ToInstructions<'a> for TypeDefinitionWithMetadata {
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            yield TypeInstruction::TypeDefinitionWithMetadata(self.metadata);
+            yield TypeInstruction::DefinitionWithMetadata(self.metadata);
             for instruction in
                 self.definition.to_instructions(shared_value_tracking)
             {
@@ -67,7 +67,7 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
                     }
                 }
                 TypeDefinition::Literal(literal_type_definition) => {
-                    yield TypeInstruction::TypeDefinitionLiteral(
+                    yield TypeInstruction::Literal(
                         literal_type_definition.clone(),
                     );
                 }
@@ -144,7 +144,7 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
                     }
                 }
                 TypeDefinition::CoreType(core_lib_type_id) => {
-                    yield TypeInstruction::TypeDefinitionCoreType(
+                    yield TypeInstruction::CoreType(
                         *core_lib_type_id,
                     )
                 }
@@ -161,7 +161,7 @@ impl<'a> ToInstructions<'a> for ImplTypeDefinition {
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            yield TypeInstruction::TypeDefinitionImplType(ImplTypeData {
+            yield TypeInstruction::ImplType(ImplTypeData {
                 impl_count: self.impl_markers.len() as u8,
                 impls: self.impl_markers.to_vec(),
             });
@@ -182,7 +182,7 @@ impl<'a> ToInstructions<'a> for ListTypeDefinition {
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            yield TypeInstruction::TypeDefinitionList(ListData {
+            yield TypeInstruction::List(ListData {
                 element_count: self.len() as u32,
             });
             for ty in self.iter() {
@@ -202,7 +202,7 @@ impl<'a> ToInstructions<'a> for MapTypeDefinition {
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            yield TypeInstruction::TypeDefinitionMap(MapData {
+            yield TypeInstruction::Map(MapData {
                 element_count: self.len() as u32,
             });
             for (key_ty, value_ty) in self.iter() {
@@ -228,7 +228,7 @@ impl<'a> ToInstructions<'a> for RangeTypeDefinition {
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            yield TypeInstruction::TypeDefinitionRange;
+            yield TypeInstruction::Range;
             for instruction in self.start.to_instructions(shared_value_tracking)
             {
                 yield instruction;

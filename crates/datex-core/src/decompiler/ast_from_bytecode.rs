@@ -429,10 +429,10 @@ pub fn ast_from_bytecode(
                 let type_expression: Option<TypeExpression> = type_instruction
                     .map(|type_instruction| {
                         match type_instruction {
-                            TypeInstruction::TypeDefinitionCoreType(core_lib_id) => {
+                            TypeInstruction::CoreType(core_lib_id) => {
                                 TypeExpressionData::Identifier(core_lib_id.to_string())
                             }
-                            TypeInstruction::TypeDefinitionLiteral(literal) => {
+                            TypeInstruction::Literal(literal) => {
                                 match literal {
                                     LiteralTypeDefinition::Integer(integer) => {
                                         TypeExpressionData::Integer(integer)
@@ -457,18 +457,18 @@ pub fn ast_from_bytecode(
                                     }
                                 }
                             }
-                            TypeInstruction::TypeDefinitionSharedTypeReference(reference) => {
+                            TypeInstruction::SharedTypeReference(reference) => {
                                 // TODO #769: handle metadata
                                 TypeExpressionData::GetReference(
                                     reference.address,
                                 )
                             }
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                            TypeInstruction::TypeDefinitionList(_) |
-                            TypeInstruction::TypeDefinitionRange |
-                            TypeInstruction::TypeDefinitionImplType(_) |
-                            TypeInstruction::TypeDefinitionMap(_) |
-                            TypeInstruction::TypeDefinitionWithMetadata(_) => {
+                            TypeInstruction::List(_) |
+                            TypeInstruction::Range |
+                            TypeInstruction::ImplType(_) |
+                            TypeInstruction::Map(_) |
+                            TypeInstruction::DefinitionWithMetadata(_) => {
                                 unreachable!()
                             }
                         }

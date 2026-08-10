@@ -3614,13 +3614,17 @@ pub mod tests {
                             }
                         ],
                         body: RegularInstruction::Add.with_children(instructions!(
-                            RegularInstruction::BorrowStackValue(StackIndex(0)),
-                            RegularInstruction::BorrowStackValue(StackIndex(1)),
+                            RegularInstruction::TakeStackValue(StackIndex(0)),
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
                         ))
                     }
 
                 }
-            ))
+            ).with_children(instructions!(
+                TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into()),
+                TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into()),
+                TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())
+            )))
         )
     }
 
@@ -3673,7 +3677,7 @@ pub mod tests {
             &res,
             [
                 Instruction::Regular(RegularInstruction::TypeExpression),
-                Instruction::Type(TypeInstruction::TypeDefinitionLiteral(
+                Instruction::Type(TypeInstruction::Literal(
                     LiteralTypeDefinition::Integer(1.into())
                 ))
             ]

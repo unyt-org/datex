@@ -18,26 +18,26 @@ use serde::{Serialize, Serializer, ser::SerializeTuple};
 use strum::AsRefStr;
 
 #[derive(Clone, Debug, PartialEq, BinWrite, BinRead, AsRefStr)]
-#[strum(serialize_all = "snake_case")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 #[brw(little)]
 pub enum TypeInstruction {
     #[brw(magic = 0x0u8)]
-    TypeDefinitionCoreType(CoreLibTypeId),
+    CoreType(CoreLibTypeId),
     #[brw(magic = 0x1u8)]
-    TypeDefinitionImplType(ImplTypeData),
+    ImplType(ImplTypeData),
     #[brw(magic = 0x2u8)]
-    TypeDefinitionSharedTypeReference(TypeReferenceData),
+    SharedTypeReference(TypeReferenceData),
     #[brw(magic = 0x3u8)]
-    TypeDefinitionList(ListData),
+    List(ListData),
     #[brw(magic = 0x4u8)]
-    TypeDefinitionLiteral(LiteralTypeDefinition),
+    Literal(LiteralTypeDefinition),
     #[brw(magic = 0x5u8)]
-    TypeDefinitionRange,
+    Range,
     #[brw(magic = 0x6u8)]
-    TypeDefinitionWithMetadata(TypeMetadata),
+    DefinitionWithMetadata(TypeMetadata),
 
     #[brw(magic = 0x8u8)]
-    TypeDefinitionMap(MapData),
+    Map(MapData),
 }
 
 /// Serializes TypeInstruction to tuple (instruction code as string, optional metadata as string)
@@ -64,19 +64,19 @@ impl TypeInstruction {
     /// Returns how many (if any) regular or type instructions are expected as child instructions for a given instructions
     pub fn get_next_expected_instructions(&self) -> NextExpectedInstructions {
         match self {
-            TypeInstruction::TypeDefinitionList(list) => {
+            TypeInstruction::List(list) => {
                 NextExpectedInstructions::Type(list.element_count)
             } // list elements
 
-            TypeInstruction::TypeDefinitionImplType(_) => {
+            TypeInstruction::ImplType(_) => {
                 NextExpectedInstructions::Type(1)
             } // impl type
 
-            TypeInstruction::TypeDefinitionWithMetadata(_) => {
+            TypeInstruction::DefinitionWithMetadata(_) => {
                 NextExpectedInstructions::Type(1)
             } // metadata type instruction
 
-            TypeInstruction::TypeDefinitionRange => {
+            TypeInstruction::Range => {
                 NextExpectedInstructions::Type(2)
             } // range has 2 type instructions
 
@@ -88,19 +88,22 @@ impl TypeInstruction {
         let mut string = String::new();
 
         match self {
-            TypeInstruction::TypeDefinitionLiteral(data) => {
+            TypeInstruction::Literal(data) => {
                 write!(string, "{}", data)
             }
-            TypeInstruction::TypeDefinitionList(data) => {
+            TypeInstruction::List(data) => {
                 write!(string, "{}", data.element_count)
             }
-            TypeInstruction::TypeDefinitionSharedTypeReference(
+            TypeInstruction::SharedTypeReference(
                 reference_data,
             ) => {
-                write!(string, "(address: {})", reference_data.address.clone())
+                write!(string, "[address: {}]", reference_data.address.clone())
             }
-            TypeInstruction::TypeDefinitionImplType(data) => {
-                write!(string, "({} impls)", data.impl_count)
+            TypeInstruction::CoreType(data) => {
+                write!(string, "{}", data)
+            }
+            TypeInstruction::ImplType(data) => {
+                write!(string, "[{} impls]", data.impl_count)
             }
             _ => {
                 // no custom disassembly

@@ -18,6 +18,7 @@ use core::{
 };
 use serde::Serialize;
 use crate::global::protocol_structures::instruction_data::CallableDeclarationDataDebugFlat;
+use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 /// A generic tree structure for instructions with child instructions.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -51,6 +52,13 @@ impl From<RegularInstruction> for InstructionTree<Instruction> {
         InstructionTree::new(Instruction::Regular(instruction))
     }
 }
+
+impl From<TypeInstruction> for InstructionTree<Instruction> {
+    fn from(instruction: TypeInstruction) -> Self {
+        InstructionTree::new(Instruction::Type(instruction))
+    }
+}
+
 
 impl From<Vec<InstructionTree<Instruction>>> for InstructionTree<Instruction> {
     fn from(mut instruction_trees: Vec<InstructionTree<Instruction>>) -> Self {
@@ -326,7 +334,7 @@ fn write_instruction(
         "{}",
         match instruction {
             Instruction::Regular(instr) => instr.instruction_code_string(),
-            Instruction::Type(instr) => instr.as_ref().to_string(),
+            Instruction::Type(instr) => format!("TYPE.{}", instr.as_ref()),
         }
     )
     .unwrap();
