@@ -102,6 +102,7 @@ use crate::value_updates::update_data::{
     DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
 };
 use collected_execution_result::CollectedExecutionResult;
+use crate::global::protocol_structures::injected_values::{InjectedValueType, LocalInjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::CallableSignatureData;
 use crate::types::type_definition::callable::CallableTypeDefinition;
 use crate::values::core_values::callable::DatexBytecodeCallable;
@@ -681,7 +682,7 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::CallableDeclaration(callable_declaration) => {
                                     let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
                                     let signature = resolve_callable_type_definition(types, &callable_declaration.signature);
-                                    let body = callable_declaration.body;
+                                    let injected_values = state.stack.resolve_injected_values(&callable_declaration.body.injected_values)?;
 
                                     ValueContainer::from(Callable {
                                         name: if callable_declaration.signature.name.0.is_empty() {
@@ -691,18 +692,23 @@ pub gen fn inner_execution_loop(
                                         },
                                         signature,
                                         body: CallableBody::DatexBytecode(DatexBytecodeCallable {
-                                            injected_values: vec![],
-                                            body: body.body,
+                                            injected_values,
+                                            body: callable_declaration.body.body,
                                         }),
                                         creator: state.caller_metadata.endpoint.clone(),
                                     })
                                         .into()
                                 }
                                 RegularInstruction::Callable(callable_declaration) => {
+                                    let injected_values = collected_results
+                                        .pop_values(callable_declaration.body.injected_value_count)
+                                        .into_iter()
+                                        .flatten()
+                                        .map(|runtime_value| runtime_value.into_value_container(&mut state))
+                                        .collect::<Result<Vec<_>, ExecutionError>>()?;
+
                                     let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
                                     let signature = resolve_callable_type_definition(types, &callable_declaration.signature);
-
-                                    let body = callable_declaration.body;
 
                                     ValueContainer::from(Callable {
                                         name: if callable_declaration.signature.name.0.is_empty() {
@@ -712,8 +718,8 @@ pub gen fn inner_execution_loop(
                                         },
                                         signature,
                                         body: CallableBody::DatexBytecode(DatexBytecodeCallable {
-                                            injected_values: vec![],
-                                            body: body.body,
+                                            injected_values,
+                                            body: callable_declaration.body.body,
                                         }),
                                         creator: state.caller_metadata.endpoint.clone(),
                                     })

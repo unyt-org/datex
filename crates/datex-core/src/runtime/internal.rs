@@ -330,6 +330,7 @@ impl RuntimeInternal {
         let result = RuntimeInternal::execute_dxb(
             self,
             dxb,
+            None,
             Some(execution_context),
             true,
         )
@@ -367,6 +368,7 @@ impl RuntimeInternal {
         let result = RuntimeInternal::execute_dxb_sync(
             self,
             dxb,
+            None,
             Some(execution_context),
             true,
         )
@@ -381,6 +383,7 @@ impl RuntimeInternal {
     pub fn execute_dxb<'a>(
         self: Rc<RuntimeInternal>,
         input: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<&'a mut ExecutionContext>,
         _end_execution: bool,
     ) -> Pin<
@@ -396,10 +399,14 @@ impl RuntimeInternal {
             );
             match execution_context {
                 ExecutionContext::Remote(context) => {
+                    // initial stack values are not (yet) supported for remote execution
+                    if initial_stack_values.is_some() {
+                        return Err(ExecutionError::InvalidExecutionState);
+                    }
                     RuntimeInternal::execute_remote(self, context, input).await
                 }
                 ExecutionContext::Local(_) => {
-                    execution_context.execute_dxb(input).await
+                    execution_context.execute_dxb(input, initial_stack_values).await
                 }
             }
         })
@@ -408,6 +415,7 @@ impl RuntimeInternal {
     pub fn execute_dxb_sync(
         self: Rc<RuntimeInternal>,
         dxb: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<&mut ExecutionContext>,
         _end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
@@ -418,7 +426,7 @@ impl RuntimeInternal {
                 Err(ExecutionError::RequiresAsyncExecution)
             }
             ExecutionContext::Local(_) => {
-                execution_context.execute_dxb_sync(dxb)
+                execution_context.execute_dxb_sync(dxb, initial_stack_values)
             }
         }
     }
@@ -619,6 +627,7 @@ impl RuntimeInternal {
         RuntimeInternal::execute_dxb(
             self,
             DXBWithSharedValues::new(dxb, shared_values.unwrap_or_default()),
+            None,
             Some(execution_context),
             end_execution,
         )

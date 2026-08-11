@@ -86,6 +86,7 @@ pub enum ExecutionError {
     UpdateError(Box<UpdateError>),
     SubscriberError(Box<SubscriberError>),
     Unknown,
+    InvalidExecutionState,
     NotImplemented(String),
     StackValueNotAllocated(StackIndex),
     StackOutOfBoundsAccess(StackIndex),
@@ -252,6 +253,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::Unknown => {
                 core::write!(f, "Unknown execution error")
+            }
+            ExecutionError::InvalidExecutionState => {
+                core::write!(f, "Invalid execution state")
             }
             ExecutionError::ValueError(err) => {
                 core::write!(f, "Value error: {err}")

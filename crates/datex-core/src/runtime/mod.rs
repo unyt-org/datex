@@ -97,12 +97,14 @@ impl Runtime {
     pub async fn execute_dxb<'a>(
         &'a self,
         input: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<&'a mut ExecutionContext>,
         end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb(
             self.internal(),
             input,
+            initial_stack_values,
             execution_context,
             end_execution,
         )
@@ -112,12 +114,14 @@ impl Runtime {
     pub fn execute_dxb_sync(
         &self,
         input: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<&mut ExecutionContext>,
         end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb_sync(
             self.internal(),
             input,
+            initial_stack_values,
             execution_context,
             end_execution,
         )

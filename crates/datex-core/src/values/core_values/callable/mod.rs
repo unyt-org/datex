@@ -32,12 +32,16 @@ impl DatexBytecodeCallable {
         runtime: &Runtime,
         args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, CallableError> {
+        // construct the initial stack values by combining the provided arguments with the injected values
+        let stack_values = args.iter().chain(self.injected_values.iter()).cloned().collect::<Vec<_>>();
+
         Ok(runtime.execute_dxb_sync(
             DXBWithSharedValues::new(self.body.clone(), vec![]), // TODO: no clone?
+            Some(stack_values),
             Some(&mut ExecutionContext::Local(LocalExecutionContext::new(
                 ExecutionMode::Static,
                 runtime.clone(),
-                ExecutionCallerMetadata::local_default(), // TODO
+                ExecutionCallerMetadata::local_default(), // TODO caller
             ))),
             true,
         )?)

@@ -441,7 +441,7 @@ mod tests {
                 .unwrap();
                 compilation_scope = new_compilation_scope;
                 yield execution_context
-                    .execute_dxb_sync(DXBWithSharedValues::new(dxb, vec![]));
+                    .execute_dxb_sync(DXBWithSharedValues::new(dxb, vec![]), None);
             }
         }
     }
@@ -906,6 +906,13 @@ mod tests {
         let result = execute_datex_script_debug_with_result("function test(x: integer) -> integer (x + 2)(1)");
         let integer: Integer = result.try_into_value().unwrap();
         assert_eq!(integer, Integer::from(3));
+    }
+
+    #[test]
+    fn function_call_with_arg_and_injected_value() {
+        let result = execute_datex_script_debug_with_result("const y = 42; function test(x: integer) -> integer (y + x + 2)(1)");
+        let integer: Integer = result.try_into_value().unwrap();
+        assert_eq!(integer, Integer::from(45));
     }
 
     #[test]

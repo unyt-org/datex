@@ -117,6 +117,7 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
         let value = runtime.execute_dxb_sync(
             DXBWithSharedValues::new(dxb, vec![]),
             None,
+            None,
             true,
         )?;
         if let Some(value) = value {
