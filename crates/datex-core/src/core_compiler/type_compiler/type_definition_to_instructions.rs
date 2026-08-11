@@ -32,10 +32,10 @@ use crate::{
     },
 };
 
-impl<'a> ToInstructions<'a> for TypeDefinitionWithMetadata {
+impl ToInstructions for TypeDefinitionWithMetadata {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -50,10 +50,10 @@ impl<'a> ToInstructions<'a> for TypeDefinitionWithMetadata {
     }
 }
 
-impl<'a> ToInstructions<'a> for TypeDefinition {
+impl ToInstructions for TypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -151,10 +151,10 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for ImplTypeDefinition {
+impl ToInstructions for ImplTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -172,10 +172,10 @@ impl<'a> ToInstructions<'a> for ImplTypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for ListTypeDefinition {
+impl ToInstructions for ListTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -192,10 +192,10 @@ impl<'a> ToInstructions<'a> for ListTypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for MapTypeDefinition {
+impl ToInstructions for MapTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -218,10 +218,10 @@ impl<'a> ToInstructions<'a> for MapTypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for RangeTypeDefinition {
+impl ToInstructions for RangeTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -238,10 +238,10 @@ impl<'a> ToInstructions<'a> for RangeTypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for CollectionTypeDefinition {
+impl ToInstructions for CollectionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -280,10 +280,10 @@ impl<'a> ToInstructions<'a> for CollectionTypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for ListCollectionTypeDefinition {
+impl ToInstructions for ListCollectionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -294,10 +294,10 @@ impl<'a> ToInstructions<'a> for ListCollectionTypeDefinition {
         })
     }
 }
-impl<'a> ToInstructions<'a> for MapCollectionTypeDefinition {
+impl ToInstructions for MapCollectionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -316,10 +316,10 @@ impl<'a> ToInstructions<'a> for MapCollectionTypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for ListSliceCollectionTypeDefinition {
+impl ToInstructions for ListSliceCollectionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -327,10 +327,10 @@ impl<'a> ToInstructions<'a> for ListSliceCollectionTypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for IntersectionTypeDefinition {
+impl ToInstructions for IntersectionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -344,10 +344,10 @@ impl<'a> ToInstructions<'a> for IntersectionTypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for CallableTypeDefinition {
+impl ToInstructions for CallableTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -355,10 +355,10 @@ impl<'a> ToInstructions<'a> for CallableTypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for UnionTypeDefinition {
+impl ToInstructions for UnionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
@@ -372,10 +372,10 @@ impl<'a> ToInstructions<'a> for UnionTypeDefinition {
     }
 }
 
-impl<'a> ToInstructions<'a> for TaggedTypeDefinition {
+impl ToInstructions for TaggedTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {

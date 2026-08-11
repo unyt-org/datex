@@ -32,6 +32,7 @@ use serde::{
     Deserializer,
     de::{DeserializeSeed, SeqAccess, Visitor},
 };
+use crate::values::core_values::callable::Callable;
 
 pub struct CoreValueVisitor<'a, 'ctx> {
     pub core_lib_id: CoreLibTypeId,
@@ -478,6 +479,10 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
             CoreLibTypeId::Base(CoreLibBaseTypeId::Map) => {
                 let elements = self.context.cast::<Map>().visit_seq(seq)?;
                 Ok(CoreValue::Map(elements))
+            }
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Callable) => {
+                let callable = self.context.cast::<Callable>().visit_seq(seq)?;
+                Ok(CoreValue::Callable(callable))
             }
             _ => Err(A::Error::custom(format!(
                 "expected CoreValue of type List, Map, or Range, got {}",

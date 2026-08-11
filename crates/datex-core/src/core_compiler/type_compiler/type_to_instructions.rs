@@ -7,10 +7,10 @@ use crate::{
     prelude::*,
     types::r#type::Type,
 };
-impl<'a> ToInstructions<'a> for Type {
+impl ToInstructions for Type {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {

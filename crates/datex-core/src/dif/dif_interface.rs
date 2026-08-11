@@ -65,9 +65,9 @@ impl DIFInterface {
         &self,
         runtime: &Runtime,
         callee: ValueContainer,
-        value: ValueContainer,
+        value: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        callee.try_apply_single(runtime, value)
+        callee.try_apply(runtime, value)
     }
 
     /// Creates a new owned local pointer and stores it in memory.

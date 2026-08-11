@@ -1433,7 +1433,8 @@ fn compile_expression(
         DatexExpressionData::TypeExpression(type_expression) => {
             compilation_context.write(RegularInstruction::TypeExpression);
             compilation_context
-                .append_compiled_type_expression(&type_expression);
+                .write(RegularInstruction::TypeExpression);
+            compilation_context.append_compiled_type_expression(&type_expression);
         }
         DatexExpressionData::Range(range_dec) => {
             compilation_context.append_instruction_code(InstructionCode::RANGE);

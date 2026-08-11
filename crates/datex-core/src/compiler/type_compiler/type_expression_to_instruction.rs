@@ -8,9 +8,9 @@ use crate::{
     prelude::*,
     types::literal_type_definition::LiteralTypeDefinition,
 };
-impl<'a> ToInstructions<'a> for TypeExpression {
+impl ToInstructions for TypeExpression {
     type InstructionType = TypeInstruction;
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
         _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {

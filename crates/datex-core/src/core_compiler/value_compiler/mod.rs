@@ -50,6 +50,10 @@ use crate::{
     },
     values::value_container::value_key::ValueKey,
 };
+use crate::ast::type_expressions::TypeExpression;
+use crate::core_compiler::to_instructions::ToInstructions;
+use crate::global::protocol_structures::instruction_data::{CallableData, CallableDataBody, CallableSignatureData, ShortTextData};
+use crate::values::core_values::callable::CallableBody;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -201,10 +205,65 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                 context.visit_type(ty);
             }
         }
-        CoreValue::Callable(_callable) => {
-            core::todo!(
-                "#632 Callable value not supported in CompilationContext"
-            );
+        CoreValue::Callable(callable) => {
+
+            let (body, injected_values) = match callable.body {
+                CallableBody::DatexBytecode(datex_bytecode) => {
+                    (
+                        CallableDataBody {
+                            injected_value_count: datex_bytecode.injected_values.len() as u32,
+                            length: datex_bytecode.body.len() as u32,
+                            body: datex_bytecode.body,
+                        },
+                        datex_bytecode.injected_values,
+                    )
+                },
+                _ => todo!()
+            };
+
+            context.write(RegularInstruction::Callable(CallableData {
+                signature: CallableSignatureData {
+                    name: ShortTextData(callable.name.unwrap_or_default()),
+                    kind: callable.signature.kind,
+                    parameter_count: callable.signature.parameters.len() as u8,
+                    has_rest_parameter: callable.signature.rest_parameter.is_some(),
+                    has_return_type: callable.signature.return_type.is_some(),
+                    has_yeet_type: callable.signature.yeet_type.is_some(),
+                    parameter_names: callable
+                        .signature
+                        .parameters
+                        .iter()
+                        .map(|(name, _)| ShortTextData(name.clone().unwrap_or_default()))
+                        .collect(),
+                    rest_parameter_name: callable
+                        .signature
+                        .rest_parameter
+                        .as_ref()
+                        .map(|(name, _)| ShortTextData(name.clone().unwrap_or_default())),
+                },
+                body,
+            }));
+
+            // add parameter types
+            for (_, param) in callable.signature.parameters {
+                context.visit_type(param);
+            }
+            // add rest parameter type
+            if let Some((_, param)) = callable.signature.rest_parameter {
+                context.visit_type(*param);
+            }
+            // add return type
+            if let Some(ty) = callable.signature.return_type {
+                context.visit_type(*ty);
+            }
+            // add yield type
+            if let Some(ty) = callable.signature.yeet_type {
+                context.visit_type(*ty);
+            }
+
+            for value in injected_values {
+                context.visit_value_container(value, None);
+            }
         }
         CoreValue::Integer(integer) => {
             // NOTE: we might optimize this later, but using INT with big integer encoding
@@ -273,6 +332,7 @@ pub fn append_core_type_cast(
     // TODO: append type cast with only id (no need to access shared container)
     todo!()
 }
+
 
 pub fn append_apply<T: BufferProvider + ValueVisitor>(
     context: &mut T,
