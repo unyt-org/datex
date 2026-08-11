@@ -214,7 +214,13 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             CoreValue::EntityTypeDefinition(_entity_type_definition) => {
                 todo!()
             }
-            CoreValue::Callable(_callable) => todo!(),
+            CoreValue::Callable(callable) => self.serialize_with_core_type_serde(
+                callable,
+                core_lib_type,
+                &value.custom_type,
+                serializer,
+                false,
+            ),
         }
     }
 }

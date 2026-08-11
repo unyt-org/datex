@@ -11,6 +11,7 @@ use crate::{
 pub mod apply;
 pub mod equality;
 pub mod error;
+mod serde_dif;
 
 pub type NativeCallable =
     fn(&[ValueContainer]) -> Result<Option<ValueContainer>, CallableError>;

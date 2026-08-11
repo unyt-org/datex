@@ -12,11 +12,15 @@ use crate::{
     },
 };
 use core::fmt::Display;
+use std::hash::{Hash, Hasher};
+use crate::collections::hash_map::DefaultHasher;
+use crate::values::core_values::callable::Callable;
 
 /// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]
 pub struct SharedValuesCache {
     values: HashMap<PointerAddress, SharedContainer>,
+    callables: HashSet<Callable>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,6 +86,7 @@ impl SharedValuesCache {
                 .into_iter()
                 .map(|container| (container.pointer_address(), container))
                 .collect(),
+            callables: HashSet::new(),
         }
     }
 
@@ -94,6 +99,25 @@ impl SharedValuesCache {
             return;
         }
         self.values.insert(container.pointer_address(), container);
+    }
+
+    /// Stores a callable in the cache and returns its hash value.
+    /// TODO: use different hash and HashMap<hash, callable> to reduce colissions?
+    pub fn store_callable(&mut self, callable: Callable) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        callable.hash(&mut hasher);
+        let hash = hasher.finish();
+        self.callables.insert(callable);
+        hash
+    }
+
+    /// Removes a callable from the cache based on its hash value.
+    pub fn remove_callable_with_hash(&mut self, hash: u64) {
+        self.callables.retain(|callable| {
+            let mut hasher = DefaultHasher::new();
+            callable.hash(&mut hasher);
+            hasher.finish() != hash
+        });
     }
 
     /// Removes the shared container for the given pointer address from the cache, if it exists.
