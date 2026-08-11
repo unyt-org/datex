@@ -6,12 +6,6 @@ use crate::dif::serde_context::SerdeContext;
 use crate::utils::serde_serialize_seed::SerializeSeed;
 use crate::values::core_values::callable::Callable;
 use crate::prelude::*;
-use crate::{
-    dif::serde_context::SerdeContext, prelude::*,
-    utils::serde_serialize_seed::SerializeSeed,
-    values::core_values::callable::Callable,
-};
-use serde::{Serializer, ser::SerializeTuple};
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, Callable> {
     type Value = Callable;
