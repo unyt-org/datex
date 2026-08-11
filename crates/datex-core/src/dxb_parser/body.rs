@@ -182,7 +182,9 @@ pub gen fn iterate_instructions_with_seek(
 
         if reader.position() as usize >= len {
             if !next_instructions_stack.is_end() {
-                yield Err(DXBParserError::ExpectingMoreInstructions(next_instructions_stack.clone()));
+                yield Err(DXBParserError::ExpectingMoreInstructions(
+                    next_instructions_stack.clone(),
+                ));
 
                 dxb_body = core::mem::take(&mut *dxb_body_ref.borrow_mut());
                 len = dxb_body.len();
@@ -213,16 +215,13 @@ pub gen fn iterate_instructions_with_seek(
                     let instruction = RegularInstruction::read(&mut reader)
                         .map_err(DXBParserError::BinRwError)?;
 
-
                     let instruction = cfg_select! {
-                        feature = "disassembler" => {
-                             instruction
-                                .convert_to_nested(nested_instruction_resolution_strategy)
-                        }
-                        _ => {
-                            instruction
-                        }
-                    }?;
+                        feature = "disassembler" => instruction
+                            .convert_to_nested(
+                                nested_instruction_resolution_strategy,
+                            )?,
+                        _ => instruction,
+                    };
 
                     next_instructions_stack
                         .handle_next_expected_instructions(
@@ -289,7 +288,10 @@ mod tests {
         let data = vec![]; // Empty data
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
-        assert_matches!(result, Err(DXBParserError::ExpectingMoreInstructions(_)));
+        assert_matches!(
+            result,
+            Err(DXBParserError::ExpectingMoreInstructions(_))
+        );
     }
 
     #[test]

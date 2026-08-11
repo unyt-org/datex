@@ -1,8 +1,9 @@
 use core::ops::DerefMut;
 use datex_core::{
-    datex_proxy::DatexProxyTypes,
-    datex_registry::all_datex_type_registrations,
-    decompiler::{DecompileOptions, decompile_value},
+    datex_proxy::{DatexProxyTypes, DatexValueContainerProxyDeserialize},
+    datex_registry::{
+        all_datex_impl_registrations, all_datex_type_registrations, get_impls,
+    },
     runtime::Runtime,
     shared_values::{
         SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
@@ -14,8 +15,6 @@ use datex_core::{
     },
     values::core_value::CoreValue,
 };
-use datex_core::datex_proxy::DatexValueContainerProxyDeserialize;
-use datex_core::datex_registry::{all_datex_impl_registrations, get_impls};
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -34,8 +33,11 @@ impl Example {
     }
 }
 
+#[cfg(feature = "decompiler")]
 #[test]
 fn impl_functions() {
+    use datex_core::decompiler::{DecompileOptions, decompile_value};
+
     let runtime = Runtime::stub();
     let mut memory = runtime.memory().borrow_mut();
 
@@ -53,7 +55,10 @@ fn impl_functions() {
 
     match example_type {
         Type::Entity(entity) => {
-            println!("regs: {:#?}", all_datex_impl_registrations().collect::<Vec<_>>());
+            println!(
+                "regs: {:#?}",
+                all_datex_impl_registrations().collect::<Vec<_>>()
+            );
             let definition = entity.entity_definition();
             println!("impls: {:#?}", definition.impls());
         }

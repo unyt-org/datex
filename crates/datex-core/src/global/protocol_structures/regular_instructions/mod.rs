@@ -1,4 +1,3 @@
-
 #[cfg(feature = "disassembler")]
 pub mod debug;
 
@@ -714,17 +713,15 @@ impl RegularInstruction {
     pub fn instruction_code_string(&self) -> String {
         if let Some(code) = self.code() {
             code.to_string()
-        }
-        else {
+        } else {
             #[cfg(feature = "disassembler")]
             if let Some(code) = self.debug_instruction_code() {
-                return code.to_string()
+                return code.to_string();
             }
 
             "?".to_string()
         }
     }
-    
 
     /// Returns how many (if any) regular or type instructions are expected as child instructions for a given instructions
     pub fn get_next_expected_instructions(&self) -> NextExpectedInstructions {
@@ -784,7 +781,7 @@ impl RegularInstruction {
             RegularInstruction::ApplySingle => {
                 NextExpectedInstructions::Regular(2)
             }
-            
+
             RegularInstruction::GetEntryText(_)
             | RegularInstruction::GetEntryIndex(_)
             | RegularInstruction::TakeEntryText(_)
@@ -833,7 +830,7 @@ impl RegularInstruction {
             RegularInstruction::Matches => {
                 NextExpectedInstructions::RegularAndType(1, 1)
             }
-            
+
             RegularInstruction::Add
             | RegularInstruction::Multiply
             | RegularInstruction::Subtract
@@ -1143,6 +1140,34 @@ impl RegularInstruction {
                     data.body
                 )
             }
+            RegularInstruction::Callable(data) => {
+                write!(
+                    string,
+                    "[signature: {}, body: {}]",
+                    data.signature,
+                    data.body
+                )
+            }
+            RegularInstruction::GetEntryIndex(uint_32_data) => {
+                write!(string, "{}", uint_32_data.0)
+            }
+            RegularInstruction::SetEntryIndex(uint_32_data) => {
+                write!(string, "{}", uint_32_data.0)
+            }
+            RegularInstruction::TakeEntryIndex(uint_32_data) => {
+                write!(string, "{}", uint_32_data.0)
+            }
+            RegularInstruction::GetEntryText(short_text_data) => {
+                write!(string, "{}", short_text_data.0)
+            }
+            RegularInstruction::TakeEntryText(short_text_data) => {
+                write!(string, "{}", short_text_data.0)
+            }
+            RegularInstruction::SetEntryText(short_text_data) => {
+                write!(string, "{}", short_text_data.0)
+            }
+
+            #[cfg(feature = "disassembler")]
             RegularInstruction::_CallableDeclarationDebugTree(data) => {
                 write!(
                     string,
@@ -1151,15 +1176,8 @@ impl RegularInstruction {
                     data.body
                 )
             }
+            #[cfg(feature = "disassembler")]
             RegularInstruction::_CallableDeclarationDebugFlat(data) => {
-                write!(
-                    string,
-                    "[signature: {}, body: {}]",
-                    data.signature,
-                    data.body
-                )
-            }
-            RegularInstruction::Callable(data) => {
                 write!(
                     string,
                     "[signature: {}, body: {}]",
@@ -1183,24 +1201,7 @@ impl RegularInstruction {
                     data
                 )
             }
-            RegularInstruction::GetEntryIndex(uint_32_data) => {
-                write!(string, "{}", uint_32_data.0)
-            }
-            RegularInstruction::SetEntryIndex(uint_32_data) => {
-                write!(string, "{}", uint_32_data.0)
-            }
-            RegularInstruction::TakeEntryIndex(uint_32_data) => {
-                write!(string, "{}", uint_32_data.0)
-            }
-            RegularInstruction::GetEntryText(short_text_data) => {
-                write!(string, "{}", short_text_data.0)
-            }
-            RegularInstruction::TakeEntryText(short_text_data) => {
-                write!(string, "{}", short_text_data.0)
-            }
-            RegularInstruction::SetEntryText(short_text_data) => {
-                write!(string, "{}", short_text_data.0)
-            }
+
             _ => {
                 // no custom disassembly
                 return None;
@@ -1209,17 +1210,14 @@ impl RegularInstruction {
 
         Some(string)
     }
-
-
-
 }
 
-use crate::global::protocol_structures::instruction_data::{CallableData, CallableDeclarationData};
+use crate::global::protocol_structures::instruction_data::{
+    CallableData, CallableDeclarationData,
+};
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
 #[cfg(feature = "disassembler")]
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-use crate::disassembler::InstructionTree;
-use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
 
 #[cfg(feature = "disassembler")]
 impl Serialize for RegularInstruction {
@@ -1231,7 +1229,8 @@ impl Serialize for RegularInstruction {
         let metadata_string = self.metadata_string();
 
         if let Some(metadata_string) = metadata_string {
-            let inner_instructions = self.inner_instructions_from_debug_instruction();
+            let inner_instructions =
+                self.inner_instructions_from_debug_instruction();
             let count = if inner_instructions == InnerInstructions::None {
                 2
             } else {
