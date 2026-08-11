@@ -1,7 +1,7 @@
 use core::ops::DerefMut;
 use datex_core::{
     datex_proxy::DatexProxyTypes,
-    datex_registry::all_datex_registrations,
+    datex_registry::all_datex_type_registrations,
     decompiler::{DecompileOptions, decompile_value},
     runtime::Runtime,
     shared_values::{
@@ -14,6 +14,7 @@ use datex_core::{
     },
     values::core_value::CoreValue,
 };
+use datex_core::datex_registry::{all_datex_impl_registrations, get_impls};
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -26,6 +27,9 @@ struct Example {
 impl Example {
     pub fn set_a(&mut self, a: u8) {
         self.a = a;
+    }
+    pub fn set_b(&mut self, b: u8) {
+        self.b = b;
     }
 }
 
@@ -48,16 +52,16 @@ fn impl_functions() {
 
     match example_type {
         Type::Entity(entity) => {
+            println!("regs: {:#?}", all_datex_impl_registrations().collect::<Vec<_>>());
             let definition = entity.entity_definition();
-            println!("def: {:#?}", definition);
+            println!("impls: {:#?}", definition.impls());
         }
         _ => {
             panic!("Expected entity type, got {:?}", example_type);
         }
     }
 
-    println!("reg {:#?}", all_datex_registrations().collect::<Vec<_>>());
-
     let mut example = Example { a: 1, b: 2 };
     example.set_a(2);
+    example.set_b(1);
 }

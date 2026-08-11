@@ -5,8 +5,7 @@ use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta, Path,
     PathSegment, Token, punctuated::Punctuated,
 };
-
-use crate::utils::get_project_relative_file_path;
+use crate::utils::{get_datex_core_crate_name, get_project_relative_file_path};
 
 #[derive(Debug, PartialEq)]
 enum SerdeMode {
@@ -148,8 +147,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let registration = if export {
         quote! {
             #datex_core_crate_name::inventory::submit! {
-                #datex_core_crate_name::datex_registry::DatexRegistration::new::<#ident>(
-                    #datex_core_crate_name::datex_registry::DatexMetadata {
+                #datex_core_crate_name::datex_registry::DatexTypeRegistration::new::<#ident>(
+                    #datex_core_crate_name::datex_registry::DatexTypeMetadata {
                         name: #datex_name,
                         rust_ident: stringify!(#ident),
                         docs: #docs,
@@ -321,6 +320,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 types::type_definition::map::MapTypeDefinition,
                 types::type_definition::list::ListTypeDefinition,
                 types::type_definition::tagged_type::TaggedTypeDefinition,
+                datex_registry::get_impls,
                 prelude::*
             };
 
@@ -1163,7 +1163,9 @@ fn wrap_type_definition(
                 }
                 // if not found, create new def and register in cache
                 else {
-                    let definition = EntityTypeDefinition::new(#type_definition.into(), #name.to_string());
+                    let impls = get_impls(#name, #namespace);
+
+                    let definition = EntityTypeDefinition::new_with_impls(#type_definition.into(), #name.to_string(), impls);
                     Type::Entity(unsafe {
                         cache.register_shared_type(
                             address,
@@ -1248,33 +1250,6 @@ fn generate_unnamed_field_type_code(
             quote! {
                Type::Definition(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
             }
-        }
-    }
-}
-
-/// Tries to resolve the datex-core crate to a resolvable name in the current context.
-fn get_datex_core_crate_name() -> Path {
-    let found = match crate_name("datex-core") {
-        Ok(found) => found,
-        Err(_) =>
-        // TODO: decide which namespace to use, for now, fall back to datex-embedded
-        {
-            return Path {
-                leading_colon: None,
-                segments: Punctuated::from_iter(
-                    [
-                        PathSegment::from(format_ident!("datex_embedded")),
-                        PathSegment::from(format_ident!("core")),
-                    ]
-                    .into_iter(),
-                ),
-            };
-        }
-    };
-    match found {
-        FoundCrate::Itself => PathSegment::from(format_ident!("crate")).into(),
-        FoundCrate::Name(name) => {
-            PathSegment::from(Ident::new(&name, Span::call_site())).into()
         }
     }
 }

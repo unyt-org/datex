@@ -30,6 +30,23 @@ impl EntityTypeDefinition {
             impls: Vec::new(),
         }
     }
+    
+    pub fn new_with_impls(
+        definition: TypeDefinition,
+        name: String,
+        impls: Vec<EntityImpl>
+    ) -> EntityTypeDefinition {
+        EntityTypeDefinition {
+            definition,
+            name,
+            allowed_variants: Vec::new(),
+            impls,
+        }
+    }
+    
+    pub fn impls(&self) -> &[EntityImpl] {
+        &self.impls
+    }
 }
 
 impl EntityTypeDefinition {

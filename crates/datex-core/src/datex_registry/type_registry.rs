@@ -1,5 +1,4 @@
 //! This module acts as the central type registry, to collect structs and enums annotated with `#[derive(datex)]` to make them available for external projects.
-
 use core::fmt::Debug;
 use crate::{
     datex_proxy::DatexProxyTypes, prelude::*,
@@ -8,7 +7,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub struct DatexMetadata {
+pub struct DatexTypeMetadata {
     /// The Datex name.
     ///
     /// Defaults to the Rust struct or enum name. Can be overridden using:
@@ -31,22 +30,22 @@ pub struct DatexMetadata {
     pub namespace: &'static str,
 }
 
-pub struct DatexRegistration {
-    pub metadata: DatexMetadata,
+pub struct DatexTypeRegistration {
+    pub metadata: DatexTypeMetadata,
     resolve_type: fn(&mut SharedReferencesCache) -> Type,
 }
 
-impl Debug for DatexRegistration {
+impl Debug for DatexTypeRegistration {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("DatexRegistration")
+        f.debug_struct("DatexTypeRegistration")
             .field("metadata", &self.metadata)
             .finish()
     }
 }
 
-impl DatexRegistration {
-    /// Creates a new DatexRegistration for a type T that implements DatexProxyTypes.
-    pub const fn new<T: DatexProxyTypes>(metadata: DatexMetadata) -> Self {
+impl DatexTypeRegistration {
+    /// Creates a new [DatexTypeRegistration] for a type T that implements DatexProxyTypes.
+    pub const fn new<T: DatexProxyTypes>(metadata: DatexTypeMetadata) -> Self {
         Self {
             metadata,
             resolve_type: <T as DatexProxyTypes>::datex_type,
@@ -59,17 +58,17 @@ impl DatexRegistration {
     }
 }
 
-inventory::collect!(DatexRegistration);
+inventory::collect!(DatexTypeRegistration);
 
 /// Returns an iterator over all registered Datex types.
-pub fn all_datex_registrations()
--> impl Iterator<Item = &'static DatexRegistration> {
-    inventory::iter::<DatexRegistration>.into_iter()
+pub fn all_datex_type_registrations()
+    -> impl Iterator<Item = &'static DatexTypeRegistration> {
+    inventory::iter::<DatexTypeRegistration>.into_iter()
 }
 
 /// Returns a vector of all Datex types resolved using the provided memory.
 pub fn all_datex_types(memory: &mut SharedReferencesCache) -> Vec<Type> {
-    all_datex_registrations()
+    all_datex_type_registrations()
         .map(|registration| registration.resolve(memory))
         .collect()
 }
