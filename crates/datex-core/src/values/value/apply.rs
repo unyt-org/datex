@@ -1,11 +1,11 @@
 use crate::{
+    prelude::*,
     runtime::Runtime,
     traits::apply::{Apply, ApplyError},
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
-use crate::prelude::*;
 impl Apply for Value {
     fn try_apply(
         &self,
@@ -13,7 +13,9 @@ impl Apply for Value {
         args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self.inner {
-            CoreValue::Callable(ref callable) => callable.try_apply(runtime, args),
+            CoreValue::Callable(ref callable) => {
+                callable.try_apply(runtime, args)
+            }
             _ => Err(ApplyError::UnsupportedApply),
         }
     }
@@ -23,7 +25,9 @@ impl Apply for Value {
         arg: ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self.inner {
-            CoreValue::Callable(ref callable) => callable.try_apply_single(runtime, arg),
+            CoreValue::Callable(ref callable) => {
+                callable.try_apply_single(runtime, arg)
+            }
             _ => Err(ApplyError::UnsupportedApply),
         }
     }

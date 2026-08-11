@@ -17,7 +17,6 @@ use crate::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
     types::type_definition::TypeDefinition,
-    value_updates::update_data::Update,
     values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;

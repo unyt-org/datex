@@ -1,10 +1,20 @@
-use crate::disassembler::{InnerInstructions, InstructionTree};
-use crate::dxb_parser::body::DXBParserError;
-use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::instruction_data::{CallableDeclarationData, CallableDeclarationDataDebugFlat, CallableDeclarationDataDebugTree, InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree};
-use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::prelude::*;
+use crate::{
+    disassembler::{InnerInstructions, InstructionTree},
+    dxb_parser::body::DXBParserError,
+    global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::{
+            instruction_data::{
+                CallableDeclarationData, CallableDeclarationDataDebugFlat,
+                CallableDeclarationDataDebugTree, InstructionBlockData,
+                InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree,
+            },
+            instructions::{Instruction, NestedInstructionResolutionStrategy},
+            regular_instructions::RegularInstruction,
+        },
+    },
+    prelude::*,
+};
 
 impl RegularInstruction {
     pub fn remote_execution_debug_tree(
@@ -39,7 +49,9 @@ impl RegularInstruction {
         }
     }
 
-    pub fn inner_instructions_from_debug_instruction(&self) -> InnerInstructions<'_> {
+    pub fn inner_instructions_from_debug_instruction(
+        &self,
+    ) -> InnerInstructions<'_> {
         match self {
             RegularInstruction::_RemoteExecutionDebugTree(data) => {
                 InnerInstructions::Tree(&data.body)
@@ -59,20 +71,19 @@ impl RegularInstruction {
 
     pub fn inner_instructions(&self) -> Option<&[u8]> {
         match self {
-            RegularInstruction::RemoteExecution(data) => {
-                Some(&data.body)
-            }
+            RegularInstruction::RemoteExecution(data) => Some(&data.body),
             RegularInstruction::CallableDeclaration(data) => {
                 Some(&data.body.body)
             }
-            RegularInstruction::Callable(data) => {
-                Some(&data.body.body)
-            }
+            RegularInstruction::Callable(data) => Some(&data.body.body),
             _ => None,
         }
     }
 
-    pub fn get_debug_tree_instruction(self, instructions: InstructionTree<Instruction>) -> Option<Self> {
+    pub fn get_debug_tree_instruction(
+        self,
+        instructions: InstructionTree<Instruction>,
+    ) -> Option<Self> {
         match self {
             RegularInstruction::RemoteExecution(tree) => {
                 Some(RegularInstruction::_RemoteExecutionDebugTree(
@@ -90,7 +101,9 @@ impl RegularInstruction {
                         signature: tree.signature,
                         body: InstructionBlockDataDebugTree {
                             length: tree.body.length,
-                            injected_variable_count: tree.body.injected_value_count,
+                            injected_variable_count: tree
+                                .body
+                                .injected_value_count,
                             injected_values: tree.body.injected_values,
                             body: instructions,
                         },
@@ -101,7 +114,10 @@ impl RegularInstruction {
         }
     }
 
-    pub fn get_debug_flat_instruction(self, instructions: Vec<Instruction>) -> Option<Self> {
+    pub fn get_debug_flat_instruction(
+        self,
+        instructions: Vec<Instruction>,
+    ) -> Option<Self> {
         match self {
             RegularInstruction::RemoteExecution(tree) => {
                 Some(RegularInstruction::_RemoteExecutionDebugFlat(
@@ -119,7 +135,9 @@ impl RegularInstruction {
                         signature: tree.signature,
                         body: InstructionBlockDataDebugFlat {
                             length: tree.body.length,
-                            injected_variable_count: tree.body.injected_value_count,
+                            injected_variable_count: tree
+                                .body
+                                .injected_value_count,
                             injected_values: tree.body.injected_values,
                             body: instructions,
                         },
@@ -130,35 +148,35 @@ impl RegularInstruction {
         }
     }
 
-    pub fn get_normal_instruction_from_debug_instruction(&self) -> Option<Self> {
+    pub fn get_normal_instruction_from_debug_instruction(
+        &self,
+    ) -> Option<Self> {
         match self {
-            RegularInstruction::_RemoteExecutionDebugTree(tree) => {
-                Some(RegularInstruction::RemoteExecution(
-                    InstructionBlockData {
-                        length: tree.length,
-                        injected_value_count: tree.injected_variable_count,
-                        injected_values: tree.injected_values.clone(),
-                        body: self.inner_instructions().unwrap().to_vec(),
-                    },
-                ))
-            }
-            RegularInstruction::_RemoteExecutionDebugFlat(tree) => {
-                Some(RegularInstruction::RemoteExecution(
-                    InstructionBlockData {
-                        length: tree.length,
-                        injected_value_count: tree.injected_variable_count,
-                        injected_values: tree.injected_values.clone(),
-                        body: self.inner_instructions().unwrap().to_vec(),
-                    },
-                ))
-            }
+            RegularInstruction::_RemoteExecutionDebugTree(tree) => Some(
+                RegularInstruction::RemoteExecution(InstructionBlockData {
+                    length: tree.length,
+                    injected_value_count: tree.injected_variable_count,
+                    injected_values: tree.injected_values.clone(),
+                    body: self.inner_instructions().unwrap().to_vec(),
+                }),
+            ),
+            RegularInstruction::_RemoteExecutionDebugFlat(tree) => Some(
+                RegularInstruction::RemoteExecution(InstructionBlockData {
+                    length: tree.length,
+                    injected_value_count: tree.injected_variable_count,
+                    injected_values: tree.injected_values.clone(),
+                    body: self.inner_instructions().unwrap().to_vec(),
+                }),
+            ),
             RegularInstruction::_CallableDeclarationDebugTree(tree) => {
                 Some(RegularInstruction::CallableDeclaration(
                     CallableDeclarationData {
                         signature: tree.signature.clone(),
                         body: InstructionBlockData {
                             length: tree.body.length,
-                            injected_value_count: tree.body.injected_variable_count,
+                            injected_value_count: tree
+                                .body
+                                .injected_variable_count,
                             injected_values: tree.body.injected_values.clone(),
                             body: self.inner_instructions().unwrap().to_vec(),
                         },
@@ -171,7 +189,9 @@ impl RegularInstruction {
                         signature: tree.signature.clone(),
                         body: InstructionBlockData {
                             length: tree.body.length,
-                            injected_value_count: tree.body.injected_variable_count,
+                            injected_value_count: tree
+                                .body
+                                .injected_variable_count,
                             injected_values: tree.body.injected_values.clone(),
                             body: self.inner_instructions().unwrap().to_vec(),
                         },
@@ -195,21 +215,28 @@ impl RegularInstruction {
                 ))
             }
             RegularInstruction::_CallableDeclarationDebugTree(tree) => {
-                Some(RegularInstruction::_CallableDeclarationDebugFlat(CallableDeclarationDataDebugFlat {
-                    signature: tree.signature,
-                    body: InstructionBlockDataDebugFlat {
-                        length: tree.body.length,
-                        injected_variable_count: tree.body.injected_variable_count,
-                        injected_values: tree.body.injected_values,
-                        body: tree.body.body.flatten_instructions(),
+                Some(RegularInstruction::_CallableDeclarationDebugFlat(
+                    CallableDeclarationDataDebugFlat {
+                        signature: tree.signature,
+                        body: InstructionBlockDataDebugFlat {
+                            length: tree.body.length,
+                            injected_variable_count: tree
+                                .body
+                                .injected_variable_count,
+                            injected_values: tree.body.injected_values,
+                            body: tree.body.body.flatten_instructions(),
+                        },
                     },
-                }))
+                ))
             }
             _ => None,
         }
     }
 
-    pub fn convert_to_nested(self, strategy: NestedInstructionResolutionStrategy) -> Result<Self, DXBParserError> {
+    pub fn convert_to_nested(
+        self,
+        strategy: NestedInstructionResolutionStrategy,
+    ) -> Result<Self, DXBParserError> {
         match strategy {
             NestedInstructionResolutionStrategy::ResolveNestedScopesFlat
             | NestedInstructionResolutionStrategy::ResolveNestedScopesTree => {
@@ -220,10 +247,7 @@ impl RegularInstruction {
                 let body = body.unwrap();
 
                 let (inner_instructions, err) =
-                    crate::disassembler::disassemble_body(
-                        body,
-                        strategy,
-                    );
+                    crate::disassembler::disassemble_body(body, strategy);
 
                 if let Some(err) = err {
                     return Err(err);

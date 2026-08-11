@@ -2,6 +2,7 @@ use crate::{
     dif::error::{DIFObserveError, DIFUpdateError},
     prelude::*,
     runtime::{
+        Runtime,
         cache::shared_values_cache::{
             SharedValuesCache, ValueNotFoundInCacheError,
         },
@@ -25,7 +26,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
-use crate::runtime::Runtime;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
@@ -119,13 +119,11 @@ impl DIFInterface {
             .cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
-        Ok(shared_container_ref.observe(
-            Observer {
-                transceiver_id: self.transceiver_id.clone(),
-                options,
-                callback: Rc::new(callback),
-            },
-        )?)
+        Ok(shared_container_ref.observe(Observer {
+            transceiver_id: self.transceiver_id.clone(),
+            options,
+            callback: Rc::new(callback),
+        })?)
     }
 
     /// Updates the options for an existing observer on the pointer at the given address.
@@ -140,8 +138,7 @@ impl DIFInterface {
             .cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
-        shared_container_ref
-            .update_observer_options(observer_id, options)?;
+        shared_container_ref.update_observer_options(observer_id, options)?;
         Ok(())
     }
 
@@ -156,8 +153,7 @@ impl DIFInterface {
             .cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
-        shared_container_ref
-            .unobserve(observer_id)?;
+        shared_container_ref.unobserve(observer_id)?;
         Ok(())
     }
 

@@ -1,4 +1,3 @@
-use binrw::io::Cursor;
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
@@ -16,14 +15,16 @@ use crate::{
         core_values::{
             Instant,
             decimal::{Decimal, typed_decimal::TypedDecimal},
-            endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
         },
         value::Value,
         value_container::ValueContainer,
     },
 };
-use binrw::{BinWrite, io::Write};
+use binrw::{
+    BinWrite,
+    io::{Cursor, Write},
+};
 
 use crate::{
     core_compiler::{

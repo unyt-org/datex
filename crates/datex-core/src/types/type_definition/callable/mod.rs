@@ -55,12 +55,10 @@ impl Display for CallableTypeDefinition {
                 Some(name) => format!("{}: {}", name, ty),
                 None => format!("{}", ty),
             })
-            .chain(self.rest_parameter.iter().map(
-                |(name, ty)| match name {
-                    Some(name) => format!("...{}: {}", name, ty),
-                    None => format!("...{}", ty),
-                },
-            ))
+            .chain(self.rest_parameter.iter().map(|(name, ty)| match name {
+                Some(name) => format!("...{}: {}", name, ty),
+                None => format!("...{}", ty),
+            }))
             .collect::<Vec<_>>()
             .join(", ");
         let return_type = self

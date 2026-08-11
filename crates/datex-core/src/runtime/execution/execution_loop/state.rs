@@ -121,7 +121,6 @@ pub struct RuntimeExecutionStack {
 }
 
 impl RuntimeExecutionStack {
-
     /// Creates a new stack with initial allocated stack values.
     pub fn new(values: Vec<ValueContainer>) -> Self {
         Self {

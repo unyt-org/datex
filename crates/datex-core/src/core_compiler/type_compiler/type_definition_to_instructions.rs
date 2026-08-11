@@ -144,9 +144,7 @@ impl<'a> ToInstructions<'a> for TypeDefinition {
                     }
                 }
                 TypeDefinition::CoreType(core_lib_type_id) => {
-                    yield TypeInstruction::CoreType(
-                        *core_lib_type_id,
-                    )
+                    yield TypeInstruction::CoreType(*core_lib_type_id)
                 }
             }
         })

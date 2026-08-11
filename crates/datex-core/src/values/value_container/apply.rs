@@ -1,9 +1,9 @@
 use crate::{
+    prelude::*,
     runtime::Runtime,
     traits::apply::{Apply, ApplyError},
     values::value_container::ValueContainer,
 };
-use crate::prelude::*;
 impl Apply for ValueContainer {
     fn try_apply(
         &self,
@@ -12,7 +12,9 @@ impl Apply for ValueContainer {
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self {
             ValueContainer::Local(value) => value.try_apply(runtime, args),
-            ValueContainer::Shared(reference) => reference.try_apply(runtime, args),
+            ValueContainer::Shared(reference) => {
+                reference.try_apply(runtime, args)
+            }
         }
     }
 
@@ -22,7 +24,9 @@ impl Apply for ValueContainer {
         arg: ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self {
-            ValueContainer::Local(value) => value.try_apply_single(runtime, arg),
+            ValueContainer::Local(value) => {
+                value.try_apply_single(runtime, arg)
+            }
             ValueContainer::Shared(reference) => {
                 reference.try_apply_single(runtime, arg)
             }

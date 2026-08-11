@@ -206,8 +206,7 @@ impl Display for TypeDefinition {
                     })
                     .collect();
                 // handle rest parameter
-                if let Some((param_name, param_type)) =
-                    &callable.rest_parameter
+                if let Some((param_name, param_type)) = &callable.rest_parameter
                 {
                     params_code.push(match param_name {
                         Some(name) => format!("...{}: {}", name, param_type),
@@ -343,14 +342,12 @@ impl TypeDefinition {
             _ => None,
         }
     }
-    
+
     /// Convert this type definition into a [Type] by wrapping it in a [Type::Definition] variant.
     /// If the type definition is a [TypeDefinition::Nested] variant, it will be unwrapped and returned as the inner [Type].
     pub fn convert_to_type(self) -> Type {
         match self {
-            TypeDefinition::Nested(ty) => {
-                *ty
-            }
+            TypeDefinition::Nested(ty) => *ty,
             _ => Type::Definition(self.into()),
         }
     }

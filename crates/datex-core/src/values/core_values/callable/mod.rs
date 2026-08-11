@@ -1,15 +1,19 @@
 use crate::{
+    core_compiler::core_compilation_context::DXBWithSharedValues,
     prelude::*,
-    runtime::Runtime,
+    runtime::{
+        Runtime,
+        execution::{
+            context::{ExecutionContext, ExecutionMode, LocalExecutionContext},
+            execution_input::ExecutionCallerMetadata,
+        },
+    },
     types::type_definition::callable::CallableTypeDefinition,
     values::{
         core_values::{callable::error::CallableError, endpoint::Endpoint},
         value_container::ValueContainer,
     },
 };
-use crate::core_compiler::core_compilation_context::DXBWithSharedValues;
-use crate::runtime::execution::context::{ExecutionContext, ExecutionMode, LocalExecutionContext};
-use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 pub mod apply;
 pub mod equality;
@@ -18,7 +22,6 @@ mod serde_dif;
 
 pub type NativeCallable =
     fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError>;
-
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DatexBytecodeCallable {
@@ -33,7 +36,11 @@ impl DatexBytecodeCallable {
         args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, CallableError> {
         // construct the initial stack values by combining the provided arguments with the injected values
-        let stack_values = args.iter().chain(self.injected_values.iter()).cloned().collect::<Vec<_>>();
+        let stack_values = args
+            .iter()
+            .chain(self.injected_values.iter())
+            .cloned()
+            .collect::<Vec<_>>();
 
         Ok(runtime.execute_dxb_sync(
             DXBWithSharedValues::new(self.body.clone(), vec![]), // TODO: no clone?
@@ -47,7 +54,6 @@ impl DatexBytecodeCallable {
         )?)
     }
 }
-
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CallableBody {
@@ -77,7 +83,9 @@ impl Callable {
     ) -> Result<Option<ValueContainer>, CallableError> {
         match &self.body {
             CallableBody::Native(native_callable) => native_callable(args),
-            CallableBody::DatexBytecode(bytecode_callable) => bytecode_callable.call(runtime, args),
+            CallableBody::DatexBytecode(bytecode_callable) => {
+                bytecode_callable.call(runtime, args)
+            }
             CallableBody::CoreStub(_stub) => {
                 Err(CallableError::RuntimeOnlyCallable)
             }

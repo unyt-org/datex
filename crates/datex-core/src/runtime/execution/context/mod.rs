@@ -15,12 +15,16 @@ use crate::{
     },
 };
 
-use crate::{prelude::*, runtime::Runtime};
+use crate::{
+    prelude::*,
+    runtime::{
+        Runtime, execution::execution_loop::state::RuntimeExecutionStack,
+    },
+};
 pub use local::*;
 use log::info;
 pub use remote::*;
 pub use script::*;
-use crate::runtime::execution::execution_loop::state::RuntimeExecutionStack;
 
 mod local;
 mod remote;
@@ -169,27 +173,28 @@ impl ExecutionContext {
                 caller_metadata,
                 ..
             }) => {
-                let input = if let Some(initial_stack_values) = initial_stack_values {
-                    // if we already have a loop state but also provided new initial stack values, this is an invalid state
-                    if loop_state.is_some() {
-                        return Err(ExecutionError::InvalidExecutionState);
-                    }
-                    ExecutionInput::new_with_stack(
-                        input,
-                        caller_metadata.clone(),
-                        (*execution_options).clone(),
-                        runtime.clone(),
-                        RuntimeExecutionStack::new(initial_stack_values),
-                    )
-                } else {
-                    ExecutionInput::new_with_loop_state(
-                        input,
-                        caller_metadata.clone(),
-                        (*execution_options).clone(),
-                        runtime.clone(),
-                        loop_state.take(),
-                    )
-                };
+                let input =
+                    if let Some(initial_stack_values) = initial_stack_values {
+                        // if we already have a loop state but also provided new initial stack values, this is an invalid state
+                        if loop_state.is_some() {
+                            return Err(ExecutionError::InvalidExecutionState);
+                        }
+                        ExecutionInput::new_with_stack(
+                            input,
+                            caller_metadata.clone(),
+                            (*execution_options).clone(),
+                            runtime.clone(),
+                            RuntimeExecutionStack::new(initial_stack_values),
+                        )
+                    } else {
+                        ExecutionInput::new_with_loop_state(
+                            input,
+                            caller_metadata.clone(),
+                            (*execution_options).clone(),
+                            runtime.clone(),
+                            loop_state.take(),
+                        )
+                    };
 
                 Ok(input)
             }
@@ -200,9 +205,10 @@ impl ExecutionContext {
     pub fn execute_dxb_sync(
         &mut self,
         dxb: DXBWithSharedValues,
-        initial_stack_values: Option<Vec<ValueContainer>>
+        initial_stack_values: Option<Vec<ValueContainer>>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_input = self.get_local_execution_input(dxb, initial_stack_values)?;
+        let execution_input =
+            self.get_local_execution_input(dxb, initial_stack_values)?;
         let res = execute_dxb_sync(execution_input);
         self.intercept_intermediate_result(res)
     }
@@ -224,13 +230,15 @@ impl ExecutionContext {
     pub async fn execute_dxb(
         &mut self,
         input: DXBWithSharedValues,
-        initial_stack_values: Option<Vec<ValueContainer>>
+        initial_stack_values: Option<Vec<ValueContainer>>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         match self {
             ExecutionContext::Local(..) => {
                 let res = {
-                    let execution_input =
-                        self.get_local_execution_input(input, initial_stack_values)?;
+                    let execution_input = self.get_local_execution_input(
+                        input,
+                        initial_stack_values,
+                    )?;
                     execute_dxb(execution_input).await
                 };
                 self.intercept_intermediate_result(res)

@@ -341,7 +341,11 @@ mod tests {
     use crate::{
         collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
-        core_compiler::core_compilation_context::DXBWithSharedValues,
+        core_compiler::{
+            core_compilation_context::DXBWithSharedValues,
+            value_compiler::compile_instruction,
+        },
+        global::protocol_structures::instructions::Instruction,
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
         runtime::{
@@ -364,12 +368,15 @@ mod tests {
         types::{
             r#type::Type,
             type_definition::{
-                TypeDefinition, tagged_type::TaggedTypeDefinition,
+                TypeDefinition,
+                callable::{CallableKind, CallableTypeDefinition},
+                tagged_type::TaggedTypeDefinition,
             },
         },
         values::{
             core_value::CoreValue,
             core_values::{
+                callable::{Callable, CallableBody, DatexBytecodeCallable},
                 decimal::Decimal,
                 endpoint::Endpoint,
                 integer::{Integer, typed_integer::TypedInteger},
@@ -381,10 +388,6 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
-    use crate::core_compiler::value_compiler::compile_instruction;
-    use crate::global::protocol_structures::instructions::Instruction;
-    use crate::types::type_definition::callable::{CallableKind, CallableTypeDefinition};
-    use crate::values::core_values::callable::{Callable, CallableBody, DatexBytecodeCallable};
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -440,8 +443,10 @@ mod tests {
                 )
                 .unwrap();
                 compilation_scope = new_compilation_scope;
-                yield execution_context
-                    .execute_dxb_sync(DXBWithSharedValues::new(dxb, vec![]), None);
+                yield execution_context.execute_dxb_sync(
+                    DXBWithSharedValues::new(dxb, vec![]),
+                    None,
+                );
             }
         }
     }
@@ -828,89 +833,113 @@ mod tests {
 
     #[test]
     fn empty_function() {
-        let result = execute_datex_script_debug_with_result("function test() ()");
+        let result =
+            execute_datex_script_debug_with_result("function test() ()");
         let callable: Callable = result.try_into_value().unwrap();
 
-        assert_eq!(callable, Callable {
-            name: Some("test".to_string()),
-            signature: CallableTypeDefinition {
-                kind: CallableKind::Function,
-                parameters: vec![],
-                rest_parameter: None,
-                return_type: None,
-                yeet_type: None,
-            },
-            body: CallableBody::DatexBytecode(DatexBytecodeCallable {
-                injected_values: vec![],
-                body: compile_instruction(RegularInstruction::statements(0, false)),
-            }),
-            creator: Endpoint::LOCAL,
-        })
+        assert_eq!(
+            callable,
+            Callable {
+                name: Some("test".to_string()),
+                signature: CallableTypeDefinition {
+                    kind: CallableKind::Function,
+                    parameters: vec![],
+                    rest_parameter: None,
+                    return_type: None,
+                    yeet_type: None,
+                },
+                body: CallableBody::DatexBytecode(DatexBytecodeCallable {
+                    injected_values: vec![],
+                    body: compile_instruction(RegularInstruction::statements(
+                        0, false
+                    )),
+                }),
+                creator: Endpoint::LOCAL,
+            }
+        )
     }
 
     #[test]
     fn function_no_params() {
-        let result = execute_datex_script_debug_with_result("function test() (null)");
+        let result =
+            execute_datex_script_debug_with_result("function test() (null)");
         let callable: Callable = result.try_into_value().unwrap();
 
-        assert_eq!(callable, Callable {
-            name: Some("test".to_string()),
-            signature: CallableTypeDefinition {
-                kind: CallableKind::Function,
-                parameters: vec![],
-                rest_parameter: None,
-                return_type: None,
-                yeet_type: None,
-            },
-            body: CallableBody::DatexBytecode(DatexBytecodeCallable {
-                injected_values: vec![],
-                body: compile_instruction(RegularInstruction::Null),
-            }),
-            creator: Endpoint::LOCAL,
-        });
+        assert_eq!(
+            callable,
+            Callable {
+                name: Some("test".to_string()),
+                signature: CallableTypeDefinition {
+                    kind: CallableKind::Function,
+                    parameters: vec![],
+                    rest_parameter: None,
+                    return_type: None,
+                    yeet_type: None,
+                },
+                body: CallableBody::DatexBytecode(DatexBytecodeCallable {
+                    injected_values: vec![],
+                    body: compile_instruction(RegularInstruction::Null),
+                }),
+                creator: Endpoint::LOCAL,
+            }
+        );
     }
 
     #[test]
     fn function() {
-        let result = execute_datex_script_debug_with_result("function test(a: integer) -> null (null)");
+        let result = execute_datex_script_debug_with_result(
+            "function test(a: integer) -> null (null)",
+        );
         let callable: Callable = result.try_into_value().unwrap();
 
-        assert_eq!(callable, Callable {
-            name: Some("test".to_string()),
-            signature: CallableTypeDefinition {
-                kind: CallableKind::Function,
-                parameters: vec![
-                    (Some("a".to_string()), Type::core(CoreLibBaseTypeId::Integer))
-                ],
-                rest_parameter: None,
-                return_type: Some(Box::new(Type::core(CoreLibBaseTypeId::Null))),
-                yeet_type: None,
-            },
-            body: CallableBody::DatexBytecode(DatexBytecodeCallable {
-                injected_values: vec![],
-                body: compile_instruction(RegularInstruction::Null),
-            }),
-            creator: Endpoint::LOCAL,
-        });
+        assert_eq!(
+            callable,
+            Callable {
+                name: Some("test".to_string()),
+                signature: CallableTypeDefinition {
+                    kind: CallableKind::Function,
+                    parameters: vec![(
+                        Some("a".to_string()),
+                        Type::core(CoreLibBaseTypeId::Integer)
+                    )],
+                    rest_parameter: None,
+                    return_type: Some(Box::new(Type::core(
+                        CoreLibBaseTypeId::Null
+                    ))),
+                    yeet_type: None,
+                },
+                body: CallableBody::DatexBytecode(DatexBytecodeCallable {
+                    injected_values: vec![],
+                    body: compile_instruction(RegularInstruction::Null),
+                }),
+                creator: Endpoint::LOCAL,
+            }
+        );
     }
 
     #[test]
     fn function_call_no_args() {
-        let result = execute_datex_script_debug_with_result("function test() -> integer (1 + 2)()");
+        let result = execute_datex_script_debug_with_result(
+            "function test() -> integer (1 + 2)()",
+        );
         let integer: Integer = result.try_into_value().unwrap();
         assert_eq!(integer, Integer::from(3));
     }
 
     #[test]
     fn function_call_with_arg() {
-        let result = execute_datex_script_debug_with_result("function test(x: integer) -> integer (x + 2)(1)");
+        let result = execute_datex_script_debug_with_result(
+            "function test(x: integer) -> integer (x + 2)(1)",
+        );
         let integer: Integer = result.try_into_value().unwrap();
         assert_eq!(integer, Integer::from(3));
     }
 
     #[test]
     fn function_call_with_arg_and_injected_value() {
-        let result = execute_datex_script_debug_with_result("const y = 42; function test(x: integer) -> integer (y + x + 2)(1)");
+        let result = execute_datex_script_debug_with_result(
+            "const y = 42; function test(x: integer) -> integer (y + x + 2)(1)",
+        );
         let integer: Integer = result.try_into_value().unwrap();
         assert_eq!(integer, Integer::from(45));
     }

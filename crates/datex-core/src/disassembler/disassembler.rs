@@ -2,11 +2,11 @@ use crate::{
     disassembler::options::DisassemblerOptions,
     dxb_parser::body::{DXBParserError, iterate_instructions},
     global::protocol_structures::{
-        instruction_data::InstructionBlockDataDebugFlat,
         instructions::{
             CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
         },
         regular_instructions::RegularInstruction,
+        type_instructions::TypeInstruction,
     },
     prelude::*,
     utils::ansi_colors::{AnsiColor, AnsiWrite},
@@ -17,7 +17,6 @@ use core::{
     fmt::{Debug, Write},
 };
 use serde::Serialize;
-use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 /// A generic tree structure for instructions with child instructions.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -57,7 +56,6 @@ impl From<TypeInstruction> for InstructionTree<Instruction> {
         InstructionTree::new(Instruction::Type(instruction))
     }
 }
-
 
 impl From<Vec<InstructionTree<Instruction>>> for InstructionTree<Instruction> {
     fn from(mut instruction_trees: Vec<InstructionTree<Instruction>>) -> Self {
@@ -117,11 +115,12 @@ impl InstructionTree<Instruction> {
     /// also recursively flattens instructions like [RegularInstruction::_RemoteExecutionDebugTree]
     /// into [RegularInstruction::_RemoteExecutionDebugFlat]
     pub fn flatten_instructions(self) -> Vec<Instruction> {
-        let mut result = if let Instruction::Regular(instruction) = &*self.instruction
-            && let Some(flattened) = instruction.clone().flatten_instruction(){
+        let mut result = if let Instruction::Regular(instruction) =
+            &*self.instruction
+            && let Some(flattened) = instruction.clone().flatten_instruction()
+        {
             vec![Instruction::Regular(flattened)]
-        }
-        else {
+        } else {
             vec![*self.instruction]
         };
 
@@ -440,7 +439,9 @@ fn get_inner_instructions_as_detailed_tree(
     instruction: &Instruction,
 ) -> Option<DetailedInstructionTree> {
     match instruction {
-        Instruction::Regular(instruction) => match instruction.inner_instructions_from_debug_instruction() {
+        Instruction::Regular(instruction) => match instruction
+            .inner_instructions_from_debug_instruction()
+        {
             InnerInstructions::Tree(tree) => {
                 Some(instruction_tree_to_detailed_tree(tree.clone()))
             }
@@ -452,7 +453,7 @@ fn get_inner_instructions_as_detailed_tree(
                 Some(instruction_tree_to_detailed_tree(tree))
             }
             InnerInstructions::None => None,
-        }
+        },
         _ => None,
     }
 }
@@ -528,6 +529,9 @@ mod tests {
     use super::*;
     use crate::{
         core_compiler::value_compiler::append_instruction,
+        dxb_parser::next_instructions_stack::{
+            NextInstructionsStack, NextScopeInstruction,
+        },
         global::{
             instruction_codes::InstructionCode,
             protocol_structures::{
@@ -543,7 +547,6 @@ mod tests {
     };
     use binrw::io::Cursor;
     use test_case::test_case;
-    use crate::dxb_parser::next_instructions_stack::{NextInstructionsStack, NextScopeInstruction};
 
     fn instructions_to_bytes(instructions: Vec<Instruction>) -> Vec<u8> {
         let mut cursor = Cursor::new(Vec::new());

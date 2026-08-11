@@ -22,9 +22,9 @@ impl<'a> ToInstructions<'a> for TypeExpression {
                     )
                 }
                 TypeExpressionData::Text(text) => {
-                    yield TypeInstruction::Literal(
-                        LiteralTypeDefinition::Text(text.clone()),
-                    )
+                    yield TypeInstruction::Literal(LiteralTypeDefinition::Text(
+                        text.clone(),
+                    ))
                 }
                 TypeExpressionData::Boolean(boolean) => {
                     yield TypeInstruction::Literal(
@@ -32,9 +32,7 @@ impl<'a> ToInstructions<'a> for TypeExpression {
                     )
                 }
                 TypeExpressionData::GetCoreLibType(core_lib_id) => {
-                    yield TypeInstruction::CoreType(
-                        core_lib_id.clone(),
-                    )
+                    yield TypeInstruction::CoreType(*core_lib_id)
                 }
                 TypeExpressionData::Range(range) => {
                     yield TypeInstruction::Range;

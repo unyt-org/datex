@@ -16,15 +16,11 @@ use crate::{
 };
 
 use crate::{
-    ast::expressions::{
-        DatexExpression, DatexExpressionData, EntityDeclarationExpression,
-    },
-    libs::core::type_id::CoreLibTypeId,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     shared_values::PointerAddress,
     types::{r#type::Type, type_definition::callable::CallableKind},
 };
 use core::ops;
-use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 #[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST
@@ -212,7 +208,6 @@ pub struct CallableTypeExpression {
     pub return_type: Option<Box<TypeExpression>>,
     pub yeet_type: Option<Box<TypeExpression>>,
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TypeVariantAccess {

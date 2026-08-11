@@ -52,7 +52,6 @@ use crate::{
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
-    types::type_definition::callable::CallableKind,
 };
 use alloc::format;
 use core::cell::RefCell;
@@ -430,7 +429,9 @@ pub fn ast_from_bytecode(
                     .map(|type_instruction| {
                         match type_instruction {
                             TypeInstruction::CoreType(core_lib_id) => {
-                                TypeExpressionData::Identifier(core_lib_id.to_string())
+                                TypeExpressionData::Identifier(
+                                    core_lib_id.to_string(),
+                                )
                             }
                             TypeInstruction::Literal(literal) => {
                                 match literal {
@@ -446,15 +447,19 @@ pub fn ast_from_bytecode(
                                     LiteralTypeDefinition::Boolean(boolean) => {
                                         TypeExpressionData::Boolean(boolean)
                                     }
-                                    LiteralTypeDefinition::Endpoint(endpoint) => {
-                                        TypeExpressionData::Endpoint(endpoint)
-                                    }
-                                    LiteralTypeDefinition::TypedDecimal(decimal) => {
-                                        TypeExpressionData::TypedDecimal(decimal)
-                                    }
-                                    LiteralTypeDefinition::TypedInteger(integer) => {
-                                        TypeExpressionData::TypedInteger(integer)
-                                    }
+                                    LiteralTypeDefinition::Endpoint(
+                                        endpoint,
+                                    ) => TypeExpressionData::Endpoint(endpoint),
+                                    LiteralTypeDefinition::TypedDecimal(
+                                        decimal,
+                                    ) => TypeExpressionData::TypedDecimal(
+                                        decimal,
+                                    ),
+                                    LiteralTypeDefinition::TypedInteger(
+                                        integer,
+                                    ) => TypeExpressionData::TypedInteger(
+                                        integer,
+                                    ),
                                 }
                             }
                             TypeInstruction::SharedTypeReference(reference) => {
@@ -464,15 +469,15 @@ pub fn ast_from_bytecode(
                                 )
                             }
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                            TypeInstruction::List(_) |
-                            TypeInstruction::Range |
-                            TypeInstruction::ImplType(_) |
-                            TypeInstruction::Map(_) |
-                            TypeInstruction::DefinitionWithMetadata(_) => {
+                            TypeInstruction::List(_)
+                            | TypeInstruction::Range
+                            | TypeInstruction::ImplType(_)
+                            | TypeInstruction::Map(_)
+                            | TypeInstruction::DefinitionWithMetadata(_) => {
                                 unreachable!()
                             }
                         }
-                            .with_default_span()
+                        .with_default_span()
                     });
 
                 type_expression.map(CollectedAstResult::from)
@@ -1114,7 +1119,7 @@ fn resolve_signature(
     let parameters = signature_data
         .parameter_names
         .into_iter()
-        .zip(types.into_iter())
+        .zip(types)
         .map(|(name, param_type)| (name.0, param_type))
         .collect::<Vec<_>>();
 
@@ -1122,7 +1127,7 @@ fn resolve_signature(
         name: if signature_data.name.0.is_empty() {
             None
         } else {
-            Some(signature_data.name.0.into())
+            Some(signature_data.name.0)
         },
         kind: signature_data.kind,
         parameters,

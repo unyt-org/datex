@@ -406,7 +406,9 @@ impl RuntimeInternal {
                     RuntimeInternal::execute_remote(self, context, input).await
                 }
                 ExecutionContext::Local(_) => {
-                    execution_context.execute_dxb(input, initial_stack_values).await
+                    execution_context
+                        .execute_dxb(input, initial_stack_values)
+                        .await
                 }
             }
         })

@@ -1,6 +1,6 @@
-use proc_macro::TokenStream;
-use syn::{parse_macro_input, Item};
 use crate::datex_proxy::generate_impl_glue_code;
+use proc_macro::TokenStream;
+use syn::{Item, parse_macro_input};
 
 mod bitfield_macros;
 mod core_lib;

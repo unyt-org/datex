@@ -1,10 +1,10 @@
 //! This module acts as the central type registry, to collect structs and enums annotated with `#[derive(datex)]` to make them available for external projects.
-use core::fmt::Debug;
 use crate::{
     datex_proxy::DatexProxyTypes, prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::r#type::Type,
 };
+use core::fmt::Debug;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DatexTypeMetadata {
@@ -62,7 +62,7 @@ inventory::collect!(DatexTypeRegistration);
 
 /// Returns an iterator over all registered Datex types.
 pub fn all_datex_type_registrations()
-    -> impl Iterator<Item = &'static DatexTypeRegistration> {
+-> impl Iterator<Item = &'static DatexTypeRegistration> {
     inventory::iter::<DatexTypeRegistration>.into_iter()
 }
 

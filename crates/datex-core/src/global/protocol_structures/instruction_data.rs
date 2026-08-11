@@ -3,7 +3,7 @@ use crate::{
     global::{
         operators::ModificationOperator,
         protocol_structures::{
-            injected_values::{InjectedValueDeclaration, InjectedValueType},
+            injected_values::InjectedValueDeclaration,
             instructions::Instruction,
         },
         type_instruction_codes::{
@@ -194,10 +194,17 @@ pub struct CallableSignatureData {
 }
 
 impl Display for CallableSignatureData {
-    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+    fn fmt(
+        &self,
+        formatter: &mut core::fmt::Formatter,
+    ) -> Result<(), core::fmt::Error> {
         write!(formatter, "[")?;
         write!(formatter, "kind: {}, ", self.kind)?;
-        write!(formatter, "parameters: [{}], ", self.parameter_names.iter().map(|n| &n.0).join(", "))?;
+        write!(
+            formatter,
+            "parameters: [{}], ",
+            self.parameter_names.iter().map(|n| &n.0).join(", ")
+        )?;
         if let Some(rest) = &self.rest_parameter_name {
             write!(formatter, ", rest_parameter: {}, ", rest.0)?;
         }
@@ -207,7 +214,6 @@ impl Display for CallableSignatureData {
         Ok(())
     }
 }
-
 
 impl CallableSignatureData {
     /// Returns the total number of types in the signature, including parameters, rest parameter, return type, and yeet type.
@@ -251,7 +257,9 @@ pub struct CallableDataBody {
 
 impl Display for CallableDataBody {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "[length: {}, injected_value_count: {}, body_len: {} bytes]",
+        write!(
+            f,
+            "[length: {}, injected_value_count: {}, body_len: {} bytes]",
             self.length,
             self.injected_value_count,
             self.body.len()
@@ -458,10 +466,15 @@ pub struct InstructionBlockData {
 
 impl Display for InstructionBlockData {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "[length: {}, injected_value_count: {}, injected_values: [{}], body_len: {} bytes]",
+        write!(
+            f,
+            "[length: {}, injected_value_count: {}, injected_values: [{}], body_len: {} bytes]",
             self.length,
             self.injected_value_count,
-            self.injected_values.iter().map(|v| format!("{}", v)).join(", "),
+            self.injected_values
+                .iter()
+                .map(|v| format!("{}", v))
+                .join(", "),
             self.body.len()
         )
     }

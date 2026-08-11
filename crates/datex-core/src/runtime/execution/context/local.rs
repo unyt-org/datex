@@ -9,7 +9,6 @@ use crate::runtime::{
 };
 
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::values::value_container::ValueContainer;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ExecutionMode {

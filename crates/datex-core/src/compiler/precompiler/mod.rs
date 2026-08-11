@@ -71,7 +71,6 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
-use crate::ast::type_expressions::TypeExpression;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -519,9 +518,12 @@ impl Precompiler<'_> {
     fn visit_child_realm(
         &mut self,
         expression: &mut DatexExpression,
-        vars: Vec<ParameterData>
+        vars: Vec<ParameterData>,
     ) -> Result<
-        (Result<Vec<DatexExpression>, VisitAction<DatexExpression>>, u32),
+        (
+            Result<Vec<DatexExpression>, VisitAction<DatexExpression>>,
+            u32,
+        ),
         SpannedCompilerError,
     > {
         self.scope_stack.push_scope();
@@ -562,13 +564,13 @@ impl Precompiler<'_> {
                                 type_annotation: None,
                                 kind: VariableKind::Const,
                                 init_expression:
-                                DatexExpressionData::Placeholder(
-                                    access_type,
-                                )
+                                    DatexExpressionData::Placeholder(
+                                        access_type,
+                                    )
                                     .with_default_span(),
                             },
                         )
-                            .with_default_span(),
+                        .with_default_span(),
                     );
                 }
 
@@ -638,25 +640,29 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         callable_declaration.signature.walk_children(self)?;
 
         // generate variables from parameters
-        let mut variables: Vec<ParameterData> = callable_declaration.signature.parameters.iter().map(|(name, _)| ParameterData::new(name.clone())).collect();
-        if let Some((name, _)) = &callable_declaration.signature.rest_parameter {
+        let mut variables: Vec<ParameterData> = callable_declaration
+            .signature
+            .parameters
+            .iter()
+            .map(|(name, _)| ParameterData::new(name.clone()))
+            .collect();
+        if let Some((name, _)) = &callable_declaration.signature.rest_parameter
+        {
             variables.push(ParameterData::new(name.clone()));
         }
 
-        let (result, injected_variable_count) = self.visit_child_realm(
-            &mut callable_declaration.body,
-            variables,
-        )?;
-        callable_declaration.injected_variable_count = Some(injected_variable_count);
+        let (result, injected_variable_count) =
+            self.visit_child_realm(&mut callable_declaration.body, variables)?;
+        callable_declaration.injected_variable_count =
+            Some(injected_variable_count);
 
         match result {
             Ok(mut statements) => {
-
                 statements.push(
                     DatexExpressionData::CallableDeclaration(
                         callable_declaration.clone(),
                     )
-                        .with_span(span.clone()),
+                    .with_span(span.clone()),
                 );
 
                 Ok(VisitAction::Replace(
@@ -665,7 +671,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                         is_terminated: false,
                         unbounded: None,
                     })
-                        .with_span(span.clone()),
+                    .with_span(span.clone()),
                 ))
             }
             Err(action) => Ok(action),
@@ -679,15 +685,13 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         self.visit_datex_expression(&mut remote_execution.left)?;
 
-        let (result, injected_variable_count) = self.visit_child_realm(
-            &mut remote_execution.right,
-            vec![],
-        )?;
-        remote_execution.injected_variable_count = Some(injected_variable_count);
+        let (result, injected_variable_count) =
+            self.visit_child_realm(&mut remote_execution.right, vec![])?;
+        remote_execution.injected_variable_count =
+            Some(injected_variable_count);
 
         match result {
             Ok(mut statements) => {
-
                 statements.push(
                     DatexExpressionData::RemoteExecution(
                         remote_execution.clone(),
@@ -724,7 +728,6 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         }
         Ok(VisitAction::AbortRecursion)
     }
-
 
     fn visit_get_ref(
         &mut self,
@@ -1193,11 +1196,11 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, CreateShared, DatexExpression,
-                DatexExpressionData, DeriveRef, DeriveSharedRef,
-                EntityDeclarationExpression, Map, PropertyAccess,
-                PropertyAssignment, RemoteExecution, Statements,
-                TypeDeclarationExpression, Unbox, ValueAccessType,
+                BinaryOperation, CallableDeclaration, CallableSignature,
+                CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
+                DeriveSharedRef, EntityDeclarationExpression, Map,
+                PropertyAccess, PropertyAssignment, RemoteExecution,
+                Statements, TypeDeclarationExpression, Unbox, ValueAccessType,
                 VariableAccess, VariableDeclaration, VariableKind,
                 VariantAccess,
             },
@@ -1229,13 +1232,14 @@ mod tests {
         prelude::*,
         runtime::Runtime,
         shared_values::{ReferenceMutability, SharedContainerMutability},
-        types::type_definition_with_metadata::LocalReferenceMutability,
+        types::{
+            type_definition::callable::CallableKind,
+            type_definition_with_metadata::LocalReferenceMutability,
+        },
         values::core_values::{endpoint::Endpoint, integer::Integer},
     };
     use alloc::rc::Rc;
     use core::{assert_matches, cell::RefCell, str::FromStr};
-    use crate::ast::expressions::{CallableDeclaration, CallableSignature};
-    use crate::types::type_definition::callable::CallableKind;
 
     fn precompile(
         ast: DatexExpression,
@@ -2200,31 +2204,33 @@ mod tests {
                             init_expression: DatexExpressionData::Integer(
                                 Integer::from(10)
                             )
-                                .with_default_span(),
+                            .with_default_span(),
                             type_annotation: None,
                         }
                     )
-                        .with_default_span(),
-                    DatexExpressionData::CallableDeclaration(CallableDeclaration {
-                        signature: CallableSignature {
-                            name: Some("y".to_string()),
-                            kind: CallableKind::Function,
-                            parameters: vec![],
-                            rest_parameter: None,
-                            return_type: None,
-                            yeet_type: None,
-                        },
-                        body: DatexExpressionData::VariableAccess(
-                            VariableAccess {
-                                id: 0,
-                                name: "x".to_string(),
-                                access_type: ValueAccessType::MoveOrCopy,
-                            }
-                        )
+                    .with_default_span(),
+                    DatexExpressionData::CallableDeclaration(
+                        CallableDeclaration {
+                            signature: CallableSignature {
+                                name: Some("y".to_string()),
+                                kind: CallableKind::Function,
+                                parameters: vec![],
+                                rest_parameter: None,
+                                return_type: None,
+                                yeet_type: None,
+                            },
+                            body: DatexExpressionData::VariableAccess(
+                                VariableAccess {
+                                    id: 0,
+                                    name: "x".to_string(),
+                                    access_type: ValueAccessType::MoveOrCopy,
+                                }
+                            )
                             .with_default_span(),
-                        injected_variable_count: Some(1),
-                    })
-                        .with_default_span(),
+                            injected_variable_count: Some(1),
+                        }
+                    )
+                    .with_default_span(),
                 ]
             ))
         )
@@ -2232,7 +2238,9 @@ mod tests {
 
     #[test]
     fn function_declaration_injected_variables_and_params() {
-        let result = parse_and_precompile("var x = 10; function y(a: integer, b: integer) (a + b + x)");
+        let result = parse_and_precompile(
+            "var x = 10; function y(a: integer, b: integer) (a + b + x)",
+        );
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
         assert_eq!(

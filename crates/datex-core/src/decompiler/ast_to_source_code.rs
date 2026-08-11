@@ -23,9 +23,9 @@ use core::fmt::{self};
 use crate::{
     ast::{
         expressions::{
-            EntityDeclarationExpression, InterfaceMethodCall,
-            RootPropertyAccess, StackListAssignment, UnboxSlotAssignment,
-            ValueAccessType,
+            CallableSignature, EntityDeclarationExpression,
+            InterfaceMethodCall, RootPropertyAccess, StackListAssignment,
+            UnboxSlotAssignment, ValueAccessType,
         },
         type_expressions::IdentifierWithPointerAddress,
     },
@@ -33,7 +33,6 @@ use crate::{
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
 };
-use crate::ast::expressions::CallableSignature;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -800,14 +799,15 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::CallableDeclaration(callable) => {
                 let CallableDeclaration {
-                    signature: CallableSignature {
-                        name,
-                        kind,
-                        parameters,
-                        rest_parameter,
-                        return_type,
-                        yeet_type,
-                    },
+                    signature:
+                        CallableSignature {
+                            name,
+                            kind,
+                            parameters,
+                            rest_parameter,
+                            return_type,
+                            yeet_type,
+                        },
                     body,
                     ..
                 } = callable;

@@ -1,8 +1,8 @@
-use core::fmt::Display;
 use crate::{
     global::protocol_structures::instructions::NextExpectedInstructions,
     prelude::*,
 };
+use core::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NextScopeInstruction {
@@ -45,7 +45,15 @@ pub struct NextInstructionsStack(pub Vec<NextScopeInstruction>);
 
 impl Display for NextInstructionsStack {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0.iter().map(|instr| instr.to_string()).collect::<Vec<_>>().join(", "))
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|instr| instr.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 }
 

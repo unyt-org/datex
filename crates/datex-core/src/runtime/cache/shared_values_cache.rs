@@ -10,10 +10,12 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
+    values::core_values::callable::Callable,
 };
-use core::fmt::Display;
-use core::hash::{Hash, Hasher};
-use crate::values::core_values::callable::Callable;
+use core::{
+    fmt::Display,
+    hash::{Hash, Hasher},
+};
 
 /// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]

@@ -68,17 +68,13 @@ impl TypeInstruction {
                 NextExpectedInstructions::Type(list.element_count)
             } // list elements
 
-            TypeInstruction::ImplType(_) => {
-                NextExpectedInstructions::Type(1)
-            } // impl type
+            TypeInstruction::ImplType(_) => NextExpectedInstructions::Type(1), // impl type
 
             TypeInstruction::DefinitionWithMetadata(_) => {
                 NextExpectedInstructions::Type(1)
             } // metadata type instruction
 
-            TypeInstruction::Range => {
-                NextExpectedInstructions::Type(2)
-            } // range has 2 type instructions
+            TypeInstruction::Range => NextExpectedInstructions::Type(2), // range has 2 type instructions
 
             _ => NextExpectedInstructions::None,
         }
@@ -94,9 +90,7 @@ impl TypeInstruction {
             TypeInstruction::List(data) => {
                 write!(string, "{}", data.element_count)
             }
-            TypeInstruction::SharedTypeReference(
-                reference_data,
-            ) => {
+            TypeInstruction::SharedTypeReference(reference_data) => {
                 write!(string, "[address: {}]", reference_data.address.clone())
             }
             TypeInstruction::CoreType(data) => {

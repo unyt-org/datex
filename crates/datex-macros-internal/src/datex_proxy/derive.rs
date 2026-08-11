@@ -1,11 +1,10 @@
-use proc_macro_crate::{FoundCrate, crate_name};
+use crate::utils::{get_datex_core_crate_name, get_project_relative_file_path};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
 use syn::{
-    Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta, Path,
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta,
     PathSegment, Token, punctuated::Punctuated,
 };
-use crate::utils::{get_datex_core_crate_name, get_project_relative_file_path};
 
 #[derive(Debug, PartialEq)]
 enum SerdeMode {

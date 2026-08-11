@@ -1,18 +1,13 @@
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{Item};
 use crate::utils::{get_datex_core_crate_name, get_project_relative_file_path};
+use proc_macro2::TokenStream;
+use quote::{ToTokens, quote};
+use syn::Item;
 
-pub fn generate_impl_glue_code(
-    input: TokenStream,
-    item: Item,
-) -> TokenStream {
-
+pub fn generate_impl_glue_code(input: TokenStream, item: Item) -> TokenStream {
     let datex_core_crate_name = get_datex_core_crate_name();
 
     match &item {
         Item::Impl(item_impl) => {
-
             let mut methods = Vec::new();
 
             for impl_item in &item_impl.items {
@@ -28,8 +23,12 @@ pub fn generate_impl_glue_code(
                             syn::FnArg::Typed(pat_type) => {
                                 let ty = &pat_type.ty;
                                 let name = match &*pat_type.pat {
-                                    syn::Pat::Ident(ident) => ident.ident.to_string(),
-                                    _ => panic!("Unsupported parameter pattern"),
+                                    syn::Pat::Ident(ident) => {
+                                        ident.ident.to_string()
+                                    }
+                                    _ => {
+                                        panic!("Unsupported parameter pattern")
+                                    }
                                 };
                                 parameter_defs.push(quote!{
                                     (Some(#name.to_string()), #ty::datex_type(memory))
@@ -93,7 +92,9 @@ pub fn generate_impl_glue_code(
             }
         }
         _ => {
-            panic!("The #[datex_proxy] attribute can only be applied to impl blocks.");
+            panic!(
+                "The #[datex_proxy] attribute can only be applied to impl blocks."
+            );
         }
     }
 }

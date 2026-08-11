@@ -9,14 +9,15 @@ use crate::{
         ReferencedSharedContainer, RemotePointerAddress,
         SelfOwnedPointerAddress, SelfOwnedSharedContainer,
         SharedContainerInner, SharedContainerMutability,
-        base_shared_value_container::BaseSharedValueContainer,
+        base_shared_value_container::{
+            BaseSharedValueContainer, observers::ObserverData,
+        },
         errors::UnexpectedImmutableSharedContainerError,
         traits::{_ExposeRcInternal, SharedContainerCommon},
     },
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    value_updates::update_data::Update,
     values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
@@ -26,7 +27,6 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
-use crate::shared_values::base_shared_value_container::observers::ObserverData;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -139,7 +139,10 @@ impl OwnedSharedContainer {
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
     pub fn derive_immutable_reference(&self) -> ReferencedSharedContainer {
-        ReferencedSharedContainer::new_immutable(self.inner.clone(), self.observer_data.clone())
+        ReferencedSharedContainer::new_immutable(
+            self.inner.clone(),
+            self.observer_data.clone(),
+        )
     }
 
     /// Tries to create a new mutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].

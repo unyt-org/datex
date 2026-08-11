@@ -1,11 +1,11 @@
 use crate::{
+    prelude::*,
+    runtime::Runtime,
     traits::apply::{Apply, ApplyError},
     values::{
         core_values::callable::Callable, value_container::ValueContainer,
     },
 };
-use crate::prelude::*;
-use crate::runtime::Runtime;
 
 impl Apply for Callable {
     fn try_apply(

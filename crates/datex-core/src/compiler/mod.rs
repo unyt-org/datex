@@ -2,11 +2,12 @@
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, ComparisonOperation, Conditional, DatexExpression,
-            DatexExpressionData, PropertyAssignment, RemoteExecution,
-            RootPropertyAccess, Statements, UnaryOperation, UnboundedStatement,
-            UnboxAssignment, ValueAccessType, VariableAccess,
-            VariableAssignment, VariableDeclaration, VariableKind,
+            BinaryOperation, CallableDeclaration, ComparisonOperation,
+            Conditional, DatexExpression, DatexExpressionData,
+            PropertyAssignment, RemoteExecution, RootPropertyAccess,
+            Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
+            ValueAccessType, VariableAccess, VariableAssignment,
+            VariableDeclaration, VariableKind,
         },
         resolved_variable::VariableId,
     },
@@ -23,8 +24,6 @@ use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{CompileInput, DXBWithSharedValues},
-        to_instructions::ToInstructions,
-        type_compiler::append_type_instruction,
         value_compiler::{
             append_boolean, append_decimal, append_encoded_integer,
             append_float_as_i16, append_float_as_i32, append_get_shared_ref,
@@ -45,7 +44,8 @@ use crate::{
                 SharedInjectedValueType,
             },
             instruction_data::{
-                InstructionBlockData, JumpData, StackIndex,
+                CallableDeclarationData, CallableSignatureData,
+                InstructionBlockData, JumpData, ShortTextData, StackIndex,
                 UnboundedStatementsData,
             },
             regular_instructions::RegularInstruction,
@@ -75,9 +75,6 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::ast::expressions::CallableDeclaration;
-use crate::global::protocol_structures::instruction_data::{CallableDeclarationData, CallableSignatureData, ShortTextData};
-use crate::types::type_definition::callable::CallableKind;
 
 pub mod context;
 pub mod error;
@@ -1336,19 +1333,22 @@ fn compile_expression(
         }) => {
             compilation_context.mark_has_non_static_value();
 
-            let (instruction_block_data, new_scope) = compile_child_realm_instructions(
-                compilation_context,
-                scope,
-                ast,
-                injected_variable_count.unwrap(), // must be set by precompiler
-                &metadata,
-                vec![],
-            )?;
+            let (instruction_block_data, new_scope) =
+                compile_child_realm_instructions(
+                    compilation_context,
+                    scope,
+                    ast,
+                    injected_variable_count.unwrap(), // must be set by precompiler
+                    &metadata,
+                    vec![],
+                )?;
 
             scope = new_scope;
 
             // insert remote execution instruction
-            compilation_context.write(RegularInstruction::remote_execution(instruction_block_data));
+            compilation_context.write(RegularInstruction::remote_execution(
+                instruction_block_data,
+            ));
 
             // insert compiled caller expression
             scope = compile_expression(
@@ -1431,10 +1431,9 @@ fn compile_expression(
         }
 
         DatexExpressionData::TypeExpression(type_expression) => {
+            compilation_context.write(RegularInstruction::TypeExpression);
             compilation_context
-                .write(RegularInstruction::TypeExpression);
-            compilation_context.append_compiled_type_expression(&type_expression);
-
+                .append_compiled_type_expression(&type_expression);
         }
         DatexExpressionData::Range(range_dec) => {
             compilation_context.append_instruction_code(InstructionCode::RANGE);
@@ -1601,40 +1600,50 @@ fn compile_expression(
             let mut index = StackIndex(0);
             for (name, _) in &signature.parameters {
                 variables.push(
-                    Variable::new_const(name.clone(), index) // TODO: allow var
+                    Variable::new_const(name.clone(), index), // TODO: allow var
                 );
                 index += 1;
             }
             if let Some((name, _)) = &signature.rest_parameter {
                 variables.push(
-                    Variable::new_const(name.clone(), index) // TODO: allow var
+                    Variable::new_const(name.clone(), index), // TODO: allow var
                 );
             }
 
-            let (instruction_block_data, new_scope) = compile_child_realm_instructions(
-                compilation_context,
-                scope,
-                body,
-                injected_variable_count.unwrap(), // must be set by precompiler
-                &metadata,
-                variables,
-            )?;
+            let (instruction_block_data, new_scope) =
+                compile_child_realm_instructions(
+                    compilation_context,
+                    scope,
+                    body,
+                    injected_variable_count.unwrap(), // must be set by precompiler
+                    &metadata,
+                    variables,
+                )?;
 
             scope = new_scope;
 
-            compilation_context.write(RegularInstruction::CallableDeclaration(CallableDeclarationData {
-                signature: CallableSignatureData {
-                    name: ShortTextData(signature.name.unwrap_or_default()),
-                    kind: signature.kind,
-                    parameter_count: signature.parameters.len() as u8,
-                    has_rest_parameter: signature.rest_parameter.is_some(),
-                    has_return_type: signature.return_type.is_some(),
-                    has_yeet_type: signature.yeet_type.is_some(),
-                    parameter_names: signature.parameters.iter().map(|(name, _)| ShortTextData(name.clone())).collect(),
-                    rest_parameter_name: signature.rest_parameter.clone().map(|(name, _)| ShortTextData(name)),
+            compilation_context.write(RegularInstruction::CallableDeclaration(
+                CallableDeclarationData {
+                    signature: CallableSignatureData {
+                        name: ShortTextData(signature.name.unwrap_or_default()),
+                        kind: signature.kind,
+                        parameter_count: signature.parameters.len() as u8,
+                        has_rest_parameter: signature.rest_parameter.is_some(),
+                        has_return_type: signature.return_type.is_some(),
+                        has_yeet_type: signature.yeet_type.is_some(),
+                        parameter_names: signature
+                            .parameters
+                            .iter()
+                            .map(|(name, _)| ShortTextData(name.clone()))
+                            .collect(),
+                        rest_parameter_name: signature
+                            .rest_parameter
+                            .clone()
+                            .map(|(name, _)| ShortTextData(name)),
+                    },
+                    body: instruction_block_data,
                 },
-                body: instruction_block_data
-            }));
+            ));
 
             // add parameter types
             for (_, param) in signature.parameters {
@@ -1664,7 +1673,6 @@ fn compile_expression(
     Ok(scope)
 }
 
-
 fn compile_child_realm_instructions(
     compilation_context: &mut CompilationContext,
     scope: CompilationScope,
@@ -1690,7 +1698,7 @@ fn compile_child_realm_instructions(
     let mut child_scope = CompilationScope::new_with_external_parent_scope(
         scope,
         stack_index_offset,
-        injected_values_offset
+        injected_values_offset,
     );
 
     for variable in existing_variables {
@@ -1718,13 +1726,12 @@ fn compile_child_realm_instructions(
         InstructionBlockData {
             // block size (len of compilation_context.buffer)
             length: dxb.len() as u32,
-            injected_value_count: external_parent_scope
-                .injected_values
-                .len() as u32,
+            injected_value_count: external_parent_scope.injected_values.len()
+                as u32,
             injected_values: external_parent_scope.injected_values,
             body: dxb,
         },
-       *external_parent_scope.scope
+        *external_parent_scope.scope,
     ))
 }
 
@@ -1883,7 +1890,9 @@ pub mod tests {
         values::value_container::ValueContainer,
     };
 
-    use crate::global::protocol_structures::instruction_data::{CallableDeclarationDataDebugTree, InstructionBlockDataDebugFlat};
+    use crate::global::protocol_structures::instruction_data::{
+        CallableDeclarationDataDebugTree, InstructionBlockDataDebugFlat,
+    };
 
     use crate::{
         compiler::error::CompilerError,
@@ -1898,7 +1907,7 @@ pub mod tests {
             protocol_structures::{
                 injected_values::{
                     InjectedValueDeclaration, InjectedValueType,
-                    SharedInjectedValueType,
+                    LocalInjectedValueType, SharedInjectedValueType,
                 },
                 instruction_data::{
                     InstructionBlockData, InstructionBlockDataDebugTree,
@@ -1922,7 +1931,6 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::global::protocol_structures::injected_values::LocalInjectedValueType;
 
     fn compile_unwrap(script: &str) -> Vec<u8> {
         compile_script(script, CompileOptions::default(), Runtime::stub())
@@ -3604,15 +3612,20 @@ pub mod tests {
                         length: 11,
                         injected_variable_count: 0,
                         injected_values: vec![],
-                        body: RegularInstruction::Add
-                            .with_children(instructions!(
-                                RegularInstruction::TakeStackValue(StackIndex(0)),
-                                RegularInstruction::TakeStackValue(StackIndex(1)),
-                            ))
+                        body: RegularInstruction::Add.with_children(
+                            instructions!(
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    0
+                                )),
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    1
+                                )),
+                            )
+                        )
                     }
-
                 }
-            ).with_children(instructions!(
+            )
+            .with_children(instructions!(
                 // parameter types
                 TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into()),
                 TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into()),
@@ -3624,52 +3637,69 @@ pub mod tests {
 
     #[test]
     fn callable_declaration_with_injected_value() {
-        let script = "const x = 42; function add(a: integer) -> integer (x + a)";
+        let script =
+            "const x = 42; function add(a: integer) -> integer (x + a)";
         let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::statements_with_children(false, instructions!(
-                RegularInstruction::PushToStack.with_children(instructions!(
-                    RegularInstruction::Integer(Integer::from(42))
-                )),
-                RegularInstruction::_CallableDeclarationDebugTree(
-                    CallableDeclarationDataDebugTree {
-                        signature: CallableSignatureData {
-                            has_rest_parameter: false,
-                            name: ShortTextData("add".to_string()),
-                            kind: CallableKind::Function,
-                            parameter_names: vec![
-                                ShortTextData("a".to_string()),
-                            ],
-                            has_return_type: true,
-                            has_yeet_type: false,
-                            parameter_count: 1,
-                            rest_parameter_name: None,
-                        },
-                        body: InstructionBlockDataDebugTree {
-                            length: 11,
-                            injected_variable_count: 1,
-                            injected_values: vec![
-                                InjectedValueDeclaration {
-                                    index: StackIndex(0),
-                                    ty: InjectedValueType::Shared(SharedInjectedValueType::Move),
-                                }
-                            ],
-                            body: RegularInstruction::Add
-                                .with_children(instructions!(
-                                    RegularInstruction::TakeStackValue(StackIndex(1)),
-                                    RegularInstruction::TakeStackValue(StackIndex(0)),
-                                ))
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack.with_children(
+                        instructions!(RegularInstruction::Integer(
+                            Integer::from(42)
+                        ))
+                    ),
+                    RegularInstruction::_CallableDeclarationDebugTree(
+                        CallableDeclarationDataDebugTree {
+                            signature: CallableSignatureData {
+                                has_rest_parameter: false,
+                                name: ShortTextData("add".to_string()),
+                                kind: CallableKind::Function,
+                                parameter_names: vec![ShortTextData(
+                                    "a".to_string()
+                                ),],
+                                has_return_type: true,
+                                has_yeet_type: false,
+                                parameter_count: 1,
+                                rest_parameter_name: None,
+                            },
+                            body: InstructionBlockDataDebugTree {
+                                length: 11,
+                                injected_variable_count: 1,
+                                injected_values: vec![
+                                    InjectedValueDeclaration {
+                                        index: StackIndex(0),
+                                        ty: InjectedValueType::Shared(
+                                            SharedInjectedValueType::Move
+                                        ),
+                                    }
+                                ],
+                                body: RegularInstruction::Add.with_children(
+                                    instructions!(
+                                        RegularInstruction::TakeStackValue(
+                                            StackIndex(1)
+                                        ),
+                                        RegularInstruction::TakeStackValue(
+                                            StackIndex(0)
+                                        ),
+                                    )
+                                )
+                            }
                         }
-
-                    }
-                ).with_children(instructions!(
-                    // parameter types
-                    TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into()),
-                    // return type
-                    TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())
-                ))
-            )))
+                    )
+                    .with_children(instructions!(
+                        // parameter types
+                        TypeInstruction::CoreType(
+                            CoreLibBaseTypeId::Integer.into()
+                        ),
+                        // return type
+                        TypeInstruction::CoreType(
+                            CoreLibBaseTypeId::Integer.into()
+                        )
+                    ))
+                )
+            ))
         );
     }
 
@@ -4014,7 +4044,6 @@ pub mod tests {
                             injected_values: vec![],
                             body: RegularInstruction::Null.into()
                         }
-
                     }
                 )
             )))

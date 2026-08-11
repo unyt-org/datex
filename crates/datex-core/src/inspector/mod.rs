@@ -1,19 +1,8 @@
 use crate::{
-    datex_proxy::DatexProxyTypes,
-    libs::core::type_id::CoreLibBaseTypeId,
-    runtime::{Runtime, execution::ExecutionError},
-    types::{
-        r#type::Type,
-        type_definition::callable::{CallableKind, CallableTypeDefinition},
-    },
-    values::{
-        core_values::callable::{
-            Callable, CallableBody, NativeCallable, error::CallableError,
-        },
-        value_container::ValueContainer,
-    },
+    datex_proxy::DatexProxyTypes, runtime::Runtime,
+    values::value_container::ValueContainer,
 };
-use core::ops::{Deref, DerefMut};
+use core::ops::DerefMut;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug)]
@@ -30,7 +19,7 @@ impl Inspector {
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.
 pub fn register_inspector_namespace(runtime: &Runtime) {
     let mut memory = runtime.memory().borrow_mut();
-    let inspector =
+    let _inspector =
         ValueContainer::from(Inspector::datex_type(memory.deref_mut()));
     // let inspector_create_callable = ValueContainer::from(Callable {
     //     name: Some("inspector".to_string()),

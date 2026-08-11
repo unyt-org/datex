@@ -302,13 +302,19 @@ mod tests {
     #[test]
     fn parse_string_literal() {
         let expr = parse_type_expression("\"Hello, World!\"");
-        assert_eq!(expr.data(), &TypeExpressionData::Text("Hello, World!".into()));
+        assert_eq!(
+            expr.data(),
+            &TypeExpressionData::Text("Hello, World!".into())
+        );
     }
 
     #[test]
     fn parse_infinity() {
         let expr = parse_type_expression("infinity");
-        assert_eq!(expr.data(), &TypeExpressionData::Decimal(Decimal::Infinity));
+        assert_eq!(
+            expr.data(),
+            &TypeExpressionData::Decimal(Decimal::Infinity)
+        );
     }
 
     #[test]

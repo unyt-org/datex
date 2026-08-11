@@ -31,7 +31,7 @@ impl DXBWithSharedValues {
     pub fn new(dxb: Vec<u8>, shared_values: Vec<SharedContainer>) -> Self {
         DXBWithSharedValues { dxb, shared_values }
     }
-    
+
     pub fn into_dxb(self) -> Vec<u8> {
         self.dxb
     }

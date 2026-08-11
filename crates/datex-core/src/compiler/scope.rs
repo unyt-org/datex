@@ -81,8 +81,10 @@ impl ExternalParentScope {
             }
             // otherwise, map variable and store mapping
             // start at injected_variables_index_offset
-            let child_stack_index =
-                StackIndex(injected_variables_index_offset.0 + self.injected_variables_map.len() as u32);
+            let child_stack_index = StackIndex(
+                injected_variables_index_offset.0
+                    + self.injected_variables_map.len() as u32,
+            );
             self.injected_variables_map
                 .insert(variable_parent_index, child_stack_index);
             self.injected_values.push(InjectedValueDeclaration {
@@ -145,7 +147,7 @@ impl CompilationScope {
     pub fn new_with_external_parent_scope(
         parent_context: CompilationScope,
         initial_stack_index: StackIndex,
-        injected_variables_index_offset: StackIndex
+        injected_variables_index_offset: StackIndex,
     ) -> CompilationScope {
         CompilationScope {
             external_parent_scope_data: Some(ExternalParentScope::new(
@@ -200,7 +202,11 @@ impl CompilationScope {
             &mut self.external_parent_scope_data
         {
             if let Some(slot_type) = slot_type {
-                external_parent.resolve_variable_name(name, slot_type, self.injected_variables_index_offset)
+                external_parent.resolve_variable_name(
+                    name,
+                    slot_type,
+                    self.injected_variables_index_offset,
+                )
             } else {
                 Err(())
             }
@@ -226,7 +232,8 @@ impl CompilationScope {
     pub fn push(self) -> CompilationScope {
         CompilationScope {
             next_stack_index: self.next_stack_index,
-            injected_variables_index_offset: self.injected_variables_index_offset,
+            injected_variables_index_offset: self
+                .injected_variables_index_offset,
             parent_scope: Some(Box::new(self)),
             external_parent_scope_data: None,
             variables: HashMap::new(),

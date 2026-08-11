@@ -1,9 +1,12 @@
 use crate::{
+    ast::type_expressions::TypeExpression,
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{
             CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
+        to_instructions::ToInstructions,
+        type_compiler::append_type_instruction,
         value_compiler::append_instruction_code,
     },
     global::{
@@ -16,9 +19,6 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Cursor, meta::WriteEndian};
-use crate::ast::type_expressions::TypeExpression;
-use crate::core_compiler::to_instructions::ToInstructions;
-use crate::core_compiler::type_compiler::append_type_instruction;
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext<'a> {
@@ -91,15 +91,10 @@ impl<'a> CompilationContext<'a> {
         type_expression: &TypeExpression,
     ) {
         let instructions = type_expression
-            .to_instructions(
-                &mut self.core_context.shared_value_tracking,
-            )
+            .to_instructions(&mut self.core_context.shared_value_tracking)
             .collect::<Vec<_>>();
         for instruction in instructions {
-            append_type_instruction(
-                self.cursor(),
-                instruction,
-            );
+            append_type_instruction(self.cursor(), instruction);
         }
     }
 

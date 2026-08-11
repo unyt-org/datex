@@ -509,7 +509,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         mark_type(Type::from(TypeDefinition::Callable(
             CallableTypeDefinition {
-                kind: callable_type.kind.clone(),
+                kind: callable_type.kind,
                 parameters: parameter_types,
                 rest_parameter: rest_parameter_type,
                 return_type: return_type.map(Box::new),
@@ -918,7 +918,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             "TypeDeclarationExpression should have an id assigned during precompilation",
         );
         let var_type = self.variable_type(type_id);
-        let type_def = var_type.as_ref().expect(
+        let _type_def = var_type.as_ref().expect(
             "TypeDeclarationExpression type should have been inferred already",
         );
         let inferred_type_def =
@@ -931,7 +931,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_entity_declaration(
         &mut self,
         entity_declaration: &mut EntityDeclarationExpression,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let type_id = entity_declaration.id.expect(
             "EntityDeclarationExpression should have an id assigned during precompilation",
@@ -1191,19 +1191,21 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         callable_declaration: &mut CallableDeclaration,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        let annotated_return_type =
-            if let Some(return_type) = &mut callable_declaration.signature.return_type {
-                Some(Box::new(self.infer_type_expression(return_type)?))
-            } else {
-                None
-            };
+        let annotated_return_type = if let Some(return_type) =
+            &mut callable_declaration.signature.return_type
+        {
+            Some(Box::new(self.infer_type_expression(return_type)?))
+        } else {
+            None
+        };
 
-        let annotated_yeet_type =
-            if let Some(yeet_type) = &mut callable_declaration.signature.yeet_type {
-                Some(Box::new(self.infer_type_expression(yeet_type)?))
-            } else {
-                None
-            };
+        let annotated_yeet_type = if let Some(yeet_type) =
+            &mut callable_declaration.signature.yeet_type
+        {
+            Some(Box::new(self.infer_type_expression(yeet_type)?))
+        } else {
+            None
+        };
 
         let inferred_return_type = self
             .infer_expression(&mut callable_declaration.body)
@@ -1233,8 +1235,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             .collect();
 
         let signature = CallableTypeDefinition {
-            kind: callable_declaration.signature.kind.clone(),
-            parameters: parameters,
+            kind: callable_declaration.signature.kind,
+            parameters,
             rest_parameter: rest_parameter_type,
             return_type: annotated_return_type,
             yeet_type: annotated_yeet_type,
@@ -1600,8 +1602,7 @@ mod tests {
             },
         },
     };
-    use core::{assert_matches, cell::RefCell, str::FromStr};
-    use core::ops::Deref;
+    use core::{assert_matches, cell::RefCell, ops::Deref, str::FromStr};
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.

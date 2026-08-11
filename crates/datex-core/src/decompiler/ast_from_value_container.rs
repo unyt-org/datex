@@ -17,12 +17,13 @@ use crate::{
     ast::{
         expressions::{
             CallableDeclaration, CallableSignature, CreateShared,
-            DeriveSharedRef, EntityDeclarationExpression, TagExpression,
+            DeriveSharedRef, TagExpression,
         },
         type_expressions::{
             IdentifierWithPointerAddress, StructuralList, StructuralMap,
         },
     },
+    decompiler::ast_from_bytecode::ast_from_bytecode,
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
@@ -35,11 +36,9 @@ use crate::{
         },
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
+    values::core_values::callable::{CallableBody, DatexBytecodeCallable},
 };
 use alloc::format;
-use core::ops::Deref;
-use crate::decompiler::ast_from_bytecode::ast_from_bytecode;
-use crate::values::core_values::callable::{CallableBody, DatexBytecodeCallable};
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -146,7 +145,7 @@ fn core_value_to_datex_expression(
             DatexExpressionData::CallableDeclaration(CallableDeclaration {
                 signature: CallableSignature {
                     name: callable.name.clone(),
-                    kind: callable.signature.kind.clone(),
+                    kind: callable.signature.kind,
                     parameters: callable
                         .signature
                         .parameters
@@ -180,10 +179,20 @@ fn core_value_to_datex_expression(
                         .map(|ty| type_to_type_expression(ty)),
                 },
                 body: match &callable.body {
-                    CallableBody::CoreStub(_) => DatexExpressionData::NativeImplementationIndicator.with_default_span(),
-                    CallableBody::Native(_) => DatexExpressionData::NativeImplementationIndicator.with_default_span(),
-                    CallableBody::DatexBytecode(DatexBytecodeCallable { body, .. }) => ast_from_bytecode(body)
-                        .unwrap_or_else(|_| DatexExpressionData::Noop.with_default_span()), // TODO: handle error?
+                    CallableBody::CoreStub(_) => {
+                        DatexExpressionData::NativeImplementationIndicator
+                            .with_default_span()
+                    }
+                    CallableBody::Native(_) => {
+                        DatexExpressionData::NativeImplementationIndicator
+                            .with_default_span()
+                    }
+                    CallableBody::DatexBytecode(DatexBytecodeCallable {
+                        body,
+                        ..
+                    }) => ast_from_bytecode(body).unwrap_or_else(|_| {
+                        DatexExpressionData::Noop.with_default_span()
+                    }), // TODO: handle error?
                 },
                 injected_variable_count: None,
             })

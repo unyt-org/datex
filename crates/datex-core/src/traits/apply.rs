@@ -1,6 +1,7 @@
 use core::fmt::Display;
 
 use crate::{
+    prelude::*,
     runtime::Runtime,
     values::{
         core_values::callable::error::CallableError,
@@ -8,7 +9,6 @@ use crate::{
     },
 };
 use alloc::boxed::Box;
-use crate::prelude::*;
 
 #[derive(Debug)]
 pub enum ApplyError {

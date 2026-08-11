@@ -30,11 +30,11 @@ impl EntityTypeDefinition {
             impls: Vec::new(),
         }
     }
-    
+
     pub fn new_with_impls(
         definition: TypeDefinition,
         name: String,
-        impls: Vec<EntityImpl>
+        impls: Vec<EntityImpl>,
     ) -> EntityTypeDefinition {
         EntityTypeDefinition {
             definition,
@@ -43,7 +43,7 @@ impl EntityTypeDefinition {
             impls,
         }
     }
-    
+
     pub fn impls(&self) -> &[EntityImpl] {
         &self.impls
     }

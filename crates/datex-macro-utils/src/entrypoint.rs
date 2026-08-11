@@ -164,7 +164,7 @@ pub fn datex_main_impl_with_config(
     let init_scoped = input.init_scoped;
     let init_unscoped = input.init_unscoped;
     let pre_body = input.pre_body;
-    
+
     let runtime_clone = if init_unscoped.is_some() || init_scoped.is_some() {
         quote! { let runtime = runner.runtime.clone(); }
     } else {

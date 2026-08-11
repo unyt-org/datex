@@ -165,7 +165,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
             }
             VisitAction::AbortRecursion => Ok(()),
             VisitAction::ToNoop => {
-                expr.data = Box::new(TypeExpressionData::null());
+                *expr.data = TypeExpressionData::null();
                 Ok(())
             }
             VisitAction::ContinueRecursion => expr.walk_children(self),

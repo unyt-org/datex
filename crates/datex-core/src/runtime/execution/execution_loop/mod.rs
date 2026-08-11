@@ -98,14 +98,15 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, ops::DerefMut};
 mod collected_execution_result;
-use crate::value_updates::update_data::{
-    DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
+use crate::{
+    global::protocol_structures::instruction_data::CallableSignatureData,
+    types::type_definition::callable::CallableTypeDefinition,
+    value_updates::update_data::{
+        DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
+    },
+    values::core_values::callable::DatexBytecodeCallable,
 };
 use collected_execution_result::CollectedExecutionResult;
-use crate::global::protocol_structures::injected_values::{InjectedValueType, LocalInjectedValueType, SharedInjectedValueType};
-use crate::global::protocol_structures::instruction_data::CallableSignatureData;
-use crate::types::type_definition::callable::CallableTypeDefinition;
-use crate::values::core_values::callable::DatexBytecodeCallable;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -177,7 +178,9 @@ pub gen fn inner_execution_loop(
         let instruction = match instruction_result {
             Ok(instruction) => instruction,
             Err(DXBParserError::ExpectingMoreInstructions(stack)) => {
-                yield Err(DXBParserError::ExpectingMoreInstructions(stack).into());
+                yield Err(
+                    DXBParserError::ExpectingMoreInstructions(stack).into()
+                );
                 // assume that when continuing after this yield, more instructions will have been loaded
                 // so we run the loop again to try to get the next instruction
                 continue;
@@ -496,20 +499,18 @@ pub gen fn inner_execution_loop(
 
                 if let Some(type_instruction) = type_instruction {
                     Some(match type_instruction {
-                        TypeInstruction::CoreType(
-                            core_lib_type_id,
-                        ) => CollectedExecutionResult::type_definition(
-                            TypeDefinition::CoreType(core_lib_type_id),
-                        ),
+                        TypeInstruction::CoreType(core_lib_type_id) => {
+                            CollectedExecutionResult::type_definition(
+                                TypeDefinition::CoreType(core_lib_type_id),
+                            )
+                        }
                         TypeInstruction::Literal(literal) => {
                             CollectedExecutionResult::type_definition(
                                 literal.into(),
                             )
                         }
 
-                        TypeInstruction::SharedTypeReference(
-                            type_ref,
-                        ) => {
+                        TypeInstruction::SharedTypeReference(type_ref) => {
                             let val = interrupt_with_maybe_value!(
                                 interrupt_provider,
                                 match type_ref.address {
@@ -1513,7 +1514,6 @@ fn resolve_callable_type_definition(
     mut types: Vec<Type>,
     signature_data: &CallableSignatureData,
 ) -> CallableTypeDefinition {
-
     let yeet_type = if signature_data.has_yeet_type {
         Some(Box::new(types.pop().expect("Expected yeet type")))
     } else {
@@ -1527,7 +1527,10 @@ fn resolve_callable_type_definition(
 
     let rest_parameter = if signature_data.has_rest_parameter {
         Some((
-            signature_data.rest_parameter_name.as_ref().map(|name| name.0.clone()),
+            signature_data
+                .rest_parameter_name
+                .as_ref()
+                .map(|name| name.0.clone()),
             Box::new(types.pop().expect("Expected rest parameter type")),
         ))
     } else {
@@ -1540,7 +1543,6 @@ fn resolve_callable_type_definition(
         .zip(types)
         .map(|(name, param_type)| (Some(name.0.clone()), param_type))
         .collect::<Vec<_>>();
-
 
     CallableTypeDefinition {
         kind: signature_data.kind,
