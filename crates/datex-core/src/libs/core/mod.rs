@@ -100,7 +100,7 @@ impl CoreLibraryValues {
     }
 
     fn print_impl(
-        mut args: &[ValueContainer],
+        mut args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, CallableError> {
         // TODO #680: add I/O abstraction layer / interface
 
@@ -114,7 +114,7 @@ impl CoreLibraryValues {
         {
             output.push_str(&text.0);
             // remove first argument from args
-            args = &args[1..];
+            args = args.into_iter().skip(1).collect();
             // if there are still arguments, add a space
             if !args.is_empty() {
                 output.push(' ');

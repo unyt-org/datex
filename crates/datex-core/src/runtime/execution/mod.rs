@@ -114,7 +114,7 @@ pub fn execute_dxb_sync(
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&runtime, &callee, &args)?;
+                let res = handle_apply(&runtime, callee, args)?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -244,7 +244,7 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&runtime, &callee, &args)?;
+                let res = handle_apply(&runtime, callee, args)?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -290,13 +290,13 @@ async fn get_remote_endpoint_property(
 
 fn handle_apply(
     runtime: &Runtime,
-    callee: &ValueContainer,
-    args: &[ValueContainer],
+    callee: ValueContainer,
+    args: Vec<ValueContainer>,
 ) -> Result<Option<ValueContainer>, ApplyError> {
     // callee is guaranteed to be Some here
     // apply_single if one arg, apply otherwise
     Ok(if args.len() == 1 {
-        callee.try_apply_single(runtime, &args[0])?
+        callee.try_apply_single(runtime, args.into_iter().next().unwrap())?
     } else {
         callee.try_apply(runtime, args)?
     })
@@ -384,7 +384,7 @@ mod tests {
     use crate::core_compiler::value_compiler::compile_instruction;
     use crate::global::protocol_structures::instructions::Instruction;
     use crate::types::type_definition::callable::{CallableKind, CallableTypeDefinition};
-    use crate::values::core_values::callable::{Callable, CallableBody};
+    use crate::values::core_values::callable::{Callable, CallableBody, DatexBytecodeCallable};
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -840,10 +840,10 @@ mod tests {
                 return_type: None,
                 yeet_type: None,
             },
-            body: CallableBody::DatexBytecode {
+            body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                 injected_values: vec![],
                 body: compile_instruction(RegularInstruction::statements(0, false)),
-            },
+            }),
             creator: Endpoint::LOCAL,
         })
     }
@@ -862,10 +862,10 @@ mod tests {
                 return_type: None,
                 yeet_type: None,
             },
-            body: CallableBody::DatexBytecode {
+            body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                 injected_values: vec![],
                 body: compile_instruction(RegularInstruction::Null),
-            },
+            }),
             creator: Endpoint::LOCAL,
         });
     }
@@ -886,12 +886,26 @@ mod tests {
                 return_type: Some(Box::new(Type::core(CoreLibBaseTypeId::Null))),
                 yeet_type: None,
             },
-            body: CallableBody::DatexBytecode {
+            body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                 injected_values: vec![],
                 body: compile_instruction(RegularInstruction::Null),
-            },
+            }),
             creator: Endpoint::LOCAL,
         });
+    }
+
+    #[test]
+    fn function_call_no_args() {
+        let result = execute_datex_script_debug_with_result("function test() -> integer (1 + 2)()");
+        let integer: Integer = result.try_into_value().unwrap();
+        assert_eq!(integer, Integer::from(3));
+    }
+
+    #[test]
+    fn function_call_with_arg() {
+        let result = execute_datex_script_debug_with_result("function test(x: integer) -> integer (x + 2)(1)");
+        let integer: Integer = result.try_into_value().unwrap();
+        assert_eq!(integer, Integer::from(3));
     }
 
     #[test]

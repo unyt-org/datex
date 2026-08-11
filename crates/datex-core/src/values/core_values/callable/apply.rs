@@ -10,15 +10,15 @@ impl Apply for Callable {
     fn try_apply(
         &self,
         runtime: &Runtime,
-        args: &[ValueContainer],
+        args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         Ok(self.call(runtime, args)?)
     }
     fn try_apply_single(
         &self,
         runtime: &Runtime,
-        arg: &ValueContainer,
+        arg: ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        Ok(self.call(runtime, core::slice::from_ref(arg))?)
+        Ok(self.call(runtime, vec![arg.clone()])?)
     }
 }

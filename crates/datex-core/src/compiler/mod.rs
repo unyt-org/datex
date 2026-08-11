@@ -3990,6 +3990,38 @@ pub mod tests {
     }
 
     #[test]
+    fn apply_callable_no_arguments() {
+        let script = "function add() (null) ()";
+        let res = compile_unwrap(script);
+        assert_regular_instructions_equal!(
+            &res,
+            (RegularInstruction::ApplyZero.with_children(instructions!(
+                RegularInstruction::_CallableDeclarationDebugTree(
+                    CallableDeclarationDataDebugTree {
+                        signature: CallableSignatureData {
+                            has_rest_parameter: false,
+                            name: ShortTextData("add".to_string()),
+                            kind: CallableKind::Function,
+                            parameter_names: vec![],
+                            has_return_type: false,
+                            has_yeet_type: false,
+                            parameter_count: 0,
+                            rest_parameter_name: None,
+                        },
+                        body: InstructionBlockDataDebugTree {
+                            length: 1,
+                            injected_variable_count: 0,
+                            injected_values: vec![],
+                            body: RegularInstruction::Null.into()
+                        }
+
+                    }
+                )
+            )))
+        )
+    }
+
+    #[test]
     fn apply_no_arguments() {
         let datex_script = r#""test"()"#;
         let result = compile_and_log(datex_script);

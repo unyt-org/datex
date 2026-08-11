@@ -104,6 +104,7 @@ use crate::value_updates::update_data::{
 use collected_execution_result::CollectedExecutionResult;
 use crate::global::protocol_structures::instruction_data::CallableSignatureData;
 use crate::types::type_definition::callable::CallableTypeDefinition;
+use crate::values::core_values::callable::DatexBytecodeCallable;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -689,10 +690,10 @@ pub gen fn inner_execution_loop(
                                             Some(callable_declaration.signature.name.0)
                                         },
                                         signature,
-                                        body: CallableBody::DatexBytecode {
+                                        body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                                             injected_values: vec![],
                                             body: body.body,
-                                        },
+                                        }),
                                         creator: state.caller_metadata.endpoint.clone(),
                                     })
                                         .into()
@@ -710,10 +711,10 @@ pub gen fn inner_execution_loop(
                                             Some(callable_declaration.signature.name.0)
                                         },
                                         signature,
-                                        body: CallableBody::DatexBytecode {
+                                        body: CallableBody::DatexBytecode(DatexBytecodeCallable {
                                             injected_values: vec![],
                                             body: body.body,
-                                        },
+                                        }),
                                         creator: state.caller_metadata.endpoint.clone(),
                                     })
                                         .into()

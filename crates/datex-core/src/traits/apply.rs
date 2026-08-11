@@ -38,12 +38,12 @@ pub trait Apply {
     fn try_apply(
         &self,
         runtime: &Runtime,
-        args: &[ValueContainer],
+        args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError>;
     /// Applies a single ValueContainer argument to self
     fn try_apply_single(
         &self,
         runtime: &Runtime,
-        arg: &ValueContainer,
+        arg: ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError>;
 }

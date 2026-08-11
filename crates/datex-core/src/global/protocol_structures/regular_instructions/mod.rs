@@ -778,6 +778,13 @@ impl RegularInstruction {
                 )
             } // arguments plus base to apply to
 
+            RegularInstruction::ApplyZero => {
+                NextExpectedInstructions::Regular(1)
+            }
+            RegularInstruction::ApplySingle => {
+                NextExpectedInstructions::Regular(2)
+            }
+            
             RegularInstruction::GetEntryText(_)
             | RegularInstruction::GetEntryIndex(_)
             | RegularInstruction::TakeEntryText(_)
@@ -826,7 +833,7 @@ impl RegularInstruction {
             RegularInstruction::Matches => {
                 NextExpectedInstructions::RegularAndType(1, 1)
             }
-
+            
             RegularInstruction::Add
             | RegularInstruction::Multiply
             | RegularInstruction::Subtract

@@ -9,7 +9,7 @@ impl Apply for SharedContainer {
     fn try_apply(
         &self,
         runtime: &Runtime,
-        args: &[ValueContainer],
+        args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         self.base_shared_container().try_apply(runtime, args)
     }
@@ -17,7 +17,7 @@ impl Apply for SharedContainer {
     fn try_apply_single(
         &self,
         runtime: &Runtime,
-        arg: &ValueContainer,
+        arg: ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         self.base_shared_container().try_apply_single(runtime, arg)
     }

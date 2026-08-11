@@ -39,7 +39,7 @@ use crate::{
 use alloc::format;
 use core::ops::Deref;
 use crate::decompiler::ast_from_bytecode::ast_from_bytecode;
-use crate::values::core_values::callable::CallableBody;
+use crate::values::core_values::callable::{CallableBody, DatexBytecodeCallable};
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -182,7 +182,7 @@ fn core_value_to_datex_expression(
                 body: match &callable.body {
                     CallableBody::CoreStub(_) => DatexExpressionData::NativeImplementationIndicator.with_default_span(),
                     CallableBody::Native(_) => DatexExpressionData::NativeImplementationIndicator.with_default_span(),
-                    CallableBody::DatexBytecode { body, .. } => ast_from_bytecode(body)
+                    CallableBody::DatexBytecode(DatexBytecodeCallable { body, .. }) => ast_from_bytecode(body)
                         .unwrap_or_else(|_| DatexExpressionData::Noop.with_default_span()), // TODO: handle error?
                 },
                 injected_variable_count: None,

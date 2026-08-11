@@ -9,7 +9,7 @@ impl Apply for BaseSharedValueContainer {
     fn try_apply(
         &self,
         runtime: &Runtime,
-        args: &[ValueContainer],
+        args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         let value = self.collapsed_value();
         value.borrow().try_apply(runtime, args)
@@ -18,7 +18,7 @@ impl Apply for BaseSharedValueContainer {
     fn try_apply_single(
         &self,
         runtime: &Runtime,
-        arg: &ValueContainer,
+        arg: ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         let value = self.collapsed_value();
         value.borrow().try_apply_single(runtime, arg)
