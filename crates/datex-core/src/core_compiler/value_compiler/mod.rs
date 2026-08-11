@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use binrw::io::Cursor;
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,

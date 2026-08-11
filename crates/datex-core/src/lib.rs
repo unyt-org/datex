@@ -88,8 +88,16 @@ pub mod collections {
     cfg_if::cfg_if! {
         if #[cfg(feature = "std")] {
             pub use std::collections::{HashMap, HashSet, hash_map, hash_set};
+            pub use std::collections::hash_map::DefaultHasher;
+            pub fn default_hasher() -> DefaultHasher {
+                DefaultHasher::new()
+            }
         } else {
-            pub use hashbrown::{HashMap, HashSet, hash_map, hash_set};
+            use core::hash::BuildHasher;
+            pub use hashbrown::{HashMap, HashSet, hash_map, hash_set, DefaultHashBuilder, DefaultHasher};
+            pub fn default_hasher() -> DefaultHasher {
+                DefaultHashBuilder::default().build_hasher()
+            }
         }
     }
 }

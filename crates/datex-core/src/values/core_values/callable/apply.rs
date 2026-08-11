@@ -4,6 +4,7 @@ use crate::{
         core_values::callable::Callable, value_container::ValueContainer,
     },
 };
+use crate::prelude::*;
 use crate::runtime::Runtime;
 
 impl Apply for Callable {

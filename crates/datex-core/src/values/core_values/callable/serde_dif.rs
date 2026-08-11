@@ -3,6 +3,7 @@ use serde::Serializer;
 use crate::dif::serde_context::SerdeContext;
 use crate::utils::serde_serialize_seed::SerializeSeed;
 use crate::values::core_values::callable::Callable;
+use crate::prelude::*;
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, Callable> {
     type Value = Callable;

@@ -3,7 +3,6 @@ use datex_core::{
     datex_proxy::DatexProxyTypes,
     datex_registry::all_datex_registrations,
     decompiler::{DecompileOptions, decompile_value},
-    libs::core::type_id::CoreLibBaseTypeId,
     runtime::Runtime,
     shared_values::{
         SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
