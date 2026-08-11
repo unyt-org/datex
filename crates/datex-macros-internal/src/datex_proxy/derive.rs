@@ -1163,7 +1163,7 @@ fn wrap_type_definition(
                 }
                 // if not found, create new def and register in cache
                 else {
-                    let impls = get_impls(#name, #namespace);
+                    let impls = get_impls(#name, #namespace, cache);
 
                     let definition = EntityTypeDefinition::new_with_impls(#type_definition.into(), #name.to_string(), impls);
                     Type::Entity(unsafe {

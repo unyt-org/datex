@@ -14,6 +14,7 @@ use datex_core::{
     },
     values::core_value::CoreValue,
 };
+use datex_core::datex_proxy::DatexValueContainerProxyDeserialize;
 use datex_core::datex_registry::{all_datex_impl_registrations, get_impls};
 use datex_macros_internal::{Datex, datex};
 
@@ -25,7 +26,7 @@ struct Example {
 
 #[datex]
 impl Example {
-    pub fn set_a(&mut self, a: u8) {
+    pub fn set_a(&mut self, a: u8, string: String) {
         self.a = a;
     }
     pub fn set_b(&mut self, b: u8) {
@@ -62,6 +63,6 @@ fn impl_functions() {
     }
 
     let mut example = Example { a: 1, b: 2 };
-    example.set_a(2);
+    example.set_a(2, "test".to_string());
     example.set_b(1);
 }

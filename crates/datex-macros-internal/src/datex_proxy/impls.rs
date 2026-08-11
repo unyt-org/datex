@@ -19,6 +19,25 @@ pub fn generate_impl_glue_code(
                 if let syn::ImplItem::Fn(method) = impl_item {
                     let name = method.sig.ident.to_string();
 
+                    let mut parameter_defs = Vec::new();
+                    for param in &method.sig.inputs {
+                        match param {
+                            syn::FnArg::Receiver(_) => {
+                                // todo
+                            }
+                            syn::FnArg::Typed(pat_type) => {
+                                let ty = &pat_type.ty;
+                                let name = match &*pat_type.pat {
+                                    syn::Pat::Ident(ident) => ident.ident.to_string(),
+                                    _ => panic!("Unsupported parameter pattern"),
+                                };
+                                parameter_defs.push(quote!{
+                                    (Some(#name.to_string()), #ty::datex_type(memory))
+                                });
+                            }
+                        }
+                    }
+
                     methods.push(quote! {
                         EntityImplMethod {
                             call_on_owner: true,
@@ -26,7 +45,7 @@ pub fn generate_impl_glue_code(
                                 name: Some(#name.to_string()),
                                 signature: CallableTypeDefinition {
                                     kind: CallableKind::Procedure,
-                                    parameters: vec![],
+                                    parameters: vec![#(#parameter_defs),*],
                                     rest_parameter: None,
                                     return_type: None,
                                     yeet_type: None,
@@ -64,7 +83,7 @@ pub fn generate_impl_glue_code(
                         #datex_core_crate_name::datex_registry::DatexImplRegistration {
                             namespace: #namespace,
                             name: #name,
-                            create_impl: || #datex_core_crate_name::types::entities::entity_impls::EntityImpl {
+                            create_impl: |memory| #datex_core_crate_name::types::entities::entity_impls::EntityImpl {
                                 methods: vec![#(#methods),*],
                                 static_methods: vec![],
                             }
