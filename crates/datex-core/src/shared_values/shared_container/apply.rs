@@ -7,19 +7,15 @@ use crate::{
 };
 
 impl Apply for SharedContainer {
-    fn try_apply(
+    fn try_apply_sync(
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        self.base_shared_container().try_apply(runtime, args)
+        self.base_shared_container().try_apply_sync(runtime, args)
     }
 
-    fn try_apply_single(
-        &self,
-        runtime: &Runtime,
-        arg: ValueContainer,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
-        self.base_shared_container().try_apply_single(runtime, arg)
+    async fn try_apply_async(&self, runtime: &Runtime, args: Vec<ValueContainer>) -> Result<Option<ValueContainer>, ApplyError> {
+        self.base_shared_container().try_apply_async(runtime, args).await
     }
 }

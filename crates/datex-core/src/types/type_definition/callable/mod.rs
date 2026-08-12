@@ -40,6 +40,7 @@ impl Display for CallableKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CallableTypeDefinition {
     pub kind: CallableKind,
+    pub requires_async: bool,
     pub parameters: Vec<(Option<String>, Type)>,
     pub rest_parameter: Option<(Option<String>, Box<Type>)>,
     pub return_type: Option<Box<Type>>,

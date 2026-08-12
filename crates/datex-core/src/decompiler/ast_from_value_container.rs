@@ -146,6 +146,7 @@ fn core_value_to_datex_expression(
                 signature: CallableSignature {
                     name: callable.name.clone(),
                     kind: callable.signature.kind,
+                    requires_async: callable.signature.requires_async,
                     parameters: callable
                         .signature
                         .parameters
@@ -184,6 +185,10 @@ fn core_value_to_datex_expression(
                             .with_default_span()
                     }
                     CallableBody::Native(_) => {
+                        DatexExpressionData::NativeImplementationIndicator
+                            .with_default_span()
+                    }
+                    CallableBody::Hidden => {
                         DatexExpressionData::NativeImplementationIndicator
                             .with_default_span()
                     }

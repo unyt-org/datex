@@ -1130,6 +1130,7 @@ fn resolve_signature(
             Some(signature_data.name.0)
         },
         kind: signature_data.kind,
+        requires_async: false, // TODO
         parameters,
         rest_parameter,
         return_type,

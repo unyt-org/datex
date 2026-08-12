@@ -693,6 +693,7 @@ pub gen fn inner_execution_loop(
                                         },
                                         signature,
                                         body: CallableBody::DatexBytecode(DatexBytecodeCallable {
+                                            requires_async: callable_declaration.signature.requires_async,
                                             injected_values,
                                             body: callable_declaration.body.body,
                                         }),
@@ -703,9 +704,7 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::Callable(callable_declaration) => {
 
                                     // indicates a native callable declaration which cannot be transferred
-                                    if callable_declaration.body.length == 0 {
-                                        return yield Err(ExecutionError::invalid_program(InvalidProgramError::NativeCallableDeserialization));
-                                    }
+                                    let has_native_impl = callable_declaration.body.length == 0;
 
                                     let injected_values = collected_results
                                         .pop_values(callable_declaration.body.injected_value_count)
@@ -724,10 +723,16 @@ pub gen fn inner_execution_loop(
                                             Some(callable_declaration.signature.name.0)
                                         },
                                         signature,
-                                        body: CallableBody::DatexBytecode(DatexBytecodeCallable {
-                                            injected_values,
-                                            body: callable_declaration.body.body,
-                                        }),
+                                        body: if has_native_impl {
+                                                CallableBody::Hidden
+                                            }
+                                            else {
+                                                CallableBody::DatexBytecode(DatexBytecodeCallable {
+                                                    requires_async: callable_declaration.signature.requires_async,
+                                                    injected_values,
+                                                    body: callable_declaration.body.body,
+                                                })
+                                            },
                                         creator: state.caller_metadata.endpoint.clone(),
                                     })
                                         .into()
@@ -1552,6 +1557,7 @@ fn resolve_callable_type_definition(
 
     CallableTypeDefinition {
         kind: signature_data.kind,
+        requires_async: signature_data.requires_async,
         parameters,
         rest_parameter,
         return_type,

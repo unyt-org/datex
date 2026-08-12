@@ -803,6 +803,7 @@ impl AstToSourceCodeConverter {
                         CallableSignature {
                             name,
                             kind,
+                            requires_async,
                             parameters,
                             rest_parameter,
                             return_type,

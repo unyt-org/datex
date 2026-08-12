@@ -510,6 +510,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         mark_type(Type::from(TypeDefinition::Callable(
             CallableTypeDefinition {
                 kind: callable_type.kind,
+                requires_async: false, // TODO
                 parameters: parameter_types,
                 rest_parameter: rest_parameter_type,
                 return_type: return_type.map(Box::new),
@@ -1236,6 +1237,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         let signature = CallableTypeDefinition {
             kind: callable_declaration.signature.kind,
+            requires_async: false, // TODO
             parameters,
             rest_parameter: rest_parameter_type,
             return_type: annotated_return_type,
@@ -1818,6 +1820,7 @@ mod tests {
             res,
             Type::from(TypeDefinition::Callable(CallableTypeDefinition {
                 kind: CallableKind::Function,
+                requires_async: false,
                 parameters: vec![
                     (
                         Some("a".to_string()),
@@ -1847,6 +1850,7 @@ mod tests {
             res,
             Type::from(TypeDefinition::Callable(CallableTypeDefinition {
                 kind: CallableKind::Function,
+                requires_async: false,
                 parameters: vec![
                     (
                         Some("a".to_string()),

@@ -44,12 +44,13 @@ pub fn generate_impl_glue_code(input: TokenStream, item: Item) -> TokenStream {
                                 name: Some(#name.to_string()),
                                 signature: CallableTypeDefinition {
                                     kind: CallableKind::Procedure,
+                                    requires_async: false,
                                     parameters: vec![#(#parameter_defs),*],
                                     rest_parameter: None,
                                     return_type: None,
                                     yeet_type: None,
                                 },
-                                body: CallableBody::native(|vals| {Ok(None)}),
+                                body: CallableBody::native_sync(|vals| {Ok(None)}),
                                 creator: Default::default(),
                             }
                         }

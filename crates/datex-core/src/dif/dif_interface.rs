@@ -75,7 +75,7 @@ impl DIFInterface {
         let callable = Callable {
             name: None,
             signature: signature.clone(),
-            body: CallableBody::native(native_function),
+            body: CallableBody::native_sync(native_function),
             creator: Default::default(),
         };
         let shared_base = BaseSharedValueContainer::try_new(
@@ -93,7 +93,7 @@ impl DIFInterface {
         callee: ValueContainer,
         value: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        callee.try_apply(runtime, value)
+        callee.try_apply_sync(runtime, value)
     }
 
     /// Creates a new owned local pointer and stores it in memory.

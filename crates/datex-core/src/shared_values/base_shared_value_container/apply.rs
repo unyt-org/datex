@@ -7,21 +7,17 @@ use crate::{
 };
 
 impl Apply for BaseSharedValueContainer {
-    fn try_apply(
+    fn try_apply_sync(
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         let value = self.collapsed_value();
-        value.borrow().try_apply(runtime, args)
+        value.borrow().try_apply_sync(runtime, args)
     }
 
-    fn try_apply_single(
-        &self,
-        runtime: &Runtime,
-        arg: ValueContainer,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
+    async fn try_apply_async(&self, runtime: &Runtime, args: Vec<ValueContainer>) -> Result<Option<ValueContainer>, ApplyError> {
         let value = self.collapsed_value();
-        value.borrow().try_apply_single(runtime, arg)
+        value.borrow().try_apply_async(runtime, args).await
     }
 }

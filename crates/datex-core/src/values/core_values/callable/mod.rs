@@ -1,15 +1,8 @@
 use core::fmt::Debug;
 use core::hash::Hash;
+use core::pin::Pin;
 use crate::{
-    core_compiler::core_compilation_context::DXBWithSharedValues,
     prelude::*,
-    runtime::{
-        Runtime,
-        execution::{
-            context::{ExecutionContext, ExecutionMode, LocalExecutionContext},
-            execution_input::ExecutionCallerMetadata,
-        },
-    },
     types::type_definition::callable::CallableTypeDefinition,
     values::{
         core_values::{callable::error::CallableError, endpoint::Endpoint},
@@ -22,38 +15,72 @@ pub mod equality;
 pub mod error;
 mod serde_dif;
 
+type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
+
+type AsyncCallable = Rc<
+    dyn Fn(Vec<ValueContainer>) -> BoxFuture<
+        Result<Option<ValueContainer>, CallableError>
+    > + 'static
+>;
+
+type SyncCallable = Rc<dyn Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static>;
+
 #[derive(Clone)]
-pub struct NativeCallable {
-    pub function: Rc<dyn Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static>
+pub enum NativeCallable {
+    Sync(SyncCallable),
+    Async(AsyncCallable),
 }
 
 impl Debug for NativeCallable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "NativeCallable")
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            NativeCallable::Sync(_) => write!(f, "NativeCallable(Sync)"),
+            NativeCallable::Async(_) => write!(f, "NativeCallable(Async)"),
+        }
     }
 }
 impl PartialEq for NativeCallable {
     fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.function, &other.function)
+        match (self, other) {
+            (NativeCallable::Sync(f1), NativeCallable::Sync(f2)) => {
+                Rc::as_ptr(f1) == Rc::as_ptr(f2)
+            }
+            (NativeCallable::Async(f1), NativeCallable::Async(f2)) => {
+                Rc::as_ptr(f1) == Rc::as_ptr(f2)
+            }
+            _ => false,
+        }
     }
 }
 impl Eq for NativeCallable {}
 
 impl Hash for NativeCallable {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let ptr = Rc::as_ptr(&self.function) as *const ();
-        ptr.hash(state);
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            NativeCallable::Sync(f) => {
+                let ptr = Rc::as_ptr(f) as *const ();
+                ptr.hash(state);
+            }
+            NativeCallable::Async(f) => {
+                let ptr = Rc::as_ptr(f) as *const ();
+                ptr.hash(state);
+            }
+        }
     }
 }
 
 
 impl NativeCallable {
-    pub fn new(
+    pub fn new_sync(
         function: impl Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static,
     ) -> Self {
-        NativeCallable {
-            function: Rc::new(function),
-        }
+        NativeCallable::Sync(Rc::new(function))
+    }
+
+    pub fn new_async(
+        function: impl Fn(Vec<ValueContainer>) -> BoxFuture<Result<Option<ValueContainer>, CallableError>> + 'static
+    ) -> Self {
+        NativeCallable::Async(Rc::new(function))
     }
 }
 
@@ -61,44 +88,37 @@ impl NativeCallable {
 pub struct DatexBytecodeCallable {
     pub injected_values: Vec<ValueContainer>,
     pub body: Vec<u8>,
-}
-
-impl DatexBytecodeCallable {
-    pub fn call(
-        &self,
-        runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, CallableError> {
-        // construct the initial stack values by combining the provided arguments with the injected values
-        let stack_values = args
-            .iter()
-            .chain(self.injected_values.iter())
-            .cloned()
-            .collect::<Vec<_>>();
-
-        Ok(runtime.execute_dxb_sync(
-            DXBWithSharedValues::new(self.body.clone(), vec![]), // TODO: no clone?
-            Some(stack_values),
-            Some(&mut ExecutionContext::Local(LocalExecutionContext::new(
-                ExecutionMode::Static,
-                runtime.clone(),
-                ExecutionCallerMetadata::local_default(), // TODO caller
-            ))),
-            true,
-        )?)
-    }
+    pub requires_async: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CallableBody {
+    /// A callable implemented in native Rust code.
     Native(NativeCallable),
+    /// A callable implemented in Datex bytecode.
     DatexBytecode(DatexBytecodeCallable),
+    /// A callable that is a stub for core library functions that are implemented in the runtime.
     CoreStub(CoreStub),
+    /// A callable that is hidden and cannot be called directly (normally a callable that exists on a remote endpoint behind a shared value)
+    Hidden,
 }
 
 impl CallableBody {
-    pub fn native(native_callable: impl Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static) -> Self {
-        CallableBody::Native(NativeCallable::new(native_callable))
+    pub fn native_sync(native_callable: impl Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static) -> Self {
+        CallableBody::Native(NativeCallable::new_sync(native_callable))
+    }
+    pub fn native_async(native_callable: impl Fn(Vec<ValueContainer>) -> BoxFuture<Result<Option<ValueContainer>, CallableError>> + 'static) -> Self {
+        CallableBody::Native(NativeCallable::new_async(native_callable))
+    }
+
+    pub fn requires_async(&self) -> bool {
+        match self {
+            CallableBody::Native(NativeCallable::Sync(_)) => false,
+            CallableBody::Native(NativeCallable::Async(_)) => true,
+            CallableBody::DatexBytecode(bytecode_callable) => bytecode_callable.requires_async,
+            CallableBody::CoreStub(_) => false,
+            CallableBody::Hidden => false,
+        }
     }
 }
 
@@ -113,22 +133,4 @@ pub struct Callable {
     pub signature: CallableTypeDefinition,
     pub body: CallableBody,
     pub creator: Endpoint,
-}
-
-impl Callable {
-    pub fn call(
-        &self,
-        runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, CallableError> {
-        match &self.body {
-            CallableBody::Native(native_callable) => (native_callable.function)(args),
-            CallableBody::DatexBytecode(bytecode_callable) => {
-                bytecode_callable.call(runtime, args)
-            }
-            CallableBody::CoreStub(_stub) => {
-                Err(CallableError::RuntimeOnlyCallable)
-            }
-        }
-    }
 }

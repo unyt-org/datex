@@ -50,6 +50,7 @@ impl Parser {
                 signature: CallableSignature {
                     name: Some(name),
                     kind,
+                    requires_async: false, // TODO
                     parameters,
                     rest_parameter: None, // TODO #662
                     return_type,
@@ -118,6 +119,7 @@ mod tests {
                     signature: CallableSignature {
                         name: Some(String::from("test")),
                         kind: CallableKind::Function,
+                        requires_async: false,
                         parameters: vec![],
                         rest_parameter: None,
                         return_type: None,
@@ -144,6 +146,7 @@ mod tests {
                 signature: CallableSignature {
                     name: Some(String::from("doSomething")),
                     kind: CallableKind::Procedure,
+                    requires_async: false,
                     parameters: vec![],
                     rest_parameter: None,
                     return_type: None,
@@ -169,6 +172,7 @@ mod tests {
                 signature: CallableSignature {
                     name: Some("add".to_string()),
                     kind: CallableKind::Function,
+                    requires_async: false,
                     parameters: vec![
                         (
                             "a".to_string(),
@@ -213,6 +217,7 @@ mod tests {
                 signature: CallableSignature {
                     name: Some("greet".to_string()),
                     kind: CallableKind::Function,
+                    requires_async: false,
                     parameters: vec![(
                         "name".to_string(),
                         TypeExpressionData::Identifier("text".to_string())

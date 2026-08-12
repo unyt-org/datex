@@ -1432,7 +1432,8 @@ fn compile_expression(
 
         DatexExpressionData::TypeExpression(type_expression) => {
             compilation_context.write(RegularInstruction::TypeExpression);
-            compilation_context.append_compiled_type_expression(&type_expression);
+            compilation_context
+                .append_compiled_type_expression(&type_expression);
         }
         DatexExpressionData::Range(range_dec) => {
             compilation_context.append_instruction_code(InstructionCode::RANGE);
@@ -1626,6 +1627,7 @@ fn compile_expression(
                     signature: CallableSignatureData {
                         name: ShortTextData(signature.name.unwrap_or_default()),
                         kind: signature.kind,
+                        requires_async: signature.requires_async,
                         parameter_count: signature.parameters.len() as u8,
                         has_rest_parameter: signature.rest_parameter.is_some(),
                         has_return_type: signature.return_type.is_some(),
@@ -3596,6 +3598,7 @@ pub mod tests {
                 CallableDeclarationDataDebugTree {
                     signature: CallableSignatureData {
                         has_rest_parameter: false,
+                        requires_async: false,
                         name: ShortTextData("add".to_string()),
                         kind: CallableKind::Function,
                         parameter_names: vec![
@@ -3655,6 +3658,7 @@ pub mod tests {
                                 has_rest_parameter: false,
                                 name: ShortTextData("add".to_string()),
                                 kind: CallableKind::Function,
+                                requires_async: false,
                                 parameter_names: vec![ShortTextData(
                                     "a".to_string()
                                 ),],
@@ -4031,6 +4035,7 @@ pub mod tests {
                             has_rest_parameter: false,
                             name: ShortTextData("add".to_string()),
                             kind: CallableKind::Function,
+                            requires_async: false,
                             parameter_names: vec![],
                             has_return_type: false,
                             has_yeet_type: false,

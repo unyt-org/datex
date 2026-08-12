@@ -575,6 +575,7 @@ pub struct CallableDeclaration {
 pub struct CallableSignature {
     pub name: Option<String>,
     pub kind: CallableKind,
+    pub requires_async: bool,
     pub parameters: Vec<(String, TypeExpression)>,
     pub rest_parameter: Option<(String, TypeExpression)>,
     pub return_type: Option<TypeExpression>,

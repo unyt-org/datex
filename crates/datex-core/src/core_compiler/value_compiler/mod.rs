@@ -231,6 +231,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                 signature: CallableSignatureData {
                     name: ShortTextData(callable.name.unwrap_or_default()),
                     kind: callable.signature.kind,
+                    requires_async: callable.signature.requires_async,
                     parameter_count: callable.signature.parameters.len() as u8,
                     has_rest_parameter: callable.signature.rest_parameter.is_some(),
                     has_return_type: callable.signature.return_type.is_some(),

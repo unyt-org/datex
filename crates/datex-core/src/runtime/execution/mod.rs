@@ -293,13 +293,7 @@ fn handle_apply(
     callee: ValueContainer,
     args: Vec<ValueContainer>,
 ) -> Result<Option<ValueContainer>, ApplyError> {
-    // callee is guaranteed to be Some here
-    // apply_single if one arg, apply otherwise
-    Ok(if args.len() == 1 {
-        callee.try_apply_single(runtime, args.into_iter().next().unwrap())?
-    } else {
-        callee.try_apply(runtime, args)?
-    })
+    Ok(callee.try_apply_sync(runtime, args)?)
 }
 
 fn get_remote_shared_container_reference(
@@ -843,12 +837,14 @@ mod tests {
                 name: Some("test".to_string()),
                 signature: CallableTypeDefinition {
                     kind: CallableKind::Function,
+                    requires_async: false,
                     parameters: vec![],
                     rest_parameter: None,
                     return_type: None,
                     yeet_type: None,
                 },
                 body: CallableBody::DatexBytecode(DatexBytecodeCallable {
+                    requires_async: false,
                     injected_values: vec![],
                     body: compile_instruction(RegularInstruction::statements(
                         0, false
@@ -871,12 +867,14 @@ mod tests {
                 name: Some("test".to_string()),
                 signature: CallableTypeDefinition {
                     kind: CallableKind::Function,
+                    requires_async: false,
                     parameters: vec![],
                     rest_parameter: None,
                     return_type: None,
                     yeet_type: None,
                 },
                 body: CallableBody::DatexBytecode(DatexBytecodeCallable {
+                    requires_async: false,
                     injected_values: vec![],
                     body: compile_instruction(RegularInstruction::Null),
                 }),
@@ -898,6 +896,7 @@ mod tests {
                 name: Some("test".to_string()),
                 signature: CallableTypeDefinition {
                     kind: CallableKind::Function,
+                    requires_async: false,
                     parameters: vec![(
                         Some("a".to_string()),
                         Type::core(CoreLibBaseTypeId::Integer)
@@ -909,6 +908,7 @@ mod tests {
                     yeet_type: None,
                 },
                 body: CallableBody::DatexBytecode(DatexBytecodeCallable {
+                    requires_async: false,
                     injected_values: vec![],
                     body: compile_instruction(RegularInstruction::Null),
                 }),

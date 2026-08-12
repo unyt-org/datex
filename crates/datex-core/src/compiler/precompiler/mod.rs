@@ -2214,6 +2214,7 @@ mod tests {
                             signature: CallableSignature {
                                 name: Some("y".to_string()),
                                 kind: CallableKind::Function,
+                                requires_async: false,
                                 parameters: vec![],
                                 rest_parameter: None,
                                 return_type: None,
@@ -2264,6 +2265,7 @@ mod tests {
                         signature: CallableSignature {
                             name: Some("y".to_string()),
                             kind: CallableKind::Function,
+                            requires_async: false,
                             parameters: vec![
                                 (
                                     "a".to_string(),

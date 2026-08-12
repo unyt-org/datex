@@ -431,6 +431,7 @@ fn function_simple() {
             signature: CallableSignature {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
+                requires_async: false,
                 parameters: Vec::new(),
                 rest_parameter: None,
                 return_type: None,
@@ -457,6 +458,7 @@ fn function_with_params() {
             signature: CallableSignature {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
+                requires_async: false,
                 parameters: vec![(
                     "x".to_string(),
                     TypeExpressionData::Identifier("integer".to_owned())
@@ -484,6 +486,7 @@ fn function_with_params() {
             signature: CallableSignature {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
+                requires_async: false,
                 parameters: vec![
                     (
                         "x".to_string(),
@@ -535,6 +538,7 @@ fn function_with_return_type() {
             signature: CallableSignature {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
+                requires_async: false,
                 parameters: vec![(
                     "x".into(),
                     TypeExpressionData::Identifier("integer".to_owned())

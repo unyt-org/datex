@@ -5,30 +5,24 @@ use crate::{
     values::value_container::ValueContainer,
 };
 impl Apply for ValueContainer {
-    fn try_apply(
+    fn try_apply_sync(
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self {
-            ValueContainer::Local(value) => value.try_apply(runtime, args),
+            ValueContainer::Local(value) => value.try_apply_sync(runtime, args),
             ValueContainer::Shared(reference) => {
-                reference.try_apply(runtime, args)
+                reference.try_apply_sync(runtime, args)
             }
         }
     }
 
-    fn try_apply_single(
-        &self,
-        runtime: &Runtime,
-        arg: ValueContainer,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
+    async fn try_apply_async(&self, runtime: &Runtime, args: Vec<ValueContainer>) -> Result<Option<ValueContainer>, ApplyError> {
         match self {
-            ValueContainer::Local(value) => {
-                value.try_apply_single(runtime, arg)
-            }
+            ValueContainer::Local(value) => value.try_apply_async(runtime, args).await,
             ValueContainer::Shared(reference) => {
-                reference.try_apply_single(runtime, arg)
+                reference.try_apply_async(runtime, args).await
             }
         }
     }

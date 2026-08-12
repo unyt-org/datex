@@ -45,6 +45,7 @@ impl Default for CoreLibraryValues {
                 Some("print".to_string()),
                 CallableTypeDefinition {
                     kind: CallableKind::Function,
+                    requires_async: false,
                     parameters: vec![],
                     rest_parameter: Some((
                         Some("values".to_string()),
@@ -53,13 +54,14 @@ impl Default for CoreLibraryValues {
                     return_type: None,
                     yeet_type: None,
                 },
-                CallableBody::native(Self::print_impl),
+                CallableBody::native_sync(Self::print_impl),
                 Endpoint::LOCAL,
             ),
             panic: Value::callable(
                 Some("panic".to_string()),
                 CallableTypeDefinition {
                     kind: CallableKind::Function,
+                    requires_async: false,
                     parameters: vec![],
                     rest_parameter: Some((
                         Some("values".to_string()),

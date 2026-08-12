@@ -180,6 +180,9 @@ pub struct CallableSignatureData {
     pub parameter_count: u8,
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub requires_async: bool,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
     pub has_rest_parameter: bool,
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
@@ -200,6 +203,7 @@ impl Display for CallableSignatureData {
     ) -> Result<(), core::fmt::Error> {
         write!(formatter, "[")?;
         write!(formatter, "kind: {}, ", self.kind)?;
+        write!(formatter, "requires_async: {}, ", self.requires_async)?;
         write!(
             formatter,
             "parameters: [{}], ",

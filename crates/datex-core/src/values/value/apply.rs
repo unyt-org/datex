@@ -7,26 +7,23 @@ use crate::{
     },
 };
 impl Apply for Value {
-    fn try_apply(
+    fn try_apply_sync(
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self.inner {
             CoreValue::Callable(ref callable) => {
-                callable.try_apply(runtime, args)
+                callable.try_apply_sync(runtime, args)
             }
             _ => Err(ApplyError::UnsupportedApply),
         }
     }
-    fn try_apply_single(
-        &self,
-        runtime: &Runtime,
-        arg: ValueContainer,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
+
+    async fn try_apply_async(&self, runtime: &Runtime, args: Vec<ValueContainer>) -> Result<Option<ValueContainer>, ApplyError> {
         match self.inner {
             CoreValue::Callable(ref callable) => {
-                callable.try_apply_single(runtime, arg)
+                callable.try_apply_async(runtime, args).await
             }
             _ => Err(ApplyError::UnsupportedApply),
         }
