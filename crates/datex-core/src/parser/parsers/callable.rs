@@ -13,6 +13,8 @@ use crate::{
     ast::expressions::CallableSignature, prelude::*,
     types::type_definition::callable::CallableKind,
 };
+use crate::parser::errors::ParserError;
+use crate::parser::lexer::SpannedToken;
 
 impl Parser {
     pub(crate) fn parse_callable_definition(
@@ -27,8 +29,19 @@ impl Parser {
             _ => unreachable!(),
         };
 
-        // next token must be identifier
-        let (name, _) = self.expect_identifier()?;
+        // next token is optional identifier
+        let name = match self.peek()? {
+            SpannedToken {
+                token: Token::Identifier(identifier),
+                span,
+            } => {
+                Some(identifier.clone())
+            },
+            _ => None,
+        };
+        if name.is_some() {
+            self.advance()?;
+        }
 
         // parse parameters
         let parameters = self.parse_callable_parameters()?;
@@ -48,7 +61,7 @@ impl Parser {
         Ok(
             DatexExpressionData::CallableDeclaration(CallableDeclaration {
                 signature: CallableSignature {
-                    name: Some(name),
+                    name,
                     kind,
                     requires_async: false, // TODO
                     parameters,
@@ -118,6 +131,34 @@ mod tests {
                 (CallableDeclaration {
                     signature: CallableSignature {
                         name: Some(String::from("test")),
+                        kind: CallableKind::Function,
+                        requires_async: false,
+                        parameters: vec![],
+                        rest_parameter: None,
+                        return_type: None,
+                        yeet_type: None,
+                    },
+                    body: (DatexExpressionData::Statements(Statements {
+                        statements: vec![],
+                        is_terminated: false,
+                        unbounded: None,
+                    })
+                    .with_default_span()),
+                    injected_variable_count: None,
+                })
+            )
+        );
+    }
+
+    #[test]
+    fn parse_empty_function_without_name() {
+        let expr = parse("function () ()");
+        assert_eq!(
+            expr.data(),
+            &DatexExpressionData::CallableDeclaration(
+                (CallableDeclaration {
+                    signature: CallableSignature {
+                        name: None,
                         kind: CallableKind::Function,
                         requires_async: false,
                         parameters: vec![],
