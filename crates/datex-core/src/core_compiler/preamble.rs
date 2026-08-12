@@ -121,7 +121,7 @@ impl ValueVisitor for PreambleContext<'_> {
     }
 
     fn visit_type(&mut self, _ty: Type) {
-        todo!()
+        // TODO
     }
 }
 

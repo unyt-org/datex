@@ -75,6 +75,7 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::global::protocol_structures::instruction_data::ApplyData;
 
 pub mod context;
 pub mod error;
@@ -894,27 +895,15 @@ fn compile_expression(
 
             // append apply instruction code
             let len = apply.arguments.len();
-            match len {
-                0 => {
-                    compilation_context
-                        .append_instruction_code(InstructionCode::APPLY_ZERO);
-                }
-                1 => {
-                    compilation_context
-                        .append_instruction_code(InstructionCode::APPLY_SINGLE);
-                }
-                // u16 argument count
-                2..=65_535 => {
-                    compilation_context
-                        .append_instruction_code(InstructionCode::APPLY);
-                    // add argument count
-                    append_u16(
-                        compilation_context.cursor(),
-                        apply.arguments.len() as u16,
-                    );
-                }
-                _ => return Err(CompilerError::TooManyApplyArguments),
+
+            // more than u8 size args -> error
+            if len > u8::MAX as usize {
+                return Err(CompilerError::TooManyApplyArguments);
             }
+
+            compilation_context.write(
+                RegularInstruction::apply(len as u8)
+            );
 
             // compile arguments
             for argument in apply.arguments.iter() {
@@ -4028,7 +4017,7 @@ pub mod tests {
         let res = compile_unwrap(script);
         assert_regular_instructions_equal!(
             &res,
-            (RegularInstruction::ApplyZero.with_children(instructions!(
+            (RegularInstruction::apply(0).with_children(instructions!(
                 RegularInstruction::_CallableDeclarationDebugTree(
                     CallableDeclarationDataDebugTree {
                         signature: CallableSignatureData {
@@ -4058,66 +4047,42 @@ pub mod tests {
     fn apply_no_arguments() {
         let datex_script = r#""test"()"#;
         let result = compile_and_log(datex_script);
-        let expected = vec![
-            InstructionCode::APPLY_ZERO.into(),
-            // base value
-            InstructionCode::SHORT_TEXT.into(),
-            4, // length of "test"
-            b't',
-            b'e',
-            b's',
-            b't',
-        ];
-        assert_eq!(result, expected);
+        assert_regular_instructions_equal!(
+            &result,
+            (RegularInstruction::apply(0).with_children(instructions!(
+                RegularInstruction::ShortText(ShortTextData("test".to_string())),
+            )))
+        )
     }
 
     #[test]
     fn apply_one_argument() {
         let datex_script = r#""test" 42u8"#;
         let result = compile_and_log(datex_script);
-        let expected = vec![
-            InstructionCode::APPLY_SINGLE.into(),
-            // argument
-            InstructionCode::UINT_8.into(),
-            42,
-            // base value
-            InstructionCode::SHORT_TEXT.into(),
-            4, // length of "test"
-            b't',
-            b'e',
-            b's',
-            b't',
-        ];
-        assert_eq!(result, expected);
+        assert_regular_instructions_equal!(
+            &result,
+            (RegularInstruction::apply(1).with_children(instructions!(
+                RegularInstruction::uint8(42),
+                RegularInstruction::ShortText(ShortTextData("test".to_string())),
+            )))
+        );
     }
 
     #[test]
     fn apply_multiple_arguments() {
         let datex_script = r#""test"(1u8, 2u8, 3u8)"#;
         let result = compile_and_log(datex_script);
-        let expected = vec![
-            InstructionCode::APPLY.into(),
-            3, // number of arguments
-            0,
-            // argument 1
-            InstructionCode::UINT_8.into(),
-            1,
-            // argument 2
-            InstructionCode::UINT_8.into(),
-            2,
-            // argument 3
-            InstructionCode::UINT_8.into(),
-            3,
-            // base value
-            InstructionCode::SHORT_TEXT.into(),
-            4, // length of "test"
-            b't',
-            b'e',
-            b's',
-            b't',
-        ];
-        assert_eq!(result, expected);
+        assert_regular_instructions_equal!(
+            &result,
+            (RegularInstruction::apply(3).with_children(instructions!(
+                RegularInstruction::uint8(1),
+                RegularInstruction::uint8(2),
+                RegularInstruction::uint8(3),
+                RegularInstruction::ShortText(ShortTextData("test".to_string())),
+            )))
+        );
     }
+
 
     #[test]
     fn clone_local_value() {

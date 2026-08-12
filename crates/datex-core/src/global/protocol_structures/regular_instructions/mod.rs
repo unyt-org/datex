@@ -205,17 +205,8 @@ impl RegularInstruction {
         })
     }
 
-    /// Creates an apply instruction, choosing between the zero, single, and default variants based on the count of arguments.
+    /// Creates an apply instruction with the count of arguments.
     pub fn apply(arg_count: u8) -> Self {
-        match arg_count {
-            0 => Self::apply_zero(),
-            1 => Self::apply_single(),
-            _ => Self::apply_default(arg_count),
-        }
-    }
-
-    /// Creates an apply instruction with the default variant, regardless of the count of arguments.
-    pub fn apply_default(arg_count: u8) -> Self {
         RegularInstruction::Apply(ApplyData { arg_count })
     }
 
@@ -542,12 +533,6 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::BITWISE_NOT)]
     BitwiseNot,
 
-    #[magic(InstructionCode::APPLY_ZERO)]
-    ApplyZero,
-
-    #[magic(InstructionCode::APPLY_SINGLE)]
-    ApplySingle,
-
     #[magic(InstructionCode::APPLY)]
     Apply(ApplyData),
 
@@ -774,13 +759,6 @@ impl RegularInstruction {
                     apply_data.arg_count as u32 + 1,
                 )
             } // arguments plus base to apply to
-
-            RegularInstruction::ApplyZero => {
-                NextExpectedInstructions::Regular(1)
-            }
-            RegularInstruction::ApplySingle => {
-                NextExpectedInstructions::Regular(2)
-            }
 
             RegularInstruction::GetEntryText(_)
             | RegularInstruction::GetEntryIndex(_)

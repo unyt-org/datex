@@ -365,8 +365,6 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::BitwiseNot
                         | RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. })
                         | RegularInstruction::Apply(_)
-                        | RegularInstruction::ApplySingle
-                        | RegularInstruction::ApplyZero
                         | RegularInstruction::GetEntryText(_)
                         | RegularInstruction::GetEntryIndex(_)
                         | RegularInstruction::GetEntryDynamic
@@ -836,26 +834,7 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                            RegularInstruction::ApplySingle => {
-                                let base = collected_results.pop_value();
-                                let argument = collected_results.pop_value();
-                                DatexExpressionData::Apply(Apply {
-                                    base,
-                                    arguments: vec![argument],
-                                })
-                                    .with_default_span()
-                                    .into()
-                            }
-                            RegularInstruction::ApplyZero => {
-                                let base = collected_results.pop_value();
-                                DatexExpressionData::Apply(Apply {
-                                    base,
-                                    arguments: vec![],
-                                })
-                                    .with_default_span()
-                                    .into()
-                            }
-
+                          
                             RegularInstruction::TakeEntryIndex(
                                 index_data,
                             ) | RegularInstruction::GetEntryIndex(
