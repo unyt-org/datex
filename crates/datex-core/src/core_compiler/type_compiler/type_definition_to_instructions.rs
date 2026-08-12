@@ -176,14 +176,14 @@ impl ToInstructions for ListTypeDefinition {
 
     fn to_instructions<'a>(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
+        Box::new(gen move {
             yield TypeInstruction::List(ListData {
                 element_count: self.len() as u32,
             });
             for ty in self.iter() {
-                for instruction in ty.to_instructions(shared_value_tracking) {
+                for instruction in ty.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>() {
                     yield instruction;
                 }
             }
@@ -196,20 +196,19 @@ impl ToInstructions for MapTypeDefinition {
 
     fn to_instructions<'a>(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
+        Box::new(gen move {
             yield TypeInstruction::Map(MapData {
                 element_count: self.len() as u32,
             });
             for (key_ty, value_ty) in self.iter() {
-                for instruction in key_ty.to_instructions(shared_value_tracking)
+                // FIXME: collect required everywhere due to lifetime issues with the generator and optional mut ref
+                for instruction in key_ty.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>()
                 {
                     yield instruction;
                 }
-                for instruction in
-                    value_ty.to_instructions(shared_value_tracking)
-                {
+                for instruction in value_ty.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>() {
                     yield instruction;
                 }
             }
@@ -222,15 +221,15 @@ impl ToInstructions for RangeTypeDefinition {
 
     fn to_instructions<'a>(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
+        Box::new(gen move {
             yield TypeInstruction::Range;
-            for instruction in self.start.to_instructions(shared_value_tracking)
+            for instruction in self.start.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>()
             {
                 yield instruction;
             }
-            for instruction in self.end.to_instructions(shared_value_tracking) {
+            for instruction in self.end.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>() {
                 yield instruction;
             }
         })
@@ -298,16 +297,16 @@ impl ToInstructions for MapCollectionTypeDefinition {
 
     fn to_instructions<'a>(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
+        Box::new(gen move {
             for instruction in
-                self.key_type.to_instructions(shared_value_tracking)
+                self.key_type.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>()
             {
                 yield instruction;
             }
             for instruction in
-                self.value_type.to_instructions(shared_value_tracking)
+                self.value_type.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>()
             {
                 yield instruction;
             }
@@ -331,11 +330,11 @@ impl ToInstructions for IntersectionTypeDefinition {
 
     fn to_instructions<'a>(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
+        Box::new(gen move {
             for ty in self.iter() {
-                for instruction in ty.to_instructions(shared_value_tracking) {
+                for instruction in ty.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>() {
                     yield instruction;
                 }
             }
@@ -359,11 +358,11 @@ impl ToInstructions for UnionTypeDefinition {
 
     fn to_instructions<'a>(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
+        Box::new(gen move {
             for ty in self.iter() {
-                for instruction in ty.to_instructions(shared_value_tracking) {
+                for instruction in ty.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>() {
                     yield instruction;
                 }
             }
@@ -376,7 +375,7 @@ impl ToInstructions for TaggedTypeDefinition {
 
     fn to_instructions<'a>(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen { todo!() })
     }

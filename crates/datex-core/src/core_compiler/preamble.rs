@@ -123,12 +123,12 @@ impl ValueVisitor for PreambleContext<'_> {
     }
 
     fn visit_type(&mut self, ty: Type) {
-        // intercept shared types
         match ty {
+            // intercept shared types
             Type::Entity(_) => todo!(),
             _ => {
                 let instructions = ty
-                    .to_instructions(&None)
+                    .to_instructions(None)
                     .collect::<Vec<_>>();
                 for instruction in instructions {
                     append_type_instruction(self.cursor_mut(), instruction);
