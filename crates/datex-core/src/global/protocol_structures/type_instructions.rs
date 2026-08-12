@@ -46,7 +46,7 @@ impl Serialize for TypeInstruction {
     where
         S: Serializer,
     {
-        let instruction_code = self.as_ref().to_string();
+        let instruction_code = format!("TYPE.{}", self.as_ref());
         let metadata_string = self.metadata_string();
 
         if let Some(metadata_string) = metadata_string {
