@@ -127,7 +127,7 @@ impl Runtime {
         )
     }
 
-    async fn execute_remote(
+    pub async fn execute_remote(
         &self,
         remote_execution_context: &mut RemoteExecutionContext,
         input: DXBWithSharedValues,
@@ -140,7 +140,7 @@ impl Runtime {
         .await
     }
 
-    async fn execute_instructions_remote(
+    pub async fn execute_instructions_remote(
         &self,
         endpoints: Vec<Endpoint>,
         instructions_input: Vec<InstructionInput>,

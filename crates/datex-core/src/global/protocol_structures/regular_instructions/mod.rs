@@ -206,7 +206,7 @@ impl RegularInstruction {
     }
 
     /// Creates an apply instruction, choosing between the zero, single, and default variants based on the count of arguments.
-    pub fn apply(arg_count: u16) -> Self {
+    pub fn apply(arg_count: u8) -> Self {
         match arg_count {
             0 => Self::apply_zero(),
             1 => Self::apply_single(),
@@ -215,7 +215,7 @@ impl RegularInstruction {
     }
 
     /// Creates an apply instruction with the default variant, regardless of the count of arguments.
-    pub fn apply_default(arg_count: u16) -> Self {
+    pub fn apply_default(arg_count: u8) -> Self {
         RegularInstruction::Apply(ApplyData { arg_count })
     }
 

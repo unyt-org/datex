@@ -346,7 +346,7 @@ pub fn append_apply<T: BufferProvider + ValueVisitor>(
     callee: RegularInstruction,
     args: Vec<ValueContainer>,
 ) {
-    context.write(RegularInstruction::apply(args.len() as u16));
+    context.write(RegularInstruction::apply(args.len() as u8));
     for arg in args {
         context.visit_value_container(arg, None);
     }

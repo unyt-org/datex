@@ -13,7 +13,6 @@ use crate::{
     },
     value_updates::errors::UpdateError,
 };
-pub mod apply;
 pub mod observers;
 pub mod serde_dif;
 

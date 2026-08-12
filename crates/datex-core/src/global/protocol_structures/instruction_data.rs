@@ -619,7 +619,7 @@ pub struct JumpWithValueData {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct ApplyData {
-    pub arg_count: u16,
+    pub arg_count: u8,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

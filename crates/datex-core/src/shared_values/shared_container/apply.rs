@@ -5,6 +5,11 @@ use crate::{
     traits::apply::{Apply, ApplyError},
     values::value_container::ValueContainer,
 };
+use crate::core_compiler::InstructionInput;
+use crate::global::protocol_structures::instruction_data::ApplyData;
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+use crate::values::core_values::callable::Callable;
+use crate::values::core_values::callable::error::CallableError;
 
 impl Apply for SharedContainer {
     fn try_apply_sync(
@@ -12,10 +17,47 @@ impl Apply for SharedContainer {
         runtime: &Runtime,
         args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        self.base_shared_container().try_apply_sync(runtime, args)
+        if !self.is_self_owned() {
+            return Err(ApplyError::AsyncCallableRequiresAsyncExecution);
+        }
+        let base = self.base_shared_container();
+        let callable = base.value_container().try_as::<Callable>().ok_or(ApplyError::UnsupportedApply)?;
+        callable.try_apply_sync(runtime, args)
     }
 
     async fn try_apply_async(&self, runtime: &Runtime, args: Vec<ValueContainer>) -> Result<Option<ValueContainer>, ApplyError> {
-        self.base_shared_container().try_apply_async(runtime, args).await
+        if !self.is_self_owned() {
+            return self.apply_remote(runtime, args).await;
+        }
+
+        let callable = {
+            let base = self.base_shared_container();
+            let value = base.value_container().try_as::<Callable>().ok_or(ApplyError::UnsupportedApply)?;
+            // Note value container is cloned here to prevent borrow of base_shared_container across await point.
+            value.clone()
+        };
+        callable.try_apply_async(runtime, args).await
+    }
+}
+
+impl SharedContainer {
+    /// Calls the apply method on the owner endpoint of the shared value.
+    async fn apply_remote(&self, runtime: &Runtime, args: Vec<ValueContainer>) -> Result<Option<ValueContainer>, ApplyError> {
+        let mut instructions: Vec<InstructionInput> = vec![
+            RegularInstruction::Apply(ApplyData {
+                arg_count: args.len() as u8,
+            }).into(),
+        ];
+        // append args
+        instructions.extend(args.into_iter().map(|arg| {
+            InstructionInput::ValueContainer(arg)
+        }));
+        // append the callee
+        instructions.push(InstructionInput::ValueContainer(ValueContainer::Shared(self.clone())));
+        
+        runtime.execute_instructions_remote(
+            vec![self.pointer_address().endpoint()],
+            instructions
+        ).await.map_err(|e| ApplyError::CallableError(Box::new(CallableError::ExecutionError(e))))
     }
 }
