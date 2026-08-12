@@ -35,7 +35,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, CallableTypeDefinition> {
             &value.parameters,
             self.cast::<Vec<(Option<String>, Type)>>(),
         ))?;
-        obj.serialize_key("rest_parameters")?;
+        obj.serialize_key("rest_parameter")?;
         match &value.rest_parameter {
             Some((name, ty)) => {
                 obj.serialize_value(&ValueWithSeed::new(
@@ -160,7 +160,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CallableTypeDefinition> {
                 "parameters" => {
                     parameters = Some(map.next_value_seed(self.cast::<Vec<(Option<String>, Type)>>())?);
                 }
-                "rest_parameters" => {
+                "rest_parameter" => {
                     rest_parameter = map
                         .next_value_seed(self.cast::<Option<(Option<String>, Type)>>())?
                         .map(|(name, ty)| (name, Box::new(ty)));
@@ -183,7 +183,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CallableTypeDefinition> {
 
         Ok(CallableTypeDefinition {
             kind,
-            requires_async: false, // Default value, adjust as needed
+            requires_async: requires_async.unwrap_or(false),
             parameters,
             rest_parameter,
             return_type: return_type.map(Box::new),

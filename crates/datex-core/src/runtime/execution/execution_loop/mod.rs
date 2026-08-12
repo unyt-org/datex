@@ -1590,7 +1590,7 @@ fn create_new_reference_from_value(
         PointerAddress::Remote(remote_address) => {
             let base = BaseSharedValueContainer::try_new(
                 value,
-                TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()),
+                TypeDefinition::CoreType(CoreLibBaseTypeId::Any.into()),
                 container_mutability,
             )?;
 

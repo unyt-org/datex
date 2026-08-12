@@ -321,7 +321,7 @@ impl<'a> Precompiler<'a> {
             SharedContainerContainingEntityType::new_unchecked(
                 SharedContainer::new_owned_with_inferred_allowed_type(
                     CoreValue::EntityTypeDefinition(EntityTypeDefinition::new(
-                        TypeDefinition::core(CoreLibBaseTypeId::Unknown),
+                        TypeDefinition::core(CoreLibBaseTypeId::Any),
                         data.name.clone(),
                     )),
                     SharedContainerMutability::Immutable,
@@ -355,7 +355,7 @@ impl<'a> Precompiler<'a> {
             TypeDefinition::Shared(unsafe {
                 SharedContainerContainingType::new_unchecked(
                     SharedContainer::new_owned_with_inferred_allowed_type(
-                        Type::core(CoreLibBaseTypeId::Unknown),
+                        Type::core(CoreLibBaseTypeId::Any),
                         SharedContainerMutability::Mutable,
                         self.runtime.pointer_address_provider_mut().deref_mut(),
                     ),

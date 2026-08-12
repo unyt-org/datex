@@ -49,7 +49,7 @@ impl Default for CoreLibraryValues {
                     parameters: vec![],
                     rest_parameter: Some((
                         Some("values".to_string()),
-                        Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
+                        Box::new(Type::core(CoreLibBaseTypeId::Any)),
                     )),
                     return_type: None,
                     yeet_type: None,
@@ -65,7 +65,7 @@ impl Default for CoreLibraryValues {
                     parameters: vec![],
                     rest_parameter: Some((
                         Some("values".to_string()),
-                        Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
+                        Box::new(Type::core(CoreLibBaseTypeId::Any)),
                     )),
                     return_type: None,
                     yeet_type: None,

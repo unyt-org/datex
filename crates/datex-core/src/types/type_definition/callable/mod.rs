@@ -21,6 +21,7 @@ use crate::prelude::*;
 )]
 #[brw(repr(u8))]
 #[repr(u8)]
+#[serde(rename_all = "lowercase")]
 pub enum CallableKind {
     // A pure function
     Function,

@@ -201,7 +201,7 @@ impl_datex_direct_via_value_container!(Range, CoreLibBaseTypeId::Range);
 impl_datex_direct_via_value_container!(Type, CoreLibBaseTypeId::Type);
 impl_datex_direct_via_value_container!(
     EntityTypeDefinition,
-    CoreLibBaseTypeId::Unknown
+    CoreLibBaseTypeId::Any
 );
 impl_datex_direct_via_value_container!(Callable, CoreLibBaseTypeId::Callable);
 
