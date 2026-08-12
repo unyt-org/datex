@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use core::ops::Deref;
 use serde::{
     Deserializer, Serializer,
     de::DeserializeSeed,
@@ -26,6 +26,10 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, CallableTypeDefinition> {
         let mut obj = serializer.serialize_map(Some(1))?;
         obj.serialize_key("kind")?;
         obj.serialize_value(&value.kind)?;
+
+        obj.serialize_key("requires_async")?;
+        obj.serialize_value(&value.requires_async)?;
+
         obj.serialize_key("parameters")?;
         obj.serialize_value(&ValueWithSeed::new(
             &value.parameters,
@@ -137,6 +141,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CallableTypeDefinition> {
         A: MapAccess<'de>,
     {
         let mut kind: Option<CallableKind> = None;
+        let mut requires_async: Option<bool> = None;
         let mut parameters: Option<Vec<(Option<String>, Type)>> = None;
         let mut rest_parameter: Option<(Option<String>, Box<Type>)> = None;
         let mut return_type: Option<Type> = None;
@@ -148,6 +153,9 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CallableTypeDefinition> {
             match key.as_str() {
                 "kind" => {
                     kind = Some(map.next_value()?);
+                }
+                "requires_async" => {
+                    requires_async = Some(map.next_value()?);
                 }
                 "parameters" => {
                     parameters = Some(map.next_value_seed(self.cast::<Vec<(Option<String>, Type)>>())?);
