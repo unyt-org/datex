@@ -91,7 +91,7 @@ impl<'a> CompilationContext<'a> {
         type_expression: &TypeExpression,
     ) {
         let instructions = type_expression
-            .to_instructions(&mut self.core_context.shared_value_tracking)
+            .to_instructions(Some(&mut self.core_context.shared_value_tracking))
             .collect::<Vec<_>>();
         for instruction in instructions {
             append_type_instruction(self.cursor(), instruction);

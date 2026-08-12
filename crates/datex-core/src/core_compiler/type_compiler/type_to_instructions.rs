@@ -12,7 +12,7 @@ impl ToInstructions for Type {
 
     fn to_instructions<'a>(
         &'a self,
-        shared_value_tracking: &'a mut SharedValueTracking,
+        shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen move {
             match self {

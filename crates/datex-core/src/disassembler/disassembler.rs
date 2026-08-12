@@ -479,7 +479,7 @@ fn disassemble_body_inner(
                         let mut tree = InstructionTree::new(instruction);
 
                         let err = match next_expected_count {
-                            Some(next_expected_count) => {
+                            Some(next_expected_count)=> {
                                 match next_expected_count {
                                     CountOrUnbounded::UnboundedEnd => {
                                         parent.children.push(tree);

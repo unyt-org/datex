@@ -263,10 +263,9 @@ impl Display for CallableDataBody {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "[length: {}, injected_value_count: {}, body_len: {} bytes]",
+            "[length: {}, injected_value_count: {}]",
             self.length,
             self.injected_value_count,
-            self.body.len()
         )
     }
 }
@@ -472,14 +471,13 @@ impl Display for InstructionBlockData {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "[length: {}, injected_value_count: {}, injected_values: [{}], body_len: {} bytes]",
+            "[length: {}, injected_value_count: {}, injected_values: [{}]]",
             self.length,
             self.injected_value_count,
             self.injected_values
                 .iter()
                 .map(|v| format!("{}", v))
                 .join(", "),
-            self.body.len()
         )
     }
 }

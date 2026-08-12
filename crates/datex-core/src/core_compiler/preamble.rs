@@ -24,6 +24,8 @@ use crate::{
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
 use binrw::{BinWrite, io::Write};
+use crate::core_compiler::to_instructions::ToInstructions;
+use crate::core_compiler::type_compiler::append_type_instruction;
 
 #[derive(Debug)]
 enum VisitedValue {
@@ -120,8 +122,19 @@ impl ValueVisitor for PreambleContext<'_> {
         }
     }
 
-    fn visit_type(&mut self, _ty: Type) {
-        // TODO
+    fn visit_type(&mut self, ty: Type) {
+        // intercept shared types
+        match ty {
+            Type::Entity(_) => todo!(),
+            _ => {
+                let instructions = ty
+                    .to_instructions(&None)
+                    .collect::<Vec<_>>();
+                for instruction in instructions {
+                    append_type_instruction(self.cursor_mut(), instruction);
+                }
+            }
+        }
     }
 }
 

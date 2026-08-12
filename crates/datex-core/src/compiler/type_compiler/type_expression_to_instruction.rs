@@ -12,7 +12,7 @@ impl ToInstructions for TypeExpression {
     type InstructionType = TypeInstruction;
     fn to_instructions<'a>(
         &'a self,
-        _shared_value_tracking: &'a mut SharedValueTracking,
+        shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
             match self.data() {
@@ -37,13 +37,12 @@ impl ToInstructions for TypeExpression {
                 TypeExpressionData::Range(range) => {
                     yield TypeInstruction::Range;
                     for instr in
-                        range.start.to_instructions(_shared_value_tracking)
+                        range.start.to_instructions(shared_value_tracking)
                     {
                         yield instr;
                     }
                     for instr in
-                        range.end.to_instructions(_shared_value_tracking)
-                    {
+                        range.end.to_instructions(shared_value_tracking)                    {
                         yield instr;
                     }
                 }

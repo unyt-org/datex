@@ -475,9 +475,10 @@ impl<T> InstructionCollector<T> {
                 regular_count,
                 type_count,
             ) => {
+                let total_count = regular_count + type_count;
                 self.collect_full(
                     Instruction::Regular(regular_instruction),
-                    regular_count + type_count,
+                    total_count,
                 );
                 None
             }

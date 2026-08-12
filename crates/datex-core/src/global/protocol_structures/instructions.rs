@@ -81,10 +81,18 @@ impl NextExpectedInstructions {
         match self {
             NextExpectedInstructions::None => None,
             NextExpectedInstructions::Regular(count) => {
-                Some(CountOrUnbounded::Count(*count))
+                if count == &0 {
+                    None
+                } else {
+                    Some(CountOrUnbounded::Count(*count))
+                }
             }
             NextExpectedInstructions::Type(count) => {
-                Some(CountOrUnbounded::Count(*count))
+                if count == &0 {
+                    None
+                } else {
+                    Some(CountOrUnbounded::Count(*count))
+                }
             }
             NextExpectedInstructions::UnboundedStart => {
                 Some(CountOrUnbounded::UnboundedStart)
@@ -95,7 +103,14 @@ impl NextExpectedInstructions {
             NextExpectedInstructions::RegularAndType(
                 regular_count,
                 type_count,
-            ) => Some(CountOrUnbounded::Count(regular_count + type_count)),
+            ) => {
+                let total_count = regular_count + type_count;
+                if total_count == 0 {
+                    None
+                } else {
+                    Some(CountOrUnbounded::Count(total_count))
+                }
+            }
         }
     }
 }
