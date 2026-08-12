@@ -53,7 +53,7 @@ impl Default for CoreLibraryValues {
                     return_type: None,
                     yeet_type: None,
                 },
-                CallableBody::Native(Self::print_impl),
+                CallableBody::native(Self::print_impl),
                 Endpoint::LOCAL,
             ),
             panic: Value::callable(

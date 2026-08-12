@@ -250,7 +250,7 @@ pub struct CallableData {
 #[brw(little)]
 pub struct CallableDataBody {
     pub injected_value_count: u32,
-    pub length: u32,
+    pub length: u32, // if length is 0, the body has a native implementation
     #[br(count = length)]
     pub body: Vec<u8>,
 }

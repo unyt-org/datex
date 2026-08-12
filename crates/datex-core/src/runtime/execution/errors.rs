@@ -23,6 +23,7 @@ use core::fmt::Display;
 pub enum InvalidProgramError {
     // any unterminated sequence, e.g. missing key in key-value pair
     UnterminatedSequence,
+    NativeCallableDeserialization,
     MissingRemoteExecutionReceiver,
     ExpectedTypeValue,
     ExpectedAliasType,
@@ -70,6 +71,9 @@ impl Display for InvalidProgramError {
             }
             InvalidProgramError::InvalidInstructionFormat => {
                 core::write!(f, "Invalid instruction format")
+            }
+            InvalidProgramError::NativeCallableDeserialization => {
+                core::write!(f, "Tried to deserialize a native callable")
             }
         }
     }

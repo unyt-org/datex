@@ -1,3 +1,5 @@
+use core::fmt::Debug;
+use core::hash::Hash;
 use crate::{
     core_compiler::core_compilation_context::DXBWithSharedValues,
     prelude::*,
@@ -20,8 +22,40 @@ pub mod equality;
 pub mod error;
 mod serde_dif;
 
-pub type NativeCallable =
-    fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError>;
+#[derive(Clone)]
+pub struct NativeCallable {
+    pub function: Rc<dyn Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static>
+}
+
+impl Debug for NativeCallable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "NativeCallable")
+    }
+}
+impl PartialEq for NativeCallable {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.function, &other.function)
+    }
+}
+impl Eq for NativeCallable {}
+
+impl Hash for NativeCallable {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let ptr = Rc::as_ptr(&self.function) as *const ();
+        ptr.hash(state);
+    }
+}
+
+
+impl NativeCallable {
+    pub fn new(
+        function: impl Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static,
+    ) -> Self {
+        NativeCallable {
+            function: Rc::new(function),
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DatexBytecodeCallable {
@@ -62,6 +96,12 @@ pub enum CallableBody {
     CoreStub(CoreStub),
 }
 
+impl CallableBody {
+    pub fn native(native_callable: impl Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static) -> Self {
+        CallableBody::Native(NativeCallable::new(native_callable))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CoreStub {
     Panic,
@@ -82,7 +122,7 @@ impl Callable {
         args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, CallableError> {
         match &self.body {
-            CallableBody::Native(native_callable) => native_callable(args),
+            CallableBody::Native(native_callable) => (native_callable.function)(args),
             CallableBody::DatexBytecode(bytecode_callable) => {
                 bytecode_callable.call(runtime, args)
             }

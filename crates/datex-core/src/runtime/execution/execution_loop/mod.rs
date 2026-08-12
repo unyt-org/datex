@@ -701,6 +701,12 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
                                 RegularInstruction::Callable(callable_declaration) => {
+
+                                    // indicates a native callable declaration which cannot be transferred
+                                    if callable_declaration.body.length == 0 {
+                                        return yield Err(ExecutionError::invalid_program(InvalidProgramError::NativeCallableDeserialization));
+                                    }
+
                                     let injected_values = collected_results
                                         .pop_values(callable_declaration.body.injected_value_count)
                                         .into_iter()

@@ -49,7 +49,7 @@ pub fn generate_impl_glue_code(input: TokenStream, item: Item) -> TokenStream {
                                     return_type: None,
                                     yeet_type: None,
                                 },
-                                body: CallableBody::Native(|vals| {Ok(None)}),
+                                body: CallableBody::native(|vals| {Ok(None)}),
                                 creator: Default::default(),
                             }
                         }

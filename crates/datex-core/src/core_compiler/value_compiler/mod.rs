@@ -206,7 +206,6 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             }
         }
         CoreValue::Callable(callable) => {
-
             let (body, injected_values) = match callable.body {
                 CallableBody::DatexBytecode(datex_bytecode) => {
                     (
@@ -218,7 +217,14 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                         datex_bytecode.injected_values,
                     )
                 },
-                _ => todo!()
+                _ => (
+                    CallableDataBody {
+                        injected_value_count: 0,
+                        length: 0,
+                        body: vec![],
+                    },
+                    vec![]
+                )
             };
 
             context.write(RegularInstruction::Callable(CallableData {
