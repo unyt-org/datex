@@ -578,91 +578,25 @@ impl ComHub {
     /// Handles an incoming block from a socket (async)
     async fn handle_incoming_block_async(
         self: Rc<Self>,
-        mut block: DXBBlock,
+        block: DXBBlock,
         socket_uuid: ComInterfaceSocketUUID,
     ) {
-        match block.block_type() {
-            BlockType::Hello => {
-                // preprocess hello block
-                // setting up peers pub keys as corresponding sockets socket_properties
-                let keys = block.body.clone();
-                let (pub_sig_key, rest) = keys.split_at(32);
-                let (pub_cry_key, enc_key) = rest.split_at(32);
+        if block.block_type() == BlockType::Hello {
+            // preprocess hello block
+            // setting up peers pub keys as corresponding sockets socket_properties
+            let keys = block.body.clone();
+            let (pub_sig_key, pub_cry_key) = keys.split_at(32);
+            {
+                let mut peer_socket =
+                    self.socket_manager().get_socket_by_uuid_mut(&socket_uuid);
 
-                let (encapped_shared_sec, shared_sec_vec) =
-                    CryptoImpl::enc_mlkem(enc_key.to_vec());
-                let shared_sec: [u8; 32] = shared_sec_vec.try_into().unwrap();
-
-                info!("Shared sec send via HelloBack");
-
-                {
-                    let mut peer_socket = self
-                        .socket_manager()
-                        .get_socket_by_uuid_mut(&socket_uuid);
-
-                    let peer_pub_sig_key = pub_sig_key.try_into().unwrap();
-                    let peer_pub_cry_key = pub_cry_key.try_into().unwrap();
-                    peer_socket.socket_properties.pub_sig_key =
-                        Some(peer_pub_sig_key);
-                    peer_socket.socket_properties.pub_cry_key =
-                        Some(peer_pub_cry_key);
-                    peer_socket.socket_properties.pub_mlkem_key =
-                        Some(enc_key.to_vec());
-                    peer_socket.socket_properties.shared_sec_send =
-                        Some(shared_sec);
-                    // set encapped key as socket prop and include into hello back block
-                }
-                // setup hello back
-                let challenge_body: Vec<u8> = vec![
-                    InstructionCode::ADD.into(),
-                    InstructionCode::UINT_8.into(),
-                    11u8,
-                    InstructionCode::UINT_8.into(),
-                    13u8,
-                ];
-                let body = [challenge_body, encapped_shared_sec].concat();
-                let mut new_block = DXBBlock::new_with_body(&body);
-                new_block
-                    .block_header
-                    .flags_and_timestamp
-                    .set_block_type(BlockType::HelloBack);
-                let prepped_new_block = self
-                    .prepare_own_block(new_block)
-                    .into_result()
-                    .await
-                    .unwrap();
-
-                let x = self
-                    .send_block_to_endpoints_via_socket(
-                        prepped_new_block,
-                        socket_uuid.clone(),
-                        vec![block.sender().clone()],
-                        None,
-                    )
-                    .into_future()
-                    .await;
-                let y = match x {
-                    SyncOrAsyncResolved::Sync(r) => r.map(|_| ()),
-                    SyncOrAsyncResolved::Async(fut) => fut,
-                };
+                let peer_pub_sig_key = pub_sig_key.try_into().unwrap();
+                let peer_pub_cry_key = pub_cry_key.try_into().unwrap();
+                peer_socket.socket_properties.pub_sig_key =
+                    Some(peer_pub_sig_key);
+                peer_socket.socket_properties.pub_cry_key =
+                    Some(peer_pub_cry_key);
             }
-            BlockType::HelloBack => {
-                let (a, b) = block.body.split_at(5);
-                let vault = self.vault.lock().unwrap();
-                let shared_sec = CryptoImpl::dec_mlkem(&vault, b.to_vec());
-                info!("Shared sec received via HelloBack");
-                {
-                    let mut peer_socket = self
-                        .socket_manager()
-                        .get_socket_by_uuid_mut(&socket_uuid);
-                    let ss: [u8; 32] = shared_sec.try_into().unwrap();
-                    peer_socket.socket_properties.shared_sec_received =
-                        Some(ss);
-                }
-
-                block.body = a.to_vec();
-            }
-            _ => {}
         }
         // handle incoming block
         let receive_block_result = self
@@ -722,13 +656,12 @@ impl ComHub {
         socket_uuid: ComInterfaceSocketUUID,
     ) -> MaybeAsync<ReceiveBlockResult, impl Future<Output = ReceiveBlockResult>>
     {
-        let block_type = block.block_type();
         // preprocess the block and get relay receivers and own received block if any
         let preprocess_result =
             self.receive_block_preprocess(&socket_uuid, block);
 
         // get keys for decryption and validation from socketdata and vault
-        let (peer_pub_sig_key, peer_pub_cry_key, pri_cry_key, shared_sec) = {
+        let (peer_pub_sig_key, peer_pub_cry_key, pri_cry_key) = {
             let socket_properties = &self
                 .socket_manager()
                 .get_socket_by_uuid(&socket_uuid)
@@ -736,43 +669,9 @@ impl ComHub {
                 .socket_properties;
             let sig_key = socket_properties.pub_sig_key.unwrap();
             let cry_key = socket_properties.pub_cry_key.unwrap();
-            let shared_sec_send = socket_properties.shared_sec_send.unwrap();
-            let shared_sec_received = if (block_type == BlockType::HelloBack)
-                || (block_type == BlockType::Hello)
-            {
-                [0u8; 32]
-            } else {
-                socket_properties.shared_sec_received.unwrap()
-            };
-            let ss: Vec<u8> = shared_sec_send
-                .to_vec()
-                .iter()
-                .zip(shared_sec_received.to_vec().iter())
-                .map(|(&a, &b)| a ^ b)
-                .collect();
-            let shared_sec: [u8; 32] = ss.try_into().unwrap();
-
-            cfg_if::cfg_if! {
-                // note: mutex works differently on embedded...
-                if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
-                    let pri_cry_key = self.vault.lock().pri_cry_key;
-                } else {
-                    let pri_cry_key = self.vault.lock().unwrap().pri_cry_key;
-                }
-            }
-            info!(
-                "Peer pub sig key for val of rec dxb: {:?}",
-                sig_key.to_vec()
-            );
-            info!(
-                "Peer pub cry key for val of rec dxb: {:?}",
-                cry_key.to_vec()
-            );
-            (sig_key, cry_key, pri_cry_key, shared_sec)
+            let pri_cry_key = self.vault.try_lock().unwrap().pri_cry_key;
+            (sig_key, cry_key, pri_cry_key)
         };
-        // pass shared secret instead?
-        // encrypt own blocks with send?
-        // decrypt their blocks with received.
 
         // validate block signature if sent to own endpoint
         let validation_result = match preprocess_result.own_received_block {
@@ -782,7 +681,6 @@ impl ComHub {
                     peer_pub_sig_key,
                     peer_pub_cry_key,
                     pri_cry_key,
-                    shared_sec,
                 )
                 .map(|validation| validation.map(Some)),
             // if block is not for own endpoint, don't validate signature and don't return own received block
@@ -1209,36 +1107,13 @@ impl ComHub {
         }
 
         // access vault to get keys
-        cfg_if::cfg_if! {
-            // note: mutex works differently on embedded...
-            if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
-                let vault = self.vault.lock();
-                let pub_sig_key = vault.pub_sig_key;
-                let pri_sig_key = vault.pri_sig_key;
-                let pub_cry_key = vault.pub_cry_key;
-                let pri_cry_key = vault.pri_cry_key;
-                let (dec_key, enc_key) = CryptoImpl::export_mlkem_keypair_from_seed(&vault);
+        let vault = self.vault.try_lock().unwrap();
+        let pub_key = vault.pub_sig_key.to_vec();
+        let pri_key = vault.pri_sig_key.to_vec();
+        let pub_cry_key = vault.pub_cry_key.to_vec();
 
-                let pub_key = pub_sig_key.to_vec();
-                let pri_key = pri_sig_key.to_vec();
-                let pub_cry_key = pub_cry_key.to_vec();
-                let pri_cry_key = pri_cry_key.to_vec();
-            } else { // non-embedded
-                let vault = self.vault.lock().unwrap();
-                let pub_sig_key = vault.pub_sig_key;
-                let pri_sig_key = vault.pri_sig_key;
-                let pub_cry_key = vault.pub_cry_key;
-                let pri_cry_key = vault.pri_cry_key;
-                let (dec_key, enc_key) = CryptoImpl::export_mlkem_keypair_from_seed(&vault);
-
-                let pub_key = pub_sig_key.to_vec();
-                let pri_key = pri_sig_key.to_vec();
-            }
-        }
-
-        //
         if block.block_type() == BlockType::Hello {
-            let keys = [pub_key, pub_cry_key.to_vec(), enc_key].concat();
+            let keys = [pub_key, pub_cry_key.to_vec()].concat();
             block.body = keys;
         }
 
@@ -1254,15 +1129,9 @@ impl ComHub {
 
             // SignatureType::Unencrypted and SignatureType::Encrypted handled below
             sig_ty => SyncOrAsync::Async(Box::pin(async move {
-                let data = if block.block_type() == BlockType::HelloBack {
-                    CryptoImpl::hash_sha256(&block.body.split_at(5).0)
-                        .await
-                        .map_err(|_| ComHubError::SignatureCreationError)?
-                } else {
-                    CryptoImpl::hash_sha256(block.body.as_slice())
-                        .await
-                        .map_err(|_| ComHubError::SignatureCreationError)?
-                };
+                let data = CryptoImpl::hash_sha256(block.body.as_slice())
+                    .await
+                    .map_err(|_| ComHubError::SignatureCreationError)?;
 
                 let signature = CryptoImpl::sig_ed25519(&pri_key, &data)
                     .await
@@ -1598,67 +1467,39 @@ impl ComHub {
 
         let mut results = Vec::new();
 
+        // generate data key and encrypt the body
+        let data_key: [u8; 32] =
+            CryptoImpl::random_bytes(32).try_into().unwrap();
+        let encrypted_body =
+            CryptoImpl::aes_cheat(&data_key, &[0u8; 16], block.body.as_ref())
+                .unwrap();
+
         for (receiver_socket, endpoints) in outbound_receiver_groups {
             if let Some(socket_uuid) = receiver_socket {
                 // maybe do encryption here?
                 info!("Sending stuffs...");
-                // derive key encryption key
-                cfg_if::cfg_if! {
-                    // note: mutex works differently on embedded...
-                    if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
-                        let pri_cry_key = self.vault.lock().pri_cry_key;
-                    } else {
-                        let pri_cry_key = self.vault.lock().unwrap().pri_cry_key;
-                    }
-                }
+                // retrieve keys and derive shared secret
+                let pri_cry_key = self.vault.try_lock().unwrap().pri_cry_key;
                 let socket_properties = &self
                     .socket_manager()
                     .get_socket_by_uuid(&socket_uuid)
                     .unwrap()
                     .socket_properties;
-                // x25519
-                /*
                 let peer_pub_cry_key = socket_properties.pub_cry_key.unwrap();
                 let shared_sec = CryptoImpl::derive_x25519_cheat(
                     &pri_cry_key,
                     &peer_pub_cry_key,
                 )
                 .unwrap();
-                */
 
-                // ml-kem
-                let shared_sec_send =
-                    socket_properties.shared_sec_send.unwrap();
-                let shared_sec_received =
-                    socket_properties.shared_sec_received.unwrap();
-                let ss: Vec<u8> = shared_sec_send
-                    .to_vec()
-                    .iter()
-                    .zip(shared_sec_received.to_vec().iter())
-                    .map(|(&a, &b)| a ^ b)
-                    .collect();
-                let shared_sec: [u8; 32] = ss.try_into().unwrap();
-
-                // prep encryption
+                // wrap data key with kek, set body to wrapped key prepended to encrypted body
                 let kek_bytes =
                     CryptoImpl::hkdf_cheat(&shared_sec, &[0u8; 16]).unwrap();
-
-                // define data key and wrap it with kek
-                let data_key: [u8; 32] =
-                    CryptoImpl::random_bytes(32).try_into().unwrap();
-
                 let wrapped_key =
                     CryptoImpl::aes_kw_wrap_cheat(&kek_bytes, &data_key)
                         .unwrap();
-
-                // encrypt the body and prepend wrapped key
-                let encrypted_body = CryptoImpl::aes_cheat(
-                    &data_key,
-                    &[0u8; 16],
-                    block.body.as_ref(),
-                )
-                .unwrap();
-                block.body = [wrapped_key.to_vec(), encrypted_body].concat();
+                block.body =
+                    [wrapped_key.to_vec(), encrypted_body.clone()].concat();
 
                 results.push((
                     endpoints.clone(),

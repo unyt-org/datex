@@ -346,7 +346,6 @@ impl DXBBlock {
         peer_pub_sig_key: [u8; 32],
         peer_pub_cry_key: [u8; 32],
         own_pri_cry_key: [u8; 32],
-        shared_sec: [u8; 32],
     ) -> MaybeAsync<
         Result<DXBBlock, SignatureValidationError>,
         impl Future<Output = Result<DXBBlock, SignatureValidationError>>,
@@ -371,17 +370,13 @@ impl DXBBlock {
             signature_type @ (SignatureType::Encrypted
             | SignatureType::Unencrypted) => MaybeAsync::Async(async move {
                 // derive key encryption key
-                /*
                 let shared_sec = CryptoImpl::derive_x25519_cheat(
                     &own_pri_cry_key,
                     &peer_pub_cry_key,
                 )
                 .unwrap();
-                */
 
-                if (self.block_type() != BlockType::HelloBack)
-                    && (self.block_type() != BlockType::Hello)
-                {
+                if self.block_type() != BlockType::Hello {
                     let kek_bytes =
                         CryptoImpl::hkdf_cheat(&shared_sec, &[0u8; 16])
                             .unwrap();
