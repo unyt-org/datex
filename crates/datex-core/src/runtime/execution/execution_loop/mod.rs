@@ -476,7 +476,9 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::_RemoteExecutionDebugFlat(_) |
                             RegularInstruction::_RemoteExecutionDebugTree(_) |
                             RegularInstruction::_CallableDeclarationDebugFlat(_) |
-                            RegularInstruction::_CallableDeclarationDebugTree(_)
+                            RegularInstruction::_CallableDeclarationDebugTree(_) |
+                            RegularInstruction::_CallableDebugFlat(_) |
+                            RegularInstruction::_CallableDebugTree(_)
                             => unreachable!(),
                         }
                         };

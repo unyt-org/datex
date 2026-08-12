@@ -692,6 +692,17 @@ pub enum RegularInstruction {
     #[cfg(feature = "disassembler")]
     #[instruction(skip)]
     _CallableDeclarationDebugTree(crate::global::protocol_structures::instruction_data::CallableDeclarationDataDebugTree),
+
+    /// Debug variant for [CallableData], includes full remote execution instruction list (flat) instead of raw dxb
+    /// This variant is only used by the disassembler
+    #[cfg(feature = "disassembler")]
+    #[instruction(skip)]
+    _CallableDebugFlat(crate::global::protocol_structures::instruction_data::CallableDataDebugFlat),
+    /// Debug variant for [CallableData], includes full remote execution instruction tree instead of raw dxb
+    /// This variant is only used by the disassembler
+    #[cfg(feature = "disassembler")]
+    #[instruction(skip)]
+    _CallableDebugTree(crate::global::protocol_structures::instruction_data::CallableDataDebugTree),
 }
 
 impl RegularInstruction {
@@ -720,6 +731,34 @@ impl RegularInstruction {
             | RegularInstruction::_RemoteExecutionDebugFlat(_) => {
                 NextExpectedInstructions::Regular(1)
             } // receivers
+
+            #[cfg(feature = "disassembler")]
+            RegularInstruction::_CallableDeclarationDebugFlat(data) => {
+                NextExpectedInstructions::Type(
+                    data.signature.total_type_count(),
+                )
+            }
+            #[cfg(feature = "disassembler")]
+            RegularInstruction::_CallableDeclarationDebugTree(data) => {
+                NextExpectedInstructions::Type(
+                    data.signature.total_type_count(),
+                )
+            }
+
+            #[cfg(feature = "disassembler")]
+            RegularInstruction::_CallableDebugFlat(data) => {
+                NextExpectedInstructions::RegularAndType(
+                    data.body.injected_value_count,
+                    data.signature.total_type_count(),
+                )
+            }
+            #[cfg(feature = "disassembler")]
+            RegularInstruction::_CallableDebugTree(data) => {
+                NextExpectedInstructions::RegularAndType(
+                    data.body.injected_value_count,
+                    data.signature.total_type_count(),
+                )
+            }
 
             RegularInstruction::ShortList(list) => {
                 NextExpectedInstructions::Regular(list.element_count as u32)
@@ -881,19 +920,6 @@ impl RegularInstruction {
                     data.signature.total_type_count(),
                 )
             }
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_CallableDeclarationDebugFlat(data) => {
-                NextExpectedInstructions::Type(
-                    data.signature.total_type_count(),
-                )
-            }
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_CallableDeclarationDebugTree(data) => {
-                NextExpectedInstructions::Type(
-                    data.signature.total_type_count(),
-                )
-            }
-
             RegularInstruction::Callable(data) => {
                 NextExpectedInstructions::RegularAndType(
                     data.body.injected_value_count,
@@ -1156,6 +1182,24 @@ impl RegularInstruction {
             }
             #[cfg(feature = "disassembler")]
             RegularInstruction::_CallableDeclarationDebugFlat(data) => {
+                write!(
+                    string,
+                    "[signature: {}, body: {}]",
+                    data.signature,
+                    data.body
+                )
+            }
+            #[cfg(feature = "disassembler")]
+            RegularInstruction::_CallableDebugTree(data) => {
+                write!(
+                    string,
+                    "[signature: {}, body: {}]",
+                    data.signature,
+                    data.body
+                )
+            }
+            #[cfg(feature = "disassembler")]
+            RegularInstruction::_CallableDebugFlat(data) => {
                 write!(
                     string,
                     "[signature: {}, body: {}]",

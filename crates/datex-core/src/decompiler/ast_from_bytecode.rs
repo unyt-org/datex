@@ -411,7 +411,9 @@ pub fn ast_from_bytecode(
                         RegularInstruction::_RemoteExecutionDebugFlat(_) |
                         RegularInstruction::_RemoteExecutionDebugTree(_)  |
                         RegularInstruction::_CallableDeclarationDebugFlat(_) |
-                        RegularInstruction::_CallableDeclarationDebugTree(_) => {
+                        RegularInstruction::_CallableDeclarationDebugTree(_) |
+                        RegularInstruction::_CallableDebugFlat(_) |
+                        RegularInstruction::_CallableDebugTree(_) => {
                             todo!("also map to ast")
                         }
                     }
@@ -834,7 +836,7 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                          
+
                             RegularInstruction::TakeEntryIndex(
                                 index_data,
                             ) | RegularInstruction::GetEntryIndex(
