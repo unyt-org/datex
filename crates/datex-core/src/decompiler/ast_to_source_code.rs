@@ -19,7 +19,7 @@ use crate::{
 use crate::prelude::*;
 use alloc::format;
 use core::fmt::{self};
-
+use std::ops::Deref;
 use crate::{
     ast::{
         expressions::{
@@ -347,10 +347,10 @@ impl AstToSourceCodeConverter {
                 let return_type_code = match return_type {
                     Some(return_type) => format!(
                         "{}{}",
-                        self.pad("->"),
+                        self.pad(" -> "),
                         self.type_expression_to_source_code(return_type)
                     ),
-                    None => format!("{}()", self.pad("->")).to_string(),
+                    None => format!("{}()", self.pad(" -> ")).to_string(),
                 };
 
                 let yeet_type_code = match yeet_type {
@@ -837,7 +837,7 @@ impl AstToSourceCodeConverter {
                 let return_type_code = match return_type {
                     Some(return_type) => format!(
                         "{}{}",
-                        self.pad("->"),
+                        self.pad(" -> "),
                         self.type_expression_to_source_code(return_type)
                     ),
                     None => "".to_string(),
@@ -852,19 +852,26 @@ impl AstToSourceCodeConverter {
                 };
 
                 // indented function body
-                let body_code = self
-                    .format_child(body)
-                    .replace("\n", &format!("\n{}", self.indent()));
+                let body_code = match body.data.deref() {
+                    DatexExpressionData::NativeImplementationIndicator => {
+                        "".to_string()
+                    }
+                    _ => {
+                        let inner = self
+                            .format_child(body)
+                            .replace("\n", &format!("\n{}", self.indent()));
+                        format!("%s(%n{}{}%n)", self.indent(), inner)
+                    }
+                };
 
                 ast_fmt!(
                     &self,
-                    "{} {}({}){}{}%s(%n{}{}%n)",
+                    "{} {}({}){}{}{}",
                     kind,
                     name.clone().unwrap_or_else(|| "".to_string()),
-                    params_code.join(&ast_fmt!(&self, ",%s")),
+                    params_code.join(&ast_fmt!(&self, ", ")),
                     return_type_code,
                     yeet_type_code,
-                    self.indent(),
                     body_code
                 )
             }

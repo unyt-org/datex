@@ -70,10 +70,11 @@ impl DIFInterface {
     pub fn register_callable(
         &mut self,
         callable: NativeCallable,
+        name: Option<String>,
         signature: CallableTypeDefinition,
     ) -> SelfOwnedPointerAddress {
         let callable = Callable {
-            name: None,
+            name,
             signature: signature.clone(),
             body: CallableBody::Native(callable),
             creator: Default::default(),

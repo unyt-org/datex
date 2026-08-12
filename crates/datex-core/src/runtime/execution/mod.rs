@@ -114,7 +114,7 @@ pub fn execute_dxb_sync(
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&runtime, callee, args)?;
+                let res = callee.try_apply_sync(&runtime, args)?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -244,7 +244,7 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&runtime, callee, args)?;
+                let res = callee.try_apply_async(&runtime, args).await?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -286,14 +286,6 @@ async fn get_remote_endpoint_property(
             ],
         )
         .await
-}
-
-fn handle_apply(
-    runtime: &Runtime,
-    callee: ValueContainer,
-    args: Vec<ValueContainer>,
-) -> Result<Option<ValueContainer>, ApplyError> {
-    Ok(callee.try_apply_sync(runtime, args)?)
 }
 
 fn get_remote_shared_container_reference(
