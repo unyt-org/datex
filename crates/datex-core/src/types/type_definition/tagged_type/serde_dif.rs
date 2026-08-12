@@ -116,6 +116,48 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Option<Box<Type>>> {
     }
 }
 
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Option<Type>> {
+    type Value = Option<Type>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_option(self)
+    }
+}
+
+impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Option<Type>> {
+    type Value = Option<Type>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("an optional Type")
+    }
+
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(None)
+    }
+
+    fn visit_some<D>(mut self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let ty = self.cast::<Type>().deserialize(deserializer)?;
+
+        Ok(Some(ty))
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(None)
+    }
+}
+
 impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Option<Box<Type>>> {
     type Value = Option<Box<Type>>;
 
@@ -130,13 +172,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Option<Box<Type>>> {
         Ok(None)
     }
 
-    fn visit_unit<E>(self) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Ok(None)
-    }
-
     fn visit_some<D>(mut self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
@@ -144,5 +179,12 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Option<Box<Type>>> {
         let ty = self.cast::<Type>().deserialize(deserializer)?;
 
         Ok(Some(Box::new(ty)))
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(None)
     }
 }

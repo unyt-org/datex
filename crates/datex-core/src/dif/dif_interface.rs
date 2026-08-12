@@ -30,7 +30,7 @@ use crate::runtime::execution::ExecutionError;
 use crate::shared_values::SharedContainerMutability;
 use crate::types::type_definition::callable::{CallableKind, CallableTypeDefinition};
 use crate::types::type_definition::TypeDefinition;
-use crate::values::core_values::callable::{Callable, CallableBody};
+use crate::values::core_values::callable::{Callable, CallableBody, NativeCallable};
 use crate::values::core_values::callable::error::CallableError;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
@@ -69,13 +69,13 @@ impl DIFInterface {
     /// Registers a native callable function in the DIFInterface as a shared value and returns its pointer address.
     pub fn register_callable(
         &mut self,
-        native_function: impl Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static,
+        callable: NativeCallable,
         signature: CallableTypeDefinition,
     ) -> SelfOwnedPointerAddress {
         let callable = Callable {
             name: None,
             signature: signature.clone(),
-            body: CallableBody::native_sync(native_function),
+            body: CallableBody::Native(callable),
             creator: Default::default(),
         };
         let shared_base = BaseSharedValueContainer::try_new(

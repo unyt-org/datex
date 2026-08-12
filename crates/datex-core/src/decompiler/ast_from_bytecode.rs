@@ -837,8 +837,8 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
                             RegularInstruction::ApplySingle => {
-                                let argument = collected_results.pop_value();
                                 let base = collected_results.pop_value();
+                                let argument = collected_results.pop_value();
                                 DatexExpressionData::Apply(Apply {
                                     base,
                                     arguments: vec![argument],
