@@ -1226,7 +1226,7 @@ fn generate_named_field_type_code(
             quote! {
                 (
                     Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
-                    Type::Definition(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
+                    Type::Definition(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Any)).into())
                 )
             }
         }
@@ -1247,7 +1247,7 @@ fn generate_unnamed_field_type_code(
         // Cannot infer type
         SerdeMode::Fallible | SerdeMode::Infallible => {
             quote! {
-               Type::Definition(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
+               Type::Definition(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Any)).into())
             }
         }
     }
