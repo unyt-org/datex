@@ -159,7 +159,7 @@ mod tests {
             value_compiler::InjectedValueValidationError,
         },
         disassembler::assertions::{
-            assert_regular_instructions_equal, instructions,
+            assert_instructions_equal, instructions,
         },
         global::{
             instruction_codes::InstructionCode,
@@ -228,7 +228,7 @@ mod tests {
         let res = compile_injected_values_test(exec_block_data, vec![])
             .unwrap()
             .dxb;
-        assert_regular_instructions_equal!(&res, (RegularInstruction::Null))
+        assert_instructions_equal!(&res, (RegularInstruction::Null))
     }
 
     #[test]
@@ -261,7 +261,7 @@ mod tests {
         .unwrap()
         .dxb;
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &res,
                (
                     RegularInstruction::statements_with_children(false, instructions!(
@@ -349,7 +349,7 @@ mod tests {
         .unwrap()
         .dxb;
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &res,
             (
                 RegularInstruction::statements_with_children(false, instructions!(
@@ -426,7 +426,7 @@ mod tests {
         .unwrap()
         .dxb;
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
                 false,
@@ -535,7 +535,7 @@ mod tests {
         .unwrap()
         .dxb;
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &res,
             (
                 RegularInstruction::statements_with_children(false, instructions!(

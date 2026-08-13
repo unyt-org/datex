@@ -608,7 +608,7 @@ mod tests {
             value_visitor::ValueVisitor,
         },
         disassembler::{
-            assertions::{assert_regular_instructions_equal, instructions},
+            assertions::{assert_instructions_equal, instructions},
             print_disassembled,
         },
         global::protocol_structures::{
@@ -653,7 +653,7 @@ mod tests {
                 receivers: &[],
             },
         );
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &compiled.dxb,
             expected_instructions,
         );
@@ -760,7 +760,7 @@ mod tests {
             }
         );
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &context.into_dxb_with_shared_values().dxb,
             (RegularInstruction::statements_with_children(
                 false,
@@ -871,7 +871,7 @@ mod tests {
 
         let dxb = context.into_dxb_with_shared_values().dxb;
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &dxb,
             (RegularInstruction::statements_with_children(
                 false,
@@ -991,7 +991,7 @@ mod tests {
 
         let dxb = context.into_dxb_with_shared_values().dxb;
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &dxb,
             (RegularInstruction::statements_with_children(
                 false,
@@ -1071,7 +1071,7 @@ mod tests {
 
         let dxb = context.into_dxb_with_shared_values().dxb;
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &dxb,
             (RegularInstruction::statements_with_children(
                 false,
@@ -1162,7 +1162,7 @@ mod tests {
 
         let dxb = context.into_dxb_with_shared_values().dxb;
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &dxb,
             (RegularInstruction::statements_with_children(
                 false,

@@ -15,6 +15,7 @@ use crate::{
     },
     prelude::*,
 };
+use crate::dxb_parser::body::InstructionWithSpan;
 use crate::global::protocol_structures::instruction_data::{CallableData, CallableDataBody, CallableDataBodyDebugFlat, CallableDataBodyDebugTree, CallableDataDebugFlat, CallableDataDebugTree};
 
 impl RegularInstruction {
@@ -86,7 +87,7 @@ impl RegularInstruction {
 
     pub fn get_debug_tree_instruction(
         self,
-        instructions: InstructionTree<Instruction>,
+        instructions: InstructionTree<InstructionWithSpan>,
     ) -> Option<Self> {
         match self {
             RegularInstruction::RemoteExecution(tree) => {
@@ -134,7 +135,7 @@ impl RegularInstruction {
 
     pub fn get_debug_flat_instruction(
         self,
-        instructions: Vec<Instruction>,
+        instructions: Vec<InstructionWithSpan>,
     ) -> Option<Self> {
         match self {
             RegularInstruction::RemoteExecution(tree) => {

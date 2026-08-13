@@ -23,7 +23,6 @@
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(try_blocks)]
-#![rustfmt::skip::macros(assert_instructions_equal)]
 #![rustfmt::skip::macros(assert_regular_instructions_equal)]
 
 extern crate alloc;

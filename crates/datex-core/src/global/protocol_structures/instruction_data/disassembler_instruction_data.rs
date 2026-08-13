@@ -15,14 +15,15 @@ use binrw::{
 use core::{fmt::Display};
 use itertools::Itertools;
 use crate::disassembler::InstructionTree;
+use crate::dxb_parser::body::InstructionWithSpan;
 use crate::global::protocol_structures::instruction_data::{CallableDataBody, CallableSignatureData, InstructionBlockData};
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct InstructionBlockDataDebugTree {
     pub length: u32,
     pub injected_variable_count: u32,
     pub injected_values: Vec<InjectedValueDeclaration>,
-    pub body: InstructionTree<Instruction>,
+    pub body: InstructionTree<InstructionWithSpan>,
 }
 
 impl Display for InstructionBlockDataDebugTree {
@@ -40,7 +41,7 @@ pub struct InstructionBlockDataDebugFlat {
     pub length: u32,
     pub injected_variable_count: u32,
     pub injected_values: Vec<InjectedValueDeclaration>,
-    pub body: Vec<Instruction>,
+    pub body: Vec<InstructionWithSpan>,
 }
 
 impl Display for InstructionBlockDataDebugFlat {
@@ -53,11 +54,11 @@ impl Display for InstructionBlockDataDebugFlat {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CallableDataBodyDebugTree {
     pub injected_value_count: u32,
     pub length: u32, // if length is 0, the body has a native implementation
-    pub body: InstructionTree<Instruction>,
+    pub body: InstructionTree<InstructionWithSpan>,
 }
 
 impl Display for CallableDataBodyDebugTree {
@@ -75,7 +76,7 @@ impl Display for CallableDataBodyDebugTree {
 pub struct CallableDataBodyDebugFlat {
     pub injected_value_count: u32,
     pub length: u32, // if length is 0, the body has a native implementation
-    pub body: Vec<Instruction>,
+    pub body: Vec<InstructionWithSpan>,
 }
 
 impl Display for CallableDataBodyDebugFlat {
@@ -132,7 +133,7 @@ impl From<&InstructionBlockDataDebugFlat> for InstructionBlockData {
     fn from(value: &InstructionBlockDataDebugFlat) -> Self {
         let mut cursor = Cursor::new(Vec::new());
         for instruction in &value.body {
-            append_instruction(&mut cursor, instruction.clone());
+            append_instruction(&mut cursor, instruction.instruction.clone());
         }
         Self {
             length: value.length,
@@ -157,7 +158,7 @@ impl From<&CallableDataBodyDebugFlat> for CallableDataBody{
     fn from(value: &CallableDataBodyDebugFlat) -> Self {
         let mut cursor = Cursor::new(Vec::new());
         for instruction in &value.body {
-            append_instruction(&mut cursor, instruction.clone());
+            append_instruction(&mut cursor, instruction.instruction.clone());
         }
         CallableDataBody {
             injected_value_count: value.injected_value_count,

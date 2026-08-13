@@ -184,7 +184,7 @@ mod tests {
             update_compiler::compile_updates,
         },
         disassembler::assertions::{
-            assert_regular_instructions_equal, instructions,
+            assert_instructions_equal, instructions,
         },
         global::protocol_structures::{
             instruction_data::{
@@ -233,7 +233,7 @@ mod tests {
         let dxb_with_shared_values =
             compile_updates(&container, &[&update_data], compile_input);
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &dxb_with_shared_values.dxb,
             (RegularInstruction::statements_with_children(
                 true,
@@ -280,7 +280,7 @@ mod tests {
         let dxb_with_shared_values =
             compile_updates(&container, &[&update_data], compile_input);
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &dxb_with_shared_values.dxb,
             (RegularInstruction::statements_with_children(
                 true,

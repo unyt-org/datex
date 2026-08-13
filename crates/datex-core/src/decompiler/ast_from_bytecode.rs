@@ -138,7 +138,7 @@ pub fn ast_from_bytecode(
     ) {
         let instruction = instruction?;
 
-        let result = match instruction {
+        let result = match instruction.instruction {
             // handle regular instructions
             Instruction::Regular(regular_instruction) => {
                 let regular_instruction = collector

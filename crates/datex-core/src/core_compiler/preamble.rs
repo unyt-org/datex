@@ -510,7 +510,7 @@ mod tests {
         },
         disassembler::{
             InstructionTree,
-            assertions::{assert_regular_instructions_equal, instructions},
+            assertions::{assert_instructions_equal, instructions},
             print_disassembled,
         },
         global::protocol_structures::{
@@ -559,7 +559,7 @@ mod tests {
         let (bytes, _) =
             append_injected_values_preamble(collection, cursor.into_inner());
 
-        assert_regular_instructions_equal!(&bytes, instructions);
+        assert_instructions_equal!(&bytes, instructions);
     }
 
     fn generate_shared_owned_value(
