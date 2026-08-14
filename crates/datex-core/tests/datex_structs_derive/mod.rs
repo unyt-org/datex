@@ -2,7 +2,10 @@ mod impls;
 
 use core::assert_matches;
 use datex_core::{
-    datex_proxy::{DatexProxyTypes, DatexValueContainerProxy},
+    datex_proxy::{
+        DatexProxyTypes, DatexValueContainerProxy,
+        DatexValueContainerProxyInfallibleSerialize,
+    },
     prelude::*,
     values::{
         core_values::{endpoint::Endpoint, map::Map},
@@ -736,4 +739,70 @@ fn get_datex_type_from_enum() {
             .into()
         )
     );
+}
+
+#[test]
+fn recursive_struct() {
+    #[derive(Datex)]
+    struct Node {
+        next: Option<Box<Node>>,
+    }
+    let cache = &mut SharedReferencesCache::default();
+    let ty = Node::datex_type(cache);
+    ty.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            let next_type = map
+                .get(0)
+                .expect("Expected 'next' field in map type definition")
+                .1
+                .clone();
+            next_type.with_collapsed_type_definition(|next_ty_def| {
+                match next_ty_def {
+                    TypeDefinition::Union(union) => {
+                        let option_type = union
+                            .iter()
+                            .filter(|ty| **ty != Type::NULL)
+                            .next()
+                            .expect("Expected Option type in union");
+                        assert_eq!(option_type, &ty);
+                    }
+                    _ => panic!(
+                        "Expected Union type for Option, got {:?}",
+                        next_ty_def
+                    ),
+                }
+            })
+        }
+        _ => panic!("Expected map type definition"),
+    });
+}
+
+#[test]
+fn mutual_recursion() {
+    #[derive(Datex)]
+    struct A {
+        b: Box<B>,
+    }
+
+    #[derive(Datex)]
+    struct B {
+        a: Box<A>,
+    }
+    let cache = &mut SharedReferencesCache::default();
+
+    let ty_a = A::datex_type(cache);
+    let ty_b = B::datex_type(cache);
+
+    ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.get(0).expect("wtf").1, ty_b);
+        }
+        _ => panic!("Expected map type definition for A"),
+    });
+    ty_b.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.get(0).expect("wtf").1, ty_a);
+        }
+        _ => panic!("Expected map type definition for B"),
+    });
 }
