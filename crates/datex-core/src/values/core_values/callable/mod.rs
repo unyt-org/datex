@@ -1,6 +1,9 @@
 use crate::{
+    datex_proxy::DatexProxyTypes,
     prelude::*,
-    types::type_definition::callable::CallableTypeDefinition,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::callable::IntoDatexCallable,
+    types::type_definition::callable::{CallableKind, CallableTypeDefinition},
     values::{
         core_values::{callable::error::CallableError, endpoint::Endpoint},
         value_container::ValueContainer,
@@ -155,4 +158,67 @@ pub struct Callable {
     pub signature: CallableTypeDefinition,
     pub body: CallableBody,
     pub creator: Endpoint,
+}
+
+/// Creates a new [Callable] from a native Rust function or closure
+pub fn native_sync_callable<F, Args, R>(
+    func: F,
+    memory: &mut SharedReferencesCache,
+) -> Callable
+where
+    F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
+    R: DatexProxyTypes + TryInto<ValueContainer> + 'static,
+    <R as TryInto<ValueContainer>>::Error: core::fmt::Debug,
+{
+    let parameters = F::parameters(memory);
+    let return_type = R::datex_type(memory);
+    Callable {
+        name: None,
+        signature: CallableTypeDefinition {
+            kind: CallableKind::Function,
+            parameters,
+            requires_async: false,
+            rest_parameter: None,
+            return_type: Some(Box::new(return_type)),
+            yeet_type: None,
+        },
+        body: CallableBody::Native(NativeCallable::new_sync(move |args| {
+            let result = func.invoke(args)?;
+            Ok(Some(result.try_into().unwrap()))
+        })),
+        creator: Default::default(),
+    }
+}
+
+/// Creates a new [Callable] from a native Rust async function or closure
+pub fn native_async_callable<F, Args, R>(
+    func: F,
+    memory: &mut SharedReferencesCache,
+) -> Callable
+where
+    F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
+    R: DatexProxyTypes + TryInto<ValueContainer> + 'static,
+    <R as TryInto<ValueContainer>>::Error: core::fmt::Debug,
+{
+    let parameters = F::parameters(memory);
+    let return_type = R::datex_type(memory);
+    Callable {
+        name: None,
+        signature: CallableTypeDefinition {
+            kind: CallableKind::Function,
+            parameters,
+            requires_async: true,
+            rest_parameter: None,
+            return_type: Some(Box::new(return_type)),
+            yeet_type: None,
+        },
+        body: CallableBody::Native(NativeCallable::new_async(move |args| {
+            let result = func.invoke(args);
+            Box::pin(async move {
+                let result = result?;
+                Ok(Some(result.try_into().unwrap()))
+            })
+        })),
+        creator: Default::default(),
+    }
 }
