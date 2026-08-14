@@ -66,10 +66,6 @@ pub fn execute_dxb_sync(
                 endpoint,
                 property_name,
             } => {
-                println!(
-                    "GetEndpointProperty: endpoint: {:?}, property_name: {}",
-                    endpoint, property_name
-                );
                 if endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
                     let value = runtime
                         .endpoint_properties()

@@ -388,7 +388,7 @@ impl<'a> TryFrom<&'a ValueContainer> for &'a str {
         }
     }
 }
-impl<'a> DatexProxyTypes for &'a str {
+impl DatexProxyTypes for &str {
     fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
