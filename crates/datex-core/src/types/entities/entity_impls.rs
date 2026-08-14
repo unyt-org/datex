@@ -9,7 +9,7 @@ pub struct EntityImpl {
     // TODO: optional contract
     /// The methods defined in this implementation contract.
     pub methods: Vec<EntityImplMethod>,
-    pub static_methods: Vec<()>, // TODO: shared or local callables
+    pub static_methods: Vec<Callable>, // TODO: shared or local callables
 }
 
 /// Represents a method in an entity implementation.

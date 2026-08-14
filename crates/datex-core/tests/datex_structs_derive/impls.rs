@@ -25,6 +25,7 @@ use datex_core::{
         core_values::integer::typed_integer::IntegerTypeVariant,
     },
 };
+use datex_core::decompiler::DecompileOptions;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -38,11 +39,18 @@ impl Example {
     pub fn new(a: u8, b: u8) -> Self {
         Example { a, b }
     }
-    pub fn set_a(&mut self, a: u8) {
+    
+    pub fn set_a(&mut self, a: u8, string: String) -> u8 {
         self.a = a;
+        self.a
     }
     pub fn set_b(&mut self, b: u8) {
         self.b = b;
+    }
+
+    /// An example of a static method that adds two u8s together.
+    pub fn add(a: u8, b: u8) -> u8 {
+        a + b
     }
 }
 
@@ -88,6 +96,29 @@ fn signatures() {
     let example_type = Example::datex_type(memory.deref_mut());
     let type_definition = entity_type_definition_from_type(&example_type);
 
+    match example_type {
+        Type::Entity(entity) => {
+            let definition = entity.entity_definition();
+            // println!("impls: {:#?}", definition.impls());
+
+            let static_add_method = definition.impls().first().unwrap().static_methods.first().unwrap();
+            println!("{}", decompile_value(
+                &static_add_method.clone().into(),
+                DecompileOptions::colorized_pretty()
+            ));
+
+            // call the static add method
+            let result = static_add_method.try_apply_sync(
+                &Runtime::stub(),
+                vec![TypedInteger::U8(1).into(), TypedInteger::U8(2).into()],
+            ).unwrap().unwrap();
+            assert_eq!(result, TypedInteger::U8(3).into());
+        }
+        _ => {
+            panic!("Expected entity type, got {:?}", example_type);
+        }
+    }
+    
     {
         // set_a
         let set_a_sig =

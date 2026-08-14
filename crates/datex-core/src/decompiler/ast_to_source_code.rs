@@ -349,10 +349,10 @@ impl AstToSourceCodeConverter {
                 let return_type_code = match return_type {
                     Some(return_type) => format!(
                         "{}{}",
-                        self.pad(" -> "),
+                        " -> ",
                         self.type_expression_to_source_code(return_type)
                     ),
-                    None => format!("{}()", self.pad(" -> ")).to_string(),
+                    None => format!("{}()", " -> ").to_string(),
                 };
 
                 let yeet_type_code = match yeet_type {
