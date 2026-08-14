@@ -20,6 +20,7 @@ impl Inspector {
         Inspector { name }
     }
     pub fn name_getter(&self) -> &str {
+        // TODO self arg
         &self.name
     }
 }
@@ -39,9 +40,44 @@ pub fn register_inspector_namespace(runtime: &Runtime) {
 #[cfg(test)]
 mod tests {
     use crate::{
+        inspector,
         runtime::cache::shared_references_cache::SharedReferencesCache,
-        traits::apply::Apply,
+        traits::apply::Apply, values::core_values::map::Map,
     };
+
+    #[test]
+    fn ty() {
+        let inspector_type = inspector::Inspector::datex_type(
+            &mut SharedReferencesCache::default(),
+        );
+        println!("Inspector type: {:#?}", inspector_type);
+        let r = native_sync_callable(
+            Inspector::create,
+            &mut SharedReferencesCache::default(),
+        );
+
+        let inspector = Inspector::create("Test Inspector".to_string());
+        let vc = ValueContainer::from(inspector);
+
+        println!("Inspector ValueContainer: {:#?}", vc);
+        // TODO: methods bound to value container / even better, methods bound to the type definition
+        let runtime = crate::runtime::Runtime::stub();
+        if let Some(method) = vc
+            .try_as::<Map>()
+            .and_then(|map| map.try_get("name_getter").ok())
+        {
+            let result = method
+                .try_apply_sync(&runtime, vec![])
+                .unwrap()
+                .expect("Method should return a value");
+            assert_eq!(
+                result.try_into_value::<String>().unwrap(),
+                "Test Inspector"
+            );
+        } else {
+            panic!("Method not found");
+        }
+    }
 
     use super::*;
     #[test]
@@ -67,12 +103,5 @@ mod tests {
             .unwrap()
             .expect("Function should return a value");
         assert_eq!(res_2, 7u8.into());
-    }
-
-    #[test]
-    fn test_inspector_create() {
-        let mut memory = SharedReferencesCache::default();
-        let r = native_sync_callable(Inspector::create, &mut memory);
-        println!("Inspector create callable: {:#?}", r);
     }
 }
