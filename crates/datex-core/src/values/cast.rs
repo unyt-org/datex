@@ -357,6 +357,45 @@ derive_try_from_chain!(
     }
 );
 
+// -------- Box<T> -------
+impl<T> DatexValueProxy for Box<T> where T: DatexValueProxy {}
+
+impl<T> DatexValueProxySerialize for Box<T>
+where
+    T: DatexValueProxySerialize,
+{
+    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
+        (*self).try_to_value()
+    }
+}
+
+impl<T> DatexValueProxyInfallibleSerialize for Box<T>
+where
+    T: DatexValueProxyInfallibleSerialize,
+{
+    fn to_value(self) -> Value {
+        (*self).to_value()
+    }
+}
+
+impl<T> DatexValueProxyDeserialize for Box<T>
+where
+    T: DatexValueProxyDeserialize,
+{
+    fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
+        Ok(Box::new(T::try_from_value(value)?))
+    }
+}
+
+impl<T> DatexProxyTypes for Box<T>
+where
+    T: DatexProxyTypes,
+{
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
+        T::datex_type(memory)
+    }
+}
+
 // -------- Option<T> -------
 impl<T: DatexValueProxy> DatexValueProxy for Option<T> {}
 
@@ -398,7 +437,10 @@ impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
     }
 }
 
-impl<T: DatexValueContainerProxy> DatexProxyTypes for Option<T> {
+impl<T> DatexProxyTypes for Option<T>
+where
+    T: DatexProxyTypes,
+{
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         // null | T
         Type::Definition(
@@ -453,7 +495,7 @@ impl<T: DatexValueContainerProxyInfallibleSerialize>
 
 impl<T> DatexProxyTypes for Vec<T>
 where
-    T: DatexValueContainerProxy + DatexProxyTypes,
+    T: DatexProxyTypes,
 {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         Type::Definition(
@@ -524,16 +566,18 @@ impl<
     }
 }
 
-impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
-    DatexProxyTypes for HashMap<K, V>
+impl<K, V> DatexProxyTypes for HashMap<K, V>
+where
+    K: DatexProxyTypes + Eq + Hash,
+    V: DatexProxyTypes,
 {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::Collection(CollectionTypeDefinition::Map(
-                MapCollectionTypeDefinition {
-                    key_type: Box::new(K::datex_type(memory)),
-                    value_type: Box::new(V::datex_type(memory)),
-                },
+                MapCollectionTypeDefinition::new(
+                    K::datex_type(memory),
+                    V::datex_type(memory),
+                ),
             ))
             .into(),
         )
