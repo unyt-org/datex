@@ -25,14 +25,16 @@ use serde::de::{Error, MapAccess};
 
 use crate::{
     dif::serde_context::SerdeContext,
-    values::{core_values::endpoint::Endpoint, value::Value},
+    values::{
+        core_values::{callable::Callable, endpoint::Endpoint},
+        value::Value,
+    },
 };
 use core::{fmt, str::FromStr};
 use serde::{
     Deserializer,
     de::{DeserializeSeed, SeqAccess, Visitor},
 };
-use crate::values::core_values::callable::Callable;
 
 pub struct CoreValueVisitor<'a, 'ctx> {
     pub core_lib_id: CoreLibTypeId,
@@ -481,7 +483,8 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
                 Ok(CoreValue::Map(elements))
             }
             CoreLibTypeId::Base(CoreLibBaseTypeId::Callable) => {
-                let callable = self.context.cast::<Callable>().visit_seq(seq)?;
+                let callable =
+                    self.context.cast::<Callable>().visit_seq(seq)?;
                 Ok(CoreValue::Callable(callable))
             }
             _ => Err(A::Error::custom(format!(

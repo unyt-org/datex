@@ -17,7 +17,7 @@ use crate::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         RemotePointerAddress, SelfOwnedPointerAddress, SharedContainer,
     },
-    traits::apply::{Apply, ApplyError},
+    traits::apply::Apply,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },

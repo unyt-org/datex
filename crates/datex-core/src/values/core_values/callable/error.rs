@@ -25,7 +25,10 @@ impl Display for CallableError {
                 )
             }
             CallableError::HiddenCallable => {
-                write!(f, "This callable is hidden and cannot be called directly")
+                write!(
+                    f,
+                    "This callable is hidden and cannot be called directly"
+                )
             }
         }
     }

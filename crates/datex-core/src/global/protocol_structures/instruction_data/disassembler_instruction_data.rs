@@ -1,22 +1,21 @@
 use crate::{
     core_compiler::value_compiler::append_instruction,
-    global::{
-        protocol_structures::{
-            injected_values::InjectedValueDeclaration,
-            instructions::Instruction,
+    disassembler::InstructionTree,
+    dxb_parser::body::InstructionWithSpan,
+    global::protocol_structures::{
+        injected_values::InjectedValueDeclaration,
+        instruction_data::{
+            CallableDataBody, CallableSignatureData, InstructionBlockData,
         },
     },
     prelude::*,
 };
 use binrw::{
-    BinRead, BinResult, BinWrite, Endian,
+    BinResult, BinWrite, Endian,
     io::{Cursor, Seek, Write},
 };
-use core::{fmt::Display};
+use core::fmt::Display;
 use itertools::Itertools;
-use crate::disassembler::InstructionTree;
-use crate::dxb_parser::body::InstructionWithSpan;
-use crate::global::protocol_structures::instruction_data::{CallableDataBody, CallableSignatureData, InstructionBlockData};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct InstructionBlockDataDebugTree {
@@ -28,10 +27,15 @@ pub struct InstructionBlockDataDebugTree {
 
 impl Display for InstructionBlockDataDebugTree {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "[length: {}, injected_variable_count: {}, injected_values: [{}]]",
-               self.length,
-               self.injected_variable_count,
-               self.injected_values.iter().map(|v| format!("{}", v)).join(", "),
+        write!(
+            f,
+            "[length: {}, injected_variable_count: {}, injected_values: [{}]]",
+            self.length,
+            self.injected_variable_count,
+            self.injected_values
+                .iter()
+                .map(|v| format!("{}", v))
+                .join(", "),
         )
     }
 }
@@ -46,10 +50,15 @@ pub struct InstructionBlockDataDebugFlat {
 
 impl Display for InstructionBlockDataDebugFlat {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "[length: {}, injected_variable_count: {}, injected_values: [{}]]",
-               self.length,
-               self.injected_variable_count,
-               self.injected_values.iter().map(|v| format!("{}", v)).join(", "),
+        write!(
+            f,
+            "[length: {}, injected_variable_count: {}, injected_values: [{}]]",
+            self.length,
+            self.injected_variable_count,
+            self.injected_values
+                .iter()
+                .map(|v| format!("{}", v))
+                .join(", "),
         )
     }
 }
@@ -66,8 +75,7 @@ impl Display for CallableDataBodyDebugTree {
         write!(
             f,
             "[length: {}, injected_value_count: {}]",
-            self.length,
-            self.injected_value_count,
+            self.length, self.injected_value_count,
         )
     }
 }
@@ -84,8 +92,7 @@ impl Display for CallableDataBodyDebugFlat {
         write!(
             f,
             "[length: {}, injected_value_count: {}]",
-            self.length,
-            self.injected_value_count,
+            self.length, self.injected_value_count,
         )
     }
 }
@@ -122,7 +129,8 @@ impl From<&InstructionBlockDataDebugTree> for InstructionBlockDataDebugFlat {
     fn from(instruction_block_data: &InstructionBlockDataDebugTree) -> Self {
         InstructionBlockDataDebugFlat {
             length: instruction_block_data.length,
-            injected_variable_count: instruction_block_data.injected_variable_count,
+            injected_variable_count: instruction_block_data
+                .injected_variable_count,
             injected_values: instruction_block_data.injected_values.clone(),
             body: instruction_block_data.body.flatten(),
         }
@@ -154,7 +162,7 @@ impl From<&CallableDataBodyDebugTree> for CallableDataBodyDebugFlat {
     }
 }
 
-impl From<&CallableDataBodyDebugFlat> for CallableDataBody{
+impl From<&CallableDataBodyDebugFlat> for CallableDataBody {
     fn from(value: &CallableDataBodyDebugFlat) -> Self {
         let mut cursor = Cursor::new(Vec::new());
         for instruction in &value.body {
@@ -190,7 +198,9 @@ impl BinWrite for InstructionBlockDataDebugTree {
         endian: Endian,
         _: Self::Args<'_>,
     ) -> BinResult<()> {
-        let raw = InstructionBlockData::from(&InstructionBlockDataDebugFlat::from(self));
+        let raw = InstructionBlockData::from(
+            &InstructionBlockDataDebugFlat::from(self),
+        );
         raw.write_options(writer, endian, ())
     }
 }
@@ -217,7 +227,8 @@ impl BinWrite for CallableDataBodyDebugTree {
         endian: Endian,
         _: Self::Args<'_>,
     ) -> BinResult<()> {
-        let raw = CallableDataBody::from(&CallableDataBodyDebugFlat::from(self));
+        let raw =
+            CallableDataBody::from(&CallableDataBodyDebugFlat::from(self));
         raw.write_options(writer, endian, ())
     }
 }

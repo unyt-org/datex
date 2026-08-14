@@ -46,7 +46,7 @@ pub trait Apply {
         runtime: &Runtime,
         args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError>;
-    
+
     async fn try_apply_async(
         &self,
         runtime: &Runtime,

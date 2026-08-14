@@ -10,7 +10,8 @@ use crate::{
     },
     shared_values::{
         OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
-        SelfOwnedSharedContainer, SharedContainer, SharedContainerOwnership,
+        SelfOwnedSharedContainer, SharedContainer, SharedContainerMutability,
+        SharedContainerOwnership,
         base_shared_value_container::{
             BaseSharedValueContainer,
             observers::{
@@ -21,17 +22,17 @@ use crate::{
         traits::SharedContainerCommon,
     },
     traits::apply::{Apply, ApplyError},
+    types::type_definition::{
+        TypeDefinition, callable::CallableTypeDefinition,
+    },
     value_updates::{UpdateReturn, update_data::Update},
-    values::value_container::ValueContainer,
+    values::{
+        core_values::callable::{Callable, CallableBody, NativeCallable},
+        value_container::ValueContainer,
+    },
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
-use crate::runtime::execution::ExecutionError;
-use crate::shared_values::SharedContainerMutability;
-use crate::types::type_definition::callable::{CallableKind, CallableTypeDefinition};
-use crate::types::type_definition::TypeDefinition;
-use crate::values::core_values::callable::{Callable, CallableBody, NativeCallable};
-use crate::values::core_values::callable::error::CallableError;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
@@ -83,7 +84,8 @@ impl DIFInterface {
             ValueContainer::from(callable),
             TypeDefinition::Callable(signature),
             SharedContainerMutability::Immutable,
-        ).unwrap();
+        )
+        .unwrap();
         self.create_pointer(shared_base)
     }
 

@@ -20,7 +20,11 @@ impl Apply for Value {
         }
     }
 
-    async fn try_apply_async(&self, runtime: &Runtime, args: Vec<ValueContainer>) -> Result<Option<ValueContainer>, ApplyError> {
+    async fn try_apply_async(
+        &self,
+        runtime: &Runtime,
+        args: Vec<ValueContainer>,
+    ) -> Result<Option<ValueContainer>, ApplyError> {
         match self.inner {
             CoreValue::Callable(ref callable) => {
                 callable.try_apply_async(runtime, args).await

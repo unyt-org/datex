@@ -1,22 +1,23 @@
 use crate::{
     disassembler::{InnerInstructions, InstructionTree},
-    dxb_parser::body::DXBParserError,
+    dxb_parser::body::{DXBParserError, InstructionWithSpan},
     global::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                CallableDeclarationData, CallableDeclarationDataDebugFlat,
+                CallableData, CallableDataBody, CallableDataBodyDebugFlat,
+                CallableDataBodyDebugTree, CallableDataDebugFlat,
+                CallableDataDebugTree, CallableDeclarationData,
+                CallableDeclarationDataDebugFlat,
                 CallableDeclarationDataDebugTree, InstructionBlockData,
                 InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree,
             },
-            instructions::{Instruction, NestedInstructionResolutionStrategy},
+            instructions::NestedInstructionResolutionStrategy,
             regular_instructions::RegularInstruction,
         },
     },
     prelude::*,
 };
-use crate::dxb_parser::body::InstructionWithSpan;
-use crate::global::protocol_structures::instruction_data::{CallableData, CallableDataBody, CallableDataBodyDebugFlat, CallableDataBodyDebugTree, CallableDataDebugFlat, CallableDataDebugTree};
 
 impl RegularInstruction {
     pub fn remote_execution_debug_tree(
@@ -35,13 +36,16 @@ impl RegularInstruction {
     /// Instruction codes for normal instruction variants are set by the `#[magic]` attribute and are not included here.
     pub(crate) fn debug_instruction_code(&self) -> Option<InstructionCode> {
         match self {
-            RegularInstruction::_RemoteExecutionDebugTree(_) | RegularInstruction::_RemoteExecutionDebugFlat(_) => {
+            RegularInstruction::_RemoteExecutionDebugTree(_)
+            | RegularInstruction::_RemoteExecutionDebugFlat(_) => {
                 Some(InstructionCode::REMOTE_EXECUTION)
             }
-            RegularInstruction::_CallableDeclarationDebugTree(_) | RegularInstruction::_CallableDeclarationDebugFlat(_) => {
+            RegularInstruction::_CallableDeclarationDebugTree(_)
+            | RegularInstruction::_CallableDeclarationDebugFlat(_) => {
                 Some(InstructionCode::CALLABLE_DECLARATION)
             }
-            RegularInstruction::_CallableDebugTree(_) | RegularInstruction::_CallableDebugFlat(_) => {
+            RegularInstruction::_CallableDebugTree(_)
+            | RegularInstruction::_CallableDebugFlat(_) => {
                 Some(InstructionCode::CALLABLE)
             }
             _ => None,
@@ -115,20 +119,16 @@ impl RegularInstruction {
                     },
                 ))
             }
-            RegularInstruction::Callable(tree) => {
-                Some(RegularInstruction::_CallableDebugTree(
-                    CallableDataDebugTree {
-                        signature: tree.signature,
-                        body: CallableDataBodyDebugTree {
-                            length: tree.body.length,
-                            injected_value_count: tree
-                                .body
-                                .injected_value_count,
-                            body: instructions,
-                        },
+            RegularInstruction::Callable(tree) => Some(
+                RegularInstruction::_CallableDebugTree(CallableDataDebugTree {
+                    signature: tree.signature,
+                    body: CallableDataBodyDebugTree {
+                        length: tree.body.length,
+                        injected_value_count: tree.body.injected_value_count,
+                        body: instructions,
                     },
-                ))
-            }
+                }),
+            ),
             _ => None,
         }
     }
@@ -163,20 +163,16 @@ impl RegularInstruction {
                     },
                 ))
             }
-            RegularInstruction::Callable(tree) => {
-                Some(RegularInstruction::_CallableDebugFlat(
-                    CallableDataDebugFlat {
-                        signature: tree.signature,
-                        body: CallableDataBodyDebugFlat {
-                            length: tree.body.length,
-                            injected_value_count: tree
-                                .body
-                                .injected_value_count,
-                            body: instructions,
-                        },
+            RegularInstruction::Callable(tree) => Some(
+                RegularInstruction::_CallableDebugFlat(CallableDataDebugFlat {
+                    signature: tree.signature,
+                    body: CallableDataBodyDebugFlat {
+                        length: tree.body.length,
+                        injected_value_count: tree.body.injected_value_count,
+                        body: instructions,
                     },
-                ))
-            }
+                }),
+            ),
             _ => None,
         }
     }
@@ -236,9 +232,7 @@ impl RegularInstruction {
                     signature: tree.signature.clone(),
                     body: CallableDataBody {
                         length: tree.body.length,
-                        injected_value_count: tree
-                            .body
-                            .injected_value_count,
+                        injected_value_count: tree.body.injected_value_count,
                         body: self.inner_instructions().unwrap().to_vec(),
                     },
                 }))
@@ -248,9 +242,7 @@ impl RegularInstruction {
                     signature: tree.signature.clone(),
                     body: CallableDataBody {
                         length: tree.body.length,
-                        injected_value_count: tree
-                            .body
-                            .injected_value_count,
+                        injected_value_count: tree.body.injected_value_count,
                         body: self.inner_instructions().unwrap().to_vec(),
                     },
                 }))
@@ -286,20 +278,16 @@ impl RegularInstruction {
                     },
                 ))
             }
-            RegularInstruction::_CallableDebugTree(tree) => {
-                Some(RegularInstruction::_CallableDebugFlat(
-                    CallableDataDebugFlat {
-                        signature: tree.signature,
-                        body: CallableDataBodyDebugFlat {
-                            length: tree.body.length,
-                            injected_value_count: tree
-                                .body
-                                .injected_value_count,
-                            body: tree.body.body.flatten_instructions(),
-                        },
+            RegularInstruction::_CallableDebugTree(tree) => Some(
+                RegularInstruction::_CallableDebugFlat(CallableDataDebugFlat {
+                    signature: tree.signature,
+                    body: CallableDataBodyDebugFlat {
+                        length: tree.body.length,
+                        injected_value_count: tree.body.injected_value_count,
+                        body: tree.body.body.flatten_instructions(),
                     },
-                ))
-            }
+                }),
+            ),
             _ => None,
         }
     }

@@ -1,11 +1,7 @@
 use crate::{
-    core_compiler::value_compiler::append_instruction,
     global::{
         operators::ModificationOperator,
-        protocol_structures::{
-            injected_values::InjectedValueDeclaration,
-            instructions::Instruction,
-        },
+        protocol_structures::injected_values::InjectedValueDeclaration,
         type_instruction_codes::{
             TypeLocalOrShared, TypeMutabilityCode, TypeOwnershipCode,
         },
@@ -24,7 +20,7 @@ use crate::{
 use alloc::string::FromUtf8Error;
 use binrw::{
     BinRead, BinResult, BinWrite, Endian,
-    io::{Cursor, Read, Seek, Write},
+    io::{Read, Seek, Write},
     meta::{EndianKind, ReadEndian},
 };
 use core::{fmt::Display, ops::AddAssign};
@@ -268,8 +264,7 @@ impl Display for CallableDataBody {
         write!(
             f,
             "[length: {}, injected_value_count: {}]",
-            self.length,
-            self.injected_value_count,
+            self.length, self.injected_value_count,
         )
     }
 }
@@ -493,7 +488,6 @@ pub struct SpliceData {
     pub delete_count: u32,
     pub insert_count: u32,
 }
-
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

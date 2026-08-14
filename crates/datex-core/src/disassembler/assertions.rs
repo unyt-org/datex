@@ -4,6 +4,7 @@ use crate::{
         disassemble_instruction_tree_to_string, get_instruction_tree_from_list,
         options::DisassemblerOptions,
     },
+    dxb_parser::body::InstructionWithSpan,
     global::protocol_structures::{
         instructions::{
             CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
@@ -13,7 +14,6 @@ use crate::{
     prelude::*,
 };
 use core::slice::Iter;
-use crate::dxb_parser::body::InstructionWithSpan;
 
 pub macro assert_instructions_equal {
     ($dxb:expr, ($($expr:expr),* $(,)?)) => {{
@@ -48,8 +48,12 @@ pub fn assert_instruction_lists_eq(
     output_dxb: &[u8],
 ) {
     if output_instructions != expected_instructions {
-        let (expected_tree, expected_err) =
-            get_instruction_tree_from_list(expected_instructions.into_iter().map(InstructionWithSpan::from).collect::<Vec<_>>());
+        let (expected_tree, expected_err) = get_instruction_tree_from_list(
+            expected_instructions
+                .into_iter()
+                .map(InstructionWithSpan::from)
+                .collect::<Vec<_>>(),
+        );
 
         panic!(
             "Output did not match expected instructions:\n\nOutput:\n{}\n\nExpected:\n{}\n",
@@ -80,7 +84,11 @@ pub fn resolve_instructions(dxb: &[u8]) -> Vec<Instruction> {
             disassemble_body_to_string(dxb, DisassemblerOptions::default())
         );
     }
-    instructions.flatten().into_iter().map(Instruction::from).collect::<Vec<_>>()
+    instructions
+        .flatten()
+        .into_iter()
+        .map(Instruction::from)
+        .collect::<Vec<_>>()
 }
 
 impl RegularInstruction {
@@ -182,4 +190,3 @@ pub macro instructions_with_span {
         $(InstructionWithSpan::from($expr),)*
     ]}
 }
-

@@ -4,6 +4,8 @@ use crate::{
         buffer_provider::BufferProvider,
         core_compilation_context::ByteCursor,
         shared_value_tracking::{TrackedValueCollection, TrackedValueMetadata},
+        to_instructions::ToInstructions,
+        type_compiler::append_type_instruction,
         update_compiler::append_set_property_value_key,
         value_compiler::append_value,
         value_visitor::{ParentAccessor, ParentContext, ValueVisitor},
@@ -24,8 +26,6 @@ use crate::{
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
 use binrw::{BinWrite, io::Write};
-use crate::core_compiler::to_instructions::ToInstructions;
-use crate::core_compiler::type_compiler::append_type_instruction;
 
 #[derive(Debug)]
 enum VisitedValue {
@@ -127,9 +127,7 @@ impl ValueVisitor for PreambleContext<'_> {
             // intercept shared types
             Type::Entity(_) => todo!(),
             _ => {
-                let instructions = ty
-                    .to_instructions(None)
-                    .collect::<Vec<_>>();
+                let instructions = ty.to_instructions(None).collect::<Vec<_>>();
                 for instruction in instructions {
                     append_type_instruction(self.cursor_mut(), instruction);
                 }

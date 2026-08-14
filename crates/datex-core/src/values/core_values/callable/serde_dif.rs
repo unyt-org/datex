@@ -1,11 +1,14 @@
+use crate::{
+    dif::serde_context::SerdeContext, prelude::*,
+    utils::serde_serialize_seed::SerializeSeed,
+    values::core_values::callable::Callable,
+};
 use core::fmt;
-use serde::de::{DeserializeSeed, SeqAccess, Visitor};
-use serde::ser::SerializeTuple;
-use serde::{Deserializer, Serializer};
-use crate::dif::serde_context::SerdeContext;
-use crate::utils::serde_serialize_seed::SerializeSeed;
-use crate::values::core_values::callable::Callable;
-use crate::prelude::*;
+use serde::{
+    Deserializer, Serializer,
+    de::{DeserializeSeed, SeqAccess, Visitor},
+    ser::SerializeTuple,
+};
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, Callable> {
     type Value = Callable;
@@ -30,7 +33,6 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Callable> {
     }
 }
 
-
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Callable> {
     type Value = Callable;
 
@@ -50,22 +52,29 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Callable> {
             "either an object with string keys or a sequence of [key, value] entries",
         )
     }
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Callable, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<Callable, A::Error>
     where
         A: SeqAccess<'de>,
     {
-        let hash: String = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::custom("Expected hash string as first element"))?;
-        let hash_u64 = hash.parse::<u64>().map_err(|_| serde::de::Error::custom("Failed to parse hash string to u64"))?;
+        let hash: String = seq.next_element()?.ok_or_else(|| {
+            serde::de::Error::custom("Expected hash string as first element")
+        })?;
+        let hash_u64 = hash.parse::<u64>().map_err(|_| {
+            serde::de::Error::custom("Failed to parse hash string to u64")
+        })?;
 
-        let _name: Option<Option<String>> = seq
-            .next_element()?;
+        let _name: Option<Option<String>> = seq.next_element()?;
 
-        let callable = self.shared_container_cache.get_callable(hash_u64)
-            .ok_or_else(|| serde::de::Error::custom(format!("Callable with hash {} not found in cache", hash_u64)))?;
+        let callable = self
+            .shared_container_cache
+            .get_callable(hash_u64)
+            .ok_or_else(|| {
+                serde::de::Error::custom(format!(
+                    "Callable with hash {} not found in cache",
+                    hash_u64
+                ))
+            })?;
 
         Ok(callable)
     }
 }
-

@@ -1,6 +1,3 @@
-use core::fmt::Debug;
-use core::hash::Hash;
-use core::pin::Pin;
 use crate::{
     prelude::*,
     types::type_definition::callable::CallableTypeDefinition,
@@ -9,6 +6,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use core::{fmt::Debug, hash::Hash, pin::Pin};
 
 pub mod apply;
 pub mod equality;
@@ -18,12 +16,16 @@ mod serde_dif;
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
 type AsyncCallable = Rc<
-    dyn Fn(Vec<ValueContainer>) -> BoxFuture<
-        Result<Option<ValueContainer>, CallableError>
-    > + 'static
+    dyn Fn(
+            Vec<ValueContainer>,
+        ) -> BoxFuture<Result<Option<ValueContainer>, CallableError>>
+        + 'static,
 >;
 
-type SyncCallable = Rc<dyn Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static>;
+type SyncCallable = Rc<
+    dyn Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError>
+        + 'static,
+>;
 
 #[derive(Clone)]
 pub enum NativeCallable {
@@ -69,16 +71,22 @@ impl Hash for NativeCallable {
     }
 }
 
-
 impl NativeCallable {
     pub fn new_sync(
-        function: impl Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static,
+        function: impl Fn(
+            Vec<ValueContainer>,
+        ) -> Result<Option<ValueContainer>, CallableError>
+        + 'static,
     ) -> Self {
         NativeCallable::Sync(Rc::new(function))
     }
 
     pub fn new_async(
-        function: impl Fn(Vec<ValueContainer>) -> BoxFuture<Result<Option<ValueContainer>, CallableError>> + 'static
+        function: impl Fn(
+            Vec<ValueContainer>,
+        ) -> BoxFuture<
+            Result<Option<ValueContainer>, CallableError>,
+        > + 'static,
     ) -> Self {
         NativeCallable::Async(Rc::new(function))
     }
@@ -104,10 +112,22 @@ pub enum CallableBody {
 }
 
 impl CallableBody {
-    pub fn native_sync(native_callable: impl Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError> + 'static) -> Self {
+    pub fn native_sync(
+        native_callable: impl Fn(
+            Vec<ValueContainer>,
+        )
+            -> Result<Option<ValueContainer>, CallableError>
+        + 'static,
+    ) -> Self {
         CallableBody::Native(NativeCallable::new_sync(native_callable))
     }
-    pub fn native_async(native_callable: impl Fn(Vec<ValueContainer>) -> BoxFuture<Result<Option<ValueContainer>, CallableError>> + 'static) -> Self {
+    pub fn native_async(
+        native_callable: impl Fn(
+            Vec<ValueContainer>,
+        ) -> BoxFuture<
+            Result<Option<ValueContainer>, CallableError>,
+        > + 'static,
+    ) -> Self {
         CallableBody::Native(NativeCallable::new_async(native_callable))
     }
 
@@ -115,7 +135,9 @@ impl CallableBody {
         match self {
             CallableBody::Native(NativeCallable::Sync(_)) => false,
             CallableBody::Native(NativeCallable::Async(_)) => true,
-            CallableBody::DatexBytecode(bytecode_callable) => bytecode_callable.requires_async,
+            CallableBody::DatexBytecode(bytecode_callable) => {
+                bytecode_callable.requires_async
+            }
             CallableBody::CoreStub(_) => false,
             CallableBody::Hidden => false,
         }

@@ -62,7 +62,7 @@ use crate::{
         traits::SharedContainerCommon,
     },
     time::Instant as TimingInstant,
-    utils::buffers::{append_u8, append_u16, append_u32},
+    utils::buffers::{append_u8, append_u32},
     values::{
         core_values::{decimal::Decimal, endpoint::Endpoint},
         value_container::ValueContainer,
@@ -3669,16 +3669,16 @@ pub mod tests {
                                         ),
                                     }
                                 ],
-                                body: RegularInstruction::Add.with_children(
-                                    instructions!(
+                                body: RegularInstruction::Add
+                                    .with_children(instructions!(
                                         RegularInstruction::TakeStackValue(
                                             StackIndex(1)
                                         ),
                                         RegularInstruction::TakeStackValue(
                                             StackIndex(0)
                                         ),
-                                    )
-                                )
+                                    ))
+                                    .into()
                             }
                         }
                     )

@@ -36,13 +36,18 @@ impl ToInstructions for TypeExpression {
                 }
                 TypeExpressionData::Range(range) => {
                     yield TypeInstruction::Range;
-                    for instr in
-                        range.start.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>()
+                    for instr in range
+                        .start
+                        .to_instructions(shared_value_tracking.as_deref_mut())
+                        .collect::<Vec<_>>()
                     {
                         yield instr;
                     }
-                    for instr in
-                        range.end.to_instructions(shared_value_tracking.as_deref_mut()).collect::<Vec<_>>()                    {
+                    for instr in range
+                        .end
+                        .to_instructions(shared_value_tracking.as_deref_mut())
+                        .collect::<Vec<_>>()
+                    {
                         yield instr;
                     }
                 }

@@ -190,7 +190,9 @@ pub gen fn inner_execution_loop(
             }
         };
 
-        let result: Option<CollectedExecutionResult> = match instruction.instruction {
+        let result: Option<CollectedExecutionResult> = match instruction
+            .instruction
+        {
             // handle regular instructions
             Instruction::Regular(regular_instruction) => {
                 let regular_instruction = collector

@@ -17,7 +17,6 @@ use crate::{
     },
 };
 use binrw::io::Cursor;
-use log::{info, warn};
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 

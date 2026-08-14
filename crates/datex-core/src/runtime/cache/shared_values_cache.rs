@@ -111,7 +111,7 @@ impl SharedValuesCache {
         self.callables.insert(hash, callable);
         hash
     }
-    
+
     /// Retrieves a callable from the cache based on its hash value.
     pub fn get_callable(&self, hash: u64) -> Option<Callable> {
         self.callables.get(&hash).cloned()

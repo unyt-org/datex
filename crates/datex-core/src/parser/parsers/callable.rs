@@ -10,11 +10,9 @@ use crate::{
 };
 
 use crate::{
-    ast::expressions::CallableSignature, prelude::*,
-    types::type_definition::callable::CallableKind,
+    ast::expressions::CallableSignature, parser::lexer::SpannedToken,
+    prelude::*, types::type_definition::callable::CallableKind,
 };
-use crate::parser::errors::ParserError;
-use crate::parser::lexer::SpannedToken;
 
 impl Parser {
     pub(crate) fn parse_callable_definition(
@@ -33,10 +31,8 @@ impl Parser {
         let name = match self.peek()? {
             SpannedToken {
                 token: Token::Identifier(identifier),
-                span,
-            } => {
-                Some(identifier.clone())
-            },
+                span: _,
+            } => Some(identifier.clone()),
             _ => None,
         };
         if name.is_some() {

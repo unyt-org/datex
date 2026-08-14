@@ -13,16 +13,11 @@ use crate::{
             InjectedValueDeclaration, InjectedValueType,
             SharedInjectedValueType,
         },
-        instruction_data::{
-            InstructionBlockData, SharedRef, SharedRefWithValue,
-        },
+        instruction_data::InstructionBlockData,
         regular_instructions::RegularInstruction,
     },
     prelude::*,
-    shared_values::{
-        PointerAddress, ReferencedSharedContainer, SharedContainer,
-        traits::SharedContainerCommon,
-    },
+    shared_values::SharedContainer,
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Write};
@@ -158,9 +153,7 @@ mod tests {
             core_compilation_context::{CompileInput, DXBWithSharedValues},
             value_compiler::InjectedValueValidationError,
         },
-        disassembler::assertions::{
-            assert_instructions_equal, instructions,
-        },
+        disassembler::assertions::{assert_instructions_equal, instructions},
         global::{
             instruction_codes::InstructionCode,
             protocol_structures::{

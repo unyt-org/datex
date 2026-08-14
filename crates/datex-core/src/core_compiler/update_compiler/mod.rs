@@ -183,9 +183,7 @@ mod tests {
             core_compilation_context::CompileInput,
             update_compiler::compile_updates,
         },
-        disassembler::assertions::{
-            assert_instructions_equal, instructions,
-        },
+        disassembler::assertions::{assert_instructions_equal, instructions},
         global::protocol_structures::{
             instruction_data::{
                 SharedRef, ShortTextData, StackIndex, UInt8Data,
