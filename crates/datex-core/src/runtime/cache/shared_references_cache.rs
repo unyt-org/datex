@@ -1,5 +1,6 @@
 use crate::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
+    prelude::*,
     shared_values::{
         PointerAddress, ReferencedSharedContainer, SelfOwnedPointerAddress,
         SharedContainer, SharedContainerMutability,
@@ -9,12 +10,18 @@ use crate::{
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
         shared_container_containing_entity_type::SharedContainerContainingEntityType,
+        r#type::Type,
     },
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
-use core::{fmt::Display, ops::Deref};
+use core::{any::TypeId, fmt::Display, ops::Deref};
+
+pub enum SharedTypeReservation {
+    Existing(SharedContainerContainingEntityType),
+    New(SharedContainerContainingEntityType),
+}
 
 #[derive(Debug, Default)]
 pub struct SharedReferencesCache {
@@ -22,6 +29,9 @@ pub struct SharedReferencesCache {
     owned_values: HashMap<PointerAddress, ReferencedSharedContainer>,
     /// Weak references to remote values that this endpoint is currently subscribed to and receives updates for
     remote_values: HashMap<PointerAddress, WeakSharedContainer>,
+
+    resolving_types: HashSet<SelfOwnedPointerAddress>,
+    resolving_structural_types: HashSet<TypeId>,
 }
 
 impl SharedReferencesCache {
@@ -206,6 +216,60 @@ impl SharedReferencesCache {
                 .derive_reference_with_max_mutability(),
         );
         shared_type_container
+    }
+
+    pub fn reserve_shared_type(
+        &mut self,
+        address: SelfOwnedPointerAddress,
+        name: String,
+    ) -> SharedTypeReservation {
+        if let Some(existing) = self.try_get_shared_type(address.clone()) {
+            return SharedTypeReservation::Existing(existing);
+        }
+        let placeholder = EntityTypeDefinition::resolving_placeholder(name);
+        let ty =
+            unsafe { self.register_shared_type(address.clone(), placeholder) };
+        self.resolving_types.insert(address);
+        SharedTypeReservation::New(ty)
+    }
+
+    pub fn finish_shared_type(
+        &mut self,
+        address: SelfOwnedPointerAddress,
+        definition: EntityTypeDefinition,
+    ) -> SharedContainerContainingEntityType {
+        if !self.resolving_types.contains(&address) {
+            panic!("Type not found in cache: {}", address,);
+        }
+        let ty = self
+            .try_get_shared_type(address.clone())
+            .unwrap_or_else(|| panic!("Type is not in cache: {}", address));
+        ty.replace_definition_during_resolution(definition);
+        self.resolving_types.remove(&address);
+        ty
+    }
+    pub fn begin_structural_type<T: 'static>(&mut self) -> bool {
+        self.resolving_structural_types.insert(TypeId::of::<T>())
+    }
+
+    pub fn finish_structural_type<T: 'static>(&mut self) {
+        self.resolving_structural_types.remove(&TypeId::of::<T>());
+    }
+    pub fn resolve_structural_type<T, F>(&mut self, f: F) -> Type
+    where
+        T: 'static,
+        F: FnOnce(&mut Self) -> Type,
+    {
+        let id = TypeId::of::<T>();
+        if !self.resolving_structural_types.insert(id) {
+            panic!(
+                "Can not use recursive structural DATEX types: {}",
+                core::any::type_name::<T>(),
+            );
+        }
+        let ty = f(self);
+        self.resolving_structural_types.remove(&id);
+        ty
     }
 }
 
