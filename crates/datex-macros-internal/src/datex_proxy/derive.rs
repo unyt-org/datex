@@ -263,11 +263,15 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     };
 
     let types_impl = if top_level_attributes.structural_type {
+        // If the type is a structural type, we use resolve_structural_type to ensure that
+        // we don't have recursive structural types. If so, tjos will panic.
         quote! {
             #[automatically_derived]
             impl #generics DatexProxyTypes for #ident #generics {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
-                    (#wrapped_datex_type).with_name(#datex_name)
+                    cache.resolve_structural_type::<Self, _>(
+                        |cache| (#wrapped_datex_type).with_name(#datex_name)
+                    )
                 }
             }
         }
@@ -306,7 +310,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
                 types::literal_type_definition::LiteralTypeDefinition,
                 types::entities::entity_type_definition::EntityTypeDefinition,
-                runtime::cache::shared_references_cache::SharedReferencesCache,
+                runtime::cache::shared_references_cache::{SharedReferencesCache,SharedTypeReservation},
                 libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
                 shared_values::SelfOwnedPointerAddress,
                 values::value_container::ValueContainer,
@@ -319,7 +323,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 types::type_definition::map::MapTypeDefinition,
                 types::type_definition::list::ListTypeDefinition,
                 types::type_definition::tagged_type::TaggedTypeDefinition,
-                datex_registry::get_impls,
+                datex_registry::{get_impls, get_impls_for},
                 prelude::*
             };
 
@@ -1142,38 +1146,47 @@ fn wrap_type_definition(
     type_definition: TokenStream,
     namespace: &str,
     name: &str,
-    use_nominal_type: bool,
+    structural_type: bool,
 ) -> TokenStream {
-    if use_nominal_type {
+    if structural_type {
         quote! {
-            Type::Definition(#type_definition.into())
+            Type::Definition(
+                #type_definition.into()
+            )
         }
     } else {
         // FIXME: calculate pointer address statically in macro at compile time
         let unique_name = format!("{}::{}", namespace, name);
-        quote! {
-            {
-                let address = unsafe {
-                    SelfOwnedPointerAddress::new_static_from_name(#unique_name)
-                };
-                // first try to get existing def from cache
-                if let Some(ty) = cache.try_get_shared_type(address.clone()) {
+        quote! {{
+            let address = unsafe {
+                SelfOwnedPointerAddress::new_static_from_name(
+                    #unique_name
+                )
+            };
+            match cache.reserve_shared_type(
+                address.clone(),
+                #name.to_string(),
+            ) {
+                SharedTypeReservation::Existing(ty) => {
                     Type::Entity(ty)
                 }
                 // if not found, create new def and register in cache
-                else {
-                    let impls = get_impls(#name, #namespace, cache);
-
-                    let definition = EntityTypeDefinition::new_with_impls(#type_definition.into(), #name.to_string(), impls);
-                    Type::Entity(unsafe {
-                        cache.register_shared_type(
-                            address,
-                            definition
-                        )
-                    })
+                SharedTypeReservation::New(ty) => {
+                    let type_definition = #type_definition;
+                    let impls = get_impls_for::<Self>(cache);
+                    let definition = EntityTypeDefinition::new_with_impls(
+                        type_definition.into(),
+                        #name.to_string(),
+                        impls,
+                    );
+                    cache.finish_shared_type(
+                        address,
+                        definition,
+                    );
+                    Type::Entity(ty)
                 }
             }
-        }
+        }}
     }
 }
 
