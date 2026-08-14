@@ -226,7 +226,7 @@ impl SharedReferencesCache {
         if let Some(existing) = self.try_get_shared_type(address.clone()) {
             return SharedTypeReservation::Existing(existing);
         }
-        let placeholder = EntityTypeDefinition::resolving_placeholder(name);
+        let placeholder = EntityTypeDefinition::placeholder(name);
         let ty =
             unsafe { self.register_shared_type(address.clone(), placeholder) };
         self.resolving_types.insert(address);
