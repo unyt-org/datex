@@ -16,10 +16,6 @@ use crate::{
     values::core_values::text::Text,
 };
 
-use crate::prelude::*;
-use alloc::format;
-use core::fmt::{self};
-use std::ops::Deref;
 use crate::{
     ast::{
         expressions::{
@@ -30,8 +26,14 @@ use crate::{
         type_expressions::IdentifierWithPointerAddress,
     },
     decompiler::{FormattingMode, FormattingOptions, IndentType},
+    prelude::*,
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
+};
+use alloc::format;
+use core::{
+    fmt::{self},
+    ops::Deref,
 };
 
 #[derive(Clone, Default)]

@@ -1,4 +1,7 @@
-use crate::{prelude::*, values::core_values::callable::Callable};
+use crate::{
+    prelude::*, types::type_definition::callable::CallableTypeDefinition,
+    values::core_values::callable::Callable,
+};
 
 /// Definition of an entity implementation, defining the methods that can be called on an entity.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -17,4 +20,18 @@ pub struct EntityImplMethod {
     pub call_on_owner: bool,
     /// The callable that implements the method.
     pub callable: Callable,
+}
+impl EntityImplMethod {
+    pub fn new(call_on_owner: bool, callable: Callable) -> Self {
+        Self {
+            call_on_owner,
+            callable,
+        }
+    }
+    pub fn signature(&self) -> &CallableTypeDefinition {
+        &self.callable.signature
+    }
+    pub fn name(&self) -> Option<&String> {
+        self.callable.name.as_ref()
+    }
 }
