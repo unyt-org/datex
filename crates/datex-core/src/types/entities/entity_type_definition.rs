@@ -1,5 +1,9 @@
 use super::entity_impls::EntityImpl;
-use crate::{prelude::*, types::type_definition::TypeDefinition};
+use crate::{
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    prelude::*,
+    types::type_definition::TypeDefinition,
+};
 use core::fmt::Display;
 
 /// Represents a definition of an "entity" type,
@@ -58,5 +62,18 @@ impl EntityTypeDefinition {
     /// Replace the inner [TypeDefinition] with a new one and return the old one
     pub fn replace_definition(&mut self, new_definition: TypeDefinition) {
         self.definition = new_definition;
+    }
+
+    /// Create a placeholder [EntityTypeDefinition] with the given name used during the resolution of a type.
+    /// The placeholder will be replaced with the actual definition once it is resolved.
+    pub(crate) fn placeholder(name: String) -> Self {
+        Self {
+            definition: TypeDefinition::CoreType(CoreLibTypeId::Base(
+                CoreLibBaseTypeId::Any,
+            )),
+            name,
+            allowed_variants: Vec::new(),
+            impls: Vec::new(),
+        }
     }
 }
