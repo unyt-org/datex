@@ -3,14 +3,16 @@ use crate::{
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
         SharedContainer, SharedContainerMutability,
-        traits::SharedContainerCommon,
+        traits::{_ExposeRcInternal, SharedContainerCommon},
     },
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
     },
-    values::{core_value::CoreValue, value_container::ValueContainer},
+    values::{
+        core_value::CoreValue, value::Value, value_container::ValueContainer,
+    },
 };
 use core::{cell::Ref, ops::Deref};
 
@@ -75,6 +77,17 @@ impl SharedContainerContainingEntityType {
                 "The constraint for SharedContainerContainingEntityType guarantees that the inner value is always a CoreValue::EntityTypeDefinition"
             ),
         })
+    }
+
+    /// Replaces the inner [EntityTypeDefinition] contained in the [SharedContainer].
+    /// This is used in the [finish_shared_type] method of the [SharedReferencesCache] to finalize a type definition after it has been resolved.
+    pub(crate) fn replace_definition(&self, definition: EntityTypeDefinition) {
+        let reference = self.0.clone().derive_reference_with_max_mutability();
+        let mut inner = reference.get_rc_internal().borrow_mut();
+        *inner.base_shared_container_mut().value_container_mut() =
+            ValueContainer::Local(Value::from(
+                CoreValue::EntityTypeDefinition(definition),
+            ));
     }
 }
 
