@@ -1,3 +1,5 @@
+#![feature(box_patterns)]
+
 use crate::datex_proxy::generate_impl_glue_code;
 use proc_macro::TokenStream;
 use syn::{Item, parse_macro_input};
