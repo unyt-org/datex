@@ -244,7 +244,7 @@ impl SharedReferencesCache {
         let ty = self
             .try_get_shared_type(address.clone())
             .unwrap_or_else(|| panic!("Type is not in cache: {}", address));
-        ty.replace_definition_during_resolution(definition);
+        ty.replace_definition(definition);
         self.resolving_types.remove(&address);
         ty
     }
