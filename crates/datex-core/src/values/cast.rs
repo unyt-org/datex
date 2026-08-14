@@ -356,6 +356,45 @@ derive_try_from_chain!(
         CoreValue::Text(Text(value)) => Ok(value),
     }
 );
+// &str
+impl<'a> TryFrom<&'a CoreValue> for &'a str {
+    type Error = TryFromDatexValueError;
+
+    fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
+        match value {
+            CoreValue::Text(Text(value)) => Ok(value.as_str()),
+            _ => Err(TryFromDatexValueError(
+                "Cannot cast CoreValue to &str".into(),
+            )),
+        }
+    }
+}
+impl<'a> TryFrom<&'a Value> for &'a str {
+    type Error = TryFromDatexValueError;
+
+    fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
+        (&value.inner).try_into()
+    }
+}
+impl<'a> TryFrom<&'a ValueContainer> for &'a str {
+    type Error = TryFromDatexValueError;
+
+    fn try_from(value: &'a ValueContainer) -> Result<Self, Self::Error> {
+        match value {
+            ValueContainer::Local(value) => value.try_into(),
+            _ => Err(TryFromDatexValueError(
+                "Cannot cast shared ValueContainer to &str".into(),
+            )),
+        }
+    }
+}
+impl<'a> DatexProxyTypes for &'a str {
+    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
+        Type::Definition(
+            TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
+        )
+    }
+}
 
 // -------- Box<T> -------
 impl<T> DatexValueProxy for Box<T> where T: DatexValueProxy {}
