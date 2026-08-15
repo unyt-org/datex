@@ -25,9 +25,9 @@ use datex_core::{
         core_values::integer::typed_integer::IntegerTypeVariant,
     },
 };
-use datex_core::decompiler::{decompile_value, DecompileOptions};
 use datex_core::traits::apply::Apply;
 use datex_core::values::core_values::integer::typed_integer::TypedInteger;
+use datex_core::values::value_container::ValueContainer;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -98,11 +98,12 @@ fn signatures() {
     let example_type = Example::datex_type(memory.deref_mut());
     let type_definition = entity_type_definition_from_type(&example_type);
 
+    // call static method by manually extracting it from the type definition
     match &example_type {
         Type::Entity(entity) => {
             let definition = entity.entity_definition();
             let static_add_method = definition.impls().first().unwrap().static_methods.get(1).unwrap();
-    
+
             // call the static add method
             let result = static_add_method.try_apply_sync(
                 &Runtime::stub(),
@@ -114,7 +115,13 @@ fn signatures() {
             panic!("Expected entity type, got {:?}", example_type);
         }
     }
-
+    
+    // call method directly on an Example instance via the ValueContainer
+    let example_instance = Example { a: 1, b: 2 };
+    let example_instance_vc = ValueContainer::from(example_instance);
+    // TODO: also store type in value container (this will require passing cache to the ValueContainer::from function somehow)
+    // Then we can access methods on the type definition here
+    
     {
         // set_a
         let set_a_sig =

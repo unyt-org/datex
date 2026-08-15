@@ -5,6 +5,7 @@ use crate::{
         core_values::callable::native_sync_callable,
         value_container::ValueContainer,
     },
+    prelude::*,
 };
 use datex_macros_internal::{Datex, datex};
 use crate::types::type_definition::callable::CallableKind;
@@ -67,6 +68,8 @@ mod tests {
 
         println!("Inspector ValueContainer: {:#?}", vc);
         // TODO: methods bound to value container / even better, methods bound to the type definition
+        // We must the store type in value container (this will require passing cache to the ValueContainer::from function somehow)
+        // Then we can access methods on the type definition here
         let runtime = crate::runtime::Runtime::stub();
         if let Some(method) = vc
             .try_as::<Map>()

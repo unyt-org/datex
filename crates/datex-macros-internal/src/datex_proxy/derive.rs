@@ -356,13 +356,15 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
 
     let into_datex_fields_inner = match fields_type {
         FieldsType::Named => quote! {
-            Value::from(Map::structural_with_string_keys(vec![
-                #(#into_datex_fields),*
-            ]))
+            Value::from(
+                Map::structural_with_string_keys(vec![
+                    #(#into_datex_fields),*
+                ])
+            )
         },
         FieldsType::Unnamed => {
             quote! {
-                Value::from(List::from(vec![
+                Value::new(List::from(vec![
                     #(#into_datex_fields),*
                 ]))
             }

@@ -67,8 +67,8 @@ impl Value {
     pub fn null() -> Self {
         CoreValue::Null.into()
     }
-    pub fn new(inner: CoreValue, custom_type: Option<TypeDefinition>) -> Self {
-        Value { inner, custom_type }
+    pub fn new(inner: impl Into<CoreValue>, custom_type: Option<TypeDefinition>) -> Self {
+        Value { inner: inner.into(), custom_type }
     }
     pub fn custom_type(&self) -> Option<&TypeDefinition> {
         self.custom_type.as_ref()
