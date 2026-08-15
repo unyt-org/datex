@@ -56,7 +56,6 @@ mod tests {
         let inspector_type = inspector::Inspector::datex_type(
             &mut SharedReferencesCache::default(),
         );
-        println!("Inspector type: {:#?}", inspector_type);
         let r = native_sync_callable(
             Inspector::create,
             Some("create".to_string()),
@@ -67,7 +66,6 @@ mod tests {
         let inspector = Inspector::create("Test Inspector".to_string());
         let vc = ValueContainer::from(inspector);
 
-        println!("Inspector ValueContainer: {:#?}", vc);
         // TODO: methods bound to value container / even better, methods bound to the type definition
         // We must the store type in value container (this will require passing cache to the ValueContainer::from function somehow)
         // Then we can access methods on the type definition here

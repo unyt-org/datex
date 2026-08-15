@@ -30,7 +30,40 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::{TypeDefinition, union::UnionTypeDefinition},
 };
-
+impl Type {
+    pub fn rust_none() -> Self {
+        Type::Definition(
+            TypeDefinition::ImplType(ImplTypeDefinition::new(
+                Type::NULL,
+                vec![rust_none_marker()],
+            ))
+            .into(),
+        )
+    }
+    pub fn rust_some(inner_type: Type) -> Self {
+        Type::Definition(
+            TypeDefinition::ImplType(ImplTypeDefinition::new(
+                Type::Definition(
+                    TypeDefinition::Collection(CollectionTypeDefinition::List(
+                        ListCollectionTypeDefinition(Box::new(inner_type)),
+                    ))
+                    .into(),
+                ),
+                vec![rust_some_marker()],
+            ))
+            .into(),
+        )
+    }
+    pub fn is_rust_none(&self) -> bool {
+        self.with_collapsed_type_definition(|def| match def {
+            TypeDefinition::ImplType(impl_type) => impl_type
+                .impl_markers
+                .iter()
+                .any(|marker| marker == &rust_none_marker()),
+            _ => false,
+        })
+    }
+}
 impl Value {
     pub fn rust_none() -> Self {
         Self::new(
@@ -170,29 +203,8 @@ where
 {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         let inner_type = T::datex_type(memory);
-        let rust_none_type = Type::Definition(
-            TypeDefinition::ImplType(ImplTypeDefinition::new(
-                Type::NULL,
-                vec![rust_none_marker()],
-            ))
-            .into(),
-        );
-
-        let rust_some_type = Type::Definition(
-            TypeDefinition::ImplType(ImplTypeDefinition::new(
-                Type::Definition(
-                    TypeDefinition::Collection(CollectionTypeDefinition::List(
-                        ListCollectionTypeDefinition(Box::new(
-                            inner_type.clone(),
-                        )),
-                    ))
-                    .into(),
-                ),
-                vec![rust_some_marker()],
-            ))
-            .into(),
-        );
-
+        let rust_none_type = Type::rust_none();
+        let rust_some_type = Type::rust_some(inner_type.clone());
         Type::Definition(
             TypeDefinition::Union(UnionTypeDefinition(vec![
                 rust_none_type,
