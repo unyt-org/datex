@@ -3,7 +3,10 @@
   "specifiers": {
     "jsr:@opentf/obj-diff@0.11": "0.11.0",
     "jsr:@opentf/std@0.12.0": "0.12.0",
-    "jsr:@unyt/speck@^0.0.11": "0.0.11",
+    "jsr:@std/fs@^1.0.19": "1.0.24",
+    "jsr:@std/internal@^1.0.14": "1.0.14",
+    "jsr:@std/path@^1.1.5": "1.1.6",
+    "jsr:@unyt/speck@^0.0.13": "0.0.13",
     "npm:github-slugger@2": "2.0.0",
     "npm:tablemark@^4.1.0": "4.1.0"
   },
@@ -17,17 +20,33 @@
     "@opentf/std@0.12.0": {
       "integrity": "a78ec5cee300c4379dda0e92458ae372a9e871daef7b2aa2a53cb2314a276980"
     },
-    "@unyt/speck@0.0.11": {
-      "integrity": "ef418d8abc17212176a3d7fe1a874bbe98647435667cdf58240e4ccf167b2ad7",
+    "@std/fs@1.0.24": {
+      "integrity": "f3061b45b81673a2bece689da041df32d174be064c89eb6397fb5718d3fb7877",
       "dependencies": [
+        "jsr:@std/path"
+      ]
+    },
+    "@std/internal@1.0.14": {
+      "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
+    },
+    "@std/path@1.1.6": {
+      "integrity": "c68485c2a4dfbb5ae3cc74fae4e8c4e5d874cf8a8ed12927917235c758b46cbe",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@unyt/speck@0.0.13": {
+      "integrity": "5f419ad6116168443f85a9d75e0d91ce9ce9eb73c982c294f3417c54c25bdbb0",
+      "dependencies": [
+        "jsr:@std/fs",
         "npm:github-slugger",
         "npm:tablemark"
       ]
     }
   },
   "npm": {
-    "ansi-regex@6.2.2": {
-      "integrity": "sha512-Bq3SmSpyFHaWjPk8If9yc6svM8c56dB5BAtW4Qbw5jHTwwXXcTLoRMkpDJp6VL0XzlWaCHTXrkFURMYmD0sLqg=="
+    "ansi-regex@6.3.0": {
+      "integrity": "sha512-WpDfL7NO6j7tH88IDBNVdUJxDh9nmCteAVW9dsep846XdwF4naCBK+/tGLX3KJgcpgMRXCFlTM2hKGoK9FsdrQ=="
     },
     "ansi-styles@6.2.3": {
       "integrity": "sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg=="
@@ -38,8 +57,8 @@
     "emoji-regex@10.6.0": {
       "integrity": "sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A=="
     },
-    "get-east-asian-width@1.4.0": {
-      "integrity": "sha512-QZjmEOC+IT1uk6Rx0sX22V6uHWVwbdbxf1faPqJ1QhLdGgsRGCZoyaQBm/piRdJy/D2um6hM1UP7ZEeQ4EkP+Q=="
+    "get-east-asian-width@1.6.0": {
+      "integrity": "sha512-QRbvDIbx6YklUe6RxeTeleMR0yv3cYH6PsPZHcnVn7xv7zO1BHN8r0XETu8n6Ye3Q+ahtSarc3WgtNWmehIBfA=="
     },
     "github-slugger@2.0.0": {
       "integrity": "sha512-IaOQ9puYtjrkq7Y0Ygl9KDZnrf/aiUJYUpVf89y8kyaxbRG7Y1SrX/jaumrv81vc61+kiMempujsM3Yw7w5qcw=="
@@ -52,15 +71,15 @@
         "strip-ansi"
       ]
     },
-    "string-width@8.1.0": {
-      "integrity": "sha512-Kxl3KJGb/gxkaUMOjRsQ8IrXiGW75O4E3RPjFIINOVH8AMl2SQ/yWdTzWwF3FevIX9LcMAjJW+GRwAlAbTSXdg==",
+    "string-width@8.2.2": {
+      "integrity": "sha512-GaPUh5gfdrYzqeVNZvUfT23vYYxXzKYidUcnMtJg/3rxRV63EFZy3k6xfKlmfeJD0176lnUV/Usr3XcwSvFzpg==",
       "dependencies": [
         "get-east-asian-width",
         "strip-ansi"
       ]
     },
-    "strip-ansi@7.1.2": {
-      "integrity": "sha512-gmBGslpoQJtgnMAvOVqGZpEz9dyoKTCzy2nfz/n8aIFhN/jCE/rCmcxabB6jOOHV+0WNnylOxaxBQPSvcWklhA==",
+    "strip-ansi@7.2.0": {
+      "integrity": "sha512-yDPMNjp4WyfYBkHnjIRLfca1i6KMyGCtsVgoKe/z1+6vukgaENdgGBZt+ZmKPc4gavvEZ5OgHfHdrazhgNyG7w==",
       "dependencies": [
         "ansi-regex"
       ]
@@ -70,7 +89,7 @@
       "dependencies": [
         "ansi-regex",
         "change-case",
-        "string-width@8.1.0",
+        "string-width@8.2.2",
         "wordwrapjs",
         "wrap-ansi"
       ]
@@ -93,7 +112,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@opentf/obj-diff@0.11",
-      "jsr:@unyt/speck@^0.0.11"
+      "jsr:@unyt/speck@^0.0.13"
     ]
   }
 }
