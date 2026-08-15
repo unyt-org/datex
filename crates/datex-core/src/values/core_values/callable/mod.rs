@@ -163,6 +163,8 @@ pub struct Callable {
 /// Creates a new [Callable] from a native Rust function or closure
 pub fn native_sync_callable<F, Args, R>(
     func: F,
+    name: Option<String>,
+    kind: CallableKind,
     memory: &mut SharedReferencesCache,
 ) -> Callable
 where
@@ -173,9 +175,9 @@ where
     let parameters = F::parameters(memory);
     let return_type = R::datex_type(memory);
     Callable {
-        name: None,
+        name,
         signature: CallableTypeDefinition {
-            kind: CallableKind::Function,
+            kind,
             parameters,
             requires_async: false,
             rest_parameter: None,
@@ -193,6 +195,8 @@ where
 /// Creates a new [Callable] from a native Rust async function or closure
 pub fn native_async_callable<F, Args, R>(
     func: F,
+    name: Option<String>,
+    kind: CallableKind,
     memory: &mut SharedReferencesCache,
 ) -> Callable
 where
@@ -203,9 +207,9 @@ where
     let parameters = F::parameters(memory);
     let return_type = R::datex_type(memory);
     Callable {
-        name: None,
+        name,
         signature: CallableTypeDefinition {
-            kind: CallableKind::Function,
+            kind,
             parameters,
             requires_async: true,
             rest_parameter: None,

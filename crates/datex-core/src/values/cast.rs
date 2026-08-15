@@ -369,6 +369,7 @@ impl<'a> TryFrom<&'a CoreValue> for &'a str {
         }
     }
 }
+
 impl<'a> TryFrom<&'a Value> for &'a str {
     type Error = TryFromDatexValueError;
 
@@ -389,6 +390,14 @@ impl<'a> TryFrom<&'a ValueContainer> for &'a str {
     }
 }
 impl DatexProxyTypes for &str {
+    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
+        Type::Definition(
+            TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
+        )
+    }
+}
+
+impl DatexProxyTypes for str {
     fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),

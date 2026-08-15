@@ -25,7 +25,9 @@ use datex_core::{
         core_values::integer::typed_integer::IntegerTypeVariant,
     },
 };
-use datex_core::decompiler::DecompileOptions;
+use datex_core::decompiler::{decompile_value, DecompileOptions};
+use datex_core::traits::apply::Apply;
+use datex_core::values::core_values::integer::typed_integer::TypedInteger;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -39,7 +41,7 @@ impl Example {
     pub fn new(a: u8, b: u8) -> Self {
         Example { a, b }
     }
-    
+
     pub fn set_a(&mut self, a: u8, string: String) -> u8 {
         self.a = a;
         self.a
@@ -96,17 +98,11 @@ fn signatures() {
     let example_type = Example::datex_type(memory.deref_mut());
     let type_definition = entity_type_definition_from_type(&example_type);
 
-    match example_type {
+    match &example_type {
         Type::Entity(entity) => {
             let definition = entity.entity_definition();
-            // println!("impls: {:#?}", definition.impls());
-
-            let static_add_method = definition.impls().first().unwrap().static_methods.first().unwrap();
-            println!("{}", decompile_value(
-                &static_add_method.clone().into(),
-                DecompileOptions::colorized_pretty()
-            ));
-
+            let static_add_method = definition.impls().first().unwrap().static_methods.get(1).unwrap();
+    
             // call the static add method
             let result = static_add_method.try_apply_sync(
                 &Runtime::stub(),
@@ -118,7 +114,7 @@ fn signatures() {
             panic!("Expected entity type, got {:?}", example_type);
         }
     }
-    
+
     {
         // set_a
         let set_a_sig =

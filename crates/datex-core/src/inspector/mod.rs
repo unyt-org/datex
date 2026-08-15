@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use datex_macros_internal::{Datex, datex};
+use crate::types::type_definition::callable::CallableKind;
 
 #[derive(Datex, Debug)]
 pub struct Inspector {
@@ -19,9 +20,9 @@ impl Inspector {
     pub fn create(name: String) -> Self {
         Inspector { name }
     }
-    pub fn name_getter(&self) -> &str {
+    pub fn name_getter(&self) -> String { // FIXME allow &str (lifetime issues)
         // TODO self arg
-        &self.name
+        self.name.clone()
     }
 }
 
@@ -30,8 +31,11 @@ pub fn register_inspector_namespace(runtime: &Runtime) {
     let mut memory = runtime.memory().borrow_mut();
     let inspector_create_callable = ValueContainer::from(native_sync_callable(
         Inspector::create,
+        Some("create".to_string()),
+        CallableKind::Procedure,
         &mut memory,
     ));
+
     runtime
         .endpoint_properties_mut()
         .insert("inspector".to_string(), inspector_create_callable);
@@ -53,6 +57,8 @@ mod tests {
         println!("Inspector type: {:#?}", inspector_type);
         let r = native_sync_callable(
             Inspector::create,
+            Some("create".to_string()),
+            CallableKind::Procedure,
             &mut SharedReferencesCache::default(),
         );
 
@@ -87,7 +93,7 @@ mod tests {
         // 1 arg
         let func = |x: u8| x + 1;
         let dx_func_1 =
-            ValueContainer::from(native_sync_callable(func, &mut memory));
+            ValueContainer::from(native_sync_callable(func, None, CallableKind::Function, &mut memory));
         let res = dx_func_1
             .try_apply_sync(&runtime, vec![4u8.into()])
             .unwrap()
@@ -97,7 +103,7 @@ mod tests {
         // 2 args
         let func_2 = |x: u8, y: u8| x + y;
         let dx_func_2 =
-            ValueContainer::from(native_sync_callable(func_2, &mut memory));
+            ValueContainer::from(native_sync_callable(func_2, None, CallableKind::Function, &mut memory));
         let res_2 = dx_func_2
             .try_apply_sync(&runtime, vec![3u8.into(), 4u8.into()])
             .unwrap()
