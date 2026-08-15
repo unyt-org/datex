@@ -1,9 +1,17 @@
 //! This module contains the implementation of the [Value] struct, which represents a value in the DATEX type system.
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
+    compiler::precompiler::precompiled_ast::VariableShape,
+    datex_proxy::TryFromDatexValueError,
+    libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
-    types::type_definition::{
-        TypeDefinition, callable::CallableTypeDefinition,
+    shared_values::PointerAddress,
+    types::{
+        r#type::Type,
+        type_definition::{
+            TypeDefinition, callable::CallableTypeDefinition,
+            impl_type::ImplTypeDefinition,
+        },
     },
     utils::sheep::Sheep,
     values::{
@@ -11,6 +19,7 @@ use crate::{
         core_values::{
             callable::{Callable, CallableBody},
             integer::typed_integer::TypedInteger,
+            list::List,
         },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
@@ -67,8 +76,14 @@ impl Value {
     pub fn null() -> Self {
         CoreValue::Null.into()
     }
-    pub fn new(inner: impl Into<CoreValue>, custom_type: Option<TypeDefinition>) -> Self {
-        Value { inner: inner.into(), custom_type }
+    pub fn new(
+        inner: impl Into<CoreValue>,
+        custom_type: Option<TypeDefinition>,
+    ) -> Self {
+        Value {
+            inner: inner.into(),
+            custom_type,
+        }
     }
     pub fn custom_type(&self) -> Option<&TypeDefinition> {
         self.custom_type.as_ref()

@@ -2,10 +2,7 @@ mod impls;
 
 use core::assert_matches;
 use datex_core::{
-    datex_proxy::{
-        DatexProxyTypes, DatexValueContainerProxy,
-        DatexValueContainerProxyInfallibleSerialize,
-    },
+    datex_proxy::{DatexProxyTypes, DatexValueContainerProxy},
     prelude::*,
     values::{
         core_values::{endpoint::Endpoint, map::Map},
@@ -67,8 +64,7 @@ use datex_core::{
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
-        OwnedSharedContainer, PointerAddress, SharedContainer,
-        SharedContainerMutability,
+        OwnedSharedContainer, SharedContainer, SharedContainerMutability,
     },
     traits::structural_eq::assert_structural_eq,
     types::{
@@ -752,7 +748,7 @@ fn recursive_struct() {
     ty.with_collapsed_type_definition(|ty_def| match ty_def {
         TypeDefinition::Map(map) => {
             let next_type = map
-                .get(0)
+                .first()
                 .expect("Expected 'next' field in map type definition")
                 .1
                 .clone();
@@ -761,8 +757,7 @@ fn recursive_struct() {
                     TypeDefinition::Union(union) => {
                         let option_type = union
                             .iter()
-                            .filter(|ty| **ty != Type::NULL)
-                            .next()
+                            .find(|ty| **ty != Type::NULL)
                             .expect("Expected Option type in union");
                         assert_eq!(option_type, &ty);
                     }
@@ -795,14 +790,191 @@ fn mutual_recursion() {
 
     ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
         TypeDefinition::Map(map) => {
-            assert_eq!(map.get(0).expect("wtf").1, ty_b);
+            assert_eq!(map.first().expect("wtf").1, ty_b);
         }
         _ => panic!("Expected map type definition for A"),
     });
     ty_b.with_collapsed_type_definition(|ty_def| match ty_def {
         TypeDefinition::Map(map) => {
-            assert_eq!(map.get(0).expect("wtf").1, ty_a);
+            assert_eq!(map.first().expect("wtf").1, ty_a);
         }
         _ => panic!("Expected map type definition for B"),
     });
+}
+
+#[test_case(None ; "none")]
+#[test_case(Some(0u8) ; "some zero")]
+#[test_case(Some(u8::MAX) ; "some max")]
+fn round_trip_option(value: Option<u8>) {
+    assert_round_trip(value);
+}
+
+#[test_case(None ; "outer none")]
+#[test_case(Some(None) ; "inner none")]
+#[test_case(Some(Some(42u8)) ; "some value")]
+fn round_trip_nested_option(value: Option<Option<u8>>) {
+    assert_round_trip(value);
+}
+
+#[test_case(Box::new(0u8) ; "boxed zero")]
+#[test_case(Box::new(42u8) ; "boxed primitive")]
+#[test_case(Box::new(u8::MAX) ; "boxed max")]
+fn round_trip_box(value: Box<u8>) {
+    assert_round_trip(value);
+}
+
+#[test_case(None ; "none")]
+#[test_case(Some(Box::new(0u8)) ; "some boxed zero")]
+#[test_case(Some(Box::new(42u8)) ; "some boxed value")]
+fn round_trip_option_box(value: Option<Box<u8>>) {
+    assert_round_trip(value);
+}
+
+#[test_case(Box::new(None) ; "boxed none")]
+#[test_case(Box::new(Some(0u8)) ; "boxed some zero")]
+#[test_case(Box::new(Some(42u8)) ; "boxed some value")]
+fn round_trip_box_option(value: Box<Option<u8>>) {
+    assert_round_trip(value);
+}
+
+#[test_case(None ; "outer none")]
+#[test_case(Some(Box::new(None)) ; "boxed none")]
+#[test_case(Some(Box::new(Some(42u8))) ; "boxed some value")]
+fn round_trip_option_box_option(value: Option<Box<Option<u8>>>) {
+    assert_round_trip(value);
+}
+
+#[test]
+fn round_trip_boxed_struct() {
+    let example = Box::new(Example {
+        a: 42u8,
+        b: "Test".to_string(),
+        c: Endpoint::default(),
+    });
+    assert_round_trip(example);
+}
+
+#[test]
+fn struct_with_option() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural)]
+    struct ExampleWithOption {
+        value: Option<u8>,
+    }
+    assert_round_trip(ExampleWithOption { value: None });
+    assert_round_trip(ExampleWithOption { value: Some(42) });
+}
+
+#[test]
+fn struct_with_box() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural)]
+    struct ExampleWithBox {
+        value: Box<u8>,
+    }
+    assert_round_trip(ExampleWithBox {
+        value: Box::new(42),
+    });
+}
+
+#[test]
+fn struct_with_option_box() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural)]
+    struct ExampleWithOptionBox {
+        value: Option<Box<u8>>,
+    }
+    assert_round_trip(ExampleWithOptionBox { value: None });
+    assert_round_trip(ExampleWithOptionBox {
+        value: Some(Box::new(42)),
+    });
+}
+
+#[test]
+fn struct_with_box_option() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural)]
+    struct ExampleWithBoxOption {
+        value: Box<Option<u8>>,
+    }
+    assert_round_trip(ExampleWithBoxOption {
+        value: Box::new(None),
+    });
+    assert_round_trip(ExampleWithBoxOption {
+        value: Box::new(Some(42)),
+    });
+}
+
+#[test]
+fn struct_with_nested_option() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural)]
+    struct ExampleWithNestedOption {
+        value: Option<Option<u8>>,
+    }
+    assert_round_trip(ExampleWithNestedOption { value: None });
+    assert_round_trip(ExampleWithNestedOption { value: Some(None) });
+    assert_round_trip(ExampleWithNestedOption {
+        value: Some(Some(42)),
+    });
+}
+
+#[test_case(
+    ExampleEnumWithOptionAndBox::Optional(None)
+    ; "option none"
+)]
+#[test_case(
+    ExampleEnumWithOptionAndBox::Optional(Some(42))
+    ; "option some"
+)]
+#[test_case(
+    ExampleEnumWithOptionAndBox::Boxed(Box::new(42))
+    ; "boxed"
+)]
+#[test_case(
+    ExampleEnumWithOptionAndBox::OptionalBoxed(None)
+    ; "option boxed none"
+)]
+#[test_case(
+    ExampleEnumWithOptionAndBox::OptionalBoxed(Some(Box::new(42)))
+    ; "option boxed some"
+)]
+fn round_trip_enum_with_option_and_box(value: ExampleEnumWithOptionAndBox) {
+    assert_round_trip(value);
+}
+
+#[derive(Datex, Debug, Clone, PartialEq)]
+#[datex(structural)]
+enum ExampleEnumWithOptionAndBox {
+    Optional(Option<u8>),
+    Boxed(Box<u8>),
+    OptionalBoxed(Option<Box<u8>>),
+}
+
+#[test]
+fn recursive_struct_round_trip() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural)]
+    struct Node {
+        value: u8,
+        next: Option<Box<Node>>,
+    }
+
+    let node = Node {
+        value: 42,
+        next: Some(Box::new(Node {
+            value: 69,
+            next: Some(Box::new(Node {
+                value: 10,
+                next: None,
+            })),
+        })),
+    };
+    assert_round_trip(node);
+}
+
+#[test]
+fn vec_with_option_box() {
+    let value = vec![None, Some(Box::new(0u8)), Some(Box::new(42u8)), None];
+    assert_round_trip(value);
 }
