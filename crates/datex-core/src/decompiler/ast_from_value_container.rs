@@ -240,25 +240,6 @@ fn type_cast_expression(
             tag: tag.clone(),
             expression: None,
         }),
-        TypeDefinition::ImplType(impl_type) => {
-            let inner_type_expr =
-                type_to_type_expression(&impl_type.inner_type);
-            // let impl_markers_exprs = impl_type
-            //     .impl_markers
-            //     .iter()
-            //     .map(|marker| {
-            //         TypeExpressionData::IdentifierWithPointerAddress(
-            //             IdentifierWithPointerAddress {
-            //                 name: marker.to_string(),
-            //                 pointer_address: *marker,
-            //             },
-            //         )
-            //         .with_default_span()
-            //     })
-            //     .collect::<Vec<TypeExpression>>();
-
-            DatexExpressionData::TypeExpression(inner_type_expr)
-        }
         e => {
             todo!("Handle type cast to {:?} in decompiler", e)
         }
