@@ -1,18 +1,8 @@
 use crate::{
-    datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+    datex_proxy::TryFromDatexValueError,
     prelude::*,
-    shared_values::errors::KeyNotFoundError,
     types::{
-        entities::entity_type_definition::EntityTypeDefinition,
-        r#type::Type,
-        type_definition::collection::{
-            CollectionTypeDefinition,
-            type_definition::{
-                list::ListCollectionTypeDefinition,
-                map::MapCollectionTypeDefinition,
-            },
-        },
+        entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
     },
     values::{
         core_value::CoreValue,
@@ -28,19 +18,8 @@ use crate::{
             text::Text,
         },
         value::Value,
-        value_container::ValueContainer,
     },
 };
-
-use crate::{
-    runtime::cache::shared_references_cache::SharedReferencesCache,
-    types::type_definition::{TypeDefinition, union::UnionTypeDefinition},
-    values::core_values::{
-        decimal::typed_decimal::DecimalTypeVariant,
-        integer::typed_integer::IntegerTypeVariant,
-    },
-};
-use core::hash::Hash;
 
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {

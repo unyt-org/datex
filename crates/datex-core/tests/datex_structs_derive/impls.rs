@@ -11,6 +11,7 @@ use datex_core::{
     shared_values::{
         SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
     },
+    traits::apply::Apply,
     types::{
         entities::{
             entity_impls::{EntityImpl, EntityImplMethod},
@@ -22,12 +23,12 @@ use datex_core::{
     },
     values::{
         core_value::CoreValue,
-        core_values::integer::typed_integer::IntegerTypeVariant,
+        core_values::integer::typed_integer::{
+            IntegerTypeVariant, TypedInteger,
+        },
+        value_container::ValueContainer,
     },
 };
-use datex_core::traits::apply::Apply;
-use datex_core::values::core_values::integer::typed_integer::TypedInteger;
-use datex_core::values::value_container::ValueContainer;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -102,13 +103,25 @@ fn signatures() {
     match &example_type {
         Type::Entity(entity) => {
             let definition = entity.entity_definition();
-            let static_add_method = definition.impls().first().unwrap().static_methods.get(1).unwrap();
+            let static_add_method = definition
+                .impls()
+                .first()
+                .unwrap()
+                .static_methods
+                .get(1)
+                .unwrap();
 
             // call the static add method
-            let result = static_add_method.try_apply_sync(
-                &Runtime::stub(),
-                vec![TypedInteger::U8(1).into(), TypedInteger::U8(2).into()],
-            ).unwrap().unwrap();
+            let result = static_add_method
+                .try_apply_sync(
+                    &Runtime::stub(),
+                    vec![
+                        TypedInteger::U8(1).into(),
+                        TypedInteger::U8(2).into(),
+                    ],
+                )
+                .unwrap()
+                .unwrap();
             assert_eq!(result, TypedInteger::U8(3).into());
         }
         _ => {
@@ -138,9 +151,11 @@ fn signatures() {
                     ))
                 ),],
                 rest_parameter: None,
-                return_type: Some(Box::new(Type::core(CoreLibTypeId::Variant(
-                    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
-                )))),
+                return_type: Some(Box::new(Type::core(
+                    CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
+                        IntegerTypeVariant::U8
+                    ))
+                ))),
                 yeet_type: None,
             }
         );

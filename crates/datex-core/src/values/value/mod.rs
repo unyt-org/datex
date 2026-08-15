@@ -1,17 +1,9 @@
 //! This module contains the implementation of the [Value] struct, which represents a value in the DATEX type system.
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
-    compiler::precompiler::precompiled_ast::VariableShape,
-    datex_proxy::TryFromDatexValueError,
-    libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
-    shared_values::PointerAddress,
-    types::{
-        r#type::Type,
-        type_definition::{
-            TypeDefinition, callable::CallableTypeDefinition,
-            impl_type::ImplTypeDefinition,
-        },
+    types::type_definition::{
+        TypeDefinition, callable::CallableTypeDefinition,
     },
     utils::sheep::Sheep,
     values::{
@@ -19,7 +11,6 @@ use crate::{
         core_values::{
             callable::{Callable, CallableBody},
             integer::typed_integer::TypedInteger,
-            list::List,
         },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },

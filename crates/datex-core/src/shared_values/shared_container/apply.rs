@@ -66,10 +66,8 @@ impl SharedContainer {
             .into(),
         ];
         // append args
-        instructions.extend(
-            args.into_iter()
-                .map(|arg| InstructionInput::ValueContainer(arg)),
-        );
+        instructions
+            .extend(args.into_iter().map(InstructionInput::ValueContainer));
         // append the callee
         instructions.push(InstructionInput::ValueContainer(
             ValueContainer::Shared(self.clone()),

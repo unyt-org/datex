@@ -1,46 +1,23 @@
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+    libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
-    shared_values::errors::KeyNotFoundError,
     types::{
-        entities::entity_type_definition::EntityTypeDefinition,
-        r#type::Type,
-        type_definition::collection::{
-            CollectionTypeDefinition,
-            type_definition::{
-                list::ListCollectionTypeDefinition,
-                map::MapCollectionTypeDefinition,
-            },
-        },
+        entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
     },
     values::{
-        core_value::CoreValue,
         core_values::{
-            boolean::Boolean,
-            callable::Callable,
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
-            list::List,
-            map::Map,
+            callable::Callable, endpoint::Endpoint, list::List, map::Map,
             range::Range,
-            text::Text,
         },
         value::Value,
-        value_container::ValueContainer,
     },
 };
 
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    types::type_definition::{TypeDefinition, union::UnionTypeDefinition},
-    values::core_values::{
-        decimal::typed_decimal::DecimalTypeVariant,
-        integer::typed_integer::IntegerTypeVariant,
-    },
+    types::type_definition::TypeDefinition,
 };
-use core::hash::Hash;
 
 macro_rules! impl_datex_direct_via_value_container {
     ($type:ty, $dx_type:expr) => {

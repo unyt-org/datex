@@ -1,8 +1,10 @@
-use crate::utils::{get_datex_core_crate_name, get_project_relative_file_path};
+use crate::{
+    datex_proxy::native_callable::generate_native_callable_from_impl_fn,
+    utils::{get_datex_core_crate_name, get_project_relative_file_path},
+};
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
-use syn::{Item};
-use crate::datex_proxy::native_callable::generate_native_callable_from_impl_fn;
+use syn::Item;
 
 pub fn generate_impl_glue_code(input: TokenStream, item: Item) -> TokenStream {
     let datex_core_crate_name = get_datex_core_crate_name();
@@ -16,11 +18,14 @@ pub fn generate_impl_glue_code(input: TokenStream, item: Item) -> TokenStream {
 
             for impl_item in &item_impl.items {
                 if let syn::ImplItem::Fn(method) = impl_item {
-
-                    let is_method = method.sig.inputs.first().map(|arg| {
-                        matches!(arg, syn::FnArg::Receiver(_))
-                    }).unwrap_or(false);
-                    let callable = generate_native_callable_from_impl_fn(method, self_ty);
+                    let is_method = method
+                        .sig
+                        .inputs
+                        .first()
+                        .map(|arg| matches!(arg, syn::FnArg::Receiver(_)))
+                        .unwrap_or(false);
+                    let callable =
+                        generate_native_callable_from_impl_fn(method, self_ty);
 
                     if is_method {
                         methods.push(quote! {
@@ -29,8 +34,7 @@ pub fn generate_impl_glue_code(input: TokenStream, item: Item) -> TokenStream {
                                 callable: #callable,
                             }
                         })
-                    }
-                    else {
+                    } else {
                         static_methods.push(quote! {
                             #callable
                         })
@@ -82,4 +86,3 @@ pub fn generate_impl_glue_code(input: TokenStream, item: Item) -> TokenStream {
         }
     }
 }
-

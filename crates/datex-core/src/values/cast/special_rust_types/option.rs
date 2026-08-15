@@ -4,19 +4,15 @@
 //! represent `Some(None)` in DATEX.
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+    libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
-    shared_values::{PointerAddress, errors::KeyNotFoundError},
+    shared_values::errors::KeyNotFoundError,
     types::{
-        entities::entity_type_definition::EntityTypeDefinition,
         r#type::Type,
         type_definition::{
             collection::{
                 CollectionTypeDefinition,
-                type_definition::{
-                    list::ListCollectionTypeDefinition,
-                    map::MapCollectionTypeDefinition,
-                },
+                type_definition::list::ListCollectionTypeDefinition,
             },
             impl_type::ImplTypeDefinition,
         },
@@ -24,17 +20,7 @@ use crate::{
     values::{
         cast::special_rust_types::{rust_none_marker, rust_some_marker},
         core_value::CoreValue,
-        core_values::{
-            boolean::Boolean,
-            callable::Callable,
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
-            list::List,
-            map::Map,
-            range::Range,
-            text::Text,
-        },
+        core_values::list::List,
         value::Value,
         value_container::ValueContainer,
     },
@@ -43,10 +29,6 @@ use crate::{
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::{TypeDefinition, union::UnionTypeDefinition},
-    values::core_values::{
-        decimal::typed_decimal::DecimalTypeVariant,
-        integer::typed_integer::IntegerTypeVariant,
-    },
 };
 
 impl Value {
