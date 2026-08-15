@@ -307,12 +307,13 @@ impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
                         .to_string(),
                 )
             })?;
-            let value = list.iter().next().ok_or_else(|| {
+            let mut iter = list.iter();
+            let value = iter.next().ok_or_else(|| {
                 TryFromDatexValueError(
                     "could not find inner value for Some variant".to_string(),
                 )
             })?;
-            if list.iter().next().is_some() {
+            if iter.next().is_some() {
                 return Err(TryFromDatexValueError(
                     "Expected exactly one element for Some variant".to_string(),
                 ));
