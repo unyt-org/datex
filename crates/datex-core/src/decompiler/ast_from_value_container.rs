@@ -208,6 +208,9 @@ fn core_value_to_datex_expression(
         CoreValue::EntityTypeDefinition(_) => {
             todo!()
         }
+        CoreValue::Uninitialized => {
+            todo!()
+        }
     }
 }
 

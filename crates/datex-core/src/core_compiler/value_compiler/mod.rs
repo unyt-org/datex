@@ -341,7 +341,8 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
         }
         CoreValue::EntityTypeDefinition(_) => {
             todo!()
-        }
+        },
+        CoreValue::Uninitialized => panic!("Tried to compile uninitialized value"),
     };
 }
 

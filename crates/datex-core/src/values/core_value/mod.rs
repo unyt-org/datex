@@ -37,8 +37,10 @@ use crate::{
 use core::fmt::{Display, Formatter};
 pub mod ops;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
+#[derive(Default, Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
 pub enum CoreValue {
+    #[default]
+    Uninitialized,
     Null,
     Boolean(Boolean),
     Integer(Integer),
@@ -216,6 +218,9 @@ impl From<&CoreValue> for CoreLibTypeId {
             }
             CoreValue::EntityTypeDefinition(_nominal_type) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never) // TODO: what is the type of nominal type? do we even need to handle this?
+            }
+            CoreValue::Uninitialized => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
             }
         }
     }
@@ -458,6 +463,7 @@ impl Display for CoreValue {
             CoreValue::EntityTypeDefinition(container) => {
                 write!(f, "{container}")
             }
+            CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
         }
     }
 }
