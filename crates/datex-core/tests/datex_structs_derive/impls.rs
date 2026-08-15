@@ -42,7 +42,7 @@ impl Example {
         Example { a, b }
     }
 
-    pub fn set_a(&mut self, a: u8, string: String) -> u8 {
+    pub fn set_a(&mut self, a: u8) -> u8 {
         self.a = a;
         self.a
     }
@@ -115,13 +115,13 @@ fn signatures() {
             panic!("Expected entity type, got {:?}", example_type);
         }
     }
-    
+
     // call method directly on an Example instance via the ValueContainer
     let example_instance = Example { a: 1, b: 2 };
     let example_instance_vc = ValueContainer::from(example_instance);
     // TODO: also store type in value container (this will require passing cache to the ValueContainer::from function somehow)
     // Then we can access methods on the type definition here
-    
+
     {
         // set_a
         let set_a_sig =
@@ -138,7 +138,9 @@ fn signatures() {
                     ))
                 ),],
                 rest_parameter: None,
-                return_type: None,
+                return_type: Some(Box::new(Type::core(CoreLibTypeId::Variant(
+                    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
+                )))),
                 yeet_type: None,
             }
         );
