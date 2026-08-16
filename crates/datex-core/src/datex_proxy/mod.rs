@@ -93,8 +93,26 @@ pub trait DatexValueProxy<C>:
 }
 
 /// Trait for providing DATEX type information for a DatexProxy type
+/// FIXME: currently we need to implement both DatexProxyTypes<()> and DatexProxyTypes<SharedReferencesCache>
+/// manually, generic default impl does not work
 pub trait DatexProxyTypes<C> {
     fn datex_type(context: &mut C) -> Type;
+}
+
+/// Allows collapse of [SharedReferencesCache] to ()
+impl From<SharedReferencesCache> for () {
+    fn from(value: SharedReferencesCache) -> Self {}
+}
+impl<'a> From<&'a mut SharedReferencesCache> for &'a mut () {
+    fn from(value: &'a mut SharedReferencesCache) -> Self {&mut value.empty}
+}
+
+pub macro derive_datex_proxy_types_default($ty:ty) {
+    impl DatexProxyTypes<SharedReferencesCache> for $ty {
+        fn datex_type(_context: &mut SharedReferencesCache) -> Type {
+            <$ty>::datex_type(&mut ())
+        }
+    }
 }
 
 /// Conversion from a [ValueContainer] to a rust value

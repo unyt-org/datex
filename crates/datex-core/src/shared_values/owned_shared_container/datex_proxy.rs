@@ -22,6 +22,7 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::datex_proxy::derive_datex_proxy_types_default;
 
 impl DatexValueContainerProxyInfallibleSerialize<()> for OwnedSharedContainer {
     fn to_value_container(self, _context: &mut ()) -> ValueContainer {
@@ -59,5 +60,6 @@ impl DatexProxyTypes<()> for OwnedSharedContainer {
         ))
     }
 }
+derive_datex_proxy_types_default!(OwnedSharedContainer);
 
 impl DatexValueContainerProxy<()> for OwnedSharedContainer {}

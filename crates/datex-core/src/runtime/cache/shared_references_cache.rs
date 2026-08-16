@@ -29,6 +29,8 @@ pub struct SharedReferencesCache {
     owned_values: HashMap<PointerAddress, ReferencedSharedContainer>,
     /// Weak references to remote values that this endpoint is currently subscribed to and receives updates for
     remote_values: HashMap<PointerAddress, WeakSharedContainer>,
+    /// Required to convert &mut SharedReferencesCache to &mut ()
+    pub(crate) empty: ()
 }
 
 impl SharedReferencesCache {

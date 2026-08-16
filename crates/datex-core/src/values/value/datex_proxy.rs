@@ -9,6 +9,7 @@ use crate::{
     types::{r#type::Type, type_definition::TypeDefinition},
     values::value::Value,
 };
+use crate::datex_proxy::derive_datex_proxy_types_default;
 
 impl DatexValueProxyInfallibleSerialize<()> for Value {
     fn to_value(self, _context: &mut ()) -> Value {
@@ -36,5 +37,6 @@ impl DatexProxyTypes<()> for Value {
         )
     }
 }
+derive_datex_proxy_types_default!(Value);
 
 impl DatexValueProxy<()> for Value {}

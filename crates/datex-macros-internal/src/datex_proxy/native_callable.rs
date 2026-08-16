@@ -58,13 +58,13 @@ pub fn generate_native_callable(
 
     let return_type_tokens = match return_type {
         Some(ref ty) => {
-            quote! { Some(Box::new(<#ty as DatexProxyTypes<_>>::datex_type(cache))) }
+            quote! { Some(Box::new(<#ty as #datex_core_crate_name::datex_proxy::DatexProxyTypes<#datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache>>::datex_type(cache.into()))) }
         }
         None => quote! { None },
     };
     let yeet_type_tokens = match yeet_type {
         Some(ref ty) => {
-            quote! { Some(Box::new(<#ty as DatexProxyTypes<_>>::datex_type(cache))) }
+            quote! { Some(Box::new(<#ty as #datex_core_crate_name::datex_proxy::DatexProxyTypes<#datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache>>::datex_type(cache.into()))) }
         }
         None => quote! { None },
     };
@@ -88,7 +88,7 @@ pub fn generate_native_callable(
                 parameter_defs.push(quote! {
                     (
                         Some(#name.to_string()),
-                        <#ty as DatexProxyTypes<_>>::datex_type(cache)
+                        <#ty as #datex_core_crate_name::datex_proxy::DatexProxyTypes<#datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache>>::datex_type(cache.into())
                     )
                 });
             }
@@ -171,7 +171,7 @@ pub fn generate_native_callable(
             Some(
                 #datex_core_crate_name::datex_proxy::DatexValueContainerProxySerialize::try_to_value_container(
                     #method_call_body,
-                    cache
+                    cache.into()
                 ).unwrap()
             )
         }

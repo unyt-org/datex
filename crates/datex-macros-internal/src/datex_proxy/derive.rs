@@ -395,14 +395,14 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident, context: &TokenStream) 
                 Map::structural_with_string_keys(vec![
                     #(#into_datex_fields),*
                 ]),
-                Some(#ident::datex_type(cache).into())
+                Some(#ident::datex_type(cache.into()).into())
             )
         },
         FieldsType::Unnamed => {
             quote! {
                 Value::new(List::from(vec![
                     #(#into_datex_fields),*
-                ]), Some(#ident::datex_type(cache).into()))
+                ]), Some(#ident::datex_type(cache.into()).into()))
             }
         }
         FieldsType::Transparent => {
@@ -420,7 +420,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident, context: &TokenStream) 
             }
         }
         FieldsType::Unit => quote! {
-            Value::new(CoreValue::Null, Some(#ident::datex_type(cache).into()))
+            Value::new(CoreValue::Null, Some(#ident::datex_type(cache.into()).into()))
         },
     };
 
@@ -1256,7 +1256,7 @@ fn generate_field_conversion_code<T: ToTokens>(
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_identifier, cache)
+                DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_identifier, cache.into())
             }
         }
         // Map serde fields and propagate the error if the serialization fails
@@ -1287,7 +1287,7 @@ fn generate_named_field_type_code(
             quote! {
                 (
                     Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
-                    <#field_type as DatexProxyTypes<#context>>::datex_type(cache)
+                    <#field_type as DatexProxyTypes<#context>>::datex_type(cache.into())
                 )
             }
         }
@@ -1312,7 +1312,7 @@ fn generate_unnamed_field_type_code(
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                <#field_type as DatexProxyTypes<#context>>::datex_type(cache)
+                <#field_type as DatexProxyTypes<#context>>::datex_type(cache.into())
             }
         }
         // Cannot infer type

@@ -53,6 +53,7 @@ macro_rules! impl_datex_direct_via_value_container {
                 Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
+        derive_datex_proxy_types_default!($type);
     };
 }
 

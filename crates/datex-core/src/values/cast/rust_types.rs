@@ -102,6 +102,7 @@ macro_rules! derive_try_from_chain {
                 Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
+        derive_datex_proxy_types_default!($type);
     };
 }
 
@@ -257,6 +258,7 @@ derive_try_from_chain!(
     }
 );
 
+
 // &str
 impl<'a> TryFrom<&'a CoreValue> for &'a str {
     type Error = TryFromDatexValueError;
@@ -297,6 +299,7 @@ impl DatexProxyTypes<()> for &str {
         )
     }
 }
+derive_datex_proxy_types_default!(&str);
 
 impl DatexProxyTypes<()> for str {
     fn datex_type(_context: &mut ()) -> Type {
@@ -305,6 +308,7 @@ impl DatexProxyTypes<()> for str {
         )
     }
 }
+derive_datex_proxy_types_default!(str);
 
 #[cfg(test)]
 mod tests {
