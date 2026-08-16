@@ -388,7 +388,10 @@ impl ComInterfaceManager {
 mod tests {
     use super::*;
     use crate::{
-        datex_proxy::DatexValueProxyInfallibleSerialize,
+        datex_proxy::{
+            DatexValueProxyInfallibleSerialize,
+            DatexValueProxyInfallibleSerializeWithoutContext,
+        },
         network::com_interfaces::com_interface::factory::{
             SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
         },
@@ -398,7 +401,7 @@ mod tests {
     use datex_macros_internal::Datex;
 
     #[derive(Datex)]
-    #[datex(structural)]
+    #[datex(structural_recursive)]
     struct MockSetupData {
         name: String,
     }
@@ -469,7 +472,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface_sync(
                 "mock",
-                setup_data.to_value(),
+                setup_data.to_value_without_context(),
                 InterfacePriority::None,
             )
             .unwrap();
@@ -507,7 +510,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                setup_data.to_value(),
+                setup_data.to_value_without_context(),
                 InterfacePriority::None,
             )
             .await
@@ -555,7 +558,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                setup_data.to_value(),
+                setup_data.to_value_without_context(),
                 InterfacePriority::None,
             )
             .await

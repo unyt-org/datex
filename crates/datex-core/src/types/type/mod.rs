@@ -53,6 +53,7 @@ impl Type {
         }
         self
     }
+
     pub fn name(&self) -> Option<&str> {
         match self {
             Type::Definition(alias) => alias.reference_name(),
@@ -225,9 +226,18 @@ impl Type {
     }
 }
 
-impl<T: Into<TypeDefinitionWithMetadata>> From<T> for Type {
-    fn from(definition: T) -> Self {
-        Type::Definition(definition.into())
+impl From<TypeDefinitionWithMetadata> for Type {
+    fn from(definition_with_metadata: TypeDefinitionWithMetadata) -> Self {
+        if definition_with_metadata.has_default_metadata() {
+            definition_with_metadata.definition.convert_to_type()
+        } else {
+            Type::Definition(definition_with_metadata)
+        }
+    }
+}
+impl From<TypeDefinition> for Type {
+    fn from(definition: TypeDefinition) -> Self {
+        definition.convert_to_type()
     }
 }
 
@@ -471,6 +481,12 @@ impl TryFrom<ValueContainer> for Type {
                 _ => Err(()),
             },
         }
+    }
+}
+
+impl From<LiteralTypeDefinition> for Type {
+    fn from(literal_type: LiteralTypeDefinition) -> Self {
+        TypeDefinition::Literal(literal_type).into()
     }
 }
 

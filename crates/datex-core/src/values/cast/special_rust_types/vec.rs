@@ -17,9 +17,12 @@ use crate::{
     types::type_definition::TypeDefinition,
 };
 
-impl<T: DatexValueContainerProxy> DatexValueProxy for Vec<T> {}
+impl<T, C> DatexValueProxy<C> for Vec<T> where T: DatexValueContainerProxy<C> {}
 
-impl<T: DatexValueContainerProxy> DatexValueProxyDeserialize for Vec<T> {
+impl<T> DatexValueProxyDeserialize for Vec<T>
+where
+    T: DatexValueContainerProxyDeserialize,
+{
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         match List::try_from(value) {
             Ok(val) => val
@@ -31,33 +34,39 @@ impl<T: DatexValueContainerProxy> DatexValueProxyDeserialize for Vec<T> {
     }
 }
 
-impl<T: DatexValueContainerProxy> DatexValueProxySerialize for Vec<T> {
-    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
+impl<T, C> DatexValueProxySerialize<C> for Vec<T>
+where
+    T: DatexValueContainerProxySerialize<C>,
+{
+    fn try_to_value(
+        self,
+        context: &mut C,
+    ) -> Result<Value, TryToDatexValueError> {
         let list = self
             .into_iter()
-            .map(|v| v.try_to_value_container())
+            .map(|v| v.try_to_value_container(context))
             .collect::<Result<List, _>>()?;
         Ok(Value::from(list))
     }
 }
 
-impl<T: DatexValueContainerProxyInfallibleSerialize>
-    DatexValueProxyInfallibleSerialize for Vec<T>
+impl<T: DatexValueContainerProxyInfallibleSerialize<C>, C>
+    DatexValueProxyInfallibleSerialize<C> for Vec<T>
 {
-    fn to_value(self) -> Value {
+    fn to_value(self, context: &mut C) -> Value {
         Value::from(
             self.into_iter()
-                .map(|v| v.to_value_container())
+                .map(|v| v.to_value_container(context))
                 .collect::<Vec<_>>(),
         )
     }
 }
 
-impl<T> DatexProxyTypes for Vec<T>
+impl<T, C> DatexProxyTypes<C> for Vec<T>
 where
-    T: DatexProxyTypes,
+    T: DatexProxyTypes<C>,
 {
-    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
+    fn datex_type(memory: &mut C) -> Type {
         Type::Definition(
             TypeDefinition::Collection(CollectionTypeDefinition::List(
                 ListCollectionTypeDefinition(Box::new(T::datex_type(memory))),
@@ -81,7 +90,7 @@ mod tests {
     #[test]
     fn to_value() {
         let vec = vec![Integer::new(1), Integer::new(2), Integer::new(3)];
-        let value: Value = vec.to_value();
+        let value: Value = vec.to_value_without_context();
         assert!(matches!(
             value.inner,
             CoreValue::List(ref l) if l == &List::from(vec![ValueContainer::from(Integer::new(1)), ValueContainer::from(Integer::new(2)), ValueContainer::from(Integer::new(3))])
@@ -104,8 +113,7 @@ mod tests {
 
     #[test]
     fn datex_type() {
-        let mut cache = SharedReferencesCache::default();
-        let vec_type = Vec::<Integer>::datex_type(&mut cache);
+        let vec_type = Vec::<Integer>::datex_type_without_context();
         vec_type.with_collapsed_type_definition(|td| {
             assert!(matches!(
                 td,

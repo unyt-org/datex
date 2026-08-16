@@ -63,17 +63,4 @@ impl EntityTypeDefinition {
     pub fn replace_definition(&mut self, new_definition: TypeDefinition) {
         self.definition = new_definition;
     }
-
-    /// Create a placeholder [EntityTypeDefinition] with the given name used during the resolution of a type.
-    /// The placeholder will be replaced with the actual definition once it is resolved.
-    pub(crate) fn placeholder(name: String) -> Self {
-        Self {
-            definition: TypeDefinition::CoreType(CoreLibTypeId::Base(
-                CoreLibBaseTypeId::Any,
-            )),
-            name,
-            allowed_variants: Vec::new(),
-            impls: Vec::new(),
-        }
-    }
 }

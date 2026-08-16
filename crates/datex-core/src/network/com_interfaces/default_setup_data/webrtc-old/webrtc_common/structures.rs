@@ -1,7 +1,7 @@
 use datex_macros_internal::Datex;
 
 #[derive(Datex, Default, Debug, Clone, PartialEq, Hash)]
-#[datex(structural)]
+#[datex(structural_recursive)]
 pub struct RTCIceServer {
     pub urls: Vec<String>,
     pub username: Option<String>,
@@ -28,7 +28,7 @@ impl RTCIceServer {
 }
 
 #[derive(Datex, Default, Debug, Clone, PartialEq, Eq)]
-#[datex(structural)]
+#[datex(structural_recursive)]
 pub struct RTCIceCandidateInitDX {
     pub candidate: String,
     pub sdp_mid: Option<String>,
@@ -37,7 +37,7 @@ pub struct RTCIceCandidateInitDX {
 }
 
 #[derive(Datex, Default, Debug, Clone, PartialEq)]
-#[datex(structural)]
+#[datex(structural_recursive)]
 pub enum RTCSdpTypeDX {
     #[default]
     Unspecified,
@@ -48,7 +48,7 @@ pub enum RTCSdpTypeDX {
 }
 
 #[derive(Datex, Default, Debug, Clone)]
-#[datex(structural)]
+#[datex(structural_recursive)]
 pub struct RTCSessionDescriptionDX {
     #[datex(rename = "type")]
     pub sdp_type: RTCSdpTypeDX,

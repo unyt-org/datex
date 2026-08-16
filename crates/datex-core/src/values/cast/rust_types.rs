@@ -61,18 +61,34 @@ macro_rules! derive_try_from_chain {
             }
         }
 
-        impl DatexValueProxy for $type {}
+        // specialized unit impl:
+        impl DatexValueProxy<()> for $type {}
 
-        impl DatexValueProxyInfallibleSerialize for $type {
-            fn to_value(self) -> Value {
+        impl DatexValueProxyInfallibleSerialize<()> for $type {
+            fn to_value(self, _context: &mut ()) -> Value {
                Value::from(self)
             }
         }
-        impl DatexValueProxySerialize for $type {
-            fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
+        impl DatexValueProxySerialize<()> for $type {
+            fn try_to_value(self, _context: &mut ()) -> Result<Value, TryToDatexValueError> {
                 Ok(Value::from(self))
             }
         }
+
+        // impl DatexValueProxy<SharedReferencesCache> for $type {}
+
+        // impl DatexValueProxyInfallibleSerialize<SharedReferencesCache> for $type {
+        //     fn to_value(self, _context: &mut SharedReferencesCache) -> Value {
+        //        Value::from(self)
+        //     }
+        // }
+        // impl DatexValueProxySerialize<SharedReferencesCache> for $type {
+        //     fn try_to_value(self, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+        //         Ok(Value::from(self))
+        //     }
+        // }
+
+        // deserialize
         impl DatexValueProxyDeserialize for $type {
             fn try_from_value(
                 value: Value,
@@ -81,8 +97,8 @@ macro_rules! derive_try_from_chain {
             }
         }
 
-        impl DatexProxyTypes for $type {
-            fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
+        impl DatexProxyTypes<()> for $type {
+            fn datex_type(_context: &mut ()) -> Type {
                 Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
@@ -274,16 +290,16 @@ impl<'a> TryFrom<&'a ValueContainer> for &'a str {
         }
     }
 }
-impl DatexProxyTypes for &str {
-    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
+impl DatexProxyTypes<()> for &str {
+    fn datex_type(_context: &mut ()) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
         )
     }
 }
 
-impl DatexProxyTypes for str {
-    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
+impl DatexProxyTypes<()> for str {
+    fn datex_type(_context: &mut ()) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
         )
@@ -292,18 +308,24 @@ impl DatexProxyTypes for str {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{
         datex_proxy::{
             DatexValueProxyInfallibleSerialize, DatexValueProxySerialize,
             TryFromDatexValueError, TryToDatexValueError,
         },
-        prelude::*,
         values::{
             core_value::CoreValue,
             core_values::{boolean::Boolean, text::Text},
             value::Value,
         },
     };
+
+    #[test]
+    fn try_without_context() {
+        // these rust types should have the to_value_container_without_context
+        "test".to_string().to_value_container_without_context();
+    }
 
     #[test]
     fn try_from_core_value() {
@@ -325,14 +347,15 @@ mod tests {
     #[test]
     fn to_value() {
         let value = true;
-        let result: Value = value.to_value();
+        let result: Value = value.to_value(&mut ());
         assert_eq!(result, Value::from(CoreValue::Boolean(Boolean(true))));
     }
 
     #[test]
     fn try_to_value() {
         let value = true;
-        let result: Result<Value, TryToDatexValueError> = value.try_to_value();
+        let result: Result<Value, TryToDatexValueError> =
+            value.try_to_value(&mut ());
         assert!(result.is_ok());
         assert_eq!(
             result.unwrap(),

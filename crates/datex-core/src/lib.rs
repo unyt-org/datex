@@ -18,7 +18,7 @@
 #![feature(const_cmp)]
 #![feature(const_trait_impl)]
 #![feature(custom_test_frameworks)]
-#![feature(min_specialization)]
+#![feature(specialization)]
 #![feature(const_default)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]

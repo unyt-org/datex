@@ -161,19 +161,19 @@ pub struct Callable {
 }
 
 /// Creates a new [Callable] from a native Rust function or closure
-pub fn native_sync_callable<F, Args, R>(
+pub fn native_sync_callable<F, Args, R, C>(
     func: F,
     name: Option<String>,
     kind: CallableKind,
-    memory: &mut SharedReferencesCache,
+    context: &mut C,
 ) -> Callable
 where
-    F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
-    R: DatexProxyTypes + TryInto<ValueContainer> + 'static,
+    F: IntoDatexCallable<Args, R, C> + Send + Sync + 'static,
+    R: DatexProxyTypes<C> + TryInto<ValueContainer> + 'static,
     <R as TryInto<ValueContainer>>::Error: core::fmt::Debug,
 {
-    let parameters = F::parameters(memory);
-    let return_type = R::datex_type(memory);
+    let parameters = F::parameters(context);
+    let return_type = R::datex_type(context);
     Callable {
         name,
         signature: CallableTypeDefinition {
@@ -193,15 +193,15 @@ where
 }
 
 /// Creates a new [Callable] from a native Rust async function or closure
-pub fn native_async_callable<F, Args, R>(
+pub fn native_async_callable<F, Args, R, C>(
     func: F,
     name: Option<String>,
     kind: CallableKind,
-    memory: &mut SharedReferencesCache,
+    memory: &mut C,
 ) -> Callable
 where
-    F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
-    R: DatexProxyTypes + TryInto<ValueContainer> + 'static,
+    F: IntoDatexCallable<Args, R, C> + Send + Sync + 'static,
+    R: DatexProxyTypes<C> + TryInto<ValueContainer> + 'static,
     <R as TryInto<ValueContainer>>::Error: core::fmt::Debug,
 {
     let parameters = F::parameters(memory);

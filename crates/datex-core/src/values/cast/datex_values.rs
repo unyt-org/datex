@@ -25,17 +25,18 @@ use crate::{
 /// Implements [DatexValueProxy] for a [CoreValue](crate::values::core_values) implementation.
 /// This allows to convert e.g. [Endpoint] to [ValueContainer] and back.
 /// Also implements [DatexProxyTypes] to provide the correct [Type] for each implementation.
+/// The `gen` param defines, for which concrete context to impl the serialization traits.
 macro_rules! impl_datex_direct_via_value_container {
     ($type:ty, $dx_type:expr) => {
-        impl DatexValueProxy for $type {}
+        impl DatexValueProxy<()> for $type {}
 
-        impl DatexValueProxyInfallibleSerialize for $type {
-            fn to_value(self) -> Value {
+        impl DatexValueProxyInfallibleSerialize<()> for $type {
+            fn to_value(self, _context: &mut ()) -> Value {
                Value::from(self)
             }
         }
-        impl DatexValueProxySerialize for $type {
-            fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
+        impl DatexValueProxySerialize<()> for $type {
+            fn try_to_value(self, _context: &mut ()) -> Result<Value, TryToDatexValueError> {
                 Ok(Value::from(self))
             }
         }
@@ -47,8 +48,8 @@ macro_rules! impl_datex_direct_via_value_container {
             }
         }
 
-        impl DatexProxyTypes for $type {
-            fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
+        impl DatexProxyTypes<()> for $type {
+            fn datex_type(_context: &mut ()) -> Type {
                 Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
@@ -75,8 +76,9 @@ impl_datex_direct_via_value_container!(Boolean, CoreLibBaseTypeId::Boolean);
 mod tests {
     use crate::{
         datex_proxy::{
-            DatexValueProxyDeserialize, DatexValueProxyInfallibleSerialize,
-            DatexValueProxySerialize,
+            DatexValueProxyDeserialize,
+            DatexValueProxyInfallibleSerializeWithoutContext,
+            DatexValueProxySerializeWithoutContext,
         },
         values::{
             core_value::CoreValue, core_values::endpoint::Endpoint,
@@ -87,7 +89,7 @@ mod tests {
     #[test]
     fn to_value() {
         let endpoint = Endpoint::new("@jonas");
-        let value: Value = endpoint.clone().to_value();
+        let value: Value = endpoint.clone().to_value_without_context();
         assert!(matches!(
             value.inner,
             CoreValue::Endpoint(ref e) if e == &endpoint
@@ -97,7 +99,8 @@ mod tests {
     #[test]
     fn try_to_value() {
         let endpoint = Endpoint::new("@jonas");
-        let value: Value = endpoint.clone().try_to_value().unwrap();
+        let value: Value =
+            endpoint.clone().try_to_value_without_context().unwrap();
         assert!(matches!(
             value.inner,
             CoreValue::Endpoint(ref e) if e == &endpoint
@@ -107,7 +110,7 @@ mod tests {
     #[test]
     fn try_from_value() {
         let endpoint = Endpoint::new("@jonas");
-        let value: Value = endpoint.clone().to_value();
+        let value: Value = endpoint.clone().to_value_without_context();
         let result: Result<Endpoint, _> = Endpoint::try_from_value(value);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), endpoint);

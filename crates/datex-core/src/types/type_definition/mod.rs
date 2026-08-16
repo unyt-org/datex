@@ -382,6 +382,27 @@ impl From<TypeDefinition> for TypeDefinitionWithMetadata {
     }
 }
 
+impl From<Type> for TypeDefinitionWithMetadata {
+    fn from(ty: Type) -> Self {
+        match ty {
+            Type::Definition(definition) => definition.into(),
+            _ => ty.convert_to_definition().into(),
+        }
+    }
+}
+impl From<Type> for TypeDefinition {
+    fn from(ty: Type) -> Self {
+        match ty {
+            Type::Definition(definition)
+                if definition.has_default_metadata() =>
+            {
+                definition.definition
+            }
+            _ => ty.convert_to_definition(),
+        }
+    }
+}
+
 impl From<LiteralTypeDefinition> for TypeDefinitionWithMetadata {
     fn from(literal_definition: LiteralTypeDefinition) -> Self {
         TypeDefinitionWithMetadata::new(

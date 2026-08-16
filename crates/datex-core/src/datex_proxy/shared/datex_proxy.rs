@@ -3,8 +3,10 @@ use crate::{
         DatexProxyTypes, DatexValueContainerProxy,
         DatexValueContainerProxyDeserialize,
         DatexValueContainerProxyInfallibleSerialize,
-        DatexValueContainerProxySerialize, TryFromDatexValueError,
-        TryToDatexValueError, shared::Shared,
+        DatexValueContainerProxySerde, DatexValueContainerProxySerialize,
+        DatexValueProxy, DatexValueProxyInfallibleSerialize,
+        DatexValueProxySerialize, TryFromDatexValueError, TryToDatexValueError,
+        shared::Shared,
     },
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -18,25 +20,33 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
-
-impl<T: DatexValueContainerProxy> DatexValueContainerProxyInfallibleSerialize
-    for Shared<T>
+impl<T, C> DatexValueContainerProxyInfallibleSerialize<C> for Shared<T, C>
+where
+    Shared<T, C>: DatexValueProxyInfallibleSerialize<C>,
+    T: DatexValueContainerProxySerde<C>,
 {
-    fn to_value_container(self) -> ValueContainer {
+    fn to_value_container(self, _context: &mut C) -> ValueContainer {
+        // FIXME
         ValueContainer::Shared(self.container)
     }
 }
-impl<T: DatexValueContainerProxy> DatexValueContainerProxySerialize
-    for Shared<T>
+
+impl<T, C> DatexValueContainerProxySerialize<C> for Shared<T, C>
+where
+    Shared<T, C>: DatexValueProxySerialize<C>,
+    T: DatexValueContainerProxySerde<C>,
 {
     fn try_to_value_container(
         self,
+        _context: &mut C,
     ) -> Result<ValueContainer, TryToDatexValueError> {
-        Ok(self.to_value_container())
+        Ok(ValueContainer::Shared(self.container))
     }
 }
-impl<T: DatexValueContainerProxy> DatexValueContainerProxyDeserialize
-    for Shared<T>
+
+impl<T, C> DatexValueContainerProxyDeserialize for Shared<T, C>
+where
+    T: DatexValueContainerProxySerde<C>,
 {
     fn try_from_value_container(
         value: ValueContainer,
@@ -51,10 +61,13 @@ impl<T: DatexValueContainerProxy> DatexValueContainerProxyDeserialize
     }
 }
 
-impl<T: DatexValueContainerProxy> DatexProxyTypes for Shared<T> {
-    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
+impl<T, C> DatexProxyTypes<C> for Shared<T, C>
+where
+    T: DatexValueContainerProxySerde<C> + DatexProxyTypes<C>,
+{
+    fn datex_type(context: &mut C) -> Type {
         Type::Definition(TypeDefinitionWithMetadata::new(
-            TypeDefinition::Nested(Box::new(T::datex_type(memory))),
+            TypeDefinition::Nested(Box::new(T::datex_type(context))),
             TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Owned,
@@ -63,4 +76,9 @@ impl<T: DatexValueContainerProxy> DatexProxyTypes for Shared<T> {
     }
 }
 
-impl<T: DatexValueContainerProxy> DatexValueContainerProxy for Shared<T> {}
+impl<T, C> DatexValueContainerProxy<C> for Shared<T, C>
+where
+    Shared<T, C>: DatexValueContainerProxy<C>,
+    T: DatexValueContainerProxySerde<C>,
+{
+}

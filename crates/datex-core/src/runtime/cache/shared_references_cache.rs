@@ -2,8 +2,8 @@ use crate::{
     collections::{HashMap, HashSet},
     prelude::*,
     shared_values::{
-        PointerAddress, ReferencedSharedContainer, SelfOwnedPointerAddress,
-        SharedContainer, SharedContainerMutability,
+        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
+        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
         traits::SharedContainerCommon,
         weak_shared_container::WeakSharedContainer,
     },
@@ -20,7 +20,7 @@ use core::{any::TypeId, fmt::Display, ops::Deref};
 
 pub enum SharedTypeReservation {
     Existing(SharedContainerContainingEntityType),
-    New(SharedContainerContainingEntityType),
+    New(SharedContainer),
 }
 
 #[derive(Debug, Default)]
@@ -30,7 +30,6 @@ pub struct SharedReferencesCache {
     /// Weak references to remote values that this endpoint is currently subscribed to and receives updates for
     remote_values: HashMap<PointerAddress, WeakSharedContainer>,
 
-    resolving_types: HashSet<SelfOwnedPointerAddress>,
     resolving_structural_types: HashSet<TypeId>,
 }
 
@@ -197,7 +196,6 @@ impl SharedReferencesCache {
         entity_type_definition: EntityTypeDefinition,
     ) -> SharedContainerContainingEntityType {
         // create new shared container
-        // SAFETY: We store an EntityTypeDefinition in the shared container, which satisfies the constraint for SharedContainerContainingEntityType
         let shared_type_container = unsafe {
             SharedContainerContainingEntityType::new_unchecked(
                 SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
@@ -218,35 +216,41 @@ impl SharedReferencesCache {
         shared_type_container
     }
 
-    pub fn reserve_shared_type(
+    /// Reserves a shared container type in the cache for the given address and returns a [SharedTypeReservation].
+    ///
+    /// # Safety
+    /// The caller must ensure that the address is unique.
+    pub unsafe fn reserve_shared_type(
         &mut self,
         address: SelfOwnedPointerAddress,
-        name: String,
     ) -> SharedTypeReservation {
         if let Some(existing) = self.try_get_shared_type(address.clone()) {
             return SharedTypeReservation::Existing(existing);
         }
-        let placeholder = EntityTypeDefinition::placeholder(name);
-        let ty =
-            unsafe { self.register_shared_type(address.clone(), placeholder) };
-        self.resolving_types.insert(address);
-        SharedTypeReservation::New(ty)
+        let shared_container = unsafe {
+            SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
+                CoreValue::Uninitialized,
+                SharedContainerMutability::Immutable,
+                address.clone(),
+            )
+        };
+        self.register_owned_shared_container(
+            &shared_container.derive_immutable_reference(),
+        );
+        SharedTypeReservation::New(shared_container)
     }
 
     pub fn finish_shared_type(
         &mut self,
         address: SelfOwnedPointerAddress,
         definition: EntityTypeDefinition,
-    ) -> SharedContainerContainingEntityType {
-        if !self.resolving_types.contains(&address) {
-            panic!("Type not found in cache: {}", address,);
-        }
+    ) {
         let ty = self
-            .try_get_shared_type(address.clone())
+            .get_owned_reference(&PointerAddress::SelfOwned(address.clone()))
             .unwrap_or_else(|| panic!("Type is not in cache: {}", address));
-        ty.replace_definition(definition);
-        self.resolving_types.remove(&address);
-        ty
+        if !ty.value_container().is_unitialized() {
+            panic!("Type is already initialized: {}", address);
+        }
     }
     pub fn begin_structural_type<T: 'static>(&mut self) -> bool {
         self.resolving_structural_types.insert(TypeId::of::<T>())

@@ -18,13 +18,18 @@ use crate::{
 };
 use core::hash::Hash;
 
-impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
-    DatexValueProxy for HashMap<K, V>
+impl<
+    K: DatexValueContainerProxy<C> + Eq + Hash,
+    V: DatexValueContainerProxy<C>,
+    C,
+> DatexValueProxy<C> for HashMap<K, V>
 {
 }
 
-impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
-    DatexValueProxyDeserialize for HashMap<K, V>
+impl<
+    K: DatexValueContainerProxyDeserialize + Eq + Hash,
+    V: DatexValueContainerProxyDeserialize,
+> DatexValueProxyDeserialize for HashMap<K, V>
 {
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         match Map::try_from(value) {
@@ -41,15 +46,21 @@ impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
     }
 }
 
-impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
-    DatexValueProxySerialize for HashMap<K, V>
+impl<
+    K: DatexValueContainerProxySerialize<C> + Eq + Hash,
+    V: DatexValueContainerProxySerialize<C>,
+    C,
+> DatexValueProxySerialize<C> for HashMap<K, V>
 {
-    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
+    fn try_to_value(
+        self,
+        context: &mut C,
+    ) -> Result<Value, TryToDatexValueError> {
         let map = self
             .into_iter()
             .map(|(k, v)| {
-                let key = k.try_to_value_container()?;
-                let value = v.try_to_value_container()?;
+                let key = k.try_to_value_container(context)?;
+                let value = v.try_to_value_container(context)?;
                 Ok((key, value))
             })
             .collect::<Result<Map, _>>()?;
@@ -58,16 +69,17 @@ impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
 }
 
 impl<
-    K: DatexValueContainerProxyInfallibleSerialize + Eq + Hash,
-    V: DatexValueContainerProxyInfallibleSerialize,
-> DatexValueProxyInfallibleSerialize for HashMap<K, V>
+    K: DatexValueContainerProxyInfallibleSerialize<C> + Eq + Hash,
+    V: DatexValueContainerProxyInfallibleSerialize<C>,
+    C,
+> DatexValueProxyInfallibleSerialize<C> for HashMap<K, V>
 {
-    fn to_value(self) -> Value {
+    fn to_value(self, context: &mut C) -> Value {
         let map = self
             .into_iter()
             .map(|(k, v)| {
-                let key = k.to_value_container();
-                let value = v.to_value_container();
+                let key = k.to_value_container(context);
+                let value = v.to_value_container(context);
                 (key, value)
             })
             .collect::<Map>();
@@ -75,12 +87,12 @@ impl<
     }
 }
 
-impl<K, V> DatexProxyTypes for HashMap<K, V>
+impl<K, V, C> DatexProxyTypes<C> for HashMap<K, V>
 where
-    K: DatexProxyTypes + Eq + Hash,
-    V: DatexProxyTypes,
+    K: DatexProxyTypes<C> + Eq + Hash,
+    V: DatexProxyTypes<C>,
 {
-    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
+    fn datex_type(memory: &mut C) -> Type {
         Type::Definition(
             TypeDefinition::Collection(CollectionTypeDefinition::Map(
                 MapCollectionTypeDefinition::new(
@@ -106,7 +118,7 @@ mod tests {
     fn to_value() {
         let mut map = HashMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
-        let value: Value = map.to_value();
+        let value: Value = map.to_value_without_context();
         assert_eq!(
             value.inner,
             CoreValue::Map(Map::from_iter(vec![(
@@ -125,7 +137,7 @@ mod tests {
             Value::from(Integer::from(1)),
             Value::from(Endpoint::new("@jonas")),
         );
-        let value: Value = map.clone().to_value();
+        let value: Value = map.clone().to_value_without_context();
         let map_from_value =
             HashMap::<Value, Value>::try_from_value(value).unwrap();
         assert_eq!(map, map_from_value);
@@ -136,7 +148,7 @@ mod tests {
             ValueContainer::from(Integer::from(1)),
             ValueContainer::from(Endpoint::new("@jonas")),
         );
-        let value: Value = map.clone().to_value();
+        let value: Value = map.clone().to_value_without_context();
         let map_from_value =
             HashMap::<ValueContainer, ValueContainer>::try_from_value(value)
                 .unwrap();
@@ -145,7 +157,7 @@ mod tests {
         // map with [Integer, Endpoint] as key and value
         let mut map = HashMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
-        let value: Value = map.clone().to_value();
+        let value: Value = map.clone().to_value_without_context();
         let map_from_value =
             HashMap::<Integer, Endpoint>::try_from_value(value).unwrap();
         assert_eq!(map, map_from_value);
@@ -153,15 +165,15 @@ mod tests {
 
     #[test]
     fn datex_type() {
-        let mut memory = SharedReferencesCache::default();
-        let map_type = HashMap::<Integer, Endpoint>::datex_type(&mut memory);
+        let map_type =
+            HashMap::<Integer, Endpoint>::datex_type_without_context();
         map_type.with_collapsed_type_definition(|d| {
             assert_eq!(
                 d,
                 &TypeDefinition::Collection(CollectionTypeDefinition::Map(
                     MapCollectionTypeDefinition::new(
-                        Integer::datex_type(&mut memory),
-                        Endpoint::datex_type(&mut memory),
+                        Integer::datex_type_without_context(),
+                        Endpoint::datex_type_without_context(),
                     )
                 ))
             )

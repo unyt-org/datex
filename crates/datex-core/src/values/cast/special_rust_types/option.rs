@@ -4,6 +4,7 @@
 //! `Option<T>` in DATEX, where `None` is represented as a tagged type with the tag "None(null)", and `Some(T)` is represented as a tagged type with the tag "Some" and
 //! an inner type of `T`.
 use crate::{
+    compiler::context,
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
     shared_values::errors::KeyNotFoundError,
@@ -274,28 +275,31 @@ impl Value {
     }
 }
 
-impl<T: DatexValueProxy> DatexValueProxy for Option<T> {}
-impl<T: DatexValueProxyInfallibleSerialize> DatexValueProxyInfallibleSerialize
-    for Option<T>
+impl<T: DatexValueProxy<C>, C> DatexValueProxy<C> for Option<T> {}
+impl<T: DatexValueProxyInfallibleSerialize<C>, C>
+    DatexValueProxyInfallibleSerialize<C> for Option<T>
 {
-    fn to_value(self) -> Value {
+    fn to_value(self, context: &mut C) -> Value {
         match self {
             None => Value::rust_none(),
-            Some(value) => Value::rust_some(value.to_value()),
+            Some(value) => Value::rust_some(value.to_value(context)),
         }
     }
 }
 
-impl<T: DatexValueProxy> DatexValueProxySerialize for Option<T> {
-    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
+impl<T: DatexValueProxy<C>, C> DatexValueProxySerialize<C> for Option<T> {
+    fn try_to_value(
+        self,
+        context: &mut C,
+    ) -> Result<Value, TryToDatexValueError> {
         match self {
             None => Ok(Value::rust_none()),
-            Some(value) => Ok(Value::rust_some(value.try_to_value()?)),
+            Some(value) => Ok(Value::rust_some(value.try_to_value(context)?)),
         }
     }
 }
 
-impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
+impl<T: DatexValueProxyDeserialize> DatexValueProxyDeserialize for Option<T> {
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         if value.is_rust_none() {
             return Ok(None);
@@ -335,13 +339,13 @@ impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
     }
 }
 
-impl<T> DatexProxyTypes for Option<T>
+impl<T, C> DatexProxyTypes<C> for Option<T>
 where
-    T: DatexProxyTypes,
+    T: DatexProxyTypes<C>,
 {
     /// Returns the DATEX type union with the None and Some variants of the Option type.
     /// ty = Some(T) | None(null)
-    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
+    fn datex_type(memory: &mut C) -> Type {
         let inner_type = T::datex_type(memory);
         Type::Definition(
             TypeDefinition::Union(UnionTypeDefinition(vec![
@@ -366,8 +370,8 @@ mod tests {
         let some_option: Option<Integer> = Some(Integer::new(1));
         let none_option: Option<Integer> = None;
 
-        let some_value: Value = some_option.to_value();
-        let none_value: Value = none_option.to_value();
+        let some_value: Value = some_option.to_value_without_context();
+        let none_value: Value = none_option.to_value_without_context();
 
         assert!(some_value.is_rust_some());
         assert!(none_value.is_rust_none());
@@ -375,7 +379,8 @@ mod tests {
 
     #[test]
     fn from_value() {
-        let some_value: Value = Value::rust_some(Integer::new(1).to_value());
+        let some_value: Value =
+            Value::rust_some(Integer::new(1).to_value_without_context());
         let none_value: Value = Value::rust_none();
         let some_option: Option<Integer> =
             Option::try_from_value(some_value).unwrap();
@@ -386,8 +391,7 @@ mod tests {
     }
     #[test]
     fn datex_type() {
-        let mut cache = SharedReferencesCache::default();
-        let option_type = Option::<Integer>::datex_type(&mut cache);
+        let option_type = Option::<Integer>::datex_type_without_context();
         option_type.with_collapsed_type_definition(|td| {
             assert!(matches!(
                 td,

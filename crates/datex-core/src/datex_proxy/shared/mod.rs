@@ -1,23 +1,38 @@
 pub mod datex_proxy;
 
 use crate::{
-    datex_proxy::{DatexValueContainerProxy, TryFromDatexValueError},
+    datex_proxy::{
+        DatexValueContainerProxy, DatexValueContainerProxyDeserialize,
+        DatexValueContainerProxySerde, DatexValueContainerProxySerialize,
+        TryFromDatexValueError,
+    },
     shared_values::{SharedContainer, traits::SharedContainerCommon},
 };
 
-pub struct Shared<T: DatexValueContainerProxy> {
+pub struct Shared<T: DatexValueContainerProxySerde<C>, C> {
     value: T,
     container: SharedContainer,
+    _phantom: core::marker::PhantomData<C>,
 }
 
-impl<T: DatexValueContainerProxy> Shared<T> {}
+impl<T: DatexValueContainerProxySerde<C>, C> Shared<T, C> {
+    pub fn new(value: T, container: SharedContainer) -> Self {
+        Self {
+            value,
+            container,
+            _phantom: core::marker::PhantomData,
+        }
+    }
+}
 
-impl<T: DatexValueContainerProxy> TryFrom<SharedContainer> for Shared<T> {
+impl<T: DatexValueContainerProxySerde<C>, C> TryFrom<SharedContainer>
+    for Shared<T, C>
+{
     type Error = TryFromDatexValueError;
     fn try_from(container: SharedContainer) -> Result<Self, Self::Error> {
         let value =
             T::try_from_value_container(container.value_container().clone())?;
-        Ok(Shared { value, container })
+        Ok(Shared::new(value, container))
     }
 }
 

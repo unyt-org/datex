@@ -61,7 +61,7 @@ impl WebRTCCommon {
 }
 
 #[derive(Datex)]
-#[datex(structural)]
+#[datex(structural_recursive)]
 pub struct WebRTCInterfaceSetupData {
     pub peer_endpoint: Endpoint,
     pub ice_servers: Option<Vec<RTCIceServer>>,

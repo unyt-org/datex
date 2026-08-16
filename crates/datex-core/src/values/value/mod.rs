@@ -82,6 +82,12 @@ impl Value {
     pub fn into_inner(self) -> CoreValue {
         self.inner
     }
+    pub fn is_uninitialized(&self) -> bool {
+        match &self.inner {
+            CoreValue::Uninitialized => true,
+            _ => false,
+        }
+    }
 
     /// Strips any local observers from the given value container.
     /// This method should be called when a value is moved from its [SharedContainer] parent.

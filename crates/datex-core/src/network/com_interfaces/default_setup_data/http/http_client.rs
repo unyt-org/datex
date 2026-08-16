@@ -6,7 +6,7 @@ use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Debug, Serialize, Deserialize)]
-#[datex(structural)]
+#[datex(structural_recursive)]
 pub struct HTTPClientInterfaceSetupData {
     /// A websocket URL (http:// or https://).
     pub url: String,

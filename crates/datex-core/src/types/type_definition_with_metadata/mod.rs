@@ -26,6 +26,9 @@ impl TypeDefinitionWithMetadata {
             reference_name: None,
         }
     }
+    pub fn has_default_metadata(&self) -> bool {
+        self.metadata == TypeMetadata::default()
+    }
 }
 
 impl TypeDefinitionWithMetadata {

@@ -80,7 +80,6 @@ impl SharedContainerContainingEntityType {
     }
 
     /// Replaces the inner [EntityTypeDefinition] contained in the [SharedContainer].
-    /// This is used in the [finish_shared_type] method of the [SharedReferencesCache] to finalize a type definition after it has been resolved.
     pub(crate) fn replace_definition(&self, definition: EntityTypeDefinition) {
         let reference = self.0.clone().derive_reference_with_max_mutability();
         let mut inner = reference.get_rc_internal().borrow_mut();

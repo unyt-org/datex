@@ -12,14 +12,15 @@ use crate::{
     values::value_container::ValueContainer,
 };
 
-impl DatexValueContainerProxyInfallibleSerialize for ValueContainer {
-    fn to_value_container(self) -> ValueContainer {
+impl DatexValueContainerProxyInfallibleSerialize<()> for ValueContainer {
+    fn to_value_container(self, _context: &mut ()) -> ValueContainer {
         self
     }
 }
-impl DatexValueContainerProxySerialize for ValueContainer {
+impl DatexValueContainerProxySerialize<()> for ValueContainer {
     fn try_to_value_container(
         self,
+        _context: &mut (),
     ) -> Result<ValueContainer, TryToDatexValueError> {
         Ok(self)
     }
@@ -32,8 +33,8 @@ impl DatexValueContainerProxyDeserialize for ValueContainer {
     }
 }
 
-impl DatexProxyTypes for ValueContainer {
-    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
+impl DatexProxyTypes<()> for ValueContainer {
+    fn datex_type(_context: &mut ()) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Any.into()).into(),
         )
@@ -41,4 +42,4 @@ impl DatexProxyTypes for ValueContainer {
 }
 
 /// Custom [DatexValueContainerProxy] for [ValueContainer] - just return as is
-impl DatexValueContainerProxy for ValueContainer {}
+impl DatexValueContainerProxy<()> for ValueContainer {}

@@ -69,7 +69,7 @@ pub struct TopLevelAttributes {
     no_deserialize: bool,
 
     /// When set to true, the struct/enum will map to a DATEX structural type instead of a nominal entity type.
-    structural_type: bool,
+    type_kind: TypeKind,
 
     /// If the decorated struct or enum should be exported to the Datex registry.
     /// `#[datex(export)]`
@@ -140,7 +140,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         datex_type,
         namespace,
         &datex_name,
-        top_level_attributes.structural_type,
+        &top_level_attributes.type_kind,
     );
 
     let registration = if export {
@@ -161,43 +161,32 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         quote! {}
     };
 
+    let context = if top_level_attributes.type_kind.is_structural_recursive() {
+        quote! {()}
+    } else {
+        quote! {SharedReferencesCache}
+    };
     let serialize = match is_fallible_serialization {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         false => {
             quote! {
                 #[automatically_derived]
-                impl #generics From<#ident> for Value #generics {
-                    fn from(value: #ident) -> Self {
-                        #into_datex_fields_inner
+                impl #generics DatexValueProxySerialize<#context> for #ident #generics {
+                    fn try_to_value(self, cache: &mut #context) -> Result<Value, TryToDatexValueError> {
+                        Ok(#into_datex_fields_inner)
                     }
                 }
 
                 #[automatically_derived]
-                impl #generics DatexValueProxySerialize for #ident #generics {
-                    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
-                        Ok(self.into())
-                    }
-                }
-
-                #[automatically_derived]
-                impl #generics DatexValueProxyInfallibleSerialize for #ident #generics {
-                    fn to_value(self) -> Value {
-                       self.into()
+                impl #generics DatexValueProxyInfallibleSerialize<#context> for #ident #generics {
+                    fn to_value(self, cache: &mut #context) -> Value {
+                       #into_datex_fields_inner
                     }
                 }
             }
         }
         true => {
             quote! {
-                #[automatically_derived]
-                impl #generics TryFrom<#ident> for Value #generics {
-                    type Error = TryToDatexValueError;
-
-                    fn try_from(value: #ident) -> Result<Self, Self::Error> {
-                        Ok(#into_datex_fields_inner)
-                    }
-                }
-
                 #[automatically_derived]
                 impl #generics TryFrom<#ident> for ValueContainer #generics {
                     type Error = TryToDatexValueError;
@@ -208,9 +197,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 }
 
                 #[automatically_derived]
-                impl #generics DatexValueProxySerialize for #ident #generics {
-                    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
-                        self.try_into()
+                impl #generics DatexValueProxySerialize<#context> for #ident #generics {
+                    fn try_to_value(self, cache: &mut #context) -> Result<Value, TryToDatexValueError> {
+                        Ok(#into_datex_fields_inner)
                     }
                 }
             }
@@ -262,7 +251,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         }
     };
 
-    let types_impl = if top_level_attributes.structural_type {
+    let types_impl = if top_level_attributes.type_kind.is_structural() {
         // If the type is a structural type, we use resolve_structural_type to ensure that
         // we don't have recursive structural types. If so, tjos will panic.
         quote! {
@@ -328,7 +317,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             };
 
             #[automatically_derived]
-            impl #generics DatexValueProxy for #ident #generics {}
+            impl #generics DatexValueProxy<#context> for #ident #generics {}
 
             #helpers
 
@@ -356,17 +345,18 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
 
     let into_datex_fields_inner = match fields_type {
         FieldsType::Named => quote! {
-            Value::from(
+            Value::new(
                 Map::structural_with_string_keys(vec![
                     #(#into_datex_fields),*
-                ])
+                ]),
+                Some(#ident::datex_type(cache).into())
             )
         },
         FieldsType::Unnamed => {
             quote! {
                 Value::new(List::from(vec![
                     #(#into_datex_fields),*
-                ]))
+                ]), Some(#ident::datex_type(cache).into()))
             }
         }
         FieldsType::Transparent => {
@@ -382,7 +372,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
             }
         }
         FieldsType::Unit => quote! {
-            Value::null()
+            Value::new(CoreValue::Null, Some(#ident::datex_type(cache).into()))
         },
     };
 
@@ -407,7 +397,6 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         FieldsType::Unnamed => {
             quote! {{
                 let mut list: List = value.try_into()?;
-
                 #ident(
                     #(#from_datex_fields),*
                 )
@@ -1066,13 +1055,27 @@ fn parse_doc_comments(attrs: &[Attribute]) -> Option<String> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum TypeKind {
+    Entity,
+    Structural { recursive: bool },
+}
+impl TypeKind {
+    fn is_structural_recursive(&self) -> bool {
+        matches!(self, TypeKind::Structural { recursive: true })
+    }
+    fn is_structural(&self) -> bool {
+        matches!(self, TypeKind::Structural { .. })
+    }
+}
+
 fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
     let mut force_datex_core_namespace = false;
     let mut datex_name = None;
     let mut export = false;
     let mut namespace = None;
     let mut no_deserialize = false;
-    let mut structural_type = false;
+    let mut type_kind = TypeKind::Entity;
 
     for attr in attrs {
         if !attr.path().is_ident("datex") {
@@ -1099,7 +1102,11 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
                 }
 
                 Meta::Path(path) if path.is_ident("structural") => {
-                    structural_type = true;
+                    type_kind = TypeKind::Structural { recursive: false };
+                }
+
+                Meta::Path(path) if path.is_ident("structural_recursive") => {
+                    type_kind = TypeKind::Structural { recursive: true };
                 }
 
                 Meta::Path(path) if path.is_ident("no_deserialize") => {
@@ -1137,7 +1144,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
         force_datex_core_namespace,
         no_deserialize,
         datex_name,
-        structural_type,
+        type_kind,
         export,
         namespace,
         docs: parse_doc_comments(attrs),
@@ -1148,9 +1155,9 @@ fn wrap_type_definition(
     type_definition: TokenStream,
     namespace: &str,
     name: &str,
-    structural_type: bool,
+    type_kind: &TypeKind,
 ) -> TokenStream {
-    if structural_type {
+    if type_kind.is_structural() {
         quote! {
             Type::Definition(
                 #type_definition.into()
@@ -1167,7 +1174,6 @@ fn wrap_type_definition(
             };
             match cache.reserve_shared_type(
                 address.clone(),
-                #name.to_string(),
             ) {
                 SharedTypeReservation::Existing(ty) => {
                     Type::Entity(ty)
@@ -1202,20 +1208,20 @@ fn generate_field_conversion_code<T: ToTokens>(
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_identifier)
+                DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_identifier, cache)
             }
         }
         // Map serde fields and propagate the error if the serialization fails
         SerdeMode::Fallible => {
             quote! {
-                try_serde_to_value_container(value.#field_identifier)?
+                try_serde_to_value_container(value.#field_identifier, cache)?
             }
         }
         // Allow serde fields that only default implement DatexValueContainerProxySerialize
         // but panic if the serialization fails, since the user explicitly guarantees that it won't fail
         SerdeMode::Infallible => {
             quote! {
-                try_serde_to_value_container(value.#field_identifier).unwrap_or_else(|err| panic!("Serialization of field '{}' marked with (serde_infallible) failed: {:?}", #field_name, err))
+                try_serde_to_value_container(value.#field_identifier, cache).unwrap_or_else(|err| panic!("Serialization of field '{}' marked with (serde_infallible) failed: {:?}", #field_name, err))
             }
         }
     }

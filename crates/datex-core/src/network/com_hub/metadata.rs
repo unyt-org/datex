@@ -27,7 +27,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Debug, Clone)]
-#[datex(structural)]
+#[datex(structural_recursive)]
 pub struct ComHubMetadataInterfaceSocket {
     pub uuid: String,
     pub direction: InterfaceDirection,
@@ -43,7 +43,7 @@ pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
 }
 
 #[derive(Datex, Debug, Clone)]
-#[datex(structural)]
+#[datex(structural_recursive)]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
     pub properties: ComInterfaceProperties,
@@ -52,7 +52,7 @@ pub struct ComHubMetadataInterface {
 }
 
 #[derive(Datex, Debug, Clone)]
-#[datex(structural)]
+#[datex(structural_recursive)]
 pub struct ComHubMetadata {
     pub endpoint: Endpoint,
     pub interfaces: Vec<ComHubMetadataInterface>,

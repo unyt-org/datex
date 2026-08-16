@@ -23,16 +23,17 @@ use crate::{
     values::value_container::ValueContainer,
 };
 
-impl DatexValueContainerProxyInfallibleSerialize for OwnedSharedContainer {
-    fn to_value_container(self) -> ValueContainer {
+impl DatexValueContainerProxyInfallibleSerialize<()> for OwnedSharedContainer {
+    fn to_value_container(self, _context: &mut ()) -> ValueContainer {
         ValueContainer::Shared(SharedContainer::Owned(self))
     }
 }
-impl DatexValueContainerProxySerialize for OwnedSharedContainer {
+impl DatexValueContainerProxySerialize<()> for OwnedSharedContainer {
     fn try_to_value_container(
         self,
+        context: &mut (),
     ) -> Result<ValueContainer, TryToDatexValueError> {
-        Ok(self.to_value_container())
+        Ok(self.to_value_container(context))
     }
 }
 impl DatexValueContainerProxyDeserialize for OwnedSharedContainer {
@@ -46,8 +47,8 @@ impl DatexValueContainerProxyDeserialize for OwnedSharedContainer {
     }
 }
 
-impl DatexProxyTypes for OwnedSharedContainer {
-    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
+impl DatexProxyTypes<()> for OwnedSharedContainer {
+    fn datex_type(_context: &mut ()) -> Type {
         Type::Definition(TypeDefinitionWithMetadata::new(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Any.into()),
             // TODO
@@ -59,4 +60,4 @@ impl DatexProxyTypes for OwnedSharedContainer {
     }
 }
 
-impl DatexValueContainerProxy for OwnedSharedContainer {}
+impl DatexValueContainerProxy<()> for OwnedSharedContainer {}
