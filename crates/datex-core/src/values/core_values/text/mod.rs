@@ -24,6 +24,9 @@ impl Display for Text {
 }
 
 impl Text {
+    pub fn new<S: Into<String>>(s: S) -> Self {
+        Text(s.into())
+    }
     pub fn len(&self) -> usize {
         self.0.len()
     }

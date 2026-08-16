@@ -1,3 +1,4 @@
+//! Implements [DatexValueProxy] for [Vec<T>] where T: [DatexValueProxy].
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
@@ -63,5 +64,55 @@ where
             ))
             .into(),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        libs::core::type_id::CoreLibBaseTypeId,
+        values::{
+            core_value::CoreValue, core_values::integer::Integer, value::Value,
+            value_container::ValueContainer,
+        },
+    };
+
+    #[test]
+    fn to_value() {
+        let vec = vec![Integer::new(1), Integer::new(2), Integer::new(3)];
+        let value: Value = vec.to_value();
+        assert!(matches!(
+            value.inner,
+            CoreValue::List(ref l) if l == &List::from(vec![ValueContainer::from(Integer::new(1)), ValueContainer::from(Integer::new(2)), ValueContainer::from(Integer::new(3))])
+        ));
+    }
+    #[test]
+    fn try_from_value() {
+        let value: Value = List::from(vec![
+            ValueContainer::from(Integer::new(1)),
+            ValueContainer::from(Integer::new(2)),
+            ValueContainer::from(Integer::new(3)),
+        ])
+        .into();
+        let vec: Vec<Integer> = Vec::try_from_value(value).unwrap();
+        assert_eq!(
+            vec,
+            vec![Integer::new(1), Integer::new(2), Integer::new(3)]
+        );
+    }
+
+    #[test]
+    fn datex_type() {
+        let mut cache = SharedReferencesCache::default();
+        let vec_type = Vec::<Integer>::datex_type(&mut cache);
+        vec_type.with_collapsed_type_definition(|td| {
+            assert!(matches!(
+                td,
+                TypeDefinition::Collection(CollectionTypeDefinition::List(
+                    ListCollectionTypeDefinition(inner_type)
+                )) if **inner_type == Type::Definition(TypeDefinition::CoreType(CoreLibBaseTypeId::Integer.into()).into())
+            ));
+        });
     }
 }

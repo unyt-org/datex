@@ -1,3 +1,5 @@
+//! Implements [TryFrom] and [TryInto] for Rust native types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
+//! This allows to convert [u8] into DATEX [Value] and [ValueContainer] and allows to convert [CoreValue], [Value] and [ValueContainer] into [u8].
 use num::ToPrimitive;
 
 use crate::{
@@ -24,6 +26,9 @@ use crate::{
         integer::typed_integer::IntegerTypeVariant,
     },
 };
+
+/// Implements [TryFrom] and [TryInto] for Rust core types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
+/// Also implements [DatexValueProxy] for Rust core types to provide the correct [Type] for each implementation.
 macro_rules! derive_try_from_chain {
     ($type:ty, $dx_type:expr, {$($core_match:tt)*}) => {
         impl TryFrom<CoreValue> for $type {
@@ -282,5 +287,55 @@ impl DatexProxyTypes for str {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        datex_proxy::{
+            DatexValueProxyInfallibleSerialize, DatexValueProxySerialize,
+            TryFromDatexValueError, TryToDatexValueError,
+        },
+        values::{
+            core_value::CoreValue,
+            core_values::{boolean::Boolean, text::Text},
+            value::Value,
+        },
+    };
+
+    #[test]
+    fn try_from_core_value() {
+        let value = CoreValue::Text(Text("Hello, World!".to_string()));
+        let result: Result<String, TryFromDatexValueError> = value.try_into();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Hello, World!");
+    }
+
+    #[test]
+    fn try_from_value() {
+        let value =
+            Value::from(CoreValue::Text(Text("Hello, World!".to_string())));
+        let result: Result<String, TryFromDatexValueError> = value.try_into();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Hello, World!");
+    }
+
+    #[test]
+    fn to_value() {
+        let value = true;
+        let result: Value = value.to_value();
+        assert_eq!(result, Value::from(CoreValue::Boolean(Boolean(true))));
+    }
+
+    #[test]
+    fn try_to_value() {
+        let value = true;
+        let result: Result<Value, TryToDatexValueError> = value.try_to_value();
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Value::from(CoreValue::Boolean(Boolean(true)))
+        );
     }
 }

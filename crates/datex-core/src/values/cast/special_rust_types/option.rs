@@ -1,4 +1,4 @@
-//! This module contains the implementation of the [DatexValueProxy] trait for the Option type.
+//! Implements [DatexValueProxy] for [Option<T>] where T: [DatexValueProxy].
 //! As `Option<T>` is a special Rust type that has no direct equivalent in DATEX, it is represented as a union of `null` and `T` in DATEX.
 //! As `Some(None)` would be indistinguishable from `None` when serialized (both would be represented as `null`), we use a tagged type representation for
 //! `Option<T>` in DATEX, where `None` is represented as a tagged type with the tag "None(null)", and `Some(T)` is represented as a tagged type with the tag "Some" and
@@ -350,5 +350,49 @@ where
             ]))
             .into(),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        datex_proxy::DatexValueProxyInfallibleSerialize,
+        values::{core_values::integer::Integer, value::Value},
+    };
+
+    #[test]
+    fn to_value() {
+        let some_option: Option<Integer> = Some(Integer::new(1));
+        let none_option: Option<Integer> = None;
+
+        let some_value: Value = some_option.to_value();
+        let none_value: Value = none_option.to_value();
+
+        assert!(some_value.is_rust_some());
+        assert!(none_value.is_rust_none());
+    }
+
+    #[test]
+    fn from_value() {
+        let some_value: Value = Value::rust_some(Integer::new(1).to_value());
+        let none_value: Value = Value::rust_none();
+        let some_option: Option<Integer> =
+            Option::try_from_value(some_value).unwrap();
+        let none_option: Option<Integer> =
+            Option::try_from_value(none_value).unwrap();
+        assert_eq!(some_option, Some(Integer::new(1)));
+        assert_eq!(none_option, None);
+    }
+    #[test]
+    fn datex_type() {
+        let mut cache = SharedReferencesCache::default();
+        let option_type = Option::<Integer>::datex_type(&mut cache);
+        option_type.with_collapsed_type_definition(|td| {
+            assert!(matches!(
+                td,
+                TypeDefinition::Union(UnionTypeDefinition(types)) if types.len() == 2
+            ));
+        });
     }
 }

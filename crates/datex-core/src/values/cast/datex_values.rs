@@ -1,3 +1,5 @@
+//! Implements [DatexValueProxy] for [CoreValue](crate::values::core_values) implementation. That allows to convert e.g. [Endpoint] to [Value] and back.
+//! Also implements [DatexProxyTypes] to provide the correct [Type] for each implementation.
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     libs::core::type_id::CoreLibBaseTypeId,
@@ -7,8 +9,8 @@ use crate::{
     },
     values::{
         core_values::{
-            callable::Callable, endpoint::Endpoint, list::List, map::Map,
-            range::Range,
+            callable::Callable, endpoint::Endpoint, integer::Integer,
+            list::List, map::Map, range::Range,
         },
         value::Value,
     },
@@ -19,6 +21,9 @@ use crate::{
     types::type_definition::TypeDefinition,
 };
 
+/// Implements [DatexValueProxy] for a [CoreValue](crate::values::core_values) implementation.
+/// This allows to convert e.g. [Endpoint] to [ValueContainer] and back.
+/// Also implements [DatexProxyTypes] to provide the correct [Type] for each implementation.
 macro_rules! impl_datex_direct_via_value_container {
     ($type:ty, $dx_type:expr) => {
         impl DatexValueProxy for $type {}
@@ -59,3 +64,47 @@ impl_datex_direct_via_value_container!(
     CoreLibBaseTypeId::Any
 );
 impl_datex_direct_via_value_container!(Callable, CoreLibBaseTypeId::Callable);
+impl_datex_direct_via_value_container!(Integer, CoreLibBaseTypeId::Integer);
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        datex_proxy::{
+            DatexValueProxyDeserialize, DatexValueProxyInfallibleSerialize,
+            DatexValueProxySerialize,
+        },
+        values::{
+            core_value::CoreValue, core_values::endpoint::Endpoint,
+            value::Value,
+        },
+    };
+
+    #[test]
+    fn to_value() {
+        let endpoint = Endpoint::new("@jonas");
+        let value: Value = endpoint.clone().to_value();
+        assert!(matches!(
+            value.inner,
+            CoreValue::Endpoint(ref e) if e == &endpoint
+        ));
+    }
+
+    #[test]
+    fn try_to_value() {
+        let endpoint = Endpoint::new("@jonas");
+        let value: Value = endpoint.clone().try_to_value().unwrap();
+        assert!(matches!(
+            value.inner,
+            CoreValue::Endpoint(ref e) if e == &endpoint
+        ));
+    }
+
+    #[test]
+    fn try_from_value() {
+        let endpoint = Endpoint::new("@jonas");
+        let value: Value = endpoint.clone().to_value();
+        let result: Result<Endpoint, _> = Endpoint::try_from_value(value);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), endpoint);
+    }
+}
