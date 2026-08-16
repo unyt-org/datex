@@ -20,7 +20,7 @@ use core::{any::TypeId, fmt::Display, ops::Deref};
 
 pub enum SharedTypeReservation {
     Existing(SharedContainerContainingEntityType),
-    New(SharedContainer),
+    New(SharedContainerContainingEntityType),
 }
 
 #[derive(Debug, Default)]
@@ -235,7 +235,9 @@ impl SharedReferencesCache {
         self.register_owned_shared_container(
             &shared_container.derive_immutable_reference(),
         );
-        SharedTypeReservation::New(shared_container)
+        // NOTE: this treats shared_container as if it already contains a type value.
+        // So accessing it as a type before finish_shared_type is called will panic.
+        SharedTypeReservation::New(SharedContainerContainingEntityType::new_unchecked(shared_container))
     }
 
     pub fn finish_shared_type(

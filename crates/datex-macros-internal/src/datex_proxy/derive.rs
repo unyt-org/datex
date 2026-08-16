@@ -216,19 +216,11 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             }
         }
         true => {
-            let serialization_impls = quote! {
-                #[automatically_derived]
-                impl #generics TryFrom<#ident> for ValueContainer #generics {
-                    type Error = TryToDatexValueError;
-
-                    fn try_from(value: #ident) -> Result<Self, Self::Error> {
-                        Ok(ValueContainer::Local(Value::from(#into_datex_fields_inner)))
-                    }
-                }
-
+            let serialization_impl = quote! {
                 #[automatically_derived]
                 impl #generics DatexValueProxySerialize<#context> for #ident #generics {
                     fn try_to_value(self, cache: &mut #context) -> Result<Value, TryToDatexValueError> {
+                        let value = self;
                         Ok(#into_datex_fields_inner)
                     }
                 }
@@ -237,7 +229,16 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             // Also add TryFrom<T> for Value if possible without context.
             if top_level_attributes.type_kind.is_structural_recursive() {
                 quote! {
-                    #serialization_impls
+                    #serialization_impl
+
+                    #[automatically_derived]
+                    impl #generics TryFrom<#ident> for ValueContainer #generics {
+                        type Error = TryToDatexValueError;
+
+                        fn try_from(value: #ident) -> Result<Self, Self::Error> {
+                            value.try_to_value(&mut ()).map(ValueContainer::Local)
+                        }
+                    }
 
                     #[automatically_derived]
                     impl #generics TryFrom<#ident> for Value #generics {
@@ -250,7 +251,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 }
             }
             else {
-                serialization_impls
+                serialization_impl
             }
         }
     };
@@ -901,7 +902,7 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
                     &field_attributes.serde_mode,
                     &field_name,
                     field_type,
-                    &context,
+                    context,
                 ));
             }
 
@@ -1221,9 +1222,7 @@ fn wrap_type_definition(
                     #unique_name
                 )
             };
-            match cache.reserve_shared_type(
-                address.clone(),
-            ) {
+            match unsafe {cache.reserve_shared_type(address.clone())} {
                 SharedTypeReservation::Existing(ty) => {
                     Type::Entity(ty)
                 }
