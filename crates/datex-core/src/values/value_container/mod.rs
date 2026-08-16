@@ -169,7 +169,7 @@ impl ValueContainer {
                 let inner_type =
                     shared.value_container().actual_container_type();
                 TypeDefinitionWithMetadata::new(
-                    TypeDefinition::Nested(Box::new(Type::from(inner_type))),
+                    TypeDefinition::Container(Box::new(Type::from(inner_type))),
                     TypeMetadata::Shared {
                         mutability: shared.container_mutability(),
                         ownership: shared.ownership(),
@@ -237,11 +237,11 @@ impl ValueContainer {
     }
 
     /// Returns true if the underlaying value is uninitialized (recursive).
-    pub fn is_unitialized(&self) -> bool {
+    pub fn is_uninitialized(&self) -> bool {
         match self {
             ValueContainer::Local(value) => value.is_uninitialized(),
             ValueContainer::Shared(shared) => {
-                shared.value_container().is_unitialized()
+                shared.value_container().is_uninitialized()
             }
         }
     }

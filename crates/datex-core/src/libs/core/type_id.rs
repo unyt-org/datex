@@ -61,6 +61,8 @@ pub enum CoreLibBaseTypeId {
     Range, // #core.Range
     #[strum(serialize = "Type")]
     Type, // #core.Type
+    #[strum(serialize = "Container")]
+    Container, // #core.Container
 }
 
 impl CoreLibBaseTypeId {

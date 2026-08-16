@@ -167,14 +167,22 @@ pub fn generate_native_callable(
 
     // with return type, wrap in Some, otherwise return None
     let method_call = if return_type.is_some() {
-        quote! {
-            Some(
-                #datex_core_crate_name::datex_proxy::DatexValueContainerProxySerialize::try_to_value_container(
-                    #method_call_body,
-                    cache.into()
-                ).unwrap()
-            )
-        }
+        // Note: since the borrowed cache is no longer accessible inside the function body,
+        // the return type is fetched during creation and stored in the closure context.
+        quote! {{
+            let mut result_value = #datex_core_crate_name::datex_proxy::DatexValueContainerProxySerialize::try_to_value_container(
+                #method_call_body,
+                (&mut #datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache::default()).into(), // empty placeholder cache to satisfy the trait bound, FIXME: better solution
+            ).unwrap();
+            // set the correct type for the result value container
+            match &mut result_value {
+                ValueContainer::Local(value) => {
+                   value.custom_type = Some(return_type.clone().into())
+                }
+                ValueContainer::Shared(_) => {todo!()}
+            }
+            Some(result_value)
+        }}
     } else {
         quote! {{
             #method_call_body;
@@ -188,7 +196,19 @@ pub fn generate_native_callable(
         quote! { CallableKind::Function }
     };
 
-    quote! {
+    let return_type_init = match return_type {
+        Some(ref ty) => {
+            quote! {
+                let return_type = <#ty as #datex_core_crate_name::datex_proxy::DatexProxyTypes<#datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache>>::datex_type(cache.into());
+            }
+        }
+        None => quote! { },
+    };
+
+    quote! {{
+
+        #return_type_init
+
         #datex_core_crate_name::values::core_values::callable::Callable {
             name: Some(#method_name.to_string()),
             signature: #datex_core_crate_name::types::type_definition::callable::CallableTypeDefinition {
@@ -199,10 +219,10 @@ pub fn generate_native_callable(
                 return_type: #return_type_tokens,
                 yeet_type: #yeet_type_tokens,
             },
-            body: #datex_core_crate_name::values::core_values::callable::CallableBody::native_sync(|mut vals| {Ok(#method_call)}),
+            body: #datex_core_crate_name::values::core_values::callable::CallableBody::native_sync(move |mut vals| {Ok(#method_call)}),
             creator: Default::default(),
         }
-    }
+    }}
 }
 
 /// A helper struct to replace occurrences of `Self` in a type with a specific type.

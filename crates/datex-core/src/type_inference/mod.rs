@@ -1152,7 +1152,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 _ => {
                     match definition.definition {
                         // if nested type, collapse
-                        TypeDefinition::Nested(ty) => *ty,
+                        TypeDefinition::Container(ty) => *ty,
                         // else, just remove ref
                         def => {
                             Type::Definition(TypeDefinitionWithMetadata::new(
@@ -1474,7 +1474,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 ));
             }
             match &e.definition {
-                TypeDefinition::Nested(ty) => Ok(*ty.clone()),
+                TypeDefinition::Container(ty) => Ok(*ty.clone()),
                 TypeDefinition::Shared(sh) => {
                     Ok(sh.with_collapsed_type_value(|ty| ty.clone()))
                 }

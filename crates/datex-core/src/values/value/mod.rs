@@ -95,6 +95,13 @@ impl Value {
         self.set_update_callback_data(None);
         self
     }
+
+    /// Creates a new Value representing a containerized value.
+    /// This can be used to wrap a [ValueContainer] directly into a local [Value],
+    /// e.g. for #Tagged(shared X) or (X | null) | null
+    pub fn container(value: impl Into<ValueContainer>) -> Self {
+        Value::from(CoreValue::Container(Box::new(value.into())))
+    }
 }
 
 impl Value {

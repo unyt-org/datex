@@ -42,6 +42,7 @@ use crate::{
     values::core_values::callable::{CallableBody, DatexBytecodeCallable},
 };
 use alloc::format;
+use crate::ast::expressions::Statements;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -210,6 +211,13 @@ fn core_value_to_datex_expression(
         }
         CoreValue::Uninitialized => {
             todo!()
+        }
+        CoreValue::Container(inner) => {
+            DatexExpressionData::Statements(Statements {
+                statements: vec![DatexExpressionData::from(inner.as_ref()).with_default_span()],
+                is_terminated: false,
+                unbounded: None,
+            })
         }
     }
 }

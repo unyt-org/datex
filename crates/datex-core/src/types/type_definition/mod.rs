@@ -58,8 +58,8 @@ pub enum TypeDefinition {
     /// type B = {a: $A}
     Shared(SharedContainerContainingType), // integer
 
-    /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X)
-    Nested(Box<Type>),
+    /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X or (integer | null) | null)
+    Container(Box<Type>),
 
     /// a callable type definition (signature)
     Callable(CallableTypeDefinition),
@@ -139,7 +139,7 @@ impl Hash for TypeDefinition {
             TypeDefinition::ImplType(definition) => {
                 definition.hash(state);
             }
-            TypeDefinition::Nested(ty) => {
+            TypeDefinition::Container(ty) => {
                 ty.hash(state);
             }
             TypeDefinition::CoreType(core) => {
@@ -233,7 +233,7 @@ impl Display for TypeDefinition {
                     yeet_type_code
                 )
             }
-            TypeDefinition::Nested(ty) => {
+            TypeDefinition::Container(ty) => {
                 write!(f, "{}", ty)
             }
             TypeDefinition::CoreType(core) => {
@@ -344,10 +344,10 @@ impl TypeDefinition {
     }
 
     /// Convert this type definition into a [Type] by wrapping it in a [Type::Definition] variant.
-    /// If the type definition is a [TypeDefinition::Nested] variant, it will be unwrapped and returned as the inner [Type].
+    /// If the type definition is a [TypeDefinition::Container] variant, it will be unwrapped and returned as the inner [Type].
     pub fn convert_to_type(self) -> Type {
         match self {
-            TypeDefinition::Nested(ty) => *ty,
+            TypeDefinition::Container(ty) => *ty,
             _ => Type::Definition(self.into()),
         }
     }

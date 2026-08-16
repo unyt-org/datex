@@ -30,6 +30,7 @@ use crate::{
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
+use crate::inspector::register_inspector_namespace;
 
 #[derive(Clone, Debug)]
 pub struct Runtime {
@@ -51,7 +52,7 @@ impl Runtime {
         let runtime = Runtime {
             internal: Rc::new(runtime_internal),
         };
-        // register_inspector_namespace(&runtime);
+        register_inspector_namespace(&runtime);
         runtime
     }
 

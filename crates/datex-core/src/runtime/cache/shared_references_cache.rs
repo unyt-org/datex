@@ -250,7 +250,7 @@ impl SharedReferencesCache {
         let ty = self
             .get_owned_reference(&PointerAddress::SelfOwned(address.clone()))
             .unwrap_or_else(|| panic!("Type is not in cache: {}", address));
-        if !ty.value_container().is_unitialized() {
+        if !ty.value_container().is_uninitialized() {
             panic!("Type is already initialized: {}", address);
         }
     }

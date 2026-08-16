@@ -55,6 +55,8 @@ pub enum CoreValue {
     EntityTypeDefinition(EntityTypeDefinition),
     Callable(Callable),
     Range(Range),
+    /// Used for nested values, e.g. #Tagged (shared 42)
+    Container(Box<ValueContainer>),
 }
 mod child_iterator;
 pub mod datex_proxy;
@@ -221,6 +223,9 @@ impl From<&CoreValue> for CoreLibTypeId {
             }
             CoreValue::Uninitialized => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
+            }
+            CoreValue::Container(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Container)
             }
         }
     }
@@ -464,6 +469,7 @@ impl Display for CoreValue {
                 write!(f, "{container}")
             }
             CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
+            CoreValue::Container(inner) => write!(f, "({})", inner),
         }
     }
 }

@@ -222,6 +222,9 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                     serializer,
                     false,
                 ),
+            CoreValue::Container(inner) => {
+                todo!()
+            }
             CoreValue::Uninitialized => panic!("Uninitialized value"),
         }
     }

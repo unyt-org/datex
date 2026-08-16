@@ -113,7 +113,7 @@ impl Type {
         }
     }
 
-    /// Boxes the type in a new [TypeDefinition::Nested] with the provided metadata.
+    /// Boxes the type in a new [TypeDefinition::Container] with the provided metadata.
     /// If the type is already a transparent wrapper (alias) with local metadata, it just updates the metadata without adding another nesting layer.
     pub fn box_with_metadata(self, metadata: TypeMetadata) -> Type {
         match self {
@@ -131,7 +131,7 @@ impl Type {
             )),
             // box otherwise
             _ => Type::Definition(TypeDefinitionWithMetadata::new(
-                TypeDefinition::Nested(Box::new(self)),
+                TypeDefinition::Container(Box::new(self)),
                 metadata,
             )),
         }
@@ -207,7 +207,7 @@ impl Type {
         }
         // nest type
         else {
-            TypeDefinition::Nested(Box::new(self))
+            TypeDefinition::Container(Box::new(self))
         }
     }
 
