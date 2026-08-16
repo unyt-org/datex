@@ -9,8 +9,9 @@ use crate::{
     },
     values::{
         core_values::{
-            callable::Callable, endpoint::Endpoint, integer::Integer,
-            list::List, map::Map, range::Range,
+            boolean::Boolean, callable::Callable, decimal::Decimal,
+            endpoint::Endpoint, integer::Integer, list::List, map::Map,
+            range::Range, text::Text,
         },
         value::Value,
     },
@@ -65,6 +66,10 @@ impl_datex_direct_via_value_container!(
 );
 impl_datex_direct_via_value_container!(Callable, CoreLibBaseTypeId::Callable);
 impl_datex_direct_via_value_container!(Integer, CoreLibBaseTypeId::Integer);
+impl_datex_direct_via_value_container!(Decimal, CoreLibBaseTypeId::Decimal);
+impl_datex_direct_via_value_container!(Text, CoreLibBaseTypeId::Text);
+impl_datex_direct_via_value_container!(Boolean, CoreLibBaseTypeId::Boolean);
+// impl_datex_direct_via_value_container!(Instant, CoreLibBaseTypeId::Instant);
 
 #[cfg(test)]
 mod tests {
