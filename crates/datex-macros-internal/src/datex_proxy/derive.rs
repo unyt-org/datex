@@ -98,6 +98,13 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         get_datex_core_crate_name()
     };
 
+
+    let context = if top_level_attributes.type_kind.is_structural_recursive() {
+        quote! {()}
+    } else {
+        quote! {SharedReferencesCache}
+    };
+
     let DeriveData {
         into_datex_fields_inner,
         from_datex_fields_inner,
@@ -105,8 +112,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         is_fallible_serialization,
         helpers,
     } = match input.data {
-        Data::Struct(data_struct) => derive_struct(data_struct, &input.ident),
-        Data::Enum(data_enum) => derive_enum(data_enum, &input.ident),
+        Data::Struct(data_struct) => derive_struct(data_struct, &input.ident, &context),
+        Data::Enum(data_enum) => derive_enum(data_enum, &input.ident, &context),
         _ => unimplemented!(),
     };
 
@@ -143,10 +150,20 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         &top_level_attributes.type_kind,
     );
 
+    let registration_new_method = if top_level_attributes.type_kind.is_structural_recursive() {
+        quote! {
+            new_without_cache
+        }
+    } else {
+        quote! {
+            new_with_cache
+        }
+    };
+
     let registration = if export {
         quote! {
             #datex_core_crate_name::inventory::submit! {
-                #datex_core_crate_name::datex_registry::DatexTypeRegistration::new::<#ident>(
+                #datex_core_crate_name::datex_registry::DatexTypeRegistration::#registration_new_method::<#ident>(
                     #datex_core_crate_name::datex_registry::DatexTypeMetadata {
                         name: #datex_name,
                         rust_ident: stringify!(#ident),
@@ -161,11 +178,6 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         quote! {}
     };
 
-    let context = if top_level_attributes.type_kind.is_structural_recursive() {
-        quote! {()}
-    } else {
-        quote! {SharedReferencesCache}
-    };
     let serialize = match is_fallible_serialization {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         false => {
@@ -173,6 +185,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 #[automatically_derived]
                 impl #generics DatexValueProxySerialize<#context> for #ident #generics {
                     fn try_to_value(self, cache: &mut #context) -> Result<Value, TryToDatexValueError> {
+                        let value = self;
                         Ok(#into_datex_fields_inner)
                     }
                 }
@@ -180,7 +193,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 #[automatically_derived]
                 impl #generics DatexValueProxyInfallibleSerialize<#context> for #ident #generics {
                     fn to_value(self, cache: &mut #context) -> Value {
-                       #into_datex_fields_inner
+                        let value = self;
+                        #into_datex_fields_inner
                     }
                 }
             }
@@ -252,23 +266,19 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     };
 
     let types_impl = if top_level_attributes.type_kind.is_structural() {
-        // If the type is a structural type, we use resolve_structural_type to ensure that
-        // we don't have recursive structural types. If so, tjos will panic.
         quote! {
             #[automatically_derived]
-            impl #generics DatexProxyTypes for #ident #generics {
-                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
-                    cache.resolve_structural_type::<Self, _>(
-                        |cache| (#wrapped_datex_type).with_name(#datex_name)
-                    )
+            impl #generics DatexProxyTypes<#context> for #ident #generics {
+                fn datex_type(cache: &mut #context) -> Type {
+                    (#wrapped_datex_type).with_name(#datex_name)
                 }
             }
         }
     } else {
         quote! {
             #[automatically_derived]
-            impl #generics DatexProxyTypes for #ident #generics {
-                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
+            impl #generics DatexProxyTypes<#context> for #ident #generics {
+                fn datex_type(cache: &mut #context) -> Type {
                     #wrapped_datex_type
                 }
             }
@@ -333,7 +343,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 }
 
 /// Derive implementation for structs
-fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
+fn derive_struct(data_struct: DataStruct, ident: &Ident, context: &TokenStream) -> DeriveData {
     let FieldDeriveData {
         is_fallible_serialization,
         fields_type,
@@ -341,7 +351,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         from_datex_fields,
         datex_type,
         field_names,
-    } = derive_fields(&data_struct.fields);
+    } = derive_fields(&data_struct.fields, context);
 
     let into_datex_fields_inner = match fields_type {
         FieldsType::Named => quote! {
@@ -423,7 +433,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
     }
 }
 
-fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
+fn derive_enum(data_enum: DataEnum, ident: &Ident, context: &TokenStream) -> DeriveData {
     // serialization is only infallible if the enum has no serde fields or only serde fields with datex(serde_infallible)
     let mut is_fallible_serialization = false;
 
@@ -453,7 +463,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             from_datex_fields,
             datex_type,
             field_names,
-        } = derive_fields(&variant.fields);
+        } = derive_fields(&variant.fields, context);
 
         // if any variant is fallible, mark as fallible
         if variant_is_fallible_serialization {
@@ -726,7 +736,7 @@ fn generate_enum_helper_structs(
     }
 }
 
-fn derive_fields(fields: &Fields) -> FieldDeriveData {
+fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
     // serialization is only infallible if no serde fields or only serde fields with datex(serde_infallible)
     let mut is_fallible_serialization = false;
 
@@ -854,6 +864,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                     &field_attributes.serde_mode,
                     &field_name,
                     field_type,
+                    &context,
                 ));
             }
 
@@ -895,6 +906,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                 field_types.push(generate_unnamed_field_type_code(
                     &field_attributes.serde_mode,
                     field_type,
+                    context
                 ));
             }
         }
@@ -1214,14 +1226,14 @@ fn generate_field_conversion_code<T: ToTokens>(
         // Map serde fields and propagate the error if the serialization fails
         SerdeMode::Fallible => {
             quote! {
-                try_serde_to_value_container(value.#field_identifier, cache)?
+                try_serde_to_value_container(value.#field_identifier)?
             }
         }
         // Allow serde fields that only default implement DatexValueContainerProxySerialize
         // but panic if the serialization fails, since the user explicitly guarantees that it won't fail
         SerdeMode::Infallible => {
             quote! {
-                try_serde_to_value_container(value.#field_identifier, cache).unwrap_or_else(|err| panic!("Serialization of field '{}' marked with (serde_infallible) failed: {:?}", #field_name, err))
+                try_serde_to_value_container(value.#field_identifier).unwrap_or_else(|err| panic!("Serialization of field '{}' marked with (serde_infallible) failed: {:?}", #field_name, err))
             }
         }
     }
@@ -1231,6 +1243,7 @@ fn generate_named_field_type_code(
     serde_mode: &SerdeMode,
     field_name: &String,
     field_type: &syn::Type,
+    context: &TokenStream
 ) -> TokenStream {
     match serde_mode {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
@@ -1238,7 +1251,7 @@ fn generate_named_field_type_code(
             quote! {
                 (
                     Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
-                    <#field_type as DatexProxyTypes>::datex_type(cache)
+                    <#field_type as DatexProxyTypes<#context>>::datex_type(cache)
                 )
             }
         }
@@ -1257,12 +1270,13 @@ fn generate_named_field_type_code(
 fn generate_unnamed_field_type_code(
     serde_mode: &SerdeMode,
     field_type: &syn::Type,
+    context: &TokenStream,
 ) -> TokenStream {
     match serde_mode {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                <#field_type as DatexProxyTypes>::datex_type(cache)
+                <#field_type as DatexProxyTypes<#context>>::datex_type(cache)
             }
         }
         // Cannot infer type

@@ -3,13 +3,12 @@ use crate::{
         DatexProxyTypes, DatexValueContainerProxy,
         DatexValueContainerProxyDeserialize,
         DatexValueContainerProxyInfallibleSerialize,
-        DatexValueContainerProxySerde, DatexValueContainerProxySerialize,
-        DatexValueProxy, DatexValueProxyInfallibleSerialize,
+        DatexValueContainerProxySerialize,
+        DatexValueProxyInfallibleSerialize,
         DatexValueProxySerialize, TryFromDatexValueError, TryToDatexValueError,
         shared::Shared,
     },
     prelude::*,
-    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{SharedContainerMutability, SharedContainerOwnership},
     types::{
         r#type::Type,
@@ -23,7 +22,7 @@ use crate::{
 impl<T, C> DatexValueContainerProxyInfallibleSerialize<C> for Shared<T, C>
 where
     Shared<T, C>: DatexValueProxyInfallibleSerialize<C>,
-    T: DatexValueContainerProxySerde<C>,
+    T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
 {
     fn to_value_container(self, _context: &mut C) -> ValueContainer {
         // FIXME
@@ -34,7 +33,7 @@ where
 impl<T, C> DatexValueContainerProxySerialize<C> for Shared<T, C>
 where
     Shared<T, C>: DatexValueProxySerialize<C>,
-    T: DatexValueContainerProxySerde<C>,
+    T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
 {
     fn try_to_value_container(
         self,
@@ -46,7 +45,7 @@ where
 
 impl<T, C> DatexValueContainerProxyDeserialize for Shared<T, C>
 where
-    T: DatexValueContainerProxySerde<C>,
+    T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
 {
     fn try_from_value_container(
         value: ValueContainer,
@@ -63,7 +62,7 @@ where
 
 impl<T, C> DatexProxyTypes<C> for Shared<T, C>
 where
-    T: DatexValueContainerProxySerde<C> + DatexProxyTypes<C>,
+    T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize + DatexProxyTypes<C>,
 {
     fn datex_type(context: &mut C) -> Type {
         Type::Definition(TypeDefinitionWithMetadata::new(
@@ -79,6 +78,6 @@ where
 impl<T, C> DatexValueContainerProxy<C> for Shared<T, C>
 where
     Shared<T, C>: DatexValueContainerProxy<C>,
-    T: DatexValueContainerProxySerde<C>,
+    T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
 {
 }

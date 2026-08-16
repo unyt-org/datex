@@ -10,7 +10,8 @@ use crate::{
 };
 use datex_macros_internal::{Datex, datex};
 
-#[derive(Datex, Debug)]
+#[derive(
+    Datex, Debug)]
 pub struct Inspector {
     name: String, // TODO: We must make private properties to be ignore by the type definition and only use public ones, otherwise the prop and methods would colide in DATEX
 }

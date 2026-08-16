@@ -3,19 +3,19 @@ pub mod datex_proxy;
 use crate::{
     datex_proxy::{
         DatexValueContainerProxy, DatexValueContainerProxyDeserialize,
-        DatexValueContainerProxySerde, DatexValueContainerProxySerialize,
+        DatexValueContainerProxySerialize,
         TryFromDatexValueError,
     },
     shared_values::{SharedContainer, traits::SharedContainerCommon},
 };
 
-pub struct Shared<T: DatexValueContainerProxySerde<C>, C> {
+pub struct Shared<T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize, C> {
     value: T,
     container: SharedContainer,
     _phantom: core::marker::PhantomData<C>,
 }
 
-impl<T: DatexValueContainerProxySerde<C>, C> Shared<T, C> {
+impl<T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize, C> Shared<T, C> {
     pub fn new(value: T, container: SharedContainer) -> Self {
         Self {
             value,
@@ -25,7 +25,7 @@ impl<T: DatexValueContainerProxySerde<C>, C> Shared<T, C> {
     }
 }
 
-impl<T: DatexValueContainerProxySerde<C>, C> TryFrom<SharedContainer>
+impl<T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize, C> TryFrom<SharedContainer>
     for Shared<T, C>
 {
     type Error = TryFromDatexValueError;
@@ -45,6 +45,8 @@ mod test {
     };
 
     use crate::prelude::*;
+    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+
     #[test]
     fn string_shared() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
@@ -56,7 +58,7 @@ mod test {
                 address_provider,
             );
 
-        let shared_string: Shared<String> =
+        let shared_string: Shared<String, ()> =
             Shared::try_from(shared_container).unwrap();
         assert_eq!(shared_string.value, "Hello DATEX");
     }

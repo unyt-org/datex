@@ -92,13 +92,6 @@ pub trait DatexValueProxy<C>:
 {
 }
 
-pub trait DatexValueContainerProxySerde<C>:
-    Sized
-    + DatexValueContainerProxySerialize<C>
-    + DatexValueContainerProxyDeserialize
-{
-}
-
 /// Trait for providing DATEX type information for a DatexProxy type
 pub trait DatexProxyTypes<C> {
     fn datex_type(context: &mut C) -> Type;

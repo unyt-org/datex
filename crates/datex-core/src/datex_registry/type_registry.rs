@@ -44,14 +44,24 @@ impl Debug for DatexTypeRegistration {
 }
 
 impl DatexTypeRegistration {
-    /// Creates a new [DatexTypeRegistration] for a type T that implements DatexProxyTypes.
-    pub const fn new<T: DatexProxyTypes<SharedReferencesCache>>(
+    /// Creates a new [DatexTypeRegistration] for a type T that implements [DatexProxyTypes<SharedReferencesCache>].
+    pub const fn new_with_cache<T: DatexProxyTypes<SharedReferencesCache>>(
         metadata: DatexTypeMetadata,
     ) -> Self {
         Self {
             metadata,
             resolve_type: T::datex_type
                 as fn(&mut SharedReferencesCache) -> Type,
+        }
+    }
+    
+    /// Creates a new [DatexTypeRegistration] for a type T that implements [DatexProxyTypes<()>].
+    pub const fn new_without_cache<T: DatexProxyTypes<()>>(
+        metadata: DatexTypeMetadata,
+    ) -> Self {
+        Self {
+            metadata,
+            resolve_type: |_| T::datex_type(&mut ()),
         }
     }
 
