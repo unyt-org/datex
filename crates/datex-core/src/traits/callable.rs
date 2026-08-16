@@ -74,7 +74,7 @@ impl_datex_callable!(10);
 #[cfg(test)]
 mod tests {
     use crate::{
-        runtime::execution::ExecutionError,
+        prelude::*, runtime::execution::ExecutionError,
         traits::callable::IntoDatexCallable,
         values::core_values::callable::error::CallableError,
     };

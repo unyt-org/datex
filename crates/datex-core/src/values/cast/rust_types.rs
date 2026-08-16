@@ -297,6 +297,7 @@ mod tests {
             DatexValueProxyInfallibleSerialize, DatexValueProxySerialize,
             TryFromDatexValueError, TryToDatexValueError,
         },
+        prelude::*,
         values::{
             core_value::CoreValue,
             core_values::{boolean::Boolean, text::Text},
