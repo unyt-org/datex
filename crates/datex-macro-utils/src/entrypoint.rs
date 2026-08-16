@@ -15,6 +15,7 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
+use datex_core::datex_proxy::DatexValueContainerProxyInfallibleSerializeWithoutContext;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
@@ -254,7 +255,7 @@ pub fn get_arg_ident_and_type(
 fn compile_datex_config(config: RuntimeConfig) -> Vec<u8> {
     let (dxb, _) = compile_template(
         "?",
-        vec![Some(config.to_value_container())],
+        vec![Some(config.to_value_container_without_context())],
         CompileOptions::default(),
         // FIXME: stub runtime for now
         Runtime::stub(),
