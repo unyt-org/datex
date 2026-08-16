@@ -49,9 +49,9 @@ struct ExampleNewType(Example);
 
 fn assert_round_trip<T>(value: T)
 where
-    T: DatexValueContainerProxy + PartialEq + std::fmt::Debug + Clone,
+    T: DatexValueContainerProxy<()> + PartialEq + std::fmt::Debug + Clone,
 {
-    let value_container = value.clone().try_to_value_container().unwrap();
+    let value_container = value.clone().try_to_value_container_without_context().unwrap();
     let deserialized_value =
         T::try_from_value_container(value_container).unwrap();
     assert_eq!(value, deserialized_value);
@@ -81,6 +81,7 @@ use datex_core::{
     },
 };
 use test_case::test_case;
+use datex_core::datex_proxy::{DatexTypeWithoutContext, DatexValueContainerProxySerializeWithoutContext};
 
 #[test_case(
     Example {
@@ -104,7 +105,7 @@ use test_case::test_case;
 ]) ; "map of primitives")]
 fn round_trip_struct<T>(structure: T)
 where
-    T: DatexValueContainerProxy + PartialEq + std::fmt::Debug + Clone,
+    T: DatexValueContainerProxy<()> + PartialEq + std::fmt::Debug + Clone,
 {
     assert_round_trip(structure);
 }
@@ -578,7 +579,7 @@ fn struct_with_owned_shared_value_container() {
 
 #[test]
 fn get_datex_type_from_struct() {
-    let dx_type = Example::datex_type(&mut SharedReferencesCache::default());
+    let dx_type = Example::datex_type_without_context();
     println!("{}", dx_type);
 
     assert_eq!(
@@ -639,7 +640,7 @@ fn get_datex_type_from_struct() {
 #[test]
 fn get_datex_type_from_enum() {
     let dx_type =
-        ExampleEnum::datex_type(&mut SharedReferencesCache::default());
+        ExampleEnum::datex_type_without_context();
     println!("{}", dx_type);
 
     assert_eq!(
@@ -775,18 +776,20 @@ fn recursive_struct() {
 #[test]
 fn mutual_recursion() {
     #[derive(Datex)]
+    #[datex(structural_recursive)]
     struct A {
         b: Box<B>,
     }
 
     #[derive(Datex)]
+    #[datex(structural_recursive)]
     struct B {
         a: Box<A>,
     }
     let cache = &mut SharedReferencesCache::default();
 
-    let ty_a = A::datex_type(cache);
-    let ty_b = B::datex_type(cache);
+    let ty_a = A::datex_type_without_context();
+    let ty_b = B::datex_type_without_context();
 
     ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
         TypeDefinition::Map(map) => {

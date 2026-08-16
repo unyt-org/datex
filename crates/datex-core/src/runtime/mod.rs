@@ -24,7 +24,7 @@ mod runner;
 pub mod test_utils;
 
 use crate::{
-    core_compiler::InstructionInput, inspector::register_inspector_namespace,
+    core_compiler::InstructionInput,  //inspector::register_inspector_namespace,
     values::core_values::endpoint::Endpoint,
 };
 pub use config::*;
@@ -51,7 +51,7 @@ impl Runtime {
         let runtime = Runtime {
             internal: Rc::new(runtime_internal),
         };
-        register_inspector_namespace(&runtime);
+        // register_inspector_namespace(&runtime);
         runtime
     }
 

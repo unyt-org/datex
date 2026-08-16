@@ -45,7 +45,7 @@ pub fn generate_native_callable(
 
     let return_type = match &sig.output {
         syn::ReturnType::Default => None,
-        syn::ReturnType::Type(_, box ty) if matches!(ty, syn::Type::Tuple(tuple) if tuple.elems.is_empty()) => {
+        syn::ReturnType::Type(_, box ty) if matches!(ty, Type::Tuple(tuple) if tuple.elems.is_empty()) => {
             None
         }
         syn::ReturnType::Type(_, ty) => Some(ty),
@@ -58,13 +58,13 @@ pub fn generate_native_callable(
 
     let return_type_tokens = match return_type {
         Some(ref ty) => {
-            quote! { Some(Box::new(<#ty as DatexProxyTypes>::datex_type(cache))) }
+            quote! { Some(Box::new(<#ty as DatexProxyTypes<_>>::datex_type(cache))) }
         }
         None => quote! { None },
     };
     let yeet_type_tokens = match yeet_type {
         Some(ref ty) => {
-            quote! { Some(Box::new(<#ty as DatexProxyTypes>::datex_type(cache))) }
+            quote! { Some(Box::new(<#ty as DatexProxyTypes<_>>::datex_type(cache))) }
         }
         None => quote! { None },
     };
@@ -88,7 +88,7 @@ pub fn generate_native_callable(
                 parameter_defs.push(quote! {
                     (
                         Some(#name.to_string()),
-                        <#ty as DatexProxyTypes>::datex_type(cache)
+                        <#ty as DatexProxyTypes<_>>::datex_type(cache)
                     )
                 });
             }
@@ -168,7 +168,12 @@ pub fn generate_native_callable(
     // with return type, wrap in Some, otherwise return None
     let method_call = if return_type.is_some() {
         quote! {
-            Some(ValueContainer::try_from(#method_call_body).unwrap())
+            Some(
+                #datex_core_crate_name::datex_proxy::DatexValueContainerProxySerialize::try_to_value_container(
+                    #method_call_body,
+                    cache
+                ).unwrap()
+            )
         }
     } else {
         quote! {{

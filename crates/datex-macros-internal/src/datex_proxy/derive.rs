@@ -181,7 +181,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let serialize = match is_fallible_serialization {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         false => {
-            quote! {
+            let serialization_impls = quote! {
                 #[automatically_derived]
                 impl #generics DatexValueProxySerialize<#context> for #ident #generics {
                     fn try_to_value(self, cache: &mut #context) -> Result<Value, TryToDatexValueError> {
@@ -197,10 +197,26 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                         #into_datex_fields_inner
                     }
                 }
+            };
+            // Also add From<T> for Value if possible without context.
+            if top_level_attributes.type_kind.is_structural_recursive() {
+                quote! {
+                    #serialization_impls
+
+                    #[automatically_derived]
+                    impl #generics From<#ident> for Value #generics {
+                        fn from(value: #ident) -> Self {
+                            value.to_value(&mut ())
+                        }
+                    }
+                }
+            }
+            else {
+                serialization_impls
             }
         }
         true => {
-            quote! {
+            let serialization_impls = quote! {
                 #[automatically_derived]
                 impl #generics TryFrom<#ident> for ValueContainer #generics {
                     type Error = TryToDatexValueError;
@@ -216,6 +232,25 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                         Ok(#into_datex_fields_inner)
                     }
                 }
+            };
+
+            // Also add TryFrom<T> for Value if possible without context.
+            if top_level_attributes.type_kind.is_structural_recursive() {
+                quote! {
+                    #serialization_impls
+
+                    #[automatically_derived]
+                    impl #generics TryFrom<#ident> for Value #generics {
+                        type Error = TryToDatexValueError;
+
+                        fn try_from(value: #ident) -> Result<Self, Self::Error> {
+                            value.try_to_value(&mut ())
+                        }
+                    }
+                }
+            }
+            else {
+                serialization_impls
             }
         }
     };
@@ -372,12 +407,14 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident, context: &TokenStream) 
         FieldsType::Transparent => {
             let into_field = into_datex_fields.first().unwrap();
             quote! {
-                let container = #into_field;
-                if let ValueContainer::Local(value) = container {
-                    value
-                }
-                else {
-                    unreachable!("Expected ValueContainer::Local");
+                {
+                    let container = #into_field;
+                    if let ValueContainer::Local(value) = container {
+                        value
+                    }
+                    else {
+                        unreachable!("Expected ValueContainer::Local");
+                    }
                 }
             }
         }

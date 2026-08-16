@@ -29,6 +29,7 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
+use datex_core::datex_proxy::DatexValueContainerProxySerialize;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -131,7 +132,7 @@ fn signatures() {
 
     // call method directly on an Example instance via the ValueContainer
     let example_instance = Example { a: 1, b: 2 };
-    let example_instance_vc = ValueContainer::from(example_instance);
+    let example_instance_vc = example_instance.try_to_value_container(&mut memory).unwrap();
     // TODO: also store type in value container (this will require passing cache to the ValueContainer::from function somehow)
     // Then we can access methods on the type definition here
 
