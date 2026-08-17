@@ -511,6 +511,13 @@ pub struct ApplyData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
+pub struct CallMethodData {
+    pub method_name: ShortTextData,
+    pub arg_count: u8,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
 pub struct ImplTypeData {
     pub impl_count: u8,
     #[br(count = impl_count)]

@@ -99,7 +99,9 @@ use alloc::rc::Rc;
 use core::{cell::RefCell, ops::DerefMut};
 mod collected_execution_result;
 use crate::{
-    global::protocol_structures::instruction_data::CallableSignatureData,
+    global::protocol_structures::instruction_data::{
+        CallMethodData, CallableSignatureData,
+    },
     types::type_definition::callable::CallableTypeDefinition,
     value_updates::update_data::{
         DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
@@ -435,6 +437,7 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::UnaryPlus |
                             RegularInstruction::BitwiseNot |
                             RegularInstruction::Apply(_) |
+                            RegularInstruction::CallMethod(_) |
                             RegularInstruction::GetEntryText(_) |
                             RegularInstruction::GetEntryIndex(_) |
                             RegularInstruction::GetEntryDynamic |
@@ -1283,6 +1286,28 @@ pub gen fn inner_execution_loop(
                                     }
                                     CollectedExecutionResult::value(None)
                                 }
+
+                                RegularInstruction::CallMethod(CallMethodData {method_name, ..}) => {
+                                    let method_name = method_name.0;
+
+                                    let mut args = collected_results.try_collect_value_containers(&mut state)?;
+                                    // last argument is the callee
+                                    let callee = args.remove(args.len() - 1);
+
+                                    interrupt_with_maybe_value!(
+                                        interrupt_provider,
+                                        ExecutionInterrupt::External(
+                                            ExternalExecutionInterrupt::CallMethod(
+                                                callee, method_name, args
+                                            )
+                                        )
+                                    )
+                                        .map(|val| {
+                                            RuntimeValue::ValueContainer(val)
+                                        })
+                                        .into()
+                                }
+
                                 RegularInstruction::UnboundedStatementsEnd(
                                     UnboundedStatementsData { terminated },
                                 ) => {

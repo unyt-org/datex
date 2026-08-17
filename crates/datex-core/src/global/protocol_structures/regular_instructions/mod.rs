@@ -210,6 +210,13 @@ impl RegularInstruction {
         RegularInstruction::Apply(ApplyData { arg_count })
     }
 
+    pub fn call_method(method_name: String, arg_count: u8) -> Self {
+        RegularInstruction::CallMethod(CallMethodData {
+            method_name: ShortTextData(method_name),
+            arg_count,
+        })
+    }
+
     /// Creates an apply instruction with the single variant.
     pub fn apply_single() -> Self {
         RegularInstruction::ApplySingle
@@ -536,6 +543,9 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::APPLY)]
     Apply(ApplyData),
 
+    #[magic(InstructionCode::CALL_METHOD)]
+    CallMethod(CallMethodData),
+
     #[magic(InstructionCode::GET_ENTRY_TEXT)]
     GetEntryText(ShortTextData),
 
@@ -799,6 +809,12 @@ impl RegularInstruction {
                 )
             } // arguments plus base to apply to
 
+            RegularInstruction::CallMethod(call_method_data) => {
+                NextExpectedInstructions::Regular(
+                    call_method_data.arg_count as u32 + 1,
+                )
+            } // arguments plus base to call method on
+
             RegularInstruction::GetEntryText(_)
             | RegularInstruction::GetEntryIndex(_)
             | RegularInstruction::TakeEntryText(_)
@@ -984,6 +1000,9 @@ impl RegularInstruction {
             }
             RegularInstruction::JumpIfFalse(offset) => {
                 write!(string, "offset: {}", offset.offset)
+            }
+            RegularInstruction::CallMethod(data) => {
+                write!(string, "[method_name: {}, arg_count: {}]", data.method_name.0, data.arg_count)
             }
             RegularInstruction::BigInteger(data) => {
                 write!(string, "{}", data.0)
@@ -1235,7 +1254,7 @@ impl RegularInstruction {
 }
 
 use crate::global::protocol_structures::instruction_data::{
-    CallableData, CallableDeclarationData,
+    CallMethodData, CallableData, CallableDeclarationData,
 };
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
 #[cfg(feature = "disassembler")]

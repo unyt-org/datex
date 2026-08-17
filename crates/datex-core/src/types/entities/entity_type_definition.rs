@@ -1,4 +1,4 @@
-use super::entity_impls::EntityImpl;
+use super::entity_impls::{EntityImpl, EntityImplMethod};
 use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
@@ -52,7 +52,16 @@ impl EntityTypeDefinition {
     pub fn impls(&self) -> &[EntityImpl] {
         &self.impls
     }
+    
+    /// Returns a reference to the method for the given method name, if it exists in this implementation.
+    pub fn try_get_method(&self, method_name: &str) -> Option<&EntityImplMethod> {
+        self.impls
+            .iter()
+            .filter_map(|impl_ty| impl_ty.try_get_method(method_name))
+            .next()
+    }
 
+    /// Returns a reference to the (static) method for the given property name, if it exists in this implementation.
     pub fn try_get_property(&self, property_name: &str) -> Option<&Callable> {
         self.impls
             .iter()

@@ -979,9 +979,20 @@ fn compile_expression(
                     }
                 }
                 _ => {
-                    return Err(CompilerError::UnknownInterfaceMethod(
-                        call.method_name.to_string(),
-                    ));
+                    // TODO: check if method actually exists
+
+                    compilation_context
+                        .core_context
+                        .write(RegularInstruction::call_method(call.method_name, call.arguments.len() as u8));
+
+                    for argument in call.arguments.drain(..) {
+                        scope = compile_expression(
+                            compilation_context,
+                            RichAst::new(argument, &metadata),
+                            CompileMetadata::default(),
+                            scope,
+                        )?;
+                    }
                 }
             }
 

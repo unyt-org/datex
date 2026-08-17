@@ -37,6 +37,7 @@ use core::{
     hash::{Hash, Hasher},
     ops::FnOnce,
 };
+use crate::values::core_values::endpoint::Endpoint;
 
 pub mod datex_proxy;
 pub mod error;
@@ -60,6 +61,13 @@ impl ValueContainer {
     /// Creates a new [ValueContainer::Local] from a [Value]
     pub fn local(value: impl Into<Value>) -> Self {
         ValueContainer::Local(value.into())
+    }
+    
+    pub fn owner(&self) -> Endpoint {
+        match self {
+            ValueContainer::Local(value) => Endpoint::LOCAL,
+            ValueContainer::Shared(shared) => shared.pointer_address().endpoint(),
+        }
     }
 
     pub fn collapsed_value(&self) -> CollapsedContainerValue<'_> {

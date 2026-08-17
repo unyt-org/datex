@@ -33,6 +33,7 @@ pub enum InstructionCode {
     APPLY_ZERO,
     APPLY_SINGLE,
     APPLY,
+    CALL_METHOD,
 
     GET_ENTRY_DYNAMIC, // get property with arbitrary key value
     GET_ENTRY_INDEX,   // get property with integer index

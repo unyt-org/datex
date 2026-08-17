@@ -257,7 +257,7 @@ fn type_cast_expression(
         // Entity {...}
         TypeDefinition::Box(box Type::Entity(entity_container)) => DatexExpressionData::EntityValue(EntityValueExpression {
             entity_name: entity_container.entity_definition().name.clone(),
-            entity_address: entity_container.pointer_address(),
+            entity_address: Some(entity_container.pointer_address()),
             value: expression.with_default_span(),
         }),
         e => {

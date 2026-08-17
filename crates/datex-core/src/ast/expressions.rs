@@ -659,7 +659,7 @@ pub struct VariantAccess {
 #[derive(Clone, Debug, PartialEq)]
 pub struct EntityValueExpression {
     pub entity_name: String,
-    pub entity_address: PointerAddress,
+    pub entity_address: Option<PointerAddress>,
     pub value: DatexExpression,
 }
 

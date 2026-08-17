@@ -365,6 +365,7 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::BitwiseNot
                         | RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. })
                         | RegularInstruction::Apply(_)
+                        | RegularInstruction::CallMethod(_)
                         | RegularInstruction::GetEntryText(_)
                         | RegularInstruction::GetEntryIndex(_)
                         | RegularInstruction::GetEntryDynamic
@@ -833,6 +834,36 @@ pub fn ast_from_bytecode(
                                     base,
                                     arguments,
                                 })
+                                    .with_default_span()
+                                    .into()
+                            }
+
+                            RegularInstruction::CallMethod(data) => {
+                                let mut arguments =
+                                    collected_results.collect_value_results();
+                                // base is the last collected argument
+                                let base =
+                                    arguments.remove(arguments.len() - 1);
+                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                    base,
+                                    data.method_name.0,
+                                    arguments,
+                                ))
+                                    .with_default_span()
+                                    .into()
+                            }
+                            
+                            RegularInstruction::CallMethod(method_data) => {
+                                let mut arguments =
+                                    collected_results.collect_value_results();
+                                // base is the last collected argument
+                                let base =
+                                    arguments.remove(arguments.len() - 1);
+                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                                    base,
+                                    method_data.method_name.0,
+                                    arguments,
+                                ))
                                     .with_default_span()
                                     .into()
                             }
