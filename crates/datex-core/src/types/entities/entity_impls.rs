@@ -12,6 +12,32 @@ pub struct EntityImpl {
     pub static_methods: Vec<Callable>, // TODO: shared or local callables
 }
 
+impl EntityImpl {
+    pub fn new(
+        methods: Vec<EntityImplMethod>,
+        static_methods: Vec<Callable>,
+    ) -> Self {
+        Self {
+            methods,
+            static_methods,
+        }
+    }
+
+    pub fn try_get_property(&self, property_name: &str) -> Option<&Callable> {
+        self.methods
+            .iter()
+            .map(|met| &met.callable)
+            .chain(self.static_methods.iter())
+            .find(|method| {
+                method
+                    .name
+                    .as_ref()
+                    .map(|name| name == property_name)
+                    .unwrap_or(false)
+            })
+    }
+}
+
 /// Represents a method in an entity implementation.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct EntityImplMethod {

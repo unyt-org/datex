@@ -83,7 +83,10 @@ fn create_shared(
 
 fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
     let core_value_expression = core_value_to_datex_expression(&value.inner);
-    if let Some(custom_type) = &value.custom_type {
+    // only entity types with a non default type need to be casted
+    if value.needs_type_cast()
+        && let Some(custom_type) = &value.custom_type
+    {
         type_cast_expression(core_value_expression, custom_type)
     } else {
         core_value_expression

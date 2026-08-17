@@ -245,11 +245,9 @@ impl SharedReferencesCache {
         );
         // NOTE: this treats shared_container as if it already contains a type value.
         // So accessing it as a type before finish_shared_type is called will panic.
-        SharedTypeReservation::New(
-            SharedContainerContainingEntityType::new_unchecked(
-                shared_container,
-            ),
-        )
+        SharedTypeReservation::New(unsafe {
+            SharedContainerContainingEntityType::new_unchecked(shared_container)
+        })
     }
 
     pub fn finish_shared_type(
@@ -263,6 +261,9 @@ impl SharedReferencesCache {
         if !ty.value_container().is_uninitialized() {
             panic!("Type is already initialized: {}", address);
         }
+        *ty.value_container_mut() = ValueContainer::Local(
+            CoreValue::EntityTypeDefinition(definition).into(),
+        );
     }
 }
 

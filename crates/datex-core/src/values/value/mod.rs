@@ -2,8 +2,10 @@
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
     prelude::*,
-    types::type_definition::{
-        TypeDefinition, callable::CallableTypeDefinition,
+    shared_values::errors::KeyNotFoundError,
+    types::{
+        r#type::Type::{self, Entity},
+        type_definition::{TypeDefinition, callable::CallableTypeDefinition},
     },
     utils::sheep::Sheep,
     values::{
@@ -30,6 +32,7 @@ use crate::{
     values::core_values::endpoint::Endpoint,
 };
 use core::{
+    cell::Ref,
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
@@ -59,6 +62,23 @@ impl<T: Into<CoreValue>> From<T> for Value {
         Value {
             inner,
             custom_type: None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ValueContainerOrCallable<'a> {
+    Callable(Ref<'a, Callable>),
+    ValueContainer(&'a ValueContainer),
+}
+
+impl<'a> From<ValueContainerOrCallable<'a>> for ValueContainer {
+    fn from(value: ValueContainerOrCallable<'a>) -> Self {
+        match value {
+            ValueContainerOrCallable::Callable(callable) => {
+                ValueContainer::from(callable.clone())
+            }
+            ValueContainerOrCallable::ValueContainer(vc) => vc.clone(),
         }
     }
 }
@@ -193,19 +213,62 @@ impl Value {
         }
     }
 
+    /// Returns true if the value is of structual type.
+    pub fn has_structural_type(&self) -> bool {
+        self.actual_type().is_structural()
+    }
+
+    /// Returns true if the value is of tagged type.
+    pub fn has_tagged_type(&self) -> bool {
+        self.actual_type().is_tagged()
+    }
+
+    /// Returns true if the value needs to be casted to its actual type.
+    /// This allows us to strip away the type cast on compilation, as not required.
+    pub fn needs_type_cast(&self) -> bool {
+        if self.has_default_type() {
+            return false;
+        }
+        if self.has_structural_type() && !self.has_tagged_type() {
+            return false;
+        }
+        true
+    }
+
     /// Gets a property on the value if applicable (e.g. for map and structs)
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<&ValueContainer, AccessError> {
+    ) -> Result<ValueContainerOrCallable, AccessError> {
         match self.inner {
             CoreValue::Map(ref map) => {
                 // If the value is a map, get the property
-                Ok(map.try_get(key)?)
+                Ok(ValueContainerOrCallable::ValueContainer(map.try_get(key)?))
             }
             CoreValue::List(ref list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_get(index)?)
+                    Ok(ValueContainerOrCallable::ValueContainer(
+                        list.try_get(index)?,
+                    ))
+                } else {
+                    Err(AccessError::InvalidIndexKey)
+                }
+            }
+            CoreValue::Type(Type::Entity(ref container)) => {
+                if let Some(key) = key.into().try_as_text() {
+                    Ok(ValueContainerOrCallable::Callable(
+                        Ref::filter_map(
+                            container.entity_definition(),
+                            |entity_definition| {
+                                entity_definition.try_get_property(&key)
+                            },
+                        )
+                        .map_err(|_| {
+                            AccessError::KeyNotFound(KeyNotFoundError::new(
+                                key.into(),
+                            ))
+                        })?,
+                    ))
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }

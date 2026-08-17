@@ -3,6 +3,7 @@ use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     types::type_definition::TypeDefinition,
+    values::core_values::callable::Callable,
 };
 use core::fmt::Display;
 
@@ -50,6 +51,13 @@ impl EntityTypeDefinition {
 
     pub fn impls(&self) -> &[EntityImpl] {
         &self.impls
+    }
+
+    pub fn try_get_property(&self, property_name: &str) -> Option<&Callable> {
+        self.impls
+            .iter()
+            .filter_map(|impl_ty| impl_ty.try_get_property(property_name))
+            .next()
     }
 }
 

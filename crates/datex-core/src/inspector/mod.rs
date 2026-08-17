@@ -29,10 +29,8 @@ impl Inspector {
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.
 pub fn register_inspector_namespace(runtime: &Runtime) {
     let mut memory = runtime.memory().borrow_mut();
-    // FIXME
     let inspector_type =
         ValueContainer::from(Inspector::datex_type(&mut memory));
-
     runtime
         .endpoint_properties_mut()
         .insert("Inspector".to_string(), inspector_type);

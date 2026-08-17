@@ -89,6 +89,22 @@ pub enum TypeDefinition {
     CoreType(CoreLibTypeId), // -> $123
 }
 
+impl TypeDefinition {
+    /// Returns true if the type definition is a structural type (e.g. a collection, literal, or shared type).
+    pub fn is_structural(&self) -> bool {
+        match self {
+            TypeDefinition::CoreType(_)
+            | TypeDefinition::Box(box Type::Entity(_))
+            | TypeDefinition::ImplType(_) => false,
+            _ => true,
+        }
+    }
+
+    pub fn is_tagged(&self) -> bool {
+        matches!(self, TypeDefinition::TaggedType(_))
+    }
+}
+
 impl Hash for TypeDefinition {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         match self {
