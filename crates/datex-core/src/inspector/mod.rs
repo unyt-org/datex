@@ -9,8 +9,12 @@ use crate::{
     },
 };
 use datex_macros_internal::{Datex, datex};
+use crate::datex_proxy::DatexValueProxyInfallibleSerialize;
+use crate::datex_proxy::shared::Shared;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
-#[derive(Datex, Debug)]
+#[derive(Datex, Debug, Clone)]
 pub struct Inspector {
     name: String, // TODO: We must make private properties to be ignore by the type definition and only use public ones, otherwise the prop and methods would colide in DATEX
 }
@@ -18,8 +22,12 @@ pub struct Inspector {
 #[datex]
 impl Inspector {
     /// Creates a new Inspector instance.
-    pub fn create(name: String) -> Self {
-        Inspector { name }
+    pub fn create(
+        // TODO
+        // #[runtime] runtime: Runtime,
+        name: String
+    ) -> Shared<Inspector> { // TODO: add SharedRef here, caller should not own inspector
+        Inspector { name }.shared(&mut SelfOwnedPointerAddressProvider::default(), &mut SharedReferencesCache::default())
     }
     pub fn name_getter(&self) -> String {
         self.name.clone()
@@ -31,6 +39,7 @@ pub fn register_inspector_namespace(runtime: &Runtime) {
     let mut memory = runtime.memory().borrow_mut();
     let inspector_type =
         ValueContainer::from(Inspector::datex_type(&mut memory));
+
     runtime
         .endpoint_properties_mut()
         .insert("Inspector".to_string(), inspector_type);

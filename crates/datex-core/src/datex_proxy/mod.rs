@@ -17,9 +17,10 @@ use crate::{
     types::r#type::Type,
     values::{value::Value, value_container::ValueContainer},
 };
-
+use crate::datex_proxy::shared::Shared;
 #[cfg(feature = "decompiler")]
 use crate::decompiler::{DecompileOptions, decompile_value};
+use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 #[derive(Debug, Clone)]
 pub struct TryFromDatexValueError(pub String);
@@ -231,11 +232,23 @@ pub trait DatexValueContainerProxySerialize<T> {
 }
 
 /// Conversion from a rust value to a [Value]. Might fail if serde values are serialized.
-pub trait DatexValueProxySerialize<T> {
+pub trait DatexValueProxySerialize<C> {
     fn try_to_value(
         self,
-        context: &mut T,
+        context: &mut C,
     ) -> Result<Value, TryToDatexValueError>;
+
+    fn try_shared(
+        self, 
+        address_provider: &mut SelfOwnedPointerAddressProvider,
+        context: &mut C
+    ) -> Result<Shared<Self, C>, TryToDatexValueError> where Self: Sized + Clone {
+        Shared::try_new(
+            self,
+            address_provider,
+            context,
+        )
+    }
 }
 
 /// Infallible conversion from a rust value to a [ValueContainer].
@@ -260,6 +273,18 @@ pub trait DatexValueContainerProxyInfallibleSerialize<C> {
 /// Only works if no serde values are serialized.
 pub trait DatexValueProxyInfallibleSerialize<C> {
     fn to_value(self, context: &mut C) -> Value;
+
+    fn shared(
+        self,
+        address_provider: &mut SelfOwnedPointerAddressProvider,
+        context: &mut C
+    ) -> Shared<Self, C> where Self: Sized + Clone + DatexValueProxySerialize<C> {
+        Shared::new(
+            self,
+            address_provider,
+            context,
+        )
+    }
 }
 
 // Blanket DatexValueContainerProxy trait impls for types that implement DatexValueProxy traits:

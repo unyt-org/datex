@@ -19,6 +19,8 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+
 impl<T, C> DatexValueContainerProxyInfallibleSerialize<C> for Shared<T, C>
 where
     Shared<T, C>: DatexValueProxyInfallibleSerialize<C>,
@@ -30,14 +32,28 @@ where
     }
 }
 
-impl<T, C> DatexValueContainerProxySerialize<C> for Shared<T, C>
+// impl<T, C> DatexValueContainerProxySerialize<C> for Shared<T, C>
+// where
+//     Shared<T, C>: DatexValueProxySerialize<C>,
+//     T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
+// {
+//     fn try_to_value_container(
+//         self,
+//         _context: &mut C,
+//     ) -> Result<ValueContainer, TryToDatexValueError> {
+//         Ok(ValueContainer::Shared(self.container))
+//     }
+// }
+impl<T> DatexValueContainerProxySerialize<SharedReferencesCache>
+for Shared<T, SharedReferencesCache>
 where
-    Shared<T, C>: DatexValueProxySerialize<C>,
-    T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
+    Shared<T, SharedReferencesCache>: DatexValueProxySerialize<SharedReferencesCache>,
+    T: DatexValueContainerProxySerialize<SharedReferencesCache>
+    + DatexValueContainerProxyDeserialize,
 {
     fn try_to_value_container(
         self,
-        _context: &mut C,
+        _context: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, TryToDatexValueError> {
         Ok(ValueContainer::Shared(self.container))
     }
