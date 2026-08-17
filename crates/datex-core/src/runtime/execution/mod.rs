@@ -1171,6 +1171,23 @@ mod tests {
     }
 
     #[test]
+    fn conditional_results_return() {
+        let script = "
+            var a = 1;
+            var b = 2;
+            if (false) (
+                a = 2
+            ) else (
+                a = 3;
+                b = 2;
+            );
+            b
+            ";
+        let result = execute_datex_script_debug_with_result(script);
+        assert_eq!(result, Integer::from(2).into());
+    }
+
+    #[test]
     fn conditional_complex_result() {
         let script = "
             var c = 0;
