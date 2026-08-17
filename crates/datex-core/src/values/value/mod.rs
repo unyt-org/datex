@@ -83,10 +83,7 @@ impl Value {
         self.inner
     }
     pub fn is_uninitialized(&self) -> bool {
-        match &self.inner {
-            CoreValue::Uninitialized => true,
-            _ => false,
-        }
+        matches!(&self.inner, CoreValue::Uninitialized)
     }
 
     /// Strips any local observers from the given value container.
@@ -96,11 +93,11 @@ impl Value {
         self
     }
 
-    /// Creates a new Value representing a containerized value.
+    /// Creates a new Value representing a boxed value.
     /// This can be used to wrap a [ValueContainer] directly into a local [Value],
     /// e.g. for #Tagged(shared X) or (X | null) | null
-    pub fn container(value: impl Into<ValueContainer>) -> Self {
-        Value::from(CoreValue::Container(Box::new(value.into())))
+    pub fn boxed(value: impl Into<ValueContainer>) -> Self {
+        Value::from(CoreValue::Box(Box::new(value.into())))
     }
 }
 

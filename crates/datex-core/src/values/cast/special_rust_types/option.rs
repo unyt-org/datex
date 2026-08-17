@@ -30,12 +30,10 @@ impl<T: DatexValueProxyInfallibleSerialize<C>, C>
     DatexValueProxyInfallibleSerialize<C> for Option<T>
 {
     fn to_value(self, context: &mut C) -> Value {
-        Value::container(
-            match self {
-                None => Value::null(),
-                Some(value) => value.to_value(context),
-            }
-        )
+        Value::boxed(match self {
+            None => Value::null(),
+            Some(value) => value.to_value(context),
+        })
     }
 }
 
@@ -45,8 +43,8 @@ impl<T: DatexValueProxy<C>, C> DatexValueProxySerialize<C> for Option<T> {
         context: &mut C,
     ) -> Result<Value, TryToDatexValueError> {
         match self {
-            None => Ok(Value::container(Value::null())),
-            Some(value) => Ok(Value::container(value.try_to_value(context)?)),
+            None => Ok(Value::boxed(Value::null())),
+            Some(value) => Ok(Value::boxed(value.try_to_value(context)?)),
         }
     }
 }
@@ -55,8 +53,7 @@ impl<T: DatexValueProxyDeserialize> DatexValueProxyDeserialize for Option<T> {
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         if matches!(value.inner, CoreValue::Null) {
             Ok(None)
-        }
-        else {
+        } else {
             T::try_from_value(value).map(Some)
         }
     }
@@ -71,7 +68,6 @@ impl<T: DatexValueProxyDeserialize> DatexValueProxyDeserialize for Option<T> {
     }
 }
 
-
 /// TODO: only wrap nested Option<Option<T>> into container. Single option can be mapped directly to X|null
 impl<T, C> DatexProxyTypes<C> for Option<T>
 where
@@ -79,15 +75,17 @@ where
 {
     /// Returns the container type definition for `Option<T>`, which is a union of `null` and the type definition of `T`,
     /// wrapped in a container
-   fn datex_type(memory: &mut C) -> Type {
+    fn datex_type(memory: &mut C) -> Type {
         let inner_type = T::datex_type(memory);
         Type::Definition(
             TypeDefinition::Container(Box::new(
                 TypeDefinition::Union(UnionTypeDefinition(vec![
                     Type::NULL,
                     inner_type,
-                ])).into()
-            )).into(),
+                ]))
+                .into(),
+            ))
+            .into(),
         )
     }
 }
@@ -112,7 +110,7 @@ mod tests {
     #[test]
     fn from_value() {
         let some_value: Value =
-            Value::container(Integer::new(1).to_value_without_context());
+            Value::boxed(Integer::new(1).to_value_without_context());
         let some_option: Option<Integer> =
             Option::try_from_value(some_value).unwrap();
         assert_eq!(some_option, Some(Integer::new(1)));
