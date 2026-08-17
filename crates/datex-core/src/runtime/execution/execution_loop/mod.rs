@@ -13,7 +13,10 @@ use crate::{
         injected_values::compile_injected_values,
     },
     dxb_parser::{
-        body::{DXBParserError, iterate_instructions},
+        body::{
+            DXBParserError, SeekRequest, iterate_instructions,
+            iterate_instructions_with_seek,
+        },
         instruction_collector::{
             CollectionResultsPopper, FullOrPartialResult, InstructionCollector,
             LastUnboundedResultCollector, ResultCollector,
@@ -25,7 +28,7 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, ShortStatementsData,
+                FloatAsInt32Data, InstantData, JumpData, ShortStatementsData,
                 ShortTextData, StatementsData, TaggedValue, TextData,
                 UnboundedStatementsData,
             },
@@ -159,9 +162,12 @@ pub gen fn inner_execution_loop(
     let mut collector =
         InstructionCollector::<CollectedExecutionResult>::default();
 
-    for instruction_result in iterate_instructions(
+    let seek_request: SeekRequest = Rc::new(RefCell::new(None));
+
+    for instruction_result in iterate_instructions_with_seek(
         dxb_body,
         NestedInstructionResolutionStrategy::None,
+        seek_request.clone(),
     ) {
         let instruction = match instruction_result {
             Ok(instruction) => instruction,
@@ -191,11 +197,22 @@ pub gen fn inner_execution_loop(
                 ) =
                     regular_instruction
                 {
-                    let regular_result: Result<
-                        Option<RuntimeValue>,
-                        ExecutionError,
-                    > = try {
-                        match regular_instruction {
+                    if matches!(
+                        regular_instruction,
+                        RegularInstruction::Jump(_)
+                    ) {
+                        if let RegularInstruction::Jump(data) =
+                            regular_instruction
+                        {
+                            seek_request.borrow_mut().replace(data.offset);
+                        }
+                        None
+                    } else {
+                        let regular_result: Result<
+                            Option<RuntimeValue>,
+                            ExecutionError,
+                        > = try {
+                            match regular_instruction {
                             // boolean
                             RegularInstruction::True => Some(ValueContainer::from(true).into()),
                             RegularInstruction::False => Some(ValueContainer::from(false).into()),
@@ -423,6 +440,9 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::SetEntryIndex(_) |
                             RegularInstruction::SetEntryDynamic |
                             RegularInstruction::Is |
+                            RegularInstruction::Conditional |
+                            RegularInstruction::Jump(_) |
+                            RegularInstruction::JumpIfFalse(_) |
                             RegularInstruction::Matches |
                             RegularInstruction::StructuralEqual |
                             RegularInstruction::Equal |
@@ -451,11 +471,13 @@ pub gen fn inner_execution_loop(
                             #[cfg(feature = "disassembler")]
                             RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => unreachable!(),
                         }
-                    };
-                    Some(match regular_result {
-                        Ok(value) => value,
-                        Err(error) => return yield Err(error),
-                    })
+                        };
+
+                        Some(match regular_result {
+                            Ok(value) => value,
+                            Err(error) => return yield Err(error),
+                        })
+                    }
                 } else {
                     None
                 };
@@ -1187,7 +1209,24 @@ pub gen fn inner_execution_loop(
                                         })
                                         .into()
                                 }
+                                RegularInstruction::JumpIfFalse(JumpData { offset }) => {
+                                    let condition_value = collected_results.try_pop_value_container(&mut state)?;
 
+                                    let is_truthy = match &condition_value {
+                                        ValueContainer::Local(value) => match &value.inner {
+                                            CoreValue::Null => false,
+                                            CoreValue::Boolean(boolean) => boolean.is_true(),
+                                            _ => true,
+                                        },
+                                        _ => true,
+                                        // Not Sure how must Truth work in Datex, do we want it like in JS? If some value, then true or only explicit Boolean(True) in true
+                                    };
+
+                                    if !is_truthy {
+                                        seek_request.borrow_mut().replace(offset);
+                                    }
+                                    CollectedExecutionResult::value(None)
+                                }
                                 RegularInstruction::UnboundedStatementsEnd(
                                     UnboundedStatementsData { terminated },
                                 ) => {
