@@ -59,7 +59,7 @@ pub enum TypeDefinition {
     Shared(SharedContainerContainingType), // integer
 
     /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X or (integer | null) | null)
-    Container(Box<Type>),
+    Box(Box<Type>),
 
     /// a callable type definition (signature)
     Callable(CallableTypeDefinition),
@@ -139,7 +139,7 @@ impl Hash for TypeDefinition {
             TypeDefinition::ImplType(definition) => {
                 definition.hash(state);
             }
-            TypeDefinition::Container(ty) => {
+            TypeDefinition::Box(ty) => {
                 ty.hash(state);
             }
             TypeDefinition::CoreType(core) => {
@@ -233,7 +233,7 @@ impl Display for TypeDefinition {
                     yeet_type_code
                 )
             }
-            TypeDefinition::Container(ty) => {
+            TypeDefinition::Box(ty) => {
                 write!(f, "{}", ty)
             }
             TypeDefinition::CoreType(core) => {
@@ -347,7 +347,7 @@ impl TypeDefinition {
     /// If the type definition is a [TypeDefinition::Container] variant, it will be unwrapped and returned as the inner [Type].
     pub fn convert_to_type(self) -> Type {
         match self {
-            TypeDefinition::Container(ty) => *ty,
+            TypeDefinition::Box(ty) => *ty,
             _ => Type::Definition(self.into()),
         }
     }

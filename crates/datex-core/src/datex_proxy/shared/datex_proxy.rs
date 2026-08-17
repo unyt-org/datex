@@ -66,7 +66,7 @@ where
 {
     fn datex_type(context: &mut C) -> Type {
         Type::Definition(TypeDefinitionWithMetadata::new(
-            TypeDefinition::Container(Box::new(T::datex_type(context))),
+            TypeDefinition::Box(Box::new(T::datex_type(context))),
             TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Owned,

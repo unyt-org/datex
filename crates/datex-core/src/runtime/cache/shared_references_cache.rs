@@ -30,7 +30,7 @@ pub struct SharedReferencesCache {
     /// Weak references to remote values that this endpoint is currently subscribed to and receives updates for
     remote_values: HashMap<PointerAddress, WeakSharedContainer>,
     /// Required to convert &mut SharedReferencesCache to &mut ()
-    pub(crate) empty: ()
+    pub(crate) empty: (),
 }
 
 impl SharedReferencesCache {
@@ -224,8 +224,14 @@ impl SharedReferencesCache {
         &mut self,
         address: SelfOwnedPointerAddress,
     ) -> SharedTypeReservation {
-        if let Some(existing) = self.try_get_shared_type(address.clone()) {
-            return SharedTypeReservation::Existing(existing);
+        if let Some(existing) = self
+            .get_owned_reference(&PointerAddress::SelfOwned(address.clone()))
+        {
+            return SharedTypeReservation::Existing(unsafe {
+                SharedContainerContainingEntityType::new_unchecked(
+                    SharedContainer::Referenced(existing.clone()),
+                )
+            });
         }
         let shared_container = unsafe {
             SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
@@ -239,7 +245,11 @@ impl SharedReferencesCache {
         );
         // NOTE: this treats shared_container as if it already contains a type value.
         // So accessing it as a type before finish_shared_type is called will panic.
-        SharedTypeReservation::New(SharedContainerContainingEntityType::new_unchecked(shared_container))
+        SharedTypeReservation::New(
+            SharedContainerContainingEntityType::new_unchecked(
+                shared_container,
+            ),
+        )
     }
 
     pub fn finish_shared_type(

@@ -106,7 +106,7 @@ impl ToInstructions for TypeDefinition {
                         );
                     }
                 }
-                TypeDefinition::Container(nested) => {
+                TypeDefinition::Box(nested) => {
                     for instruction in
                         nested.to_instructions(shared_value_tracking)
                     {

@@ -4,25 +4,16 @@
 //! `Option<T>` in DATEX, where `None` is represented as a tagged type with the tag "None(null)", and `Some(T)` is represented as a tagged type with the tag "Some" and
 //! an inner type of `T`.
 use crate::{
-    compiler::context,
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
     shared_values::errors::KeyNotFoundError,
-    types::{
-        r#type::Type,
-        type_definition::{
-            list::ListTypeDefinition, tagged_type::TaggedTypeDefinition,
-        },
-    },
-    values::{
-        core_value::CoreValue, core_values::list::List, value::Value,
-        value_container::ValueContainer,
-    },
+    types,
+    types::r#type::Type,
+    values::{core_value::CoreValue, value::Value},
 };
 
-use crate::{
-    runtime::cache::shared_references_cache::SharedReferencesCache,
-    types::type_definition::{TypeDefinition, union::UnionTypeDefinition},
+use crate::types::type_definition::{
+    TypeDefinition, union::UnionTypeDefinition,
 };
 
 impl<T: DatexValueProxy<C>, C> DatexValueProxy<C> for Option<T> {}
@@ -78,7 +69,7 @@ where
     fn datex_type(memory: &mut C) -> Type {
         let inner_type = T::datex_type(memory);
         Type::Definition(
-            TypeDefinition::Container(Box::new(
+            TypeDefinition::Box(Box::new(
                 TypeDefinition::Union(UnionTypeDefinition(vec![
                     Type::NULL,
                     inner_type,
@@ -119,10 +110,7 @@ mod tests {
     fn datex_type() {
         let option_type = Option::<Integer>::datex_type_without_context();
         option_type.with_collapsed_type_definition(|td| {
-            assert!(matches!(
-                td,
-                TypeDefinition::Union(UnionTypeDefinition(types)) if types.len() == 2
-            ));
+            assert!(matches!(td, TypeDefinition::Box(_)));
         });
     }
 }

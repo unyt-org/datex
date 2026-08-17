@@ -1,5 +1,5 @@
 use crate::{
-    datex_proxy::DatexProxyTypes,
+    datex_proxy::{DatexProxyTypes, DatexValueContainerProxySerialize},
     prelude::*,
     runtime::Runtime,
     types::type_definition::callable::CallableKind,
@@ -9,7 +9,6 @@ use crate::{
     },
 };
 use datex_macros_internal::{Datex, datex};
-use crate::datex_proxy::DatexValueContainerProxySerialize;
 
 #[derive(Datex, Debug)]
 pub struct Inspector {
@@ -23,8 +22,6 @@ impl Inspector {
         Inspector { name }
     }
     pub fn name_getter(&self) -> String {
-        // FIXME allow &str (lifetime issues)
-        // TODO self arg
         self.name.clone()
     }
 }
@@ -33,21 +30,21 @@ impl Inspector {
 pub fn register_inspector_namespace(runtime: &Runtime) {
     let mut memory = runtime.memory().borrow_mut();
     // FIXME
-    // let inspector_type = ValueContainer::from(Inspector::datex_type(&mut memory));
-    //
-    // runtime
-    //     .endpoint_properties_mut()
-    //     .insert("Inspector".to_string(), inspector_type);
+    let inspector_type =
+        ValueContainer::from(Inspector::datex_type(&mut memory));
+
+    runtime
+        .endpoint_properties_mut()
+        .insert("Inspector".to_string(), inspector_type);
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        inspector,
+        datex_proxy::DatexValueContainerProxyInfallibleSerialize, inspector,
         runtime::cache::shared_references_cache::SharedReferencesCache,
         traits::apply::Apply, values::core_values::map::Map,
     };
-    use crate::datex_proxy::DatexValueContainerProxyInfallibleSerialize;
 
     // FIXME
     // #[test]

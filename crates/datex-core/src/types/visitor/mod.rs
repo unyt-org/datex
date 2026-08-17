@@ -81,7 +81,7 @@ where
 
             folder.fold_map(map, entries)
         }
-        TypeDefinition::Container(inner) => {
+        TypeDefinition::Box(inner) => {
             let folded_inner = fold_type(folder, inner)?;
             folder.fold_nested(inner, folded_inner)
         }

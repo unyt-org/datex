@@ -131,7 +131,7 @@ impl Type {
             )),
             // box otherwise
             _ => Type::Definition(TypeDefinitionWithMetadata::new(
-                TypeDefinition::Container(Box::new(self)),
+                TypeDefinition::Box(Box::new(self)),
                 metadata,
             )),
         }
@@ -207,7 +207,7 @@ impl Type {
         }
         // nest type
         else {
-            TypeDefinition::Container(Box::new(self))
+            TypeDefinition::Box(Box::new(self))
         }
     }
 
