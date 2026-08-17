@@ -15,6 +15,7 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
+use crate::ast::expressions::EntityValueExpression;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -182,6 +183,16 @@ impl<E> VisitableExpression<E> for TagExpression {
         if let Some(expression) = &mut self.expression {
             visitor.visit_datex_expression(expression)?;
         }
+        Ok(())
+    }
+}
+
+impl<E> VisitableExpression<E> for EntityValueExpression {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.value)?;
         Ok(())
     }
 }
@@ -464,6 +475,10 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::Range(range) => range.walk_children(visitor),
 
             DatexExpressionData::Tag(tag) => tag.walk_children(visitor),
+
+            DatexExpressionData::EntityValue(entity_value) => {
+                entity_value.walk_children(visitor)
+            }
 
             DatexExpressionData::Noop
             | DatexExpressionData::OmitRecursive

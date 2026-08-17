@@ -31,6 +31,7 @@ use crate::{
     },
 };
 use core::ops::Range;
+use crate::ast::expressions::EntityValueExpression;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -156,6 +157,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::StackIndex(slot) => {
                 self.visit_stack_index(slot, &expr.span)
+            }
+            DatexExpressionData::EntityValue(entity_value) => {
+                self.visit_entity_value(entity_value, &expr.span)
             }
             DatexExpressionData::StackAssignment(stack_assignment) => {
                 self.visit_stack_assignment(stack_assignment, &expr.span)
@@ -793,6 +797,16 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = range;
+        Ok(VisitAction::ContinueRecursion)
+    }
+    
+    fn visit_entity_value(
+        &mut self,
+        entity_value: &mut EntityValueExpression,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = entity_value;
         Ok(VisitAction::ContinueRecursion)
     }
 }

@@ -590,6 +590,13 @@ impl AstToSourceCodeConverter {
                     }
                 }
             }
+            DatexExpressionData::EntityValue(entity_value) => {
+                format!(
+                    "{} {}",
+                    entity_value.entity_name,
+                    self.format_child(&entity_value.value)
+                )
+            }
             DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
                 match &create_shared_ref.mutability {
                     ReferenceMutability::Mutable => {
@@ -838,8 +845,7 @@ impl AstToSourceCodeConverter {
 
                 let return_type_code = match return_type {
                     Some(return_type) => format!(
-                        "{}{}",
-                        self.pad(" -> "),
+                        " -> {}",
                         self.type_expression_to_source_code(return_type)
                     ),
                     None => "".to_string(),

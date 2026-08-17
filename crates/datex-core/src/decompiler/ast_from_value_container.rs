@@ -42,6 +42,7 @@ use crate::{
     values::core_values::callable::{CallableBody, DatexBytecodeCallable},
 };
 use alloc::format;
+use crate::ast::expressions::{Apply, EntityValueExpression};
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -252,6 +253,12 @@ fn type_cast_expression(
         }) => DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),
             expression: None,
+        }),
+        // Entity {...}
+        TypeDefinition::Box(box Type::Entity(entity_container)) => DatexExpressionData::EntityValue(EntityValueExpression {
+            entity_name: entity_container.entity_definition().name.clone(),
+            entity_address: entity_container.pointer_address(),
+            value: expression.with_default_span(),
         }),
         e => {
             todo!("Handle type cast to {:?} in decompiler", e)

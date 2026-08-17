@@ -245,6 +245,8 @@ pub enum DatexExpressionData {
 
     /// Variant access, e.g. integer/u8
     VariantAccess(VariantAccess),
+
+    EntityValue(EntityValueExpression),
 }
 
 impl Spanned for DatexExpressionData {
@@ -652,6 +654,13 @@ pub struct VariantAccess {
     pub name: String,
     pub variant: String,
     pub base: ResolvedVariable,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct EntityValueExpression {
+    pub entity_name: String,
+    pub entity_address: PointerAddress,
+    pub value: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
