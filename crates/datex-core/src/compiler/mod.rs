@@ -44,7 +44,9 @@ use crate::{
                 InjectedValueType, LocalInjectedValueType,
                 SharedInjectedValueType,
             },
-            instruction_data::{InstructionBlockData, StackIndex},
+            instruction_data::{
+                InstructionBlockData, StackIndex, UnboundedStatementsData,
+            },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
         },
@@ -1527,7 +1529,7 @@ fn compile_expression(
                     Vec::with_capacity(256),
                     compilation_context.inserted_values.clone(),
                     compilation_context.execution_mode,
-                    input,
+                    input.clone(),
                 );
                 compile_expression(
                     &mut ctx,
@@ -1535,7 +1537,11 @@ fn compile_expression(
                     CompileMetadata::default(),
                     scope.clone(),
                 )?;
-                ctx.buf()
+                let DXBWithSharedValues {
+                    dxb,
+                    shared_values: _,
+                } = ctx.into_dxb_with_shared_values();
+                dxb
             };
 
             let then_bytes = {
@@ -1543,14 +1549,19 @@ fn compile_expression(
                     Vec::with_capacity(256),
                     compilation_context.inserted_values.clone(),
                     compilation_context.execution_mode,
+                    input.clone(),
                 );
                 compile_expression(
                     &mut ctx,
-                    RichAst::new(*then_branch, &metadata),
+                    RichAst::new(then_branch, &metadata),
                     CompileMetadata::default(),
                     scope.clone(),
                 )?;
-                ctx.into_buffer()
+                let DXBWithSharedValues {
+                    dxb,
+                    shared_values: _,
+                } = ctx.into_dxb_with_shared_values();
+                dxb
             };
 
             let else_bytes = match else_branch {
@@ -1559,22 +1570,23 @@ fn compile_expression(
                         Vec::with_capacity(256),
                         compilation_context.inserted_values.clone(),
                         compilation_context.execution_mode,
+                        input,
                     );
                     compile_expression(
                         &mut ctx,
-                        RichAst::new(*else_expr, &metadata),
+                        RichAst::new(else_expr, &metadata),
                         CompileMetadata::default(),
                         scope.clone(),
                     )?;
-                    ctx.into_buffer()
+                    let DXBWithSharedValues {
+                        dxb,
+                        shared_values: _,
+                    } = ctx.into_dxb_with_shared_values();
+                    dxb
                 }
                 None => Vec::new(),
             };
-
-            append_regular_instruction(
-                compilation_context.cursor(),
-                RegularInstruction::UnboundedStatements,
-            );
+            compilation_context.write(RegularInstruction::UnboundedStatements);
 
             if else_bytes.is_empty() {
                 let after_then = compilation_context.new_label();
@@ -1588,8 +1600,7 @@ fn compile_expression(
                     .unwrap();
                 compilation_context.cursor().write_all(&then_bytes).unwrap();
                 compilation_context.bind_label(after_then);
-                append_regular_instruction(
-                    compilation_context.cursor(),
+                compilation_context.write(
                     RegularInstruction::UnboundedStatementsEnd(
                         UnboundedStatementsData { terminated: false },
                     ),
@@ -1610,8 +1621,7 @@ fn compile_expression(
                 compilation_context.bind_label(else_start);
                 compilation_context.cursor().write_all(&else_bytes).unwrap();
                 compilation_context.bind_label(after_else);
-                append_regular_instruction(
-                    compilation_context.cursor(),
+                compilation_context.write(
                     RegularInstruction::UnboundedStatementsEnd(
                         UnboundedStatementsData { terminated: false },
                     ),
@@ -4026,5 +4036,158 @@ pub mod tests {
                 )
             ),)
         );
+    }
+
+    #[test]
+    fn conditional_if_only() {
+        let script = "if (true) (42u8)";
+        let result = compile_and_log(script);
+        let expected = vec![
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
+            2,
+            0,
+            0,
+            0,
+            InstructionCode::TRUE.into(),
+            InstructionCode::UINT_8.into(),
+            42,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn conditional_with_variable() {
+        let script = "const x = 10u8; if (true) (x) else (0u8)";
+        let result = compile_and_log(script);
+        let expected = vec![
+            InstructionCode::SHORT_STATEMENTS.into(),
+            2,
+            0,
+            InstructionCode::PUSH_TO_STACK.into(),
+            InstructionCode::UINT_8.into(),
+            10,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
+            10,
+            0,
+            0,
+            0,
+            InstructionCode::TRUE.into(),
+            InstructionCode::TAKE_STACK_VALUE.into(),
+            0,
+            0,
+            0,
+            0,
+            InstructionCode::JUMP.into(),
+            2,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_8.into(),
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn conditional_if_else() {
+        let script = "
+                if (true) (
+                    122u32
+                )
+                else (
+                    123u32
+                )";
+        let result = compile_and_log(script);
+        let expected = vec![
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
+            10,
+            0,
+            0,
+            0,
+            InstructionCode::TRUE.into(),
+            InstructionCode::UINT_32.into(),
+            122,
+            0,
+            0,
+            0,
+            InstructionCode::JUMP.into(),
+            5,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_32.into(),
+            123,
+            0,
+            0,
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn conditional_complex() {
+        let script = "
+                if (true) (
+                    0u8;
+                    1u8;
+                )
+                else if (false) (
+                    0u8
+                )
+                else (
+                    0u8
+                )";
+        let result = compile_and_log(script);
+        let expected = vec![
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
+            12,
+            0,
+            0,
+            0,
+            InstructionCode::TRUE.into(),
+            InstructionCode::SHORT_STATEMENTS.into(),
+            2,
+            1,
+            InstructionCode::UINT_8.into(),
+            0,
+            InstructionCode::UINT_8.into(),
+            1,
+            InstructionCode::JUMP.into(),
+            18,
+            0,
+            0,
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
+            7,
+            0,
+            0,
+            0,
+            InstructionCode::FALSE.into(),
+            InstructionCode::UINT_8.into(),
+            0,
+            InstructionCode::JUMP.into(),
+            2,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_8.into(),
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
+        ];
+        assert_eq!(result, expected);
     }
 }
