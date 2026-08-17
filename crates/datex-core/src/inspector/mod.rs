@@ -21,6 +21,10 @@ pub struct Inspector {
 
 #[datex]
 impl Inspector {
+    // NOTE: the create function can probably not stay here as a static method,
+    // since the Inspector type is a global shared type of the std lib not bound to a specific endpoint
+    // so it is not possible to define a static method that is called on a specific endpoint,
+    // since the definition of "Inspector" must be exactly the same on every endpoint.
     /// Creates a new Inspector instance.
     pub fn create(
         // TODO
