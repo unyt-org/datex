@@ -231,7 +231,7 @@ impl From<&CoreValue> for CoreLibTypeId {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
             }
             CoreValue::Box(_) => {
-                CoreLibTypeId::Base(CoreLibBaseTypeId::Container)
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Box)
             }
         }
     }
