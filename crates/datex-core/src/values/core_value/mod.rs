@@ -35,6 +35,9 @@ use crate::{
     },
 };
 use core::fmt::{Display, Formatter};
+use crate::datex_proxy::DatexValueProxy;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+
 pub mod ops;
 
 #[derive(Default, Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
@@ -57,6 +60,9 @@ pub enum CoreValue {
     Range(Range),
     /// Used for nested values, e.g. #Tagged (shared 42)
     Box(Box<ValueContainer>),
+    // TODO
+    // /// Native rust value with DATEX representation
+    // Native(Box<dyn DatexValueProxy<SharedReferencesCache>>),
 }
 mod child_iterator;
 pub mod datex_proxy;

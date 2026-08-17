@@ -23,6 +23,7 @@ use crate::{
     },
 };
 use core::{result::Result, unreachable};
+use std::cell::Ref;
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
@@ -122,11 +123,18 @@ pub fn execute_dxb_sync(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::CallMethod(callee, method_name, args) => {
-                if let TypeDefinition::Box(box Type::Entity(entity_type)) = callee.actual_type().as_ref()
-                    && let Some(method) = entity_type.entity_definition().try_get_method(&method_name)
+                let entity_type = if let TypeDefinition::Box(box Type::Entity(entity_type)) = callee.actual_type().as_ref()
                 {
+                    Some(entity_type.clone())
+                }
+                else {None};
+
+                if let Some(entity_type) = entity_type && let Some(method) = entity_type.entity_definition().try_get_method(&method_name) {
                     interrupt_provider
-                        .provide_result(InterruptResult::ResolvedValue(try_call_method_sync(&callee, method, args, &runtime)?))
+                        .provide_result(InterruptResult::ResolvedValue(try_call_method_sync(callee, &method, args, &runtime)?))
+                }
+                else {
+                    return Err(ExecutionError::MethodNotFound(method_name));
                 }
             }
             _ => return Err(ExecutionError::RequiresAsyncExecution),
@@ -260,11 +268,18 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::CallMethod(callee, method_name, args) => {
-                if let TypeDefinition::Box(box Type::Entity(entity_type)) = callee.actual_type().as_ref()
-                    && let Some(method) = entity_type.entity_definition().try_get_method(&method_name)
+                let entity_type = if let TypeDefinition::Box(box Type::Entity(entity_type)) = callee.actual_type().as_ref()
                 {
+                    Some(entity_type.clone())
+                }
+                else {None};
+
+                if let Some(entity_type) = entity_type && let Some(method) = entity_type.entity_definition().try_get_method(&method_name) {
                     interrupt_provider
-                        .provide_result(InterruptResult::ResolvedValue(try_call_method_async(&callee, method, args, &runtime).await?));
+                        .provide_result(InterruptResult::ResolvedValue(try_call_method_async(callee, &method, args, &runtime).await?))
+                }
+                else {
+                    return Err(ExecutionError::MethodNotFound(method_name));
                 }
             }
         }
@@ -274,14 +289,17 @@ pub async fn execute_dxb(
 }
 
 fn try_call_method_sync(
-    callee: &ValueContainer, 
-    method: &EntityImplMethod, 
-    args: Vec<ValueContainer>,
+    callee: ValueContainer,
+    method: &EntityImplMethod,
+    mut args: Vec<ValueContainer>,
     runtime: &Runtime
 ) -> Result<Option<ValueContainer>, ExecutionError> {
+    // prepend callee to args
+    args.insert(0, callee.clone());
+
     // only local calls supported for sync execution
     if !method.call_on_owner || callee.owner().is_local_or_equals_endpoint(runtime.endpoint()) {
-        let res = method.callable.try_apply_sync(&runtime, args)?;
+        let res = method.callable.try_apply_sync(runtime, args)?;
         Ok(res)
     } else {
         Err(ExecutionError::RequiresAsyncExecution)
@@ -290,15 +308,18 @@ fn try_call_method_sync(
 
 
 async fn try_call_method_async(
-    callee: &ValueContainer,
+    callee: ValueContainer,
     method: &EntityImplMethod,
-    args: Vec<ValueContainer>,
+    mut args: Vec<ValueContainer>,
     runtime: &Runtime
 ) -> Result<Option<ValueContainer>, ExecutionError> {
+    // prepend callee to args
+    args.insert(0, callee.clone());
+    
     let owner_endpoint = callee.owner();
     // call locally
     if !method.call_on_owner || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint()) {
-        let res = method.callable.try_apply_async(&runtime, args).await?;
+        let res = method.callable.try_apply_async(runtime, args).await?;
         Ok(res)
     }
     // call on owner endpoint
@@ -311,7 +332,7 @@ async fn try_call_method_async(
                 .into(),
         ];
         instructions.extend(args.into_iter().map(InstructionInput::ValueContainer));
-        
+
         let res = runtime
             .execute_instructions_remote(
                 vec![owner_endpoint],

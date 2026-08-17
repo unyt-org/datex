@@ -82,6 +82,7 @@ pub enum ExecutionError {
     ValueError(Box<ValueError>),
     InvalidProgram(Box<InvalidProgramError>),
     AccessError(Box<AccessError>),
+    MethodNotFound(String),
     CacheValueRetrievalError(Box<CacheValueRetrievalError>),
     UpdateError(Box<UpdateError>),
     SubscriberError(Box<SubscriberError>),
@@ -295,6 +296,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::AccessError(err) => {
                 core::write!(f, "Access error: {err}")
+            }
+            ExecutionError::MethodNotFound(method_name) => {
+                core::write!(f, "Method not found: {method_name}")
             }
             ExecutionError::CacheValueRetrievalError(err) => {
                 core::write!(f, "Cache value retrieval error: {err}")
