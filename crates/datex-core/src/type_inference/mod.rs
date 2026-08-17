@@ -1106,15 +1106,15 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     }
     fn visit_conditional(
         &mut self,
-        _conditional: &mut Conditional,
-        span: &Range<usize>,
+        conditional: &mut Conditional,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
-                "Conditional type inference not implemented".into(),
-            ),
-            span.clone(),
-        ))
+        self.infer_expression(&mut conditional.condition)?;
+        let then_type = self.infer_expression(&mut conditional.then_branch)?;
+        if let Some(else_branch) = &mut conditional.else_branch {
+            self.infer_expression(else_branch)?;
+        }
+        mark_type(then_type)
     }
 
     fn visit_unbox(
