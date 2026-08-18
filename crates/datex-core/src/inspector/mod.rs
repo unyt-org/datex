@@ -15,6 +15,7 @@ use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 #[derive(Datex, Debug, Clone)]
+// TODO: #[datex(std_type(0x01))]
 pub struct Inspector {
     name: String, // TODO: We must make private properties to be ignore by the type definition and only use public ones, otherwise the prop and methods would colide in DATEX
 }
