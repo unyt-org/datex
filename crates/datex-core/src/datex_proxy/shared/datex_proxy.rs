@@ -32,28 +32,30 @@ where
     }
 }
 
-// impl<T, C> DatexValueContainerProxySerialize<C> for Shared<T, C>
-// where
-//     Shared<T, C>: DatexValueProxySerialize<C>,
-//     T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
-// {
-//     fn try_to_value_container(
-//         self,
-//         _context: &mut C,
-//     ) -> Result<ValueContainer, TryToDatexValueError> {
-//         Ok(ValueContainer::Shared(self.container))
-//     }
-// }
+// Note: concrete impls for SharedReferencesCache and () are required, generic context does not work
+
 impl<T> DatexValueContainerProxySerialize<SharedReferencesCache>
 for Shared<T, SharedReferencesCache>
 where
-    Shared<T, SharedReferencesCache>: DatexValueProxySerialize<SharedReferencesCache>,
     T: DatexValueContainerProxySerialize<SharedReferencesCache>
     + DatexValueContainerProxyDeserialize,
 {
     fn try_to_value_container(
         self,
         _context: &mut SharedReferencesCache,
+    ) -> Result<ValueContainer, TryToDatexValueError> {
+        Ok(ValueContainer::Shared(self.container))
+    }
+}
+impl<T> DatexValueContainerProxySerialize<()>
+for Shared<T, ()>
+where
+    T: DatexValueContainerProxySerialize<()>
+    + DatexValueContainerProxyDeserialize,
+{
+    fn try_to_value_container(
+        self,
+        _context: &mut (),
     ) -> Result<ValueContainer, TryToDatexValueError> {
         Ok(ValueContainer::Shared(self.container))
     }
