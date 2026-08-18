@@ -1,5 +1,8 @@
 pub mod datex_proxy;
 
+use core::ops::Receiver;
+use core::ops::Deref;
+use std::ops::DerefMut;
 use crate::{
     datex_proxy::{
         DatexValueContainerProxySerialize,
@@ -15,6 +18,19 @@ pub struct Shared<T: DatexValueContainerProxySerialize<C>, C = SharedReferencesC
     value: T, // TODO: store actual value inside core value
     container: SharedContainer,
     _phantom: core::marker::PhantomData<C>,
+}
+
+impl<T: DatexValueContainerProxySerialize<C>, C> Deref for Shared<T, C> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+impl<T: DatexValueContainerProxySerialize<C>, C> DerefMut for Shared<T, C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.value
+    }
 }
 
 impl<T: DatexValueContainerProxySerialize<C>, C> Shared<T, C> {

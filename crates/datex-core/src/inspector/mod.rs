@@ -37,6 +37,11 @@ impl Inspector {
     pub fn name_getter(&self) -> String {
         self.name.clone()
     }
+
+    // TODO
+    // pub fn method_for_shared_instance(self: Shared<Self>) -> String {
+    //     self.borrow().name.clone()
+    // }
 }
 
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.
