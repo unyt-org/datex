@@ -3,6 +3,8 @@
 //! As `Some(None)` would be indistinguishable from `None` when serialized (both would be represented as `null`), we use a tagged type representation for
 //! `Option<T>` in DATEX, where `None` is represented as a tagged type with the tag "None(null)", and `Some(T)` is represented as a tagged type with the tag "Some" and
 //! an inner type of `T`.
+
+use core::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
@@ -41,6 +43,10 @@ impl<T: DatexValueProxy<C>, C> DatexValueProxySerialize<C> for Option<T> {
 }
 
 impl<T: DatexValueProxyDeserialize> DatexValueProxyDeserialize for Option<T> {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         if matches!(value.inner, CoreValue::Null) {
             Ok(None)

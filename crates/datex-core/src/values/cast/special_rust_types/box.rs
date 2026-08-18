@@ -1,4 +1,6 @@
 //! Implements [DatexValueProxy] for [Box<T>] where T: [DatexValueProxy].
+
+use core::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
@@ -42,8 +44,12 @@ where
 // }
 impl<T> DatexValueProxyDeserialize for Box<T>
 where
-    T: DatexValueContainerProxyDeserialize,
+    T: DatexValueContainerProxyDeserialize + 'static,
 {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         T::try_from_value_container(value.into()).map(Box::new)
     }

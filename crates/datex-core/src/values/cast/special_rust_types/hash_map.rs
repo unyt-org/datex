@@ -17,20 +17,25 @@ use crate::{
     types::type_definition::TypeDefinition,
 };
 use core::hash::Hash;
+use std::any::Any;
 
 impl<
-    K: DatexValueContainerProxy<C> + Eq + Hash,
-    V: DatexValueContainerProxy<C>,
+    K: DatexValueContainerProxy<C> + Eq + Hash + 'static,
+    V: DatexValueContainerProxy<C> + 'static,
     C,
 > DatexValueProxy<C> for HashMap<K, V>
 {
 }
 
 impl<
-    K: DatexValueContainerProxyDeserialize + Eq + Hash,
-    V: DatexValueContainerProxyDeserialize,
+    K: DatexValueContainerProxyDeserialize + Eq + Hash + 'static,
+    V: DatexValueContainerProxyDeserialize + 'static,
 > DatexValueProxyDeserialize for HashMap<K, V>
 {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         match Map::try_from(value) {
             Ok(map) => map

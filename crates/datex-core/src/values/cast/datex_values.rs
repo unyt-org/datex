@@ -1,5 +1,7 @@
 //! Implements [DatexValueProxy] for [CoreValue](crate::values::core_values) implementation. That allows to convert e.g. [Endpoint] to [Value] and back.
 //! Also implements [DatexProxyTypes] to provide the correct [Type] for each implementation.
+
+use core::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     libs::core::type_id::CoreLibBaseTypeId,
@@ -45,6 +47,10 @@ macro_rules! impl_datex_direct_via_value_container {
                 value: Value,
             ) -> Result<Self, TryFromDatexValueError> {
                value.try_into().map_err(|_| TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local with inner type {}", stringify!($type), stringify!($type))))
+            }
+
+            fn as_any(&self) -> &dyn Any {
+                self
             }
         }
 

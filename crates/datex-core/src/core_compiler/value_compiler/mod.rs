@@ -348,6 +348,9 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
         CoreValue::Uninitialized => {
             panic!("Tried to compile uninitialized value")
         }
+        CoreValue::Native(_) => {
+            todo!("Tried to compile native value")
+        }
     };
 }
 

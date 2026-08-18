@@ -34,13 +34,56 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::fmt::{Display, Formatter};
-use crate::datex_proxy::DatexValueProxy;
+use core::fmt::{Debug, Display, Formatter};
+use core::hash::Hash;
+use std::any::Any;
+use std::ops::Deref;
+use crate::datex_proxy::{DatexValueProxyDeserialize, DatexValueProxySerialize};
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
+mod child_iterator;
+pub mod datex_proxy;
+pub mod equality;
 pub mod ops;
 
-#[derive(Default, Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
+
+
+pub trait DatexNative:
+    DatexValueProxyDeserialize +
+    DatexValueProxySerialize<SharedReferencesCache>{}
+
+pub struct NativeCoreValue {
+    pub value: Box<dyn DatexNative>,
+}
+
+impl NativeCoreValue {
+    pub fn new<T>(value: T) -> Self
+    where
+        T: DatexNative + 'static,
+    {
+        NativeCoreValue {
+            value: Box::new(value),
+        }
+    }
+    
+    pub fn as_any(&self) -> &dyn Any {
+        self.value.as_ref().as_any()
+    }
+}
+
+impl Clone for NativeCoreValue {
+    fn clone(&self) -> Self {
+        todo!()
+    }
+}
+
+impl Debug for NativeCoreValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "[[ native value ]]")
+    }
+}
+
+#[derive(Default, Clone, Debug, FromCoreValue)]
 pub enum CoreValue {
     #[default]
     Uninitialized,
@@ -60,13 +103,66 @@ pub enum CoreValue {
     Range(Range),
     /// Used for nested values, e.g. #Tagged (shared 42)
     Box(Box<ValueContainer>),
-    // TODO
-    // /// Native rust value with DATEX representation
-    // Native(Box<dyn DatexValueProxy<SharedReferencesCache>>),
+    /// Native rust value with DATEX representation
+    Native(NativeCoreValue),
 }
-mod child_iterator;
-pub mod datex_proxy;
-pub mod equality;
+
+impl PartialEq for CoreValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (CoreValue::Uninitialized, CoreValue::Uninitialized) => true,
+            (CoreValue::Null, CoreValue::Null) => true,
+            (CoreValue::Boolean(b1), CoreValue::Boolean(b2)) => b1 == b2,
+            (CoreValue::Integer(i1), CoreValue::Integer(i2)) => i1 == i2,
+            (CoreValue::TypedInteger(ti1), CoreValue::TypedInteger(ti2)) => {
+                ti1 == ti2
+            }
+            (CoreValue::Decimal(d1), CoreValue::Decimal(d2)) => d1 == d2,
+            (CoreValue::TypedDecimal(td1), CoreValue::TypedDecimal(td2)) => {
+                td1 == td2
+            }
+            (CoreValue::Text(t1), CoreValue::Text(t2)) => t1 == t2,
+            (CoreValue::Endpoint(e1), CoreValue::Endpoint(e2)) => e1 == e2,
+            (CoreValue::List(l1), CoreValue::List(l2)) => l1 == l2,
+            (CoreValue::Map(m1), CoreValue::Map(m2)) => m1 == m2,
+            (CoreValue::Type(t1), CoreValue::Type(t2)) => t1 == t2,
+            (
+                CoreValue::EntityTypeDefinition(etd1),
+                CoreValue::EntityTypeDefinition(etd2),
+            ) => etd1 == etd2,
+            (CoreValue::Callable(c1), CoreValue::Callable(c2)) => c1 == c2,
+            (CoreValue::Range(r1), CoreValue::Range(r2)) => r1 == r2,
+            (CoreValue::Box(b1), CoreValue::Box(b2)) => b1 == b2,
+            _ => false, // TODO: compare with native
+        }
+    }
+}
+impl Eq for CoreValue {}
+impl Hash for CoreValue {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            CoreValue::Uninitialized => state.write_u8(0),
+            CoreValue::Null => state.write_u8(1),
+            CoreValue::Boolean(b) => b.hash(state),
+            CoreValue::Integer(i) => i.hash(state),
+            CoreValue::TypedInteger(ti) => ti.hash(state),
+            CoreValue::Decimal(d) => d.hash(state),
+            CoreValue::TypedDecimal(td) => td.hash(state),
+            CoreValue::Text(t) => t.hash(state),
+            CoreValue::Endpoint(e) => e.hash(state),
+            CoreValue::List(l) => l.hash(state),
+            CoreValue::Map(m) => m.hash(state),
+            CoreValue::Type(t) => t.hash(state),
+            CoreValue::EntityTypeDefinition(etd) => etd.hash(state),
+            CoreValue::Callable(c) => c.hash(state),
+            CoreValue::Range(r) => r.hash(state),
+            CoreValue::Box(b) => b.hash(state),
+            CoreValue::Native(_) => {
+                todo!()
+            }
+        }
+    }
+}
 
 impl From<&str> for CoreValue {
     fn from(value: &str) -> Self {
@@ -232,6 +328,9 @@ impl From<&CoreValue> for CoreLibTypeId {
             }
             CoreValue::Box(_) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Box)
+            }
+            CoreValue::Native(_) => {
+                todo!()
             }
         }
     }
@@ -476,6 +575,9 @@ impl Display for CoreValue {
             }
             CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
             CoreValue::Box(inner) => write!(f, "({})", inner),
+            CoreValue::Native(native) => {
+                write!(f, "[[ native value ]]")
+            }
         }
     }
 }

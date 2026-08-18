@@ -1,6 +1,7 @@
 //! Implements [TryFrom] and [TryInto] for Rust native types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
 //! This allows to convert [u8] into DATEX [Value] and [ValueContainer] and allows to convert [CoreValue], [Value] and [ValueContainer] into [u8].
 use num::ToPrimitive;
+use core::any::Any;
 
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
@@ -94,6 +95,10 @@ macro_rules! derive_try_from_chain {
                 value: Value,
             ) -> Result<Self, TryFromDatexValueError> {
                 value.try_into()
+            }
+
+            fn as_any(&self) -> &dyn Any {
+                self
             }
         }
 

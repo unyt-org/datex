@@ -222,6 +222,9 @@ fn core_value_to_datex_expression(
             is_terminated: false,
             unbounded: None,
         }),
+        CoreValue::Native(_) => {
+            DatexExpressionData::NativeImplementationIndicator
+        }
     }
 }
 

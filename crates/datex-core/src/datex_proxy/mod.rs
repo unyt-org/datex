@@ -1,6 +1,7 @@
 pub mod serde_compat;
 pub mod shared;
 
+use core::any::Any;
 #[cfg(feature = "compiler")]
 use crate::compiler::error::SpannedCompilerError;
 #[cfg(feature = "parser")]
@@ -21,6 +22,8 @@ use crate::datex_proxy::shared::Shared;
 #[cfg(feature = "decompiler")]
 use crate::decompiler::{DecompileOptions, decompile_value};
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::utils::sheep::Sheep;
+use crate::values::core_value::CoreValue;
 
 #[derive(Debug, Clone)]
 pub struct TryFromDatexValueError(pub String);
@@ -90,8 +93,7 @@ pub trait DatexValueProxy<C>:
     + DatexValueProxyDeserialize
     + DatexValueProxySerialize<C>
     + DatexProxyTypes<C>
-{
-}
+{}
 
 /// Trait for providing DATEX type information for a DatexProxy type
 /// FIXME: currently we need to implement both DatexProxyTypes<()> and DatexProxyTypes<SharedReferencesCache>
@@ -118,9 +120,20 @@ pub macro derive_datex_proxy_types_default($ty:ty) {
 
 /// Conversion from a [ValueContainer] to a rust value
 pub trait DatexValueContainerProxyDeserialize: Sized {
+    /// Try to deserialize the given [ValueContainer] into Self.
     fn try_from_value_container(
         value: ValueContainer,
     ) -> Result<Self, TryFromDatexValueError>;
+
+    /// Try to get a borrowed Ref to Self from the given [ValueContainer].
+    /// [CoreValue::Native] values can actually be borrowed, other values
+    /// are created with [try_from_value_container] and wrapped in a [Sheep::Owned].
+    /// The default implementation just uses [try_from_value_container] internally.
+    fn try_borrow_from_value_container(
+        value: &ValueContainer
+    ) -> Result<Sheep<'_, Self>, TryFromDatexValueError> {
+        Self::try_from_value_container(value.clone()).map(Sheep::Owned)
+    }
 
     fn try_from_map_property(
         value: Result<ValueContainer, KeyNotFoundError>,
@@ -195,12 +208,31 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
 }
 
 /// Conversion from a [Value] to a rust value
-pub trait DatexValueProxyDeserialize: Sized {
-    fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError>;
+pub trait DatexValueProxyDeserialize: Any {
+    fn as_any(&self) -> &dyn Any;
+
+    fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> where Self: Sized;
+
+    /// Try to get a borrowed Ref to Self from the given [Value].
+    /// [CoreValue::Native] values can actually be borrowed, other values
+    /// are created with [try_borrow_from_value] and wrapped in a [Sheep::Owned].
+    /// The default implementation just uses [try_borrow_from_value] internally.
+    fn try_borrow_from_value(
+        value: &Value
+    ) -> Result<Sheep<'_, Self>, TryFromDatexValueError> where Self: Sized {
+        // try to downcast directly from native value
+        if let CoreValue::Native(native) = &value.inner
+            && let Some(native) = native.as_any().downcast_ref::<Self>() {
+                return Ok(Sheep::Borrowed(native));
+        }
+
+        Self::try_from_value(value.clone()).map(Sheep::Owned)
+
+    }
 
     fn try_from_map_property(
         value: Result<Value, KeyNotFoundError>,
-    ) -> Result<Self, TryFromDatexValueError> {
+    ) -> Result<Self, TryFromDatexValueError> where Self: Sized {
         let value =
             value.map_err(|err| TryFromDatexValueError(err.to_string()))?;
 

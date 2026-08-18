@@ -1,4 +1,6 @@
 //! Implements [DatexValueProxy] for [Vec<T>] where T: [DatexValueProxy].
+
+use core::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
@@ -17,12 +19,16 @@ use crate::{
     types::type_definition::TypeDefinition,
 };
 
-impl<T, C> DatexValueProxy<C> for Vec<T> where T: DatexValueContainerProxy<C> {}
+impl<T, C> DatexValueProxy<C> for Vec<T> where T: DatexValueContainerProxy<C> + 'static {}
 
 impl<T> DatexValueProxyDeserialize for Vec<T>
 where
-    T: DatexValueContainerProxyDeserialize,
+    T: DatexValueContainerProxyDeserialize + 'static,
 {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         match List::try_from(value) {
             Ok(val) => val

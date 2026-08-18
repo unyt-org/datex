@@ -265,6 +265,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 ) -> Result<Self, TryFromDatexValueError> {
                     Err(TryFromDatexValueError("Deserialization is disabled for this type".to_string()))
                 }
+                fn as_any(&self) -> &dyn Any {
+                    self
+                }
             }
         }
     } else {
@@ -275,6 +278,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     value: Value,
                 ) -> Result<Self, TryFromDatexValueError> {
                    value.try_into()
+                }
+                fn as_any(&self) -> &dyn Any {
+                    self
                 }
             }
 
@@ -361,6 +367,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 datex_registry::{get_impls, get_impls_for},
                 prelude::*
             };
+            use core::any::Any;
 
             #[automatically_derived]
             impl #generics DatexValueProxy<#context> for #ident #generics {}

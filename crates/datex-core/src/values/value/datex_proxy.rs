@@ -1,3 +1,4 @@
+use core::any::Any;
 use crate::{
     datex_proxy::{
         DatexProxyTypes, DatexValueProxy, DatexValueProxyDeserialize,
@@ -27,6 +28,9 @@ impl DatexValueProxySerialize<()> for Value {
 impl DatexValueProxyDeserialize for Value {
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         Ok(value)
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
