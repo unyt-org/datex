@@ -179,7 +179,7 @@ pub fn generate_native_callable(
                 ValueContainer::Local(value) => {
                    value.custom_type = Some(return_type.clone().into())
                 }
-                ValueContainer::Shared(_) => {todo!()}
+                ValueContainer::Shared(_) => {} // shared container must already have an assigned type since it already contained a full ValueContainer
             }
             Some(result_value)
         }}
