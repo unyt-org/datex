@@ -61,7 +61,7 @@ where
     }
 }
 
-impl<T, C> DatexValueContainerProxyDeserialize for Shared<T, C>
+impl<T, C: 'static> DatexValueContainerProxyDeserialize for Shared<T, C>
 where
     T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
 {

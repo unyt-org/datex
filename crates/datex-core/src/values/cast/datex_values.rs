@@ -52,6 +52,9 @@ macro_rules! impl_datex_direct_via_value_container {
             fn as_any(&self) -> &dyn Any {
                 self
             }
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
         }
 
         impl DatexProxyTypes<()> for $type {

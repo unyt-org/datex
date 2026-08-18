@@ -65,9 +65,12 @@ impl NativeCoreValue {
             value: Box::new(value),
         }
     }
-    
+
     pub fn as_any(&self) -> &dyn Any {
         self.value.as_ref().as_any()
+    }
+    pub fn as_any_mut(&mut self) -> &mut dyn Any {
+        self.value.as_mut().as_any_mut()
     }
 }
 

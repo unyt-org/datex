@@ -268,6 +268,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 fn as_any(&self) -> &dyn Any {
                     self
                 }
+                fn as_any_mut(&mut self) -> &mut dyn Any {
+                    self
+                }
             }
         }
     } else {
@@ -280,6 +283,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                    value.try_into()
                 }
                 fn as_any(&self) -> &dyn Any {
+                    self
+                }
+                fn as_any_mut(&mut self) -> &mut dyn Any {
                     self
                 }
             }

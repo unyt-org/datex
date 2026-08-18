@@ -119,9 +119,27 @@ pub fn generate_native_callable(
             &format!("arg_{}", index),
             proc_macro2::Span::call_site(),
         );
+        let is_borrowed = match param {
+            syn::FnArg::Receiver(receiver) => receiver.reference.is_some(),
+            syn::FnArg::Typed(pat_type) => {
+                if let Type::Reference(_type_reference) = &*pat_type.ty {
+                    true
+                } else {
+                    false
+                }
+            }
+        };
+
+        // TODO: use try_borrow_mut_from_value_container for &mut T, try_borrow_from_value_container for &T, and try_from_value_container for T
         call_argument_inits.push(
-            quote! {
-                let mut #var_ident = <#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(vals.pop().unwrap()).unwrap();
+            if is_borrowed {
+                quote! {
+                    let mut #var_ident = <#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(vals.pop().unwrap()).unwrap();
+                }
+            } else {
+                quote! {
+                    let mut #var_ident = <#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(vals.pop().unwrap()).unwrap();
+                }
             }
         );
         // distinguish between move, & and &mut

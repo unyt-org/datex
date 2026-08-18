@@ -49,6 +49,9 @@ where
     fn as_any(&self) -> &dyn Any {
         self
     }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         T::try_from_value_container(value.into()).map(Box::new)
