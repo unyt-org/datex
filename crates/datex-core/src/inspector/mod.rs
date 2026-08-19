@@ -10,43 +10,46 @@ use crate::{
 };
 use datex_macros_internal::{Datex, datex};
 use crate::datex_proxy::DatexValueProxyInfallibleSerialize;
-use crate::datex_proxy::shared::Shared;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::inspector::inspector::Inspector;
 
-#[derive(Datex, Debug, Clone)]
-// #[datex(global(namespace="inspector"))]
-// TODO: #[datex(std_type(0x01))]
-pub struct Inspector {
-    name: String, // TODO: We must make private properties to be ignore by the type definition and only use public ones, otherwise the prop and methods would colide in DATEX
-}
-
-// #[datex(global(namespace="inspector"))]
-// fn create_inspector() {
-//
-// }
-
-#[datex]
-impl Inspector {
-    // NOTE: the create function can probably not stay here as a static method,
-    // since the Inspector type is a global shared type of the std lib not bound to a specific endpoint
-    // so it is not possible to define a static method that is called on a specific endpoint,
-    // since the definition of "Inspector" must be exactly the same on every endpoint.
-    /// Creates a new Inspector instance.
-    pub fn create(
-        // TODO
-        // #[runtime] runtime: Runtime,
-        name: String
-    ) -> Shared<Inspector> { // TODO: add SharedRef here, caller should not own inspector
-        Inspector { name }.shared(&mut SelfOwnedPointerAddressProvider::default(), &mut SharedReferencesCache::default())
+// #[datex_public] TODO
+mod inspector {
+    use super::*;
+    #[derive(Datex, Debug, Clone)]
+    // #[datex(global(namespace="inspector"))]
+    // TODO: #[datex(std_type(0x01))]
+    pub struct Inspector {
+        name: String, // TODO: We must make private properties to be ignore by the type definition and only use public ones, otherwise the prop and methods would colide in DATEX
     }
-    pub fn name_getter(&self) -> String {
-        self.name.clone()
+    #[datex]
+    impl Inspector {
+        // NOTE: the create function can probably not stay here as a static method,
+        // since the Inspector type is a global shared type of the std lib not bound to a specific endpoint
+        // so it is not possible to define a static method that is called on a specific endpoint,
+        // since the definition of "Inspector" must be exactly the same on every endpoint.
+        /// Creates a new Inspector instance.
+        pub fn create(
+            // TODO
+            // #[runtime] runtime: Runtime,
+            name: String
+        ) -> crate::datex_proxy::shared::Shared<Inspector> { // TODO: add SharedRef here, caller should not own inspector
+            Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
+        }
+        pub fn name_getter(&self) -> String {
+            self.name.clone()
+        }
+
+        // // TODO
+        // pub fn method_for_shared_instance(self: Shared<Self>) -> String {
+        //     self.borrow().name.clone()
+        // }
     }
 
-    // // TODO
-    // pub fn method_for_shared_instance(self: Shared<Self>) -> String {
-    //     self.borrow().name.clone()
+
+    // TODO
+    // #[datex]
+    // pub fn create(name: String) -> Inspector {
+    //     Inspector { name }
     // }
 }
 
