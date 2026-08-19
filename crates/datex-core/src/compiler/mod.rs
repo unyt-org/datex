@@ -44,7 +44,10 @@ use crate::{
                 InjectedValueType, LocalInjectedValueType,
                 SharedInjectedValueType,
             },
-            instruction_data::{InstructionBlockData, JumpData, StackIndex},
+            instruction_data::{
+                InstructionBlockData, JumpData, StackIndex,
+                UnboundedStatementsData,
+            },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
         },
@@ -1584,15 +1587,11 @@ fn compile_expression(
                 }
                 None => Vec::new(),
             };
-            let statement_count = if else_bytes.is_empty() { 2 } else { 4 };
-            compilation_context
-                .write(RegularInstruction::statements(statement_count, false));
+            compilation_context.write(RegularInstruction::UnboundedStatements);
 
             compilation_context.write(RegularInstruction::JumpIfFalse(
                 JumpData {
-                    offset: (then_bytes.len()
-                        + if else_bytes.is_empty() { 0 } else { 5 })
-                        as i32,
+                    offset: (then_bytes.len() + 5) as i32,
                 },
             ));
             compilation_context
@@ -1607,6 +1606,12 @@ fn compile_expression(
                 }));
                 compilation_context.cursor().write_all(&else_bytes).unwrap();
             }
+
+            compilation_context.write(
+                RegularInstruction::UnboundedStatementsEnd(
+                    UnboundedStatementsData { terminated: false },
+                ),
+            );
         }
 
         DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
@@ -4021,9 +4026,7 @@ pub mod tests {
         let script = "if (true) (42u8)";
         let result = compile_and_log(script);
         let expected = vec![
-            InstructionCode::SHORT_STATEMENTS.into(),
-            2,
-            0,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
             InstructionCode::JUMP_IF_FALSE.into(),
             2,
             0,
@@ -4032,6 +4035,8 @@ pub mod tests {
             InstructionCode::TRUE.into(),
             InstructionCode::UINT_8.into(),
             42,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
         ];
         assert_eq!(result, expected);
     }
@@ -4047,9 +4052,7 @@ pub mod tests {
             InstructionCode::PUSH_TO_STACK.into(),
             InstructionCode::UINT_8.into(),
             10,
-            InstructionCode::SHORT_STATEMENTS.into(),
-            4,
-            0,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
             InstructionCode::JUMP_IF_FALSE.into(),
             10,
             0,
@@ -4068,6 +4071,8 @@ pub mod tests {
             0,
             InstructionCode::UINT_8.into(),
             0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
         ];
         assert_eq!(result, expected);
     }
@@ -4083,9 +4088,7 @@ pub mod tests {
                 )";
         let result = compile_and_log(script);
         let expected = vec![
-            InstructionCode::SHORT_STATEMENTS.into(),
-            4,
-            0,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
             InstructionCode::JUMP_IF_FALSE.into(),
             10,
             0,
@@ -4107,6 +4110,8 @@ pub mod tests {
             0,
             0,
             0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
         ];
         assert_eq!(result, expected);
     }
@@ -4126,9 +4131,7 @@ pub mod tests {
                 )";
         let result = compile_and_log(script);
         let expected = vec![
-            InstructionCode::SHORT_STATEMENTS.into(),
-            4,
-            0,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
             InstructionCode::JUMP_IF_FALSE.into(),
             12,
             0,
@@ -4147,9 +4150,7 @@ pub mod tests {
             0,
             0,
             0,
-            InstructionCode::SHORT_STATEMENTS.into(),
-            4,
-            0,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
             InstructionCode::JUMP_IF_FALSE.into(),
             7,
             0,
@@ -4164,6 +4165,10 @@ pub mod tests {
             0,
             0,
             InstructionCode::UINT_8.into(),
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
             0,
         ];
         assert_eq!(result, expected);

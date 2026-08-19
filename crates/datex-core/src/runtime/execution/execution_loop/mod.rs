@@ -13,7 +13,10 @@ use crate::{
         injected_values::compile_injected_values,
     },
     dxb_parser::{
-        body::{DXBParserError, SeekRequest, iterate_instructions_with_seek},
+        body::{
+            DXBParserError, SeekRequest, iterate_instructions,
+            iterate_instructions_with_seek,
+        },
         instruction_collector::{
             CollectionResultsPopper, FullOrPartialResult, InstructionCollector,
             LastUnboundedResultCollector, ResultCollector,
@@ -159,7 +162,7 @@ pub gen fn inner_execution_loop(
     let mut collector =
         InstructionCollector::<CollectedExecutionResult>::default();
 
-    let seek_request: SeekRequest = Rc::new(RefCell::new(Default::default()));
+    let seek_request: SeekRequest = Rc::new(RefCell::new(None));
 
     for instruction_result in iterate_instructions_with_seek(
         dxb_body,
@@ -179,10 +182,6 @@ pub gen fn inner_execution_loop(
             }
         };
 
-        let skipped_instruction_count =
-            seek_request.borrow_mut().take_skipped_instruction_count();
-        collector.skip_current_counted_results(skipped_instruction_count);
-
         let result: Option<CollectedExecutionResult> = match instruction {
             // handle regular instructions
             Instruction::Regular(regular_instruction) => {
@@ -200,18 +199,12 @@ pub gen fn inner_execution_loop(
                 {
                     if matches!(
                         regular_instruction,
-                        RegularInstruction::Conditional
-                    ) {
-                        None
-                    } else if matches!(
-                        regular_instruction,
                         RegularInstruction::Jump(_)
                     ) {
                         if let RegularInstruction::Jump(data) =
                             regular_instruction
                         {
-                            seek_request.borrow_mut().request(data.offset);
-                            collector.skip_current_counted_results(1);
+                            seek_request.borrow_mut().replace(data.offset);
                         }
                         None
                     } else {
@@ -646,16 +639,16 @@ pub gen fn inner_execution_loop(
                                 | RegularInstruction::Range
                                 | RegularInstruction::Divide => {
                                     let right = collected_results
-                                        .try_pop_runtime_value()?;
+                                        .try_pop_value_container(&mut state)?;
                                     let left = collected_results
-                                        .try_pop_runtime_value()?;
+                                        .try_pop_value_container(&mut state)?;
 
                                     let res = handle_binary_operation(
                                         BinaryOperator::from(
                                             regular_instruction,
                                         ),
-                                        left.as_value_container(&state.stack)?,
-                                        right.as_value_container(&state.stack)?,
+                                        &left,
+                                        &right,
                                     )?;
                                     res.into()
                                 }
@@ -666,16 +659,16 @@ pub gen fn inner_execution_loop(
                                 | RegularInstruction::NotStructuralEqual
                                 | RegularInstruction::NotEqual => {
                                     let right = collected_results
-                                        .try_pop_runtime_value()?;
+                                        .try_pop_value_container(&mut state)?;
                                     let left = collected_results
-                                        .try_pop_runtime_value()?;
+                                        .try_pop_value_container(&mut state)?;
 
                                     let res = handle_comparison_operation(
                                         ComparisonOperator::from(
                                             regular_instruction,
                                         ),
-                                        left.as_value_container(&state.stack)?,
-                                        right.as_value_container(&state.stack)?,
+                                        &left,
+                                        &right,
                                     )?;
                                     res.into()
                                 }
@@ -1217,8 +1210,7 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
                                 RegularInstruction::JumpIfFalse(JumpData { offset }) => {
-                                    let condition_value = collected_results.try_pop_runtime_value()?;
-                                    let condition_value = condition_value.as_value_container(&state.stack)?;
+                                    let condition_value = collected_results.try_pop_value_container(&mut state)?;
 
                                     let is_truthy = match &condition_value {
                                         ValueContainer::Local(value) => match &value.inner {
@@ -1231,7 +1223,7 @@ pub gen fn inner_execution_loop(
                                     };
 
                                     if !is_truthy {
-                                        seek_request.borrow_mut().request(offset);
+                                        seek_request.borrow_mut().replace(offset);
                                     }
                                     CollectedExecutionResult::value(None)
                                 }
@@ -1368,6 +1360,9 @@ pub gen fn inner_execution_loop(
                         result: collected_result,
                         previous_stack_index,
                     } => {
+                        // reset stack index
+                        state.stack.truncate(previous_stack_index);
+
                         match instruction {
                             Instruction::Regular(regular_instruction) => {
                                 match regular_instruction {
@@ -1379,27 +1374,24 @@ pub gen fn inner_execution_loop(
                                     | RegularInstruction::Statements(
                                         StatementsData { terminated, .. },
                                     ) => {
-                                        let result = if terminated {
-                                            None
-                                        } else {
-                                            match collected_result {
-                                                Some(CollectedExecutionResult::Value(box Some(value))) =>
-                                                    Some(value.into_value_container(&mut state)?),
-                                                Some(CollectedExecutionResult::Value(box None)) | None => None,
-                                                _ => unreachable!(),
-                                            }
-                                        };
-                                        state
-                                            .stack
-                                            .truncate(previous_stack_index);
                                         if terminated {
                                             CollectedExecutionResult::value(
                                                 None,
                                             )
                                         } else {
-                                            CollectedExecutionResult::value(
-                                                result.map(RuntimeValue::ValueContainer),
-                                            )
+                                            match collected_result {
+                                                Some(
+                                                    CollectedExecutionResult::Value(
+                                                        box val,
+                                                    ),
+                                                ) => val.into(),
+                                                None => {
+                                                    CollectedExecutionResult::value(
+                                                        None,
+                                                    )
+                                                }
+                                                _ => unreachable!(), // statements always resolve to values
+                                            }
                                         }
                                     }
                                     _ => unreachable!(),
@@ -1448,45 +1440,6 @@ pub gen fn inner_execution_loop(
 
             // TODO: handle other CollectedExecutionResults
         }
-    }
-
-    let skipped_at_end =
-        seek_request.borrow_mut().take_skipped_instruction_count();
-    collector.skip_current_counted_results(skipped_at_end);
-    while let Some(FullOrPartialResult::Partial {
-        instruction:
-            Instruction::Regular(
-                RegularInstruction::ShortStatements(ShortStatementsData {
-                    terminated,
-                    ..
-                })
-                | RegularInstruction::Statements(StatementsData {
-                    terminated,
-                    ..
-                }),
-            ),
-        result,
-        previous_stack_index,
-    }) = collector.try_pop_collected()
-    {
-        let value = if terminated {
-            None
-        } else {
-            match result {
-                Some(CollectedExecutionResult::Value(box Some(value))) => {
-                    match value.into_value_container(&mut state) {
-                        Ok(value) => Some(value),
-                        Err(error) => return yield Err(error),
-                    }
-                }
-                Some(CollectedExecutionResult::Value(box None)) | None => None,
-                _ => unreachable!(),
-            }
-        };
-        state.stack.truncate(previous_stack_index);
-        collector.push_result(CollectedExecutionResult::value(
-            value.map(RuntimeValue::ValueContainer),
-        ));
     }
 
     if let Some(result) = collector.take_root_result() {
