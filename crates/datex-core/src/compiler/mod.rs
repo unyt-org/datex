@@ -4027,62 +4027,6 @@ pub mod tests {
     }
 
     #[test]
-    fn conditional_if_only() {
-        let script = "if (true) (42u8)";
-        let result = compile_and_log(script);
-        let expected = vec![
-            InstructionCode::UNBOUNDED_STATEMENTS.into(),
-            InstructionCode::JUMP_IF_FALSE.into(),
-            2,
-            0,
-            0,
-            0,
-            InstructionCode::TRUE.into(),
-            InstructionCode::UINT_8.into(),
-            42,
-            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
-            0,
-        ];
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn conditional_with_variable() {
-        let script = "const x = 10u8; if (true) (x) else (0u8)";
-        let result = compile_and_log(script);
-        let expected = vec![
-            InstructionCode::SHORT_STATEMENTS.into(),
-            2,
-            0,
-            InstructionCode::PUSH_TO_STACK.into(),
-            InstructionCode::UINT_8.into(),
-            10,
-            InstructionCode::UNBOUNDED_STATEMENTS.into(),
-            InstructionCode::JUMP_IF_FALSE.into(),
-            10,
-            0,
-            0,
-            0,
-            InstructionCode::TRUE.into(),
-            InstructionCode::TAKE_STACK_VALUE.into(),
-            0,
-            0,
-            0,
-            0,
-            InstructionCode::JUMP.into(),
-            2,
-            0,
-            0,
-            0,
-            InstructionCode::UINT_8.into(),
-            0,
-            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
-            0,
-        ];
-        assert_eq!(result, expected);
-    }
-
-    #[test]
     fn conditional_if_else() {
         let script = "
                 if (true) (
@@ -4092,33 +4036,62 @@ pub mod tests {
                     123u32
                 )";
         let result = compile_and_log(script);
-        let expected = vec![
-            InstructionCode::UNBOUNDED_STATEMENTS.into(),
-            InstructionCode::JUMP_IF_FALSE.into(),
-            10,
-            0,
-            0,
-            0,
-            InstructionCode::TRUE.into(),
-            InstructionCode::UINT_32.into(),
-            122,
-            0,
-            0,
-            0,
-            InstructionCode::JUMP.into(),
-            5,
-            0,
-            0,
-            0,
-            InstructionCode::UINT_32.into(),
-            123,
-            0,
-            0,
-            0,
-            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
-            0,
-        ];
-        assert_eq!(result, expected);
+
+        assert_regular_instructions_equal!(
+            &result,
+            (
+                RegularInstruction::unbounded_statements(),
+                RegularInstruction::jump_if_false(10),
+                RegularInstruction::True,
+                RegularInstruction::uint32(122),
+                RegularInstruction::jump(5),
+                RegularInstruction::uint32(123),
+                RegularInstruction::unbounded_statements_end(false),
+            )
+        );
+    }
+
+    #[test]
+    fn conditional_with_variable() {
+        let script = "const x = 10u8; if (true) (x) else (0u8)";
+        let result = compile_and_log(script);
+
+        assert_regular_instructions_equal!(
+            &result,
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushToStack,
+                    RegularInstruction::uint8(10),
+                    instructions!(
+                        RegularInstruction::unbounded_statements(),
+                        RegularInstruction::jump_if_false(10),
+                        RegularInstruction::True,
+                        RegularInstruction::take_stack_value(StackIndex(0)),
+                        RegularInstruction::jump(2),
+                        RegularInstruction::uint8(0),
+                        RegularInstruction::unbounded_statements_end(false)
+                    ),
+                )
+            ),)
+        );
+    }
+
+    #[test]
+    fn conditional_if_only() {
+        let script = "if (true) (42u8)";
+        let result = compile_and_log(script);
+
+        assert_regular_instructions_equal!(
+            &result,
+            (
+                RegularInstruction::unbounded_statements(),
+                RegularInstruction::jump_if_false(2),
+                RegularInstruction::True,
+                RegularInstruction::uint8(42),
+                RegularInstruction::unbounded_statements_end(false),
+            )
+        );
     }
 
     #[test]
@@ -4135,47 +4108,30 @@ pub mod tests {
                     0u8
                 )";
         let result = compile_and_log(script);
-        let expected = vec![
-            InstructionCode::UNBOUNDED_STATEMENTS.into(),
-            InstructionCode::JUMP_IF_FALSE.into(),
-            12,
-            0,
-            0,
-            0,
-            InstructionCode::TRUE.into(),
-            InstructionCode::SHORT_STATEMENTS.into(),
-            2,
-            1,
-            InstructionCode::UINT_8.into(),
-            0,
-            InstructionCode::UINT_8.into(),
-            1,
-            InstructionCode::JUMP.into(),
-            18,
-            0,
-            0,
-            0,
-            InstructionCode::UNBOUNDED_STATEMENTS.into(),
-            InstructionCode::JUMP_IF_FALSE.into(),
-            7,
-            0,
-            0,
-            0,
-            InstructionCode::FALSE.into(),
-            InstructionCode::UINT_8.into(),
-            0,
-            InstructionCode::JUMP.into(),
-            2,
-            0,
-            0,
-            0,
-            InstructionCode::UINT_8.into(),
-            0,
-            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
-            0,
-            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
-            0,
-        ];
-        assert_eq!(result, expected);
+
+        assert_regular_instructions_equal!(
+            &result,
+            (
+                RegularInstruction::unbounded_statements(),
+                RegularInstruction::jump_if_false(12),
+                RegularInstruction::True,
+                RegularInstruction::statements_with_children(
+                    true,
+                    instructions!(
+                        RegularInstruction::uint8(0),
+                        RegularInstruction::uint8(1)
+                    )
+                ),
+                RegularInstruction::jump(18),
+                RegularInstruction::unbounded_statements(),
+                RegularInstruction::jump_if_false(7),
+                RegularInstruction::False,
+                RegularInstruction::uint8(0),
+                RegularInstruction::jump(2),
+                RegularInstruction::uint8(0),
+                RegularInstruction::unbounded_statements_end(false),
+                RegularInstruction::unbounded_statements_end(false),
+            )
+        );
     }
 }
