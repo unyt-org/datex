@@ -200,22 +200,6 @@ pub struct LastUnboundedResultCollector<T> {
 }
 
 impl<T> ResultCollector<T> {
-    pub fn skip(&mut self, count: u32) -> bool {
-        match self {
-            ResultCollector::Last(collector) => {
-                if collector.collected_count.saturating_add(count)
-                    > collector.expected_count
-                {
-                    panic!(
-                        "Skipped more results than expected for the instruction"
-                    );
-                }
-                collector.collected_count += count;
-                true
-            }
-            _ => false,
-        }
-    }
     pub fn push_result(&mut self, result: impl Into<T>) {
         match self {
             ResultCollector::Full(collector) => {
@@ -337,19 +321,6 @@ pub enum StatementResultCollectionStrategy {
 }
 
 impl<T> InstructionCollector<T> {
-    pub fn skip_current_counted_results(&mut self, count: u32) {
-        if count == 0 {
-            return;
-        }
-        let collector = self
-            .result_collectors
-            .last_mut()
-            .expect("Jump skipped instructions without an enclosing collector");
-        assert!(
-            collector.skip(count),
-            "Jump skipped instructions in a non-statements collector"
-        );
-    }
     pub fn collect_full(
         &mut self,
         instruction: Instruction,
