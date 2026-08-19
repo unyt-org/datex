@@ -242,14 +242,15 @@ impl ComHub {
     }
 
     fn gen_filled_vault() -> CryptoVault {
-        // fill vault with random static (permanent) keys
         let mut vault = CryptoVault::new_empty();
 
+        // generate static keys for sig and ecdh
         let (pub_key, pri_key) = CryptoImpl::gen_ed25519_cheat().unwrap();
-        vault.set_sig_keys(pri_key, pub_key);
         let (pub_cry_key, pri_cry_key) =
             CryptoImpl::gen_x25519_cheat().unwrap();
 
+        // set keys in vault
+        vault.set_sig_keys(pri_key, pub_key);
         vault.set_cry_keys(pri_cry_key, pub_cry_key);
         vault
     }
@@ -1461,28 +1462,32 @@ impl ComHub {
 
         for (receiver_socket, endpoints) in outbound_receiver_groups {
             if let Some(socket_uuid) = receiver_socket {
-                // maybe do encryption here?
-                info!("Sending stuffs...");
-                // retrieve keys and derive shared secret
+                // get own private key
                 let pri_cry_key = self.vault.try_lock().unwrap().pri_cry_key;
+                // get peers public key
                 let socket_properties = &self
                     .socket_manager()
                     .get_socket_by_uuid(&socket_uuid)
                     .unwrap()
                     .socket_properties;
                 let peer_pub_cry_key = socket_properties.pub_cry_key.unwrap();
+
+                // derive shared secret
                 let shared_sec = CryptoImpl::derive_x25519_cheat(
                     &pri_cry_key,
                     &peer_pub_cry_key,
                 )
                 .unwrap();
 
-                // wrap data key with kek, set body to wrapped key prepended to encrypted body
+                // derive key encryption key (kek) from shared secret
                 let kek_bytes =
                     CryptoImpl::hkdf_cheat(&shared_sec, &[0u8; 16]).unwrap();
+                // wrap data_key with kek
                 let wrapped_key =
                     CryptoImpl::aes_kw_wrap_cheat(&kek_bytes, &data_key)
                         .unwrap();
+
+                // replace body with wrapped_key prepended to (a copy of) encrypted body
                 block.body =
                     [wrapped_key.to_vec(), encrypted_body.clone()].concat();
 
