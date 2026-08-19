@@ -242,31 +242,16 @@ impl ComHub {
     }
 
     fn gen_filled_vault() -> CryptoVault {
-        #[cfg(feature = "crypto_enabled")]
-        {
-            // fill vault with random static (permanent) keys
-            // note: embedded mutex behaves differently...
-            let mut vault = CryptoVault::new_empty();
+        // fill vault with random static (permanent) keys
+        let mut vault = CryptoVault::new_empty();
 
-            // note: mldsa currently replaced with ed25519
-            // let (seed_dsa, _pri_key_dsa, _pub_key_dsa) = CryptoImpl::gen_mldsa();
-            let dsa_seed = Vec::from([0u8; 32]);
-            let (kem_seed, _, _) = CryptoImpl::gen_mlkem();
-            vault.set_pqc_keys(dsa_seed, kem_seed);
+        let (pub_key, pri_key) = CryptoImpl::gen_ed25519_cheat().unwrap();
+        vault.set_sig_keys(pri_key, pub_key);
+        let (pub_cry_key, pri_cry_key) =
+            CryptoImpl::gen_x25519_cheat().unwrap();
 
-            let (pub_key, pri_key) = CryptoImpl::gen_ed25519_cheat().unwrap();
-            vault.set_sig_keys(pri_key, pub_key);
-
-            // note: x25519 keys as alternative to mlkem seed
-            let (pub_cry_key, pri_cry_key) =
-                CryptoImpl::gen_x25519_cheat().unwrap();
-            vault.set_cry_keys(pri_cry_key, pub_cry_key);
-            vault
-        }
-        #[cfg(not(feature = "crypto_enabled"))]
-        {
-            CryptoVault::new_empty()
-        }
+        vault.set_cry_keys(pri_cry_key, pub_cry_key);
+        vault
     }
 
     /// Registers the handle_sockets_task for the given ComInterfaceConfiguration

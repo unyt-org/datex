@@ -14,9 +14,6 @@ pub struct CryptoVault {
     pub pub_sig_key: [u8; 32],
     pub pri_cry_key: [u8; 32],
     pub pub_cry_key: [u8; 32],
-    // mlkem and mldsa- experimental
-    pub dsa_seed: Vec<u8>,
-    pub kem_seed: Vec<u8>,
 }
 
 impl CryptoVault {
@@ -26,20 +23,7 @@ impl CryptoVault {
             pub_sig_key: [0u8; 32],
             pri_cry_key: [0u8; 32],
             pub_cry_key: [0u8; 32],
-            dsa_seed: Vec::from([0u8; 32]),
-            kem_seed: Vec::from([0u8; 64]),
         }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        let y = self.dsa_seed.eq(&Vec::from([0u8; 32]));
-        let z = self.kem_seed.eq(&Vec::from([0u8; 64]));
-        y && z
-    }
-
-    pub fn set_pqc_keys(&mut self, dsa_seed: Vec<u8>, kem_seed: Vec<u8>) {
-        self.dsa_seed = dsa_seed;
-        self.kem_seed = kem_seed;
     }
 
     pub fn set_sig_keys(&mut self, pri_key: [u8; 32], pub_key: [u8; 32]) {
@@ -199,24 +183,6 @@ pub trait Crypto: Send + Sync {
 pub trait PQCrypto: Send + Sync {
     type PQCError: core::fmt::Debug + Send + Sync + 'static =
         crate::error::PQCError;
-
-    fn gen_mlkem() -> (Vec<u8>, Vec<u8>, Vec<u8>);
-    fn enc_mlkem(peer_pub: Vec<u8>) -> (Vec<u8>, Vec<u8>);
-    fn dec_mlkem(vault: &CryptoVault, ct: Vec<u8>) -> Vec<u8>;
-
-    fn gen_mldsa() -> (Vec<u8>, Vec<u8>, Vec<u8>);
-    fn sig_mldsa(vault: &CryptoVault, data: &[u8]) -> Vec<u8>;
-    fn ver_mldsa(sig: Vec<u8>, ver_key: Vec<u8>, data: &[u8]) -> bool;
-
-    fn import_mlkem_keypair_from_seed(vault: &mut CryptoVault, seed: Vec<u8>);
-    fn import_mldsa_keypair_from_seed(vault: &mut CryptoVault, seed: Vec<u8>);
-
-    fn export_mldsa_keypair_from_seed(
-        vault: &CryptoVault,
-    ) -> (Vec<u8>, Vec<u8>);
-    fn export_mlkem_keypair_from_seed(
-        vault: &CryptoVault,
-    ) -> (Vec<u8>, Vec<u8>);
 
     fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError>;
     fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError>;
