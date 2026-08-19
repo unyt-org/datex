@@ -382,7 +382,7 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::NotEqual
                         | RegularInstruction::Jump(_)
                         | RegularInstruction::JumpIfFalse(_)
-                        | RegularInstruction::Conditional
+                        | RegularInstruction::JumpWithValue(_)
                         | RegularInstruction::DeriveSharedReference
                         | RegularInstruction::DeriveSharedReferenceMut
                         | RegularInstruction::CreateShared

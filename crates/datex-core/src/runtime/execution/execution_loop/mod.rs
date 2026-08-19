@@ -167,7 +167,7 @@ pub gen fn inner_execution_loop(
     for instruction_result in iterate_instructions_with_seek(
         dxb_body,
         NestedInstructionResolutionStrategy::None,
-        seek_request.clone(),
+        Some(seek_request.clone()),
     ) {
         let instruction = match instruction_result {
             Ok(instruction) => instruction,
@@ -197,15 +197,10 @@ pub gen fn inner_execution_loop(
                 ) =
                     regular_instruction
                 {
-                    if matches!(
-                        regular_instruction,
-                        RegularInstruction::Jump(_)
-                    ) {
-                        if let RegularInstruction::Jump(data) =
-                            regular_instruction
-                        {
-                            seek_request.borrow_mut().replace(data.offset);
-                        }
+                    if let RegularInstruction::Jump(data) = regular_instruction
+                    {
+                        // Jump has no result, so we need to place it here and not overwrite real result with None
+                        seek_request.borrow_mut().replace(data.offset);
                         None
                     } else {
                         let regular_result: Result<
@@ -213,6 +208,8 @@ pub gen fn inner_execution_loop(
                             ExecutionError,
                         > = try {
                             match regular_instruction {
+                            // Handled above
+                            RegularInstruction::Jump(_) => unreachable!(),
                             // boolean
                             RegularInstruction::True => Some(ValueContainer::from(true).into()),
                             RegularInstruction::False => Some(ValueContainer::from(false).into()),
@@ -440,9 +437,8 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::SetEntryIndex(_) |
                             RegularInstruction::SetEntryDynamic |
                             RegularInstruction::Is |
-                            RegularInstruction::Conditional |
-                            RegularInstruction::Jump(_) |
                             RegularInstruction::JumpIfFalse(_) |
+                            RegularInstruction::JumpWithValue(_) |
                             RegularInstruction::Matches |
                             RegularInstruction::StructuralEqual |
                             RegularInstruction::Equal |
@@ -472,7 +468,6 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => unreachable!(),
                         }
                         };
-
                         Some(match regular_result {
                             Ok(value) => value,
                             Err(error) => return yield Err(error),
@@ -639,16 +634,16 @@ pub gen fn inner_execution_loop(
                                 | RegularInstruction::Range
                                 | RegularInstruction::Divide => {
                                     let right = collected_results
-                                        .try_pop_value_container(&mut state)?;
+                                        .try_pop_runtime_value()?;
                                     let left = collected_results
-                                        .try_pop_value_container(&mut state)?;
+                                        .try_pop_runtime_value()?;
 
                                     let res = handle_binary_operation(
                                         BinaryOperator::from(
                                             regular_instruction,
                                         ),
-                                        &left,
-                                        &right,
+                                        left.as_value_container(&state.stack)?,
+                                        right.as_value_container(&state.stack)?,
                                     )?;
                                     res.into()
                                 }
@@ -659,16 +654,16 @@ pub gen fn inner_execution_loop(
                                 | RegularInstruction::NotStructuralEqual
                                 | RegularInstruction::NotEqual => {
                                     let right = collected_results
-                                        .try_pop_value_container(&mut state)?;
+                                        .try_pop_runtime_value()?;
                                     let left = collected_results
-                                        .try_pop_value_container(&mut state)?;
+                                        .try_pop_runtime_value()?;
 
                                     let res = handle_comparison_operation(
                                         ComparisonOperator::from(
                                             regular_instruction,
                                         ),
-                                        &left,
-                                        &right,
+                                        left.as_value_container(&state.stack)?,
+                                        right.as_value_container(&state.stack)?,
                                     )?;
                                     res.into()
                                 }
@@ -1210,16 +1205,17 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
                                 RegularInstruction::JumpIfFalse(JumpData { offset }) => {
-                                    let condition_value = collected_results.try_pop_value_container(&mut state)?;
+                                    let condition_value = collected_results.try_pop_runtime_value()?;
+                                    let condition_value = condition_value.as_value_container(&state.stack)?;
 
+                                    // We dont accept anything expect for explicit Boolean(...)
                                     let is_truthy = match &condition_value {
                                         ValueContainer::Local(value) => match &value.inner {
-                                            CoreValue::Null => false,
+                                            CoreValue::Null => return yield Err(ExecutionError::InvalidTypeCast),
                                             CoreValue::Boolean(boolean) => boolean.is_true(),
-                                            _ => true,
+                                            _ => return yield Err(ExecutionError::InvalidTypeCast),
                                         },
-                                        _ => true,
-                                        // Not Sure how must Truth work in Datex, do we want it like in JS? If some value, then true or only explicit Boolean(True) in true
+                                        _ => return yield Err(ExecutionError::InvalidTypeCast),
                                     };
 
                                     if !is_truthy {

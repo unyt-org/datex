@@ -28,7 +28,7 @@ pub enum InstructionCode {
 
     JUMP,          // unconditional jump (relative byte offset)
     JUMP_IF_FALSE, // conditional jump, jumps if false. example of usage is: "var a = 5; if(false) (a=3) else (a=2)" -> here it will jump to "(a=2)" block if "if(false)" is false and will not read the hole "if" block
-    CONDITIONAL,
+    JUMP_WITH_VALUE,
 
     APPLY_ZERO,
     APPLY_SINGLE,

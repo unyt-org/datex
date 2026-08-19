@@ -1591,7 +1591,12 @@ fn compile_expression(
 
             compilation_context.write(RegularInstruction::JumpIfFalse(
                 JumpData {
-                    offset: (then_bytes.len() + 5) as i32,
+                    // The false path starts after the then branch and, only
+                    // when present, the five-byte Jump used by the true path
+                    // to skip the else branch.
+                    offset: (then_bytes.len()
+                        + if else_bytes.is_empty() { 0 } else { 5 })
+                        as i32,
                 },
             ));
             compilation_context
