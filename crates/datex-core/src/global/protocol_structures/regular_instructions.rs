@@ -216,14 +216,6 @@ impl RegularInstruction {
         RegularInstruction::Apply(ApplyData { arg_count })
     }
 
-    pub fn jump(offset: i32) -> Self {
-        RegularInstruction::Jump(JumpData { offset })
-    }
-
-    pub fn jump_if_false(offset: i32) -> Self {
-        RegularInstruction::JumpIfFalse(JumpData { offset })
-    }
-
     /// Creates an apply instruction with the single variant.
     pub fn apply_single() -> Self {
         RegularInstruction::ApplySingle
@@ -232,6 +224,14 @@ impl RegularInstruction {
     /// Creates an apply instruction with the zero variant.
     pub fn apply_zero() -> Self {
         RegularInstruction::ApplyZero
+    }
+
+    pub fn jump(offset: i32) -> Self {
+        RegularInstruction::Jump(JumpData { offset })
+    }
+
+    pub fn jump_if_false(offset: i32) -> Self {
+        RegularInstruction::JumpIfFalse(JumpData { offset })
     }
 
     pub fn get_entry_text(key: String) -> Self {
