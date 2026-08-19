@@ -10,86 +10,89 @@ use crate::{
     shared_values::{SharedContainer, traits::SharedContainerCommon},
 };
 use crate::datex_proxy::{DatexValueContainerProxyDeserialize, DatexValueContainerProxyInfallibleSerialize, TryFromDatexValueError, TryToDatexValueError};
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::shared_values::SharedContainerMutability;
+use crate::types::type_definition::TypeDefinition;
+use crate::values::core_value::{CoreValue, DatexNative, NativeCoreValue};
+use crate::values::value::Value;
+use crate::values::value_container::ValueContainer;
 
-pub struct Shared<T: DatexValueContainerProxySerialize<C>, C = SharedReferencesCache> {
-    value: T, // TODO: store actual value inside core value
+pub struct Shared<T: DatexNative> {
     container: SharedContainer,
-    _phantom: core::marker::PhantomData<C>,
+    _phantom_t: core::marker::PhantomData<T>,
 }
 
-impl<T: DatexValueContainerProxySerialize<C>, C> Deref for Shared<T, C> {
+impl<T: DatexNative> Deref for Shared<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        &self.value
+        todo!()
+        // &self.container
     }
 }
-impl<T: DatexValueContainerProxySerialize<C>, C> DerefMut for Shared<T, C> {
+impl<T: DatexNative> DerefMut for Shared<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.value
+        todo!()
+        // &mut self.container
     }
 }
 
-impl<T: DatexValueContainerProxySerialize<C>, C> Shared<T, C> {
+impl<T: DatexNative> Shared<T> {
     pub fn to_container(self) -> SharedContainer {
         self.container
     }
 }
 
-// FIXME: no clone constraint. just move T inside value container
-impl<T: DatexValueContainerProxySerialize<C> + Clone, C> Shared<T, C> {
+impl<T: DatexNative + 'static> Shared<T> {
     pub fn try_new(
         value: T,
+        type_definition: TypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        context: &mut C,
     ) -> Result<Self, TryToDatexValueError> {
-        let value_container = value.clone().try_to_value_container(context)?;
+        let value_container = ValueContainer::from(Value::new(
+            CoreValue::Native(NativeCoreValue::new(value)),
+            Some(type_definition),
+        ));
         Ok(Self {
-            value,
             container: SharedContainer::new_owned_with_inferred_allowed_type(
                 value_container,
                 SharedContainerMutability::Mutable,
                 address_provider,
             ),
-            _phantom: core::marker::PhantomData,
+            _phantom_t: core::marker::PhantomData,
         })
     }
 }
 
-// FIXME: no clone constraint. just move T inside value container
-impl<T: DatexValueContainerProxyInfallibleSerialize<C> + DatexValueContainerProxySerialize<C> + Clone, C> Shared<T, C> {
+impl<T: DatexNative + 'static> Shared<T> {
     pub fn new(
         value: T,
+        type_definition: TypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        context: &mut C,
     ) -> Self {
-        let value_container = value.clone().to_value_container(context);
+        let value_container = ValueContainer::from(Value::new(
+            CoreValue::Native(NativeCoreValue::new(value)),
+            Some(type_definition),
+        ));
         Self {
-            value,
             container: SharedContainer::new_owned_with_inferred_allowed_type(
                 value_container,
                 SharedContainerMutability::Mutable,
                 address_provider,
             ),
-            _phantom: core::marker::PhantomData,
+            _phantom_t: core::marker::PhantomData,
         }
     }
 }
 
-impl<T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize, C> TryFrom<SharedContainer>
-for Shared<T, C>
+impl<T: DatexNative + 'static> TryFrom<SharedContainer> for Shared<T>
 {
     type Error = TryFromDatexValueError;
     fn try_from(container: SharedContainer) -> Result<Self, Self::Error> {
-        let value =
-            T::try_from_value_container(container.value_container().clone())?;
+        // TODO: check if is native
         Ok(Self {
-            value,
             container,
-            _phantom: core::marker::PhantomData,
+            _phantom_t: core::marker::PhantomData,
         })
     }
 }

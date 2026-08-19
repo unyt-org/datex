@@ -1,14 +1,11 @@
 //! Implements [DatexValueProxy] for [Box<T>] where T: [DatexValueProxy].
 
-use core::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
     types::r#type::Type,
     values::{value::Value, value_container::ValueContainer},
 };
-
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl<T, C> DatexValueProxy<C> for Box<T> where T: DatexValueProxy<C> {}
 
@@ -44,15 +41,8 @@ where
 // }
 impl<T> DatexValueProxyDeserialize for Box<T>
 where
-    T: DatexValueContainerProxyDeserialize + 'static,
+    T: DatexValueContainerProxyDeserialize,
 {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         T::try_from_value_container(value.into()).map(Box::new)
     }

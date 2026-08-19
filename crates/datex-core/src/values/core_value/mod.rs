@@ -36,8 +36,8 @@ use crate::{
 };
 use core::fmt::{Debug, Display, Formatter};
 use core::hash::Hash;
-use std::any::Any;
-use std::ops::Deref;
+use core::any::Any;
+use binrw::error::CustomError;
 use crate::datex_proxy::{DatexValueProxyDeserialize, DatexValueProxySerialize};
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
@@ -47,13 +47,16 @@ pub mod equality;
 pub mod ops;
 
 
-
-pub trait DatexNative:
-    DatexValueProxyDeserialize +
-    DatexValueProxySerialize<SharedReferencesCache>{}
+pub trait DatexNative: Any {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+    /// Returns an actual core value representation of the native value, not [CoreValue::Native]
+    /// TODO: only if serialization is allowed for the type
+    fn get_value_as_core_value(&self) -> CoreValue;
+}
 
 pub struct NativeCoreValue {
-    pub value: Box<dyn DatexNative>,
+    pub value: Box<dyn DatexNative + 'static>,
 }
 
 impl NativeCoreValue {

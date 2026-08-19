@@ -265,12 +265,17 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 ) -> Result<Self, TryFromDatexValueError> {
                     Err(TryFromDatexValueError("Deserialization is disabled for this type".to_string()))
                 }
+            }
+
+            #[automatically_derived]
+            impl #generics DatexNative for #ident #generics {
                 fn as_any(&self) -> &dyn Any {
                     self
                 }
                 fn as_any_mut(&mut self) -> &mut dyn Any {
                     self
                 }
+                fn get_value_as_core_value(&self) -> CoreValue {todo!()}
             }
         }
     } else {
@@ -282,12 +287,17 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 ) -> Result<Self, TryFromDatexValueError> {
                    value.try_into()
                 }
+            }
+
+            #[automatically_derived]
+            impl #generics DatexNative for #ident #generics {
                 fn as_any(&self) -> &dyn Any {
                     self
                 }
                 fn as_any_mut(&mut self) -> &mut dyn Any {
                     self
                 }
+                fn get_value_as_core_value(&self) -> CoreValue {todo!()}
             }
 
             #[automatically_derived]
@@ -363,6 +373,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 values::value_container::ValueContainer,
                 values::value::Value,
                 values::core_value::CoreValue,
+                values::core_value::DatexNative,
                 values::core_values::map::Map,
                 values::core_values::list::List,
                 types::type_definition::TypeDefinition,

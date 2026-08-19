@@ -10,6 +10,8 @@ use crate::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
     },
     values::{
+        core_value::CoreValue,
+        core_value::DatexNative,
         core_values::{
             boolean::Boolean, callable::Callable, decimal::Decimal,
             endpoint::Endpoint, integer::Integer, list::List, map::Map,
@@ -48,13 +50,17 @@ macro_rules! impl_datex_direct_via_value_container {
             ) -> Result<Self, TryFromDatexValueError> {
                value.try_into().map_err(|_| TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local with inner type {}", stringify!($type), stringify!($type))))
             }
+        }
 
+        impl DatexNative for $type {
             fn as_any(&self) -> &dyn Any {
                 self
             }
             fn as_any_mut(&mut self) -> &mut dyn Any {
                 self
             }
+
+            fn get_value_as_core_value(&self) -> CoreValue {todo!()}
         }
 
         impl DatexProxyTypes<()> for $type {

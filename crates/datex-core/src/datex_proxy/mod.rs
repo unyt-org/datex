@@ -23,7 +23,7 @@ use crate::datex_proxy::shared::Shared;
 #[cfg(feature = "decompiler")]
 use crate::decompiler::{DecompileOptions, decompile_value};
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::values::core_value::CoreValue;
+use crate::values::core_value::{CoreValue, DatexNative};
 
 #[derive(Debug, Clone)]
 pub struct TryFromDatexValueError(pub String);
@@ -119,7 +119,7 @@ pub macro derive_datex_proxy_types_default($ty:ty) {
 }
 
 /// Conversion from a [ValueContainer] to a rust value
-pub trait DatexValueContainerProxyDeserialize: Sized where Self: 'static {
+pub trait DatexValueContainerProxyDeserialize: Sized {
     /// Try to deserialize the given [ValueContainer] into Self.
     fn try_from_value_container(
         value: ValueContainer,
@@ -129,7 +129,7 @@ pub trait DatexValueContainerProxyDeserialize: Sized where Self: 'static {
     /// [CoreValue::Native] values can actually be borrowed, for other values, [None] is returned.
     fn try_borrow_mut_from_value_container(
         value: &mut ValueContainer
-    ) -> Option<&mut Self> where Self: Sized {
+    ) -> Option<&mut Self> where Self: Sized + 'static {
         // try to downcast directly from native value
         if let ValueContainer::Local(Value {inner: CoreValue::Native(native), ..}) = value
             && let Some(native) = native.as_any_mut().downcast_mut::<Self>() {
@@ -211,9 +211,7 @@ pub trait DatexValueContainerProxyDeserialize: Sized where Self: 'static {
 }
 
 /// Conversion from a [Value] to a rust value
-pub trait DatexValueProxyDeserialize: Any {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
+pub trait DatexValueProxyDeserialize {
 
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> where Self: Sized;
 
@@ -221,7 +219,7 @@ pub trait DatexValueProxyDeserialize: Any {
     /// [CoreValue::Native] values can actually be borrowed, for other values, [None] is returned.
     fn try_borrow_mut_from_value(
         value: &mut Value
-    ) -> Option<&Self> where Self: Sized {
+    ) -> Option<&Self> where Self: Sized + 'static {
         // try to downcast directly from native value
         if let CoreValue::Native(native) = &mut value.inner
             && let Some(native) = native.as_any_mut().downcast_mut::<Self>() {
@@ -274,11 +272,12 @@ pub trait DatexValueProxySerialize<C> {
         self, 
         address_provider: &mut SelfOwnedPointerAddressProvider,
         context: &mut C
-    ) -> Result<Shared<Self, C>, TryToDatexValueError> where Self: Sized + Clone {
+    ) -> Result<Shared<Self>, TryToDatexValueError> where Self: DatexNative + Sized + DatexProxyTypes<C> {
+        let ty = Self::datex_type(context);
         Shared::try_new(
             self,
+            ty.convert_to_definition(),
             address_provider,
-            context,
         )
     }
 }
@@ -310,11 +309,12 @@ pub trait DatexValueProxyInfallibleSerialize<C> {
         self,
         address_provider: &mut SelfOwnedPointerAddressProvider,
         context: &mut C
-    ) -> Shared<Self, C> where Self: Sized + Clone + DatexValueProxySerialize<C> {
+    ) -> Shared<Self> where Self: DatexNative + Sized + DatexProxyTypes<C> {
+        let ty = Self::datex_type(context);
         Shared::new(
             self,
+            ty.convert_to_definition(),
             address_provider,
-            context,
         )
     }
 }

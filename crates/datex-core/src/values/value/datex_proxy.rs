@@ -29,12 +29,6 @@ impl DatexValueProxyDeserialize for Value {
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         Ok(value)
     }
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
 }
 
 impl DatexProxyTypes<()> for Value {

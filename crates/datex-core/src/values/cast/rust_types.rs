@@ -10,6 +10,7 @@ use crate::{
     types::r#type::Type,
     values::{
         core_value::CoreValue,
+        core_value::DatexNative,
         core_values::{
             boolean::Boolean, decimal::typed_decimal::TypedDecimal,
             integer::typed_integer::TypedInteger, text::Text,
@@ -96,13 +97,16 @@ macro_rules! derive_try_from_chain {
             ) -> Result<Self, TryFromDatexValueError> {
                 value.try_into()
             }
+        }
 
+        impl DatexNative for $type {
             fn as_any(&self) -> &dyn Any {
                 self
             }
             fn as_any_mut(&mut self) -> &mut dyn Any {
                 self
             }
+            fn get_value_as_core_value(&self) -> CoreValue {todo!()}
         }
 
         impl DatexProxyTypes<()> for $type {
@@ -113,7 +117,6 @@ macro_rules! derive_try_from_chain {
         derive_datex_proxy_types_default!($type);
     };
 }
-
 derive_try_from_chain!(
     bool,
     CoreLibBaseTypeId::Boolean,

@@ -15,10 +15,16 @@ use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 #[derive(Datex, Debug, Clone)]
+// #[datex(global(namespace="inspector"))]
 // TODO: #[datex(std_type(0x01))]
 pub struct Inspector {
     name: String, // TODO: We must make private properties to be ignore by the type definition and only use public ones, otherwise the prop and methods would colide in DATEX
 }
+
+// #[datex(global(namespace="inspector"))]
+// fn create_inspector() {
+//
+// }
 
 #[datex]
 impl Inspector {
@@ -38,7 +44,7 @@ impl Inspector {
         self.name.clone()
     }
 
-    // TODO
+    // // TODO
     // pub fn method_for_shared_instance(self: Shared<Self>) -> String {
     //     self.borrow().name.clone()
     // }

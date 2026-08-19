@@ -3,9 +3,7 @@ use crate::{
         DatexProxyTypes, DatexValueContainerProxy,
         DatexValueContainerProxyDeserialize,
         DatexValueContainerProxyInfallibleSerialize,
-        DatexValueContainerProxySerialize,
-        DatexValueProxyInfallibleSerialize,
-        DatexValueProxySerialize, TryFromDatexValueError, TryToDatexValueError,
+        DatexValueContainerProxySerialize, TryFromDatexValueError, TryToDatexValueError,
         shared::Shared,
     },
     prelude::*,
@@ -19,12 +17,13 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::datex_proxy::DatexValueProxyInfallibleSerialize;
+use crate::values::core_value::DatexNative;
 
-impl<T, C> DatexValueContainerProxyInfallibleSerialize<C> for Shared<T, C>
+impl<T, C> DatexValueContainerProxyInfallibleSerialize<C> for Shared<T>
 where
-    Shared<T, C>: DatexValueProxyInfallibleSerialize<C>,
-    T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
+    Shared<T>: DatexValueProxyInfallibleSerialize<C>,
+    T: DatexNative,
 {
     fn to_value_container(self, _context: &mut C) -> ValueContainer {
         // FIXME
@@ -32,26 +31,9 @@ where
     }
 }
 
-// Note: concrete impls for SharedReferencesCache and () are required, generic context does not work
-
-impl<T> DatexValueContainerProxySerialize<SharedReferencesCache>
-for Shared<T, SharedReferencesCache>
+impl<T> DatexValueContainerProxySerialize<()> for Shared<T>
 where
-    T: DatexValueContainerProxySerialize<SharedReferencesCache>
-    + DatexValueContainerProxyDeserialize,
-{
-    fn try_to_value_container(
-        self,
-        _context: &mut SharedReferencesCache,
-    ) -> Result<ValueContainer, TryToDatexValueError> {
-        Ok(ValueContainer::Shared(self.container))
-    }
-}
-impl<T> DatexValueContainerProxySerialize<()>
-for Shared<T, ()>
-where
-    T: DatexValueContainerProxySerialize<()>
-    + DatexValueContainerProxyDeserialize,
+    T: DatexNative,
 {
     fn try_to_value_container(
         self,
@@ -61,9 +43,9 @@ where
     }
 }
 
-impl<T, C: 'static> DatexValueContainerProxyDeserialize for Shared<T, C>
+impl<T> DatexValueContainerProxyDeserialize for Shared<T>
 where
-    T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
+    T: DatexNative,
 {
     fn try_from_value_container(
         value: ValueContainer,
@@ -78,9 +60,9 @@ where
     }
 }
 
-impl<T, C> DatexProxyTypes<C> for Shared<T, C>
+impl<T, C> DatexProxyTypes<C> for Shared<T>
 where
-    T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize + DatexProxyTypes<C>,
+    T: DatexNative + DatexProxyTypes<C>,
 {
     fn datex_type(context: &mut C) -> Type {
         Type::Definition(TypeDefinitionWithMetadata::new(
@@ -93,9 +75,9 @@ where
     }
 }
 
-impl<T, C> DatexValueContainerProxy<C> for Shared<T, C>
+impl<T, C> DatexValueContainerProxy<C> for Shared<T>
 where
-    Shared<T, C>: DatexValueContainerProxy<C>,
-    T: DatexValueContainerProxySerialize<C> + DatexValueContainerProxyDeserialize,
+    Shared<T>: DatexValueContainerProxy<C>,
+    T: DatexNative,
 {
 }

@@ -25,13 +25,6 @@ impl<T> DatexValueProxyDeserialize for Vec<T>
 where
     T: DatexValueContainerProxyDeserialize + 'static,
 {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         match List::try_from(value) {
             Ok(val) => val
