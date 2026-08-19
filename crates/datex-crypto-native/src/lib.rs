@@ -150,20 +150,6 @@ impl PQCrypto for CryptoNative {
 
         Ok(wrapped)
     }
-
-    fn aes_kw_unwrap_cheat(
-        kek_bytes: &[u8; 32],
-        cipher: &[u8; 40],
-    ) -> Result<[u8; 32], BackendError> {
-        // Key encryption key
-        let kek = AesKey::new_decrypt(kek_bytes)
-            .map_err(|_| BackendError::Unavailable("openssl aes-kw"))?;
-
-        // Unwrap key
-        let mut unwrapped: [u8; 32] = [0u8; 32];
-        let _length = unwrap_key(&kek, None, &mut unwrapped, cipher);
-        Ok(unwrapped)
-    }
 }
 
 impl Crypto for CryptoNative {
@@ -505,10 +491,11 @@ impl Crypto for CryptoNative {
         peer_raw: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         Box::pin(async move {
-            let my_priv = PKey::private_key_from_pkcs8(pri_key)
+            let my_priv = PKey::private_key_from_raw_bytes(pri_key, Id::X25519)
                 .map_err(|_| X25519DeriveError::InvalidPrivateKey)?;
-            let peer_pub = PKey::public_key_from_der(peer_raw)
-                .map_err(|_| X25519DeriveError::InvalidPeerPublicKey)?;
+            let peer_pub =
+                PKey::public_key_from_raw_bytes(peer_raw, Id::X25519)
+                    .map_err(|_| X25519DeriveError::InvalidPeerPublicKey)?;
 
             let mut deriver = Deriver::new(&my_priv).map_err(|_| {
                 X25519DeriveError::Backend(BackendError::Unavailable(

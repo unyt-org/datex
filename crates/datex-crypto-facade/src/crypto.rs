@@ -201,10 +201,6 @@ pub trait PQCrypto: Send + Sync {
         kek_bytes: &[u8; 32],
         rb: &[u8; 32],
     ) -> Result<[u8; 40], BackendError>;
-    fn aes_kw_unwrap_cheat(
-        kek_bytes: &[u8; 32],
-        cipher: &[u8; 40],
-    ) -> Result<[u8; 32], BackendError>;
 }
 
 #[cfg(test)]

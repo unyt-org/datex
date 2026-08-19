@@ -13,7 +13,7 @@ use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
 
 use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 use datex_crypto_facade::{
-    crypto::{AsyncCryptoResult, Crypto, CryptoVault, PQCrypto},
+    crypto::{AsyncCryptoResult, Crypto, PQCrypto},
     error::BackendError,
 };
 
@@ -23,15 +23,6 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hkdf::Hkdf;
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
-
-use ml_dsa::{
-    Generate, Keypair, MlDsa44, Signer as ml_dsa_signer,
-    SigningKey as ml_dsa_signing_key, Verifier as ml_dsa_verifier,
-};
-use ml_kem::{
-    FromSeed, MlKem512, TryKeyInit,
-    kem::{Decapsulate, Encapsulate, Kem, KeyExport},
-};
 
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 mod hal {
@@ -55,6 +46,7 @@ pub use hal::rng;
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 use esp_hal::rng::Rng;
 
+/* pqc rng setup
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 #[unsafe(no_mangle)]
 unsafe extern "Rust" fn __getrandom_v03_custom(
@@ -64,6 +56,7 @@ unsafe extern "Rust" fn __getrandom_v03_custom(
     unsafe { esp_hal::rng::Rng::new().read_into_raw(dest, len) };
     Ok(())
 }
+*/
 
 struct InfallibleRng;
 impl InfallibleRng {
@@ -339,18 +332,6 @@ impl PQCrypto for CryptoEsp32 {
         let mut buf = [0u8; 40];
         x.wrap(key_to_wrap.as_slice(), &mut buf)
             .map_err(|_| BackendError::Unavailable("aes-kw"))?;
-        Ok(buf)
-    }
-
-    fn aes_kw_unwrap_cheat(
-        kek: &[u8; 32],
-        wrapped: &[u8; 40],
-    ) -> Result<[u8; 32], BackendError> {
-        let x = KekAes256::new(kek.into());
-        let mut buf = [0u8; 32];
-        let _ = x
-            .unwrap(wrapped.as_slice(), &mut buf)
-            .map_err(|_| BackendError::Unavailable("aes-kw"));
         Ok(buf)
     }
 }

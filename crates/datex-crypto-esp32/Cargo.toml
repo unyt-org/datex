@@ -37,9 +37,9 @@ sha2 = { version = "0.10", default-features = false }
 log = { version = "0.4.29", default-features = false }
 ed25519-dalek = {version = "2.2", default-features = false }
 x25519-dalek = {version = "2.0", features = ["static_secrets"], default-features = false }
-ml-kem = { version = "0.3.2", default-features = false, features = ["alloc", "getrandom"] }
-ml-dsa = { version = "0.1.1", default-features = false, features = ["alloc", "getrandom"] }
-getrandom = { version = "0.3", default-features = false }
+# ml-kem = { version = "0.3.2", default-features = false, features = ["alloc", "getrandom"] }
+# ml-dsa = { version = "0.1.1", default-features = false, features = ["alloc", "getrandom"] }
+# getrandom = { version = "0.3", default-features = false }
 
 [dev-dependencies]
 tokio = { version = "1.5", features = ["full"] }

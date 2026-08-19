@@ -378,17 +378,21 @@ impl DXBBlock {
 
                 if self.block_type() != BlockType::Hello {
                     let kek_bytes =
-                        CryptoImpl::hkdf_cheat(&shared_sec, &[0u8; 16])
+                        CryptoImpl::hkdf_sha256(&shared_sec, &[0u8; 16])
+                            .await
                             .unwrap();
                     // split wrapped key from following body
                     let (wrapped_key, enc_body) = self.body.split_at(40);
                     let w_key: [u8; 40] = wrapped_key.try_into().unwrap();
                     let data_key =
-                        CryptoImpl::aes_kw_unwrap_cheat(&kek_bytes, &w_key)
+                        CryptoImpl::key_unwrap_rfc3394(&kek_bytes, &w_key)
+                            .await
                             .unwrap();
-                    let decrypted_body =
-                        CryptoImpl::aes_cheat(&data_key, &[0u8; 16], enc_body)
-                            .unwrap();
+                    let decrypted_body = CryptoImpl::aes_ctr_encrypt(
+                        &data_key, &[0u8; 16], enc_body,
+                    )
+                    .await
+                    .unwrap();
 
                     self.body = decrypted_body;
                 }

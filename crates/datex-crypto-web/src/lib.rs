@@ -1,4 +1,7 @@
-use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
+use datex_crypto_facade::{
+    crypto::{AsyncCryptoResult, Crypto, PQCrypto},
+    error::BackendError,
+};
 use wasm_bindgen::{JsCast, JsError, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
@@ -13,9 +16,14 @@ use utils::{TryAsByteSlice, js_array, js_object};
 pub struct ReadmeDoctests;
 
 use der::{Encode, asn1::BitStringRef};
-use ed25519_dalek;
 use pkcs8::{AlgorithmIdentifierRef, ObjectIdentifier, PrivateKeyInfo};
 use spki::SubjectPublicKeyInfoRef;
+
+use aes::cipher::{KeyIvInit, StreamCipher};
+use aes_kw::KekAes256;
+use ed25519_dalek::SigningKey;
+use hkdf::Hkdf;
+use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
 
 use ml_dsa::{Generate, Keypair, MlDsa65, Signer, SigningKey, Verifier};
@@ -709,5 +717,77 @@ impl Crypto for CryptoWeb {
                 .map_err(|_| JsError::new("X25519 derived length != 32"))?;
             Ok(out)
         })
+    }
+}
+
+impl PQCrypto for CryptoWeb {
+    fn derive_x25519_cheat(
+        pri_key: &[u8; 32],
+        peer_raw: &[u8; 32],
+    ) -> Result<[u8; 32], datex_crypto_facade::error::BackendError> {
+        let x: [u8; 32] = pri_key.to_vec().try_into().map_err(|_| {
+            BackendError::Unavailable(
+                "x25519 private key (shared secret derivation)",
+            )
+        })?;
+        let y: [u8; 32] = peer_raw.to_vec().try_into().map_err(|_| {
+            BackendError::Unavailable(
+                "x25519 public key (shared secret derivation)",
+            )
+        })?;
+        let private_key = StaticSecret::from(x);
+        let public_key = PublicKey::from(y);
+        Ok(private_key.diffie_hellman(&public_key).to_bytes())
+    }
+    fn hkdf_cheat(
+        ikm: &[u8],
+        salt: &[u8],
+    ) -> Result<[u8; 32], datex_crypto_facade::error::BackendError> {
+        let mut okm = [0u8; 32];
+        let ctx = Hkdf::<Sha256>::new(None, ikm);
+        ctx.expand(b"", &mut okm)
+            .map_err(|_| BackendError::Unavailable("hkdf ctx"))?;
+        Ok(okm)
+    }
+    fn aes_cheat(
+        key: &[u8; 32],
+        iv: &[u8; 16],
+        data: &[u8],
+    ) -> Result<Vec<u8>, datex_crypto_facade::error::BackendError> {
+        type Aes128Ctr64LE = ctr::Ctr64LE<aes::Aes256>;
+        let mut msg = data.to_vec();
+        let mut cipher = Aes128Ctr64LE::new(key.into(), iv.into());
+        cipher.apply_keystream(msg.as_mut_slice());
+        Ok(msg)
+    }
+    fn aes_kw_wrap_cheat(
+        kek: &[u8; 32],
+        key_to_wrap: &[u8; 32],
+    ) -> Result<[u8; 40], datex_crypto_facade::error::BackendError> {
+        let x = KekAes256::new(kek.into());
+        let mut buf = [0u8; 40];
+        x.wrap(key_to_wrap.as_slice(), &mut buf)
+            .map_err(|_| BackendError::Unavailable("aes-kw"))?;
+        Ok(buf)
+    }
+    fn gen_x25519_cheat()
+    -> Result<([u8; 32], [u8; 32]), datex_crypto_facade::error::BackendError>
+    {
+        let key: [u8; 32] = Self::random_bytes(32)
+            .try_into()
+            .map_err(|_| BackendError::Unavailable("x25519 key gen rng"))?;
+        let pri_key = StaticSecret::from(key);
+        let pub_key = PublicKey::from(&pri_key).to_bytes();
+        Ok((pub_key, pri_key.to_bytes()))
+    }
+    fn gen_ed25519_cheat()
+    -> Result<([u8; 32], [u8; 32]), datex_crypto_facade::error::BackendError>
+    {
+        let key: [u8; 32] = Self::random_bytes(32)
+            .try_into()
+            .map_err(|_| BackendError::Unavailable("ed25519 key gen rng"))?;
+        let pri_key = SigningKey::from_bytes(&key);
+        let pub_key = pri_key.verifying_key().to_bytes();
+        Ok((pub_key, pri_key.to_bytes()))
     }
 }
