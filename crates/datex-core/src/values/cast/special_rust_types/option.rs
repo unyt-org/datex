@@ -11,31 +11,31 @@ use crate::{
     types::r#type::Type,
     values::value::Value,
 };
-
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::types::type_definition::{
     TypeDefinition, union::UnionTypeDefinition,
 };
 
-impl<T: DatexValueProxy<C>, C> DatexValueProxy<C> for Option<T> {}
-impl<T: DatexValueProxyInfallibleSerialize<C>, C>
-    DatexValueProxyInfallibleSerialize<C> for Option<T>
+impl<T: DatexValueProxy> DatexValueProxy for Option<T> {}
+impl<T: DatexValueProxyInfallibleSerialize>
+    DatexValueProxyInfallibleSerialize for Option<T>
 {
-    fn to_value(self, context: &mut C) -> Value {
-        Value::boxed(match self {
+    fn to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value {
+        Value::boxed(match *self {
             None => Value::null(),
-            Some(value) => value.to_value(context),
+            Some(value) => Box::new(value).to_value(context),
         })
     }
 }
 
-impl<T: DatexValueProxy<C>, C> DatexValueProxySerialize<C> for Option<T> {
+impl<T: DatexValueProxy> DatexValueProxySerialize for Option<T> {
     fn try_to_value(
-        self,
-        context: &mut C,
+        self: Box<Self>,
+        context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
-        match self {
+        match *self {
             None => Ok(Value::boxed(Value::null())),
-            Some(value) => Ok(Value::boxed(value.try_to_value(context)?)),
+            Some(value) => Ok(Value::boxed(Box::new(value).try_to_value(context)?)),
         }
     }
 }
@@ -72,13 +72,13 @@ impl<T: DatexValueProxyDeserialize> DatexValueProxyDeserialize for Option<T> {
 }
 
 /// TODO: only wrap nested Option<Option<T>> into container. Single option can be mapped directly to X|null
-impl<T, C> DatexProxyTypes<C> for Option<T>
+impl<T> DatexProxyTypes for Option<T>
 where
-    T: DatexProxyTypes<C>,
+    T: DatexProxyTypes,
 {
     /// Returns the container type definition for `Option<T>`, which is a union of `null` and the type definition of `T`,
     /// wrapped in a container
-    fn datex_type(memory: &mut C) -> Type {
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         let inner_type = T::datex_type(memory);
         Type::Definition(
             TypeDefinition::Box(Box::new(

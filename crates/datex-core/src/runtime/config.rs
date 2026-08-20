@@ -8,7 +8,7 @@ use crate::{
     values::{core_values::endpoint::Endpoint, value::Value},
 };
 use datex_macros_internal::Datex;
-use crate::datex_proxy::{DatexValueProxyInfallibleSerializeWithoutContext, DatexValueProxySerializeWithoutContext};
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -25,7 +25,7 @@ pub struct RuntimeConfigInterface {
 }
 
 impl RuntimeConfigInterface {
-    pub fn new<T: DatexValueProxySerialize<()>>(
+    pub fn new<T: DatexValueProxySerialize>(
         interface_type: &str,
         setup_data: T,
     ) -> Result<RuntimeConfigInterface, String> {
@@ -70,13 +70,13 @@ impl RuntimeConfig {
         }
     }
 
-    pub fn add_interface<T: DatexValueProxyInfallibleSerialize<()>>(
+    pub fn add_interface<T: DatexValueProxyInfallibleSerialize>(
         &mut self,
         interface_type: String,
         config: T,
         priority: InterfacePriority,
     ) {
-        let config = config.to_value_without_context();
+        let config = config.to_value(&mut SharedReferencesCache::default());
         let interface = RuntimeConfigInterface {
             interface_type,
             config,
@@ -136,7 +136,8 @@ pub mod tests {
         runtime::{RuntimeConfig, RuntimeConfigInterface},
         values::core_values::{endpoint::Endpoint, map::Map},
     };
-    use crate::datex_proxy::DatexValueContainerProxyInfallibleSerializeWithoutContext;
+    use crate::datex_proxy::DatexValueProxyInfallibleSerialize;
+    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     #[derive(Datex)]
     #[datex(structural_recursive)]
@@ -183,7 +184,7 @@ pub mod tests {
             42
         );
 
-        let value_container = config_interface.to_value_container_without_context();
+        let value_container = config_interface.to_value(&mut SharedReferencesCache::default());
         let parsed_config_interface: RuntimeConfigInterface =
             value_container.try_into().unwrap();
         assert_eq!(parsed_config_interface.interface_type, "test");
@@ -192,7 +193,7 @@ pub mod tests {
     #[test]
     fn datex_proxy_runtime_config() {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
-        let value_container = config.to_value_container_without_context();
+        let value_container = config.to_value(&mut SharedReferencesCache::default());
         let parsed_config: RuntimeConfig =
             RuntimeConfig::try_from_value_container(value_container).unwrap();
         assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));

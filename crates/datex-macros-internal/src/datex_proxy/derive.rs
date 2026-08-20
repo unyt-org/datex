@@ -183,16 +183,16 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         false => {
             let serialization_impls = quote! {
                 #[automatically_derived]
-                impl #generics DatexValueProxySerialize<#context> for #ident #generics {
-                    fn try_to_value(self, cache: &mut #context) -> Result<Value, TryToDatexValueError> {
+                impl #generics DatexValueProxySerialize for #ident #generics {
+                    fn try_to_value(self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
                         let value = self;
                         Ok(#into_datex_fields_inner)
                     }
                 }
 
                 #[automatically_derived]
-                impl #generics DatexValueProxyInfallibleSerialize<#context> for #ident #generics {
-                    fn to_value(self, cache: &mut #context) -> Value {
+                impl #generics DatexValueProxyInfallibleSerialize for #ident #generics {
+                    fn to_value(self, cache: &mut SharedReferencesCache) -> Value {
                         let value = self;
                         #into_datex_fields_inner
                     }
@@ -218,8 +218,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         true => {
             let serialization_impl = quote! {
                 #[automatically_derived]
-                impl #generics DatexValueProxySerialize<#context> for #ident #generics {
-                    fn try_to_value(self, cache: &mut #context) -> Result<Value, TryToDatexValueError> {
+                impl #generics DatexValueProxySerialize for #ident #generics {
+                    fn try_to_value(self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
                         let value = self;
                         Ok(#into_datex_fields_inner)
                     }
@@ -275,10 +275,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 fn as_any_mut(&mut self) -> &mut dyn Any {
                     self
                 }
-                fn try_get_value_resolve_native(&self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-                    todo!()
-                }
-                fn core_lib_id(&self) -> CoreLibTypeId {
+                fn to_native_value(self, cache: &mut SharedReferencesCache) -> Value {
                     todo!()
                 }
             }
@@ -302,10 +299,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 fn as_any_mut(&mut self) -> &mut dyn Any {
                     self
                 }
-                fn try_get_value_resolve_native(&self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {todo!()}
-                fn core_lib_id(&self) -> CoreLibTypeId {
-                    todo!()
-                }
+                fn to_native_value(self, cache: &mut SharedReferencesCache) -> Value {todo!()}
             }
 
             #[automatically_derived]
@@ -334,8 +328,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let types_impl = if top_level_attributes.type_kind.is_structural() {
         quote! {
             #[automatically_derived]
-            impl #generics DatexProxyTypes<#context> for #ident #generics {
-                fn datex_type(cache: &mut #context) -> Type {
+            impl #generics DatexProxyTypes for #ident #generics {
+                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     (#wrapped_datex_type).with_name(#datex_name)
                 }
             }
@@ -343,8 +337,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     } else {
         quote! {
             #[automatically_derived]
-            impl #generics DatexProxyTypes<#context> for #ident #generics {
-                fn datex_type(cache: &mut #context) -> Type {
+            impl #generics DatexProxyTypes for #ident #generics {
+                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     #wrapped_datex_type
                 }
             }
@@ -395,7 +389,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             use core::any::Any;
 
             #[automatically_derived]
-            impl #generics DatexValueProxy<#context> for #ident #generics {}
+            impl #generics DatexValueProxy for #ident #generics {}
 
             #helpers
 
@@ -1319,7 +1313,7 @@ fn generate_named_field_type_code(
             quote! {
                 (
                     Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
-                    <#field_type as DatexProxyTypes<#context>>::datex_type(cache.into())
+                    <#field_type as DatexProxyTypes>::datex_type(cache.into())
                 )
             }
         }
@@ -1344,7 +1338,7 @@ fn generate_unnamed_field_type_code(
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                <#field_type as DatexProxyTypes<#context>>::datex_type(cache.into())
+                <#field_type as DatexProxyTypes>::datex_type(cache.into())
             }
         }
         // Cannot infer type

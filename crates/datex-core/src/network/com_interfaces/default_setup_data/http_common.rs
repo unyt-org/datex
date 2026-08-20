@@ -58,7 +58,7 @@ pub fn parse_url(address: &str) -> Result<Url, URLError> {
 }
 
 /// Generates the setup data for client interfaces based on the server's accept addresses.
-pub fn get_clients_setup_data<T: DatexValueProxySerialize<()>>(
+pub fn get_clients_setup_data<T: DatexValueProxySerialize>(
     accept_addresses: Option<Vec<AcceptAddress>>,
     protocols: (String, String),
     interface_type: String,

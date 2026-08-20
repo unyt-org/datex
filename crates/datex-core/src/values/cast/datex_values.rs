@@ -33,16 +33,16 @@ use crate::libs::core::type_id::CoreLibTypeId;
 /// The `gen` param defines, for which concrete context to impl the serialization traits.
 macro_rules! impl_datex_direct_via_value_container {
     ($type:ty, $dx_type:expr) => {
-        impl DatexValueProxy<()> for $type {}
+        impl DatexValueProxy for $type {}
 
-        impl DatexValueProxyInfallibleSerialize<()> for $type {
-            fn to_value(self, _context: &mut ()) -> Value {
-               Value::native(self)
+        impl DatexValueProxyInfallibleSerialize for $type {
+            fn to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Value {
+               Value::native(*self)
             }
         }
-        impl DatexValueProxySerialize<()> for $type {
-            fn try_to_value(self, _context: &mut ()) -> Result<Value, TryToDatexValueError> {
-                Ok(Value::native(self))
+        impl DatexValueProxySerialize for $type {
+            fn try_to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+                Ok(Value::native(*self))
             }
         }
         impl DatexValueProxyDeserialize for $type {
@@ -61,20 +61,16 @@ macro_rules! impl_datex_direct_via_value_container {
                 self
             }
 
-            fn try_get_value_resolve_native(&self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-                Ok(Value::from(self.clone()))
-            }
-            fn core_lib_id(&self) -> CoreLibTypeId {
-                $dx_type.into()
+            fn to_native_value(self, cache: &mut SharedReferencesCache) -> Value {
+                Value::from(self.clone())
             }
         }
 
-        impl DatexProxyTypes<()> for $type {
-            fn datex_type(_context: &mut ()) -> Type {
+        impl DatexProxyTypes for $type {
+            fn datex_type(_context: &mut SharedReferencesCache) -> Type {
                 Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
-        derive_datex_proxy_types_default!($type);
     };
 }
 
@@ -99,8 +95,6 @@ mod tests {
     use crate::{
         datex_proxy::{
             DatexValueProxyDeserialize,
-            DatexValueProxyInfallibleSerializeWithoutContext,
-            DatexValueProxySerializeWithoutContext,
         },
         values::{
             core_value::CoreValue, core_values::endpoint::Endpoint,

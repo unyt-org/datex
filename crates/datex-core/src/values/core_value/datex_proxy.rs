@@ -10,17 +10,16 @@ use crate::{
     types::{r#type::Type, type_definition::TypeDefinition},
     values::{core_value::CoreValue, value::Value},
 };
-use crate::datex_proxy::derive_datex_proxy_types_default;
 
-impl DatexValueProxyInfallibleSerialize<()> for CoreValue {
-    fn to_value(self, _context: &mut ()) -> Value {
-        Value::from(self)
+impl DatexValueProxyInfallibleSerialize for CoreValue {
+    fn to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Value {
+        Value::from(*self)
     }
 }
-impl DatexValueProxySerialize<()> for CoreValue {
+impl DatexValueProxySerialize for CoreValue {
     fn try_to_value(
-        self,
-        _context: &mut (),
+        self: Box<Self>,
+        _context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
         Ok(self.to_value(_context))
     }
@@ -31,13 +30,12 @@ impl DatexValueProxyDeserialize for CoreValue {
     }
 }
 
-impl DatexProxyTypes<()> for CoreValue {
-    fn datex_type(_context: &mut ()) -> Type {
+impl DatexProxyTypes for CoreValue {
+    fn datex_type(_context: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Any.into()).into(),
         )
     }
 }
-derive_datex_proxy_types_default!(CoreValue);
 
-impl DatexValueProxy<()> for CoreValue {}
+impl DatexValueProxy for CoreValue {}

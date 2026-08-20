@@ -64,15 +64,15 @@ macro_rules! derive_try_from_chain {
         }
 
         // specialized unit impl:
-        impl DatexValueProxy<()> for $type {}
+        impl DatexValueProxy for $type {}
 
-        impl DatexValueProxyInfallibleSerialize<()> for $type {
-            fn to_value(self, _context: &mut ()) -> Value {
+        impl DatexValueProxyInfallibleSerialize for $type {
+            fn to_value(self, _context: &mut SharedReferencesCache) -> Value {
                Value::native(self)
             }
         }
-        impl DatexValueProxySerialize<()> for $type {
-            fn try_to_value(self, _context: &mut ()) -> Result<Value, TryToDatexValueError> {
+        impl DatexValueProxySerialize for $type {
+            fn try_to_value(self, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
                 Ok(Value::native(self))
             }
         }
@@ -93,20 +93,16 @@ macro_rules! derive_try_from_chain {
             fn as_any_mut(&mut self) -> &mut dyn Any {
                 self
             }
-            fn try_get_value_resolve_native(&self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-                Ok(Value::from(self.clone()))
-            }
-            fn core_lib_id(&self) -> CoreLibTypeId {
-                $dx_type.into()
+            fn to_native_value(self, cache: &mut SharedReferencesCache) -> Value {
+                Value::from(self.clone())
             }
         }
 
-        impl DatexProxyTypes<()> for $type {
-            fn datex_type(_context: &mut ()) -> Type {
+        impl DatexProxyTypes for $type {
+            fn datex_type(_context: &mut SharedReferencesCache) -> Type {
                 Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
-        derive_datex_proxy_types_default!($type);
     };
 }
 derive_try_from_chain!(
@@ -295,23 +291,21 @@ impl<'a> TryFrom<&'a ValueContainer> for &'a str {
         }
     }
 }
-impl DatexProxyTypes<()> for &str {
-    fn datex_type(_context: &mut ()) -> Type {
+impl DatexProxyTypes for &str {
+    fn datex_type(_context: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
         )
     }
 }
-derive_datex_proxy_types_default!(&str);
 
-impl DatexProxyTypes<()> for str {
-    fn datex_type(_context: &mut ()) -> Type {
+impl DatexProxyTypes for str {
+    fn datex_type(_context: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
         )
     }
 }
-derive_datex_proxy_types_default!(str);
 
 #[cfg(test)]
 mod tests {

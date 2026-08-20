@@ -1,4 +1,3 @@
-use core::any::Any;
 use crate::{
     datex_proxy::{
         DatexProxyTypes, DatexValueProxy, DatexValueProxyDeserialize,
@@ -10,19 +9,18 @@ use crate::{
     types::{r#type::Type, type_definition::TypeDefinition},
     values::value::Value,
 };
-use crate::datex_proxy::derive_datex_proxy_types_default;
 
-impl DatexValueProxyInfallibleSerialize<()> for Value {
-    fn to_value(self, _context: &mut ()) -> Value {
+impl DatexValueProxyInfallibleSerialize for Value {
+    fn to_value(self, _context: &mut SharedReferencesCache) -> Value {
         self
     }
 }
-impl DatexValueProxySerialize<()> for Value {
+impl DatexValueProxySerialize for Value {
     fn try_to_value(
-        self,
-        _context: &mut (),
+        self: Box<Self>,
+        _context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
-        Ok(self)
+        Ok(*self)
     }
 }
 impl DatexValueProxyDeserialize for Value {
@@ -31,13 +29,12 @@ impl DatexValueProxyDeserialize for Value {
     }
 }
 
-impl DatexProxyTypes<()> for Value {
-    fn datex_type(_context: &mut ()) -> Type {
+impl DatexProxyTypes for Value {
+    fn datex_type(_context: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Any.into()).into(),
         )
     }
 }
-derive_datex_proxy_types_default!(Value);
 
-impl DatexValueProxy<()> for Value {}
+impl DatexValueProxy for Value {}

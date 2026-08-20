@@ -1,6 +1,5 @@
 //! Implements [DatexValueProxy] for [Vec<T>] where T: [DatexValueProxy].
 
-use core::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
@@ -19,7 +18,7 @@ use crate::{
     types::type_definition::TypeDefinition,
 };
 
-impl<T, C> DatexValueProxy<C> for Vec<T> where T: DatexValueContainerProxy<C> + 'static {}
+impl<T> DatexValueProxy for Vec<T> where T: DatexValueContainerProxy + 'static {}
 
 impl<T> DatexValueProxyDeserialize for Vec<T>
 where
@@ -36,39 +35,39 @@ where
     }
 }
 
-impl<T, C> DatexValueProxySerialize<C> for Vec<T>
+impl<T> DatexValueProxySerialize for Vec<T>
 where
-    T: DatexValueContainerProxySerialize<C>,
+    T: DatexValueContainerProxySerialize,
 {
     fn try_to_value(
-        self,
-        context: &mut C,
+        self: Box<Self>,
+        context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
         let list = self
             .into_iter()
-            .map(|v| v.try_to_value_container(context))
+            .map(|v| Box::new(v).try_to_value_container(context))
             .collect::<Result<List, _>>()?;
         Ok(Value::from(list))
     }
 }
 
-impl<T: DatexValueContainerProxyInfallibleSerialize<C>, C>
-    DatexValueProxyInfallibleSerialize<C> for Vec<T>
+impl<T: DatexValueContainerProxyInfallibleSerialize>
+    DatexValueProxyInfallibleSerialize for Vec<T>
 {
-    fn to_value(self, context: &mut C) -> Value {
+    fn to_value(self, context: &mut SharedReferencesCache) -> Value {
         Value::from(
             self.into_iter()
-                .map(|v| v.to_value_container(context))
+                .map(|v| Box::new(v).to_value_container(context))
                 .collect::<Vec<_>>(),
         )
     }
 }
 
-impl<T, C> DatexProxyTypes<C> for Vec<T>
+impl<T> DatexProxyTypes for Vec<T>
 where
-    T: DatexProxyTypes<C>,
+    T: DatexProxyTypes,
 {
-    fn datex_type(memory: &mut C) -> Type {
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::Collection(CollectionTypeDefinition::List(
                 ListCollectionTypeDefinition(Box::new(T::datex_type(memory))),

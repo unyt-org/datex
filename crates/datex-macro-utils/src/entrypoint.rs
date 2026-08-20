@@ -15,7 +15,6 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
-use datex_core::datex_proxy::DatexValueContainerProxyInfallibleSerializeWithoutContext;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {

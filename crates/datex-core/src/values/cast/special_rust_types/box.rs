@@ -6,27 +6,28 @@ use crate::{
     types::r#type::Type,
     values::{value::Value, value_container::ValueContainer},
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
-impl<T, C> DatexValueProxy<C> for Box<T> where T: DatexValueProxy<C> {}
+impl<T> DatexValueProxy for Box<T> where T: DatexValueProxy {}
 
-impl<T, C> DatexValueProxySerialize<C> for Box<T>
+impl<T> DatexValueProxySerialize for Box<T>
 where
-    T: DatexValueProxySerialize<C>,
+    T: DatexValueProxySerialize,
 {
     fn try_to_value(
         self,
-        context: &mut C,
+        context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
-        (*self).try_to_value(context)
+        todo!() // FIXME: remove Box<T> impl completely?
     }
 }
 
-impl<T, C> DatexValueProxyInfallibleSerialize<C> for Box<T>
+impl<T> DatexValueProxyInfallibleSerialize for Box<T>
 where
-    T: DatexValueProxyInfallibleSerialize<C>,
+    T: DatexValueProxyInfallibleSerialize,
 {
-    fn to_value(self, context: &mut C) -> Value {
-        (*self).to_value(context)
+    fn to_value(self, context: &mut SharedReferencesCache) -> Value {
+        todo!() // FIXME: remove Box<T> impl completely?
     }
 }
 // FIXME do we want to allow ValueContainer directly to be boxed, or should DatexValueProxyDeserialize be enought?
@@ -48,11 +49,11 @@ where
     }
 }
 
-impl<T, C> DatexProxyTypes<C> for Box<T>
+impl<T> DatexProxyTypes for Box<T>
 where
-    T: DatexProxyTypes<C>,
+    T: DatexProxyTypes,
 {
-    fn datex_type(memory: &mut C) -> Type {
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         T::datex_type(memory)
     }
 }

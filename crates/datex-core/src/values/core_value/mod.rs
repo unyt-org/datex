@@ -38,7 +38,7 @@ use core::fmt::{Debug, Display, Formatter};
 use core::hash::Hash;
 use core::any::Any;
 use binrw::error::CustomError;
-use crate::datex_proxy::{DatexValueProxyDeserialize, DatexValueProxySerialize, TryToDatexValueError};
+use crate::datex_proxy::{DatexProxyTypes, DatexValueProxyDeserialize, DatexValueProxySerialize, TryToDatexValueError};
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::values::value::Value;
 
@@ -48,13 +48,18 @@ pub mod equality;
 pub mod ops;
 
 
-pub trait DatexNative: Any {
+pub trait DatexNative: Any + DatexValueProxySerialize {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
-    /// Returns an DATEX datex value representation of the native value, not [CoreValue::Native]
-    /// TODO: only if serialization is allowed for the type
-    fn try_get_value_resolve_native(&self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError>;
-    fn core_lib_id(&self) -> CoreLibTypeId;
+    /// Creates a new [Value] with [CoreValue::Native], containing [Self].
+    fn to_native_value(self, cache: &mut SharedReferencesCache) -> Value 
+        where Self: Sized { 
+        let ty = self.datex_instance_type(cache).convert_to_definition();
+        Value::new(
+           CoreValue::native(self),
+           Some(ty)
+        )
+    }
 }
 
 pub struct NativeCoreValue {
@@ -338,7 +343,7 @@ impl From<&CoreValue> for CoreLibTypeId {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Box)
             }
             CoreValue::Native(native) => {
-                native.value.core_lib_id()
+                todo!()
             }
         }
     }

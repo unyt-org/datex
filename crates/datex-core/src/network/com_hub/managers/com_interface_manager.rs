@@ -390,7 +390,6 @@ mod tests {
     use crate::{
         datex_proxy::{
             DatexValueProxyInfallibleSerialize,
-            DatexValueProxyInfallibleSerializeWithoutContext,
         },
         network::com_interfaces::com_interface::factory::{
             SendCallback, SendSuccess, SocketConfiguration, SocketProperties,

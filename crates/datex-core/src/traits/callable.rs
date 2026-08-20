@@ -10,9 +10,9 @@ use crate::{
 };
 use seq_macro::seq;
 
-pub trait IntoDatexCallable<Args, R, C> {
+pub trait IntoDatexCallable<Args, R> {
     /// Returns a vector of tuples containing the parameter names (if any) and their corresponding [Type]s.
-    fn parameters(context: &mut C) -> Vec<(Option<String>, Type)>;
+    fn parameters(context: &mut SharedReferencesCache) -> Vec<(Option<String>, Type)>;
     /// Invokes the callable with the provided arguments and returns a [Result] containing either the return value or a [CallableError].
     fn invoke(&self, args: Vec<ValueContainer>) -> Result<R, CallableError>;
 }
@@ -20,16 +20,16 @@ pub trait IntoDatexCallable<Args, R, C> {
 macro_rules! impl_datex_callable {
     ($n:literal) => {
         seq!(N in 0..$n {
-            impl<F, R, C, #(A~N,)*> IntoDatexCallable<(#(A~N,)*), R, C> for F
+            impl<F, R, #(A~N,)*> IntoDatexCallable<(#(A~N,)*), R> for F
             where
                 F: Fn(#(A~N,)*) -> R,
                 #(
-                    A~N: DatexProxyTypes<C> + TryFrom<ValueContainer>,
+                    A~N: DatexProxyTypes + TryFrom<ValueContainer>,
                 )*
             {
                 fn parameters(
                     #[allow(unused_variables)]
-                    context: &mut C,
+                    context: &mut SharedReferencesCache,
                 ) -> Vec<(Option<String>, Type)> {
                     vec![#((None, A~N::datex_type(context)),)*]
                 }

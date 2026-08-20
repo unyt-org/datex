@@ -19,10 +19,9 @@ use crate::{
 use core::hash::Hash;
 
 impl<
-    K: DatexValueContainerProxy<C> + Eq + Hash + 'static,
-    V: DatexValueContainerProxy<C> + 'static,
-    C,
-> DatexValueProxy<C> for HashMap<K, V>
+    K: DatexValueContainerProxy + Eq + Hash + 'static,
+    V: DatexValueContainerProxy + 'static,
+> DatexValueProxy for HashMap<K, V>
 {
 }
 
@@ -47,20 +46,19 @@ impl<
 }
 
 impl<
-    K: DatexValueContainerProxySerialize<C> + Eq + Hash,
-    V: DatexValueContainerProxySerialize<C>,
-    C,
-> DatexValueProxySerialize<C> for HashMap<K, V>
+    K: DatexValueContainerProxySerialize + Eq + Hash,
+    V: DatexValueContainerProxySerialize,
+> DatexValueProxySerialize for HashMap<K, V>
 {
     fn try_to_value(
-        self,
-        context: &mut C,
+        self: Box<Self>,
+        context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
         let map = self
             .into_iter()
             .map(|(k, v)| {
-                let key = k.try_to_value_container(context)?;
-                let value = v.try_to_value_container(context)?;
+                let key = Box::new(k).try_to_value_container(context)?;
+                let value = Box::new(v).try_to_value_container(context)?;
                 Ok((key, value))
             })
             .collect::<Result<Map, _>>()?;
@@ -69,17 +67,16 @@ impl<
 }
 
 impl<
-    K: DatexValueContainerProxyInfallibleSerialize<C> + Eq + Hash,
-    V: DatexValueContainerProxyInfallibleSerialize<C>,
-    C,
-> DatexValueProxyInfallibleSerialize<C> for HashMap<K, V>
+    K: DatexValueContainerProxyInfallibleSerialize + Eq + Hash,
+    V: DatexValueContainerProxyInfallibleSerialize,
+> DatexValueProxyInfallibleSerialize for HashMap<K, V>
 {
-    fn to_value(self, context: &mut C) -> Value {
+    fn to_value(self, context: &mut SharedReferencesCache) -> Value {
         let map = self
             .into_iter()
             .map(|(k, v)| {
-                let key = k.to_value_container(context);
-                let value = v.to_value_container(context);
+                let key = Box::new(k).to_value_container(context);
+                let value = Box::new(v).to_value_container(context);
                 (key, value)
             })
             .collect::<Map>();
@@ -87,12 +84,12 @@ impl<
     }
 }
 
-impl<K, V, C> DatexProxyTypes<C> for HashMap<K, V>
+impl<K, V> DatexProxyTypes for HashMap<K, V>
 where
-    K: DatexProxyTypes<C> + Eq + Hash,
-    V: DatexProxyTypes<C>,
+    K: DatexProxyTypes + Eq + Hash,
+    V: DatexProxyTypes,
 {
-    fn datex_type(memory: &mut C) -> Type {
+    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::Collection(CollectionTypeDefinition::Map(
                 MapCollectionTypeDefinition::new(

@@ -81,46 +81,28 @@ impl From<ScriptExecutionError> for DeserializationError {
 
 /// Base DATEX value Proxy trait - converts to and from [ValueContainer]
 /// Must implement [DatexValueContainerProxyDeserialize] and [DatexValueContainerProxySerialize]
-pub trait DatexValueContainerProxy<C>:
+pub trait DatexValueContainerProxy:
     Sized
     + DatexValueContainerProxyDeserialize
-    + DatexValueContainerProxySerialize<C>
-    + DatexProxyTypes<C>
+    + DatexValueContainerProxySerialize
+    + DatexProxyTypes
 {
 }
 
 /// Base DATEX value Proxy trait - converts to and from [Value]
-pub trait DatexValueProxy<C>:
+pub trait DatexValueProxy:
     Sized
     + DatexValueProxyDeserialize
-    + DatexValueProxySerialize<C>
-    + DatexProxyTypes<C>
+    + DatexValueProxySerialize
+    + DatexProxyTypes
 {
 }
 
 /// Trait for providing DATEX type information for a DatexProxy type
 /// FIXME: currently we need to implement both DatexProxyTypes<()> and DatexProxyTypes<SharedReferencesCache>
 /// manually, generic default impl does not work
-pub trait DatexProxyTypes<C> {
-    fn datex_type(context: &mut C) -> Type;
-}
-
-/// Allows collapse of [SharedReferencesCache] to ()
-impl From<SharedReferencesCache> for () {
-    fn from(value: SharedReferencesCache) -> Self {}
-}
-impl<'a> From<&'a mut SharedReferencesCache> for &'a mut () {
-    fn from(value: &'a mut SharedReferencesCache) -> Self {
-        &mut value.empty
-    }
-}
-
-pub macro derive_datex_proxy_types_default($ty:ty) {
-    impl DatexProxyTypes<SharedReferencesCache> for $ty {
-        fn datex_type(_context: &mut SharedReferencesCache) -> Type {
-            <$ty>::datex_type(&mut ())
-        }
-    }
+pub trait DatexProxyTypes {
+    fn datex_type(context: &mut SharedReferencesCache) -> Type;
 }
 
 /// Conversion from a [ValueContainer] to a rust value
@@ -259,80 +241,82 @@ pub trait DatexValueProxyDeserialize {
 }
 
 /// Conversion from a rust value to a [ValueContainer]. Might fail if serde values are serialized.
-pub trait DatexValueContainerProxySerialize<T> {
+pub trait DatexValueContainerProxySerialize {
     fn try_to_value_container(
-        self,
-        context: &mut T,
+        self: Box<Self>,
+        context: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, TryToDatexValueError>;
 
     #[cfg(feature = "decompiler")]
     fn try_to_datex_string(
         self,
         decompile_options: DecompileOptions,
-        context: &mut T,
+        context: &mut SharedReferencesCache,
     ) -> Result<String, TryToDatexValueError>
     where
         Self: Sized,
     {
         Ok(decompile_value(
-            &self.try_to_value_container(context)?,
+            &Box::new(self).try_to_value_container(context)?,
             decompile_options,
         ))
     }
 }
 
 /// Conversion from a rust value to a [Value]. Might fail if serde values are serialized.
-pub trait DatexValueProxySerialize<C> {
+pub trait DatexValueProxySerialize {
     fn try_to_value(
-        self,
-        context: &mut C,
+        self: Box<Self>,
+        context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError>;
+
+    fn datex_instance_type(&self, context: &mut SharedReferencesCache) -> Type;
 
     fn try_shared(
         self,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        context: &mut C,
+        context: &mut SharedReferencesCache,
     ) -> Result<Shared<Self>, TryToDatexValueError>
     where
-        Self: DatexNative + Sized + DatexProxyTypes<C>,
+        Self: DatexNative + Sized + DatexProxyTypes,
     {
-        let ty = Self::datex_type(context);
+        let ty = <Self as DatexProxyTypes>::datex_type(context);
         Shared::try_new(self, ty.convert_to_definition(), address_provider)
     }
 }
 
 /// Infallible conversion from a rust value to a [ValueContainer].
 /// Only works if no serde values are serialized.
-pub trait DatexValueContainerProxyInfallibleSerialize<C> {
-    fn to_value_container(self, context: &mut C) -> ValueContainer;
+pub trait DatexValueContainerProxyInfallibleSerialize {
+    fn to_value_container(self: Box<Self>, context: &mut SharedReferencesCache) -> ValueContainer;
 
     #[cfg(feature = "decompiler")]
     fn to_datex_string(
         self,
         decompile_options: DecompileOptions,
-        context: &mut C,
+        context: &mut SharedReferencesCache,
     ) -> String
     where
         Self: Sized,
     {
-        decompile_value(&self.to_value_container(context), decompile_options)
+        decompile_value(&Box::new(self).to_value_container(context), decompile_options)
     }
 }
 
 /// Infallible conversion from a rust value to a [Value].
 /// Only works if no serde values are serialized.
-pub trait DatexValueProxyInfallibleSerialize<C> {
-    fn to_value(self, context: &mut C) -> Value;
+pub trait DatexValueProxyInfallibleSerialize {
+    fn to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value;
 
     fn shared(
         self,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        context: &mut C,
+        context: &mut SharedReferencesCache,
     ) -> Shared<Self>
     where
-        Self: DatexNative + Sized + DatexProxyTypes<C>,
+        Self: DatexNative + Sized + DatexProxyTypes,
     {
-        let ty = Self::datex_type(context);
+        let ty = <Self as DatexProxyTypes>::datex_type(context);
         Shared::new(self, ty.convert_to_definition(), address_provider)
     }
 }
@@ -364,101 +348,28 @@ impl<T: DatexValueProxyDeserialize> DatexValueContainerProxyDeserialize for T {
     }
 }
 
-impl<T, C> DatexValueContainerProxySerialize<C> for T
+impl<T> DatexValueContainerProxySerialize for T
 where
-    T: DatexValueProxySerialize<C>,
+    T: DatexValueProxySerialize,
 {
     default fn try_to_value_container(
-        self,
-        context: &mut C,
+        self: Box<Self>,
+        context: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, TryToDatexValueError> {
         DatexValueProxySerialize::try_to_value(self, context)
             .map(ValueContainer::from)
     }
 }
 
-impl<T, C> DatexValueContainerProxyInfallibleSerialize<C> for T
+impl<T> DatexValueContainerProxyInfallibleSerialize for T
 where
-    T: DatexValueProxyInfallibleSerialize<C>,
+    T: DatexValueProxyInfallibleSerialize,
 {
-    default fn to_value_container(self, context: &mut C) -> ValueContainer {
+    default fn to_value_container(self: Box<Self>, context: &mut SharedReferencesCache) -> ValueContainer {
         ValueContainer::from(DatexValueProxyInfallibleSerialize::to_value(
             self, context,
         ))
     }
 }
 
-impl<T: DatexValueProxy<C>, C> DatexValueContainerProxy<C> for T {}
-
-pub trait DatexValueContainerProxySerializeWithoutContext: Sized {
-    fn try_to_value_container_without_context(
-        self,
-    ) -> Result<ValueContainer, TryToDatexValueError>;
-}
-
-pub trait DatexValueProxySerializeWithoutContext: Sized {
-    fn try_to_value_without_context(
-        self,
-    ) -> Result<Value, TryToDatexValueError>;
-}
-
-pub trait DatexTypeWithoutContext: Sized {
-    fn datex_type_without_context() -> Type;
-}
-
-pub trait DatexValueContainerProxyInfallibleSerializeWithoutContext:
-    Sized
-{
-    fn to_value_container_without_context(self) -> ValueContainer;
-}
-pub trait DatexValueProxyInfallibleSerializeWithoutContext: Sized {
-    fn to_value_without_context(self) -> Value;
-}
-
-impl<T> DatexValueContainerProxySerializeWithoutContext for T
-where
-    T: DatexValueContainerProxySerialize<()>,
-{
-    fn try_to_value_container_without_context(
-        self,
-    ) -> Result<ValueContainer, TryToDatexValueError> {
-        self.try_to_value_container(&mut ())
-    }
-}
-
-impl<T> DatexValueProxySerializeWithoutContext for T
-where
-    T: DatexValueProxySerialize<()>,
-{
-    fn try_to_value_without_context(
-        self,
-    ) -> Result<Value, TryToDatexValueError> {
-        self.try_to_value(&mut ())
-    }
-}
-
-impl<T> DatexValueContainerProxyInfallibleSerializeWithoutContext for T
-where
-    T: DatexValueContainerProxyInfallibleSerialize<()>,
-{
-    fn to_value_container_without_context(self) -> ValueContainer {
-        self.to_value_container(&mut ())
-    }
-}
-impl<T> DatexValueProxyInfallibleSerializeWithoutContext for T
-where
-    T: DatexValueProxyInfallibleSerialize<()>,
-{
-    fn to_value_without_context(self) -> Value {
-        self.to_value(&mut ())
-    }
-}
-
-impl<T> DatexTypeWithoutContext for T
-where
-    T: DatexProxyTypes<()>,
-{
-    fn datex_type_without_context() -> Type {
-        Self::datex_type(&mut ())
-    }
-}
+impl<T: DatexValueProxy> DatexValueContainerProxy for T {}

@@ -18,26 +18,27 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use crate::datex_proxy::DatexValueProxyInfallibleSerialize;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::values::core_value::DatexNative;
 
-impl<T, C> DatexValueContainerProxyInfallibleSerialize<C> for Shared<T>
+impl<T> DatexValueContainerProxyInfallibleSerialize for Shared<T>
 where
-    Shared<T>: DatexValueProxyInfallibleSerialize<C>,
+    Shared<T>: DatexValueProxyInfallibleSerialize,
     T: DatexNative,
 {
-    fn to_value_container(self, _context: &mut C) -> ValueContainer {
+    fn to_value_container(self, _context: &mut SharedReferencesCache) -> ValueContainer {
         // FIXME
         ValueContainer::Shared(self.container)
     }
 }
 
-impl<T> DatexValueContainerProxySerialize<()> for Shared<T>
+impl<T> DatexValueContainerProxySerialize for Shared<T>
 where
     T: DatexNative,
 {
     fn try_to_value_container(
         self,
-        _context: &mut (),
+        _context: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, TryToDatexValueError> {
         Ok(ValueContainer::Shared(self.container))
     }
@@ -60,13 +61,13 @@ where
     }
 }
 
-impl<T, C> DatexProxyTypes<C> for Shared<T>
+impl<T> DatexProxyTypes for Shared<T>
 where
-    T: DatexNative + DatexProxyTypes<C>,
+    T: DatexNative + DatexProxyTypes,
 {
-    fn datex_type(context: &mut C) -> Type {
+    fn datex_type(context: &mut SharedReferencesCache) -> Type {
         Type::Definition(TypeDefinitionWithMetadata::new(
-            TypeDefinition::Box(Box::new(T::datex_type(context))),
+            TypeDefinition::Box(Box::new(T::datex_instance_type(context))),
             TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Owned,
@@ -75,9 +76,9 @@ where
     }
 }
 
-impl<T, C> DatexValueContainerProxy<C> for Shared<T>
+impl<T> DatexValueContainerProxy for Shared<T>
 where
-    Shared<T>: DatexValueContainerProxy<C>,
+    Shared<T>: DatexValueContainerProxy,
     T: DatexNative,
 {
 }
