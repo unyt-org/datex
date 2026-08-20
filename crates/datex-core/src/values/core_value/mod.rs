@@ -349,6 +349,11 @@ impl CoreValue {
     {
         value.into()
     }
+    
+    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
+    pub fn native(value: impl DatexNative) -> CoreValue {
+        CoreValue::Native(NativeCoreValue::new(value))
+    }
 
     /// Check if the CoreValue is a combined value type (List, Map)
     /// that contains inner ValueContainers.

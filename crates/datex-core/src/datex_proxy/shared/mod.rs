@@ -110,23 +110,21 @@ mod test {
 
     use crate::{
         prelude::*,
-        runtime::cache::shared_references_cache::SharedReferencesCache,
     };
 
-    // FIME
-    // #[test]
-    // fn string_shared() {
-    //     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-    //
-    //     let shared_container =
-    //         SharedContainer::new_owned_with_inferred_allowed_type(
-    //             "Hello DATEX",
-    //             SharedContainerMutability::Mutable,
-    //             address_provider,
-    //         );
-    //
-    //     let shared_string: Shared<String, ()> =
-    //         Shared::try_from(shared_container).unwrap();
-    //     assert_eq!(shared_string.value, "Hello DATEX");
-    // }
+    #[test]
+    fn string_shared() {
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+    
+        let shared_container =
+            SharedContainer::new_owned_with_inferred_allowed_type(
+                "Hello DATEX",
+                SharedContainerMutability::Mutable,
+                address_provider,
+            );
+    
+        let shared_string: Shared<String> =
+            Shared::try_from(shared_container).unwrap();
+        assert_eq!(shared_string.as_str(), "Hello DATEX");
+    }
 }

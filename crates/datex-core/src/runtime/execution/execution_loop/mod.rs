@@ -12,7 +12,6 @@ use crate::{
         core_compilation_context::{CompileInput, DXBWithSharedValues},
         injected_values::compile_injected_values,
     },
-    decompiler::{DecompileOptions, decompile_body},
     dxb_parser::{
         body::{
             DXBParserError, SeekRequest, iterate_instructions,
@@ -583,11 +582,10 @@ pub gen fn inner_execution_loop(
                             ..
                         })
                         | TypeInstruction::ImplType(_) => {
-                            println!(
+                            panic!(
                                 "Unexpected type instruction: {:?}",
                                 type_instruction
                             );
-                            unreachable!()
                         }
                     })
                 } else {
