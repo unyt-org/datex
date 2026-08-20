@@ -1,7 +1,7 @@
 use crate::{
     global::protocol_structures::{
         instruction_data::{
-            ImplTypeData, ListData, MapData, TypeReferenceData,
+            ImplTypeData, ListData, MapData, TaggedTypeData, TypeReferenceData,
         },
         instructions::NextExpectedInstructions,
     },
@@ -35,7 +35,8 @@ pub enum TypeInstruction {
     Range,
     #[brw(magic = 0x6u8)]
     DefinitionWithMetadata(TypeMetadata),
-
+    #[brw(magic = 0x7u8)]
+    TaggedType(TaggedTypeData),
     #[brw(magic = 0x8u8)]
     Map(MapData),
 }
@@ -68,7 +69,18 @@ impl TypeInstruction {
                 NextExpectedInstructions::Type(list.element_count)
             } // list elements
 
+            TypeInstruction::Map(map) => {
+                NextExpectedInstructions::Type(map.element_count) // FIXME *2?
+            } // map key-value pairs
+
             TypeInstruction::ImplType(_) => NextExpectedInstructions::Type(1), // impl type
+            TypeInstruction::TaggedType(ty) => {
+                if ty.has_type {
+                    NextExpectedInstructions::Type(1)
+                } else {
+                    NextExpectedInstructions::None
+                }
+            } // tagged type
 
             TypeInstruction::DefinitionWithMetadata(_) => {
                 NextExpectedInstructions::Type(1)
@@ -98,6 +110,9 @@ impl TypeInstruction {
             }
             TypeInstruction::ImplType(data) => {
                 write!(string, "[{} impls]", data.impl_count)
+            }
+            TypeInstruction::TaggedType(data) => {
+                write!(string, "[tag: {}]", data.tag.0)
             }
             _ => {
                 // no custom disassembly

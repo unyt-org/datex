@@ -343,7 +343,8 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             todo!()
         }
         CoreValue::Box(inner) => {
-            todo!()
+            context.write(RegularInstruction::boxed_value());
+            context.visit_value_container(*inner, parent_context);
         }
         CoreValue::Uninitialized => {
             panic!("Tried to compile uninitialized value")

@@ -1,21 +1,25 @@
 pub mod datex_proxy;
 
-use core::ops::Receiver;
-use core::ops::Deref;
-use std::ops::DerefMut;
 use crate::{
     datex_proxy::{
-        DatexValueContainerProxySerialize,
+        DatexValueContainerProxyDeserialize,
+        DatexValueContainerProxyInfallibleSerialize,
+        DatexValueContainerProxySerialize, TryFromDatexValueError,
+        TryToDatexValueError,
     },
-    shared_values::{SharedContainer, traits::SharedContainerCommon},
+    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+    shared_values::{
+        SharedContainer, SharedContainerMutability,
+        traits::SharedContainerCommon,
+    },
+    types::type_definition::TypeDefinition,
+    values::{
+        core_value::{CoreValue, DatexNative, NativeCoreValue},
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
-use crate::datex_proxy::{DatexValueContainerProxyDeserialize, DatexValueContainerProxyInfallibleSerialize, TryFromDatexValueError, TryToDatexValueError};
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::shared_values::SharedContainerMutability;
-use crate::types::type_definition::TypeDefinition;
-use crate::values::core_value::{CoreValue, DatexNative, NativeCoreValue};
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
+use core::ops::{Deref, DerefMut};
 
 pub struct Shared<T: DatexNative> {
     container: SharedContainer,
@@ -85,8 +89,7 @@ impl<T: DatexNative + 'static> Shared<T> {
     }
 }
 
-impl<T: DatexNative + 'static> TryFrom<SharedContainer> for Shared<T>
-{
+impl<T: DatexNative + 'static> TryFrom<SharedContainer> for Shared<T> {
     type Error = TryFromDatexValueError;
     fn try_from(container: SharedContainer) -> Result<Self, Self::Error> {
         // TODO: check if is native
@@ -105,8 +108,10 @@ mod test {
         shared_values::{SharedContainer, SharedContainerMutability},
     };
 
-    use crate::prelude::*;
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+    use crate::{
+        prelude::*,
+        runtime::cache::shared_references_cache::SharedReferencesCache,
+    };
 
     // FIME
     // #[test]

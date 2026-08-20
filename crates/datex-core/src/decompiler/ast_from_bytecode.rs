@@ -363,6 +363,7 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::UnaryMinus
                         | RegularInstruction::UnaryPlus
                         | RegularInstruction::BitwiseNot
+                        | RegularInstruction::BoxedValue
                         | RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. })
                         | RegularInstruction::Apply(_)
                         | RegularInstruction::CallMethod(_)
@@ -473,8 +474,13 @@ pub fn ast_from_bytecode(
                             TypeInstruction::List(_)
                             | TypeInstruction::Range
                             | TypeInstruction::ImplType(_)
+                            | TypeInstruction::TaggedType(_)
                             | TypeInstruction::Map(_)
                             | TypeInstruction::DefinitionWithMetadata(_) => {
+                                println!(
+                                    "TypeInstruction {:?} not yet implemented in ast_from_bytecode",
+                                    type_instruction
+                                );
                                 unreachable!()
                             }
                         }
@@ -822,6 +828,11 @@ pub fn ast_from_bytecode(
                                 })
                                     .with_default_span()
                                     .into()
+                            }
+
+                            RegularInstruction::BoxedValue => {
+                                let expression = collected_results.pop_value();
+                                expression.data.with_span(expression.span).into()
                             }
 
                             RegularInstruction::Apply(_) => {

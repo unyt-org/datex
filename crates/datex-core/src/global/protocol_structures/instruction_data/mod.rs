@@ -526,6 +526,23 @@ pub struct ImplTypeData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
+pub struct TaggedTypeData {
+    pub(crate) tag: ShortTextData,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub(crate) has_type: bool,
+}
+impl TaggedTypeData {
+    pub fn new(tag: String, has_type: bool) -> Self {
+        Self {
+            tag: ShortTextData(tag),
+            has_type,
+        }
+    }
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
 pub struct TypeReferenceData {
     pub address: PointerAddress,
 }

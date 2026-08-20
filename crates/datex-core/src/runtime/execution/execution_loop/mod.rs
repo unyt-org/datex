@@ -12,6 +12,7 @@ use crate::{
         core_compilation_context::{CompileInput, DXBWithSharedValues},
         injected_values::compile_injected_values,
     },
+    decompiler::{DecompileOptions, decompile_body},
     dxb_parser::{
         body::{
             DXBParserError, SeekRequest, iterate_instructions,
@@ -28,9 +29,9 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, JumpData, ShortStatementsData,
-                ShortTextData, StatementsData, TaggedValue, TextData,
-                UnboundedStatementsData,
+                FloatAsInt32Data, InstantData, JumpData, MapData,
+                ShortStatementsData, ShortTextData, StatementsData,
+                TaggedTypeData, TaggedValue, TextData, UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
@@ -70,7 +71,8 @@ use crate::{
         r#type::Type,
         type_definition::{
             TypeDefinition, impl_type::ImplTypeDefinition,
-            range::RangeTypeDefinition, tagged_type::TaggedTypeDefinition,
+            map::MapTypeDefinition, range::RangeTypeDefinition,
+            tagged_type::TaggedTypeDefinition,
         },
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
@@ -476,6 +478,7 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::CallableDeclaration(_) |
                             RegularInstruction::Callable(_) |
+                            RegularInstruction::BoxedValue |
                             RegularInstruction::TypeExpression => unreachable!(),
                             #[cfg(feature = "disassembler")]
                             RegularInstruction::_RemoteExecutionDebugFlat(_) |
@@ -514,6 +517,15 @@ pub gen fn inner_execution_loop(
                                 literal.into(),
                             )
                         }
+                        TypeInstruction::TaggedType(TaggedTypeData {
+                            tag,
+                            has_type: false,
+                        }) => CollectedExecutionResult::type_definition(
+                            TypeDefinition::TaggedType(
+                                // TODO pointer addr
+                                TaggedTypeDefinition::new_without_type(tag.0),
+                            ),
+                        ),
 
                         TypeInstruction::SharedTypeReference(type_ref) => {
                             let val = interrupt_with_maybe_value!(
@@ -566,7 +578,15 @@ pub gen fn inner_execution_loop(
                         | TypeInstruction::Map(_)
                         | TypeInstruction::DefinitionWithMetadata(_)
                         | TypeInstruction::Range
+                        | TypeInstruction::TaggedType(TaggedTypeData {
+                            has_type: true,
+                            ..
+                        })
                         | TypeInstruction::ImplType(_) => {
+                            println!(
+                                "Unexpected type instruction: {:?}",
+                                type_instruction
+                            );
                             unreachable!()
                         }
                     })
@@ -810,7 +830,11 @@ pub gen fn inner_execution_loop(
                                         res
                                     ).into()
                                 }
-
+                                RegularInstruction::BoxedValue => {
+                                    let expression = collected_results.try_pop_runtime_value()?;
+                                    let value_container = expression.into_value_container(&mut state)?;
+                                    ValueContainer::from(Value::boxed(value_container)).into()
+                                }
                                 RegularInstruction::TypedValue => {
                                     let mut value_container = collected_results
                                         .try_pop_value_container(&mut state)?;
@@ -1400,6 +1424,19 @@ pub gen fn inner_execution_loop(
 
                             Instruction::Type(type_instruction) => {
                                 match type_instruction {
+                                    TypeInstruction::TaggedType(tagged_type_data) => {
+                                        if tagged_type_data.has_type {
+                                            let def = collected_results.pop_type();
+                                            TypeDefinition::TaggedType(TaggedTypeDefinition::new(
+                                                def,
+                                                tagged_type_data.tag.0
+                                            )).into()
+                                        } else {
+                                            TypeDefinition::TaggedType(TaggedTypeDefinition::new_without_type(
+                                                tagged_type_data.tag.0
+                                            )).into()
+                                        }
+                                    }
                                     TypeInstruction::ImplType(
                                         impl_type_data,
                                     ) => {
@@ -1430,6 +1467,15 @@ pub gen fn inner_execution_loop(
                                     TypeInstruction::DefinitionWithMetadata(metadata) => {
                                         let definition = collected_results.pop_type_definition();
                                         Type::Definition(TypeDefinitionWithMetadata::new(definition, metadata)).into()
+                                    }
+                                    TypeInstruction::Map(MapData { element_count}) => {
+                                        let mut map_entries = Vec::with_capacity(element_count as usize);
+                                        for _ in 0..element_count {
+                                            let value_type = collected_results.pop_type();
+                                            let key_type = collected_results.pop_type();
+                                            map_entries.push((key_type, value_type));
+                                        }
+                                        TypeDefinition::Map(MapTypeDefinition(map_entries)).into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),
                                 }

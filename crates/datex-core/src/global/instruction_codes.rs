@@ -158,8 +158,9 @@ pub enum InstructionCode {
 
     ENDPOINT,
 
+    BOXED_VALUE, // boxed value (for Option<T> and other types that require boxing)
     TAGGED_VALUE, // e.g. #Example or #Example {example: 42}
-    INSTANT,      // ISO 8601 datetime stored as i128 milliseconds since epoch
+    INSTANT,     // ISO 8601 datetime stored as i128 milliseconds since epoch
 
     // lists and maps 0xe0 - 0xef
     LIST,       // (1,2,3)

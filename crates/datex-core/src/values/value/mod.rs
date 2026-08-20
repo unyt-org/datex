@@ -119,6 +119,12 @@ impl Value {
     pub fn boxed(value: impl Into<ValueContainer>) -> Self {
         Value::from(CoreValue::Box(Box::new(value.into())))
     }
+    pub fn unbox(self) -> Result<ValueContainer, Value> {
+        match self.inner {
+            CoreValue::Box(box boxed) => Ok(boxed),
+            _ => Err(self),
+        }
+    }
 }
 
 impl Value {
@@ -139,24 +145,8 @@ impl Value {
         }
     }
 
-    #[deprecated]
     pub fn is_null(&self) -> bool {
         core::matches!(self.inner, CoreValue::Null)
-    }
-    #[deprecated]
-    pub fn is_text(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Text(_))
-    }
-    #[deprecated]
-    pub fn is_integer_i8(&self) -> bool {
-        core::matches!(
-            &self.inner,
-            CoreValue::TypedInteger(TypedInteger::I8(_))
-        )
-    }
-    #[deprecated]
-    pub fn is_map(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Map(_))
     }
 
     /// Tries to get a borrow of the current value as the specified type.
@@ -459,7 +449,7 @@ mod tests {
             list::{List, datex_list},
         },
     };
-    use core::str::FromStr;
+    use core::{assert_matches, str::FromStr};
     use log::info;
 
     #[test]
@@ -575,14 +565,17 @@ mod tests {
         let a = Value::from("Hello ");
         let b = Value::from(42i8);
 
-        assert!(a.is_text());
-        assert!(b.is_integer_i8());
+        assert!(matches!(a.inner, CoreValue::Text(_)));
+        assert!(matches!(
+            b.inner,
+            CoreValue::TypedInteger(TypedInteger::I8(_))
+        ));
 
         let a_plus_b = (a.clone() + b.clone()).unwrap();
         let b_plus_a = (b.clone() + a.clone()).unwrap();
 
-        assert!(a_plus_b.is_text());
-        assert!(b_plus_a.is_text());
+        assert!(matches!(a_plus_b.inner, CoreValue::Text(_)));
+        assert!(matches!(b_plus_a.inner, CoreValue::Text(_)));
 
         assert_eq!(a_plus_b, Value::from("Hello 42"));
         assert_eq!(b_plus_a, Value::from("42Hello "));
@@ -595,7 +588,9 @@ mod tests {
     fn structural_equality() {
         let a = Value::from(42_i8);
         let b = Value::from(42_i32);
-        assert!(a.is_integer_i8());
+        assert_matches!(a.inner, CoreValue::TypedInteger(TypedInteger::I8(_)));
+        assert_matches!(b.inner, CoreValue::TypedInteger(TypedInteger::I32(_)));
+        assert_ne!(a, b);
 
         assert_structural_eq!(a, b);
 

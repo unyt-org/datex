@@ -424,6 +424,9 @@ impl RegularInstruction {
     pub fn range() -> Self {
         RegularInstruction::Range
     }
+    pub fn boxed_value() -> Self {
+        RegularInstruction::BoxedValue
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Instruction)]
@@ -461,6 +464,9 @@ pub enum RegularInstruction {
     Integer(Integer),
     #[magic(InstructionCode::RANGE)]
     Range,
+
+    #[magic(InstructionCode::BOXED_VALUE)]
+    BoxedValue,
 
     #[magic(InstructionCode::ENDPOINT)]
     Endpoint(Endpoint),

@@ -17,7 +17,6 @@ use crate::{
     types::type_definition::TypeDefinition,
 };
 use core::hash::Hash;
-use std::any::Any;
 
 impl<
     K: DatexValueContainerProxy<C> + Eq + Hash + 'static,

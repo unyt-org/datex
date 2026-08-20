@@ -26,18 +26,20 @@ pub mod apply;
 pub mod ops;
 pub mod update_handler;
 pub mod value_key;
-use crate::shared_values::{
-    collapsed_container_value::{
-        CollapsedContainerValue, CollapsedContainerValueMut,
+use crate::{
+    shared_values::{
+        collapsed_container_value::{
+            CollapsedContainerValue, CollapsedContainerValueMut,
+        },
+        traits::SharedContainerCommon,
     },
-    traits::SharedContainerCommon,
+    values::core_values::endpoint::Endpoint,
 };
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
     ops::FnOnce,
 };
-use crate::values::core_values::endpoint::Endpoint;
 
 pub mod datex_proxy;
 pub mod error;
@@ -62,11 +64,13 @@ impl ValueContainer {
     pub fn local(value: impl Into<Value>) -> Self {
         ValueContainer::Local(value.into())
     }
-    
+
     pub fn owner(&self) -> Endpoint {
         match self {
             ValueContainer::Local(value) => Endpoint::LOCAL,
-            ValueContainer::Shared(shared) => shared.pointer_address().endpoint(),
+            ValueContainer::Shared(shared) => {
+                shared.pointer_address().endpoint()
+            }
         }
     }
 
@@ -250,6 +254,15 @@ impl ValueContainer {
             ValueContainer::Local(value) => value.is_uninitialized(),
             ValueContainer::Shared(shared) => {
                 shared.value_container().is_uninitialized()
+            }
+        }
+    }
+
+    pub fn is_null(&self) -> bool {
+        match self {
+            ValueContainer::Local(value) => value.is_null(),
+            ValueContainer::Shared(shared) => {
+                shared.value_container().is_null()
             }
         }
     }

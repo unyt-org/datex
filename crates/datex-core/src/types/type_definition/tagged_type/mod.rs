@@ -7,6 +7,17 @@ pub struct TaggedTypeDefinition {
     pub tag: String,
     pub ty: Option<Box<Type>>,
 }
+impl TaggedTypeDefinition {
+    pub fn new(ty: Type, tag: String) -> Self {
+        TaggedTypeDefinition {
+            tag,
+            ty: Some(Box::new(ty)),
+        }
+    }
+    pub fn new_without_type(tag: String) -> Self {
+        TaggedTypeDefinition { tag, ty: None }
+    }
+}
 impl Display for TaggedTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if let Some(ty) = &self.ty {

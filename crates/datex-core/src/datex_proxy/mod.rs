@@ -1,29 +1,31 @@
 pub mod serde_compat;
 pub mod shared;
 
-use core::any::Any;
-use std::cell::{Ref, RefMut};
 #[cfg(feature = "compiler")]
 use crate::compiler::error::SpannedCompilerError;
+#[cfg(feature = "decompiler")]
+use crate::decompiler::{DecompileOptions, decompile_value};
 #[cfg(feature = "parser")]
 use crate::parser::errors::SpannedParserError;
 use crate::{
     core_compiler::core_compilation_context::DXBWithSharedValues,
+    datex_proxy::shared::Shared,
     prelude::*,
     runtime::{
         Runtime,
         cache::shared_references_cache::SharedReferencesCache,
         execution::{ExecutionError, context::ScriptExecutionError},
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::errors::KeyNotFoundError,
     types::r#type::Type,
-    values::{value::Value, value_container::ValueContainer},
+    values::{
+        core_value::{CoreValue, DatexNative},
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
-use crate::datex_proxy::shared::Shared;
-#[cfg(feature = "decompiler")]
-use crate::decompiler::{DecompileOptions, decompile_value};
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::values::core_value::{CoreValue, DatexNative};
+use core::cell::{Ref, RefMut};
 
 #[derive(Debug, Clone)]
 pub struct TryFromDatexValueError(pub String);
@@ -93,7 +95,8 @@ pub trait DatexValueProxy<C>:
     + DatexValueProxyDeserialize
     + DatexValueProxySerialize<C>
     + DatexProxyTypes<C>
-{}
+{
+}
 
 /// Trait for providing DATEX type information for a DatexProxy type
 /// FIXME: currently we need to implement both DatexProxyTypes<()> and DatexProxyTypes<SharedReferencesCache>
@@ -107,7 +110,9 @@ impl From<SharedReferencesCache> for () {
     fn from(value: SharedReferencesCache) -> Self {}
 }
 impl<'a> From<&'a mut SharedReferencesCache> for &'a mut () {
-    fn from(value: &'a mut SharedReferencesCache) -> Self {&mut value.empty}
+    fn from(value: &'a mut SharedReferencesCache) -> Self {
+        &mut value.empty
+    }
 }
 
 pub macro derive_datex_proxy_types_default($ty:ty) {
@@ -128,14 +133,22 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
     /// Try to get a reference to Self from the given [Value].
     /// [CoreValue::Native] values can actually be borrowed, for other values, [None] is returned.
     fn try_borrow_mut_from_value_container(
-        value: &mut ValueContainer
-    ) -> Option<&mut Self> where Self: Sized + 'static {
+        value: &mut ValueContainer,
+    ) -> Option<&mut Self>
+    where
+        Self: Sized + 'static,
+    {
         // try to downcast directly from native value
-        if let ValueContainer::Local(Value {inner: CoreValue::Native(native), ..}) = value
-            && let Some(native) = native.as_any_mut().downcast_mut::<Self>() {
+        if let ValueContainer::Local(Value {
+            inner: CoreValue::Native(native),
+            ..
+        }) = value
+            && let Some(native) = native.as_any_mut().downcast_mut::<Self>()
+        {
             Some(native)
+        } else {
+            None
         }
-        else {None}
     }
 
     fn try_from_map_property(
@@ -212,25 +225,32 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
 
 /// Conversion from a [Value] to a rust value
 pub trait DatexValueProxyDeserialize {
-
-    fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> where Self: Sized;
+    fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError>
+    where
+        Self: Sized;
 
     /// Try to get a reference to Self from the given [Value].
     /// [CoreValue::Native] values can actually be borrowed, for other values, [None] is returned.
-    fn try_borrow_mut_from_value(
-        value: &mut Value
-    ) -> Option<&Self> where Self: Sized + 'static {
+    fn try_borrow_mut_from_value(value: &mut Value) -> Option<&Self>
+    where
+        Self: Sized + 'static,
+    {
         // try to downcast directly from native value
         if let CoreValue::Native(native) = &mut value.inner
-            && let Some(native) = native.as_any_mut().downcast_mut::<Self>() {
-                Some(native)
+            && let Some(native) = native.as_any_mut().downcast_mut::<Self>()
+        {
+            Some(native)
+        } else {
+            None
         }
-        else {None}
     }
 
     fn try_from_map_property(
         value: Result<Value, KeyNotFoundError>,
-    ) -> Result<Self, TryFromDatexValueError> where Self: Sized {
+    ) -> Result<Self, TryFromDatexValueError>
+    where
+        Self: Sized,
+    {
         let value =
             value.map_err(|err| TryFromDatexValueError(err.to_string()))?;
 
@@ -269,16 +289,15 @@ pub trait DatexValueProxySerialize<C> {
     ) -> Result<Value, TryToDatexValueError>;
 
     fn try_shared(
-        self, 
+        self,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        context: &mut C
-    ) -> Result<Shared<Self>, TryToDatexValueError> where Self: DatexNative + Sized + DatexProxyTypes<C> {
+        context: &mut C,
+    ) -> Result<Shared<Self>, TryToDatexValueError>
+    where
+        Self: DatexNative + Sized + DatexProxyTypes<C>,
+    {
         let ty = Self::datex_type(context);
-        Shared::try_new(
-            self,
-            ty.convert_to_definition(),
-            address_provider,
-        )
+        Shared::try_new(self, ty.convert_to_definition(), address_provider)
     }
 }
 
@@ -308,14 +327,13 @@ pub trait DatexValueProxyInfallibleSerialize<C> {
     fn shared(
         self,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        context: &mut C
-    ) -> Shared<Self> where Self: DatexNative + Sized + DatexProxyTypes<C> {
+        context: &mut C,
+    ) -> Shared<Self>
+    where
+        Self: DatexNative + Sized + DatexProxyTypes<C>,
+    {
         let ty = Self::datex_type(context);
-        Shared::new(
-            self,
-            ty.convert_to_definition(),
-            address_provider,
-        )
+        Shared::new(self, ty.convert_to_definition(), address_provider)
     }
 }
 

@@ -4,7 +4,7 @@ use crate::{
         to_instructions::ToInstructions,
     },
     global::protocol_structures::{
-        instruction_data::{ImplTypeData, ListData, MapData},
+        instruction_data::{ImplTypeData, ListData, MapData, TaggedTypeData},
         type_instructions::TypeInstruction,
     },
     prelude::*,
@@ -399,8 +399,21 @@ impl ToInstructions for TaggedTypeDefinition {
 
     fn to_instructions<'a>(
         &'a self,
-        _shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen { todo!() })
+        Box::new(gen move {
+            yield TypeInstruction::TaggedType(TaggedTypeData::new(
+                self.tag.clone(),
+                self.ty.is_some(),
+            ));
+            if let Some(ty) = &self.ty {
+                for instruction in ty
+                    .to_instructions(shared_value_tracking.as_deref_mut())
+                    .collect::<Vec<_>>()
+                {
+                    yield instruction;
+                }
+            }
+        })
     }
 }
