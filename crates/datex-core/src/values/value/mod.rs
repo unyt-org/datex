@@ -36,6 +36,7 @@ use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
+use crate::values::core_value::{DatexNative, NativeCoreValue};
 
 #[derive(Debug)]
 pub struct Value {
@@ -96,6 +97,12 @@ impl Value {
             custom_type,
         }
     }
+
+    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
+    pub fn native(value: impl DatexNative) -> Value {
+        CoreValue::native(value).into()
+    }
+    
     pub fn custom_type(&self) -> Option<&TypeDefinition> {
         self.custom_type.as_ref()
     }

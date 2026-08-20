@@ -275,7 +275,12 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 fn as_any_mut(&mut self) -> &mut dyn Any {
                     self
                 }
-                fn get_value_as_core_value(&self) -> CoreValue {todo!()}
+                fn try_get_value_resolve_native(&self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+                    todo!()
+                }
+                fn core_lib_id(&self) -> CoreLibTypeId {
+                    todo!()
+                }
             }
         }
     } else {
@@ -297,7 +302,10 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 fn as_any_mut(&mut self) -> &mut dyn Any {
                     self
                 }
-                fn get_value_as_core_value(&self) -> CoreValue {todo!()}
+                fn try_get_value_resolve_native(&self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {todo!()}
+                fn core_lib_id(&self) -> CoreLibTypeId {
+                    todo!()
+                }
             }
 
             #[automatically_derived]

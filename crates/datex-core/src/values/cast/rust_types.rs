@@ -5,7 +5,7 @@ use core::any::Any;
 
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId, CoreLibTypeId},
     prelude::*,
     types::r#type::Type,
     values::{
@@ -68,27 +68,14 @@ macro_rules! derive_try_from_chain {
 
         impl DatexValueProxyInfallibleSerialize<()> for $type {
             fn to_value(self, _context: &mut ()) -> Value {
-               Value::from(self)
+               Value::native(self)
             }
         }
         impl DatexValueProxySerialize<()> for $type {
             fn try_to_value(self, _context: &mut ()) -> Result<Value, TryToDatexValueError> {
-                Ok(Value::from(self))
+                Ok(Value::native(self))
             }
         }
-
-        // impl DatexValueProxy<SharedReferencesCache> for $type {}
-
-        // impl DatexValueProxyInfallibleSerialize<SharedReferencesCache> for $type {
-        //     fn to_value(self, _context: &mut SharedReferencesCache) -> Value {
-        //        Value::from(self)
-        //     }
-        // }
-        // impl DatexValueProxySerialize<SharedReferencesCache> for $type {
-        //     fn try_to_value(self, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-        //         Ok(Value::from(self))
-        //     }
-        // }
 
         // deserialize
         impl DatexValueProxyDeserialize for $type {
@@ -106,7 +93,12 @@ macro_rules! derive_try_from_chain {
             fn as_any_mut(&mut self) -> &mut dyn Any {
                 self
             }
-            fn get_value_as_core_value(&self) -> CoreValue {todo!()}
+            fn try_get_value_resolve_native(&self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+                Ok(Value::from(self.clone()))
+            }
+            fn core_lib_id(&self) -> CoreLibTypeId {
+                $dx_type.into()
+            }
         }
 
         impl DatexProxyTypes<()> for $type {

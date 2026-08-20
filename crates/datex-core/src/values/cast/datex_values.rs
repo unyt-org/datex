@@ -25,6 +25,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::TypeDefinition,
 };
+use crate::libs::core::type_id::CoreLibTypeId;
 
 /// Implements [DatexValueProxy] for a [CoreValue](crate::values::core_values) implementation.
 /// This allows to convert e.g. [Endpoint] to [ValueContainer] and back.
@@ -36,12 +37,12 @@ macro_rules! impl_datex_direct_via_value_container {
 
         impl DatexValueProxyInfallibleSerialize<()> for $type {
             fn to_value(self, _context: &mut ()) -> Value {
-               Value::from(self)
+               Value::native(self)
             }
         }
         impl DatexValueProxySerialize<()> for $type {
             fn try_to_value(self, _context: &mut ()) -> Result<Value, TryToDatexValueError> {
-                Ok(Value::from(self))
+                Ok(Value::native(self))
             }
         }
         impl DatexValueProxyDeserialize for $type {
@@ -60,7 +61,12 @@ macro_rules! impl_datex_direct_via_value_container {
                 self
             }
 
-            fn get_value_as_core_value(&self) -> CoreValue {todo!()}
+            fn try_get_value_resolve_native(&self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+                Ok(Value::from(self.clone()))
+            }
+            fn core_lib_id(&self) -> CoreLibTypeId {
+                $dx_type.into()
+            }
         }
 
         impl DatexProxyTypes<()> for $type {
