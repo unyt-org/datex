@@ -243,7 +243,7 @@ pub trait DatexValueProxyDeserialize {
 /// Conversion from a rust value to a [ValueContainer]. Might fail if serde values are serialized.
 pub trait DatexValueContainerProxySerialize {
     fn try_to_value_container(
-        self: Box<Self>,
+        self,
         context: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, TryToDatexValueError>;
 
@@ -266,7 +266,7 @@ pub trait DatexValueContainerProxySerialize {
 /// Conversion from a rust value to a [Value]. Might fail if serde values are serialized.
 pub trait DatexValueProxySerialize {
     fn try_to_value(
-        self: Box<Self>,
+        self,
         context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError>;
 
@@ -288,7 +288,7 @@ pub trait DatexValueProxySerialize {
 /// Infallible conversion from a rust value to a [ValueContainer].
 /// Only works if no serde values are serialized.
 pub trait DatexValueContainerProxyInfallibleSerialize {
-    fn to_value_container(self: Box<Self>, context: &mut SharedReferencesCache) -> ValueContainer;
+    fn to_value_container(self, context: &mut SharedReferencesCache) -> ValueContainer;
 
     #[cfg(feature = "decompiler")]
     fn to_datex_string(
@@ -306,7 +306,7 @@ pub trait DatexValueContainerProxyInfallibleSerialize {
 /// Infallible conversion from a rust value to a [Value].
 /// Only works if no serde values are serialized.
 pub trait DatexValueProxyInfallibleSerialize {
-    fn to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value;
+    fn to_value(self, context: &mut SharedReferencesCache) -> Value;
 
     fn shared(
         self,
@@ -353,7 +353,7 @@ where
     T: DatexValueProxySerialize,
 {
     default fn try_to_value_container(
-        self: Box<Self>,
+        self,
         context: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, TryToDatexValueError> {
         DatexValueProxySerialize::try_to_value(self, context)
@@ -365,7 +365,7 @@ impl<T> DatexValueContainerProxyInfallibleSerialize for T
 where
     T: DatexValueProxyInfallibleSerialize,
 {
-    default fn to_value_container(self: Box<Self>, context: &mut SharedReferencesCache) -> ValueContainer {
+    default fn to_value_container(self, context: &mut SharedReferencesCache) -> ValueContainer {
         ValueContainer::from(DatexValueProxyInfallibleSerialize::to_value(
             self, context,
         ))

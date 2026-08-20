@@ -40,7 +40,7 @@ where
     T: DatexValueContainerProxySerialize,
 {
     fn try_to_value(
-        self: Box<Self>,
+        self,
         context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
         let list = self

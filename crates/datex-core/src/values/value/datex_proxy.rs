@@ -17,7 +17,7 @@ impl DatexValueProxyInfallibleSerialize for Value {
 }
 impl DatexValueProxySerialize for Value {
     fn try_to_value(
-        self: Box<Self>,
+        self,
         _context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
         Ok(*self)

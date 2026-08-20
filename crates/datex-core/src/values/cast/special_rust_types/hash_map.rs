@@ -51,7 +51,7 @@ impl<
 > DatexValueProxySerialize for HashMap<K, V>
 {
     fn try_to_value(
-        self: Box<Self>,
+        self,
         context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
         let map = self

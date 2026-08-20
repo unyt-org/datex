@@ -36,12 +36,12 @@ macro_rules! impl_datex_direct_via_value_container {
         impl DatexValueProxy for $type {}
 
         impl DatexValueProxyInfallibleSerialize for $type {
-            fn to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Value {
+            fn to_value(self, _context: &mut SharedReferencesCache) -> Value {
                Value::native(*self)
             }
         }
         impl DatexValueProxySerialize for $type {
-            fn try_to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+            fn try_to_value(self, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
                 Ok(Value::native(*self))
             }
         }

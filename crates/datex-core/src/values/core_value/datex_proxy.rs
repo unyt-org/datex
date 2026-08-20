@@ -12,13 +12,13 @@ use crate::{
 };
 
 impl DatexValueProxyInfallibleSerialize for CoreValue {
-    fn to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Value {
+    fn to_value(self, _context: &mut SharedReferencesCache) -> Value {
         Value::from(*self)
     }
 }
 impl DatexValueProxySerialize for CoreValue {
     fn try_to_value(
-        self: Box<Self>,
+        self,
         _context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
         Ok(self.to_value(_context))
