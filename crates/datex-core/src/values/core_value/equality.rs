@@ -111,6 +111,9 @@ impl PartialEq for CoreValue {
             (CoreValue::Callable(c1), CoreValue::Callable(c2)) => c1 == c2,
             (CoreValue::Range(r1), CoreValue::Range(r2)) => r1 == r2,
             (CoreValue::Box(b1), CoreValue::Box(b2)) => *b1 == *b2,
+            (CoreValue::Native(n1), CoreValue::Native(n2)) => {
+                n1.value.dyn_eq(&*n2.value)
+            }
             _ => false, // TODO: compare with native
         }
     }

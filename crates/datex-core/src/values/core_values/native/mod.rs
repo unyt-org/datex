@@ -8,15 +8,9 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     values::{value::Value, value_container::ValueContainer},
 };
+mod datex_native_trait;
+pub use datex_native_trait::*;
 
-pub trait DatexNative: Any + DatexValueProxySerialize {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn boxed_to_datex_native_value(
-        self: Box<Self>,
-        cache: &mut SharedReferencesCache,
-    ) -> Value;
-}
 
 impl<T: DatexNative> ToDatexNativeValueContainer for T {
     fn boxed_to_datex_native_value_container(
@@ -82,7 +76,7 @@ mod tests {
 
     #[test]
     fn serde() {
-        let val = NativeCoreValue::new(String::from("xx"));
+        let val = NativeCoreValue::new("xx".to_string());
         let ser =
             val.to_datex_native_value(&mut SharedReferencesCache::default());
         assert_eq!(
@@ -91,7 +85,7 @@ mod tests {
         );
         assert_eq!(
             ser.inner,
-            CoreValue::Native(NativeCoreValue::new("xx".to_owned()))
+            CoreValue::Native(NativeCoreValue::new("xx".to_string()))
         );
     }
 }

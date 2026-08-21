@@ -18,7 +18,7 @@ where
         self: Box<Self>,
         context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
-        todo!() // FIXME: remove Box<T> impl completely?
+        (*self).try_boxed_to_value(context)
     }
 }
 
@@ -30,7 +30,7 @@ where
         self: Box<Self>,
         context: &mut SharedReferencesCache,
     ) -> Value {
-        todo!() // FIXME: remove Box<T> impl completely?
+        (*self).boxed_to_value(context)
     }
 }
 // FIXME do we want to allow ValueContainer directly to be boxed, or should DatexValueProxyDeserialize be enought?

@@ -241,7 +241,7 @@ impl From<&CoreValue> for CoreLibTypeId {
             }
             CoreValue::Box(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Box),
             CoreValue::Native(native) => {
-                todo!()
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Any)
             }
         }
     }
@@ -308,6 +308,36 @@ impl CoreValue {
         match self {
             CoreValue::Text(text) => text.clone(),
             _ => Text(self.to_string()),
+        }
+    }
+
+    /// Tries to downcast the CoreValue to a native value of type T.
+    /// This method will return Some(Box<T>) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native<T: DatexNative>(self) -> Option<Box<T>> {
+        if let CoreValue::Native(native_value) = self {
+            native_value.into_any().downcast::<T>().ok()
+        } else {
+            None
+        }
+    }
+    
+    /// Tries to downcast the CoreValue to a reference of a native value of type T.
+    /// This method will return Some(&T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native_ref<T: DatexNative>(&self) -> Option<&T> {
+        if let CoreValue::Native(native_value) = self {
+            native_value.as_any().downcast_ref::<T>()
+        } else {
+            None
+        }
+    }
+
+    /// Tries to downcast the CoreValue to a mutable reference of a native value of type T.
+    /// This method will return Some(&mut T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native_mut<T: DatexNative>(&mut self) -> Option<&mut T> {
+        if let CoreValue::Native(native_value) = self {
+            native_value.as_any_mut().downcast_mut::<T>()
+        } else {
+            None
         }
     }
 

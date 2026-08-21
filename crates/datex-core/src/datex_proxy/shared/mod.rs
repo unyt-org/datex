@@ -13,30 +13,49 @@ use crate::{
     },
 };
 use core::ops::{Deref, DerefMut};
+use core::cell::{Ref, RefMut};
+use crate::shared_values::traits::SharedContainerCommon;
 
 pub struct Shared<T: DatexNative + ?Sized> {
     container: SharedContainer,
     _phantom_t: core::marker::PhantomData<T>,
 }
 
-impl<T: DatexNative> Deref for Shared<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        todo!()
-        // &self.container
-    }
-}
-impl<T: DatexNative> DerefMut for Shared<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        todo!()
-        // &mut self.container
-    }
-}
-
 impl<T: DatexNative> Shared<T> {
     pub fn to_container(self) -> SharedContainer {
         self.container
+    }
+
+    pub fn borrow(&self) -> Ref<'_, T>
+    {
+        Ref::map(self.container.value_container(), |value_container| {
+            match value_container {
+                ValueContainer::Local(value) => {
+                    // inner should always contain value castable to T
+                    value.inner.downcast_native_ref::<T>().unwrap()
+                }
+                // inner should never contain a shared value
+                ValueContainer::Shared(_) => {
+                    unreachable!()
+                }
+            }
+        })
+    }
+
+    pub fn borrow_mut(&mut self) -> RefMut<'_, T>
+    {
+        RefMut::map(self.container.value_container_mut(), |value_container| {
+            match value_container {
+                ValueContainer::Local(value) => {
+                    // inner should always contain value castable to T
+                    value.inner.downcast_native_mut::<T>().unwrap()
+                }
+                // inner should never contain a shared value
+                ValueContainer::Shared(_) => {
+                    unreachable!()
+                }
+            }
+        })
     }
 }
 
@@ -85,7 +104,18 @@ impl<T: DatexNative + 'static> Shared<T> {
 impl<T: DatexNative + 'static> TryFrom<SharedContainer> for Shared<T> {
     type Error = TryFromDatexValueError;
     fn try_from(container: SharedContainer) -> Result<Self, Self::Error> {
-        // TODO: check if is native
+        // TODO: also check if the type only allows values that are of type T.
+        // check if the container contains a local value of type T
+        match container.value_container().deref() {
+            ValueContainer::Local(value) => {
+                if value.inner.downcast_native_ref::<T>().is_none() {
+                    return Err(TryFromDatexValueError("SharedContainer does not contain the expected native type".to_string()));
+                }
+            }
+            ValueContainer::Shared(_) => {
+                return Err(TryFromDatexValueError("SharedContainer contains a shared value, expected a local native value".to_string()));
+            }
+        }
         Ok(Self {
             container,
             _phantom_t: core::marker::PhantomData,
@@ -102,20 +132,22 @@ mod test {
     };
 
     use crate::prelude::*;
+    use crate::values::core_value::CoreValue;
 
     #[test]
     fn string_shared() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
+        // TODO: also allow conversion to Shared<String> from CoreValue::Text
         let shared_container =
             SharedContainer::new_owned_with_inferred_allowed_type(
-                "Hello DATEX",
+                CoreValue::native("Hello DATEX".to_string()),
                 SharedContainerMutability::Mutable,
                 address_provider,
             );
 
         let shared_string: Shared<String> =
             Shared::try_from(shared_container).unwrap();
-        assert_eq!(shared_string.as_str(), "Hello DATEX");
+        assert_eq!(shared_string.borrow().as_str(), "Hello DATEX");
     }
 }

@@ -68,12 +68,12 @@ macro_rules! derive_try_from_chain {
 
         impl DatexValueProxyInfallibleSerialize for $type {
             fn boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value {
-               Value::native_boxed(self, context)
+               Value::from(*self)
             }
         }
         impl DatexValueProxySerialize for $type {
             fn try_boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-                Ok(Value::native_boxed(self, context))
+                Ok(Value::from(*self))
             }
         }
 
