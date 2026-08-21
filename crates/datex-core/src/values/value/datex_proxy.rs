@@ -20,7 +20,7 @@ impl DatexValueProxySerialize for Value {
         self,
         _context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
-        Ok(*self)
+        Ok(self)
     }
 }
 impl DatexValueProxyDeserialize for Value {

@@ -7,21 +7,21 @@
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::KeyNotFoundError,
-    types::r#type::Type,
+    types::{
+        r#type::Type,
+        type_definition::{TypeDefinition, union::UnionTypeDefinition},
+    },
     values::value::Value,
-};
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::types::type_definition::{
-    TypeDefinition, union::UnionTypeDefinition,
 };
 
 impl<T: DatexValueProxy> DatexValueProxy for Option<T> {}
-impl<T: DatexValueProxyInfallibleSerialize>
-    DatexValueProxyInfallibleSerialize for Option<T>
+impl<T: DatexValueProxyInfallibleSerialize> DatexValueProxyInfallibleSerialize
+    for Option<T>
 {
     fn to_value(self, context: &mut SharedReferencesCache) -> Value {
-        Value::boxed(match *self {
+        Value::boxed(match self {
             None => Value::null(),
             Some(value) => Box::new(value).to_value(context),
         })
@@ -33,9 +33,11 @@ impl<T: DatexValueProxy> DatexValueProxySerialize for Option<T> {
         self,
         context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
-        match *self {
+        match self {
             None => Ok(Value::boxed(Value::null())),
-            Some(value) => Ok(Value::boxed(Box::new(value).try_to_value(context)?)),
+            Some(value) => {
+                Ok(Value::boxed(Box::new(value).try_to_value(context)?))
+            }
         }
     }
 }

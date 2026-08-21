@@ -1,7 +1,6 @@
 //! Implements [DatexValueProxy] for [CoreValue](crate::values::core_values) implementation. That allows to convert e.g. [Endpoint] to [Value] and back.
 //! Also implements [DatexProxyTypes] to provide the correct [Type] for each implementation.
 
-use core::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     libs::core::type_id::CoreLibBaseTypeId,
@@ -10,8 +9,7 @@ use crate::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
     },
     values::{
-        core_value::CoreValue,
-        core_value::DatexNative,
+        core_value::{CoreValue, DatexNative},
         core_values::{
             boolean::Boolean, callable::Callable, decimal::Decimal,
             endpoint::Endpoint, integer::Integer, list::List, map::Map,
@@ -20,12 +18,12 @@ use crate::{
         value::Value,
     },
 };
+use core::any::Any;
 
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::TypeDefinition,
 };
-use crate::libs::core::type_id::CoreLibTypeId;
 
 /// Implements [DatexValueProxy] for a [CoreValue](crate::values::core_values) implementation.
 /// This allows to convert e.g. [Endpoint] to [ValueContainer] and back.
@@ -37,12 +35,12 @@ macro_rules! impl_datex_direct_via_value_container {
 
         impl DatexValueProxyInfallibleSerialize for $type {
             fn to_value(self, _context: &mut SharedReferencesCache) -> Value {
-               Value::native(*self)
+               Value::native(self)
             }
         }
         impl DatexValueProxySerialize for $type {
             fn try_to_value(self, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-                Ok(Value::native(*self))
+                Ok(Value::native(self))
             }
         }
         impl DatexValueProxyDeserialize for $type {
@@ -93,9 +91,7 @@ impl_datex_direct_via_value_container!(Boolean, CoreLibBaseTypeId::Boolean);
 #[cfg(test)]
 mod tests {
     use crate::{
-        datex_proxy::{
-            DatexValueProxyDeserialize,
-        },
+        datex_proxy::DatexValueProxyDeserialize,
         values::{
             core_value::CoreValue, core_values::endpoint::Endpoint,
             value::Value,

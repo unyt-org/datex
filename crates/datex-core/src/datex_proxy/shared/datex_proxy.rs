@@ -3,10 +3,11 @@ use crate::{
         DatexProxyTypes, DatexValueContainerProxy,
         DatexValueContainerProxyDeserialize,
         DatexValueContainerProxyInfallibleSerialize,
-        DatexValueContainerProxySerialize, TryFromDatexValueError, TryToDatexValueError,
-        shared::Shared,
+        DatexValueContainerProxySerialize, DatexValueProxyInfallibleSerialize,
+        TryFromDatexValueError, TryToDatexValueError, shared::Shared,
     },
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{SharedContainerMutability, SharedContainerOwnership},
     types::{
         r#type::Type,
@@ -15,18 +16,18 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    values::value_container::ValueContainer,
+    values::{core_value::DatexNative, value_container::ValueContainer},
 };
-use crate::datex_proxy::DatexValueProxyInfallibleSerialize;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::values::core_value::DatexNative;
 
 impl<T> DatexValueContainerProxyInfallibleSerialize for Shared<T>
 where
     Shared<T>: DatexValueProxyInfallibleSerialize,
     T: DatexNative,
 {
-    fn to_value_container(self, _context: &mut SharedReferencesCache) -> ValueContainer {
+    fn to_value_container(
+        self,
+        _context: &mut SharedReferencesCache,
+    ) -> ValueContainer {
         // FIXME
         ValueContainer::Shared(self.container)
     }
@@ -67,7 +68,7 @@ where
 {
     fn datex_type(context: &mut SharedReferencesCache) -> Type {
         Type::Definition(TypeDefinitionWithMetadata::new(
-            TypeDefinition::Box(Box::new(T::datex_instance_type(context))),
+            TypeDefinition::Box(Box::new(T::datex_type(context))),
             TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Owned,

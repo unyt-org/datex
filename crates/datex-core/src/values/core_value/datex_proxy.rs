@@ -1,4 +1,3 @@
-use core::any::Any;
 use crate::{
     datex_proxy::{
         DatexProxyTypes, DatexValueProxy, DatexValueProxyDeserialize,
@@ -10,10 +9,11 @@ use crate::{
     types::{r#type::Type, type_definition::TypeDefinition},
     values::{core_value::CoreValue, value::Value},
 };
+use core::any::Any;
 
 impl DatexValueProxyInfallibleSerialize for CoreValue {
     fn to_value(self, _context: &mut SharedReferencesCache) -> Value {
-        Value::from(*self)
+        Value::from(self)
     }
 }
 impl DatexValueProxySerialize for CoreValue {
