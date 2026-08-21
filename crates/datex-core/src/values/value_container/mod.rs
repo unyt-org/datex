@@ -40,6 +40,7 @@ use core::{
     hash::{Hash, Hasher},
     ops::FnOnce,
 };
+use crate::utils::sheep_mut::SheepMut;
 
 pub mod datex_proxy;
 pub mod error;
@@ -70,6 +71,26 @@ impl ValueContainer {
             ValueContainer::Local(value) => Endpoint::LOCAL,
             ValueContainer::Shared(shared) => {
                 shared.pointer_address().endpoint()
+            }
+        }
+    }
+
+    /// Gets a reference to the inner [ValueContainer], regardless of whether it is local or shared.
+    pub fn value_container(&self) -> Sheep<ValueContainer> {
+        match self {
+            ValueContainer::Local(_) => Sheep::Borrowed(self),
+            ValueContainer::Shared(shared) => {
+                Sheep::Ref(shared.value_container())
+            }
+        }
+    }
+
+    /// Gets a mutable reference to the inner [ValueContainer], regardless of whether it is local or shared.
+    pub fn value_container_mut(&mut self) -> SheepMut<ValueContainer> {
+        match self {
+            ValueContainer::Local(_) => SheepMut::Borrowed(self),
+            ValueContainer::Shared(shared) => {
+                SheepMut::Ref(shared.value_container_mut())
             }
         }
     }

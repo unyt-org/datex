@@ -134,12 +134,13 @@ pub fn generate_native_callable(
             if is_borrowed {
                 quote! {
                     let value = &mut vals.pop().unwrap();
+                    let mut value_sheep = value.value_container_mut(); // collapse potential Shared to inner ValueContainer
                     // try to get stored native value from the value container
-                    let #var_ident = if let Some(mut inner) = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_native_from_value_container(value) {
+                    let #var_ident = if let Some(mut inner) = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_native_from_value_container(core::ops::DerefMut::deref_mut(&mut value_sheep)) {
                         inner
                     } else {
                         // fallback: convert from DATEX value to native value
-                        &mut (<#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(value.clone()).unwrap())
+                        &mut (<#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(value_sheep.clone()).unwrap())
                     };
                 }
             }

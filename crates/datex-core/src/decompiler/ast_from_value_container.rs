@@ -43,6 +43,7 @@ use crate::{
 };
 use alloc::format;
 use crate::ast::expressions::{Apply, EntityValueExpression};
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -83,7 +84,10 @@ fn create_shared(
 }
 
 fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
-    let core_value_expression = core_value_to_datex_expression(&value.inner);
+    // ensure all native values are collapsed
+    // TODO: pass cache
+    let inner_collapsed = value.inner_non_native(&mut SharedReferencesCache::default()).unwrap();
+    let core_value_expression = core_value_to_datex_expression(inner_collapsed.as_ref());
     // only entity types with a non default type need to be casted
     if value.needs_type_cast()
         && let Some(custom_type) = &value.custom_type
