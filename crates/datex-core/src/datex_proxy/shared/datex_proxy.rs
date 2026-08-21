@@ -1,6 +1,6 @@
 use crate::{
     datex_proxy::{
-        DatexProxyTypes, DatexValueContainerProxy,
+        DatexProxyType, DatexValueContainerProxy,
         DatexValueContainerProxyDeserialize,
         DatexValueContainerProxyInfallibleSerialize,
         DatexValueContainerProxySerialize, DatexValueProxyInfallibleSerialize,
@@ -16,7 +16,9 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    values::{core_value::DatexNative, value_container::ValueContainer},
+    values::{
+        core_values::native::DatexNative, value_container::ValueContainer,
+    },
 };
 
 impl<T> DatexValueContainerProxyInfallibleSerialize for Shared<T>
@@ -24,8 +26,8 @@ where
     Shared<T>: DatexValueProxyInfallibleSerialize,
     T: DatexNative,
 {
-    fn to_value_container(
-        self,
+    fn boxed_to_value_container(
+        self: Box<Self>,
         _context: &mut SharedReferencesCache,
     ) -> ValueContainer {
         // FIXME
@@ -37,8 +39,8 @@ impl<T> DatexValueContainerProxySerialize for Shared<T>
 where
     T: DatexNative,
 {
-    fn try_to_value_container(
-        self,
+    fn try_boxed_to_value_container(
+        self: Box<Self>,
         _context: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, TryToDatexValueError> {
         Ok(ValueContainer::Shared(self.container))
@@ -62,9 +64,9 @@ where
     }
 }
 
-impl<T> DatexProxyTypes for Shared<T>
+impl<T> DatexProxyType for Shared<T>
 where
-    T: DatexNative + DatexProxyTypes,
+    T: DatexNative + DatexProxyType,
 {
     fn datex_type(context: &mut SharedReferencesCache) -> Type {
         Type::Definition(TypeDefinitionWithMetadata::new(

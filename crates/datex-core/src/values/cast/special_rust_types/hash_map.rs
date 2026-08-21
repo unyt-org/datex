@@ -50,15 +50,16 @@ impl<
     V: DatexValueContainerProxySerialize,
 > DatexValueProxySerialize for HashMap<K, V>
 {
-    fn try_to_value(
-        self,
+    fn try_boxed_to_value(
+        self: Box<Self>,
         context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
         let map = self
             .into_iter()
             .map(|(k, v)| {
-                let key = Box::new(k).try_to_value_container(context)?;
-                let value = Box::new(v).try_to_value_container(context)?;
+                let key = Box::new(k).try_boxed_to_value_container(context)?;
+                let value =
+                    Box::new(v).try_boxed_to_value_container(context)?;
                 Ok((key, value))
             })
             .collect::<Result<Map, _>>()?;
@@ -71,12 +72,12 @@ impl<
     V: DatexValueContainerProxyInfallibleSerialize,
 > DatexValueProxyInfallibleSerialize for HashMap<K, V>
 {
-    fn to_value(self, context: &mut SharedReferencesCache) -> Value {
+    fn boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value {
         let map = self
             .into_iter()
             .map(|(k, v)| {
-                let key = Box::new(k).to_value_container(context);
-                let value = Box::new(v).to_value_container(context);
+                let key = Box::new(k).boxed_to_value_container(context);
+                let value = Box::new(v).boxed_to_value_container(context);
                 (key, value)
             })
             .collect::<Map>();
@@ -84,10 +85,10 @@ impl<
     }
 }
 
-impl<K, V> DatexProxyTypes for HashMap<K, V>
+impl<K, V> DatexProxyType for HashMap<K, V>
 where
-    K: DatexProxyTypes + Eq + Hash,
-    V: DatexProxyTypes,
+    K: DatexProxyType + Eq + Hash,
+    V: DatexProxyType,
 {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         Type::Definition(
@@ -115,7 +116,7 @@ mod tests {
     fn to_value() {
         let mut map = HashMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
-        let value: Value = map.to_value_without_context();
+        let value: Value = map.to_value_without_cache();
         assert_eq!(
             value.inner,
             CoreValue::Map(Map::from_iter(vec![(
@@ -134,7 +135,7 @@ mod tests {
             Value::from(Integer::from(1)),
             Value::from(Endpoint::new("@jonas")),
         );
-        let value: Value = map.clone().to_value_without_context();
+        let value: Value = map.clone().to_value_without_cache();
         let map_from_value =
             HashMap::<Value, Value>::try_from_value(value).unwrap();
         assert_eq!(map, map_from_value);
@@ -145,7 +146,7 @@ mod tests {
             ValueContainer::from(Integer::from(1)),
             ValueContainer::from(Endpoint::new("@jonas")),
         );
-        let value: Value = map.clone().to_value_without_context();
+        let value: Value = map.clone().to_value_without_cache();
         let map_from_value =
             HashMap::<ValueContainer, ValueContainer>::try_from_value(value)
                 .unwrap();
@@ -154,7 +155,7 @@ mod tests {
         // map with [Integer, Endpoint] as key and value
         let mut map = HashMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
-        let value: Value = map.clone().to_value_without_context();
+        let value: Value = map.clone().to_value_without_cache();
         let map_from_value =
             HashMap::<Integer, Endpoint>::try_from_value(value).unwrap();
         assert_eq!(map, map_from_value);
@@ -162,15 +163,14 @@ mod tests {
 
     #[test]
     fn datex_type() {
-        let map_type =
-            HashMap::<Integer, Endpoint>::datex_type_without_context();
+        let map_type = HashMap::<Integer, Endpoint>::datex_type_without_cache();
         map_type.with_collapsed_type_definition(|d| {
             assert_eq!(
                 d,
                 &TypeDefinition::Collection(CollectionTypeDefinition::Map(
                     MapCollectionTypeDefinition::new(
-                        Integer::datex_type_without_context(),
-                        Endpoint::datex_type_without_context(),
+                        Integer::datex_type_without_cache(),
+                        Endpoint::datex_type_without_cache(),
                     )
                 ))
             )

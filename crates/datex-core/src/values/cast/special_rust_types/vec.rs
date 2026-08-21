@@ -39,13 +39,13 @@ impl<T> DatexValueProxySerialize for Vec<T>
 where
     T: DatexValueContainerProxySerialize,
 {
-    fn try_to_value(
-        self,
+    fn try_boxed_to_value(
+        self: Box<Self>,
         context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
         let list = self
             .into_iter()
-            .map(|v| Box::new(v).try_to_value_container(context))
+            .map(|v| Box::new(v).try_boxed_to_value_container(context))
             .collect::<Result<List, _>>()?;
         Ok(Value::from(list))
     }
@@ -54,18 +54,21 @@ where
 impl<T: DatexValueContainerProxyInfallibleSerialize>
     DatexValueProxyInfallibleSerialize for Vec<T>
 {
-    fn to_value(self, context: &mut SharedReferencesCache) -> Value {
+    fn boxed_to_value(
+        self: Box<Self>,
+        context: &mut SharedReferencesCache,
+    ) -> Value {
         Value::from(
             self.into_iter()
-                .map(|v| Box::new(v).to_value_container(context))
+                .map(|v| Box::new(v).boxed_to_value_container(context))
                 .collect::<Vec<_>>(),
         )
     }
 }
 
-impl<T> DatexProxyTypes for Vec<T>
+impl<T> DatexProxyType for Vec<T>
 where
-    T: DatexProxyTypes,
+    T: DatexProxyType,
 {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         Type::Definition(
@@ -91,7 +94,7 @@ mod tests {
     #[test]
     fn to_value() {
         let vec = vec![Integer::new(1), Integer::new(2), Integer::new(3)];
-        let value: Value = vec.to_value_without_context();
+        let value: Value = vec.to_value_without_cache();
         assert!(matches!(
             value.inner,
             CoreValue::List(ref l) if l == &List::from(vec![ValueContainer::from(Integer::new(1)), ValueContainer::from(Integer::new(2)), ValueContainer::from(Integer::new(3))])
@@ -114,7 +117,7 @@ mod tests {
 
     #[test]
     fn datex_type() {
-        let vec_type = Vec::<Integer>::datex_type_without_context();
+        let vec_type = Vec::<Integer>::datex_type_without_cache();
         vec_type.with_collapsed_type_definition(|td| {
             assert!(matches!(
                 td,

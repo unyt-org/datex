@@ -98,7 +98,6 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         get_datex_core_crate_name()
     };
 
-
     let context = if top_level_attributes.type_kind.is_structural_recursive() {
         quote! {()}
     } else {
@@ -112,7 +111,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         is_fallible_serialization,
         helpers,
     } = match input.data {
-        Data::Struct(data_struct) => derive_struct(data_struct, &input.ident, &context),
+        Data::Struct(data_struct) => {
+            derive_struct(data_struct, &input.ident, &context)
+        }
         Data::Enum(data_enum) => derive_enum(data_enum, &input.ident, &context),
         _ => unimplemented!(),
     };
@@ -150,15 +151,16 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         &top_level_attributes.type_kind,
     );
 
-    let registration_new_method = if top_level_attributes.type_kind.is_structural_recursive() {
-        quote! {
-            new_without_cache
-        }
-    } else {
-        quote! {
-            new_with_cache
-        }
-    };
+    let registration_new_method =
+        if top_level_attributes.type_kind.is_structural_recursive() {
+            quote! {
+                new_without_cache
+            }
+        } else {
+            quote! {
+                new_with_cache
+            }
+        };
 
     let registration = if export {
         quote! {
@@ -184,16 +186,16 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             let serialization_impls = quote! {
                 #[automatically_derived]
                 impl #generics DatexValueProxySerialize for #ident #generics {
-                    fn try_to_value(self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-                        let value = self;
+                    fn try_boxed_to_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+                        let value = *self;
                         Ok(#into_datex_fields_inner)
                     }
                 }
 
                 #[automatically_derived]
                 impl #generics DatexValueProxyInfallibleSerialize for #ident #generics {
-                    fn to_value(self, cache: &mut SharedReferencesCache) -> Value {
-                        let value = self;
+                    fn boxed_to_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
+                        let value = *self;
                         #into_datex_fields_inner
                     }
                 }
@@ -206,12 +208,11 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     #[automatically_derived]
                     impl #generics From<#ident> for Value #generics {
                         fn from(value: #ident) -> Self {
-                            value.to_value(&mut ())
+                            value.to_value_without_cache()
                         }
                     }
                 }
-            }
-            else {
+            } else {
                 serialization_impls
             }
         }
@@ -219,8 +220,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             let serialization_impl = quote! {
                 #[automatically_derived]
                 impl #generics DatexValueProxySerialize for #ident #generics {
-                    fn try_to_value(self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-                        let value = self;
+                    fn try_boxed_to_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+                        let value = *self;
                         Ok(#into_datex_fields_inner)
                     }
                 }
@@ -236,7 +237,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                         type Error = TryToDatexValueError;
 
                         fn try_from(value: #ident) -> Result<Self, Self::Error> {
-                            value.try_to_value(&mut ()).map(ValueContainer::Local)
+                            value.try_to_value_without_cache().map(ValueContainer::Local)
                         }
                     }
 
@@ -245,12 +246,11 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                         type Error = TryToDatexValueError;
 
                         fn try_from(value: #ident) -> Result<Self, Self::Error> {
-                            value.try_to_value(&mut ())
+                            value.try_to_value_without_cache().map_err(|e| e.into())
                         }
                     }
                 }
-            }
-            else {
+            } else {
                 serialization_impl
             }
         }
@@ -266,19 +266,6 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     Err(TryFromDatexValueError("Deserialization is disabled for this type".to_string()))
                 }
             }
-
-            #[automatically_derived]
-            impl #generics DatexNative for #ident #generics {
-                fn as_any(&self) -> &dyn Any {
-                    self
-                }
-                fn as_any_mut(&mut self) -> &mut dyn Any {
-                    self
-                }
-                fn to_native_value(self, cache: &mut SharedReferencesCache) -> Value {
-                    todo!()
-                }
-            }
         }
     } else {
         quote! {
@@ -289,17 +276,6 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 ) -> Result<Self, TryFromDatexValueError> {
                    value.try_into()
                 }
-            }
-
-            #[automatically_derived]
-            impl #generics DatexNative for #ident #generics {
-                fn as_any(&self) -> &dyn Any {
-                    self
-                }
-                fn as_any_mut(&mut self) -> &mut dyn Any {
-                    self
-                }
-                fn to_native_value(self, cache: &mut SharedReferencesCache) -> Value {todo!()}
             }
 
             #[automatically_derived]
@@ -325,10 +301,26 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         }
     };
 
+    let datex_native = quote! {
+        #[automatically_derived]
+        impl #generics DatexNative for #ident #generics {
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+            fn to_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value
+            {
+                Value::native_boxed(self, cache)
+            }
+        }
+    };
+
     let types_impl = if top_level_attributes.type_kind.is_structural() {
         quote! {
             #[automatically_derived]
-            impl #generics DatexProxyTypes for #ident #generics {
+            impl #generics DatexProxyType for #ident #generics {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     (#wrapped_datex_type).with_name(#datex_name)
                 }
@@ -337,7 +329,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     } else {
         quote! {
             #[automatically_derived]
-            impl #generics DatexProxyTypes for #ident #generics {
+            impl #generics DatexProxyType for #ident #generics {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     #wrapped_datex_type
                 }
@@ -359,7 +351,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     DatexValueProxyDeserialize,
                     TryToDatexValueError,
                     TryFromDatexValueError,
-                    DatexProxyTypes,
+                    DatexProxyType,
                     serde_compat::{
                         try_serde_to_value_container,
                         try_serde_from_value_container
@@ -375,7 +367,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 values::value_container::ValueContainer,
                 values::value::Value,
                 values::core_value::CoreValue,
-                values::core_value::DatexNative,
+                values::core_values::native::DatexNative,
                 values::core_values::map::Map,
                 values::core_values::list::List,
                 types::type_definition::TypeDefinition,
@@ -397,6 +389,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
             #deserialize
 
+            #datex_native
+
             #types_impl
 
             #registration
@@ -405,7 +399,11 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 }
 
 /// Derive implementation for structs
-fn derive_struct(data_struct: DataStruct, ident: &Ident, context: &TokenStream) -> DeriveData {
+fn derive_struct(
+    data_struct: DataStruct,
+    ident: &Ident,
+    context: &TokenStream,
+) -> DeriveData {
     let FieldDeriveData {
         is_fallible_serialization,
         fields_type,
@@ -497,7 +495,11 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident, context: &TokenStream) 
     }
 }
 
-fn derive_enum(data_enum: DataEnum, ident: &Ident, context: &TokenStream) -> DeriveData {
+fn derive_enum(
+    data_enum: DataEnum,
+    ident: &Ident,
+    context: &TokenStream,
+) -> DeriveData {
     // serialization is only infallible if the enum has no serde fields or only serde fields with datex(serde_infallible)
     let mut is_fallible_serialization = false;
 
@@ -970,7 +972,7 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
                 field_types.push(generate_unnamed_field_type_code(
                     &field_attributes.serde_mode,
                     field_type,
-                    context
+                    context,
                 ));
             }
         }
@@ -1305,7 +1307,7 @@ fn generate_named_field_type_code(
     serde_mode: &SerdeMode,
     field_name: &String,
     field_type: &syn::Type,
-    context: &TokenStream
+    context: &TokenStream,
 ) -> TokenStream {
     match serde_mode {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
@@ -1313,7 +1315,7 @@ fn generate_named_field_type_code(
             quote! {
                 (
                     Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
-                    <#field_type as DatexProxyTypes>::datex_type(cache.into())
+                    <#field_type as DatexProxyType>::datex_type(cache.into())
                 )
             }
         }
@@ -1338,7 +1340,7 @@ fn generate_unnamed_field_type_code(
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                <#field_type as DatexProxyTypes>::datex_type(cache.into())
+                <#field_type as DatexProxyType>::datex_type(cache.into())
             }
         }
         // Cannot infer type

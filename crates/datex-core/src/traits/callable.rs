@@ -1,5 +1,5 @@
 use crate::{
-    datex_proxy::DatexProxyTypes,
+    datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::r#type::Type,
@@ -12,7 +12,9 @@ use seq_macro::seq;
 
 pub trait IntoDatexCallable<Args, R> {
     /// Returns a vector of tuples containing the parameter names (if any) and their corresponding [Type]s.
-    fn parameters(context: &mut SharedReferencesCache) -> Vec<(Option<String>, Type)>;
+    fn parameters(
+        context: &mut SharedReferencesCache,
+    ) -> Vec<(Option<String>, Type)>;
     /// Invokes the callable with the provided arguments and returns a [Result] containing either the return value or a [CallableError].
     fn invoke(&self, args: Vec<ValueContainer>) -> Result<R, CallableError>;
 }
@@ -24,7 +26,7 @@ macro_rules! impl_datex_callable {
             where
                 F: Fn(#(A~N,)*) -> R,
                 #(
-                    A~N: DatexProxyTypes + TryFrom<ValueContainer>,
+                    A~N: DatexProxyType + TryFrom<ValueContainer>,
                 )*
             {
                 fn parameters(

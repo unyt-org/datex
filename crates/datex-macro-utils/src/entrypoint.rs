@@ -254,7 +254,7 @@ pub fn get_arg_ident_and_type(
 fn compile_datex_config(config: RuntimeConfig) -> Vec<u8> {
     let (dxb, _) = compile_template(
         "?",
-        vec![Some(config.to_value_container_without_context())],
+        vec![Some(config.to_value_container_without_cache())],
         CompileOptions::default(),
         // FIXME: stub runtime for now
         Runtime::stub(),

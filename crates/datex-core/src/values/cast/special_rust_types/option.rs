@@ -20,23 +20,23 @@ impl<T: DatexValueProxy> DatexValueProxy for Option<T> {}
 impl<T: DatexValueProxyInfallibleSerialize> DatexValueProxyInfallibleSerialize
     for Option<T>
 {
-    fn to_value(self, context: &mut SharedReferencesCache) -> Value {
-        Value::boxed(match self {
+    fn boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value {
+        Value::boxed(match *self {
             None => Value::null(),
-            Some(value) => Box::new(value).to_value(context),
+            Some(value) => Box::new(value).boxed_to_value(context),
         })
     }
 }
 
 impl<T: DatexValueProxy> DatexValueProxySerialize for Option<T> {
-    fn try_to_value(
-        self,
+    fn try_boxed_to_value(
+        self: Box<Self>,
         context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
-        match self {
+        match *self {
             None => Ok(Value::boxed(Value::null())),
             Some(value) => {
-                Ok(Value::boxed(Box::new(value).try_to_value(context)?))
+                Ok(Value::boxed(Box::new(value).try_boxed_to_value(context)?))
             }
         }
     }
@@ -74,9 +74,9 @@ impl<T: DatexValueProxyDeserialize> DatexValueProxyDeserialize for Option<T> {
 }
 
 /// TODO: only wrap nested Option<Option<T>> into container. Single option can be mapped directly to X|null
-impl<T> DatexProxyTypes for Option<T>
+impl<T> DatexProxyType for Option<T>
 where
-    T: DatexProxyTypes,
+    T: DatexProxyType,
 {
     /// Returns the container type definition for `Option<T>`, which is a union of `null` and the type definition of `T`,
     /// wrapped in a container
@@ -105,12 +105,12 @@ mod tests {
         let some_option: Option<Integer> = Some(Integer::new(1));
         let none_option: Option<Integer> = None;
 
-        let some_value: Value = some_option.to_value_without_context();
-        let none_value: Value = none_option.to_value_without_context();
+        let some_value: Value = some_option.to_value_without_cache();
+        let none_value: Value = none_option.to_value_without_cache();
 
         assert_eq!(
             some_value,
-            Value::boxed(Integer::new(1).to_value_without_context())
+            Value::boxed(Integer::new(1).to_value_without_cache())
         );
         assert_eq!(none_value, Value::boxed(Value::null()));
     }
@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn from_value() {
         let some_value: Value =
-            Value::boxed(Integer::new(1).to_value_without_context());
+            Value::boxed(Integer::new(1).to_value_without_cache());
         let some_option: Option<Integer> =
             Option::try_from_value(some_value).unwrap();
         assert_eq!(some_option, Some(Integer::new(1)));
@@ -130,7 +130,7 @@ mod tests {
     }
     #[test]
     fn datex_type() {
-        let option_type = Option::<Integer>::datex_type_without_context();
+        let option_type = Option::<Integer>::datex_type_without_cache();
         option_type.with_collapsed_type_definition(|td| {
             assert!(matches!(td, TypeDefinition::Box(_)));
         });

@@ -1,5 +1,9 @@
 use crate::{
-    datex_proxy::{DatexProxyTypes, DatexValueContainerProxySerialize},
+    datex_proxy::{
+        DatexProxyType, DatexValueContainerProxySerialize,
+        DatexValueProxyInfallibleSerialize,
+    },
+    inspector::inspector::Inspector,
     prelude::*,
     runtime::Runtime,
     types::type_definition::callable::CallableKind,
@@ -9,8 +13,6 @@ use crate::{
     },
 };
 use datex_macros_internal::{Datex, datex};
-use crate::datex_proxy::DatexValueProxyInfallibleSerialize;
-use crate::inspector::inspector::Inspector;
 
 // #[datex_public] TODO
 mod inspector {
@@ -31,8 +33,9 @@ mod inspector {
         pub fn create(
             // TODO
             // #[runtime] runtime: Runtime,
-            name: String
-        ) -> crate::datex_proxy::shared::Shared<Inspector> { // TODO: add SharedRef here, caller should not own inspector
+            name: String,
+        ) -> crate::datex_proxy::shared::Shared<Inspector> {
+            // TODO: add SharedRef here, caller should not own inspector
             Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
         }
         pub fn name_getter(&self) -> String {
@@ -45,7 +48,6 @@ mod inspector {
         // }
     }
 
-
     // TODO
     // #[datex]
     // pub fn create(name: String) -> Inspector {
@@ -55,7 +57,7 @@ mod inspector {
 
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.
 pub fn register_inspector_namespace(runtime: &Runtime) {
-    let mut memory = runtime.memory().borrow_mut();
+    let mut memory = runtime.shared_references_cache().borrow_mut();
     let inspector_type =
         ValueContainer::from(Inspector::datex_type(&mut memory));
 
@@ -114,14 +116,14 @@ mod tests {
     #[test]
     fn test_function() {
         let runtime = Runtime::stub();
-        let mut memory = SharedReferencesCache::default();
+        let mut memory = runtime.shared_references_cache();
         // 1 arg
         let func = |x: u8| x + 1;
         let dx_func_1 = ValueContainer::from(native_sync_callable(
             func,
             None,
             CallableKind::Function,
-            &mut (),
+            &mut memory.borrow_mut(),
         ));
         let res = dx_func_1
             .try_apply_sync(&runtime, vec![4u8.into()])
@@ -135,7 +137,7 @@ mod tests {
             func_2,
             None,
             CallableKind::Function,
-            &mut (),
+            &mut memory.borrow_mut(),
         ));
         let res_2 = dx_func_2
             .try_apply_sync(&runtime, vec![3u8.into(), 4u8.into()])

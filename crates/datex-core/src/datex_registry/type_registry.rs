@@ -1,6 +1,6 @@
 //! This module acts as the central type registry, to collect structs and enums annotated with `#[derive(datex)]` to make them available for external projects.
 use crate::{
-    datex_proxy::DatexProxyTypes, prelude::*,
+    datex_proxy::DatexProxyType, prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::r#type::Type,
 };
@@ -44,8 +44,8 @@ impl Debug for DatexTypeRegistration {
 }
 
 impl DatexTypeRegistration {
-    /// Creates a new [DatexTypeRegistration] for a type T that implements [DatexProxyTypes<SharedReferencesCache>].
-    pub const fn new_with_cache<T: DatexProxyTypes>(
+    /// Creates a new [DatexTypeRegistration] for a type T that implements [DatexProxyType].
+    pub const fn new_with_cache<T: DatexProxyType>(
         metadata: DatexTypeMetadata,
     ) -> Self {
         Self {
@@ -55,13 +55,15 @@ impl DatexTypeRegistration {
         }
     }
 
-    /// Creates a new [DatexTypeRegistration] for a type T that implements [DatexProxyTypes].
-    pub const fn new_without_cache<T: DatexProxyTypes>(
+    /// Creates a new [DatexTypeRegistration] for a type T that implements [DatexProxyType].
+    pub const fn new_without_cache<T: DatexProxyType>(
         metadata: DatexTypeMetadata,
     ) -> Self {
         Self {
             metadata,
-            resolve_type: |_| T::datex_type(&mut ()),
+            resolve_type: |_| {
+                T::datex_type(&mut SharedReferencesCache::default())
+            },
         }
     }
 

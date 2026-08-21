@@ -1,5 +1,5 @@
 use crate::{
-    datex_proxy::DatexProxyTypes,
+    datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::callable::IntoDatexCallable,
@@ -161,15 +161,15 @@ pub struct Callable {
 }
 
 /// Creates a new [Callable] from a native Rust function or closure
-pub fn native_sync_callable<F, Args, R, C>(
+pub fn native_sync_callable<F, Args, R>(
     func: F,
     name: Option<String>,
     kind: CallableKind,
-    context: &mut C,
+    context: &mut SharedReferencesCache,
 ) -> Callable
 where
-    F: IntoDatexCallable<Args, R, C> + Send + Sync + 'static,
-    R: DatexProxyTypes<C> + TryInto<ValueContainer> + 'static,
+    F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
+    R: DatexProxyType + TryInto<ValueContainer> + 'static,
     <R as TryInto<ValueContainer>>::Error: core::fmt::Debug,
 {
     let parameters = F::parameters(context);
@@ -193,19 +193,19 @@ where
 }
 
 /// Creates a new [Callable] from a native Rust async function or closure
-pub fn native_async_callable<F, Args, R, C>(
+pub fn native_async_callable<F, Args, R>(
     func: F,
     name: Option<String>,
     kind: CallableKind,
-    memory: &mut C,
+    context: &mut SharedReferencesCache,
 ) -> Callable
 where
-    F: IntoDatexCallable<Args, R, C> + Send + Sync + 'static,
-    R: DatexProxyTypes<C> + TryInto<ValueContainer> + 'static,
+    F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
+    R: DatexProxyType + TryInto<ValueContainer> + 'static,
     <R as TryInto<ValueContainer>>::Error: core::fmt::Debug,
 {
-    let parameters = F::parameters(memory);
-    let return_type = R::datex_type(memory);
+    let parameters = F::parameters(context);
+    let return_type = R::datex_type(context);
     Callable {
         name,
         signature: CallableTypeDefinition {

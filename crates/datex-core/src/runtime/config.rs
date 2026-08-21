@@ -5,10 +5,10 @@ use crate::{
     },
     network::com_hub::InterfacePriority,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::{core_values::endpoint::Endpoint, value::Value},
 };
 use datex_macros_internal::Datex;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -32,7 +32,7 @@ impl RuntimeConfigInterface {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            config: setup_data.try_to_value_without_context().map_err(|e| {
+            config: setup_data.try_to_value_without_cache().map_err(|e| {
                 format!(
                     "Failed to convert setup_data to ValueContainer: {:?}",
                     e
@@ -76,7 +76,7 @@ impl RuntimeConfig {
         config: T,
         priority: InterfacePriority,
     ) {
-        let config = config.to_value(&mut SharedReferencesCache::default());
+        let config = config.to_value_without_cache();
         let interface = RuntimeConfigInterface {
             interface_type,
             config,
@@ -131,13 +131,15 @@ pub mod tests {
         datex_proxy::{
             DatexValueContainerProxyDeserialize,
             DatexValueContainerProxyInfallibleSerialize,
+            DatexValueProxyInfallibleSerialize,
         },
         prelude::*,
-        runtime::{RuntimeConfig, RuntimeConfigInterface},
+        runtime::{
+            RuntimeConfig, RuntimeConfigInterface,
+            cache::shared_references_cache::SharedReferencesCache,
+        },
         values::core_values::{endpoint::Endpoint, map::Map},
     };
-    use crate::datex_proxy::DatexValueProxyInfallibleSerialize;
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     #[derive(Datex)]
     #[datex(structural_recursive)]
@@ -184,7 +186,7 @@ pub mod tests {
             42
         );
 
-        let value_container = config_interface.to_value(&mut SharedReferencesCache::default());
+        let value_container = config_interface.to_value_without_cache();
         let parsed_config_interface: RuntimeConfigInterface =
             value_container.try_into().unwrap();
         assert_eq!(parsed_config_interface.interface_type, "test");
@@ -193,7 +195,8 @@ pub mod tests {
     #[test]
     fn datex_proxy_runtime_config() {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
-        let value_container = config.to_value(&mut SharedReferencesCache::default());
+        let value_container =
+            config.to_value_container(&mut SharedReferencesCache::default());
         let parsed_config: RuntimeConfig =
             RuntimeConfig::try_from_value_container(value_container).unwrap();
         assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));

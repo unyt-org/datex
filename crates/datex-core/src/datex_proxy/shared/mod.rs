@@ -1,27 +1,20 @@
 pub mod datex_proxy;
 
 use crate::{
-    datex_proxy::{
-        DatexValueContainerProxyDeserialize,
-        DatexValueContainerProxyInfallibleSerialize,
-        DatexValueContainerProxySerialize, TryFromDatexValueError,
-        TryToDatexValueError,
-    },
+    datex_proxy::{TryFromDatexValueError, TryToDatexValueError},
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-    shared_values::{
-        SharedContainer, SharedContainerMutability,
-        traits::SharedContainerCommon,
-    },
+    shared_values::{SharedContainer, SharedContainerMutability},
     types::type_definition::TypeDefinition,
     values::{
-        core_value::{CoreValue, DatexNative, NativeCoreValue},
+        core_value::CoreValue,
+        core_values::native::{DatexNative, NativeCoreValue},
         value::Value,
         value_container::ValueContainer,
     },
 };
 use core::ops::{Deref, DerefMut};
 
-pub struct Shared<T: DatexNative> {
+pub struct Shared<T: DatexNative + ?Sized> {
     container: SharedContainer,
     _phantom_t: core::marker::PhantomData<T>,
 }
@@ -49,12 +42,12 @@ impl<T: DatexNative> Shared<T> {
 
 impl<T: DatexNative + 'static> Shared<T> {
     pub fn try_new(
-        value: T,
+        value: Box<T>,
         type_definition: TypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
     ) -> Result<Self, TryToDatexValueError> {
         let value_container = ValueContainer::from(Value::new(
-            CoreValue::Native(NativeCoreValue::new(value)),
+            CoreValue::native_boxed(value),
             Some(type_definition),
         ));
         Ok(Self {
@@ -108,9 +101,7 @@ mod test {
         shared_values::{SharedContainer, SharedContainerMutability},
     };
 
-    use crate::{
-        prelude::*,
-    };
+    use crate::prelude::*;
 
     #[test]
     fn string_shared() {

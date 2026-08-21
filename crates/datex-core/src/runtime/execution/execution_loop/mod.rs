@@ -822,7 +822,7 @@ pub gen fn inner_execution_loop(
                                             regular_instruction,
                                         ),
                                         value_container, // TODO #646: is unary operation supposed to take ownership?
-                                        state.runtime.memory(),
+                                        state.runtime.shared_references_cache(),
                                     )?;
                                     RuntimeValue::ValueContainer(
                                         res
@@ -1643,7 +1643,7 @@ fn create_new_reference_from_value(
     container_mutability: SharedContainerMutability,
     ref_mutability: ReferenceMutability,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
-    let memory = &mut runtime.memory().borrow_mut();
+    let memory = &mut runtime.shared_references_cache().borrow_mut();
 
     if let Some(reference) = memory.get_reference(pointer_address) {
         return Ok(reference.clone());
@@ -1702,7 +1702,7 @@ fn resolve_cache_value(
     else {
         if let Some(reference) = state
             .runtime
-            .memory()
+            .shared_references_cache()
             .borrow()
             .get_reference(pointer_address)
         {

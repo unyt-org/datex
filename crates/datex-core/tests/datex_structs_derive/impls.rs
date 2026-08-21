@@ -1,6 +1,6 @@
 use core::{cell::Ref, ops::DerefMut};
 use datex_core::{
-    datex_proxy::{DatexProxyTypes, DatexValueContainerProxyDeserialize},
+    datex_proxy::{DatexProxyType, DatexValueContainerProxyDeserialize},
     datex_registry::{
         all_datex_impl_registrations, all_datex_type_registrations, get_impls,
     },
@@ -86,7 +86,7 @@ fn entity_type_definition_from_type(
 #[test]
 fn take_from_cache() {
     let runtime = Runtime::stub();
-    let mut memory = runtime.memory().borrow_mut();
+    let mut memory = runtime.shared_references_cache().borrow_mut();
     let example_type = Example::datex_type(memory.deref_mut());
 
     // when calling the datex_type function multiple times, it should return the same type definition from cache
@@ -96,7 +96,7 @@ fn take_from_cache() {
 #[test]
 fn signatures() {
     let runtime = Runtime::stub();
-    let mut memory = runtime.memory().borrow_mut();
+    let mut memory = runtime.shared_references_cache().borrow_mut();
     let example_type = Example::datex_type(memory.deref_mut());
     let type_definition = entity_type_definition_from_type(&example_type);
 
@@ -132,7 +132,7 @@ fn signatures() {
 
     // call method directly on an Example instance via the ValueContainer
     let example_instance = Example { a: 1, b: 2 };
-    let example_instance_vc = example_instance.try_to_value_container(&mut memory).unwrap();
+    let example_instance_vc = example_instance.try_boxed_to_value_container(&mut memory).unwrap();
     // TODO: also store type in value container (this will require passing cache to the ValueContainer::from function somehow)
     // Then we can access methods on the type definition here
 

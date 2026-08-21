@@ -69,7 +69,7 @@ pub struct RuntimeInternal {
 
     core_library: CoreLibrary,
 
-    memory: RefCell<SharedReferencesCache>,
+    shared_references_cache: RefCell<SharedReferencesCache>,
     pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     com_hub: Rc<ComHub>,
     config: RuntimeConfig,
@@ -121,7 +121,7 @@ impl From<Rc<RuntimeInternal>> for Runtime {
 impl RuntimeInternal {
     pub(crate) fn new(
         endpoint: Endpoint,
-        memory: RefCell<SharedReferencesCache>,
+        shared_references_cache: RefCell<SharedReferencesCache>,
         pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
         config: RuntimeConfig,
         com_hub: Rc<ComHub>,
@@ -133,7 +133,7 @@ impl RuntimeInternal {
         RuntimeInternal {
             version: env!("CARGO_PKG_VERSION").to_string(),
             endpoint,
-            memory,
+            shared_references_cache,
             pointer_address_provider,
             config,
             com_hub,
@@ -209,8 +209,8 @@ impl RuntimeInternal {
         self.synced_values.borrow_mut()
     }
 
-    pub fn memory(&self) -> &RefCell<SharedReferencesCache> {
-        &self.memory
+    pub fn shared_references_cache(&self) -> &RefCell<SharedReferencesCache> {
+        &self.shared_references_cache
     }
     pub fn core_library(&self) -> &CoreLibrary {
         &self.core_library
@@ -683,10 +683,12 @@ impl RuntimeInternal {
                     }
                     // also store the subscribed pointer in cache so that we can handle incoming
                     // pointer updates from the subscribers
-                    self.memory.borrow_mut().register_owned_shared_container(
-                        &shared_container
-                            .derive_reference_with_max_mutability(),
-                    );
+                    self.shared_references_cache
+                        .borrow_mut()
+                        .register_owned_shared_container(
+                            &shared_container
+                                .derive_reference_with_max_mutability(),
+                        );
                 }
             }
         }

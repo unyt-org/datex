@@ -1,19 +1,19 @@
 //! Implements [TryFrom] and [TryInto] for Rust native types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
 //! This allows to convert [u8] into DATEX [Value] and [ValueContainer] and allows to convert [CoreValue], [Value] and [ValueContainer] into [u8].
-use num::ToPrimitive;
 use core::any::Any;
+use num::ToPrimitive;
 
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId, CoreLibTypeId},
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     prelude::*,
     types::r#type::Type,
     values::{
         core_value::CoreValue,
-        core_value::DatexNative,
         core_values::{
             boolean::Boolean, decimal::typed_decimal::TypedDecimal,
-            integer::typed_integer::TypedInteger, text::Text,
+            integer::typed_integer::TypedInteger, native::DatexNative,
+            text::Text,
         },
         value::Value,
         value_container::ValueContainer,
@@ -67,13 +67,13 @@ macro_rules! derive_try_from_chain {
         impl DatexValueProxy for $type {}
 
         impl DatexValueProxyInfallibleSerialize for $type {
-            fn to_value(self, _context: &mut SharedReferencesCache) -> Value {
-               Value::native(self)
+            fn boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value {
+               Value::native_boxed(self, context)
             }
         }
         impl DatexValueProxySerialize for $type {
-            fn try_to_value(self, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-                Ok(Value::native(self))
+            fn try_boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+                Ok(Value::native_boxed(self, context))
             }
         }
 
@@ -93,12 +93,12 @@ macro_rules! derive_try_from_chain {
             fn as_any_mut(&mut self) -> &mut dyn Any {
                 self
             }
-            fn to_native_value(self, cache: &mut SharedReferencesCache) -> Value {
-                Value::from(self.clone())
+            fn to_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
+                Value::native_boxed(self, cache)
             }
         }
 
-        impl DatexProxyTypes for $type {
+        impl DatexProxyType for $type {
             fn datex_type(_context: &mut SharedReferencesCache) -> Type {
                 Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
@@ -257,7 +257,6 @@ derive_try_from_chain!(
     }
 );
 
-
 // &str
 impl<'a> TryFrom<&'a CoreValue> for &'a str {
     type Error = TryFromDatexValueError;
@@ -291,7 +290,7 @@ impl<'a> TryFrom<&'a ValueContainer> for &'a str {
         }
     }
 }
-impl DatexProxyTypes for &str {
+impl DatexProxyType for &str {
     fn datex_type(_context: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
@@ -299,7 +298,7 @@ impl DatexProxyTypes for &str {
     }
 }
 
-impl DatexProxyTypes for str {
+impl DatexProxyType for str {
     fn datex_type(_context: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
@@ -324,8 +323,8 @@ mod tests {
 
     #[test]
     fn try_without_context() {
-        // these rust types should have the to_value_container_without_context
-        "test".to_string().to_value_container_without_context();
+        // these rust types should have the to_value_container_without_cache
+        "test".to_string().to_value_container_without_cache();
     }
 
     #[test]
@@ -348,15 +347,15 @@ mod tests {
     #[test]
     fn to_value() {
         let value = true;
-        let result: Value = value.to_value(&mut ());
+        let result: Value = value.to_value_without_cache();
         assert_eq!(result, Value::from(CoreValue::Boolean(Boolean(true))));
     }
 
     #[test]
-    fn try_to_value() {
-        let value = true;
+    fn try_boxed_to_value() {
+        let value = Box::new(true);
         let result: Result<Value, TryToDatexValueError> =
-            value.try_to_value(&mut ());
+            value.try_boxed_to_value(&mut SharedReferencesCache::default());
         assert!(result.is_ok());
         assert_eq!(
             result.unwrap(),

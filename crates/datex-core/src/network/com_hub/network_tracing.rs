@@ -4,6 +4,7 @@ use crate::{
     core_compiler::core_compilation_context::{
         CompileInput, DXBWithSharedValues,
     },
+    datex_proxy::DatexValueContainerProxySerialize,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -620,7 +621,7 @@ impl ComHub {
         // convert hops to DATEX
         let hops_datex = hops
             .into_iter()
-            .map(|hop| hop.to_value_container_without_context())
+            .map(|hop| hop.to_value_container_without_cache())
             .collect::<Vec<ValueContainer>>();
 
         let pointer_lookup = PointerAvailabilityLookup::default();

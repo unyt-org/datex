@@ -58,13 +58,13 @@ pub fn generate_native_callable(
 
     let return_type_tokens = match return_type {
         Some(ref ty) => {
-            quote! { Some(Box::new(<#ty as #datex_core_crate_name::datex_proxy::DatexProxyTypes<#datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache>>::datex_type(cache.into()))) }
+            quote! { Some(Box::new(<#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache))) }
         }
         None => quote! { None },
     };
     let yeet_type_tokens = match yeet_type {
         Some(ref ty) => {
-            quote! { Some(Box::new(<#ty as #datex_core_crate_name::datex_proxy::DatexProxyTypes<#datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache>>::datex_type(cache.into()))) }
+            quote! { Some(Box::new(<#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache))) }
         }
         None => quote! { None },
     };
@@ -88,7 +88,7 @@ pub fn generate_native_callable(
                 parameter_defs.push(quote! {
                     (
                         Some(#name.to_string()),
-                        <#ty as #datex_core_crate_name::datex_proxy::DatexProxyTypes<#datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache>>::datex_type(cache.into())
+                        <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache)
                     )
                 });
             }
@@ -188,9 +188,9 @@ pub fn generate_native_callable(
         // Note: since the borrowed cache is no longer accessible inside the function body,
         // the return type is fetched during creation and stored in the closure context.
         quote! {{
-            let mut result_value = #datex_core_crate_name::datex_proxy::DatexValueContainerProxySerialize::try_to_value_container(
+            let mut result_value = #datex_core_crate_name::datex_proxy::DatexValueContainerProxySerialize::try_boxed_to_value_container(
                 #method_call_body,
-                (&mut #datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache::default()).into(), // empty placeholder cache to satisfy the trait bound, FIXME: better solution
+                (&mut #datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache::default()), // empty placeholder cache to satisfy the trait bound, FIXME: better solution
             ).unwrap();
             // set the correct type for the result value container
             match &mut result_value {
@@ -217,10 +217,10 @@ pub fn generate_native_callable(
     let return_type_init = match return_type {
         Some(ref ty) => {
             quote! {
-                let return_type = <#ty as #datex_core_crate_name::datex_proxy::DatexProxyTypes<#datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache>>::datex_type(cache.into());
+                let return_type = <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache);
             }
         }
-        None => quote! { },
+        None => quote! {},
     };
 
     quote! {{

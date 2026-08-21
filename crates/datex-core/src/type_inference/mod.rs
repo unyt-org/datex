@@ -1622,7 +1622,7 @@ mod tests {
         .expect("Precompilation failed");
         infer_expression_type_detailed_errors(
             &mut res,
-            &mut *runtime.memory().borrow_mut(),
+            &mut *runtime.shared_references_cache().borrow_mut(),
         )
         .expect_err("Expected type errors")
         .errors
@@ -1645,7 +1645,7 @@ mod tests {
         .expect("Precompilation failed");
         infer_expression_type_detailed_errors(
             &mut rich_ast,
-            &mut *runtime.memory().borrow_mut(),
+            &mut *runtime.shared_references_cache().borrow_mut(),
         )
         .expect_err("Expected type errors")
         .errors
@@ -1669,7 +1669,7 @@ mod tests {
 
         if let Err(err) = infer_expression_type_simple_error(
             &mut res,
-            &runtime.memory().borrow(),
+            &runtime.shared_references_cache().borrow(),
         ) {
             panic!("Type inference failed: {:#?}", err);
         } else {
@@ -1692,7 +1692,7 @@ mod tests {
         .expect("Precompilation failed");
         infer_expression_type_simple_error(
             &mut rich_ast,
-            &runtime.memory().borrow(),
+            &runtime.shared_references_cache().borrow(),
         )
         .expect("Type inference failed");
         rich_ast
@@ -1720,7 +1720,7 @@ mod tests {
             runtime.clone(),
         )
         .expect("Precompilation failed");
-        infer_expression_type_with_errors(&mut res, &runtime.memory().borrow())
+        infer_expression_type_with_errors(&mut res, &runtime.shared_references_cache().borrow())
     }
 
     /// Infers the type of the given expression.
@@ -1739,7 +1739,7 @@ mod tests {
         .expect("Precompilation failed");
         infer_expression_type_simple_error(
             &mut rich_ast,
-            &runtime.memory().borrow(),
+            &runtime.shared_references_cache().borrow(),
         )
         .expect("Type inference failed")
     }

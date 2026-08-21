@@ -1,7 +1,9 @@
 //! This module contains the implementation of the [Value] struct, which represents a value in the DATEX type system.
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
+    datex_proxy::DatexProxyType,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::KeyNotFoundError,
     types::{
         r#type::Type::{self, Entity},
@@ -13,6 +15,7 @@ use crate::{
         core_values::{
             callable::{Callable, CallableBody},
             integer::typed_integer::TypedInteger,
+            native::DatexNative,
         },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
@@ -36,7 +39,6 @@ use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
-use crate::values::core_value::{DatexNative, NativeCoreValue};
 
 #[derive(Debug)]
 pub struct Value {
@@ -99,10 +101,26 @@ impl Value {
     }
 
     /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
-    pub fn native(value: impl DatexNative) -> Value {
-        CoreValue::native(value).into()
+    pub fn native_boxed<T: DatexNative + DatexProxyType>(
+        value: Box<T>,
+        context: &mut SharedReferencesCache,
+    ) -> Value {
+        Value::new(
+            CoreValue::native_boxed(value),
+            Some(T::datex_type(context).convert_to_definition()),
+        )
     }
-    
+
+    pub fn native<T: DatexNative + DatexProxyType>(
+        value: T,
+        context: &mut SharedReferencesCache,
+    ) -> Value {
+        Value::new(
+            CoreValue::native(value),
+            Some(T::datex_type(context).convert_to_definition()),
+        )
+    }
+
     pub fn custom_type(&self) -> Option<&TypeDefinition> {
         self.custom_type.as_ref()
     }
