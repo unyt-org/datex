@@ -45,7 +45,9 @@ pub fn generate_native_callable(
 
     let return_type = match &sig.output {
         syn::ReturnType::Default => None,
-        syn::ReturnType::Type(_, box ty) if matches!(ty, Type::Tuple(tuple) if tuple.elems.is_empty()) => {
+        syn::ReturnType::Type(_, box Type::Tuple(tuple))
+            if tuple.elems.is_empty() =>
+        {
             None
         }
         syn::ReturnType::Type(_, ty) => Some(ty),
@@ -134,11 +136,16 @@ pub fn generate_native_callable(
         call_argument_inits.push(
             if is_borrowed {
                 quote! {
-                    let mut #var_ident = <#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(vals.pop().unwrap()).unwrap();
+                    let value = vals.pop().unwrap();
+                    let mut #var_ident = if let mut Some(#var_ident) = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_mut_from_value_container(value) {
+                        #var_ident
+                    } else {
+                        <#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(value.clone())
+                    };
                 }
             } else {
                 quote! {
-                    let mut #var_ident = <#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(vals.pop().unwrap()).unwrap();
+                    let mut #var_ident = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_mut_from_value_container(vals.pop().unwrap()).unwrap();
                 }
             }
         );
@@ -188,10 +195,11 @@ pub fn generate_native_callable(
         // Note: since the borrowed cache is no longer accessible inside the function body,
         // the return type is fetched during creation and stored in the closure context.
         quote! {{
-            let mut result_value = #datex_core_crate_name::datex_proxy::DatexValueContainerProxySerialize::try_boxed_to_value_container(
+            let mut result_value = #datex_core_crate_name::datex_proxy::ToDatexNativeValueContainer::boxed_to_datex_native_value_container(
                 #method_call_body,
-                (&mut #datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache::default()), // empty placeholder cache to satisfy the trait bound, FIXME: better solution
-            ).unwrap();
+                &mut #datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache::default(), // empty placeholder cache to satisfy the trait bound, FIXME: better solution
+            );
+
             // set the correct type for the result value container
             match &mut result_value {
                 ValueContainer::Local(value) => {

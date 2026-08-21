@@ -1,6 +1,9 @@
 use core::{cell::Ref, ops::DerefMut};
 use datex_core::{
-    datex_proxy::{DatexProxyType, DatexValueContainerProxyDeserialize},
+    datex_proxy::{
+        DatexProxyType, DatexValueContainerProxyDeserialize,
+        DatexValueContainerProxySerialize,
+    },
     datex_registry::{
         all_datex_impl_registrations, all_datex_type_registrations, get_impls,
     },
@@ -29,7 +32,6 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
-use datex_core::datex_proxy::DatexValueContainerProxySerialize;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -131,8 +133,10 @@ fn signatures() {
     }
 
     // call method directly on an Example instance via the ValueContainer
-    let example_instance = Example { a: 1, b: 2 };
-    let example_instance_vc = example_instance.try_boxed_to_value_container(&mut memory).unwrap();
+    let example_instance = Box::new(Example { a: 1, b: 2 });
+    let example_instance_vc = example_instance
+        .try_boxed_to_value_container(&mut memory)
+        .unwrap();
     // TODO: also store type in value container (this will require passing cache to the ValueContainer::from function somehow)
     // Then we can access methods on the type definition here
 

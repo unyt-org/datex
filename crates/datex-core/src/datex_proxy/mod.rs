@@ -429,3 +429,10 @@ where
 }
 
 impl<T: DatexValueProxy> DatexValueContainerProxy for T {}
+
+pub trait ToDatexNativeValueContainer {
+    fn boxed_to_datex_native_value_container(
+        self,
+        cache: &mut SharedReferencesCache,
+    ) -> ValueContainer;
+}

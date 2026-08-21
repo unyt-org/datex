@@ -4,7 +4,8 @@ use crate::{
         DatexValueContainerProxyDeserialize,
         DatexValueContainerProxyInfallibleSerialize,
         DatexValueContainerProxySerialize, DatexValueProxyInfallibleSerialize,
-        TryFromDatexValueError, TryToDatexValueError, shared::Shared,
+        ToDatexNativeValueContainer, TryFromDatexValueError,
+        TryToDatexValueError, shared::Shared,
     },
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -84,4 +85,13 @@ where
     Shared<T>: DatexValueContainerProxy,
     T: DatexNative,
 {
+}
+
+impl<T: DatexNative> ToDatexNativeValueContainer for Shared<T> {
+    fn boxed_to_datex_native_value_container(
+        self,
+        cache: &mut SharedReferencesCache,
+    ) -> ValueContainer {
+        ValueContainer::Shared(self.container)
+    }
 }

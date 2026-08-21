@@ -310,8 +310,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             fn as_any_mut(&mut self) -> &mut dyn Any {
                 self
             }
-            fn to_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value
-            {
+            fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
                 Value::native_boxed(self, cache)
             }
         }

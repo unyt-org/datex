@@ -4,18 +4,27 @@ use core::{
 };
 
 use crate::{
-    datex_proxy::DatexValueProxySerialize,
+    datex_proxy::{DatexValueProxySerialize, ToDatexNativeValueContainer},
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    values::value::Value,
+    values::{value::Value, value_container::ValueContainer},
 };
 
 pub trait DatexNative: Any + DatexValueProxySerialize {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn to_native_value(
+    fn boxed_to_datex_native_value(
         self: Box<Self>,
         cache: &mut SharedReferencesCache,
     ) -> Value;
+}
+
+impl<T: DatexNative> ToDatexNativeValueContainer for T {
+    fn boxed_to_datex_native_value_container(
+        self,
+        cache: &mut SharedReferencesCache,
+    ) -> ValueContainer {
+        ValueContainer::Local(Box::new(self).boxed_to_datex_native_value(cache))
+    }
 }
 
 pub struct NativeCoreValue {
@@ -39,8 +48,11 @@ impl NativeCoreValue {
         self.value.as_mut().as_any_mut()
     }
 
-    pub fn to_native_value(self, cache: &mut SharedReferencesCache) -> Value {
-        self.value.to_native_value(cache)
+    pub fn to_datex_native_value(
+        self,
+        cache: &mut SharedReferencesCache,
+    ) -> Value {
+        self.value.boxed_to_datex_native_value(cache)
     }
 }
 
@@ -68,7 +80,8 @@ mod tests {
     #[test]
     fn serde() {
         let val = NativeCoreValue::new(String::from("xx"));
-        let ser = val.to_native_value(&mut SharedReferencesCache::default());
+        let ser =
+            val.to_datex_native_value(&mut SharedReferencesCache::default());
         assert_eq!(
             ser.custom_type().expect("custom type should be present"),
             &TypeDefinition::core(CoreLibBaseTypeId::Text),
