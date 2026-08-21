@@ -114,9 +114,9 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
         value: ValueContainer,
     ) -> Result<Self, TryFromDatexValueError>;
 
-    /// Try to get a reference to Self from the given [Value].
+    /// Try to get a reference to the contained inner [Self] from the given [ValueContainer].
     /// [CoreValue::Native] values can actually be borrowed, for other values, [None] is returned.
-    fn try_borrow_mut_from_value_container(
+    fn try_borrow_native_from_value_container(
         value: &mut ValueContainer,
     ) -> Option<&mut Self>
     where
@@ -134,6 +134,38 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
             None
         }
     }
+
+    /// Try to get the contained inner [Self] from the given [ValueContainer].
+    /// [CoreValue::Native] values can actually be collapsed, for other values, a [Result:Err]
+    /// containing a box with the original [ValueContainer] is returned.
+    fn try_native_from_value_container(
+        value: ValueContainer
+    ) -> Result<Self, Box<ValueContainer>>
+    where
+        Self: Sized + 'static,
+    {
+        // try to downcast directly from native value
+        if let ValueContainer::Local(Value {
+         inner: CoreValue::Native(native),
+         ..
+        }) = &value
+            && native.as_any().downcast_ref::<Self>().is_some()
+        {
+            // Since we already checked that this is a [CoreValue::Native] that
+            // can be cast to Self, we can just map it here
+            match value {
+                ValueContainer::Local(Value {
+                  inner: CoreValue::Native(native_core),
+                  ..
+                }) => Ok(*native_core.into_any().downcast::<Self>().unwrap()),
+                _ => unreachable!()
+            }
+
+        } else {
+            Err(Box::new(value))
+        }
+    }
+
 
     fn try_from_map_property(
         value: Result<ValueContainer, KeyNotFoundError>,
@@ -212,22 +244,6 @@ pub trait DatexValueProxyDeserialize {
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError>
     where
         Self: Sized;
-
-    /// Try to get a reference to Self from the given [Value].
-    /// [CoreValue::Native] values can actually be borrowed, for other values, [None] is returned.
-    fn try_borrow_mut_from_value(value: &mut Value) -> Option<&Self>
-    where
-        Self: Sized + 'static,
-    {
-        // try to downcast directly from native value
-        if let CoreValue::Native(native) = &mut value.inner
-            && let Some(native) = native.as_any_mut().downcast_mut::<Self>()
-        {
-            Some(native)
-        } else {
-            None
-        }
-    }
 
     fn try_from_map_property(
         value: Result<Value, KeyNotFoundError>,

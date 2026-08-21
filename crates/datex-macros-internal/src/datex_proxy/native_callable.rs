@@ -124,56 +124,41 @@ pub fn generate_native_callable(
         let is_borrowed = match param {
             syn::FnArg::Receiver(receiver) => receiver.reference.is_some(),
             syn::FnArg::Typed(pat_type) => {
-                if let Type::Reference(_type_reference) = &*pat_type.ty {
-                    true
-                } else {
-                    false
-                }
+                matches!(&*pat_type.ty, Type::Reference(_type_reference))
             }
         };
 
-        // TODO: use try_borrow_mut_from_value_container for &mut T, try_borrow_from_value_container for &T, and try_from_value_container for T
+        // distinguish between move, & and &mut
         call_argument_inits.push(
+            // handle & and &mut
             if is_borrowed {
                 quote! {
-                    let value = vals.pop().unwrap();
-                    let mut #var_ident = if let mut Some(#var_ident) = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_mut_from_value_container(value) {
-                        #var_ident
+                    let value = &mut vals.pop().unwrap();
+                    // try to get stored native value from the value container
+                    let #var_ident = if let Some(mut inner) = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_native_from_value_container(value) {
+                        inner
                     } else {
-                        <#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(value.clone())
+                        // fallback: convert from DATEX value to native value
+                        &mut (<#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(value.clone()).unwrap())
                     };
                 }
-            } else {
+            }
+            // handle move
+            else {
                 quote! {
-                    let mut #var_ident = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_mut_from_value_container(vals.pop().unwrap()).unwrap();
+                    let value = vals.pop().unwrap();
+                    // try to get stored native value from the value container
+                    let #var_ident = match <#ty as DatexValueContainerProxyDeserialize>::try_native_from_value_container(value) {
+                        Ok(inner) => inner,
+                        Err(box value) => {
+                            // fallback: convert from DATEX value to native value
+                            <#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(value.clone()).unwrap()
+                        }
+                    };
                 }
             }
         );
-        // distinguish between move, & and &mut
-        call_arguments.push(match param {
-            syn::FnArg::Receiver(receiver) => {
-                if receiver.reference.is_some() {
-                    if receiver.mutability.is_some() {
-                        quote! { &mut #var_ident }
-                    } else {
-                        quote! { &#var_ident }
-                    }
-                } else {
-                    quote! { #var_ident }
-                }
-            }
-            syn::FnArg::Typed(pat_type) => {
-                if let Type::Reference(type_reference) = &*pat_type.ty {
-                    if type_reference.mutability.is_some() {
-                        quote! { &mut #var_ident }
-                    } else {
-                        quote! { &#var_ident }
-                    }
-                } else {
-                    quote! { #var_ident }
-                }
-            }
-        });
+        call_arguments.push(quote! { #var_ident });
     }
 
     // reverse the call_arguments initialization, but keep usage in the original order

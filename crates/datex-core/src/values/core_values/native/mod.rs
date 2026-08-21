@@ -47,6 +47,9 @@ impl NativeCoreValue {
     pub fn as_any_mut(&mut self) -> &mut dyn Any {
         self.value.as_mut().as_any_mut()
     }
+    pub fn into_any(self) -> Box<dyn Any> {
+        self.value
+    }
 
     pub fn to_datex_native_value(
         self,
