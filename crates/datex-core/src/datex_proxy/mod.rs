@@ -96,7 +96,7 @@ pub trait DatexValueProxy:
 }
 
 /// Trait for providing DATEX type information for a DatexProxy type
-/// FIXME: currently we need to implement both DatexProxyTypes<()> and DatexProxyTypes<SharedReferencesCache>
+/// FIXME: currently we need to implement both DatexProxyTypes and DatexProxyTypes<SharedReferencesCache>
 /// manually, generic default impl does not work
 pub trait DatexProxyTypes {
     fn datex_type(context: &mut SharedReferencesCache) -> Type;
