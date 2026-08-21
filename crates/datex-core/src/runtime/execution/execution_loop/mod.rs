@@ -81,6 +81,7 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
+            boolean::Boolean,
             callable::{Callable, CallableBody, CoreStub},
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
@@ -1207,18 +1208,8 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::JumpIfFalse(JumpData { offset }) => {
                                     let condition_value = collected_results.try_pop_runtime_value()?;
                                     let condition_value = condition_value.as_value_container(&state.stack)?;
-
                                     // We dont accept anything expect for explicit Boolean(...)
-                                    let is_truthy = match &condition_value {
-                                        ValueContainer::Local(value) => match &value.inner {
-                                            CoreValue::Null => return yield Err(ExecutionError::InvalidTypeCast),
-                                            CoreValue::Boolean(boolean) => boolean.is_true(),
-                                            _ => return yield Err(ExecutionError::InvalidTypeCast),
-                                        },
-                                        _ => return yield Err(ExecutionError::InvalidTypeCast),
-                                    };
-
-                                    if !is_truthy {
+                                    if condition_value.try_as::<Boolean>().ok_or_else(|| ExecutionError::InvalidTypeCast)?.is_false() {
                                         seek_request.borrow_mut().replace(offset);
                                     }
                                     CollectedExecutionResult::value(None)
