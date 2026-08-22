@@ -754,19 +754,18 @@ fn recursive_struct() {
                 .1
                 .clone();
             next_type.with_collapsed_type_definition(|next_ty_def| {
-                match next_ty_def {
-                    TypeDefinition::Union(union) => {
-                        let option_type = union
-                            .iter()
-                            .find(|ty| **ty != Type::NULL)
-                            .expect("Expected Option type in union");
-                        assert_eq!(option_type, &ty);
-                    }
-                    _ => panic!(
-                        "Expected Union type for Option, got {:?}",
-                        next_ty_def
-                    ),
-                }
+                next_ty_def
+                    .try_unbox()
+                    .expect("Expected Option type for 'next' field")
+                    .with_collapsed_type_definition(|ty_def| match &ty_def {
+                        TypeDefinition::Union(union_ty_def) => {
+                            union_ty_def.0 == vec![Type::NULL, ty.clone()]
+                        }
+                        _ => panic!(
+                            "Expected Union type for Option, got {:?}",
+                            next_ty_def
+                        ),
+                    });
             })
         }
         _ => panic!("Expected map type definition"),
@@ -774,15 +773,14 @@ fn recursive_struct() {
 }
 
 #[test]
-fn mutual_recursion() {
+fn mutual_recursion_structural_containing_entity() {
     #[derive(Datex)]
-    #[datex(structural_recursive)]
+    #[datex(structural)]
     struct A {
         b: Box<B>,
     }
 
     #[derive(Datex)]
-    // #[datex(structural_recursive)]
     struct B {
         a: Box<A>,
     }
@@ -790,9 +788,6 @@ fn mutual_recursion() {
 
     let ty_a = A::datex_type(cache);
     let ty_b = B::datex_type(cache);
-
-    println!("Type A: {:?}", ty_a);
-    println!("Type B: {:?}", ty_b);
 
     ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
         TypeDefinition::Map(map) => {
@@ -806,6 +801,85 @@ fn mutual_recursion() {
         }
         _ => panic!("Expected map type definition for B"),
     });
+}
+
+#[test]
+fn mutual_recursion_entity_containing_structural() {
+    #[derive(Datex)]
+    struct A {
+        b: Box<B>,
+    }
+
+    #[derive(Datex)]
+    #[datex(structural)]
+    struct B {
+        a: Box<A>,
+    }
+    let cache = &mut SharedReferencesCache::default();
+
+    let ty_a = A::datex_type(cache);
+    let ty_b = B::datex_type(cache);
+
+    ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.first().expect("wtf").1, ty_b);
+        }
+        _ => panic!("Expected map type definition for A"),
+    });
+    ty_b.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.first().expect("wtf").1, ty_a);
+        }
+        _ => panic!("Expected map type definition for B"),
+    });
+}
+
+#[test]
+fn mutual_recursion_entity() {
+    #[derive(Datex)]
+    struct A {
+        b: Box<B>,
+    }
+
+    #[derive(Datex)]
+    struct B {
+        a: Box<A>,
+    }
+    let cache = &mut SharedReferencesCache::default();
+
+    let ty_a = A::datex_type(cache);
+    let ty_b = B::datex_type(cache);
+
+    ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.first().expect("wtf").1, ty_b);
+        }
+        _ => panic!("Expected map type definition for A"),
+    });
+    ty_b.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.first().expect("wtf").1, ty_a);
+        }
+        _ => panic!("Expected map type definition for B"),
+    });
+}
+
+#[test]
+#[should_panic(expected = "Can not use recursive structural")]
+fn mutual_recursion_panic_with_structural() {
+    #[derive(Datex)]
+    #[datex(structural)]
+    struct A {
+        b: Box<B>,
+    }
+    #[derive(Datex)]
+    #[datex(structural)]
+    struct B {
+        a: Box<A>,
+    }
+    let cache = &mut SharedReferencesCache::default();
+    let _ = A::datex_type(cache);
+    let _ = B::datex_type(cache);
 }
 
 #[test_case(None ; "none")]
@@ -960,7 +1034,6 @@ enum ExampleEnumWithOptionAndBox {
 #[test]
 fn recursive_struct_round_trip() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(structural_recursive)]
     struct Node {
         value: u8,
         next: Option<Box<Node>>,

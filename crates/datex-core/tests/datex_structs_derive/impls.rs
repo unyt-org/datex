@@ -20,15 +20,21 @@ use datex_core::{
             entity_impls::{EntityImpl, EntityImplMethod},
             entity_type_definition::EntityTypeDefinition,
         },
+        literal_type_definition::LiteralTypeDefinition,
         shared_container_containing_entity_type::SharedContainerContainingEntityType,
         r#type::Type,
-        type_definition::callable::{CallableKind, CallableTypeDefinition},
+        type_definition::{
+            TypeDefinition,
+            callable::{CallableKind, CallableTypeDefinition},
+        },
     },
     values::{
         core_value::CoreValue,
-        core_values::integer::typed_integer::{
-            IntegerTypeVariant, TypedInteger,
+        core_values::{
+            integer::typed_integer::{IntegerTypeVariant, TypedInteger},
+            native::DatexNative,
         },
+        value::Value,
         value_container::ValueContainer,
     },
 };
@@ -58,21 +64,6 @@ impl Example {
     pub fn add(a: u8, b: u8) -> u8 {
         a + b
     }
-}
-
-/// Helper function to get a reference to the [EntityImplMethod] for a given type name from a list of [EntityImpl]s.
-fn get_impls_for_type<'a>(
-    impls: &'a [EntityImpl],
-    type_name: &str,
-) -> &'a EntityImplMethod {
-    impls
-        .iter()
-        .flat_map(|entity_impl| entity_impl.methods.iter())
-        .filter(|method| {
-            method.name().map(|name| name == type_name).unwrap_or(false)
-        })
-        .next()
-        .expect("Method not found")
 }
 
 /// Helper function to extract the [EntityTypeDefinition] from a given [Type].
@@ -106,13 +97,9 @@ fn signatures() {
     match &example_type {
         Type::Entity(entity) => {
             let definition = entity.entity_definition();
-            let static_add_method = definition
-                .impls()
-                .first()
-                .unwrap()
-                .static_methods
-                .get(1)
-                .unwrap();
+            let static_add_method = &definition
+                .try_get_property("add")
+                .expect("Static add method not found");
 
             // call the static add method
             let result = static_add_method
@@ -125,7 +112,15 @@ fn signatures() {
                 )
                 .unwrap()
                 .unwrap();
-            assert_eq!(result, TypedInteger::U8(3).into());
+            assert_eq!(
+                result,
+                ValueContainer::Local(Value::new(
+                    CoreValue::native(3u8),
+                    Some(TypeDefinition::core(CoreLibVariantTypeId::Integer(
+                        IntegerTypeVariant::U8
+                    )))
+                ))
+            );
         }
         _ => {
             panic!("Expected entity type, got {:?}", example_type);
@@ -142,8 +137,10 @@ fn signatures() {
 
     {
         // set_a
-        let set_a_sig =
-            get_impls_for_type(type_definition.impls(), "set_a").signature();
+        let set_a_sig = &type_definition
+            .try_get_property("set_a")
+            .expect("set_a method not found")
+            .signature;
         assert_eq!(
             set_a_sig,
             &CallableTypeDefinition {
@@ -167,8 +164,10 @@ fn signatures() {
     }
     {
         // set_b
-        let set_b_sig =
-            get_impls_for_type(type_definition.impls(), "set_b").signature();
+        let set_b_sig = &type_definition
+            .try_get_property("set_b")
+            .expect("set_b method not found")
+            .signature;
         assert_eq!(
             set_b_sig,
             &CallableTypeDefinition {
@@ -188,12 +187,14 @@ fn signatures() {
     }
     {
         // new
-        let new_sig =
-            get_impls_for_type(type_definition.impls(), "new").signature();
+        let new_sig = &type_definition
+            .try_get_property("new")
+            .expect("new method not found")
+            .signature;
         assert_eq!(
             new_sig,
             &CallableTypeDefinition {
-                kind: CallableKind::Procedure,
+                kind: CallableKind::Function,
                 requires_async: false,
                 parameters: vec![
                     (
