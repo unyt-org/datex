@@ -1,5 +1,3 @@
-use crate::prelude::String;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     Number(NumbersError),

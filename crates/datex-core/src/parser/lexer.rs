@@ -243,8 +243,7 @@ pub enum Token {
     Dot,
     // pointer address (e.g. $1234ab, exactly 3, 5 or 26 bytes)
     #[regex(r"\$(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{10}|[0-9a-fA-F]{52})", allocated_string)] PointerAddress(String),
-    // ISO 8601 DateTime (e.g., 2026-04-13T18:28Z, 2026-04-13T18:28:09Z, or 2026-04-13T18:28:09.415Z)
-    #[regex(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(?::[0-9]{2}(?:\.[0-9]{3})?)?Z", allocated_string)] IsoDateTime(String),
+
     // decimal literals (infinity, nan)
     #[regex(r"infinity")] Infinity,
     #[regex(r"nan")] Nan,
