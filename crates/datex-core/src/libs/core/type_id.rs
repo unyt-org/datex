@@ -31,6 +31,7 @@ use strum_macros::{Display, EnumString};
     TryFromPrimitive,
     EnumString,
     Display,
+    Default,
 )]
 #[repr(u16)]
 #[strum(serialize_all = "snake_case")]
@@ -39,7 +40,8 @@ use strum_macros::{Display, EnumString};
 /// the enum variant name in lowercase as the name, and stored in the core library map
 /// with the name as a key.
 pub enum CoreLibBaseTypeId {
-    Null,     // #core.null
+    #[default]
+    Null, // #core.null
     Boolean,  // #core.boolean
     Integer,  // #core.integer
     Decimal,  // #core.decimal
@@ -89,10 +91,24 @@ impl CoreLibBaseTypeId {
 const INTEGER_VARIANT_COUNT: u16 = variant_count::<IntegerTypeVariant>() as u16;
 const DECIMAL_VARIANT_COUNT: u16 = variant_count::<DecimalTypeVariant>() as u16;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, EnumIter)]
 pub enum CoreLibVariantTypeId {
     Integer(IntegerTypeVariant),
     Decimal(DecimalTypeVariant),
+}
+impl Default for CoreLibVariantTypeId {
+    fn default() -> Self {
+        CoreLibVariantTypeId::Integer(IntegerTypeVariant::default())
+    }
+}
+impl CoreLibVariantTypeId {
+    fn iter() -> impl Iterator<Item = Self> {
+        IntegerTypeVariant::iter()
+            .map(CoreLibVariantTypeId::Integer)
+            .chain(
+                DecimalTypeVariant::iter().map(CoreLibVariantTypeId::Decimal),
+            )
+    }
 }
 
 impl Display for CoreLibVariantTypeId {
@@ -201,10 +217,15 @@ impl CoreLibIdTrait for CoreLibVariantTypeId {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, EnumIter)]
 pub enum CoreLibTypeId {
     Base(CoreLibBaseTypeId),
     Variant(CoreLibVariantTypeId),
+}
+impl Default for CoreLibTypeId {
+    fn default() -> Self {
+        CoreLibTypeId::Base(CoreLibBaseTypeId::Null)
+    }
 }
 impl CoreLibTypeId {
     pub fn base_type_id(&self) -> CoreLibBaseTypeId {
@@ -212,6 +233,11 @@ impl CoreLibTypeId {
             CoreLibTypeId::Base(base_id) => *base_id,
             CoreLibTypeId::Variant(variant_id) => variant_id.base_type_id(),
         }
+    }
+    pub fn iter() -> impl Iterator<Item = Self> {
+        CoreLibBaseTypeId::iter()
+            .map(CoreLibTypeId::Base)
+            .chain(CoreLibVariantTypeId::iter().map(CoreLibTypeId::Variant))
     }
 }
 

@@ -569,7 +569,7 @@ mod tests {
             input.into_iter(),
             runtime.clone(),
         )
-        .zip(expected_output.into_iter())
+        .zip(expected_output)
         {
             let result = result.unwrap();
             assert_eq!(result, expected);
@@ -749,13 +749,10 @@ mod tests {
             );
             assert_eq!(
                 &value.custom_type,
-                &Some(
-                    TypeDefinition::TaggedType(TaggedTypeDefinition {
-                        tag: "Example".to_string(),
-                        ty: None,
-                    })
-                    .into()
-                )
+                &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: "Example".to_string(),
+                    ty: None,
+                }))
             )
         } else {
             panic!("Result should be Local value");

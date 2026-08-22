@@ -40,6 +40,7 @@ pub mod primitive;
     Serialize,
     Deserialize,
     Display,
+    Default,
 )]
 #[repr(u8)]
 #[strum(serialize_all = "lowercase")]
@@ -51,6 +52,7 @@ pub enum IntegerTypeVariant {
     U128,
     I8,
     I16,
+    #[default]
     I32,
     I64,
     I128,
