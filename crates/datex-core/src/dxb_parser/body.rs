@@ -4,10 +4,7 @@ use crate::dxb_parser::next_instructions_stack::{
 
 use crate::{
     global::protocol_structures::{
-        instructions::{
-            Instruction, NestedInstructionResolutionStrategy,
-            NextExpectedInstructions,
-        },
+        instructions::{Instruction, NestedInstructionResolutionStrategy},
         regular_instructions::RegularInstruction,
         type_instructions::TypeInstruction,
     },
@@ -18,28 +15,8 @@ use alloc::string::FromUtf8Error;
 use binrw::{BinRead, io::Cursor};
 use core::{cell::RefCell, fmt, fmt::Display, result::Result};
 
-// This is needed to avoid using "UNBOUNDED_STATEMENTS" and still know the amount of commands
-/// A relative program counter request and the number of direct counted
-/// children bypassed while moving forward to the destination
-#[derive(Default)]
-pub struct SeekState {
-    offset: Option<i32>,
-    skipped_instruction_count: u32,
-}
-
-impl SeekState {
-    pub fn request(&mut self, offset: i32) {
-        self.offset = Some(offset);
-    }
-    fn take_offset(&mut self) -> Option<i32> {
-        self.offset.take()
-    }
-    pub fn take_skipped_instruction_count(&mut self) -> u32 {
-        core::mem::take(&mut self.skipped_instruction_count)
-    }
-}
-
-pub type SeekRequest = Rc<RefCell<SeekState>>;
+// This is needed to place correct Offsets for Jumps in Conditions
+pub type SeekRequest = Rc<RefCell<Option<i32>>>;
 
 #[derive(Debug)]
 pub enum DXBParserError {
@@ -55,7 +32,6 @@ pub enum DXBParserError {
     FromUtf8Error(FromUtf8Error),
     NotInUnboundedRegularScopeError,
     InvalidCoreLibId(CoreLibIdIndex),
-    InvalidJumpTarget(i64),
 }
 
 // custom impl required because binrw::Error does not implement PartialEq
@@ -100,10 +76,6 @@ impl PartialEq for DXBParserError {
                 DXBParserError::NotInUnboundedRegularScopeError,
                 DXBParserError::NotInUnboundedRegularScopeError,
             ) => true,
-            (
-                DXBParserError::InvalidJumpTarget(a),
-                DXBParserError::InvalidJumpTarget(b),
-            ) => a == b,
             _ => false,
         }
     }
@@ -173,100 +145,6 @@ impl Display for DXBParserError {
             DXBParserError::InvalidCoreLibId(id) => {
                 core::write!(f, "Invalid Core Lib Id: {}", id.0)
             }
-            DXBParserError::InvalidJumpTarget(target) => {
-                core::write!(
-                    f,
-                    "Jump target is not a valid instruction boundary: {target}"
-                )
-            }
-        }
-    }
-}
-
-fn consume_expected_subtrees(
-    reader: &mut Cursor<Vec<u8>>,
-    expected: NextExpectedInstructions,
-) -> Result<(), DXBParserError> {
-    match expected {
-        NextExpectedInstructions::None => Ok(()),
-        NextExpectedInstructions::Regular(count) => {
-            for _ in 0..count {
-                consume_subtree(reader, NextInstructionType::Regular)?;
-            }
-            Ok(())
-        }
-        NextExpectedInstructions::Type(count) => {
-            for _ in 0..count {
-                consume_subtree(reader, NextInstructionType::Type)?;
-            }
-            Ok(())
-        }
-        NextExpectedInstructions::RegularAndType(regular, ty) => {
-            for _ in 0..ty {
-                consume_subtree(reader, NextInstructionType::Type)?;
-            }
-            for _ in 0..regular {
-                consume_subtree(reader, NextInstructionType::Regular)?;
-            }
-            Ok(())
-        }
-        NextExpectedInstructions::UnboundedStart
-        | NextExpectedInstructions::UnboundedEnd => {
-            Err(DXBParserError::NotInUnboundedRegularScopeError)
-        }
-    }
-}
-
-fn consume_subtree(
-    reader: &mut Cursor<Vec<u8>>,
-    kind: NextInstructionType,
-) -> Result<(), DXBParserError> {
-    match kind {
-        NextInstructionType::Regular => {
-            let instruction = RegularInstruction::read(reader)
-                .map_err(DXBParserError::BinRwError)?;
-            consume_expected_subtrees(
-                reader,
-                instruction.get_next_expected_instructions(),
-            )
-        }
-        NextInstructionType::Type => {
-            let instruction = TypeInstruction::read(reader)
-                .map_err(DXBParserError::BinRwError)?;
-            consume_expected_subtrees(
-                reader,
-                instruction.get_next_expected_instructions(),
-            )
-        }
-        NextInstructionType::End => {
-            Err(DXBParserError::UnexpectedBytesAfterEndOfInstructions)
-        }
-    }
-}
-
-fn consume_one_instruction(
-    reader: &mut Cursor<Vec<u8>>,
-    stack: &mut NextInstructionsStack,
-) -> Result<(), DXBParserError> {
-    match stack.pop() {
-        NextInstructionType::Regular => {
-            let instruction = RegularInstruction::read(reader)
-                .map_err(DXBParserError::BinRwError)?;
-            stack.handle_next_expected_instructions(
-                instruction.get_next_expected_instructions(),
-            )?;
-            Ok(())
-        }
-        NextInstructionType::Type => {
-            let instruction = TypeInstruction::read(reader)
-                .map_err(DXBParserError::BinRwError)?;
-            stack.handle_next_expected_instructions(
-                instruction.get_next_expected_instructions(),
-            )?;
-            Ok(())
-        }
-        NextInstructionType::End => {
-            Err(DXBParserError::UnexpectedBytesAfterEndOfInstructions)
         }
     }
 }
@@ -277,6 +155,7 @@ pub gen fn iterate_instructions(
     nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
 ) -> Result<Instruction, DXBParserError> {
     let mut next_instructions_stack = NextInstructionsStack::default();
+
     let mut dxb_body = core::mem::take(&mut *dxb_body_ref.borrow_mut());
     let mut len = dxb_body.len();
     let mut reader = Cursor::new(dxb_body);
@@ -432,79 +311,19 @@ pub gen fn iterate_instructions(
 pub gen fn iterate_instructions_with_seek(
     dxb_body_ref: Rc<RefCell<Vec<u8>>>,
     nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
-    seek_request: SeekRequest,
+    seek_request: Rc<RefCell<Option<i32>>>,
 ) -> Result<Instruction, DXBParserError> {
     let mut next_instructions_stack = NextInstructionsStack::default();
-    // Backward jumps will restore Instructions with snapshots
-    let mut expectation_snapshots: HashMap<u64, NextInstructionsStack> =
-        HashMap::new();
 
     let mut dxb_body = core::mem::take(&mut *dxb_body_ref.borrow_mut());
     let mut len = dxb_body.len();
     let mut reader = Cursor::new(dxb_body);
 
     loop {
-        // here we check if there are any pending jump requests, if there are, we jump there before doing anything else
-        let seek_offset = { seek_request.borrow_mut().take_offset() };
-        if let Some(seek_offset) = seek_offset {
+        // check for pending seek request
+        if let Some(seek_offset) = seek_request.borrow_mut().take() {
             let new_pos = reader.position() as i64 + seek_offset as i64;
-            if new_pos < 0 || new_pos as usize > len {
-                return yield Err(DXBParserError::InvalidJumpTarget(new_pos));
-            }
-            let target = new_pos as u64;
-            // If PC must jump backwards, we will restore instructions from snapshot
-            if target < reader.position() {
-                let Some(snapshot) = expectation_snapshots.get(&target) else {
-                    return yield Err(DXBParserError::InvalidJumpTarget(
-                        new_pos,
-                    ));
-                };
-                next_instructions_stack = snapshot.clone();
-                reader.set_position(target);
-                continue;
-            }
-
-            // We jump forward and read instructions without executing it, so we can create snapshot and avoid any structure problems
-            let mut skipped_roots = 0u32;
-            while reader.position() < target {
-                let mut probe_reader = reader.clone();
-                let mut probe_stack = next_instructions_stack.clone();
-                let kind = probe_stack.pop();
-                if let Err(error) = consume_subtree(&mut probe_reader, kind) {
-                    return yield Err(error);
-                }
-                let subtree_end = probe_reader.position();
-                if subtree_end > target {
-                    return yield Err(DXBParserError::InvalidJumpTarget(
-                        new_pos,
-                    ));
-                }
-                while reader.position() < subtree_end {
-                    expectation_snapshots.insert(
-                        reader.position(),
-                        next_instructions_stack.clone(),
-                    );
-                    if let Err(error) = consume_one_instruction(
-                        &mut reader,
-                        &mut next_instructions_stack,
-                    ) {
-                        return yield Err(error);
-                    }
-                }
-                skipped_roots += 1;
-            }
-            if reader.position() != target {
-                return yield Err(DXBParserError::InvalidJumpTarget(new_pos));
-            }
-            {
-                seek_request.borrow_mut().skipped_instruction_count +=
-                    skipped_roots;
-            }
-            if skipped_roots != 0 {
-                // This does nothing, just help parser to understand what to do,
-                // in future must be replaced on something that make sense, not just useless Conditional
-                yield Ok(RegularInstruction::Conditional.into());
-            }
+            reader.set_position(core::cmp::max(0, new_pos) as u64);
             continue;
         }
 
@@ -522,8 +341,6 @@ pub gen fn iterate_instructions_with_seek(
             return;
         }
 
-        expectation_snapshots
-            .insert(reader.position(), next_instructions_stack.clone());
         let next_instruction_type = next_instructions_stack.pop();
 
         let instruction_result: Result<Instruction, DXBParserError> = try {
