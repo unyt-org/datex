@@ -1,3 +1,6 @@
+#[cfg(feature = "decompiler")]
+mod to_type_expression_data;
+
 use crate::{
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,

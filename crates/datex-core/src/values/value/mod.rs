@@ -27,6 +27,8 @@ mod local_child_path_resolver;
 pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 
 use crate::{
     datex_proxy::TryToDatexValueError, shared_values::errors::AccessError,

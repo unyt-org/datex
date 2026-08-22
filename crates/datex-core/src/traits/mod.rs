@@ -7,3 +7,7 @@ pub mod identity;
 pub mod local_child_path_resolver;
 pub mod structural_eq;
 pub mod value_eq;
+#[cfg(feature = "decompiler")]
+pub mod to_datex_expression_data;
+#[cfg(feature = "decompiler")]
+pub mod to_type_expression_data;

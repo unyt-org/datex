@@ -42,6 +42,8 @@ mod child_iterator;
 pub mod datex_proxy;
 pub mod equality;
 pub mod ops;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 
 #[derive(Default, Clone, Debug, FromCoreValue)]
 pub enum CoreValue {

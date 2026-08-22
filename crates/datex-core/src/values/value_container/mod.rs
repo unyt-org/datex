@@ -44,6 +44,8 @@ use core::{
 
 pub mod datex_proxy;
 pub mod error;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {

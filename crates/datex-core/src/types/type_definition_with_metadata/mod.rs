@@ -5,6 +5,9 @@ pub mod metadata;
 pub mod serde_dif;
 pub use metadata::*;
 pub mod type_match;
+#[cfg(feature = "decompiler")]
+mod to_type_expression_data;
+
 #[derive(Debug, Eq, Clone)]
 pub struct TypeDefinitionWithMetadata {
     pub definition: TypeDefinition,

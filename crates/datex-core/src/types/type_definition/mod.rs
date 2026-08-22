@@ -269,6 +269,8 @@ pub mod equality;
 pub mod intersection;
 mod serde_dif;
 pub mod union;
+#[cfg(feature = "decompiler")]
+mod to_type_expression_data;
 
 impl TypeDefinition {
     pub const UNIT: TypeDefinition =
