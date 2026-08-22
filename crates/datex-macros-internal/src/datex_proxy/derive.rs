@@ -321,7 +321,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             #[automatically_derived]
             impl #generics DatexProxyType for #ident #generics {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
-                    (#wrapped_datex_type).with_name(#datex_name)
+                    cache.resolve_structural_type::<Self, _>(
+                        |cache| (#wrapped_datex_type).with_name(#datex_name)
+                    )
                 }
             }
         }

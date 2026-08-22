@@ -29,6 +29,8 @@ pub struct SharedReferencesCache {
     owned_values: HashMap<PointerAddress, ReferencedSharedContainer>,
     /// Weak references to remote values that this endpoint is currently subscribed to and receives updates for
     remote_values: HashMap<PointerAddress, WeakSharedContainer>,
+    /// Set of TypeIds of structural types that are currently being resolved to prevent recursion
+    resolving_structural_types: HashSet<TypeId>,
 }
 
 impl SharedReferencesCache {
@@ -262,6 +264,30 @@ impl SharedReferencesCache {
         *ty.value_container_mut() = ValueContainer::Local(
             CoreValue::EntityTypeDefinition(definition).into(),
         );
+    }
+
+    pub fn begin_structural_type<T: 'static>(&mut self) -> bool {
+        self.resolving_structural_types.insert(TypeId::of::<T>())
+    }
+
+    pub fn finish_structural_type<T: 'static>(&mut self) {
+        self.resolving_structural_types.remove(&TypeId::of::<T>());
+    }
+    pub fn resolve_structural_type<T, F>(&mut self, f: F) -> Type
+    where
+        T: 'static,
+        F: FnOnce(&mut Self) -> Type,
+    {
+        let id = TypeId::of::<T>();
+        if !self.resolving_structural_types.insert(id) {
+            panic!(
+                "Can not use recursive structural DATEX types: {}",
+                core::any::type_name::<T>(),
+            );
+        }
+        let ty = f(self);
+        self.resolving_structural_types.remove(&id);
+        ty
     }
 }
 

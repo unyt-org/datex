@@ -782,14 +782,17 @@ fn mutual_recursion() {
     }
 
     #[derive(Datex)]
-    #[datex(structural_recursive)]
+    // #[datex(structural_recursive)]
     struct B {
         a: Box<A>,
     }
     let cache = &mut SharedReferencesCache::default();
 
-    let ty_a = A::datex_type_without_cache();
-    let ty_b = B::datex_type_without_cache();
+    let ty_a = A::datex_type(cache);
+    let ty_b = B::datex_type(cache);
+
+    println!("Type A: {:?}", ty_a);
+    println!("Type B: {:?}", ty_b);
 
     ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
         TypeDefinition::Map(map) => {
