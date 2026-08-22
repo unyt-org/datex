@@ -5,8 +5,9 @@ use crate::{
     },
     instruction::{
         instruction_data::{
-            ImplTypeData, IntersectionData, ListData, ListSliceCollectionData,
-            MapData, TaggedTypeData, UnionData,
+            CallableSignatureData, ImplTypeData, IntersectionData, ListData,
+            ListSliceCollectionData, MapData, ShortTextData, TaggedTypeData,
+            UnionData,
         },
         type_instruction::TypeInstruction,
     },
@@ -92,6 +93,7 @@ impl ToInstructions for TypeDefinition {
                     }
                 }
                 TypeDefinition::Box(nested) => {
+                    yield TypeInstruction::Boxed;
                     for instruction in
                         nested.to_instructions(shared_value_tracking)
                     {
@@ -388,9 +390,63 @@ impl ToInstructions for CallableTypeDefinition {
 
     fn to_instructions<'a>(
         &'a self,
-        _shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen { todo!() })
+        Box::new(gen move {
+            yield TypeInstruction::Callable(CallableSignatureData {
+                name: ShortTextData::new("".to_string()),
+                kind: self.kind,
+                parameter_count: self.parameters.len() as u8,
+                requires_async: self.requires_async,
+                has_rest_parameter: self.rest_parameter.is_some(),
+                has_return_type: self.return_type.is_some(),
+                has_yeet_type: self.yeet_type.is_some(),
+                parameter_names: self
+                    .parameters
+                    .iter()
+                    .map(|(name, _)| {
+                        ShortTextData::new(name.clone().unwrap_or_default())
+                    })
+                    .collect(),
+                rest_parameter_name: self.rest_parameter.as_ref().map(
+                    |(name, _)| {
+                        ShortTextData::new(name.clone().unwrap_or_default())
+                    },
+                ),
+            });
+            for (_, ty) in &self.parameters {
+                for instruction in ty
+                    .to_instructions(shared_value_tracking.as_deref_mut())
+                    .collect::<Vec<_>>()
+                {
+                    yield instruction;
+                }
+            }
+            if let Some((_, rest_type)) = &self.rest_parameter {
+                for instruction in rest_type
+                    .to_instructions(shared_value_tracking.as_deref_mut())
+                    .collect::<Vec<_>>()
+                {
+                    yield instruction;
+                }
+            }
+            if let Some(return_type) = &self.return_type {
+                for instruction in return_type
+                    .to_instructions(shared_value_tracking.as_deref_mut())
+                    .collect::<Vec<_>>()
+                {
+                    yield instruction;
+                }
+            }
+            if let Some(yeet_type) = &self.yeet_type {
+                for instruction in yeet_type
+                    .to_instructions(shared_value_tracking.as_deref_mut())
+                    .collect::<Vec<_>>()
+                {
+                    yield instruction;
+                }
+            }
+        })
     }
 }
 

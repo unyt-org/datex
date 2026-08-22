@@ -23,7 +23,10 @@ use binrw::{
     io::{Read, Seek, Write},
     meta::{EndianKind, ReadEndian},
 };
-use core::{fmt::Display, ops::AddAssign};
+use core::{
+    fmt::Display,
+    ops::{AddAssign, Deref},
+};
 use itertools::Itertools;
 use modular_bitfield::{bitfield, prelude::B4};
 
@@ -109,7 +112,18 @@ pub struct ShortTextDataRaw {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShortTextData(pub String);
+impl ShortTextData {
+    pub fn new(text: impl Into<String>) -> Self {
+        ShortTextData(text.into())
+    }
+}
+impl Deref for ShortTextData {
+    type Target = String;
 
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 impl From<&ShortTextData> for ShortTextDataRaw {
     fn from(value: &ShortTextData) -> Self {
         let bytes = value.0.as_bytes();
