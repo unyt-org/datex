@@ -250,6 +250,9 @@ impl SharedReferencesCache {
         })
     }
 
+    /// Finishes the registration of a shared container type in the cache for the given address and definition.
+    /// This method should be called after reserve_shared_type to set the actual EntityTypeDefinition for
+    /// the reserved shared container. It will panic if the type is not in the cache or if it is already initialized.
     pub fn finish_shared_type(
         &mut self,
         address: SelfOwnedPointerAddress,
@@ -266,13 +269,7 @@ impl SharedReferencesCache {
         );
     }
 
-    pub fn begin_structural_type<T: 'static>(&mut self) -> bool {
-        self.resolving_structural_types.insert(TypeId::of::<T>())
-    }
-
-    pub fn finish_structural_type<T: 'static>(&mut self) {
-        self.resolving_structural_types.remove(&TypeId::of::<T>());
-    }
+    /// Resolves a structural type for the given type T, ensuring that recursive types are not allowed.
     pub fn resolve_structural_type<T, F>(&mut self, f: F) -> Type
     where
         T: 'static,
@@ -288,6 +285,18 @@ impl SharedReferencesCache {
         let ty = f(self);
         self.resolving_structural_types.remove(&id);
         ty
+    }
+
+    /// Executes the given closure with a temporary entity boundary,
+    /// which allows resolving structural types within the closure without affecting the outer context.
+    pub fn with_entity_boundary<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        let previous = core::mem::take(&mut self.resolving_structural_types);
+        let result = f(self);
+        self.resolving_structural_types = previous;
+        result
     }
 }
 

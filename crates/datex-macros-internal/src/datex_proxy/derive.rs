@@ -1257,18 +1257,24 @@ fn wrap_type_definition(
                 }
                 // if not found, create new def and register in cache
                 SharedTypeReservation::New(ty) => {
-                    let type_definition = #type_definition;
-                    let impls = get_impls_for::<Self>(cache);
-                    let definition = EntityTypeDefinition::new_with_impls(
-                        type_definition.into(),
-                        #name.to_string(),
-                        impls,
-                    );
-                    cache.finish_shared_type(
-                        address,
-                        definition,
-                    );
-                    Type::Entity(ty)
+                    cache.with_entity_boundary(|cache| {
+                        let type_definition = #type_definition;
+
+                        let impls = get_impls_for::<Self>(cache);
+
+                        let definition = EntityTypeDefinition::new_with_impls(
+                            type_definition.into(),
+                            #name.to_string(),
+                            impls,
+                        );
+
+                        cache.finish_shared_type(
+                            address.clone(),
+                            definition,
+                        );
+
+                        Type::Entity(ty)
+                    })
                 }
             }
         }}
