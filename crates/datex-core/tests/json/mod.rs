@@ -93,8 +93,9 @@ fn compare_datex_result_with_json(json_string: &str) {
     println!(" JSON Value: {json_value}");
     println!(" DATEX Value: {datex_value}",);
     println!(" Converted JSON Value: {json_value_converted}",);
-    let collapsed = datex_value.collapsed_value();
-    assert_structural_eq!(json_value_converted, *collapsed.borrow());
+    datex_value.with_collapsed_value(|v| {
+        assert_structural_eq!(json_value_converted, *v);
+    })
 }
 
 fn get_datex_decompiled_from_json(json_string: &str) -> String {

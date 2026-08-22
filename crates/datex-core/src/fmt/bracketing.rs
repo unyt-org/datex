@@ -86,6 +86,7 @@ impl<'a> Formatter<'a> {
                 ArithmeticOperator::Add => (10, Assoc::Left, true), // + is associative
                 ArithmeticOperator::Subtract => (10, Assoc::Left, false), // - is not associative
                 ArithmeticOperator::Power => (30, Assoc::Right, false),
+                _ => (10, Assoc::Left, false),
             },
             BinaryOperator::Logical(lop) => match lop {
                 LogicalOperator::And => (5, Assoc::Left, false),

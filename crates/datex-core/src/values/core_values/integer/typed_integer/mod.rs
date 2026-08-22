@@ -9,7 +9,6 @@ use crate::values::core_values::{
     },
 };
 pub mod equality;
-pub mod update_handler;
 use crate::{
     libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId},
     prelude::*,

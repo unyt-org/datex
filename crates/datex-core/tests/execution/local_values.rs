@@ -87,7 +87,7 @@ fn compile_and_execute_list() {
 
 #[test]
 fn compile_and_execute_map() {
-    let input = ValueContainer::from(Map::structural_with_string_keys(vec![
+    let input = ValueContainer::from(Map::StructuralWithStringKeys(vec![
         ("key1".to_string(), ValueContainer::from(Integer::from(1))),
         ("key2".to_string(), ValueContainer::from("value")),
         ("key3".to_string(), ValueContainer::from(true)),

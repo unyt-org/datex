@@ -70,15 +70,10 @@ impl SharedContainerContainingNominalType {
         &self,
         f: impl FnOnce(&NominalTypeDefinition) -> R,
     ) -> R {
-        let val = self.0.collapsed_value();
-        let val_sheep = val.borrow();
-        let ty = match &val_sheep.inner {
-            CoreValue::NominalTypeDefinition(ty) => ty,
-            _ => unreachable!(
-                "The constraint for SharedContainerContainingNominalType guarantees that the inner value is always a CoreValue::NominalType"
-            ),
-        };
-        f(ty)
+        self.0.with_collapsed_value(|value| match &value.inner {
+            CoreValue::NominalTypeDefinition(ty) => f(ty),
+            _ => unreachable!("The constraint for SharedContainerContainingNominalType guarantees that the inner value is always a CoreValue::NominalType")
+        })
     }
 }
 
@@ -88,13 +83,10 @@ impl TryFrom<SharedContainer> for SharedContainerContainingNominalType {
         // container must be immutable and contain nominal type
         if value.container_mutability() == SharedContainerMutability::Immutable
         {
-            let is_nominal = {
-                let val = value.collapsed_value();
-                let val_sheep = val.borrow();
-                matches!(&val_sheep.inner, CoreValue::NominalTypeDefinition(_))
-            };
-
-            if is_nominal {
+            if value.with_collapsed_value_mut(|v| match &v.inner {
+                CoreValue::NominalTypeDefinition(_) => true,
+                _ => false,
+            }) {
                 Ok(SharedContainerContainingNominalType(value))
             } else {
                 Err(())

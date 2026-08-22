@@ -9,15 +9,10 @@ use crate::{
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
 
-#[derive(Clone, Debug, PartialEq, Hash)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SetEntryUpdateData {
     pub key: ValueKey,
     pub value: ValueContainer,
-}
-impl SetEntryUpdateData {
-    pub fn new(key: ValueKey, value: ValueContainer) -> Self {
-        SetEntryUpdateData { key, value }
-    }
 }
 
 impl<'ctx> SerdeContext<'ctx, SetEntryUpdateData> {

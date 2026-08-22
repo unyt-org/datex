@@ -1,4 +1,3 @@
-use core::assert_matches;
 use datex_core::{
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{SharedContainer, SharedContainerMutability},
@@ -7,6 +6,7 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
+use std::assert_matches;
 
 use crate::execution::compile_and_execute;
 

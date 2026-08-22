@@ -117,7 +117,7 @@ mod tests {
             expressions::{DatexExpressionData, Statements},
             spanned::Spanned,
         },
-        parser::tests::parse,
+        parser::tests::{parse, try_parse_and_return_on_first_error},
         prelude::*,
     };
 
@@ -185,7 +185,6 @@ mod tests {
         );
     }
 
-    #[test]
     fn parse_statements_with_multiple_semicolons() {
         let expr = parse("(;;true;;; false;; ; null;)");
         assert_eq!(

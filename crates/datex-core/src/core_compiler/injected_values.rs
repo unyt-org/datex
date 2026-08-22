@@ -5,7 +5,9 @@ use crate::{
             ByteCursor, CompileInput, CoreCompilationContext,
             DXBWithSharedValues,
         },
-        value_compiler::InjectedValueValidationError,
+        value_compiler::{
+            InjectedValueValidationError, append_regular_instruction,
+        },
         value_visitor::ValueVisitor,
     },
     global::protocol_structures::{
@@ -25,7 +27,7 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
-use binrw::{BinWrite, io::Write};
+use binrw::io::Write;
 
 /// Compiles injected values into a DXB buffer with shared values
 ///
@@ -62,12 +64,14 @@ pub fn compile_injected_values(
 
         // prepend statements block
         let mut cursor = ByteCursor::new(Vec::new());
-        RegularInstruction::statements(2, false)
-            .write(&mut cursor)
-            .unwrap();
-        RegularInstruction::push_list_to_stack()
-            .write(&mut cursor)
-            .unwrap();
+        append_regular_instruction(
+            &mut cursor,
+            RegularInstruction::statements(2, false),
+        );
+        append_regular_instruction(
+            &mut cursor,
+            RegularInstruction::PushListToStack,
+        );
 
         cursor.write_all(&preambles_dxb).unwrap();
         cursor.write_all(&instruction_block_data.body).unwrap();
@@ -83,7 +87,7 @@ pub fn compile_injected_values(
 ///  - local injected values must be local containers
 ///  - shared injected move values must be owned shared containers
 ///  - shared injected ref values must be shared containers (owned or referenced)
-///    TODO: check full type constraints for values here in the future, not just ownership
+/// TODO: check full type constraints for values here in the future, not just ownership
 fn validate_injected_value_declaration_for_values(
     injected_value_declarations: &[InjectedValueDeclaration],
     injected_values: &[ValueContainer],
@@ -141,8 +145,10 @@ fn compile_injected_values_with_context(
     if injected_values.is_empty() {
         unreachable!(); // injected values should not be empty, this function should only be called if there are injected values
     }
-    compilation_context
-        .write(RegularInstruction::list(injected_values.len() as u32));
+    append_regular_instruction(
+        compilation_context.cursor_mut(),
+        RegularInstruction::list(injected_values.len() as u32),
+    );
 
     for value_container in injected_values {
         compilation_context.visit_value_container(value_container, None);
@@ -179,11 +185,15 @@ fn append_referenced_shared_container(
     referenced_container: ReferencedSharedContainer,
     insert_value: bool,
 ) -> Result<(), InjectedValueValidationError> {
-    compilation_context.write(RegularInstruction::push_to_stack());
+    append_regular_instruction(
+        compilation_context.cursor_mut(),
+        RegularInstruction::PushToStack,
+    );
 
     if insert_value {
-        compilation_context.write(RegularInstruction::shared_ref_with_value(
-            SharedRefWithValue {
+        append_regular_instruction(
+            compilation_context.cursor_mut(),
+            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                 address: match referenced_container.pointer_address() {
                     PointerAddress::SelfOwned(self_owned_address) => {
                         self_owned_address
@@ -193,18 +203,22 @@ fn append_referenced_shared_container(
                 ref_mutability: referenced_container.reference_mutability(),
                 container_mutability: referenced_container
                     .container_mutability(),
-            },
-        ));
+            }),
+        );
         compilation_context.visit_value_container(
             referenced_container.value_container().clone(),
             None,
         );
     } else {
-        compilation_context.write(RegularInstruction::shared_ref(SharedRef {
-            address: referenced_container.pointer_address().clone(),
-            ref_mutability: referenced_container.reference_mutability(),
-            container_mutability: referenced_container.container_mutability(),
-        }));
+        append_regular_instruction(
+            compilation_context.cursor_mut(),
+            RegularInstruction::SharedRef(SharedRef {
+                address: referenced_container.pointer_address().clone(),
+                ref_mutability: referenced_container.reference_mutability(),
+                container_mutability: referenced_container
+                    .container_mutability(),
+            }),
+        );
     }
 
     Ok(())

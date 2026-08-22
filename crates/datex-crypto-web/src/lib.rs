@@ -8,10 +8,6 @@ use web_sys::{
 mod utils;
 use utils::{TryAsByteSlice, js_array, js_object};
 
-#[doc = include_str!("../README.md")]
-#[cfg(doctest)]
-pub struct ReadmeDoctests;
-
 mod sealed {
     use super::*;
     pub trait CryptoKeyType: JsCast {}

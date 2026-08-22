@@ -7,10 +7,10 @@ impl Neg for ValueContainer {
     fn neg(self) -> Self::Output {
         match self {
             ValueContainer::Local(value) => (-value).map(ValueContainer::Local),
-            ValueContainer::Shared(reference) => {
-                let val = reference.collapsed_value().borrow().clone();
-                (-val).map(ValueContainer::Local)
-            }
+            ValueContainer::Shared(reference) => reference
+                .with_collapsed_value_mut(|value| {
+                    (-value.clone()).map(ValueContainer::Local)
+                }),
         }
     }
 }

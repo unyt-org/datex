@@ -31,30 +31,9 @@ impl SharedContainerContainingType {
         &self,
         f: impl FnOnce(&Type) -> R,
     ) -> R {
-        let val = self.0.collapsed_value();
-        let val_sheep = val.borrow();
-        let ty = match &val_sheep.inner {
-            CoreValue::Type(ty) => ty,
-            _ => unreachable!(
-                "The constraint for SharedContainerContainingType guarantees that the inner value is always a CoreValue::Type"
-            ),
-        };
-        f(ty)
-    }
-}
-
-impl TryFrom<SharedContainer> for SharedContainerContainingType {
-    type Error = ();
-
-    fn try_from(value: SharedContainer) -> Result<Self, Self::Error> {
-        let is_type = {
-            let val = value.collapsed_value();
-            matches!(&val.borrow().inner, CoreValue::Type(_))
-        };
-        if is_type {
-            Ok(SharedContainerContainingType(value))
-        } else {
-            Err(())
-        }
+        self.0.with_collapsed_value(|value| match &value.inner {
+            CoreValue::Type(ty) => f(ty),
+            _ => unreachable!("The constraint for SharedContainerContainingType guarantees that the inner value is always a CoreValue::Type")
+        })
     }
 }

@@ -29,7 +29,7 @@ impl StructuralEq for ValueContainer {
             }
             (ValueContainer::Local(a), ValueContainer::Shared(b))
             | (ValueContainer::Shared(b), ValueContainer::Local(a)) => {
-                &*b.collapsed_value().borrow() == a
+                b.with_collapsed_value_mut(|b| a.structural_eq(b))
             }
         }
     }
@@ -48,7 +48,7 @@ impl ValueEq for ValueContainer {
             }
             (ValueContainer::Local(a), ValueContainer::Shared(b))
             | (ValueContainer::Shared(b), ValueContainer::Local(a)) => {
-                a.value_eq(&*b.collapsed_value().borrow())
+                b.with_collapsed_value_mut(|b| a.value_eq(b))
             }
         }
     }

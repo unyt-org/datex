@@ -7,7 +7,7 @@ use num_enum::TryFromPrimitive;
 )]
 #[brw(little, repr(u8))]
 #[repr(u8)]
-pub enum ModificationOperator {
+pub enum AssignmentOperator {
     AddAssign,        // +=
     SubtractAssign,   // -=
     MultiplyAssign,   // *=
@@ -17,20 +17,20 @@ pub enum ModificationOperator {
     BitwiseAndAssign, // &=
     BitwiseOrAssign,  // |=
 }
-impl Display for ModificationOperator {
+impl Display for AssignmentOperator {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(
             f,
             "{}",
             match self {
-                ModificationOperator::AddAssign => "+=",
-                ModificationOperator::SubtractAssign => "-=",
-                ModificationOperator::MultiplyAssign => "*=",
-                ModificationOperator::DivideAssign => "/=",
-                ModificationOperator::ModuloAssign => "%=",
-                ModificationOperator::PowerAssign => "^=",
-                ModificationOperator::BitwiseAndAssign => "&=",
-                ModificationOperator::BitwiseOrAssign => "|=",
+                AssignmentOperator::AddAssign => "+=",
+                AssignmentOperator::SubtractAssign => "-=",
+                AssignmentOperator::MultiplyAssign => "*=",
+                AssignmentOperator::DivideAssign => "/=",
+                AssignmentOperator::ModuloAssign => "%=",
+                AssignmentOperator::PowerAssign => "^=",
+                AssignmentOperator::BitwiseAndAssign => "&=",
+                AssignmentOperator::BitwiseOrAssign => "|=",
             }
         )
     }

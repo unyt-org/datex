@@ -81,12 +81,7 @@ impl Display for IndexOutOfBoundsError {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyNotFoundError {
-    pub key: Box<ValueContainer>,
-}
-impl KeyNotFoundError {
-    pub fn new(key: ValueContainer) -> Self {
-        KeyNotFoundError { key: Box::new(key) }
-    }
+    pub key: ValueContainer,
 }
 
 impl Display for KeyNotFoundError {

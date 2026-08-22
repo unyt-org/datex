@@ -161,6 +161,7 @@ impl CompilationScope {
                 self.execution_mode =
                     ExecutionMode::Unbounded { has_next: false };
             }
+            _ => {}
         }
     }
 

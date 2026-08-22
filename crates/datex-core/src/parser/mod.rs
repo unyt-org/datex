@@ -14,6 +14,7 @@ use crate::{
     },
 };
 use core::ops::Range;
+use itertools::Itertools;
 use parser_result::ParserResult;
 // TODO #658: move to different module
 
@@ -37,7 +38,6 @@ pub struct ParserOptions {
 pub struct Parser {
     tokens: Vec<SpannedToken>,
     pos: usize,
-    expression_depth: usize,
     // when Some, collect all errors instead of returning on first error
     collected_errors: Option<Vec<SpannedParserError>>,
     options: ParserOptions,
@@ -117,7 +117,6 @@ impl Parser {
         Self {
             tokens,
             pos: 0,
-            expression_depth: 0,
             collected_errors,
             options,
         }

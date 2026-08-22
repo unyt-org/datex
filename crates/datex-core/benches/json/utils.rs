@@ -92,7 +92,7 @@ pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
         runtime,
     );
     let val = execute_dxb_sync(exec_input).unwrap().unwrap();
-    assert!(val.collapsed_value().borrow().is_collection_value());
+    val.with_collapsed_value(|val| assert!(val.is_map()));
 }
 
 pub fn json_to_runtime_value_datex_auto_static_detection(
@@ -141,7 +141,7 @@ pub fn dxb_to_runtime_value(dxb: Vec<u8>) {
         Runtime::stub(),
     );
     let json_value = execute_dxb_sync(exec_input).unwrap().unwrap();
-    json_value.collapsed_value().borrow().is_collection_value();
+    json_value.with_collapsed_value(|val| assert!(val.is_map()));
 }
 
 // value -> JSON

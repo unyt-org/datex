@@ -20,8 +20,7 @@ use crate::{
         },
     },
     shared_values::{
-        PointerAddress, SharedContainer,
-        base_shared_value_container::observers::TransceiverId,
+        SharedContainer, base_shared_value_container::observers::TransceiverId,
     },
     values::value_container::ValueContainer,
 };
@@ -44,11 +43,7 @@ impl ExecutionLoopState {
     ) -> Self {
         let state = RuntimeExecutionState {
             runtime: runtime.clone(),
-            source_id: TransceiverId::from(
-                &caller_metadata
-                    .endpoint
-                    .as_local_if_endpoint(runtime.endpoint()),
-            ),
+            source_id: TransceiverId(0), // TODO #640: set proper source ID
             stack,
             caller_metadata,
             shared_value_cache: SharedValuesCache::new(shared_values),
@@ -84,35 +79,6 @@ pub struct RuntimeExecutionState {
     pub source_id: TransceiverId,
     pub caller_metadata: ExecutionCallerMetadata,
     pub shared_value_cache: SharedValuesCache,
-}
-
-impl RuntimeExecutionState {
-    pub(crate) fn source_id_cloned(&self) -> TransceiverId {
-        self.source_id.clone()
-    }
-
-    /// Normalizes a pointer address to ensure it is in the correct form for the current execution context.
-    /// For self-owned addresses, it converts them to remote addresses owned by the caller's endpoint.
-    /// For remote addresses, it ensures that if the address is local to the current runtime, it is normalized to a @@local address.
-    pub fn normalize_pointer_address(
-        &self,
-        address: &PointerAddress,
-    ) -> PointerAddress {
-        let local_endpoint = self.runtime.endpoint().clone();
-        let owner_endpoint = &self.caller_metadata.endpoint;
-
-        match address {
-            // convert self owned to caller owned
-            PointerAddress::SelfOwned(address) => PointerAddress::Remote(
-                address.remote_for_endpoint(owner_endpoint),
-            )
-            .normalize_for_local(&local_endpoint),
-            // make sure remote with local endpoint is normalized to @@local
-            PointerAddress::Remote(address) => {
-                address.normalize_for_local(&local_endpoint)
-            }
-        }
-    }
 }
 
 #[derive(Debug, Default)]

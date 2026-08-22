@@ -7,14 +7,9 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
-#[derive(Clone, Debug, PartialEq, Hash)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ReplaceUpdateData {
     pub value: ValueContainer,
-}
-impl ReplaceUpdateData {
-    pub fn new(value: ValueContainer) -> Self {
-        ReplaceUpdateData { value }
-    }
 }
 
 impl<'ctx> SerdeContext<'ctx, ReplaceUpdateData> {

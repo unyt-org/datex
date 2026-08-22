@@ -51,15 +51,19 @@ impl DatexValueContainerProxyDeserialize for SharedContainer {
 
 impl DatexProxyTypes for SharedContainer {
     fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
-        Type::Alias(TypeDefinitionWithMetadata::new(
-            TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()),
-            TypeMetadata::Shared {
+        Type::Alias(TypeDefinitionWithMetadata {
+            definition: TypeDefinition::CoreType(
+                CoreLibBaseTypeId::Unknown.into(),
+            ),
+            // TODO
+            metadata: TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Referenced(
                     ReferenceMutability::Immutable,
                 ),
             },
-        ))
+            reference_name: None,
+        })
     }
 }
 impl DatexValueContainerProxy for SharedContainer {}

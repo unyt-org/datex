@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
-        core_values::map::{BorrowedMapKey, Map, MapEntries},
+        core_values::map::{BorrowedMapKey, Map},
         value_container::ValueContainer,
     },
 };
@@ -183,8 +183,8 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Map> {
     where
         S: Serializer,
     {
-        match &value.entries {
-            MapEntries::StructuralWithStringKeys(entries) => {
+        match value {
+            Map::StructuralWithStringKeys(entries) => {
                 let mut map = serializer.serialize_map(Some(entries.len()))?;
 
                 for (key, value) in entries {
@@ -198,11 +198,11 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Map> {
                 map.end()
             }
 
-            MapEntries::Structural(entries) => self
+            Map::Structural(entries) => self
                 .cast::<Vec<(ValueContainer, ValueContainer)>>()
                 .serialize(entries, serializer),
 
-            MapEntries::Dynamic(entries) => {
+            Map::Dynamic(entries) => {
                 let mut seq = serializer.serialize_seq(Some(entries.len()))?;
 
                 for (key, value) in entries {
@@ -252,7 +252,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Map> {
             entries.push((key, value));
         }
 
-        Ok(MapEntries::StructuralWithStringKeys(entries).into())
+        Ok(Map::StructuralWithStringKeys(entries))
     }
 
     fn visit_seq<A>(mut self, mut seq: A) -> Result<Map, A::Error>
@@ -267,6 +267,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Map> {
             entries.push(entry);
         }
 
-        Ok(MapEntries::Dynamic(IndexMap::from_iter(entries)).into())
+        Ok(Map::Dynamic(IndexMap::from_iter(entries)))
     }
 }

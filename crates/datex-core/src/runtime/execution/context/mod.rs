@@ -40,7 +40,7 @@ impl ExecutionContext {
                 vec![Endpoint::LOCAL]
             }
             ExecutionContext::Remote(remote_context) => {
-                remote_context.endpoints().to_vec()
+                vec![remote_context.endpoint.clone()]
             }
         }
     }
@@ -232,8 +232,8 @@ impl ExecutionContext {
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         match execution_result {
             Err(ExecutionError::IntermediateResultWithState(
-                box intermediate_result,
-                box Some(state),
+                intermediate_result,
+                Some(state),
             )) => {
                 match self {
                     ExecutionContext::Local(LocalExecutionContext {

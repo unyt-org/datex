@@ -40,8 +40,7 @@ use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainer,
-        SharedContainerOwnership,
+        PointerAddress, ReferenceMutability, SharedContainerOwnership,
     },
     type_inference::{
         error::{
@@ -291,7 +290,7 @@ impl<'a> TypeInference<'a> {
         error: SpannedTypeError,
     ) -> Result<VisitAction<DatexExpression>, SpannedTypeError> {
         if let Some(collected_errors) = &mut self.errors {
-            let action = match *error.error {
+            let action = match error.error {
                 TypeError::Unimplemented(_) => {
                     VisitAction::SetTypeRecurseChildNodes(Type::core(
                         CoreLibBaseTypeId::Never,
@@ -471,12 +470,12 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _fixed_size_list: &mut FixedSizeList,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
+        Err(SpannedTypeError {
+            error: TypeError::Unimplemented(
                 "FixedSizeList type inference not implemented".into(),
             ),
-            span.clone(),
-        ))
+            span: Some(span.clone()),
+        })
     }
 
     fn visit_callable_type(
@@ -527,12 +526,12 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _generic_access: &mut GenericAccess,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
+        Err(SpannedTypeError {
+            error: TypeError::Unimplemented(
                 "GenericAccess type inference not implemented".into(),
             ),
-            span.clone(),
-        ))
+            span: Some(span.clone()),
+        })
     }
     fn visit_literal_type(
         &mut self,
@@ -572,24 +571,24 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _slice_list: &mut SliceList,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
+        Err(SpannedTypeError {
+            error: TypeError::Unimplemented(
                 "SliceList type inference not implemented".into(),
             ),
-            span.clone(),
-        ))
+            span: Some(span.clone()),
+        })
     }
     fn visit_variant_access_type(
         &mut self,
         _variant_access: &mut TypeVariantAccess,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
+        Err(SpannedTypeError {
+            error: TypeError::Unimplemented(
                 "VariantAccess type inference not implemented".into(),
             ),
-            span.clone(),
-        ))
+            span: Some(span.clone()),
+        })
     }
 
     fn visit_get_core_lib_type(
@@ -610,22 +609,21 @@ impl<'a> TypeInference<'a> {
         let ty = if let Some(container) =
             self.memory.get_reference(pointer_address)
         {
-            let container = SharedContainer::Referenced(container);
-            let value = container.collapsed_value();
-
-            if let CoreValue::Type(ty) = &value.borrow().inner {
-                Some(ty.clone())
-            } else {
-                None
-            }
+            container.with_collapsed_value(|value| {
+                if let CoreValue::Type(ty) = &value.inner {
+                    Some(ty.clone())
+                } else {
+                    None
+                }
+            })
         } else {
             None
         };
 
-        ty.ok_or(SpannedTypeError::new(
-            TypeError::ReferenceToNonTypeValue,
+        ty.ok_or(SpannedTypeError {
+            error: TypeError::ReferenceToNonTypeValue,
             span,
-        ))
+        })
     }
 }
 
@@ -668,11 +666,9 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         mark_type(
             inner_type
                 .try_convert_to_shared_ref(get_shared_ref.mutability)
-                .map_err(|_| {
-                    SpannedTypeError::new_with_span(
-                        TypeError::InvalidSharedReference,
-                        span.clone(),
-                    )
+                .map_err(|_| SpannedTypeError {
+                    error: TypeError::InvalidSharedReference,
+                    span: Some(span.clone()),
                 })?,
         )
     }
@@ -753,13 +749,13 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         match variable_assignment.operator {
             None => {
                 if !annotated_type.is_superset_of(&assigned_type) {
-                    return Err(SpannedTypeError::new_with_span(
-                        TypeError::assignment_type_mismatch(
-                            annotated_type,
-                            assigned_type,
-                        ),
-                        span.clone(),
-                    ));
+                    return Err(SpannedTypeError {
+                        error: TypeError::AssignmentTypeMismatch {
+                            expected: annotated_type,
+                            found: assigned_type,
+                        },
+                        span: Some(span.clone()),
+                    });
                 }
             }
             _ => {
@@ -839,10 +835,10 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 let annotated_type = self.infer_type_expression(specific)?;
                 if !init_type.is_subset_of(&annotated_type) {
                     self.record_error(SpannedTypeError::new_with_span(
-                        TypeError::assignment_type_mismatch(
-                            annotated_type.clone(),
-                            init_type,
-                        ),
+                        TypeError::AssignmentTypeMismatch {
+                            expected: annotated_type.clone(),
+                            found: init_type,
+                        },
                         span.clone(),
                     ))?;
                 }
@@ -893,22 +889,22 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 if let Some(ty) = ty {
                     mark_type(ty)
                 } else {
-                    Err(SpannedTypeError::new_with_span(
-                        TypeError::mismatched_operands(
+                    Err(SpannedTypeError {
+                        error: TypeError::MismatchedOperands(
                             op, left_type, right_type,
                         ),
-                        span.clone(),
-                    ))
+                        span: Some(span.clone()),
+                    })
                 }
             }
             _ => {
                 //  otherwise, use never type
-                self.record_error(SpannedTypeError::new_with_span(
-                    TypeError::Unimplemented(
+                self.record_error(SpannedTypeError {
+                    error: TypeError::Unimplemented(
                         "Binary operation not implemented".into(),
                     ),
-                    span.clone(),
-                ))?;
+                    span: Some(span.clone()),
+                })?;
                 mark_never()
             }
         }
@@ -931,20 +927,17 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         if type_declaration.kind.is_nominal() {
             match &type_def {
-                Type::Nominal(definition) => {
-                    let mut val = definition.collapsed_value_mut();
-                    match &mut val.borrow_mut().inner {
-                        CoreValue::NominalTypeDefinition(nominal_def) => {
-                            nominal_def
-                                .replace_definition_type(inferred_type_def);
+                Type::Nominal(definition) => definition
+                    .with_collapsed_value_mut(|val| {
+                        match &mut val.inner {
+                            CoreValue::NominalTypeDefinition(nominal_def) => {
+                                nominal_def.replace_definition_type(inferred_type_def);
+                            }
+                            _ => {
+                                panic!("Expected nominal type to be an alias during type declaration inference")
+                            }
                         }
-                        _ => {
-                            panic!(
-                                "Expected nominal type to be an alias during type declaration inference"
-                            )
-                        }
-                    }
-                }
+                    }),
                 Type::Alias(_r) => {
                     // FIXME #620 is this necessary?
                     // reference.borrow_mut().type_value = Type::new(
@@ -1026,10 +1019,10 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                         mark_type(Type::core(CoreLibBaseTypeId::Never))
                     }
                 }
-                _ => Err(SpannedTypeError::new_with_span(
-                    TypeError::unsupported_apply(caller.clone()),
-                    span.clone(),
-                )),
+                _ => Err(SpannedTypeError {
+                    error: TypeError::UnsupportedApply(caller.clone()),
+                    span: Some(span.clone()),
+                }),
             }
         })
     }
@@ -1060,13 +1053,13 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                         )
                     )
                 }) {
-                    return Err(SpannedTypeError::new_with_span(
-                        TypeError::unsupported_property_access(
-                            base.clone(),
-                            property.clone(),
-                        ),
-                        span.clone(),
-                    ));
+                    return Err(SpannedTypeError {
+                        error: TypeError::UnsupportedPropertyAccess {
+                            base: base.clone(),
+                            property: property.clone(),
+                        },
+                        span: Some(span.clone()),
+                    });
                 }
                 // FIXME handle out of bounds access for structural lists and infer correct type at index
                 // handle union null case for non-structural lists
@@ -1074,13 +1067,13 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                     TypeDefinition::union(members.to_vec()).into(),
                 ))
             }
-            _ => Err(SpannedTypeError::new_with_span(
-                TypeError::unsupported_property_access(
-                    base.clone(),
-                    property.clone(),
-                ),
-                span.clone(),
-            )),
+            _ => Err(SpannedTypeError {
+                error: TypeError::UnsupportedPropertyAccess {
+                    base: base.clone(),
+                    property: property.clone(),
+                },
+                span: Some(span.clone()),
+            }),
         })
     }
 
@@ -1089,12 +1082,12 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _generic_instantiation: &mut GenericInstantiation,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
+        Err(SpannedTypeError {
+            error: TypeError::Unimplemented(
                 "GenericInstantiation type inference not implemented".into(),
             ),
-            span.clone(),
-        ))
+            span: Some(span.clone()),
+        })
     }
 
     fn visit_comparison_operation(
@@ -1109,12 +1102,12 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _conditional: &mut Conditional,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
+        Err(SpannedTypeError {
+            error: TypeError::Unimplemented(
                 "Conditional type inference not implemented".into(),
             ),
-            span.clone(),
-        ))
+            span: Some(span.clone()),
+        })
     }
 
     fn visit_unbox(
@@ -1128,10 +1121,12 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             match definition.metadata {
                 // non-unboxable local value
                 TypeMetadata::Local { .. } => {
-                    self.record_error(SpannedTypeError::new_with_span(
-                        TypeError::invalid_unbox_type(Type::Alias(definition)),
-                        span.clone(),
-                    ))?;
+                    self.record_error(SpannedTypeError {
+                        error: TypeError::InvalidUnboxType(Type::Alias(
+                            definition,
+                        )),
+                        span: Some(span.clone()),
+                    })?;
                     Type::core(CoreLibBaseTypeId::Never)
                 }
                 // *(shared 'shared X) -> 'shared X
@@ -1141,18 +1136,19 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                         // if nested type, collapse
                         TypeDefinition::Nested(ty) => *ty,
                         // else, just remove ref
-                        def => Type::Alias(TypeDefinitionWithMetadata::new(
-                            def,
-                            TypeMetadata::default(),
-                        )),
+                        def => Type::Alias(TypeDefinitionWithMetadata {
+                            metadata: TypeMetadata::default(),
+                            definition: def,
+                            reference_name: None,
+                        }),
                     }
                 }
             }
         } else {
-            self.record_error(SpannedTypeError::new_with_span(
-                TypeError::invalid_unbox_type(inner_type),
-                span.clone(),
-            ))?;
+            self.record_error(SpannedTypeError {
+                error: TypeError::InvalidUnboxType(inner_type),
+                span: Some(span.clone()),
+            })?;
             Type::core(CoreLibBaseTypeId::Never)
         };
 
@@ -1163,10 +1159,10 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 ..
             }) => mark_type(unbox_type),
             _ => {
-                self.record_error(SpannedTypeError::new_with_span(
-                    TypeError::invalid_unbox_type(unbox_type),
-                    span.clone(),
-                ))?;
+                self.record_error(SpannedTypeError {
+                    error: TypeError::InvalidUnboxType(unbox_type.clone()),
+                    span: Some(span.clone()),
+                })?;
                 mark_never()
             }
         }
@@ -1233,13 +1229,13 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             && !inferred_return_type
                 .is_subset_of(annotated_return_type.as_ref())
         {
-            self.record_error(SpannedTypeError::new_with_span(
-                TypeError::assignment_type_mismatch(
-                    *annotated_return_type.clone(),
-                    inferred_return_type,
-                ),
-                span.clone(),
-            ))?;
+            self.record_error(SpannedTypeError {
+                error: TypeError::AssignmentTypeMismatch {
+                    expected: *annotated_return_type.clone(),
+                    found: inferred_return_type,
+                },
+                span: Some(span.clone()),
+            })?;
         }
 
         // Use the annotated type despite the mismatch
@@ -1261,15 +1257,13 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             },
             UnaryOperator::Arithmetic(_) | UnaryOperator::Bitwise(_) => inner
                 .with_collapsed_type_definition(|ty| Type::from(ty.clone())),
-            UnaryOperator::Reference(_) => {
-                return Err(SpannedTypeError::new_with_span(
-                    TypeError::Unimplemented(
-                        "Unary reference operator type inference not implemented"
-                            .into(),
-                    ),
-                    span.clone(),
-                ));
-            }
+            UnaryOperator::Reference(_) => return Err(SpannedTypeError {
+                error: TypeError::Unimplemented(
+                    "Unary reference operator type inference not implemented"
+                        .into(),
+                ),
+                span: Some(span.clone()),
+            }),
         })
     }
     fn visit_variant_access(
@@ -1291,12 +1285,12 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             //         span.clone(),
             //     )))
 
-            Err(SpannedTypeError::new_with_span(
-                TypeError::Unimplemented(
+            Err(SpannedTypeError {
+                error: TypeError::Unimplemented(
                     "VariantAccess is not implemented yet".into(),
                 ),
-                span.clone(),
-            ))
+                span: Some(span.clone()),
+            })
         }
 
         fn variant_type_id(
@@ -1309,22 +1303,20 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                     base_id.variant(&variant_access.variant)
                 }
                 _ => {
-                    return Err(SpannedTypeError::new_with_span(
-                        TypeError::Unimplemented(
+                    return Err(SpannedTypeError {
+                        error: TypeError::Unimplemented(
                             "Invalid core base type".into(),
                         ),
-                        span.clone(),
-                    ));
+                        span: Some(span.clone()),
+                    });
                 }
             }
-            .map_err(|_| {
-                SpannedTypeError::new_with_span(
-                    TypeError::subvariant_not_found(
-                        variant_access.name.clone(),
-                        variant_access.variant.clone(),
-                    ),
-                    span.clone(),
-                )
+            .map_err(|_| SpannedTypeError {
+                error: TypeError::SubvariantNotFound(
+                    variant_access.name.clone(),
+                    variant_access.variant.clone(),
+                ),
+                span: Some(span.clone()),
             })?;
 
             Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
@@ -1339,38 +1331,29 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             // Handle variant access on a variable
             ResolvedVariable::VariableId(id) => {
                 // we expect the variable to be of TypeReference type
-                let base_type = self.variable_type(*id).ok_or(
-                    SpannedTypeError::new_with_span(
-                        TypeError::Unimplemented(
+                let base_type =
+                    self.variable_type(*id).ok_or(SpannedTypeError {
+                        error: TypeError::Unimplemented(
                             "VariantAccess base variable type not found".into(),
                         ),
-                        span.clone(),
-                    ),
-                )?;
+                        span: Some(span.clone()),
+                    })?;
 
                 // if it's a Type::Nominal, and it has the pointer address set, we can
                 // remap the expression to a GetReference
                 match base_type {
-                    Type::Nominal(reference) => {
-                        variant_type_id_from_pointer_address(
-                            &reference.pointer_address(),
-                            variant_access,
-                            span,
-                        )
-                    }
+                    Type::Nominal(reference) => variant_type_id_from_pointer_address(&reference.pointer_address(), variant_access, span),
                     Type::Alias(alias) => {
                         match &alias.definition {
                             TypeDefinition::CoreType(core_lib_id) => {
                                 variant_type_id(CoreLibId::Type(*core_lib_id), variant_access, span)
                             }
-                            _ => {
-                                Err(SpannedTypeError::new_with_span(
-                                    TypeError::Unimplemented(
-                                        "VariantAccess on non-nominal type alias not implemented".into(),
-                                    ),
-                                    span.clone(),
-                                ))
-                            }
+                            _ => Err(SpannedTypeError {
+                                error: TypeError::Unimplemented(
+                                    "VariantAccess on non-nominal type alias not implemented".into(),
+                                ),
+                                span: Some(span.clone()),
+                            })
                         }
                     }
                 }
@@ -1395,12 +1378,12 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 *type_id
             )
             .into()),
-            _ => Err(SpannedTypeError::new_with_span(
-                TypeError::Unimplemented(
+            _ => Err(SpannedTypeError {
+                error: TypeError::Unimplemented(
                     "Only CoreLibId::Type is supported in get_core_lib_id expressions for now".into(),
                 ),
-                span.clone(),
-            )),
+                span: Some(span.clone()),
+            }),
         }
     }
 
@@ -1409,26 +1392,26 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _stack_index: &StackIndex,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
+        Err(SpannedTypeError {
+            error: TypeError::Unimplemented(
                 "Stack index inference not implemented".into(),
             ),
-            span.clone(),
-        ))
+            span: Some(span.clone()),
+        })
     }
     fn visit_identifier(
         &mut self,
         _identifier: &mut String,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Ok(VisitAction::AbortRecursion)
+        Ok(VisitAction::SkipChildren)
     }
     fn visit_placeholder(
         &mut self,
         _placeholder_type: &mut ValueAccessType,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Ok(VisitAction::AbortRecursion)
+        Ok(VisitAction::SkipChildren)
     }
     fn visit_unbox_assignment(
         &mut self,
@@ -1450,22 +1433,24 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                     ))
                     && ownership != Some(&SharedContainerOwnership::Owned)
                 {
-                    return Err(SpannedTypeError::new_with_span(
-                        TypeError::AssignmentToImmutableReference(
+                    return Err(SpannedTypeError {
+                        error: TypeError::AssignmentToImmutableReference(
                             "".to_string(),
                         ),
-                        span.clone(),
-                    ));
+                        span: Some(span.clone()),
+                    });
                 }
                 match &e.definition {
                     TypeDefinition::Nested(ty) => Ok(*ty.clone()),
                     TypeDefinition::Shared(sh) => {
                         Ok(sh.with_collapsed_type_value(|ty| ty.clone()))
                     }
-                    _ => Err(SpannedTypeError::new_with_span(
-                        TypeError::invalid_unbox_type(expression_type.clone()),
-                        span.clone(),
-                    )),
+                    _ => Err(SpannedTypeError {
+                        error: TypeError::InvalidUnboxType(
+                            expression_type.clone(),
+                        ),
+                        span: Some(span.clone()),
+                    }),
                 }
             })?;
 
@@ -1474,10 +1459,13 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         // FIXME #624 implement proper type matching
         if !assigned_type.is_subset_of(&inner_type) {
-            return Err(SpannedTypeError::new_with_span(
-                TypeError::assignment_type_mismatch(inner_type, assigned_type),
-                span.clone(),
-            ));
+            return Err(SpannedTypeError {
+                error: TypeError::AssignmentTypeMismatch {
+                    expected: inner_type.clone(),
+                    found: assigned_type.clone(),
+                },
+                span: Some(span.clone()),
+            });
         }
 
         mark_type(assigned_type)
@@ -1495,29 +1483,29 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         )?)
     }
 
-    fn visit_stack_assignment(
+    fn visit_slot_assignment(
         &mut self,
         _slot_assignment: &mut StackAssignment,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
+        Err(SpannedTypeError {
+            error: TypeError::Unimplemented(
                 "SlotAssignment type inference not implemented".into(),
             ),
-            span.clone(),
-        ))
+            span: Some(span.clone()),
+        })
     }
     fn visit_remote_execution(
         &mut self,
         _remote_execution: &mut RemoteExecution,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
+        Err(SpannedTypeError {
+            error: TypeError::Unimplemented(
                 "RemoteExecution type inference not implemented".into(),
             ),
-            span.clone(),
-        ))
+            span: Some(span.clone()),
+        })
     }
 }
 
@@ -1550,8 +1538,8 @@ mod tests {
             pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
         shared_values::{
-            ReferenceMutability, SharedContainerMutability,
-            SharedContainerOwnership,
+            OwnedSharedContainer, ReferenceMutability, SharedContainer,
+            SharedContainerMutability, SharedContainerOwnership,
         },
         type_inference::{
             InferOutcome,
@@ -1651,10 +1639,13 @@ mod tests {
             runtime.clone(),
         )
         .expect("Precompilation failed");
-
+        let inferred_res = infer_expression_type_simple_error(
+            &mut res,
+            &*runtime.memory().borrow(),
+        );
         if let Err(err) = infer_expression_type_simple_error(
             &mut res,
-            &runtime.memory().borrow(),
+            &*runtime.memory().borrow(),
         ) {
             panic!("Type inference failed: {:#?}", err);
         } else {
@@ -1780,7 +1771,7 @@ mod tests {
         "#;
         let res = errors_for_script(src);
         assert_eq!(
-            *res.get(0).unwrap().error,
+            res.get(0).unwrap().error,
             TypeError::SubvariantNotFound("x".into(), "whatever".into())
         );
 
@@ -2089,6 +2080,7 @@ mod tests {
 
     #[test]
     fn statements_expression() {
+        let memory = &SharedReferencesCache::default();
         let inferred = infer_type_from_script_ignore_errors("10; 20; 30");
         assert_eq!(
             inferred,
@@ -2113,25 +2105,29 @@ mod tests {
         let inferred = infer_type_from_script_ignore_errors("shared 42");
         assert_eq!(
             inferred,
-            Type::from(TypeDefinitionWithMetadata::new(
-                LiteralTypeDefinition::Integer(42.into()).into(),
-                TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Immutable,
                     ownership: SharedContainerOwnership::Owned
                 },
-            ))
+
+                reference_name: None,
+            })
         );
 
         let inferred = infer_type_from_script_ignore_errors("shared mut 42");
         assert_eq!(
             inferred,
-            Type::from(TypeDefinitionWithMetadata::new(
-                LiteralTypeDefinition::Integer(42.into()).into(),
-                TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Mutable,
                     ownership: SharedContainerOwnership::Owned
                 },
-            ))
+
+                reference_name: None,
+            })
         );
     }
 
@@ -2140,44 +2136,50 @@ mod tests {
         let inferred = infer_type_from_script_ignore_errors("'shared 42");
         assert_eq!(
             inferred,
-            Type::from(TypeDefinitionWithMetadata::new(
-                LiteralTypeDefinition::Integer(42.into()).into(),
-                TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Immutable,
                     ownership: SharedContainerOwnership::Referenced(
                         ReferenceMutability::Immutable
                     )
-                }
-            ))
+                },
+
+                reference_name: None,
+            })
         );
 
         let inferred = infer_type_from_script_ignore_errors("'shared mut 42");
         assert_eq!(
             inferred,
-            Type::from(TypeDefinitionWithMetadata::new(
-                LiteralTypeDefinition::Integer(42.into()).into(),
-                TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Mutable,
                     ownership: SharedContainerOwnership::Referenced(
                         ReferenceMutability::Immutable
                     )
                 },
-            ))
+
+                reference_name: None,
+            })
         );
 
         let inferred =
             infer_type_from_script_ignore_errors("'mut shared mut 42");
         assert_eq!(
             inferred,
-            Type::from(TypeDefinitionWithMetadata::new(
-                LiteralTypeDefinition::Integer(42.into()).into(),
-                TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Mutable,
                     ownership: SharedContainerOwnership::Referenced(
                         ReferenceMutability::Mutable
                     )
                 },
-            ))
+
+                reference_name: None,
+            })
         );
     }
 
@@ -2203,13 +2205,15 @@ mod tests {
         let inferred = infer_from_script("*(shared (shared 42))");
         assert_eq!(
             inferred.to_type(),
-            Type::from(TypeDefinitionWithMetadata::new(
-                LiteralTypeDefinition::Integer(42.into()).into(),
-                TypeMetadata::Shared {
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
                     mutability: SharedContainerMutability::Immutable,
                     ownership: SharedContainerOwnership::Owned
                 },
-            ))
+
+                reference_name: None,
+            })
         );
     }
 
@@ -2218,7 +2222,7 @@ mod tests {
         let inferred = infer_from_script("*42");
         assert_eq!(
             inferred.unwrap_err().errors[0],
-            SpannedTypeError::from(TypeError::invalid_unbox_type(Type::from(
+            SpannedTypeError::from(TypeError::InvalidUnboxType(Type::from(
                 LiteralTypeDefinition::Integer(42.into())
             )))
         );
@@ -2226,7 +2230,7 @@ mod tests {
         let inferred = infer_from_script("*(shared 42)");
         assert_eq!(
             inferred.unwrap_err().errors[0],
-            SpannedTypeError::from(TypeError::invalid_unbox_type(Type::from(
+            SpannedTypeError::from(TypeError::InvalidUnboxType(Type::from(
                 LiteralTypeDefinition::Integer(42.into())
             )))
         );
@@ -2309,7 +2313,7 @@ mod tests {
         a = "hello"; // type error
         "#;
         let errors = errors_for_script(src);
-        let _ = errors.first().unwrap();
+        let error = errors.first().unwrap();
 
         // TODO:
         // assert_matches!(
@@ -2639,8 +2643,8 @@ mod tests {
         .with_default_span();
 
         assert!(matches!(
-            *errors_for_expression(&mut expr).first().unwrap().error,
-            TypeError::MismatchedOperands(_)
+            errors_for_expression(&mut expr).first().unwrap().error,
+            TypeError::MismatchedOperands(_, _, _)
         ));
     }
 
@@ -2649,7 +2653,7 @@ mod tests {
         let script = "const a = &42; *a += 1;";
         let result = errors_for_script(script);
         assert_matches!(
-            *result.first().unwrap().error,
+            result.first().unwrap().error,
             TypeError::AssignmentToImmutableReference { .. }
         );
     }
@@ -2660,7 +2664,7 @@ mod tests {
         let script = "const a = {x: 10}; a.x = 20;";
         let result = errors_for_script(script);
         assert_matches!(
-            *result.first().unwrap().error,
+            result.first().unwrap().error,
             TypeError::AssignmentToImmutableValue { .. }
         );
     }
@@ -2671,7 +2675,7 @@ mod tests {
         let script = "const a = mut {x: 10}; a.x = 20;";
         let result = errors_for_script(script);
         assert_matches!(
-            *result.first().unwrap().error,
+            result.first().unwrap().error,
             TypeError::AssignmentToImmutableValue { .. }
         );
     }

@@ -7,7 +7,6 @@ use crate::{
     runtime::{
         cache::shared_values_cache::CacheValueRetrievalError,
         execution::execution_loop::state::ExecutionLoopState,
-        remote_value_sync::SubscriberError,
     },
     shared_values::errors::{
         AccessError, AssignmentError, SharedValueCreationError,
@@ -78,21 +77,20 @@ impl Display for InvalidProgramError {
 #[derive(Debug)]
 pub enum ExecutionError {
     Unspecified(String), // TODO: replace with nested stack trace exceptions
-    DXBParserError(Box<DXBParserError>),
-    ValueError(Box<ValueError>),
-    InvalidProgram(Box<InvalidProgramError>),
-    AccessError(Box<AccessError>),
-    CacheValueRetrievalError(Box<CacheValueRetrievalError>),
-    UpdateError(Box<UpdateError>),
-    SubscriberError(Box<SubscriberError>),
+    DXBParserError(DXBParserError),
+    ValueError(ValueError),
+    InvalidProgram(InvalidProgramError),
+    AccessError(AccessError),
+    CacheValueRetrievalError(CacheValueRetrievalError),
+    UpdateError(UpdateError),
     Unknown,
     NotImplemented(String),
     StackValueNotAllocated(StackIndex),
     StackOutOfBoundsAccess(StackIndex),
     InternalSlotDoesNotExist(u32),
     RequiresAsyncExecution,
-    ResponseError(Box<ResponseError>),
-    IllegalTypeError(Box<IllegalTypeError>),
+    ResponseError(ResponseError),
+    IllegalTypeError(IllegalTypeError),
     ReferenceNotFound,
     InvalidUnbox,
     InvalidTypeCast,
@@ -102,136 +100,81 @@ pub enum ExecutionError {
     ExpectedLocalValue,
     ExpectedOwnedSharedValue,
     MutableReferenceToNonMutableValue,
-    AssignmentError(Box<AssignmentError>),
-    ReferenceCreationError(Box<SharedValueCreationError>),
+    AssignmentError(AssignmentError),
+    ReferenceCreationError(SharedValueCreationError),
     IntermediateResultWithState(
-        Box<Option<ValueContainer>>,
-        Box<Option<ExecutionLoopState>>,
+        Option<ValueContainer>,
+        Option<ExecutionLoopState>,
     ),
-    ApplyError(Box<ApplyError>),
+    ApplyError(ApplyError),
     UnauthorizedMove,
     InvalidMove,
     MoveToMultipleEndpoints,
 }
-impl ExecutionError {
-    pub fn intermediate_result_with_state(
-        value_opt: Option<ValueContainer>,
-        state_opt: Option<ExecutionLoopState>,
-    ) -> Self {
-        ExecutionError::IntermediateResultWithState(
-            Box::new(value_opt),
-            Box::new(state_opt),
-        )
-    }
-    pub fn invalid_program(error: InvalidProgramError) -> Self {
-        ExecutionError::InvalidProgram(Box::new(error))
-    }
-    pub fn value_error(error: ValueError) -> Self {
-        ExecutionError::ValueError(Box::new(error))
-    }
-    pub fn access_error(error: AccessError) -> Self {
-        ExecutionError::AccessError(Box::new(error))
-    }
-    pub fn update_error(error: UpdateError) -> Self {
-        ExecutionError::UpdateError(Box::new(error))
-    }
-    pub fn cache_value_retrieval_error(
-        error: CacheValueRetrievalError,
-    ) -> Self {
-        ExecutionError::CacheValueRetrievalError(Box::new(error))
-    }
-    pub fn subscriber_error(error: SubscriberError) -> Self {
-        ExecutionError::SubscriberError(Box::new(error))
-    }
-    pub fn response_error(error: ResponseError) -> Self {
-        ExecutionError::ResponseError(Box::new(error))
-    }
-    pub fn illegal_type_error(error: IllegalTypeError) -> Self {
-        ExecutionError::IllegalTypeError(Box::new(error))
-    }
-    pub fn apply_error(error: ApplyError) -> Self {
-        ExecutionError::ApplyError(Box::new(error))
-    }
-    pub fn reference_creation_error(error: SharedValueCreationError) -> Self {
-        ExecutionError::ReferenceCreationError(Box::new(error))
-    }
-    pub fn assignment_error(error: AssignmentError) -> Self {
-        ExecutionError::AssignmentError(Box::new(error))
-    }
-    pub fn dxb_parser_error(error: DXBParserError) -> Self {
-        ExecutionError::DXBParserError(Box::new(error))
-    }
-}
 
 impl From<ApplyError> for ExecutionError {
     fn from(error: ApplyError) -> Self {
-        ExecutionError::ApplyError(Box::new(error))
+        ExecutionError::ApplyError(error)
     }
 }
 
 impl From<SharedValueCreationError> for ExecutionError {
     fn from(error: SharedValueCreationError) -> Self {
-        ExecutionError::ReferenceCreationError(Box::new(error))
+        ExecutionError::ReferenceCreationError(error)
     }
 }
 
 impl From<CacheValueRetrievalError> for ExecutionError {
     fn from(err: CacheValueRetrievalError) -> Self {
-        ExecutionError::CacheValueRetrievalError(Box::new(err))
+        ExecutionError::CacheValueRetrievalError(err)
     }
 }
 
 impl From<AccessError> for ExecutionError {
     fn from(error: AccessError) -> Self {
-        ExecutionError::AccessError(Box::new(error))
+        ExecutionError::AccessError(error)
     }
 }
 
 impl From<UpdateError> for ExecutionError {
     fn from(error: UpdateError) -> Self {
-        ExecutionError::UpdateError(Box::new(error))
+        ExecutionError::UpdateError(error)
     }
 }
 
 impl From<DXBParserError> for ExecutionError {
     fn from(error: DXBParserError) -> Self {
-        ExecutionError::DXBParserError(Box::new(error))
+        ExecutionError::DXBParserError(error)
     }
 }
 
 impl From<ValueError> for ExecutionError {
     fn from(error: ValueError) -> Self {
-        ExecutionError::ValueError(Box::new(error))
+        ExecutionError::ValueError(error)
     }
 }
 
 impl From<IllegalTypeError> for ExecutionError {
     fn from(error: IllegalTypeError) -> Self {
-        ExecutionError::IllegalTypeError(Box::new(error))
+        ExecutionError::IllegalTypeError(error)
     }
 }
 
 impl From<InvalidProgramError> for ExecutionError {
     fn from(error: InvalidProgramError) -> Self {
-        ExecutionError::InvalidProgram(Box::new(error))
+        ExecutionError::InvalidProgram(error)
     }
 }
 
 impl From<ResponseError> for ExecutionError {
     fn from(error: ResponseError) -> Self {
-        ExecutionError::ResponseError(Box::new(error))
+        ExecutionError::ResponseError(error)
     }
 }
 
 impl From<AssignmentError> for ExecutionError {
     fn from(error: AssignmentError) -> Self {
-        ExecutionError::AssignmentError(Box::new(error))
-    }
-}
-
-impl From<SubscriberError> for ExecutionError {
-    fn from(error: SubscriberError) -> Self {
-        ExecutionError::SubscriberError(Box::new(error))
+        ExecutionError::AssignmentError(error)
     }
 }
 
@@ -255,9 +198,6 @@ impl Display for ExecutionError {
             }
             ExecutionError::ValueError(err) => {
                 core::write!(f, "Value error: {err}")
-            }
-            ExecutionError::SubscriberError(err) => {
-                core::write!(f, "Subscriber error: {err}")
             }
             ExecutionError::InvalidProgram(err) => {
                 core::write!(f, "Invalid program error: {err}")

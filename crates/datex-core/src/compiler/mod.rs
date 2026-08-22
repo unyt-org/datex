@@ -3,10 +3,10 @@ use crate::{
     ast::{
         expressions::{
             BinaryOperation, ComparisonOperation, DatexExpression,
-            DatexExpressionData, PropertyAssignment, RemoteExecution,
-            RootPropertyAccess, Statements, UnaryOperation, UnboundedStatement,
-            UnboxAssignment, ValueAccessType, VariableAccess,
-            VariableAssignment, VariableDeclaration, VariableKind,
+            DatexExpressionData, RemoteExecution, RootPropertyAccess,
+            Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
+            ValueAccessType, VariableAccess, VariableAssignment,
+            VariableDeclaration, VariableKind,
         },
         resolved_variable::VariableId,
     },
@@ -21,22 +21,22 @@ use crate::{
         scope::CompilationScope,
     },
     core_compiler::{
-        buffer_provider::BufferProvider,
         core_compilation_context::{CompileInput, DXBWithSharedValues},
         to_instructions::ToInstructions,
         type_compiler::append_type_instruction,
         value_compiler::{
             append_boolean, append_decimal, append_encoded_integer,
-            append_float_as_i16, append_float_as_i32, append_get_shared_ref,
-            append_instant, append_key_string,
-            append_shared_container_from_stack, append_typed_decimal,
-            append_value,
+            append_endpoint, append_float_as_i16, append_float_as_i32,
+            append_get_shared_ref, append_instant, append_integer,
+            append_key_string, append_regular_instruction,
+            append_shared_container_from_stack, append_statements_preamble,
+            append_text, append_typed_decimal, append_value,
         },
     },
     global::{
         dxb_block::DXBBlock,
         instruction_codes::InstructionCode,
-        operators::modification::ModificationOperator,
+        operators::assignment::AssignmentOperator,
         protocol_structures::{
             block_header::BlockHeader,
             encrypted_header::EncryptedHeader,
@@ -44,7 +44,10 @@ use crate::{
                 InjectedValueType, LocalInjectedValueType,
                 SharedInjectedValueType,
             },
-            instruction_data::{InstructionBlockData, StackIndex},
+            instruction_data::{
+                InstructionBlockData, ModifySharedContainerValue,
+                ModifyStackValue, ShortTextData, StackIndex, TaggedValue,
+            },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
         },
@@ -545,11 +548,10 @@ fn compile_expression(
     let ast = rich_ast.ast;
 
     let DatexExpression { data, span, ty } = ast;
+
     match *data {
         DatexExpressionData::Integer(int) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::Integer(int));
+            append_integer(compilation_context.cursor(), &int);
         }
         DatexExpressionData::TypedInteger(typed_int) => {
             append_encoded_integer(compilation_context.cursor(), &typed_int);
@@ -578,27 +580,39 @@ fn compile_expression(
             );
         }
         DatexExpressionData::Text(text) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::text(text.0));
+            append_text(compilation_context.cursor(), text.0);
         }
         DatexExpressionData::Boolean(boolean) => {
             append_boolean(compilation_context.cursor(), boolean.0);
         }
         DatexExpressionData::Endpoint(endpoint) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::endpoint(endpoint));
+            append_endpoint(compilation_context.cursor(), &endpoint);
         }
         DatexExpressionData::Null => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::null());
+            append_regular_instruction(
+                compilation_context.cursor(),
+                RegularInstruction::Null,
+            );
         }
         DatexExpressionData::List(list) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::list(list.items.len() as u32));
+            match list.items.len() {
+                0..=255 => {
+                    compilation_context
+                        .append_instruction_code(InstructionCode::SHORT_LIST);
+                    append_u8(
+                        compilation_context.cursor(),
+                        list.items.len() as u8,
+                    );
+                }
+                _ => {
+                    compilation_context
+                        .append_instruction_code(InstructionCode::LIST);
+                    append_u32(
+                        compilation_context.cursor(),
+                        list.items.len() as u32, // FIXME #671: conversion from usize to u32
+                    );
+                }
+            }
             for item in list.items {
                 scope = compile_expression(
                     compilation_context,
@@ -782,10 +796,11 @@ fn compile_expression(
                 }
                 // otherwise, statements with fixed length
                 else {
-                    compilation_context.write(RegularInstruction::statements(
-                        statements.len() as u32,
+                    append_statements_preamble(
+                        compilation_context.cursor(),
+                        statements.len(),
                         is_terminated,
-                    ));
+                    );
                 }
 
                 for statement in statements.into_iter() {
@@ -932,78 +947,6 @@ fn compile_expression(
             )?;
         }
 
-        DatexExpressionData::InterfaceMethodCall(mut call) => {
-            compilation_context.mark_has_non_static_value();
-
-            // TODO: replace with trait impls
-            match call.method_name.as_str() {
-                "append" => {
-                    compilation_context
-                        .core_context
-                        .write(RegularInstruction::append_entry());
-                    // must be exactly one element
-                    if call.arguments.len() != 1 {
-                        return Err(CompilerError::InvalidInterfaceMethodCall(
-                            call.method_name.to_string(),
-                        ));
-                    }
-
-                    scope = compile_expression(
-                        compilation_context,
-                        RichAst::new(call.arguments.remove(0), &metadata),
-                        CompileMetadata::default(),
-                        scope,
-                    )?;
-                }
-                "clear" => {
-                    compilation_context
-                        .core_context
-                        .write(RegularInstruction::clear());
-
-                    // no arguments allowed
-                    if !call.arguments.is_empty() {
-                        return Err(CompilerError::InvalidInterfaceMethodCall(
-                            call.method_name.to_string(),
-                        ));
-                    }
-                }
-                "splice" => {
-                    // must be exactly three elements
-                    if call.arguments.len() != 3 {
-                        return Err(CompilerError::InvalidInterfaceMethodCall(
-                            call.method_name.to_string(),
-                        ));
-                    }
-
-                    compilation_context
-                        .core_context
-                        .write(RegularInstruction::splice_dynamic());
-
-                    for argument in call.arguments.drain(..) {
-                        scope = compile_expression(
-                            compilation_context,
-                            RichAst::new(argument, &metadata),
-                            CompileMetadata::default(),
-                            scope,
-                        )?;
-                    }
-                }
-                _ => {
-                    return Err(CompilerError::UnknownInterfaceMethod(
-                        call.method_name.to_string(),
-                    ));
-                }
-            }
-
-            // compile target expression
-            scope = compile_expression(
-                compilation_context,
-                RichAst::new(call.target, &metadata),
-                CompileMetadata::default(),
-                scope,
-            )?;
-        }
-
         DatexExpressionData::PropertyAccess(property_access) => {
             compilation_context.mark_has_non_static_value();
 
@@ -1045,18 +988,15 @@ fn compile_expression(
         DatexExpressionData::PropertyAssignment(property_assignment) => {
             compilation_context.mark_has_non_static_value();
 
-            let PropertyAssignment {
-                base,
-                property,
-                assigned_expression,
-                ..
-            } = property_assignment;
             // depending on the key, handle different property assignments
-            match property.data() {
+            match &property_assignment.property.data() {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.len() <= 255 => {
-                    compilation_context.write(
-                        RegularInstruction::set_entry_text(key.0.clone()),
+                    append_regular_instruction(
+                        compilation_context.cursor(),
+                        RegularInstruction::SetPropertyText(ShortTextData(
+                            key.0.clone(),
+                        )),
                     );
                 }
                 // index access if integer fits in u32
@@ -1071,7 +1011,7 @@ fn compile_expression(
                 _ => {
                     scope = compile_dynamic_property_assignment(
                         compilation_context,
-                        property,
+                        property_assignment.property,
                         scope,
                     )?;
                 }
@@ -1080,7 +1020,10 @@ fn compile_expression(
             // compile assigned expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(assigned_expression, &metadata),
+                RichAst::new(
+                    property_assignment.assigned_expression,
+                    &metadata,
+                ),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1088,7 +1031,7 @@ fn compile_expression(
             // compile base expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(base, &metadata),
+                RichAst::new(property_assignment.base, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1178,19 +1121,13 @@ fn compile_expression(
                     info!(
                         "append variable - stack index: {stack_index:?}, name: {name}"
                     );
-                    compilation_context.write(
-                        RegularInstruction::set_stack_value(stack_index),
+                    append_regular_instruction(
+                        compilation_context.cursor(),
+                        RegularInstruction::SetStackValue(stack_index),
                     );
-
-                    // compile expression
-                    scope = compile_expression(
-                        compilation_context,
-                        RichAst::new(expression, &metadata),
-                        CompileMetadata::default(),
-                        scope,
-                    )?;
                 }
-                Some(operator) => {
+                Some(operator @ AssignmentOperator::AddAssign)
+                | Some(operator @ AssignmentOperator::SubtractAssign) => {
                     // TODO #435: handle mut type
                     // // if immutable reference, return error
                     // if mut_type == Some(ReferenceMutability::Immutable) {
@@ -1207,27 +1144,26 @@ fn compile_expression(
                     //     ));
                     // }
 
-                    if compile_maybe_direct_assignment_operation(
-                        compilation_context,
-                        operator,
-                    ) {
-                        // compile expression
-                        scope = compile_expression(
-                            compilation_context,
-                            RichAst::new(expression, &metadata),
-                            CompileMetadata::default(),
-                            scope,
-                        )?;
-
-                        compilation_context.write(
-                            RegularInstruction::borrow_stack_value(stack_index),
-                        );
-                    } else {
-                        // Generate x = x * z instructions;
-                        todo!()
-                    }
+                    append_regular_instruction(
+                        compilation_context.cursor(),
+                        RegularInstruction::ModifyStackValue(
+                            ModifyStackValue {
+                                index: stack_index,
+                                operator,
+                            },
+                        ),
+                    );
                 }
+                op => core::todo!("#436 Handle assignment operator: {op:?}"),
             }
+
+            // compile expression
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(expression, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
         }
 
         DatexExpressionData::UnboxAssignment(UnboxAssignment {
@@ -1237,33 +1173,30 @@ fn compile_expression(
         }) => {
             compilation_context.mark_has_non_static_value();
 
-            match operator {
-                Some(operator) => {
-                    if !compile_maybe_direct_assignment_operation(
-                        compilation_context,
-                        operator,
-                    ) {
-                        // Generate x = x * z instructions;
-                        todo!()
+            append_regular_instruction(
+                compilation_context.cursor(),
+                match operator {
+                    Some(operator) => {
+                        RegularInstruction::ModifySharedContainerValue(
+                            ModifySharedContainerValue { operator },
+                        )
                     }
-                }
-                None => compilation_context
-                    .core_context
-                    .write(RegularInstruction::set_shared_container_value()),
-            };
-
-            // compile assigned expression
-            scope = compile_expression(
-                compilation_context,
-                RichAst::new(assigned_expression, &metadata),
-                CompileMetadata::default(),
-                scope,
-            )?;
+                    None => RegularInstruction::SetSharedContainerValue,
+                },
+            );
 
             // compile unbox expression
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(unbox_expression, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+
+            // compile assigned expression
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(assigned_expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1360,8 +1293,9 @@ fn compile_expression(
                 shared_values: _,
             } = execution_block_ctx.into_dxb_with_shared_values();
             // insert remote execution instruction
-            compilation_context.write(RegularInstruction::remote_execution(
-                InstructionBlockData {
+            append_regular_instruction(
+                compilation_context.cursor(),
+                RegularInstruction::RemoteExecution(InstructionBlockData {
                     // block size (len of compilation_context.buffer)
                     length: dxb.len() as u32,
                     injected_value_count: external_parent_scope
@@ -1369,8 +1303,8 @@ fn compile_expression(
                         .len() as u32,
                     injected_values: external_parent_scope.injected_values,
                     body: dxb,
-                },
-            ));
+                }),
+            );
 
             // TODO what to do with the shared values? [shared_values]
 
@@ -1390,8 +1324,9 @@ fn compile_expression(
             let root_property = RootProperty::from_str(&property_name);
 
             if let Ok(root_property) = root_property {
-                compilation_context.write(
-                    RegularInstruction::get_root_property(root_property),
+                append_regular_instruction(
+                    compilation_context.cursor(),
+                    RegularInstruction::GetRootProperty(root_property),
                 );
             } else {
                 return Err(CompilerError::InvalidRootPropertyName(
@@ -1419,10 +1354,10 @@ fn compile_expression(
             compilation_context.append_instruction_code(
                 match create_shared_ref.mutability {
                     ReferenceMutability::Immutable => {
-                        InstructionCode::DERIVE_SHARED_REF
+                        InstructionCode::GET_SHARED_REF
                     }
                     ReferenceMutability::Mutable => {
-                        InstructionCode::DERIVE_SHARED_REF_MUT
+                        InstructionCode::GET_SHARED_REF_MUT
                     }
                 },
             );
@@ -1498,11 +1433,15 @@ fn compile_expression(
         }
 
         DatexExpressionData::Tag(tag_expression) => {
-            let tag_instruction = RegularInstruction::tagged_value(
-                tag_expression.tag,
-                tag_expression.expression.is_none(),
+            let tag_instruction =
+                RegularInstruction::TaggedValue(TaggedValue {
+                    tag: ShortTextData(tag_expression.tag),
+                    is_empty: tag_expression.expression.is_none(),
+                });
+            append_regular_instruction(
+                compilation_context.cursor(),
+                tag_instruction,
             );
-            compilation_context.write(tag_instruction);
 
             // append expression
             if let Some(inner_expression) = tag_expression.expression {
@@ -1516,9 +1455,10 @@ fn compile_expression(
         }
 
         DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
-            compilation_context.write(RegularInstruction::get_core_lib_value(
-                core_lib_id.into(),
-            ));
+            append_regular_instruction(
+                compilation_context.cursor(),
+                RegularInstruction::GetCoreLibValue(core_lib_id.into()),
+            );
         }
 
         _ => {
@@ -1531,24 +1471,6 @@ fn compile_expression(
     Ok(scope)
 }
 
-/// Compiles a direct assignment operation (e.g., `+=`, `-=`) into the corresponding regular instruction (e.g. [RegularInstruction::Increment]).
-/// Returns `true` if the operation was successfully compiled, or `false` if the operator is not a direct assignment operation.
-fn compile_maybe_direct_assignment_operation(
-    compilation_context: &mut CompilationContext,
-    operator: ModificationOperator,
-) -> bool {
-    match operator {
-        ModificationOperator::AddAssign => compilation_context
-            .core_context
-            .write(RegularInstruction::increment()),
-        ModificationOperator::SubtractAssign => compilation_context
-            .core_context
-            .write(RegularInstruction::decrement()),
-        _operator => return false,
-    };
-    true
-}
-
 fn compile_key_value_entry(
     compilation_context: &mut CompilationContext,
     key: DatexExpression,
@@ -1559,7 +1481,7 @@ fn compile_key_value_entry(
     match *key.data {
         // text -> insert key string
         DatexExpressionData::Text(text) => {
-            append_key_string(compilation_context.core_context(), text.0);
+            append_key_string(compilation_context.cursor(), text.0);
         }
         // other -> insert key as dynamic
         _ => {
@@ -1588,14 +1510,11 @@ fn compile_text_property_access(
     key: &str,
 ) {
     compilation_context
-        .append_instruction_code(InstructionCode::GET_ENTRY_TEXT);
+        .append_instruction_code(InstructionCode::GET_PROPERTY_TEXT);
     // append key length as u8
     append_u8(compilation_context.cursor(), key.len() as u8);
     // append key bytes
-    compilation_context
-        .cursor()
-        .write_all(key.as_bytes())
-        .expect("Failed to write key bytes to compilation context cursor");
+    compilation_context.cursor().write_all(key.as_bytes());
 }
 
 fn compile_index_property_access(
@@ -1603,7 +1522,7 @@ fn compile_index_property_access(
     index: u32,
 ) {
     compilation_context
-        .append_instruction_code(InstructionCode::GET_ENTRY_INDEX);
+        .append_instruction_code(InstructionCode::GET_PROPERTY_INDEX);
     append_u32(compilation_context.cursor(), index);
 }
 
@@ -1612,7 +1531,7 @@ fn compile_index_property_assignment(
     index: u32,
 ) {
     compilation_context
-        .append_instruction_code(InstructionCode::SET_ENTRY_INDEX);
+        .append_instruction_code(InstructionCode::SET_PROPERTY_INDEX);
     append_u32(compilation_context.cursor(), index);
 }
 
@@ -1622,7 +1541,7 @@ fn compile_dynamic_property_access(
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     compilation_context
-        .append_instruction_code(InstructionCode::GET_ENTRY_DYNAMIC);
+        .append_instruction_code(InstructionCode::GET_PROPERTY_DYNAMIC);
     // compile key expression
     compile_expression(
         compilation_context,
@@ -1641,7 +1560,7 @@ fn compile_dynamic_property_assignment(
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     compilation_context
-        .append_instruction_code(InstructionCode::SET_ENTRY_DYNAMIC);
+        .append_instruction_code(InstructionCode::SET_PROPERTY_DYNAMIC);
     // compile key expression
     compile_expression(
         compilation_context,
@@ -1670,10 +1589,7 @@ pub mod tests {
         },
         global::{
             instruction_codes::InstructionCode,
-            protocol_structures::{
-                regular_instructions::RegularInstruction,
-                type_instructions::TypeInstruction,
-            },
+            protocol_structures::type_instructions::TypeInstruction,
         },
         runtime::execution::context::ExecutionMode,
         types::literal_type_definition::LiteralTypeDefinition,
@@ -1704,6 +1620,7 @@ pub mod tests {
                     UInt8Data,
                 },
                 instructions::Instruction,
+                regular_instructions::RegularInstruction,
             },
             root_properties::RootProperty,
         },
@@ -1738,7 +1655,7 @@ pub mod tests {
         result
     }
 
-    fn get_compilation_context(script: &'_ str) -> CompilationContext<'_> {
+    fn get_compilation_context(script: &str) -> CompilationContext {
         let mut options = CompileOptions::default();
         let ast = parse_datex_script_to_rich_ast_simple_error(
             script,
@@ -1893,7 +1810,7 @@ pub mod tests {
                 42,
                 // val b = 69;
                 InstructionCode::PUSH_TO_STACK.into(),
-                InstructionCode::DERIVE_SHARED_REF_MUT.into(),
+                InstructionCode::GET_SHARED_REF_MUT.into(),
                 InstructionCode::UINT_8.into(),
                 69,
                 // a is b
@@ -2809,20 +2726,20 @@ pub mod tests {
                 true,
                 instructions!(
                     RegularInstruction::PushToStack,
-                    RegularInstruction::uint8(1),
+                    RegularInstruction::UInt8(UInt8Data(1)),
                     RegularInstruction::statements_with_children(
                         true,
                         instructions!(
                             RegularInstruction::PushToStack,
-                            RegularInstruction::uint8(2),
+                            RegularInstruction::UInt8(UInt8Data(2)),
                             RegularInstruction::CloneStackValue(StackIndex(0)),
-                            RegularInstruction::take_stack_value(StackIndex(1)),
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
                         )
                     ),
                     RegularInstruction::PushToStack,
-                    RegularInstruction::uint8(3),
-                    RegularInstruction::take_stack_value(StackIndex(0)),
-                    RegularInstruction::take_stack_value(StackIndex(1)),
+                    RegularInstruction::UInt8(UInt8Data(3)),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                    RegularInstruction::TakeStackValue(StackIndex(1)),
                 )
             ),)
         );
@@ -2923,7 +2840,7 @@ pub mod tests {
                 false,
                 instructions!(
                     RegularInstruction::PushToStack,
-                    RegularInstruction::uint8(42),
+                    RegularInstruction::UInt8(UInt8Data(42)),
                     RegularInstruction::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 5,
@@ -2936,13 +2853,13 @@ pub mod tests {
                                 )
                             }],
                             body: vec![Instruction::Regular(
-                                RegularInstruction::take_stack_value(
-                                    StackIndex(0)
-                                )
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    0
+                                ))
                             ),]
                         }
                     ),
-                    RegularInstruction::uint8(1),
+                    RegularInstruction::UInt8(UInt8Data(1)),
                 )
             ),)
         );
@@ -2964,7 +2881,7 @@ pub mod tests {
                 instructions!(
                     RegularInstruction::PushToStack,
                     RegularInstruction::CreateShared,
-                    RegularInstruction::uint8(42),
+                    RegularInstruction::UInt8(UInt8Data(42)),
                     RegularInstruction::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 5,
@@ -2976,13 +2893,13 @@ pub mod tests {
                                 )
                             }],
                             body: vec![Instruction::Regular(
-                                RegularInstruction::take_stack_value(
-                                    StackIndex(0)
-                                )
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    0
+                                ))
                             ),],
                         }
                     ),
-                    RegularInstruction::uint8(1),
+                    RegularInstruction::UInt8(UInt8Data(1)),
                 )
             ),)
         )
@@ -3002,7 +2919,7 @@ pub mod tests {
                 instructions!(
                     RegularInstruction::PushToStack,
                     RegularInstruction::CreateShared,
-                    RegularInstruction::uint8(42),
+                    RegularInstruction::UInt8(UInt8Data(42)),
                     RegularInstruction::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 5,
@@ -3014,13 +2931,13 @@ pub mod tests {
                                 )
                             }],
                             body: vec![Instruction::Regular(
-                                RegularInstruction::get_stack_value_shared_ref(
+                                RegularInstruction::GetStackValueSharedRef(
                                     StackIndex(0)
                                 )
                             ),],
                         }
                     ),
-                    RegularInstruction::uint8(1),
+                    RegularInstruction::UInt8(UInt8Data(1)),
                 )
             ),)
         )
@@ -3040,7 +2957,7 @@ pub mod tests {
                 instructions!(
                     RegularInstruction::PushToStack,
                     RegularInstruction::CreateShared,
-                    RegularInstruction::uint8(42),
+                    RegularInstruction::UInt8(UInt8Data(42)),
                     RegularInstruction::_RemoteExecutionDebugTree(
                         InstructionBlockDataDebugTree {
                             length: 13,
@@ -3054,17 +2971,17 @@ pub mod tests {
                             body: RegularInstruction::statements_with_children(
                                 false,
                                 instructions!(
-                                    RegularInstruction::get_stack_value_shared_ref(
+                                    RegularInstruction::GetStackValueSharedRef(
                                         StackIndex(0)
                                     ),
-                                    RegularInstruction::take_stack_value(
+                                    RegularInstruction::TakeStackValue(
                                         StackIndex(0)
                                     )
                                 )
                             ),
                         }
                     ),
-                    RegularInstruction::uint8(1),
+                    RegularInstruction::UInt8(UInt8Data(1)),
                 )
             ),)
         )
@@ -3083,9 +3000,9 @@ pub mod tests {
                 false,
                 instructions!(
                     RegularInstruction::PushToStack,
-                    RegularInstruction::uint8(42),
+                    RegularInstruction::UInt8(UInt8Data(42)),
                     RegularInstruction::PushToStack,
-                    RegularInstruction::uint8(69),
+                    RegularInstruction::UInt8(UInt8Data(69)),
                     RegularInstruction::_RemoteExecutionDebugFlat(
                         InstructionBlockDataDebugFlat {
                             length: 11,
@@ -3106,21 +3023,21 @@ pub mod tests {
                                 },
                             ],
                             body: vec![
-                                Instruction::Regular(RegularInstruction::add()),
+                                Instruction::Regular(RegularInstruction::Add),
                                 Instruction::Regular(
-                                    RegularInstruction::take_stack_value(
+                                    RegularInstruction::TakeStackValue(
                                         StackIndex(0)
                                     )
                                 ),
                                 Instruction::Regular(
-                                    RegularInstruction::take_stack_value(
+                                    RegularInstruction::TakeStackValue(
                                         StackIndex(1)
                                     )
                                 ),
                             ],
                         }
                     ),
-                    RegularInstruction::uint8(1),
+                    RegularInstruction::UInt8(UInt8Data(1)),
                 )
             ),)
         );
@@ -3140,9 +3057,9 @@ pub mod tests {
                 false,
                 instructions!(
                     RegularInstruction::PushToStack,
-                    RegularInstruction::uint8(42),
+                    RegularInstruction::UInt8(UInt8Data(42)),
                     RegularInstruction::PushToStack,
-                    RegularInstruction::uint8(69),
+                    RegularInstruction::UInt8(UInt8Data(69)),
                     RegularInstruction::_RemoteExecutionDebugTree(
                         InstructionBlockDataDebugTree {
                             length: 17,
@@ -3160,19 +3077,19 @@ pub mod tests {
                                 false,
                                 instructions!(
                                     RegularInstruction::PushToStack,
-                                    RegularInstruction::uint8(5),
+                                    RegularInstruction::UInt8(UInt8Data(5)),
                                     RegularInstruction::Add,
-                                    RegularInstruction::take_stack_value(
+                                    RegularInstruction::TakeStackValue(
                                         StackIndex(1)
                                     ),
-                                    RegularInstruction::take_stack_value(
+                                    RegularInstruction::TakeStackValue(
                                         StackIndex(0)
                                     ),
                                 )
                             ),
                         }
                     ),
-                    RegularInstruction::uint8(1),
+                    RegularInstruction::UInt8(UInt8Data(1)),
                 )
             ),)
         );
@@ -3567,7 +3484,7 @@ pub mod tests {
         let datex_script = r#""test".example"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::GET_ENTRY_TEXT.into(),
+            InstructionCode::GET_PROPERTY_TEXT.into(),
             7, // length of "example"
             b'e',
             b'x',
@@ -3592,7 +3509,7 @@ pub mod tests {
         let datex_script = r#""test"."example""#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::GET_ENTRY_TEXT.into(),
+            InstructionCode::GET_PROPERTY_TEXT.into(),
             7, // length of "example"
             b'e',
             b'x',
@@ -3617,7 +3534,7 @@ pub mod tests {
         let datex_script = r#""test".42"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::GET_ENTRY_INDEX.into(),
+            InstructionCode::GET_PROPERTY_INDEX.into(),
             // u32 index 42
             42,
             0,
@@ -3639,7 +3556,7 @@ pub mod tests {
         let datex_script = r#""test".(1u8 + 2u8)"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::GET_ENTRY_DYNAMIC.into(),
+            InstructionCode::GET_PROPERTY_DYNAMIC.into(),
             // property expression: 1 + 2
             InstructionCode::ADD.into(),
             InstructionCode::UINT_8.into(),
@@ -3662,7 +3579,7 @@ pub mod tests {
         let datex_script = r#""test".example = 42u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::SET_ENTRY_TEXT.into(),
+            InstructionCode::SET_PROPERTY_TEXT.into(),
             7, // length of "example"
             b'e',
             b'x',
@@ -3690,7 +3607,7 @@ pub mod tests {
         let datex_script = r#""test".42 = 43u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::SET_ENTRY_INDEX.into(),
+            InstructionCode::SET_PROPERTY_INDEX.into(),
             // u32 index 42
             42,
             0,
@@ -3715,7 +3632,7 @@ pub mod tests {
         let datex_script = r#""test".(1u8 + 2u8) = 43u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
-            InstructionCode::SET_ENTRY_DYNAMIC.into(),
+            InstructionCode::SET_PROPERTY_DYNAMIC.into(),
             // property expression: 1 + 2
             InstructionCode::ADD.into(),
             InstructionCode::UINT_8.into(),
@@ -3841,13 +3758,13 @@ pub mod tests {
                 instructions!(
                     // var x = 42u8
                     RegularInstruction::PushToStack,
-                    RegularInstruction::uint8(42),
+                    RegularInstruction::UInt8(UInt8Data(42)),
                     // var x = 43u8;
                     RegularInstruction::statements_with_children(
                         true,
                         instructions!(
                             RegularInstruction::PushToStack,
-                            RegularInstruction::uint8(43),
+                            RegularInstruction::UInt8(UInt8Data(43)),
                         )
                     ),
                     // var y = 43u8; y
@@ -3855,12 +3772,12 @@ pub mod tests {
                         false,
                         instructions!(
                             RegularInstruction::PushToStack,
-                            RegularInstruction::uint8(43),
-                            RegularInstruction::take_stack_value(StackIndex(1)),
+                            RegularInstruction::UInt8(UInt8Data(43)),
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
                         )
                     ),
                     // x
-                    RegularInstruction::take_stack_value(StackIndex(0))
+                    RegularInstruction::TakeStackValue(StackIndex(0))
                 )
             ),)
         );
@@ -3877,7 +3794,7 @@ pub mod tests {
                 instructions!(
                     // var x = 1u8
                     RegularInstruction::PushToStack,
-                    RegularInstruction::uint8(1),
+                    RegularInstruction::UInt8(UInt8Data(1)),
                     // var y =
                     RegularInstruction::PushToStack,
                     // (var x = 2u8; x)
@@ -3885,40 +3802,18 @@ pub mod tests {
                         false,
                         instructions!(
                             RegularInstruction::PushToStack,
-                            RegularInstruction::uint8(2),
-                            RegularInstruction::take_stack_value(StackIndex(1)),
+                            RegularInstruction::UInt8(UInt8Data(2)),
+                            RegularInstruction::TakeStackValue(StackIndex(1)),
                         )
                     ),
                     // [x, y]
-                    RegularInstruction::list(2),
-                    RegularInstruction::take_stack_value(StackIndex(0)),
-                    RegularInstruction::take_stack_value(StackIndex(1)),
+                    RegularInstruction::ShortList(ShortListData {
+                        element_count: 2
+                    }),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
+                    RegularInstruction::TakeStackValue(StackIndex(1)),
                 )
             ),)
         )
-    }
-
-    #[test]
-    fn interface_method_calls() {
-        let datex_script = "var x = []; x->append(true);";
-        let result = compile_and_log(datex_script);
-        assert_regular_instructions_equal!(
-            &result,
-            (RegularInstruction::statements_with_children(
-                true,
-                instructions!(
-                    // var x = []
-                    RegularInstruction::PushToStack,
-                    RegularInstruction::list(0),
-                    // x->append(true)
-                    RegularInstruction::AppendEntry.with_children(
-                        instructions!(
-                            RegularInstruction::True,
-                            RegularInstruction::BorrowStackValue(StackIndex(0)),
-                        )
-                    )
-                )
-            ),)
-        );
     }
 }

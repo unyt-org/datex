@@ -9,8 +9,8 @@ use datex_core::{
     },
     collections::HashMap,
     global::operators::{
-        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
-        LogicalUnaryOperator, ModificationOperator, UnaryOperator,
+        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+        ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
         binary::{ArithmeticOperator, BitwiseOperator},
     },
     prelude::*,
@@ -3032,7 +3032,7 @@ fn variable_add_assignment() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: Some(ModificationOperator::AddAssign),
+            operator: Some(AssignmentOperator::AddAssign),
             name: "x".to_string(),
             expression: (DatexExpressionData::Integer(Integer::from(42))
                 .with_default_span()),
@@ -3048,7 +3048,7 @@ fn variable_sub_assignment() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: Some(ModificationOperator::SubtractAssign),
+            operator: Some(AssignmentOperator::SubtractAssign),
             name: "x".into(),
             expression: (DatexExpressionData::Integer(Integer::from(42))
                 .with_default_span()),

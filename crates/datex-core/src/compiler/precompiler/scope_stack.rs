@@ -1,13 +1,12 @@
-use crate::{
-    compiler::{
-        error::CompilerError,
-        precompiler::{
-            precompiled_ast::{AstMetadata, VariableMetadata, VariableShape},
-            scope::{ExternalVariable, PrecompilerScope},
-        },
+use crate::compiler::{
+    error::CompilerError,
+    precompiler::{
+        precompiled_ast::{AstMetadata, VariableMetadata, VariableShape},
+        scope::PrecompilerScope,
     },
-    prelude::*,
 };
+
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct PrecompilerScopeStack {
@@ -87,9 +86,8 @@ impl PrecompilerScopeStack {
             // if the original realm index is not the current realm index, mark it as cross-realm
             if var_metadata.original_realm_index != self.current_realm_index() {
                 var_metadata.is_cross_realm = true;
-                self.get_active_scope_mut().register_external_variable(
-                    ExternalVariable::Registered(var_id),
-                );
+                self.get_active_scope_mut()
+                    .register_external_variable(var_id);
             }
             Ok(var_id)
         } else {

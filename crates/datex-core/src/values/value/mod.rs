@@ -5,7 +5,6 @@ use crate::{
     types::type_definition::{
         TypeDefinition, callable::CallableTypeDefinition,
     },
-    utils::sheep::Sheep,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -19,38 +18,23 @@ pub mod apply;
 mod child_iterator;
 pub mod datex_proxy;
 pub mod equality;
-mod local_child_path_resolver;
 pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;
 
 use crate::{
-    shared_values::errors::AccessError,
-    value_updates::update_handler::InternalMutabilityUpdateHandler,
-    values::core_values::endpoint::Endpoint,
+    shared_values::errors::AccessError, values::core_values::endpoint::Endpoint,
 };
 use core::{
-    fmt::{Debug, Display, Formatter},
+    fmt::{Display, Formatter},
     result::Result,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
-    /// The inner representation of the value, which is a [CoreValue].
     pub inner: CoreValue,
-    /// actual type of the value - if [None], use default type for given value
+    // actual type of the value - if [None], use default type for given value
     pub custom_type: Option<TypeDefinition>,
-}
-
-/// The Value clone does copy the value and custom type,
-/// but removed the observer
-impl Clone for Value {
-    fn clone(&self) -> Self {
-        Value {
-            inner: self.inner.clone(),
-            custom_type: self.custom_type.clone(),
-        }
-    }
 }
 
 impl<T: Into<CoreValue>> From<T> for Value {
@@ -66,22 +50,6 @@ impl<T: Into<CoreValue>> From<T> for Value {
 impl Value {
     pub fn null() -> Self {
         CoreValue::Null.into()
-    }
-    pub fn new(inner: CoreValue, custom_type: Option<TypeDefinition>) -> Self {
-        Value { inner, custom_type }
-    }
-    pub fn custom_type(&self) -> Option<&TypeDefinition> {
-        self.custom_type.as_ref()
-    }
-    pub fn into_inner(self) -> CoreValue {
-        self.inner
-    }
-
-    /// Strips any local observers from the given value container.
-    /// This method should be called when a value is moved from its [SharedContainer] parent.
-    pub fn without_local_observers(mut self) -> Value {
-        self.set_update_callback_data(None);
-        self
     }
 }
 
@@ -153,10 +121,10 @@ impl Value {
     /// This will return false for an integer value if the actual type is one of the following:
     /// * an ImplType<integer, x>
     /// * a new nominal type containing an integer
-    ///   TODO #604: this does not match all cases of default types from the point of view of the compiler -
-    ///   integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
-    ///   the variant must be included in the compiler output - so we need to handle theses cases as well.
-    ///   Generally speaking, all variants except the few integer variants should never be considered default types.
+    /// TODO #604: this does not match all cases of default types from the point of view of the compiler -
+    /// integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
+    /// the variant must be included in the compiler output - so we need to handle theses cases as well.
+    /// Generally speaking, all variants except the few integer variants should never be considered default types.
     pub fn has_default_type(&self) -> bool {
         match &self.custom_type {
             None => true,
@@ -168,12 +136,10 @@ impl Value {
     }
 
     /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
+    pub fn actual_type(&self) -> TypeDefinition {
         match &self.custom_type {
-            Some(actual_type) => Sheep::Borrowed(actual_type),
-            None => {
-                Sheep::Owned(TypeDefinition::CoreType(self.default_core_type()))
-            }
+            Some(actual_type) => actual_type.clone(),
+            None => TypeDefinition::CoreType(self.default_core_type()),
         }
     }
 
@@ -181,40 +147,23 @@ impl Value {
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<&ValueContainer, AccessError> {
+    ) -> Result<ValueContainer, AccessError> {
         match self.inner {
             CoreValue::Map(ref map) => {
                 // If the value is a map, get the property
-                Ok(map.try_get(key)?)
+                Ok(map.get(key)?.clone())
             }
             CoreValue::List(ref list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_get(index)?)
+                    Ok(list.try_get(index)?.clone())
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
             }
-            _ => {
-                // If the value is not an map, we cannot get a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot get property".to_string(),
-                ))
-            }
-        }
-    }
-
-    pub fn try_get_property_mut<'a>(
-        &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<&mut ValueContainer, AccessError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                // If the value is a map, get the property
-                Ok(map.try_get_mut(key)?)
-            }
-            CoreValue::List(ref mut list) => {
+            CoreValue::Text(ref text) => {
                 if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_get_mut(index)?)
+                    let char = text.char_at(index)?;
+                    Ok(ValueContainer::from(char.to_string()))
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
@@ -240,7 +189,7 @@ impl Value {
             }
             CoreValue::List(ref mut list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_delete(index)?)
+                    Ok(list.delete(index)?)
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
@@ -274,7 +223,7 @@ impl Value {
             }
             CoreValue::List(ref mut list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    list.try_delete(index)?;
+                    list.delete(index)?;
                     Ok(())
                 } else {
                     Err(AccessError::InvalidIndexKey)

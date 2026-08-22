@@ -20,10 +20,6 @@ use rand::{TryRng, rngs::SysRng};
 
 use uuid::Uuid;
 
-#[doc = include_str!("../README.md")]
-#[cfg(doctest)]
-pub struct ReadmeDoctests;
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct CryptoNative;
 impl Crypto for CryptoNative {

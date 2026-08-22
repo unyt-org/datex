@@ -532,7 +532,7 @@ impl DXBBlock {
         !self
             .receiver_endpoints()
             .iter()
-            .any(|e| e.instance_is_broadcast() || e.is_any())
+            .any(|e| e.is_broadcast() || e.is_any())
     }
 
     pub fn clone_with_new_receivers<T>(&self, new_receivers: T) -> DXBBlock

@@ -221,7 +221,7 @@ impl Endpoint {
         })
     }
 
-    /// Create alias endpoint (@person)
+    // create alias endpoint (@person)
     pub fn person(
         name: &str,
         instance: EndpointInstance,
@@ -229,7 +229,7 @@ impl Endpoint {
         Self::named(name, instance, EndpointType::Person)
     }
 
-    /// Create institution endpoint (@+institution)
+    // create institution endpoint (@+institution)
     pub fn institution(
         name: &str,
         instance: EndpointInstance,
@@ -237,17 +237,7 @@ impl Endpoint {
         Self::named(name, instance, EndpointType::Institution)
     }
 
-    /// If the endpoint is equal to the given endpoint, return the [Endpoint::LOCAL] endpoint,
-    /// otherwise return the endpoint itself
-    pub fn as_local_if_endpoint(&self, endpoint: &Endpoint) -> Endpoint {
-        if self == endpoint {
-            Endpoint::LOCAL
-        } else {
-            self.clone()
-        }
-    }
-
-    /// Create endpoint from string (@person/42, @@local, @+unyt)
+    // create endpoint from string (@person/42, @@local, @+unyt)
     fn from_string(name: &str) -> Result<Endpoint, InvalidEndpointError> {
         let name = name.to_string();
         if name
@@ -463,13 +453,18 @@ impl Endpoint {
     }
 
     // get endpoint type
-    pub fn ty(&self) -> EndpointType {
+    pub fn type_(&self) -> EndpointType {
         self.ty
     }
 
     // get endpoint instance
     pub fn instance(&self) -> EndpointInstance {
         self.instance
+    }
+
+    // check if endpoint is broadcast (instance is /*)
+    pub fn is_broadcast(&self) -> bool {
+        self.instance == EndpointInstance::All
     }
 
     // check if endpoint is local (@@local)
@@ -482,17 +477,13 @@ impl Endpoint {
         self == &Endpoint::ANY
     }
 
-    // check if endpoint is broadcast (instance is /*)
-    pub fn instance_is_broadcast(&self) -> bool {
-        self.instance == EndpointInstance::All
-    }
     // check if endpoint is an endpoint without a specific instance
     pub fn is_any_instance(&self) -> bool {
         self.instance == EndpointInstance::Any
     }
 
     // get the main endpoint (@person) of the endpoint without a specific instance
-    pub fn any_instance(&self) -> Endpoint {
+    pub fn any_instance_endpoint(&self) -> Endpoint {
         Endpoint {
             ty: self.ty,
             identifier: self.identifier,
@@ -501,7 +492,7 @@ impl Endpoint {
     }
 
     // get the broadcast endpoint (@person/*) of the endpoint
-    pub fn all_instances(&self) -> Endpoint {
+    pub fn broadcast(&self) -> Endpoint {
         Endpoint {
             ty: self.ty,
             identifier: self.identifier,
@@ -588,15 +579,15 @@ mod tests {
     fn utilities() {
         let endpoint: Endpoint = Endpoint::from_string("@ben/42").unwrap();
         assert!(!endpoint.is_any_instance());
-        assert!(!endpoint.instance_is_broadcast());
+        assert!(!endpoint.is_broadcast());
 
-        let main_endpoint = endpoint.any_instance();
+        let main_endpoint = endpoint.any_instance_endpoint();
         assert!(main_endpoint.is_any_instance());
         assert_eq!(main_endpoint.to_string(), "@ben");
         assert_eq!(main_endpoint.instance, EndpointInstance::Any);
 
-        let broadcast_endpoint = endpoint.all_instances();
-        assert!(broadcast_endpoint.instance_is_broadcast());
+        let broadcast_endpoint = endpoint.broadcast();
+        assert!(broadcast_endpoint.is_broadcast());
         assert_eq!(broadcast_endpoint.to_string(), "@ben/*");
     }
 

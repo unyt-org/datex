@@ -1,4 +1,4 @@
-pub use crate::global::operators::modification::ModificationOperator;
+pub use crate::global::operators::assignment::AssignmentOperator;
 
 pub mod binary;
 pub use binary::BinaryOperator;
@@ -6,7 +6,7 @@ pub use binary::BinaryOperator;
 pub mod comparison;
 pub use comparison::ComparisonOperator;
 
-pub mod modification;
+pub mod assignment;
 pub mod unary;
 
 pub use unary::{

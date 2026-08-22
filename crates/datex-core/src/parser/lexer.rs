@@ -143,19 +143,18 @@ impl From<String> for NumericLiteralParts {
 #[derive(Logos, Debug, Clone, PartialEq, Eq)]
 #[logos(error = Range<usize>)]
 // single line comments
-#[logos(skip(r"//[^\n]*", allow_greedy = true))]
+#[logos(skip r"//[^\n]*")]
 // multiline comments
 #[logos(skip r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/")]
 // whitespace
 #[logos(skip r"[ \n\t\r\f]+")]
 #[rustfmt::skip]
-#[logos(export_dir = "./docs/diagrams/mmd/lexer.mmd")]
 pub enum Token {
-    #[regex(r"///[^\n]*", extract_line_doc, allow_greedy = true)]
+    #[regex(r"///[^\n]*", extract_line_doc)]
     LineDoc(String),
 
     // shebang
-    #[regex(r"#![^\n]*", allocated_string, allow_greedy = true)]
+    #[regex(r"#![^\n]*", allocated_string)]
     Shebang(String),
 
     // Operators & Separators
@@ -303,7 +302,7 @@ pub enum Token {
 }
 
 impl Token {
-    pub const fn as_const_str(&self) -> Option<&str> {
+    pub fn as_const_str(&self) -> Option<&str> {
         match self {
             Token::LeftParen => Some("("),
             Token::RightParen => Some(")"),

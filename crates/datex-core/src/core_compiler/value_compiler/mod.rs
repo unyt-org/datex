@@ -7,9 +7,9 @@ use crate::{
     },
     global::{
         instruction_codes::InstructionCode,
-        protocol_structures::regular_instructions::RegularInstruction,
+        protocol_structures::instruction_data::{InstantData, TextData},
     },
-    utils::buffers::{append_i16, append_i32},
+    utils::buffers::{append_i16, append_i32, append_u8},
     values::{
         core_value::CoreValue,
         core_values::{
@@ -29,7 +29,16 @@ use crate::{
         core_compilation_context::{ByteCursor, CoreCompilationContext},
         value_visitor::{ParentAccessor, ParentContext},
     },
-    global::protocol_structures::instructions::Instruction,
+    global::protocol_structures::{
+        instruction_data::{
+            ApplyData, Float32Data, Float64Data, Int8Data, Int16Data,
+            Int32Data, Int64Data, Int128Data, ListData, MapData, ShortTextData,
+            TaggedValue, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
+            UInt128Data,
+        },
+        instructions::Instruction,
+        regular_instructions::RegularInstruction,
+    },
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdIndex},
         type_id::{CoreLibBaseTypeId, CoreLibTypeId},
@@ -75,9 +84,9 @@ impl From<InjectedValueValidationError> for ExecutionError {
 /// Compiles a given value container to a DXB body
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
-pub fn compile_value_container(
+pub fn compile_value_container<'a>(
     value_container: ValueContainer,
-    compile_input: CompileInput,
+    compile_input: CompileInput<'a>,
 ) -> DXBWithSharedValues {
     let mut context =
         CoreCompilationContext::new(Vec::with_capacity(256), compile_input);
@@ -102,7 +111,7 @@ pub fn compile_panic(
 
     append_apply(
         &mut context,
-        RegularInstruction::get_core_lib_value(
+        RegularInstruction::GetCoreLibValue(
             CoreLibId::Value(CoreLibValueId::Panic).into(),
         ),
         vec![ValueContainer::Local(panic_value.into())],
@@ -120,17 +129,20 @@ pub fn append_shared_container_from_stack(
     let index = context
         .shared_value_tracking
         .register_shared_value(shared_container);
-    context.write(match ownership {
-        SharedContainerOwnership::Owned => {
-            RegularInstruction::take_stack_value(index)
-        }
-        SharedContainerOwnership::Referenced(
-            ReferenceMutability::Immutable,
-        ) => RegularInstruction::get_stack_value_shared_ref(index),
-        SharedContainerOwnership::Referenced(ReferenceMutability::Mutable) => {
-            RegularInstruction::get_stack_value_shared_ref_mut(index)
-        }
-    });
+    append_regular_instruction(
+        context.cursor_mut(),
+        match ownership {
+            SharedContainerOwnership::Owned => {
+                RegularInstruction::TakeStackValue(index)
+            }
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Immutable,
+            ) => RegularInstruction::GetStackValueSharedRef(index),
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Mutable,
+            ) => RegularInstruction::GetStackValueSharedRefMut(index),
+        },
+    );
 }
 
 pub fn append_local_pointer_address(
@@ -140,15 +152,6 @@ pub fn append_local_pointer_address(
     cursor.write_all(&local_address).unwrap();
 }
 
-/// Compiles a value container to the buffer of the provided context
-pub fn append_value_container<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
-    value_container: ValueContainer,
-) {
-    context.visit_value_container(value_container, None);
-}
-
-/// Compiles a value to the buffer of the provided context
 pub fn append_value<T: BufferProvider + ValueVisitor>(
     context: &mut T,
     value: Value,
@@ -170,8 +173,13 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                     })),
                 tag,
             }) => {
-                context
-                    .write(RegularInstruction::tagged_value(tag.clone(), true));
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::TaggedValue(TaggedValue {
+                        tag: ShortTextData(tag.clone()),
+                        is_empty: true,
+                    }),
+                );
                 return; // early return, don't append null value; TODO: assert that value is actually null?
             }
             // tagged value with actual value (e.g. #Example(null))
@@ -179,10 +187,13 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                 ty: Option::None,
                 tag,
             }) => {
-                context.write(RegularInstruction::tagged_value(
-                    tag.clone(),
-                    false,
-                ));
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::TaggedValue(TaggedValue {
+                        tag: ShortTextData(tag.clone()),
+                        is_empty: false,
+                    }),
+                );
             }
             _ => append_type_cast(context, custom_type),
         }
@@ -195,7 +206,10 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                     CoreLibId::Type(core_id),
                 );
             } else {
-                context.write(RegularInstruction::type_expression());
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::TypeExpression,
+                );
                 context.visit_type(ty);
             }
         }
@@ -209,14 +223,14 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             // for all integers for now
             // let integer = integer.to_smallest_fitting();
             // append_encoded_integer(buffer, &integer);
-            context.write(RegularInstruction::integer(integer));
+            append_integer(context.cursor_mut(), &integer)
         }
         CoreValue::TypedInteger(integer) => {
             append_encoded_integer(context.cursor_mut(), &integer)
         }
 
         CoreValue::Endpoint(endpoint) => {
-            context.write(RegularInstruction::endpoint(endpoint));
+            append_endpoint(context.cursor_mut(), &endpoint)
         }
         CoreValue::Decimal(decimal) => {
             append_decimal(context.cursor_mut(), &decimal)
@@ -225,11 +239,30 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             append_encoded_decimal(context.cursor_mut(), &val)
         }
         CoreValue::Boolean(val) => append_boolean(context.cursor_mut(), val.0),
-        CoreValue::Null => context.write(RegularInstruction::null()),
-        CoreValue::Text(val) => context.write(RegularInstruction::text(val.0)),
+        CoreValue::Null => append_regular_instruction(
+            context.cursor_mut(),
+            RegularInstruction::Null,
+        ),
+        CoreValue::Text(val) => append_text(context.cursor_mut(), val.0),
         CoreValue::List(val) => {
             // if list size < 256, use SHORT_LIST
-            context.write(RegularInstruction::list(val.len()));
+            match val.len() {
+                0..=255 => {
+                    append_instruction_code(
+                        context.cursor_mut(),
+                        InstructionCode::SHORT_LIST,
+                    );
+                    append_u8(context.cursor_mut(), val.len() as u8);
+                }
+                _ => {
+                    append_regular_instruction(
+                        context.cursor_mut(),
+                        RegularInstruction::List(ListData {
+                            element_count: val.len(),
+                        }),
+                    );
+                }
+            }
 
             for (index, item) in val.into_iter().enumerate() {
                 context.visit_value_container(
@@ -243,7 +276,24 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             }
         }
         CoreValue::Map(val) => {
-            context.write(RegularInstruction::map(val.size() as u32));
+            // if map size < 256, use SHORT_MAP
+            match val.size() {
+                0..=255 => {
+                    append_instruction_code(
+                        context.cursor_mut(),
+                        InstructionCode::SHORT_MAP,
+                    );
+                    append_u8(context.cursor_mut(), val.size() as u8);
+                }
+                _ => {
+                    append_regular_instruction(
+                        context.cursor_mut(),
+                        RegularInstruction::Map(MapData {
+                            element_count: val.size() as u32, // FIXME #633: casting from usize to u32 here
+                        }),
+                    );
+                }
+            }
             for (key, value) in val.into_iter() {
                 append_key_value_pair(
                     context,
@@ -254,7 +304,10 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             }
         }
         CoreValue::Range(range) => {
-            context.write(RegularInstruction::range());
+            append_regular_instruction(
+                context.cursor_mut(),
+                RegularInstruction::Range,
+            );
             context.visit_value_container(*range.start, None);
             context.visit_value_container(*range.end, None);
         }
@@ -277,29 +330,53 @@ pub fn append_apply<T: BufferProvider + ValueVisitor>(
     callee: RegularInstruction,
     args: Vec<ValueContainer>,
 ) {
-    context.write(RegularInstruction::apply(args.len() as u16));
+    append_regular_instruction(
+        context.cursor_mut(),
+        RegularInstruction::Apply(ApplyData {
+            arg_count: args.len() as u16,
+        }),
+    );
     for arg in args {
         context.visit_value_container(arg, None);
     }
-    context.write(callee);
+    append_regular_instruction(context.cursor_mut(), callee);
 }
 
 pub fn append_type_cast<T: BufferProvider + ValueVisitor>(
     context: &mut T,
     ty: &TypeDefinition,
 ) {
-    context.write(RegularInstruction::typed_value());
+    append_regular_instruction(
+        context.cursor_mut(),
+        RegularInstruction::TypedValue,
+    );
 
     // append type
     context.visit_type(Type::from(ty.clone()));
 }
 
+/// Appends a text value, using either the short or regular text instruction depending on the byte length
+/// of the texts string representation
+pub fn append_text(cursor: &mut ByteCursor, string: String) {
+    if string.len() < 256 {
+        append_regular_instruction(
+            cursor,
+            RegularInstruction::ShortText(ShortTextData(string.to_owned())),
+        );
+    } else {
+        append_regular_instruction(
+            cursor,
+            RegularInstruction::Text(TextData(string)),
+        );
+    }
+}
+
 /// Appends a boolean value using the TRUE or FALSE instruction
 pub fn append_boolean(cursor: &mut ByteCursor, boolean: bool) {
     if boolean {
-        RegularInstruction::r#true().write(cursor).unwrap();
+        append_regular_instruction(cursor, RegularInstruction::True)
     } else {
-        RegularInstruction::r#false().write(cursor).unwrap();
+        append_regular_instruction(cursor, RegularInstruction::False)
     }
 }
 
@@ -313,6 +390,11 @@ pub fn append_big_decimal(cursor: &mut ByteCursor, decimal: &Decimal) {
     decimal.write_le(cursor).unwrap();
 }
 
+pub fn append_endpoint(cursor: &mut ByteCursor, endpoint: &Endpoint) {
+    append_instruction_code(cursor, InstructionCode::ENDPOINT);
+    endpoint.write_le(cursor).unwrap();
+}
+
 /// Appends a typed integer with explicit type casts
 pub fn append_typed_integer(
     context: &mut impl BufferProvider,
@@ -322,29 +404,40 @@ pub fn append_typed_integer(
     append_encoded_integer(context.cursor_mut(), integer);
 }
 
+/// Appends a default, unsized integer
+pub fn append_integer(cursor: &mut ByteCursor, integer: &Integer) {
+    append_regular_instruction(
+        cursor,
+        RegularInstruction::Integer(integer.clone()), // FIXME: no clone
+    );
+}
+
 /// Appends an encoded integer without explicit type casts
 pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) {
     let instruction = match integer {
-        TypedInteger::I8(val) => RegularInstruction::int8(*val),
-        TypedInteger::I16(val) => RegularInstruction::int16(*val),
-        TypedInteger::I32(val) => RegularInstruction::int32(*val),
-        TypedInteger::I64(val) => RegularInstruction::int64(*val),
-        TypedInteger::I128(val) => RegularInstruction::int128(*val),
-        TypedInteger::U8(val) => RegularInstruction::uint8(*val),
-        TypedInteger::U16(val) => RegularInstruction::uint16(*val),
-        TypedInteger::U32(val) => RegularInstruction::uint32(*val),
-        TypedInteger::U64(val) => RegularInstruction::uint64(*val),
-        TypedInteger::U128(val) => RegularInstruction::uint128(*val),
-        TypedInteger::IBig(val) => RegularInstruction::big_integer(val.clone()), // FIXME: no clone
+        TypedInteger::I8(val) => RegularInstruction::Int8(Int8Data(*val)),
+        TypedInteger::I16(val) => RegularInstruction::Int16(Int16Data(*val)),
+        TypedInteger::I32(val) => RegularInstruction::Int32(Int32Data(*val)),
+        TypedInteger::I64(val) => RegularInstruction::Int64(Int64Data(*val)),
+        TypedInteger::I128(val) => RegularInstruction::Int128(Int128Data(*val)),
+        TypedInteger::U8(val) => RegularInstruction::UInt8(UInt8Data(*val)),
+        TypedInteger::U16(val) => RegularInstruction::UInt16(UInt16Data(*val)),
+        TypedInteger::U32(val) => RegularInstruction::UInt32(UInt32Data(*val)),
+        TypedInteger::U64(val) => RegularInstruction::UInt64(UInt64Data(*val)),
+        TypedInteger::U128(val) => {
+            RegularInstruction::UInt128(UInt128Data(*val))
+        }
+        TypedInteger::IBig(val) => RegularInstruction::BigInteger(val.clone()), // FIXME: no clone
     };
 
-    instruction.write(cursor).unwrap();
+    append_regular_instruction(cursor, instruction);
 }
 
 pub fn append_instant(cursor: &mut ByteCursor, instant: &Instant) {
-    RegularInstruction::instant(instant.0)
-        .write(cursor)
-        .unwrap();
+    append_regular_instruction(
+        cursor,
+        RegularInstruction::Instant(InstantData(instant.0)),
+    );
 }
 
 /// Appends a typed decimal with explicit type casts
@@ -352,14 +445,20 @@ pub fn append_encoded_decimal(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
     fn append_f32_or_f64(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
         match decimal {
             TypedDecimal::F32(val) => {
-                RegularInstruction::decimal_f32(val.into_inner())
-                    .write(cursor)
-                    .unwrap();
+                append_regular_instruction(
+                    cursor,
+                    RegularInstruction::DecimalF32(Float32Data(
+                        val.into_inner(),
+                    )),
+                );
             }
             TypedDecimal::F64(val) => {
-                RegularInstruction::decimal_f64(val.into_inner())
-                    .write(cursor)
-                    .unwrap();
+                append_regular_instruction(
+                    cursor,
+                    RegularInstruction::DecimalF64(Float64Data(
+                        val.into_inner(),
+                    )),
+                );
             }
             TypedDecimal::Decimal(val) => {
                 append_instruction_code(cursor, InstructionCode::DECIMAL_BIG);
@@ -425,20 +524,27 @@ pub fn append_get_shared_ref(
     address: PointerAddress,
     mutability: &ReferenceMutability,
 ) {
+    /**
+    @example :: (function remoteFn() ($1234567); callback(remoteFn); @@local :: remoteFn() )
+    **/
     match address {
         PointerAddress::SelfOwned(local_address) => {
-            context
-                .write(RegularInstruction::get_local_shared_ref(local_address));
+            append_regular_instruction(
+                context.cursor_mut(),
+                RegularInstruction::GetLocalSharedRef(local_address),
+            );
         }
         PointerAddress::Remote(address) => match mutability {
             ReferenceMutability::Immutable => {
-                context.write(RegularInstruction::request_remote_shared_ref(
-                    address,
-                ));
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::RequestRemoteSharedRef(address),
+                );
             }
             ReferenceMutability::Mutable => {
-                context.write(
-                    RegularInstruction::request_remote_shared_ref_mut(address),
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::RequestRemoteSharedRefMut(address),
                 );
             }
         },
@@ -447,9 +553,10 @@ pub fn append_get_shared_ref(
 
 /// Appends a GET_CORE_LIB_VALUE instruction with the given core library id
 pub fn append_get_core_lib_value(cursor: &mut ByteCursor, id: CoreLibId) {
-    RegularInstruction::get_core_lib_value(CoreLibIdIndex::from(id))
-        .write(cursor)
-        .unwrap();
+    append_regular_instruction(
+        cursor,
+        RegularInstruction::GetCoreLibValue(CoreLibIdIndex::from(id)),
+    );
 }
 
 /// Appends a key-value pair for map entries, optimizing for short text keys
@@ -468,10 +575,13 @@ pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
             inner: CoreValue::Text(text),
             ..
         }) => {
-            append_key_string(context, text.0);
+            append_key_string(context.cursor_mut(), text.0);
         }
         _ => {
-            context.write(RegularInstruction::key_value_dynamic());
+            append_regular_instruction(
+                context.cursor_mut(),
+                RegularInstruction::KeyValueDynamic,
+            );
             context.visit_value_container(
                 key,
                 parent_context.clone().map(|parent_context| {
@@ -490,22 +600,35 @@ pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
 }
 
 /// Appends a key string for map entries, optimizing for short text keys
-pub fn append_key_string<T: BufferProvider>(
-    context: &mut T,
-    key_string: String,
-) {
+pub fn append_key_string(cursor: &mut ByteCursor, key_string: String) {
     if key_string.len() < 256 {
-        context.write(RegularInstruction::key_value_short_text(key_string));
+        append_regular_instruction(
+            cursor,
+            RegularInstruction::KeyValueShortText(ShortTextData(key_string)),
+        );
     } else {
-        context.write(RegularInstruction::key_value_dynamic());
-        context.write(RegularInstruction::text(key_string));
+        append_regular_instruction(cursor, RegularInstruction::KeyValueDynamic);
+        append_text(cursor, key_string);
     }
+}
+
+#[inline]
+pub fn append_regular_instruction(
+    cursor: &mut ByteCursor,
+    instruction: RegularInstruction,
+) {
+    // add instruction code
+    cursor
+        .write_all(&[InstructionCode::from(&instruction) as u8])
+        .unwrap();
+    // add instruction
+    instruction.write(cursor).unwrap();
 }
 
 pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
     match instruction {
         Instruction::Regular(instruction) => {
-            instruction.write(cursor).unwrap();
+            append_regular_instruction(cursor, instruction)
         }
         Instruction::Type(instruction) => {
             append_type_instruction(cursor, instruction)
@@ -513,55 +636,44 @@ pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
     }
 }
 
-#[deprecated(note = "Use context.write(RegularInstruction) instead")]
 pub fn append_instruction_code(cursor: &mut ByteCursor, code: InstructionCode) {
     cursor.write_all(&[code as u8]).unwrap();
+}
+
+pub fn append_statements_preamble(
+    cursor: &mut ByteCursor,
+    statements_count: usize,
+    terminated: bool,
+) {
+    append_regular_instruction(
+        cursor,
+        RegularInstruction::statements(statements_count as u32, terminated),
+    );
 }
 
 #[cfg(test)]
 #[cfg(feature = "disassembler")]
 mod tests {
+
+    use super::*;
     use crate::{
         core_compiler::{
-            core_compilation_context::{
-                CompileInput, CoreCompilationContext,
-                default_core_compilation_context,
-            },
+            core_compilation_context::default_core_compilation_context,
             shared_value_tracking::TrackedValueMetadata,
-            value_compiler::compile_value,
-            value_visitor::ValueVisitor,
         },
         disassembler::{
             assertions::{assert_regular_instructions_equal, instructions},
             print_disassembled,
         },
-        global::protocol_structures::{
-            instruction_data::{
-                Int32Data, MoveWithValue, SharedRefWithValue, ShortListData,
-                ShortTextData, StackIndex, TaggedValue,
-            },
-            regular_instructions::RegularInstruction,
+        global::protocol_structures::instruction_data::{
+            MoveWithValue, SharedRefWithValue, ShortListData, StackIndex,
         },
-        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-        prelude::*,
         runtime::{
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
         },
-        shared_values::{
-            PointerAddress, ReferenceMutability, SharedContainer,
-            SharedContainerMutability,
-        },
-        types::{
-            r#type::Type,
-            type_definition::{
-                TypeDefinition, tagged_type::TaggedTypeDefinition,
-            },
-        },
-        values::{
-            core_value::CoreValue, core_values::list::List, value::Value,
-            value_container::ValueContainer,
-        },
+        shared_values::SharedContainerMutability,
+        values::{core_values::list::List, value::Value},
     };
     use core::assert_matches;
     use log::info;
@@ -585,18 +697,20 @@ mod tests {
 
     #[test]
     fn compile_tagged_empty_value() {
-        let value = Value::new(
-            CoreValue::Null,
-            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: Some(Box::new(Type::Alias(
-                    TypeDefinition::CoreType(CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Unit,
-                    ))
-                    .into(),
-                ))),
-                tag: "Example".to_string(),
-            })),
-        );
+        let value = Value {
+            inner: CoreValue::Null,
+            custom_type: Some(TypeDefinition::TaggedType(
+                TaggedTypeDefinition {
+                    ty: Some(Box::new(Type::Alias(
+                        TypeDefinition::CoreType(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Unit,
+                        ))
+                        .into(),
+                    ))),
+                    tag: "Example".to_string(),
+                },
+            )),
+        };
 
         compile_value_assert_instructions(
             value,
@@ -609,13 +723,15 @@ mod tests {
 
     #[test]
     fn compile_tagged_value() {
-        let value = Value::new(
-            CoreValue::Null,
-            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: None,
-                tag: "Example".to_string(),
-            })),
-        );
+        let value = Value {
+            inner: CoreValue::Null,
+            custom_type: Some(TypeDefinition::TaggedType(
+                TaggedTypeDefinition {
+                    ty: None,
+                    tag: "Example".to_string(),
+                },
+            )),
+        };
 
         compile_value_assert_instructions(
             value,
@@ -700,10 +816,10 @@ mod tests {
                                 previous_address: pointer_address,
                             }),
                             RegularInstruction::Null,
+
                             RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(
-                                StackIndex(0)
-                            ),
+                            RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
+
                             RegularInstruction::list(1),
                             RegularInstruction::TakeStackValue(StackIndex(0)),
                         )
@@ -810,10 +926,10 @@ mod tests {
                                 previous_address: inner_pointer_address_b,
                             }),
                             RegularInstruction::Int32(Int32Data(2)),
+
                             RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRefMut(
-                                StackIndex(0)
-                            ),
+                            RegularInstruction::GetStackValueSharedRefMut(StackIndex(0)),
+
                             RegularInstruction::PushToStack,
                             RegularInstruction::SharedRefWithValue(
                                 SharedRefWithValue {
@@ -825,6 +941,7 @@ mod tests {
                                 }
                             ),
                             RegularInstruction::Int32(Int32Data(1)),
+
                             RegularInstruction::PushToStack,
                             RegularInstruction::MoveWithValue(MoveWithValue {
                                 mutability:
@@ -841,10 +958,10 @@ mod tests {
                                     ),
                                 )
                             ),
+
                             RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(
-                                StackIndex(3)
-                            ),
+                            RegularInstruction::GetStackValueSharedRef(StackIndex(3)),
+
                             RegularInstruction::list_with_children(
                                 instructions!(
                                     RegularInstruction::TakeStackValue(
@@ -930,10 +1047,10 @@ mod tests {
                                 previous_address: inner_pointer_address,
                             }),
                             RegularInstruction::Int32(Int32Data(1)),
+
                             RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRefMut(
-                                StackIndex(0)
-                            ),
+                            RegularInstruction::GetStackValueSharedRefMut(StackIndex(0)),
+
                             RegularInstruction::PushToStack,
                             RegularInstruction::MoveWithValue(MoveWithValue {
                                 mutability:
@@ -941,10 +1058,10 @@ mod tests {
                                 previous_address: outer_pointer_address,
                             }),
                             RegularInstruction::TakeStackValue(StackIndex(0)),
+
                             RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(
-                                StackIndex(2)
-                            ),
+                            RegularInstruction::GetStackValueSharedRef(StackIndex(2)),
+
                             RegularInstruction::list_with_children(
                                 instructions!(
                                     RegularInstruction::TakeStackValue(
@@ -1102,10 +1219,10 @@ mod tests {
                                 previous_address: b_pointer_address,
                             }),
                             RegularInstruction::Int32(Int32Data(2)),
+
                             RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(
-                                StackIndex(0)
-                            ),
+                            RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
+
                             RegularInstruction::PushToStack,
                             RegularInstruction::MoveWithValue(MoveWithValue {
                                 mutability:
@@ -1113,10 +1230,10 @@ mod tests {
                                 previous_address: a_pointer_address,
                             }),
                             RegularInstruction::Int32(Int32Data(1)),
+
                             RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(
-                                StackIndex(2)
-                            ),
+                            RegularInstruction::GetStackValueSharedRef(StackIndex(2)),
+
                             RegularInstruction::list_with_children(
                                 instructions!(
                                     RegularInstruction::TakeStackValue(

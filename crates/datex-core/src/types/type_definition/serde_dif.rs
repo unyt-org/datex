@@ -1,12 +1,10 @@
-use core::{fmt, ops::Deref};
+use core::fmt;
 
 use crate::{
     dif::serde_context::SerdeContext,
     libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex},
     prelude::*,
-    shared_values::SharedContainer,
     types::{
-        shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition::{
             TypeDefinition, callable::CallableTypeDefinition,
@@ -71,11 +69,8 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinition> {
                         ))?
                     }
                     TypeDefinition::Shared(
-                        shared_container_containing_type,
-                    ) => outer.serialize_value(&ValueWithSeed::new(
-                        shared_container_containing_type.deref(),
-                        self.cast::<SharedContainer>(),
-                    ))?,
+                        _shared_container_containing_type,
+                    ) => todo!(),
                     TypeDefinition::Nested(nested) => {
                         outer.serialize_value(&ValueWithSeed::new(
                             nested as &Type,
@@ -230,16 +225,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
                 TypeDefinition::TaggedType(tagged)
             }
 
-            "shared" => {
-                let shared_container =
-                    map.next_value_seed(self.cast::<SharedContainer>())?;
-                SharedContainerContainingType::try_from(shared_container)
-                    .map(TypeDefinition::Shared)
-                    .map_err(|_| {
-                        de::Error::custom("Failed to convert shared container to SharedContainerContainingType".to_string())
-                    })?
-            }
-
             other => {
                 return Err(de::Error::unknown_variant(
                     other,
@@ -255,7 +240,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
                         "intersection",
                         "union",
                         "tagged_type",
-                        "shared",
                     ],
                 ));
             }

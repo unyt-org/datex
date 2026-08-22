@@ -81,27 +81,23 @@ fn get_config_path(
 }
 
 pub struct DatexMainInput<'a> {
-    /// Attributes of the main macro, e.g. config path
+    /// attributes of the main macro, e.g. config path
     pub parsed_attributes: ParsedAttributes,
-    /// The function annotated with the macro, containing the application logic
+    /// the function annotated with the macro, containing the application logic
     pub func: ItemFn,
-    /// Custom namespace for datex_core
+    /// custom namespace for datex_core
     pub datex_core_namespace: &'a str,
-    /// Optional setup code to run before creating the runtime, e.g. for setting environment variables
+    /// optional setup code to run before creating the runtime, e.g. for setting environment variables
     pub setup: Option<TokenStream>,
-    /// Optional initialization code to run after creating, but before starting the runtime.
-    /// Has access to the [Runtime] via "runtime" variable. Any variables created here will be dropped before entering the main function body.
-    pub init_scoped: Option<TokenStream>,
-    /// Optional initialization code to run after creating, but before starting the runtime.
-    /// Has access to the [Runtime] via "runtime" variable. Any variables created here can be accessed in the main function body.
-    pub init_unscoped: Option<TokenStream>,
-    /// Optional code to run before the main function body, after the runtime has been started
+    /// optional initialization code to run after creating, but before starting the runtime
+    pub init: Option<TokenStream>,
+    /// optional code to run before the main function body, after the runtime has been started
     pub pre_body: Option<TokenStream>,
-    /// Additional attributes to add to the generated main function
+    /// additional attributes to add to the generated main function
     pub additional_attributes: Vec<Attribute>,
-    /// Custom input arguments for the main function, e.g. for providing additional dependencies
+    /// custom input arguments for the main function, e.g. for providing additional dependencies
     pub custom_main_inputs: Vec<FnArg>,
-    /// Whether to enforce that the main function is named `main`
+    /// whether to enforce that the main function is named `main`
     pub enforce_main_name: bool,
 }
 
@@ -161,15 +157,8 @@ pub fn datex_main_impl_with_config(
 
     let additional_attributes = input.additional_attributes;
     let setup = input.setup;
-    let init_scoped = input.init_scoped;
-    let init_unscoped = input.init_unscoped;
+    let init = input.init;
     let pre_body = input.pre_body;
-    
-    let runtime_clone = if init_unscoped.is_some() || init_scoped.is_some() {
-        quote! { let runtime = runner.runtime.clone(); }
-    } else {
-        quote! {}
-    };
 
     quote! {
         #(#additional_attributes)*
@@ -185,11 +174,10 @@ pub fn datex_main_impl_with_config(
             };
 
             let runner = RuntimeRunner::new(config);
-            #runtime_clone
             {
-                #init_scoped
+                let runtime = runner.runtime.clone();
+                #init
             }
-            #init_unscoped
             runner.run(async move |#runtime_arg_ident: #runtime_arg_type| {
                 #pre_body
                 {

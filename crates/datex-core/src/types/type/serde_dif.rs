@@ -83,9 +83,12 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
         let definition = seq
             .next_element_seed(self.cast::<TypeDefinition>())?
             .ok_or_else(|| serde::de::Error::custom("missing definition"))?;
-        Ok(Type::Alias(TypeDefinitionWithMetadata::new(
-            definition, metadata,
-        )))
+        Ok(Type::Alias(TypeDefinitionWithMetadata {
+            metadata,
+            definition,
+
+            reference_name: None,
+        }))
     }
 
     fn visit_str<E>(mut self, v: &str) -> Result<Self::Value, E>

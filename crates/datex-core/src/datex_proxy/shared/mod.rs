@@ -23,10 +23,10 @@ impl<T: DatexValueContainerProxy> TryFrom<SharedContainer> for Shared<T> {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use crate::{
-        datex_proxy::shared::Shared,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-        shared_values::{SharedContainer, SharedContainerMutability},
+        shared_values::SharedContainerMutability,
     };
 
     use crate::prelude::*;

@@ -162,7 +162,7 @@ pub mod tests {
         let setup_data = config_interface.config.clone();
         let map: Map = setup_data.try_into_value().unwrap();
         assert_eq!(
-            map.try_get("field1")
+            map.get("field1")
                 .unwrap()
                 .clone()
                 .try_into_value::<String>()
@@ -170,7 +170,7 @@ pub mod tests {
             "value".to_string()
         );
         assert_eq!(
-            map.try_get("field2")
+            map.get("field2")
                 .unwrap()
                 .clone()
                 .try_into_value::<i32>()

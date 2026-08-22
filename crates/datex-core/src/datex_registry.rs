@@ -1,6 +1,4 @@
 //! This module acts as the central type registry, to collect structs and enums annotated with `#[derive(datex)]` to make them available for external projects.
-
-use core::fmt::Debug;
 use crate::{
     datex_proxy::DatexProxyTypes, prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -34,14 +32,6 @@ pub struct DatexMetadata {
 pub struct DatexRegistration {
     pub metadata: DatexMetadata,
     resolve_type: fn(&mut SharedReferencesCache) -> Type,
-}
-
-impl Debug for DatexRegistration {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("DatexRegistration")
-            .field("metadata", &self.metadata)
-            .finish()
-    }
 }
 
 impl DatexRegistration {

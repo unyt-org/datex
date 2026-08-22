@@ -2,7 +2,7 @@ use crate::{
     core_compiler::core_compilation_context::ByteCursor,
     global::protocol_structures::type_instructions::TypeInstruction,
 };
-use binrw::BinWrite;
+use binrw::{BinWrite, io::Write};
 
 pub mod type_to_instructions;
 
@@ -55,13 +55,18 @@ mod tests {
     ) {
         let compile_input = unsafe { default_compile_input() };
         let vec =
-            vec![Instruction::Regular(RegularInstruction::type_expression())]
+            vec![Instruction::Regular(RegularInstruction::TypeExpression)]
                 .into_iter()
                 .chain(expected_instruction.into_iter().map(Instruction::Type))
                 .collect::<Vec<_>>();
 
-        let compiled =
-            compile_value(Value::new(CoreValue::Type(ty), None), compile_input);
+        let compiled = compile_value(
+            Value {
+                custom_type: None,
+                inner: CoreValue::Type(ty),
+            },
+            compile_input,
+        );
         assert_eq!(compiled.shared_values.len(), 0);
         assert_instructions_equal!(&compiled.dxb, vec)
     }
@@ -74,8 +79,7 @@ mod tests {
         let compiled = compile_value(val, compile_input);
         let mut cursor = ByteCursor::new(compiled.dxb.to_vec());
         for expected in expected_instructions {
-            let instruction = RegularInstruction::read(&mut cursor)
-                .expect("Failed to read instruction from compiled bytecode");
+            let instruction = RegularInstruction::read(&mut cursor).unwrap();
             assert_eq!(instruction, expected);
         }
     }
@@ -118,7 +122,10 @@ mod tests {
             .into(),
         );
         assert_regular_instructions_equal(
-            Value::new(CoreValue::Type(ty), None),
+            Value {
+                custom_type: None,
+                inner: CoreValue::Type(ty),
+            },
             vec![RegularInstruction::GetCoreLibValue(
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean).into(),
             )],

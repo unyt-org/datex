@@ -5,9 +5,7 @@
 extern crate std;
 
 extern crate alloc;
-#[doc = include_str!("../README.md")]
-#[cfg(doctest)]
-pub struct ReadmeDoctests;
+
 use alloc::{format, string::String, vec, vec::Vec};
 use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
 

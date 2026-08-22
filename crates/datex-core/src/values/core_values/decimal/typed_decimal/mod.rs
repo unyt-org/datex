@@ -20,7 +20,7 @@ use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 pub mod equality;
 pub mod primitive;
-pub mod update_handler;
+
 /// The decimal type variants to be used as a inline
 /// definition in DATEX (such as 42.4f32 or -42.4f32).
 /// Note that changing the enum variants will change

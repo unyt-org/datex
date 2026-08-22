@@ -3,17 +3,16 @@ use crate::{
         expressions::{
             Apply, BinaryOperation, CloneExpression, ComparisonOperation,
             CreateMut, CreateShared, DatexExpression, DatexExpressionData,
-            DeriveRef, DeriveSharedRef, GenericInstantiation,
-            InterfaceMethodCall, PropertyAccess, PropertyAssignment,
-            RangeDeclaration, RemoteExecution, RequestSharedRef,
-            StackAssignment, UnaryOperation, Unbox, UnboxAssignment,
-            VariableAssignment,
+            DeriveRef, DeriveSharedRef, GenericInstantiation, PropertyAccess,
+            PropertyAssignment, RangeDeclaration, RemoteExecution,
+            RequestSharedRef, StackAssignment, UnaryOperation, Unbox,
+            UnboxAssignment, VariableAssignment,
         },
         spanned::Spanned,
     },
     global::operators::{
-        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
-        LogicalUnaryOperator, ModificationOperator, UnaryOperator,
+        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+        ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
         binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
     },
     parser::{
@@ -30,36 +29,9 @@ use crate::{
 };
 
 pub static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
-const MAX_EXPRESSION_DEPTH: usize = 64;
 
 impl Parser {
     pub(crate) fn parse_expression(
-        &mut self,
-        min_bp: u8,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        if self.expression_depth >= MAX_EXPRESSION_DEPTH {
-            let span = match self.peek() {
-                Ok(token) => token.span.clone(),
-                Err(_) => 0..0,
-            };
-            return Err(SpannedParserError {
-                error: ParserError::ExpressionNestingTooDeep,
-                span,
-            });
-        }
-
-        self.expression_depth += 1;
-
-        let result = stacker::maybe_grow(64 * 1024, 1024 * 1024, || {
-            self.parse_expression_inner(min_bp)
-        });
-
-        self.expression_depth -= 1;
-
-        result
-    }
-
-    pub(crate) fn parse_expression_inner(
         &mut self,
         min_bp: u8,
     ) -> Result<DatexExpression, SpannedParserError> {
@@ -87,25 +59,11 @@ impl Parser {
         r_bp: u8,
     ) -> Result<DatexExpression, SpannedParserError> {
         Ok(match op.token {
-            Token::Arrow => {
-                self.advance()?; // consume the operator
-
-                let method_name = self.parse_identifier_string()?.0;
-                let (rhs, end_token) = self.parse_apply_arguments()?;
-                let span = lhs.span.start..end_token;
-                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                    target: lhs,
-                    method_name,
-                    arguments: rhs,
-                })
-                .with_span(span)
-            }
             // property access
             Token::Dot => {
                 self.advance()?; // consume the dot
 
                 let rhs = self.parse_key()?;
-                // x->xxx
 
                 let span = lhs.span.start..rhs.span.end;
 
@@ -253,10 +211,10 @@ impl Parser {
         let span = lhs.span.start..rhs.span.end;
         let assignment_operator = match op.token {
             Token::Assign => None,
-            Token::AddAssign => Some(ModificationOperator::AddAssign),
-            Token::SubAssign => Some(ModificationOperator::SubtractAssign),
-            Token::MulAssign => Some(ModificationOperator::MultiplyAssign),
-            Token::DivAssign => Some(ModificationOperator::DivideAssign),
+            Token::AddAssign => Some(AssignmentOperator::AddAssign),
+            Token::SubAssign => Some(AssignmentOperator::SubtractAssign),
+            Token::MulAssign => Some(AssignmentOperator::MultiplyAssign),
+            Token::DivAssign => Some(AssignmentOperator::DivideAssign),
             _ => unreachable!(),
         };
 
@@ -290,7 +248,7 @@ impl Parser {
             }
             // slot assignment
             DatexExpressionData::StackIndex(slot) => {
-                DatexExpressionData::StackAssignment(StackAssignment {
+                DatexExpressionData::SlotAssignment(StackAssignment {
                     index: slot,
                     expression: (rhs),
                 })
@@ -664,7 +622,6 @@ impl Parser {
             Token::Range => Some((22, 23)),
             // property access
             Token::Dot => Some((30, 31)),
-            Token::Arrow => Some((32, 33)),
             // apply (function call, type cast), which has same binding power as member access
             Token::LeftParen
             | Token::LeftCurly
@@ -683,7 +640,7 @@ impl Parser {
             | Token::DecimalLiteral(_)
             | Token::PointerAddress(_)
             | Token::StackIndex(_)
-            | Token::Endpoint(_) => Some((33, 34)),
+            | Token::Endpoint(_) => Some((30, 31)),
             _ => None,
         }
     }
@@ -697,18 +654,17 @@ mod tests {
             expressions::{
                 Apply, BinaryOperation, ComparisonOperation, CreateMut,
                 CreateShared, DatexExpressionData, DeriveRef, DeriveSharedRef,
-                GenericInstantiation, InterfaceMethodCall, PropertyAccess,
-                PropertyAssignment, RemoteExecution, RequestSharedRef,
-                StackAssignment, Statements, UnaryOperation, Unbox,
-                UnboxAssignment, VariableAssignment,
+                GenericInstantiation, PropertyAccess, PropertyAssignment,
+                RemoteExecution, RequestSharedRef, StackAssignment, Statements,
+                UnaryOperation, Unbox, UnboxAssignment, VariableAssignment,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
         },
         global::{
             operators::{
-                ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
-                LogicalUnaryOperator, ModificationOperator, UnaryOperator,
+                ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+                ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
                 binary::{
                     ArithmeticOperator, BitwiseOperator, LogicalOperator,
                 },
@@ -716,11 +672,8 @@ mod tests {
             protocol_structures::instruction_data::StackIndex,
         },
         parser::{
-            errors::{ParserError, SpannedParserError},
-            tests::{
-                parse, try_parse_and_collect_errors,
-                try_parse_and_return_on_first_error,
-            },
+            errors::ParserError,
+            tests::{parse, try_parse_and_return_on_first_error},
         },
         prelude::*,
         shared_values::{
@@ -728,8 +681,6 @@ mod tests {
         },
         types::type_definition_with_metadata::LocalReferenceMutability,
     };
-
-    use core::assert_matches;
 
     #[test]
     fn parse_simple_binary_expression() {
@@ -1498,7 +1449,7 @@ mod tests {
             &DatexExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
                 name: "x".to_string(),
-                operator: Some(ModificationOperator::AddAssign),
+                operator: Some(AssignmentOperator::AddAssign),
                 expression: (DatexExpressionData::Integer(42.into())
                     .with_default_span()),
             })
@@ -1510,7 +1461,7 @@ mod tests {
         let expr = parse("\\2 = 100");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::StackAssignment(StackAssignment {
+            &DatexExpressionData::SlotAssignment(StackAssignment {
                 index: StackIndex(2),
                 expression: (DatexExpressionData::Integer(100.into())
                     .with_default_span()),
@@ -1923,53 +1874,6 @@ mod tests {
             &DatexExpressionData::RequestSharedRef(RequestSharedRef {
                 address: PointerAddress::try_from("ABCDEFABCE").unwrap(),
                 mutability: ReferenceMutability::Mutable,
-            })
-        );
-    }
-
-    #[test]
-    fn excessive_nesting() {
-        let input = "(".repeat(1_000) + "3" + &")".repeat(1_000);
-        let result = try_parse_and_return_on_first_error(&input).unwrap_err();
-        assert_matches!(result.error, ParserError::ExpressionNestingTooDeep);
-    }
-
-    #[test]
-    fn interface_function_call() {
-        let input = parse("hello->struct 4");
-        assert_eq!(
-            input.data(),
-            &DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                target: (DatexExpressionData::Identifier("hello".to_string())
-                    .with_default_span()),
-                method_name: "struct".to_string(),
-                arguments: vec![
-                    DatexExpressionData::Integer(4.into()).with_default_span()
-                ],
-            })
-        );
-
-        let input = parse("hello->struct(5, 2)");
-        assert_eq!(
-            input.data(),
-            &DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                target: (DatexExpressionData::Identifier("hello".to_string())
-                    .with_default_span()),
-                method_name: "struct".to_string(),
-                arguments: vec![
-                    DatexExpressionData::Integer(5.into()).with_default_span(),
-                    DatexExpressionData::Integer(2.into()).with_default_span()
-                ],
-            })
-        );
-        let input = parse("hello->struct()");
-        assert_eq!(
-            input.data(),
-            &DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                target: (DatexExpressionData::Identifier("hello".to_string())
-                    .with_default_span()),
-                method_name: "struct".to_string(),
-                arguments: vec![],
             })
         );
     }

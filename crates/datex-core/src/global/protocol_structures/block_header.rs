@@ -54,7 +54,7 @@ pub struct FlagsAndTimestamp {
     pub is_signature_in_last_subblock: bool,
 
     #[allow(unused)]
-    pub has_skip_after_block: bool,
+    unused_0: bool,
     #[allow(unused)]
     unused_1: bool,
     #[allow(unused)]
@@ -184,12 +184,6 @@ pub struct BlockHeader {
     pub block_number: u16,
 
     pub flags_and_timestamp: FlagsAndTimestamp,
-
-    /// When set, this indicates that all blocks between [skip_after_block] and the current [block_number]
-    /// should be skipped and don't need to be awaited
-    /// TODO: improve this
-    #[brw(if(flags_and_timestamp.has_skip_after_block()))]
-    pub skip_after_block: Option<u16>,
 
     #[brw(if(flags_and_timestamp.has_lifetime()))]
     pub lifetime: Option<u32>,

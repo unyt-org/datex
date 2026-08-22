@@ -53,13 +53,14 @@ impl<T: DatexValueContainerProxy> DatexValueContainerProxyDeserialize
 
 impl<T: DatexValueContainerProxy> DatexProxyTypes for Shared<T> {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
-        Type::Alias(TypeDefinitionWithMetadata::new(
-            TypeDefinition::Nested(Box::new(T::datex_type(memory))),
-            TypeMetadata::Shared {
+        Type::Alias(TypeDefinitionWithMetadata {
+            definition: TypeDefinition::Nested(Box::new(T::datex_type(memory))),
+            metadata: TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Owned,
             },
-        ))
+            reference_name: None,
+        })
     }
 }
 

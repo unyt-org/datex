@@ -7,13 +7,19 @@ use crate::{
         SelfOwnedPointerAddress, SharedContainerInner,
         SharedContainerMutability, SharedContainerOwnership,
         errors::{
-            UnexpectedImmutableReferenceError,
+            AccessError, UnexpectedImmutableReferenceError,
             UnexpectedSharedContainerOwnershipError,
         },
         traits::_ExposeRcInternal,
     },
-    utils::sheep::Sheep,
-    values::value_container::ValueContainer,
+    traits::{
+        apply::Apply, identity::Identity, structural_eq::StructuralEq,
+        value_eq::ValueEq,
+    },
+    values::{
+        value::Value,
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
+    },
 };
 pub mod identity;
 use crate::{
@@ -21,28 +27,21 @@ use crate::{
     shared_values::{
         ReferenceMutability,
         base_shared_value_container::observers::{
-            ObserveOptions, Observer, ObserverCallback, ObserverError,
-            ObserverId, TransceiverId,
+            Observer, ObserverError, ObserverId,
         },
-        collapsed_container_value::{
-            CollapsedContainerValue, CollapsedContainerValueMut,
-        },
-        shared_mut::SharedMut,
         traits::SharedContainerCommon,
     },
     types::type_definition::TypeDefinition,
-    value_updates::update_handler::{
-        InternalMutabilityUpdateHandler, UpdateCallbackData,
-    },
     values::core_value::CoreValue,
 };
 use alloc::rc::Rc;
 use core::{
-    cell::{Ref, RefCell, RefMut},
+    cell::RefCell,
     fmt::{Debug, Display, Formatter},
+    hash::{Hash, Hasher},
     mem,
-    ops::Deref,
 };
+use serde::Serializer;
 
 pub mod apply;
 pub mod serde_dif;
@@ -115,130 +114,44 @@ impl SharedContainer {
         })
     }
 
-    /// Ensures that the shared container is mutable and returns it.
-    /// Returns an ObserverError if the reference is immutable (or a type container).
-    fn ensure_mutable_container(&self) -> Result<(), ObserverError> {
-        if self.container_mutability() != SharedContainerMutability::Mutable {
-            return Err(ObserverError::ImmutableValue);
-        }
-        Ok(())
-    }
-
     /// Adds an observer to this shared container that will be notified on value changes.
     pub fn observe(
         &self,
         observer: Observer,
     ) -> Result<ObserverId, ObserverError> {
-        self.ensure_mutable_container()?;
-        let res = self.observer_data_mut().observe(observer)?;
-        self.ensure_local_nested_observe_callbacks();
-
-        Ok(res)
+        self.base_shared_container_mut().observe(observer)
     }
 
     pub fn unobserve(
         &self,
         observer_id: ObserverId,
     ) -> Result<(), ObserverError> {
-        self.ensure_mutable_container()?;
-        self.observer_data_mut().unobserve(observer_id)?;
-
-        // also disable local nested observe callbacks if there are no more observers registered
-        if !self.observer_data().has_observers() {
-            self.disable_local_nested_observe_callbacks();
-        }
-
-        Ok(())
-    }
-
-    /// Updates the options for an existing observer by its ID.
-    /// Returns an error if the observer ID is not found or the reference is immutable.
-    pub fn update_observer_options(
-        &self,
-        observer_id: ObserverId,
-        options: ObserveOptions,
-    ) -> Result<(), ObserverError> {
-        self.ensure_mutable_container()?;
-        self.observer_data_mut()
-            .update_observer_options(observer_id, options)
-    }
-
-    // Enables observe callbacks for the inner local value if not yet enabled
-    fn ensure_local_nested_observe_callbacks(&self) {
-        let enabled = if !self.observer_data().get_local_observers_enabled()
-            && let ValueContainer::Local(local_value) =
-                self.base_shared_container_mut().value_container_mut()
-        {
-            let self_clone = self.clone();
-
-            let callback: ObserverCallback = Rc::new(move |update| {
-                // TODO: check if not already borrowed?
-                self_clone.observer_data_mut().call_observers(update);
-            });
-            local_value.set_update_callback_data(Some(UpdateCallbackData {
-                callback,
-                path: vec![],
-            }));
-            true
-        } else {
-            false
-        };
-
-        if enabled {
-            self.observer_data_mut().set_local_observers_enabled(true);
-        }
-    }
-
-    fn disable_local_nested_observe_callbacks(&self) {
-        let mut base = self.base_shared_container_mut();
-        if self.observer_data().get_local_observers_enabled()
-            && let ValueContainer::Local(local_value) =
-                base.value_container_mut()
-        {
-            local_value.set_update_callback_data(None);
-        }
-        self.observer_data_mut().set_local_observers_enabled(false);
+        self.base_shared_container_mut().unobserve(observer_id)
     }
 
     /// Gets the current actual [TypeDefinition] of the collapsed inner [Value]
-    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
-        let value = self.collapsed_value();
-        Sheep::Owned(value.borrow().actual_type().into_owned())
+    pub fn actual_type(&self) -> TypeDefinition {
+        self.with_collapsed_value(|value| value.actual_type())
     }
 
-    pub fn collapsed_value(&self) -> CollapsedContainerValue<'_> {
-        CollapsedContainerValue::new_shared(self.get_collapsed_rc())
+    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
+    pub fn with_collapsed_value_mut<R>(
+        &self,
+        f: impl FnOnce(&mut Value) -> R,
+    ) -> R {
+        self.base_shared_container_mut().with_collapsed_value_mut(f)
     }
 
-    pub fn collapsed_value_mut(&self) -> CollapsedContainerValueMut<'_> {
-        CollapsedContainerValueMut::new_shared(self.get_collapsed_rc())
+    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
+    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
+        self.base_shared_container().with_collapsed_value(f)
     }
 
-    /// Returns the Rc<RefCell<SharedContainerInner>> of the most inner local value of the shared container.
-    fn get_collapsed_rc(&self) -> Rc<RefCell<SharedContainerInner>> {
-        // TODO: no clone of RC?
-        // collapse nested direct shared children until most inner local value is found
-        let mut inner_rc = self.get_rc_internal().clone();
-
-        loop {
-            let next_rc = {
-                let borrowed = inner_rc.borrow();
-
-                match borrowed.base_shared_container().value_container() {
-                    ValueContainer::Shared(shared) => {
-                        Some(shared.get_rc_internal().clone())
-                    }
-                    _ => None,
-                }
-            };
-
-            match next_rc {
-                Some(rc) => inner_rc = rc,
-                None => break,
-            }
-        }
-
-        inner_rc
+    pub fn try_get_property<'a>(
+        &self,
+        key: impl Into<BorrowedValueKey<'a>>,
+    ) -> Result<ValueContainer, AccessError> {
+        self.base_shared_container().try_get_property(key)
     }
 
     pub fn pointer_address(&self) -> PointerAddress {
@@ -248,19 +161,6 @@ impl SharedContainer {
             }
             SharedContainer::Referenced(referenced) => {
                 referenced.pointer_address()
-            }
-        }
-    }
-
-    /// Returns true if the shared container has a self owned pointer address
-    pub fn is_self_owned(&self) -> bool {
-        match self {
-            SharedContainer::Owned(_owned) => true,
-            SharedContainer::Referenced(referenced) => {
-                matches!(
-                    referenced.inner().deref(),
-                    SharedContainerInner::EndpointOwned(_)
-                )
             }
         }
     }
@@ -389,36 +289,6 @@ impl SharedContainer {
             }
         }
     }
-
-    /// Tries to get an immutable reference to the value as a specified type.
-    /// Does not perform any type conversion.
-    /// This only works for local values, not for shared values.
-    pub fn try_as<T>(&self) -> Option<Ref<'_, T>>
-    where
-        for<'a> &'a T: TryFrom<&'a CoreValue>,
-    {
-        Ref::filter_map(self.value_container(), |value| value.try_as::<T>())
-            .ok()
-    }
-
-    /// Tries to get a mutable reference to the value as a specified type.
-    /// Does not perform any type conversion.
-    /// This only works for local values, not for shared values.
-    pub fn try_as_mut<T>(&self) -> Option<SharedMut<'_, T>>
-    where
-        for<'a> &'a mut T: TryFrom<&'a mut CoreValue>,
-    {
-        RefMut::filter_map(self.value_container_mut(), |value| {
-            value.try_as_mut::<T>()
-        })
-        .ok()
-        .map(|v| SharedMut::new(v, self))
-    }
-
-    /// This method is called when a borrow of the inner shared container is dropped.
-    pub fn notify_borrow_dropped(&self) {
-        // TODO: this could be used in the future to trigger queued updates only after a borrow was dropped
-    }
 }
 
 /// Custom clone implementation for [SharedContainer].
@@ -454,7 +324,6 @@ pub mod clone_unsafe;
 mod common;
 pub mod datex_proxy;
 pub mod equality;
-pub mod update_handler;
 
 impl From<OwnedSharedContainer> for SharedContainer {
     fn from(value: OwnedSharedContainer) -> Self {
@@ -477,32 +346,5 @@ impl _ExposeRcInternal for SharedContainer {
                 referenced.get_rc_internal()
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use core::assert_matches;
-
-    #[test]
-    fn immutable_reference_observe_fails() {
-        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let shared = SharedContainer::new_owned_with_inferred_allowed_type(
-            42,
-            SharedContainerMutability::Immutable,
-            address_provider,
-        );
-        assert_matches!(
-            shared.observe(Observer::new(|_| {})),
-            Err(ObserverError::ImmutableValue)
-        );
-
-        let mut r = SharedContainer::new_owned_with_inferred_allowed_type(
-            42,
-            SharedContainerMutability::Mutable,
-            address_provider,
-        );
-        assert_matches!(r.observe(Observer::new(|_| {})), Ok(_));
     }
 }

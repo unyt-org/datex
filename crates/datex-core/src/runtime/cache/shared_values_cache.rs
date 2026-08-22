@@ -12,6 +12,7 @@ use crate::{
     },
 };
 use core::fmt::Display;
+use strum_macros::Display;
 
 /// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]
@@ -20,37 +21,19 @@ pub struct SharedValuesCache {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ValueNotFoundInCacheError(pub PointerAddress);
+pub struct ValueNotFoundInCacheError;
 
 impl Display for ValueNotFoundInCacheError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Value not found in cache: {}", self.0)
+        write!(f, "Value not found in cache")
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Display)]
 pub enum CacheValueRetrievalError {
     UnexpectedImmutableReference(UnexpectedImmutableReferenceError),
     UnexpectedSharedContainerOwnership(UnexpectedSharedContainerOwnershipError),
     ValueNotFoundInCache(ValueNotFoundInCacheError),
-}
-
-impl Display for CacheValueRetrievalError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            CacheValueRetrievalError::UnexpectedImmutableReference(err) => {
-                write!(f, "Unexpected immutable reference: {}", err)
-            }
-            CacheValueRetrievalError::UnexpectedSharedContainerOwnership(
-                err,
-            ) => {
-                write!(f, "Unexpected shared container ownership: {}", err)
-            }
-            CacheValueRetrievalError::ValueNotFoundInCache(err) => {
-                write!(f, "{}", err)
-            }
-        }
-    }
 }
 
 impl From<UnexpectedImmutableReferenceError> for CacheValueRetrievalError {
@@ -139,7 +122,7 @@ impl SharedValuesCache {
                     }
                 }
             }
-            _ => Err(ValueNotFoundInCacheError(pointer_address.clone()).into()),
+            _ => Err(ValueNotFoundInCacheError.into()),
         }
     }
 
@@ -149,7 +132,7 @@ impl SharedValuesCache {
     ) -> Result<&SharedContainer, ValueNotFoundInCacheError> {
         self.values
             .get(pointer_address)
-            .ok_or(ValueNotFoundInCacheError(pointer_address.clone()))
+            .ok_or(ValueNotFoundInCacheError)
     }
 
     /// Tries to get a mutable reference to a shared container from the cache at the given pointer address.
@@ -162,7 +145,7 @@ impl SharedValuesCache {
         Ok(self
             .values
             .get(pointer_address)
-            .ok_or(ValueNotFoundInCacheError(pointer_address.clone()))?
+            .ok_or(ValueNotFoundInCacheError)?
             .try_derive_mutable_reference()?)
     }
 
@@ -175,7 +158,7 @@ impl SharedValuesCache {
         Ok(self
             .values
             .get(pointer_address)
-            .ok_or(ValueNotFoundInCacheError(pointer_address.clone()))?
+            .ok_or(ValueNotFoundInCacheError)?
             .derive_immutable_reference())
     }
 

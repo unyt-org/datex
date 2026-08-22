@@ -56,8 +56,9 @@ impl RuntimeInternal {
             )
             .await;
         match &result {
-            Ok(Some(result)) => self.log_info(format!(
-                "Successful Execution result (from {}): {}",
+            Ok(Some(result)) => info!(
+                "Successful Execution result (on {} from {}): {}",
+                self.endpoint(),
                 endpoint,
                 {
                     #[cfg(feature = "decompiler")]
@@ -72,13 +73,17 @@ impl RuntimeInternal {
                         result
                     }
                 }
-            )),
-            Ok(None) => self.log_info(format!(
-                "Successful Execution result (from {}): None",
+            ),
+            Ok(None) => info!(
+                "Successful Execution result (on {} from {}): None",
+                self.endpoint(),
                 endpoint
-            )),
-            Err(e) => self
-                .log_info(format!("Execution error (from {}): {e}", endpoint)),
+            ),
+            Err(e) => info!(
+                "Execution error (on {} from {}): {e}",
+                self.endpoint(),
+                endpoint
+            ),
         }
 
         // send response back to the sender
@@ -115,44 +120,35 @@ impl RuntimeInternal {
             "send response, context_id: {context_id:?}, receiver: {receiver_endpoint}"
         );
 
-        let block = {
-            let lookup = self.pointer_availability_lookup();
-            let receivers = vec![receiver_endpoint.clone()];
-            let compile_input = CompileInput::new(&lookup, &receivers);
+        let lookup = self.pointer_availability_lookup();
+        let receivers = vec![receiver_endpoint.clone()];
+        let compile_input = CompileInput::new(&lookup, &receivers);
 
-            let dxb = match result {
-                Ok(value) => {
-                    // info!("Sending result value {:?}", value);
-                    if let Some(value) = value {
-                        let res = compile_value_container(value, compile_input);
-                        drop(lookup);
+        let dxb = match result {
+            Ok(value) => {
+                // info!("Sending result value {:?}", value);
+                if let Some(value) = value {
+                    let res = compile_value_container(value, compile_input);
 
-                        self.clone()
-                            .register_shared_containers_for_single_endpoint(
-                                &receiver_endpoint,
-                                res.shared_values,
-                            );
+                    self.register_shared_containers_for_single_endpoint(
+                        &receiver_endpoint,
+                        res.shared_values,
+                    );
 
-                        res.dxb
-                    } else {
-                        vec![]
-                    }
+                    res.dxb
+                } else {
+                    vec![]
                 }
-                Err(e) => {
-                    info!("Execution error (on {}): {}", self.endpoint(), e);
-                    compile_panic(e.to_string(), compile_input)
-                }
-            };
-
-            let mut block = DXBBlock::new(
-                routing_header,
-                block_header,
-                encrypted_header,
-                dxb,
-            );
-            block.set_receivers(core::slice::from_ref(&receiver_endpoint));
-            block
+            }
+            Err(e) => {
+                info!("Execution error (on {}): {}", self.endpoint(), e);
+                compile_panic(e.to_string(), compile_input)
+            }
         };
+
+        let mut block =
+            DXBBlock::new(routing_header, block_header, encrypted_header, dxb);
+        block.set_receivers(core::slice::from_ref(&receiver_endpoint));
 
         self.com_hub().send_own_block_async(block).await
     }

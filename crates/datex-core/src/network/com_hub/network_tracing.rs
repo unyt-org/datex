@@ -511,7 +511,7 @@ impl ComHub {
         );
 
         // resend trace block
-        let _ = self.redirect_block(block, original_socket, forked).await; // FIXME result handling
+        self.redirect_block(block, original_socket, forked).await;
 
         Some(())
     }
@@ -661,7 +661,7 @@ pub mod tests {
     #[tokio::test]
     #[timeout(1000)]
     async fn create_network_trace() {
-        run_with_coupled_com_hubs(async move |a, _b| {
+        run_with_coupled_com_hubs(async move |a, b| {
             // send trace from A to B
             let network_trace =
                 a.com_hub.record_trace(TEST_ENDPOINT_B.clone()).await;

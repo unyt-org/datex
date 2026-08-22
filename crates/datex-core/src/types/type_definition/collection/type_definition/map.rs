@@ -17,14 +17,6 @@ pub struct MapCollectionTypeDefinition {
     pub key_type: Box<Type>,
     pub value_type: Box<Type>,
 }
-impl MapCollectionTypeDefinition {
-    pub fn new(key_type: Type, value_type: Type) -> Self {
-        Self {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-        }
-    }
-}
 impl Display for MapCollectionTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(f, "Map<{}, {}>", self.key_type, self.value_type)

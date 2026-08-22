@@ -20,7 +20,9 @@ use crate::{
         traits::SharedContainerCommon,
     },
     traits::apply::{Apply, ApplyError},
-    value_updates::{UpdateReturn, update_data::Update},
+    value_updates::{
+        UpdateReturn, update_data::Update, update_handler::UpdateHandler,
+    },
     values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
@@ -47,16 +49,33 @@ impl DIFInterface {
     }
 }
 impl DIFInterface {
+    /// Updates the shared container for the given address and returns an update result
+    pub fn update(
+        &self,
+        address: &PointerAddress,
+        update: Update,
+    ) -> Result<UpdateReturn, DIFUpdateError> {
+        let shared_container = self
+            .cache
+            .try_get_shared_container_mutable_reference(address)?;
+        let mut base_container = shared_container.base_shared_container_mut();
+
+        base_container
+            .update(update)
+            .map_err(DIFUpdateError::UpdateError)
+    }
+
     /// Returns a list of all [ObserverCallback]s that are currently active for the pointer
     pub fn get_current_observers(
         &self,
         address: &PointerAddress,
-        source_id: &TransceiverId,
+        source_id: TransceiverId,
     ) -> Result<Vec<ObserverCallback>, ValueNotFoundInCacheError> {
         let shared_container = self
             .cache
             .try_get_shared_container_immutable_reference(address)?;
-        Ok(shared_container.get_current_observers(source_id))
+        let base_container = shared_container.base_shared_container();
+        Ok(base_container.get_current_observers(source_id))
     }
 
     /// Executes an apply operation, applying the `value` to the `callee`.
@@ -117,9 +136,9 @@ impl DIFInterface {
             .cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
-        Ok(shared_container_ref.observe(
+        Ok(shared_container_ref.base_shared_container_mut().observe(
             Observer {
-                transceiver_id: self.transceiver_id.clone(),
+                transceiver_id: self.transceiver_id,
                 options,
                 callback: Rc::new(callback),
             },
@@ -139,6 +158,7 @@ impl DIFInterface {
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         shared_container_ref
+            .base_shared_container_mut()
             .update_observer_options(observer_id, options)?;
         Ok(())
     }
@@ -155,6 +175,7 @@ impl DIFInterface {
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         shared_container_ref
+            .base_shared_container_mut()
             .unobserve(observer_id)?;
         Ok(())
     }

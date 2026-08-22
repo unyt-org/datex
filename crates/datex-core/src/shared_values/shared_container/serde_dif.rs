@@ -50,7 +50,7 @@ impl<'ctx> SerdeContext<'ctx, SharedContainer> {
 
             SharedContainerOwnership::Referenced(
                 ReferenceMutability::Mutable,
-            ) => "'mut",
+            ) => "'mut ",
 
             SharedContainerOwnership::Owned => "",
         };
@@ -241,7 +241,9 @@ mod tests {
 
         assert_matches!(
             cache.try_take_owned_shared_container(&ptr_address),
-            Err(CacheValueRetrievalError::ValueNotFoundInCache(_))
+            Err(CacheValueRetrievalError::ValueNotFoundInCache(
+                ValueNotFoundInCacheError
+            ))
         );
     }
 }

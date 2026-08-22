@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 pub mod binrw;
 pub mod ops;
 pub mod primitive;
-pub mod update_handler;
+
 pub const DECIMAL_NAN: &str = "nan";
 pub const DECIMAL_INFINITY: &str = "infinity";
 pub const DECIMAL_NEG_INFINITY: &str = "-infinity";

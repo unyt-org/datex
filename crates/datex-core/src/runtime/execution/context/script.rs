@@ -1,24 +1,25 @@
 #[cfg(feature = "compiler")]
 use crate::compiler::error::SpannedCompilerError;
-use crate::{prelude::*, runtime::execution::ExecutionError};
+use crate::runtime::execution::ExecutionError;
 use core::fmt::Display;
+
 #[derive(Debug)]
 pub enum ScriptExecutionError {
     #[cfg(feature = "compiler")]
-    CompilerError(Box<SpannedCompilerError>),
-    ExecutionError(Box<ExecutionError>),
+    CompilerError(SpannedCompilerError),
+    ExecutionError(ExecutionError),
 }
 
 #[cfg(feature = "compiler")]
 impl From<SpannedCompilerError> for ScriptExecutionError {
     fn from(err: SpannedCompilerError) -> Self {
-        ScriptExecutionError::CompilerError(Box::new(err))
+        ScriptExecutionError::CompilerError(err)
     }
 }
 
 impl From<ExecutionError> for ScriptExecutionError {
     fn from(err: ExecutionError) -> Self {
-        ScriptExecutionError::ExecutionError(Box::new(err))
+        ScriptExecutionError::ExecutionError(err)
     }
 }
 
