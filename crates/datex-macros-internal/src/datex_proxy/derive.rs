@@ -1306,7 +1306,7 @@ fn generate_named_field_type_code(
     serde_mode: &SerdeMode,
     field_name: &String,
     field_type: &syn::Type,
-    context: &TokenStream,
+    _context: &TokenStream,
 ) -> TokenStream {
     match serde_mode {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
@@ -1333,7 +1333,7 @@ fn generate_named_field_type_code(
 fn generate_unnamed_field_type_code(
     serde_mode: &SerdeMode,
     field_type: &syn::Type,
-    context: &TokenStream,
+    _context: &TokenStream,
 ) -> TokenStream {
     match serde_mode {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize

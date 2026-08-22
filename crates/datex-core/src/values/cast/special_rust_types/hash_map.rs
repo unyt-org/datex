@@ -72,7 +72,10 @@ impl<
     V: DatexValueContainerProxyInfallibleSerialize,
 > DatexValueProxyInfallibleSerialize for HashMap<K, V>
 {
-    fn boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value {
+    fn boxed_to_value(
+        self: Box<Self>,
+        context: &mut SharedReferencesCache,
+    ) -> Value {
         let map = self
             .into_iter()
             .map(|(k, v)| {

@@ -20,7 +20,10 @@ impl<T: DatexValueProxy> DatexValueProxy for Option<T> {}
 impl<T: DatexValueProxyInfallibleSerialize> DatexValueProxyInfallibleSerialize
     for Option<T>
 {
-    fn boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value {
+    fn boxed_to_value(
+        self: Box<Self>,
+        context: &mut SharedReferencesCache,
+    ) -> Value {
         Value::boxed(match *self {
             None => Value::null(),
             Some(value) => Box::new(value).boxed_to_value(context),

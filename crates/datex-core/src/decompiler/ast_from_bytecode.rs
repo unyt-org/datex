@@ -860,7 +860,6 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                            
                             RegularInstruction::CallMethod(method_data) => {
                                 let mut arguments =
                                     collected_results.collect_value_results();

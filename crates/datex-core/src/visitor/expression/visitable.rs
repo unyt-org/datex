@@ -3,9 +3,9 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CallableSignature,
         CloneExpression, ComparisonOperation, Conditional, CreateMut,
         CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-        DeriveSharedRef, EntityDeclarationExpression, GenericInstantiation,
-        InterfaceMethodCall, List, Map, PropertyAccess, PropertyAssignment,
-        RangeDeclaration, RemoteExecution, StackAssignment,
+        DeriveSharedRef, EntityDeclarationExpression, EntityValueExpression,
+        GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
+        PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
         StackListAssignment, Statements, TagExpression,
         TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
@@ -15,7 +15,6 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
-use crate::ast::expressions::EntityValueExpression;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 

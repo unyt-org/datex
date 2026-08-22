@@ -19,8 +19,8 @@ use crate::{
 use crate::{
     ast::{
         expressions::{
-            CallableDeclaration, CallableSignature, CreateShared,
-            DeriveSharedRef, Statements, TagExpression,
+            Apply, CallableDeclaration, CallableSignature, CreateShared,
+            DeriveSharedRef, EntityValueExpression, Statements, TagExpression,
         },
         type_expressions::{
             IdentifierWithPointerAddress, StructuralList, StructuralMap,
@@ -29,6 +29,7 @@ use crate::{
     decompiler::ast_from_bytecode::ast_from_bytecode,
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     types::{
         shared_container_containing_entity_type::SharedContainerContainingEntityType,
@@ -42,8 +43,6 @@ use crate::{
     values::core_values::callable::{CallableBody, DatexBytecodeCallable},
 };
 use alloc::format;
-use crate::ast::expressions::{Apply, EntityValueExpression};
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -86,8 +85,11 @@ fn create_shared(
 fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
     // ensure all native values are collapsed
     // TODO: pass cache
-    let inner_collapsed = value.inner_non_native(&mut SharedReferencesCache::default()).unwrap();
-    let core_value_expression = core_value_to_datex_expression(inner_collapsed.as_ref());
+    let inner_collapsed = value
+        .inner_non_native(&mut SharedReferencesCache::default())
+        .unwrap();
+    let core_value_expression =
+        core_value_to_datex_expression(inner_collapsed.as_ref());
     // only entity types with a non default type need to be casted
     if value.needs_type_cast()
         && let Some(custom_type) = &value.custom_type
@@ -262,11 +264,13 @@ fn type_cast_expression(
             expression: None,
         }),
         // Entity {...}
-        TypeDefinition::Box(box Type::Entity(entity_container)) => DatexExpressionData::EntityValue(EntityValueExpression {
-            entity_name: entity_container.entity_definition().name.clone(),
-            entity_address: Some(entity_container.pointer_address()),
-            value: expression.with_default_span(),
-        }),
+        TypeDefinition::Box(box Type::Entity(entity_container)) => {
+            DatexExpressionData::EntityValue(EntityValueExpression {
+                entity_name: entity_container.entity_definition().name.clone(),
+                entity_address: Some(entity_container.pointer_address()),
+                value: expression.with_default_span(),
+            })
+        }
         e => {
             todo!("Handle type cast to {:?} in decompiler", e)
         }

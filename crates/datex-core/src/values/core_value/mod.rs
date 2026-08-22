@@ -320,7 +320,7 @@ impl CoreValue {
             None
         }
     }
-    
+
     /// Tries to downcast the CoreValue to a reference of a native value of type T.
     /// This method will return Some(&T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
     pub fn downcast_native_ref<T: DatexNative>(&self) -> Option<&T> {

@@ -139,15 +139,15 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
     /// [CoreValue::Native] values can actually be collapsed, for other values, a [Result:Err]
     /// containing a box with the original [ValueContainer] is returned.
     fn try_native_from_value_container(
-        value: ValueContainer
+        value: ValueContainer,
     ) -> Result<Self, Box<ValueContainer>>
     where
         Self: Sized + 'static,
     {
         // try to downcast directly from native value
         if let ValueContainer::Local(Value {
-         inner: CoreValue::Native(native),
-         ..
+            inner: CoreValue::Native(native),
+            ..
         }) = &value
             && native.as_any().downcast_ref::<Self>().is_some()
         {
@@ -155,17 +155,15 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
             // can be cast to Self, we can just map it here
             match value {
                 ValueContainer::Local(Value {
-                  inner: CoreValue::Native(native_core),
-                  ..
+                    inner: CoreValue::Native(native_core),
+                    ..
                 }) => Ok(*native_core.into_any().downcast::<Self>().unwrap()),
-                _ => unreachable!()
+                _ => unreachable!(),
             }
-
         } else {
             Err(Box::new(value))
         }
     }
-
 
     fn try_from_map_property(
         value: Result<ValueContainer, KeyNotFoundError>,

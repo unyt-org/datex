@@ -30,7 +30,7 @@ pub mod serde_dif;
 pub mod update_handler;
 
 use crate::{
-    shared_values::errors::AccessError,
+    datex_proxy::TryToDatexValueError, shared_values::errors::AccessError,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
     values::core_values::endpoint::Endpoint,
 };
@@ -39,7 +39,6 @@ use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
-use crate::datex_proxy::TryToDatexValueError;
 
 #[derive(Debug)]
 pub struct Value {
@@ -131,24 +130,35 @@ impl Value {
     pub fn is_uninitialized(&self) -> bool {
         matches!(&self.inner, CoreValue::Uninitialized)
     }
-    
+
     /// Collapses the inner [CoreValue] of the [Value] to a DATEX value if it is a [CoreValue::Native].
-    pub fn into_non_native(self, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+    pub fn into_non_native(
+        self,
+        cache: &mut SharedReferencesCache,
+    ) -> Result<Value, TryToDatexValueError> {
         match self.inner {
-            CoreValue::Native(native) => Ok(native.value.try_boxed_to_value(cache)?),
+            CoreValue::Native(native) => {
+                Ok(native.value.try_boxed_to_value(cache)?)
+            }
             _ => Ok(self),
         }
     }
-    
+
     /// Returns the inner [CoreValue] of the [Value].
     /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
-    pub fn into_inner_non_native(self, cache: &mut SharedReferencesCache) -> Result<CoreValue, TryToDatexValueError> {
+    pub fn into_inner_non_native(
+        self,
+        cache: &mut SharedReferencesCache,
+    ) -> Result<CoreValue, TryToDatexValueError> {
         self.into_non_native(cache).map(|v| v.inner)
     }
 
     /// Returns a reference to the inner [CoreValue] of the [Value].
     /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
-    pub fn inner_non_native(&self, cache: &mut SharedReferencesCache) -> Result<Cow<CoreValue>, TryToDatexValueError> {
+    pub fn inner_non_native(
+        &self,
+        cache: &mut SharedReferencesCache,
+    ) -> Result<Cow<CoreValue>, TryToDatexValueError> {
         Ok(Cow::Borrowed(&self.inner)) // workaround
         // TODO: implement try_borrowed_boxed_to_value
         // match &self.inner {

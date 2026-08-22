@@ -33,6 +33,7 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
+    utils::sheep_mut::SheepMut,
     values::core_values::endpoint::Endpoint,
 };
 use core::{
@@ -40,7 +41,6 @@ use core::{
     hash::{Hash, Hasher},
     ops::FnOnce,
 };
-use crate::utils::sheep_mut::SheepMut;
 
 pub mod datex_proxy;
 pub mod error;

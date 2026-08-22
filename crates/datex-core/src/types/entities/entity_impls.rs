@@ -22,20 +22,20 @@ impl EntityImpl {
             static_methods,
         }
     }
-    
-    
+
     /// Returns a reference to the method for the given method name, if it exists in this implementation.
-    pub fn try_get_method(&self, method_name: &str) -> Option<&EntityImplMethod> {
-        self.methods
-            .iter()
-            .find(|method| {
-                method
-                    .name()
-                    .map(|name| name == method_name)
-                    .unwrap_or(false)
-            })
+    pub fn try_get_method(
+        &self,
+        method_name: &str,
+    ) -> Option<&EntityImplMethod> {
+        self.methods.iter().find(|method| {
+            method
+                .name()
+                .map(|name| name == method_name)
+                .unwrap_or(false)
+        })
     }
-    
+
     /// Returns a reference to the (static) method for the given property name, if it exists in this implementation.
     pub fn try_get_property(&self, property_name: &str) -> Option<&Callable> {
         self.methods

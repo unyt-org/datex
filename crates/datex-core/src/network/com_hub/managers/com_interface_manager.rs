@@ -388,9 +388,7 @@ impl ComInterfaceManager {
 mod tests {
     use super::*;
     use crate::{
-        datex_proxy::{
-            DatexValueProxyInfallibleSerialize,
-        },
+        datex_proxy::DatexValueProxyInfallibleSerialize,
         network::com_interfaces::com_interface::factory::{
             SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
         },

@@ -5,12 +5,12 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
         CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-        DeriveSharedRef, EntityDeclarationExpression, GenericInstantiation,
-        InterfaceMethodCall, List, Map, PropertyAccess, PropertyAssignment,
-        RemoteExecution, RequestSharedRef, RootPropertyAccess, StackAssignment,
-        StackListAssignment, Statements, TagExpression,
-        TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
-        UnboxSlotAssignment, ValueAccessType, VariableAccess,
+        DeriveSharedRef, EntityDeclarationExpression, EntityValueExpression,
+        GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
+        PropertyAssignment, RemoteExecution, RequestSharedRef,
+        RootPropertyAccess, StackAssignment, StackListAssignment, Statements,
+        TagExpression, TypeDeclarationExpression, UnaryOperation, Unbox,
+        UnboxAssignment, UnboxSlotAssignment, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
     global::protocol_structures::instruction_data::StackIndex,
@@ -31,7 +31,6 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::EntityValueExpression;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -799,7 +798,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         let _ = range;
         Ok(VisitAction::ContinueRecursion)
     }
-    
+
     fn visit_entity_value(
         &mut self,
         entity_value: &mut EntityValueExpression,
