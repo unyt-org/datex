@@ -3,7 +3,6 @@ use crate::{
         DatexProxyType, DatexValueContainerProxySerialize,
         DatexValueProxyInfallibleSerialize,
     },
-    inspector::inspector::Inspector,
     prelude::*,
     runtime::Runtime,
     types::type_definition::callable::CallableKind,
@@ -14,16 +13,16 @@ use crate::{
 };
 use datex_macros_internal::{Datex, datex};
 
-// #[datex_public] TODO
-mod inspector {
+#[datex(public = "yy")]
+mod datex_inspector {
     use super::*;
     #[derive(Datex, Debug, Clone)]
-    // #[datex(global(namespace="inspector"))]
-    // TODO: #[datex(std_type(0x01))]
+    #[datex(public = "xxx")]
     pub struct Inspector {
         name: String, // TODO: We must make private properties to be ignore by the type definition and only use public ones, otherwise the prop and methods would colide in DATEX
     }
-    #[datex]
+
+    #[datex(public)]
     impl Inspector {
         // NOTE: the create function can probably not stay here as a static method,
         // since the Inspector type is a global shared type of the std lib not bound to a specific endpoint
@@ -58,8 +57,9 @@ mod inspector {
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.
 pub fn register_inspector_namespace(runtime: &Runtime) {
     let mut memory = runtime.shared_references_cache().borrow_mut();
-    let inspector_type =
-        ValueContainer::from(Inspector::datex_type(&mut memory));
+    let inspector_type = ValueContainer::from(
+        datex_inspector::Inspector::datex_type(&mut memory),
+    );
 
     runtime
         .endpoint_properties_mut()
@@ -68,11 +68,7 @@ pub fn register_inspector_namespace(runtime: &Runtime) {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        datex_proxy::DatexValueContainerProxyInfallibleSerialize, inspector,
-        runtime::cache::shared_references_cache::SharedReferencesCache,
-        traits::apply::Apply, values::core_values::map::Map,
-    };
+    use crate::traits::apply::Apply;
 
     // FIXME
     // #[test]
@@ -116,7 +112,7 @@ mod tests {
     #[test]
     fn test_function() {
         let runtime = Runtime::stub();
-        let mut memory = runtime.shared_references_cache();
+        let memory = runtime.shared_references_cache();
         // 1 arg
         let func = |x: u8| x + 1;
         let dx_func_1 = ValueContainer::from(native_sync_callable(

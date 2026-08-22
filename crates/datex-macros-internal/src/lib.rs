@@ -122,5 +122,19 @@ pub fn datex_derive(input: TokenStream) -> TokenStream {
 pub fn datex(_args: TokenStream, input: TokenStream) -> TokenStream {
     let input_clone = input.clone();
     let item = parse_macro_input!(input_clone as Item);
-    generate_impl_glue_code(input.into(), item).into()
+
+    match &item {
+        Item::Impl(item_impl) => {
+            generate_impl_glue_code(input.into(), item_impl).into()
+        }
+        Item::Mod(item_mod) => {
+            datex_proxy::generate_mod_glue_code(input.into(), item_mod).into()
+        }
+        e => {
+            panic!(
+                "The #[datex] attribute can not be applied to this item: {:?}.",
+                e
+            );
+        }
+    }
 }

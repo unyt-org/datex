@@ -71,6 +71,8 @@ pub struct TopLevelAttributes {
     /// When set to true, the struct/enum will map to a DATEX structural type instead of a nominal entity type.
     type_kind: TypeKind,
 
+    export_namespace: Namespace,
+
     /// If the decorated struct or enum should be exported to the Datex registry.
     /// `#[datex(export)]`
     export: bool,
@@ -1147,14 +1149,20 @@ impl TypeKind {
         matches!(self, TypeKind::Structural { .. })
     }
 }
-
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Namespace {
+    None,
+    Module,
+    Named(String),
+}
 fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
     let mut force_datex_core_namespace = false;
     let mut datex_name = None;
     let mut export = false;
-    let mut namespace = None;
     let mut no_deserialize = false;
     let mut type_kind = TypeKind::Entity;
+    let mut namespace = None;
+    let mut export_namespace = Namespace::None;
 
     for attr in attrs {
         if !attr.path().is_ident("datex") {
@@ -1214,6 +1222,25 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
                         Some(parse_string_attribute(&name_value, "namespace"));
                     export = true;
                 }
+
+                Meta::Path(path) if path.is_ident("public") => {
+                    if !matches!(export_namespace, Namespace::None) {
+                        panic!("datex(public) may only be specified once");
+                    }
+
+                    export_namespace = Namespace::Module;
+                }
+
+                Meta::NameValue(name_value)
+                    if name_value.path.is_ident("public") =>
+                {
+                    if !matches!(export_namespace, Namespace::None) {
+                        panic!("datex(public ...) may only be specified once");
+                    }
+                    export_namespace = Namespace::Named(
+                        parse_string_attribute(&name_value, "public"),
+                    );
+                }
                 _ => {}
             }
         }
@@ -1226,6 +1253,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
         type_kind,
         export,
         namespace,
+        export_namespace,
         docs: parse_doc_comments(attrs),
     }
 }
