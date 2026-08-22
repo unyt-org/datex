@@ -413,7 +413,7 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 ///             ..Default::default()
 ///         }
 ///     }
-/// }
+/// }///
 pub trait ComInterfaceSyncFactory
 where
     Self: DatexValueProxyDeserialize,
