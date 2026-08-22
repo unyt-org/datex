@@ -704,22 +704,10 @@ impl AstToSourceCodeConverter {
                 )
             }
             DatexExpressionData::Conditional(Conditional {
-                condition,
-                then_branch,
-                else_branch,
-            }) => {
-                let mut code = String::from("if (");
-                code.push_str(&self.format(condition));
-                code.push_str(") (");
-                code.push_str(&self.format(then_branch));
-                code.push(')');
-                if let Some(else_branch) = else_branch.as_ref() {
-                    code.push_str(" else (");
-                    code.push_str(&self.format(else_branch));
-                    code.push(')');
-                }
-                code
-            }
+                condition: _,
+                then_branch: _,
+                else_branch: _,
+            }) => core::todo!("#476 Undescribed by author."),
             DatexExpressionData::VariableDeclaration(VariableDeclaration {
                 id: _,
                 kind,

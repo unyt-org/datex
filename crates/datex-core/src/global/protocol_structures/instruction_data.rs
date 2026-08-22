@@ -451,12 +451,6 @@ cfg_if! {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct JumpData {
-    pub offset: i32,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
 pub struct ApplyData {
     pub arg_count: u16,
 }

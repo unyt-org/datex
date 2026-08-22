@@ -2,7 +2,7 @@
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, ComparisonOperation, Conditional, DatexExpression,
+            BinaryOperation, ComparisonOperation, DatexExpression,
             DatexExpressionData, PropertyAssignment, RemoteExecution,
             RootPropertyAccess, Statements, UnaryOperation, UnboundedStatement,
             UnboxAssignment, ValueAccessType, VariableAccess,
@@ -1513,112 +1513,6 @@ fn compile_expression(
                     scope,
                 )?;
             }
-        }
-
-        DatexExpressionData::Conditional(Conditional {
-            condition,
-            then_branch,
-            else_branch,
-        }) => {
-            compilation_context.mark_has_non_static_value();
-            let input = compilation_context.core_context.input.clone();
-            let condition_bytes = {
-                let mut ctx = CompilationContext::new(
-                    Vec::with_capacity(256),
-                    compilation_context.inserted_values.clone(),
-                    compilation_context.execution_mode,
-                    input,
-                );
-                compile_expression(
-                    &mut ctx,
-                    RichAst::new(condition, &metadata),
-                    CompileMetadata::default(),
-                    scope.clone(),
-                )?;
-                ctx.buf()
-            };
-
-            let then_bytes = {
-                let mut ctx = CompilationContext::new(
-                    Vec::with_capacity(256),
-                    compilation_context.inserted_values.clone(),
-                    compilation_context.execution_mode,
-                );
-                compile_expression(
-                    &mut ctx,
-                    RichAst::new(*then_branch, &metadata),
-                    CompileMetadata::default(),
-                    scope.clone(),
-                )?;
-                ctx.into_buffer()
-            };
-
-            let else_bytes = match else_branch {
-                Some(else_expr) => {
-                    let mut ctx = CompilationContext::new(
-                        Vec::with_capacity(256),
-                        compilation_context.inserted_values.clone(),
-                        compilation_context.execution_mode,
-                    );
-                    compile_expression(
-                        &mut ctx,
-                        RichAst::new(*else_expr, &metadata),
-                        CompileMetadata::default(),
-                        scope.clone(),
-                    )?;
-                    ctx.into_buffer()
-                }
-                None => Vec::new(),
-            };
-
-            append_regular_instruction(
-                compilation_context.cursor(),
-                RegularInstruction::UnboundedStatements,
-            );
-
-            if else_bytes.is_empty() {
-                let after_then = compilation_context.new_label();
-                compilation_context.emit_jump_if_false_to_label(
-                    after_then,
-                    condition_bytes.len() as u32,
-                );
-                compilation_context
-                    .cursor()
-                    .write_all(&condition_bytes)
-                    .unwrap();
-                compilation_context.cursor().write_all(&then_bytes).unwrap();
-                compilation_context.bind_label(after_then);
-                append_regular_instruction(
-                    compilation_context.cursor(),
-                    RegularInstruction::UnboundedStatementsEnd(
-                        UnboundedStatementsData { terminated: false },
-                    ),
-                );
-            } else {
-                let else_start = compilation_context.new_label();
-                let after_else = compilation_context.new_label();
-                compilation_context.emit_jump_if_false_to_label(
-                    else_start,
-                    condition_bytes.len() as u32,
-                );
-                compilation_context
-                    .cursor()
-                    .write_all(&condition_bytes)
-                    .unwrap();
-                compilation_context.cursor().write_all(&then_bytes).unwrap();
-                compilation_context.emit_jump_to_label(after_else);
-                compilation_context.bind_label(else_start);
-                compilation_context.cursor().write_all(&else_bytes).unwrap();
-                compilation_context.bind_label(after_else);
-                append_regular_instruction(
-                    compilation_context.cursor(),
-                    RegularInstruction::UnboundedStatementsEnd(
-                        UnboundedStatementsData { terminated: false },
-                    ),
-                );
-            }
-
-            compilation_context.resolve_pending_jumps();
         }
 
         DatexExpressionData::ResolveCoreLibId(core_lib_id) => {

@@ -8,12 +8,12 @@ use crate::{
             instruction_data::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
                 FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
-                Int16Data, Int32Data, Int64Data, Int128Data, JumpData,
-                ListData, MapData, MoveWithValue, SharedRef,
-                SharedRefWithValue, ShortListData, ShortMapData,
-                ShortStatementsData, ShortTextData, SpliceData, StackIndex,
-                StatementsData, TaggedValue, TextData, UInt8Data, UInt16Data,
-                UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
+                Int16Data, Int32Data, Int64Data, Int128Data, ListData, MapData,
+                MoveWithValue, SharedRef, SharedRefWithValue, ShortListData,
+                ShortMapData, ShortStatementsData, ShortTextData, SpliceData,
+                StackIndex, StatementsData, TaggedValue, TextData, UInt8Data,
+                UInt16Data, UInt32Data, UInt64Data, UInt128Data,
+                UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -214,14 +214,6 @@ impl RegularInstruction {
     /// Creates an apply instruction with the default variant, regardless of the count of arguments.
     pub fn apply_default(arg_count: u16) -> Self {
         RegularInstruction::Apply(ApplyData { arg_count })
-    }
-
-    pub fn jump(offset: i32) -> Self {
-        RegularInstruction::Jump(JumpData { offset })
-    }
-
-    pub fn jump_if_false(offset: i32) -> Self {
-        RegularInstruction::JumpIfFalse(JumpData { offset })
     }
 
     /// Creates an apply instruction with the single variant.
@@ -571,13 +563,6 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::GET_ENTRY_DYNAMIC)]
     GetEntryDynamic,
 
-    // Jumps
-    #[magic(InstructionCode::JUMP)]
-    Jump(JumpData),
-    #[magic(InstructionCode::JUMP_IF_FALSE)]
-    JumpIfFalse(JumpData),
-    #[magic(InstructionCode::CONDITIONAL)]
-    Conditional,
     // comparison operator
     #[magic(InstructionCode::IS)]
     Is,
@@ -850,10 +835,7 @@ impl RegularInstruction {
             RegularInstruction::TypeExpression => {
                 NextExpectedInstructions::Type(1)
             }
-            RegularInstruction::Jump(_) => NextExpectedInstructions::None,
-            RegularInstruction::JumpIfFalse(_) => {
-                NextExpectedInstructions::Regular(1)
-            }
+
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
             RegularInstruction::TaggedValue(TaggedValue {
                 is_empty, ..
@@ -930,12 +912,6 @@ impl RegularInstruction {
             }
             RegularInstruction::Apply(count) => {
                 write!(string, "[arg_count: {}]", count.arg_count)
-            }
-            RegularInstruction::Jump(offset) => {
-                write!(string, "offset: {}", offset.offset)
-            }
-            RegularInstruction::JumpIfFalse(offset) => {
-                write!(string, "offset: {}", offset.offset)
             }
             RegularInstruction::BigInteger(data) => {
                 write!(string, "{}", data.0)
