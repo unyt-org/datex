@@ -1,26 +1,34 @@
 use crate::{
+    prelude::*,
+    runtime::Runtime,
     traits::apply::{Apply, ApplyError},
     values::value_container::ValueContainer,
 };
 impl Apply for ValueContainer {
-    fn try_apply(
+    fn try_apply_sync(
         &self,
-        args: &[ValueContainer],
+        runtime: &Runtime,
+        args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self {
-            ValueContainer::Local(value) => value.try_apply(args),
-            ValueContainer::Shared(reference) => reference.try_apply(args),
+            ValueContainer::Local(value) => value.try_apply_sync(runtime, args),
+            ValueContainer::Shared(reference) => {
+                reference.try_apply_sync(runtime, args)
+            }
         }
     }
 
-    fn try_apply_single(
+    async fn try_apply_async(
         &self,
-        arg: &ValueContainer,
+        runtime: &Runtime,
+        args: Vec<ValueContainer>,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self {
-            ValueContainer::Local(value) => value.try_apply_single(arg),
-            ValueContainer::Shared(reference) => {
-                reference.try_apply_single(arg)
+            ValueContainer::Local(value) => {
+                value.try_apply_async(runtime, args).await
+            }
+            ValueContainer::Shared(shared_container) => {
+                shared_container.try_apply_async(runtime, args).await
             }
         }
     }

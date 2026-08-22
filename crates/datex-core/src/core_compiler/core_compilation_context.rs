@@ -23,12 +23,15 @@ pub type ByteCursor = Cursor<Vec<u8>>;
 #[derive(Debug)]
 pub struct DXBWithSharedValues {
     pub dxb: Vec<u8>,
+    /// Shared values that can be accessed inside the execution
     pub shared_values: Vec<SharedContainer>,
 }
 impl DXBWithSharedValues {
+    /// Create a new [DXBWithSharedValues] with the provided DXB bytecode and shared values.
     pub fn new(dxb: Vec<u8>, shared_values: Vec<SharedContainer>) -> Self {
         DXBWithSharedValues { dxb, shared_values }
     }
+
     pub fn into_dxb(self) -> Vec<u8> {
         self.dxb
     }
@@ -146,7 +149,7 @@ impl ValueVisitor for CoreCompilationContext<'_> {
 
     fn visit_type(&mut self, ty: Type) {
         let instructions = ty
-            .to_instructions(&mut self.shared_value_tracking)
+            .to_instructions(Some(&mut self.shared_value_tracking))
             .collect::<Vec<_>>();
         for instruction in instructions {
             append_type_instruction(self.cursor_mut(), instruction);

@@ -1,9 +1,7 @@
-use crate::{
-    global::protocol_structures::instructions::NextExpectedInstructions,
-    prelude::*,
-};
+use crate::{instruction::NextExpectedInstructions, prelude::*};
+use core::fmt::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NextScopeInstruction {
     /// number of regular instructions expected to follow
     Regular(u32),
@@ -12,6 +10,22 @@ pub enum NextScopeInstruction {
     RegularUnbounded,
     /// number of type instructions expected to follow
     Type(u32),
+}
+
+impl Display for NextScopeInstruction {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            NextScopeInstruction::Regular(count) => {
+                write!(f, "Regular({})", count)
+            }
+            NextScopeInstruction::RegularUnbounded => {
+                write!(f, "RegularUnbounded")
+            }
+            NextScopeInstruction::Type(count) => {
+                write!(f, "Type({})", count)
+            }
+        }
+    }
 }
 
 pub enum NextInstructionType {
@@ -23,8 +37,22 @@ pub enum NextInstructionType {
 #[derive(Debug, Clone)]
 pub struct NotInUnboundedRegularScopeError;
 
-#[derive(Debug, Clone)]
-pub struct NextInstructionsStack(Vec<NextScopeInstruction>);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NextInstructionsStack(pub Vec<NextScopeInstruction>);
+
+impl Display for NextInstructionsStack {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|instr| instr.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
 
 impl Default for NextInstructionsStack {
     fn default() -> Self {
@@ -89,6 +117,10 @@ impl NextInstructionsStack {
     }
 
     pub fn push_next_type(&mut self, count: u32) {
+        // ignore zero counts
+        if count == 0 {
+            return;
+        }
         match self.0.last_mut() {
             Some(NextScopeInstruction::Type(existing_count)) => {
                 // if existing count + count overflows, push a new entry instead

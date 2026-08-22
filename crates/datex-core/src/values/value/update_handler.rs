@@ -129,8 +129,9 @@ mod tests {
             None,
         )
         .expect("Failed to push value to list");
-        let updated_value = list.try_get_property(3).unwrap();
-        assert_eq!(updated_value, &ValueContainer::from(4));
+        let updated_value =
+            ValueContainer::from(list.try_get_property(3).unwrap());
+        assert_eq!(updated_value, ValueContainer::from(4));
 
         // Try to push to non-list value
         let mut int = Value::from(42);
@@ -156,7 +157,7 @@ mod tests {
         )
         .expect("Failed to set existing property");
         let updated_value = map.try_get_property("key1").unwrap();
-        assert_eq!(updated_value, &42.into());
+        assert_eq!(ValueContainer::from(updated_value), 42.into());
 
         // Set new property
         let result = map.try_update_collapsed_local_inner(
@@ -166,7 +167,7 @@ mod tests {
         );
         assert!(result.is_ok());
         let new_value = map.try_get_property("new").unwrap();
-        assert_eq!(new_value, &99.into());
+        assert_eq!(ValueContainer::from(new_value), 99.into());
     }
 
     #[test]
@@ -185,7 +186,7 @@ mod tests {
         )
         .expect("Failed to set existing index");
         let updated_value = list.try_get_property(1).unwrap();
-        assert_eq!(updated_value, &ValueContainer::from(42));
+        assert_eq!(ValueContainer::from(updated_value), 42.into());
 
         // Try to set out-of-bounds index
         let result = list.try_update_collapsed_local_inner(
@@ -229,7 +230,7 @@ mod tests {
             )
             .expect("Failed to set existing property");
         let name = struct_val.try_get_property("name").unwrap();
-        assert_eq!(name, &"Bob".into());
+        assert_eq!(ValueContainer::from(name), "Bob".into());
 
         // Try to set non-existing property
         let result = struct_val.try_update_collapsed_local_inner(
@@ -276,13 +277,10 @@ mod tests {
                 None,
             )
             .expect("Failed to set existing nested property");
-        let inner_value = nested_map
-            .try_get_property("outer")
-            .unwrap()
-            .try_as::<Map>()
-            .unwrap()
-            .try_get("inner")
-            .unwrap();
+        let prop = nested_map.try_get_property("outer").unwrap();
+        let inner_value = ValueContainer::from(prop);
+        let inner_value = inner_value.try_as::<Map>().unwrap();
+        let inner_value = inner_value.try_get("inner").unwrap();
         assert_eq!(inner_value, &42.into());
     }
 

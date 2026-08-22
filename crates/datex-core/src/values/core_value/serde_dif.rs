@@ -25,7 +25,10 @@ use serde::de::{Error, MapAccess};
 
 use crate::{
     dif::serde_context::SerdeContext,
-    values::{core_values::endpoint::Endpoint, value::Value},
+    values::{
+        core_values::{callable::Callable, endpoint::Endpoint},
+        value::Value,
+    },
 };
 use core::{fmt, str::FromStr};
 use serde::{
@@ -478,6 +481,11 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
             CoreLibTypeId::Base(CoreLibBaseTypeId::Map) => {
                 let elements = self.context.cast::<Map>().visit_seq(seq)?;
                 Ok(CoreValue::Map(elements))
+            }
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Callable) => {
+                let callable =
+                    self.context.cast::<Callable>().visit_seq(seq)?;
+                Ok(CoreValue::Callable(callable))
             }
             _ => Err(A::Error::custom(format!(
                 "expected CoreValue of type List, Map, or Range, got {}",

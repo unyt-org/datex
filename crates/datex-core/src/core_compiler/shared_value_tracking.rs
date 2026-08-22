@@ -1,5 +1,5 @@
 use crate::{
-    global::protocol_structures::instruction_data::StackIndex,
+    global::stack_index::StackIndex,
     prelude::*,
     random::RandomState,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
@@ -228,7 +228,7 @@ mod tests {
         core_compiler::shared_value_tracking::{
             SharedValueTracking, TrackedValueMetadata, default_tracking,
         },
-        global::protocol_structures::instruction_data::StackIndex,
+        global::stack_index::StackIndex,
         prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{

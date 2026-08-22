@@ -1,5 +1,8 @@
+#![feature(box_patterns)]
+
+use crate::datex_proxy::generate_impl_glue_code;
 use proc_macro::TokenStream;
-use syn::parse_macro_input;
+use syn::{Item, parse_macro_input};
 
 mod bitfield_macros;
 mod core_lib;
@@ -113,4 +116,25 @@ pub fn derive_instruction(input: TokenStream) -> TokenStream {
 pub fn datex_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     datex_proxy::derive(input).into()
+}
+
+#[proc_macro_attribute]
+pub fn datex(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let input_clone = input.clone();
+    let item = parse_macro_input!(input_clone as Item);
+
+    match &item {
+        Item::Impl(item_impl) => {
+            generate_impl_glue_code(input.into(), item_impl).into()
+        }
+        Item::Mod(item_mod) => {
+            datex_proxy::generate_mod_glue_code(input.into(), item_mod).into()
+        }
+        e => {
+            panic!(
+                "The #[datex] attribute can not be applied to this item: {:?}.",
+                e
+            );
+        }
+    }
 }

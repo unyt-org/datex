@@ -1,6 +1,6 @@
 //! This module contains the implementation of the [Text] struct, which represents a string value in the type system.
 use crate::{
-    global::protocol_structures::instruction_data::TextData, prelude::*,
+    instruction::instruction_data::TextData, prelude::*,
     shared_values::errors::IndexOutOfBoundsError,
 };
 use binrw::{BinRead, BinWrite};
@@ -24,6 +24,9 @@ impl Display for Text {
 }
 
 impl Text {
+    pub fn new<S: Into<String>>(s: S) -> Self {
+        Text(s.into())
+    }
     pub fn len(&self) -> usize {
         self.0.len()
     }

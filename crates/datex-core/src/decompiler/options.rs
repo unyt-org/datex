@@ -1,6 +1,7 @@
 use datex_macros_internal::Datex;
 
 #[derive(Datex, Debug, Clone, Default)]
+#[datex(structural_recursive)]
 pub struct DecompileOptions {
     pub formatting_options: FormattingOptions,
     /// display slots with generated variable names
@@ -53,13 +54,15 @@ impl DecompileOptions {
 }
 
 #[derive(Datex, Clone, Debug, Copy, Default)]
+#[datex(structural_recursive)]
 pub enum IndentType {
     #[default]
     Spaces,
     Tabs,
 }
 
-#[derive(Debug, Clone, Default, Datex)]
+#[derive(Datex, Debug, Clone, Default)]
+#[datex(structural_recursive)]
 pub enum FormattingMode {
     /// compact formatting, no unnecessary spaces or newlines
     #[default]
@@ -92,6 +95,7 @@ impl FormattingMode {
 }
 
 #[derive(Datex, Debug, Clone, Default)]
+#[datex(structural_recursive)]
 pub struct FormattingOptions {
     pub mode: FormattingMode,
     pub json_compat: bool,

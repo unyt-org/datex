@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     types::{
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition::{
@@ -34,7 +34,7 @@ where
     F: TypeFolder,
 {
     match ty {
-        Type::Alias(alias) => {
+        Type::Definition(alias) => {
             let Some(name) = alias.reference_name() else {
                 return fold_definition(folder, &alias.definition);
             };
@@ -45,7 +45,7 @@ where
             folder.fold_named_alias_reference(name)
         }
 
-        Type::Nominal(nominal) => folder.fold_nominal_reference(nominal),
+        Type::Entity(nominal) => folder.fold_entity_reference(nominal),
     }
 }
 
@@ -81,7 +81,7 @@ where
 
             folder.fold_map(map, entries)
         }
-        TypeDefinition::Nested(inner) => {
+        TypeDefinition::Box(inner) => {
             let folded_inner = fold_type(folder, inner)?;
             folder.fold_nested(inner, folded_inner)
         }
@@ -103,7 +103,7 @@ where
         }
         TypeDefinition::Callable(callable) => {
             let parameters = callable
-                .parameter_types
+                .parameters
                 .iter()
                 .map(|(name, ty)| {
                     fold_type(folder, ty).map(|ty| (name.clone(), ty))
@@ -111,7 +111,7 @@ where
                 .collect::<Result<Vec<_>, _>>()?;
 
             let rest_parameter = callable
-                .rest_parameter_type
+                .rest_parameter
                 .as_ref()
                 .map(|(name, ty)| {
                     fold_type(folder, ty).map(|ty| (name.clone(), ty))
@@ -279,10 +279,10 @@ pub trait TypeFolder {
         shared: &SharedContainerContainingType,
     ) -> Result<Self::Output, Self::Error>;
 
-    /// Called when a reference to a shared container containing a nominal type is encountered. The shared container is provided as an argument.
-    fn fold_nominal_reference(
+    /// Called when a reference to a shared container containing a entity type is encountered. The shared container is provided as an argument.
+    fn fold_entity_reference(
         &mut self,
-        nominal: &SharedContainerContainingNominalType,
+        entity: &SharedContainerContainingEntityType,
     ) -> Result<Self::Output, Self::Error>;
 
     /// Called when a reference to a core type is encountered. The core type ID is provided as an argument.

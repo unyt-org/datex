@@ -10,13 +10,18 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
+    values::core_values::callable::Callable,
 };
-use core::fmt::Display;
+use core::{
+    fmt::Display,
+    hash::{Hash, Hasher},
+};
 
 /// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]
 pub struct SharedValuesCache {
     values: HashMap<PointerAddress, SharedContainer>,
+    callables: HashMap<u64, Callable>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,6 +87,7 @@ impl SharedValuesCache {
                 .into_iter()
                 .map(|container| (container.pointer_address(), container))
                 .collect(),
+            callables: HashMap::new(),
         }
     }
 
@@ -94,6 +100,26 @@ impl SharedValuesCache {
             return;
         }
         self.values.insert(container.pointer_address(), container);
+    }
+
+    /// Stores a callable in the cache and returns its hash value.
+    /// TODO: use different hash and HashMap<hash, callable> to reduce collisions?
+    pub fn store_callable(&mut self, callable: Callable) -> u64 {
+        let mut hasher = default_hasher();
+        callable.hash(&mut hasher);
+        let hash = hasher.finish();
+        self.callables.insert(hash, callable);
+        hash
+    }
+
+    /// Retrieves a callable from the cache based on its hash value.
+    pub fn get_callable(&self, hash: u64) -> Option<Callable> {
+        self.callables.get(&hash).cloned()
+    }
+
+    /// Removes a callable from the cache based on its hash value.
+    pub fn remove_callable_with_hash(&mut self, hash: u64) {
+        self.callables.remove(&hash);
     }
 
     /// Removes the shared container for the given pointer address from the cache, if it exists.

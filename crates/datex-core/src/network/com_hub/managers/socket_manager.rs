@@ -32,8 +32,8 @@ pub struct EndpointIterateOptions<'a> {
     pub exclude_sockets: &'a [ComInterfaceSocketUUID],
 }
 
-#[derive(Debug, Clone, Datex)]
-
+#[derive(Datex, Debug, Clone)]
+#[datex(structural_recursive)]
 pub struct DynamicEndpointProperties {
     pub known_since: u64,
     pub distance: i8,

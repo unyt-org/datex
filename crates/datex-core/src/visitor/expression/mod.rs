@@ -5,14 +5,15 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
         CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-        DeriveSharedRef, GenericInstantiation, InterfaceMethodCall, List, Map,
-        PropertyAccess, PropertyAssignment, RemoteExecution, RequestSharedRef,
+        DeriveSharedRef, EntityDeclarationExpression, EntityValueExpression,
+        GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
+        PropertyAssignment, RemoteExecution, RequestSharedRef,
         RootPropertyAccess, StackAssignment, StackListAssignment, Statements,
-        TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
-        UnboxSlotAssignment, ValueAccessType, VariableAccess,
+        TagExpression, TypeDeclarationExpression, UnaryOperation, Unbox,
+        UnboxAssignment, UnboxSlotAssignment, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
-    global::protocol_structures::instruction_data::StackIndex,
+    global::stack_index::StackIndex,
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
     values::core_values::{
@@ -123,6 +124,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::TypeDeclaration(type_declaration) => {
                 self.visit_type_declaration(type_declaration, &expr.span)
             }
+            DatexExpressionData::EntityDeclaration(entity_declaration) => {
+                self.visit_entity_declaration(entity_declaration, &expr.span)
+            }
             DatexExpressionData::TypeExpression(type_expression) => self
                 .visit_type_expression(type_expression)
                 .map(|_| VisitAction::AbortRecursion),
@@ -152,6 +156,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::StackIndex(slot) => {
                 self.visit_stack_index(slot, &expr.span)
+            }
+            DatexExpressionData::EntityValue(entity_value) => {
+                self.visit_entity_value(entity_value, &expr.span)
             }
             DatexExpressionData::StackAssignment(stack_assignment) => {
                 self.visit_stack_assignment(stack_assignment, &expr.span)
@@ -334,11 +341,22 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit type declaration
     fn visit_type_declaration(
         &mut self,
-        type_declaration: &mut TypeDeclaration,
+        type_declaration: &mut TypeDeclarationExpression,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = type_declaration;
+        Ok(VisitAction::ContinueRecursion)
+    }
+
+    /// Visit entity declaration
+    fn visit_entity_declaration(
+        &mut self,
+        entity_declaration: &mut EntityDeclarationExpression,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = entity_declaration;
         Ok(VisitAction::ContinueRecursion)
     }
 
@@ -444,11 +462,11 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit callable declaration
     fn visit_callable_declaration(
         &mut self,
-        function_declaration: &mut CallableDeclaration,
+        callable_declaration: &mut CallableDeclaration,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
-        let _ = function_declaration;
+        let _ = callable_declaration;
         Ok(VisitAction::ContinueRecursion)
     }
 
@@ -778,6 +796,16 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = range;
+        Ok(VisitAction::ContinueRecursion)
+    }
+
+    fn visit_entity_value(
+        &mut self,
+        entity_value: &mut EntityValueExpression,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = entity_value;
         Ok(VisitAction::ContinueRecursion)
     }
 }

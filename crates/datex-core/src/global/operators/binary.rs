@@ -1,9 +1,9 @@
 use core::fmt::Display;
 
 use crate::{
-    global::{
+    instruction::{
         instruction_codes::InstructionCode,
-        protocol_structures::regular_instructions::RegularInstruction,
+        regular_instruction::RegularInstruction,
     },
     prelude::*,
 };

@@ -17,10 +17,10 @@ impl TypeSuperset<Type> for Type {
     /// integer | text >= 1 -> true
     fn is_superset_of(&self, other: &Type) -> bool {
         match self {
-            Type::Alias(self_definition) => {
+            Type::Definition(self_definition) => {
                 self_definition.is_superset_of(other)
             }
-            Type::Nominal(_self_nominal_definition) => {
+            Type::Entity(_self_nominal_definition) => {
                 todo!()
             }
         }
@@ -30,10 +30,10 @@ impl TypeSuperset<Type> for Type {
 impl TypeSuperset<TypeDefinition> for Type {
     fn is_superset_of(&self, other: &TypeDefinition) -> bool {
         match self {
-            Type::Alias(self_definition) => {
+            Type::Definition(self_definition) => {
                 self_definition.is_superset_of(other)
             }
-            Type::Nominal(_self_nominal_definition) => {
+            Type::Entity(_self_nominal_definition) => {
                 todo!()
             }
         }
@@ -43,10 +43,10 @@ impl TypeSuperset<TypeDefinition> for Type {
 impl TypeSatisfiesValueContainer for Type {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
         match self {
-            Type::Alias(definition) => {
+            Type::Definition(definition) => {
                 definition.satisfies_value_container(value)
             }
-            Type::Nominal(definition) => {
+            Type::Entity(definition) => {
                 definition.satisfies_value_container(value)
             }
         }

@@ -1,15 +1,16 @@
 use crate::{
-    global::protocol_structures::{
-        instruction_data::StackIndex,
-        instructions::{Instruction, NextExpectedInstructions},
-        regular_instructions::RegularInstruction,
-        type_instructions::TypeInstruction,
+    global::stack_index::StackIndex,
+    instruction::{
+        Instruction, NextExpectedInstructions,
+        regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     prelude::*,
 };
+use core::fmt::Debug;
 
 pub trait CollectionResultsPopper<
-    Result,
+    Result: Debug,
     Val,
     Key,
     KeyVal,
@@ -47,12 +48,19 @@ pub trait CollectionResultsPopper<
         values
     }
 
+    fn pop_types(&mut self, count: u32) -> Vec<Type> {
+        let mut types = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            types.push(self.pop_type());
+        }
+        types.reverse();
+        types
+    }
     fn pop_value(&mut self) -> Val {
         self.try_pop_value().expect("Expected value result")
     }
     fn pop_type(&mut self) -> Type {
-        self.try_pop_type()
-            .expect("Expected type definition result")
+        self.try_pop_type().expect("Expected type result")
     }
     fn pop_type_definition(&mut self) -> TypeDefinition {
         self.try_pop_type_definition()
@@ -467,9 +475,10 @@ impl<T> InstructionCollector<T> {
                 regular_count,
                 type_count,
             ) => {
+                let total_count = regular_count + type_count;
                 self.collect_full(
                     Instruction::Regular(regular_instruction),
-                    regular_count + type_count,
+                    total_count,
                 );
                 None
             }

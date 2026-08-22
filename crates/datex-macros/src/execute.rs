@@ -144,11 +144,6 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
             shared_values: vec![],
         };
 
-        // println!("runtime_execution_stack.values.len() = {}", datex_core::decompiler::decompile_body(
-        //     &dxb_with_shared_values.dxb,
-        //     datex_core::decompiler::DecompileOptions::colorized(),
-        // ).unwrap());
-
         let runtime = Runtime::stub();
         ExecutionInput::new_with_stack(
             dxb_with_shared_values,

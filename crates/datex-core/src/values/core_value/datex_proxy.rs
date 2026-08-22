@@ -1,23 +1,30 @@
 use crate::{
     datex_proxy::{
-        DatexProxyTypes, DatexValueProxy, DatexValueProxyDeserialize,
+        DatexProxyType, DatexValueProxy, DatexValueProxyDeserialize,
         DatexValueProxyInfallibleSerialize, DatexValueProxySerialize,
         TryFromDatexValueError, TryToDatexValueError,
     },
     libs::core::type_id::CoreLibBaseTypeId,
+    prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::{r#type::Type, type_definition::TypeDefinition},
     values::{core_value::CoreValue, value::Value},
 };
 
 impl DatexValueProxyInfallibleSerialize for CoreValue {
-    fn to_value(self) -> Value {
-        Value::from(self)
+    fn boxed_to_value(
+        self: Box<Self>,
+        _context: &mut SharedReferencesCache,
+    ) -> Value {
+        Value::from(*self)
     }
 }
 impl DatexValueProxySerialize for CoreValue {
-    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
-        Ok(self.to_value())
+    fn try_boxed_to_value(
+        self: Box<Self>,
+        _context: &mut SharedReferencesCache,
+    ) -> Result<Value, TryToDatexValueError> {
+        Ok(self.boxed_to_value(_context))
     }
 }
 impl DatexValueProxyDeserialize for CoreValue {
@@ -26,10 +33,10 @@ impl DatexValueProxyDeserialize for CoreValue {
     }
 }
 
-impl DatexProxyTypes for CoreValue {
-    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
-        Type::Alias(
-            TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()).into(),
+impl DatexProxyType for CoreValue {
+    fn datex_type(_context: &mut SharedReferencesCache) -> Type {
+        Type::Definition(
+            TypeDefinition::CoreType(CoreLibBaseTypeId::Any.into()).into(),
         )
     }
 }

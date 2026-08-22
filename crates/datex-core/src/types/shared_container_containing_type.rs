@@ -16,6 +16,12 @@ impl Deref for SharedContainerContainingType {
     }
 }
 
+impl From<SharedContainerContainingType> for SharedContainer {
+    fn from(value: SharedContainerContainingType) -> Self {
+        value.0
+    }
+}
+
 impl SharedContainerContainingType {
     /// Creates a new [SharedContainerContainingType] from a [SharedContainer] without checking the constraint.
     /// # Safety

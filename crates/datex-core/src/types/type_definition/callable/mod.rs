@@ -1,10 +1,27 @@
 use crate::types::r#type::Type;
+use binrw::{BinRead, BinWrite};
 use core::fmt::{Display, Formatter};
+use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 pub mod serde_dif;
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    TryFromPrimitive,
+    BinRead,
+    BinWrite,
+)]
+#[brw(repr(u8))]
+#[repr(u8)]
+#[serde(rename_all = "lowercase")]
 pub enum CallableKind {
     // A pure function
     Function,
@@ -24,8 +41,9 @@ impl Display for CallableKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CallableTypeDefinition {
     pub kind: CallableKind,
-    pub parameter_types: Vec<(Option<String>, Type)>,
-    pub rest_parameter_type: Option<(Option<String>, Box<Type>)>,
+    pub requires_async: bool,
+    pub parameters: Vec<(Option<String>, Type)>,
+    pub rest_parameter: Option<(Option<String>, Box<Type>)>,
     pub return_type: Option<Box<Type>>,
     pub yeet_type: Option<Box<Type>>,
 }
@@ -33,18 +51,16 @@ pub struct CallableTypeDefinition {
 impl Display for CallableTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let params = self
-            .parameter_types
+            .parameters
             .iter()
             .map(|(name, ty)| match name {
                 Some(name) => format!("{}: {}", name, ty),
                 None => format!("{}", ty),
             })
-            .chain(self.rest_parameter_type.iter().map(
-                |(name, ty)| match name {
-                    Some(name) => format!("...{}: {}", name, ty),
-                    None => format!("...{}", ty),
-                },
-            ))
+            .chain(self.rest_parameter.iter().map(|(name, ty)| match name {
+                Some(name) => format!("...{}: {}", name, ty),
+                None => format!("...{}", ty),
+            }))
             .collect::<Vec<_>>()
             .join(", ");
         let return_type = self

@@ -4,9 +4,9 @@ use crate::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, DatexExpression, DatexExpressionData, List, Map,
             PropertyAccess, PropertyAssignment, RangeDeclaration,
-            RemoteExecution, StackAssignment, TypeDeclaration, UnboxAssignment,
-            VariableAccess, VariableAssignment, VariableDeclaration,
-            VariantAccess,
+            RemoteExecution, StackAssignment, TypeDeclarationExpression,
+            UnboxAssignment, VariableAccess, VariableAssignment,
+            VariableDeclaration, VariantAccess,
         },
         type_expressions::{
             CallableTypeExpression, TypeExpression, TypeExpressionData,
@@ -16,18 +16,24 @@ use crate::{
     values::core_values::text::Text,
 };
 
-use crate::prelude::*;
-use alloc::format;
-use core::fmt::{self};
-
 use crate::{
-    ast::expressions::{
-        InterfaceMethodCall, RootPropertyAccess, StackListAssignment,
-        UnboxSlotAssignment, ValueAccessType,
+    ast::{
+        expressions::{
+            CallableSignature, EntityDeclarationExpression,
+            InterfaceMethodCall, RootPropertyAccess, StackListAssignment,
+            UnboxSlotAssignment, ValueAccessType,
+        },
+        type_expressions::IdentifierWithPointerAddress,
     },
     decompiler::{FormattingMode, FormattingOptions, IndentType},
+    prelude::*,
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
+};
+use alloc::format;
+use core::{
+    fmt::{self},
+    ops::Deref,
 };
 
 #[derive(Clone, Default)]
@@ -189,7 +195,7 @@ impl AstToSourceCodeConverter {
         &self,
         key: &TypeExpression,
     ) -> String {
-        match &key.data {
+        match key.data() {
             TypeExpressionData::Text(t) => self.key_to_string(t),
             TypeExpressionData::Integer(i) => i.to_string(),
             TypeExpressionData::TypedInteger(ti) => {
@@ -208,7 +214,7 @@ impl AstToSourceCodeConverter {
         &self,
         type_expr: &TypeExpression,
     ) -> String {
-        match &type_expr.data {
+        match type_expr.data() {
             TypeExpressionData::VariantAccess(TypeVariantAccess {
                 name,
                 variant,
@@ -221,8 +227,6 @@ impl AstToSourceCodeConverter {
             TypeExpressionData::Boolean(boolean) => boolean.to_string(),
             TypeExpressionData::Text(text) => self.text_to_source_code(text),
             TypeExpressionData::Endpoint(endpoint) => endpoint.to_string(),
-            TypeExpressionData::Null => "null".to_string(),
-            TypeExpressionData::Unit => "()".to_string(),
             TypeExpressionData::Ref(inner) => {
                 format!("&{}", self.type_expression_to_source_code(inner,))
             }
@@ -239,6 +243,14 @@ impl AstToSourceCodeConverter {
                 format!("mut {}", self.type_expression_to_source_code(inner,))
             }
             TypeExpressionData::Identifier(literal) => literal.to_string(),
+            TypeExpressionData::IdentifierWithPointerAddress(
+                IdentifierWithPointerAddress {
+                    name,
+                    pointer_address,
+                },
+            ) => {
+                format!("{}{}", name, pointer_address)
+            }
             TypeExpressionData::VariableAccess(VariableAccess {
                 name, ..
             }) => name.to_string(),
@@ -337,10 +349,10 @@ impl AstToSourceCodeConverter {
                 let return_type_code = match return_type {
                     Some(return_type) => format!(
                         "{}{}",
-                        self.pad("->"),
+                        " -> ",
                         self.type_expression_to_source_code(return_type)
                     ),
-                    None => format!("{}()", self.pad("->")).to_string(),
+                    None => format!("{}()", " -> ").to_string(),
                 };
 
                 let yeet_type_code = match yeet_type {
@@ -578,6 +590,13 @@ impl AstToSourceCodeConverter {
                     }
                 }
             }
+            DatexExpressionData::EntityValue(entity_value) => {
+                format!(
+                    "{} {}",
+                    entity_value.entity_name,
+                    self.format_child(&entity_value.value)
+                )
+            }
             DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
                 match &create_shared_ref.mutability {
                     ReferenceMutability::Mutable => {
@@ -759,32 +778,49 @@ impl AstToSourceCodeConverter {
                 name,
                 ..
             }) => name.to_string(),
-            DatexExpressionData::TypeDeclaration(TypeDeclaration {
-                id: _,
-                name,
-                definition: value,
-                hoisted: _,
-                kind,
-            }) => {
+            DatexExpressionData::TypeDeclaration(
+                TypeDeclarationExpression {
+                    name,
+                    definition: value,
+                    ..
+                },
+            ) => {
                 ast_fmt!(
                     &self,
-                    "{} {}%s=%s{}",
-                    kind,
+                    "type {}%s=%s{}",
+                    name,
+                    self.type_expression_to_source_code(value)
+                )
+            }
+            DatexExpressionData::EntityDeclaration(
+                EntityDeclarationExpression {
+                    name,
+                    definition: value,
+                    ..
+                },
+            ) => {
+                ast_fmt!(
+                    &self,
+                    "entity {}%s=%s{}",
                     name,
                     self.type_expression_to_source_code(value)
                 )
             }
             DatexExpressionData::CallableDeclaration(callable) => {
                 let CallableDeclaration {
-                    name,
-                    kind,
-                    parameters,
-                    rest_parameter,
-                    return_type,
-                    yeet_type,
+                    signature:
+                        CallableSignature {
+                            name,
+                            kind,
+                            requires_async: _,
+                            parameters,
+                            rest_parameter,
+                            return_type,
+                            yeet_type,
+                        },
                     body,
                     ..
-                } = &**callable;
+                } = callable;
                 let mut params_code: Vec<String> = parameters
                     .iter()
                     .map(|(param_name, param_type)| {
@@ -809,8 +845,7 @@ impl AstToSourceCodeConverter {
 
                 let return_type_code = match return_type {
                     Some(return_type) => format!(
-                        "{}{}",
-                        self.pad("->"),
+                        " -> {}",
                         self.type_expression_to_source_code(return_type)
                     ),
                     None => "".to_string(),
@@ -825,19 +860,26 @@ impl AstToSourceCodeConverter {
                 };
 
                 // indented function body
-                let body_code = self
-                    .format_child(body)
-                    .replace("\n", &format!("\n{}", self.indent()));
+                let body_code = match body.data.deref() {
+                    DatexExpressionData::NativeImplementationIndicator => {
+                        "".to_string()
+                    }
+                    _ => {
+                        let inner = self
+                            .format_child(body)
+                            .replace("\n", &format!("\n{}", self.indent()));
+                        format!("%s(%n{}{}%n)", self.indent(), inner)
+                    }
+                };
 
                 ast_fmt!(
                     &self,
-                    "{} {}({}){}{}%s(%n{}{}%n)",
+                    "{} {}({}){}{}{}",
                     kind,
                     name.clone().unwrap_or_else(|| "".to_string()),
-                    params_code.join(&ast_fmt!(&self, ",%s")),
+                    params_code.join(&ast_fmt!(&self, ", ")),
                     return_type_code,
                     yeet_type_code,
-                    self.indent(),
                     body_code
                 )
             }
