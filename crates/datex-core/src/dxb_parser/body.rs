@@ -156,20 +156,14 @@ impl Display for DXBParserError {
     }
 }
 
-#[cfg(feature = "disassembler")]
-#[derive(Debug, Clone, Serialize)]
 /// If the "disassembler" feature is enabled, this struct includes a `span` field
 /// that represents the range of bytes in the DXB body that correspond to this instruction.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "disassembler", derive(serde::Serialize))]
 pub struct InstructionWithSpan {
     pub instruction: Instruction,
+    #[cfg(feature = "disassembler")]
     pub span: Range<usize>,
-}
-#[cfg(not(feature = "disassembler"))]
-#[derive(Debug, Clone, PartialEq)]
-/// If the "disassembler" feature is not enabled,
-/// this is just a wrapper around `Instruction` without the `span` field.
-pub struct InstructionWithSpan {
-    pub instruction: Instruction,
 }
 
 impl PartialEq for InstructionWithSpan {
