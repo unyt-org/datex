@@ -27,6 +27,7 @@ use crate::{
     decompiler::{FormattingMode, FormattingOptions, IndentType},
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
+    values::core_values::time::Instant,
 };
 
 #[derive(Clone, Default)]

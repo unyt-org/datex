@@ -1,6 +1,11 @@
-use crate::prelude::{String, format, *};
+use crate::prelude::*;
+use crate::{
+    prelude::{String, Vec, format, vec},
+    // values::core_values::error::TimeError,
+};
 use chrono::*;
-use core::fmt;
+use core::{fmt, time::Duration};
+use num_integer::Roots;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Instant(pub i128);
@@ -49,7 +54,7 @@ impl Instant {
 
     /// Difference between two Instants (always positive)
     pub fn diff(&self, other: &Instant) -> u64 {
-        (self.0 - other.0).unsigned_abs() as u64
+        (self.0 - other.0).abs() as u64
     }
 
     /// Check if this Instant is after another
