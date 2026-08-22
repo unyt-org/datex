@@ -148,21 +148,170 @@ impl Display for DXBParserError {
         }
     }
 }
-pub fn iterate_instructions(
+
+// TODO #676: we must ensure while an execution for a block runs, no other executions run using the same next_instructions_stack - maybe also find a solution without Rc<RefCell>
+pub gen fn iterate_instructions(
     dxb_body_ref: Rc<RefCell<Vec<u8>>>,
     nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
-) -> impl Iterator<Item = Result<Instruction, DXBParserError>> {
-    iterate_instructions_with_seek(
-        dxb_body_ref,
-        nested_instruction_resolution_strategy,
-        None,
-    )
+) -> Result<Instruction, DXBParserError> {
+    let mut next_instructions_stack = NextInstructionsStack::default();
+
+    let mut dxb_body = core::mem::take(&mut *dxb_body_ref.borrow_mut());
+    let mut len = dxb_body.len();
+    let mut reader = Cursor::new(dxb_body);
+
+    loop {
+        if reader.position() as usize >= len {
+            if !next_instructions_stack.is_end() {
+                yield Err(DXBParserError::ExpectingMoreInstructions);
+
+                dxb_body = core::mem::take(&mut *dxb_body_ref.borrow_mut());
+                len = dxb_body.len();
+                reader = Cursor::new(dxb_body);
+
+                continue;
+            }
+
+            return;
+        }
+
+        let next_instruction_type = next_instructions_stack.pop();
+
+        let instruction_result: Result<Instruction, DXBParserError> = try {
+            match next_instruction_type {
+                NextInstructionType::End => {
+                    if len > reader.position() as usize {
+                        yield Err(
+                            DXBParserError::
+                                UnexpectedBytesAfterEndOfInstructions,
+                        );
+                    }
+
+                    return;
+                }
+
+                NextInstructionType::Regular => {
+                    let instruction = RegularInstruction::read(&mut reader)
+                        .map_err(DXBParserError::BinRwError)?;
+
+                    let instruction =
+                        if let RegularInstruction::RemoteExecution(
+                            instruction_block_data,
+                        ) = instruction
+                        {
+                            match nested_instruction_resolution_strategy {
+                                #[cfg(feature = "disassembler")]
+                                NestedInstructionResolutionStrategy::
+                                    ResolveNestedScopesFlat
+                                | NestedInstructionResolutionStrategy::
+                                    ResolveNestedScopesTree => {
+                                    use crate::global::
+                                        protocol_structures::
+                                        instruction_data::{
+                                            InstructionBlockDataDebugFlat,
+                                            InstructionBlockDataDebugTree,
+                                        };
+
+                                    let (inner_instructions, err) =
+                                        crate::disassembler::disassemble_body(
+                                            &instruction_block_data.body,
+                                            nested_instruction_resolution_strategy,
+                                        );
+
+                                    if let Some(err) = err {
+                                        Err(err)?;
+                                    }
+
+                                    if nested_instruction_resolution_strategy
+                                        == NestedInstructionResolutionStrategy::
+                                            ResolveNestedScopesFlat
+                                    {
+                                        RegularInstruction::
+                                            remote_execution_debug_flat(
+                                                InstructionBlockDataDebugFlat {
+                                                    length:
+                                                        instruction_block_data
+                                                            .length,
+                                                    injected_variable_count:
+                                                        instruction_block_data
+                                                            .injected_value_count,
+                                                    injected_values:
+                                                        instruction_block_data
+                                                            .injected_values.clone(),
+                                                    body: inner_instructions
+                                                        .flatten(),
+                                                },
+                                            )
+                                    } else {
+                                        RegularInstruction::
+                                            remote_execution_debug_tree(
+                                                InstructionBlockDataDebugTree {
+                                                    length:
+                                                        instruction_block_data
+                                                            .length,
+                                                    injected_variable_count:
+                                                        instruction_block_data
+                                                            .injected_value_count,
+                                                    injected_values:
+                                                        instruction_block_data
+                                                            .injected_values.clone(),
+                                                    body: inner_instructions,
+                                                },
+                                            )
+                                    }
+                                }
+
+                                _ => {
+                                    RegularInstruction::remote_execution(
+                                        instruction_block_data.clone(),
+                                    )
+                                }
+                            }
+                        } else {
+                            instruction
+                        };
+
+                    next_instructions_stack
+                        .handle_next_expected_instructions(
+                            instruction.get_next_expected_instructions(),
+                        )
+                        .map_err(|_| {
+                            DXBParserError::NotInUnboundedRegularScopeError
+                        })?;
+
+                    instruction.into()
+                }
+
+                NextInstructionType::Type => {
+                    let instruction = TypeInstruction::read(&mut reader)
+                        .map_err(DXBParserError::BinRwError)?;
+
+                    next_instructions_stack
+                        .handle_next_expected_instructions(
+                            instruction.get_next_expected_instructions(),
+                        )
+                        .map_err(|_| {
+                            DXBParserError::NotInUnboundedRegularScopeError
+                        })?;
+
+                    instruction.into()
+                }
+            }
+        };
+
+        let instruction = match instruction_result {
+            Ok(instruction) => instruction,
+            Err(error) => return yield Err(error),
+        };
+
+        yield Ok(instruction);
+    }
 }
 
 pub gen fn iterate_instructions_with_seek(
     dxb_body_ref: Rc<RefCell<Vec<u8>>>,
     nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
-    seek_request: Option<Rc<RefCell<Option<i32>>>>,
+    seek_request: Rc<RefCell<Option<i32>>>,
 ) -> Result<Instruction, DXBParserError> {
     let mut next_instructions_stack = NextInstructionsStack::default();
 
@@ -172,12 +321,10 @@ pub gen fn iterate_instructions_with_seek(
 
     loop {
         // check for pending seek request
-        if let Some(seek_request) = seek_request.as_ref() {
-            if let Some(seek_offset) = seek_request.borrow_mut().take() {
-                let new_pos = reader.position() as i64 + seek_offset as i64;
-                reader.set_position(new_pos.max(0) as u64);
-                continue;
-            }
+        if let Some(seek_offset) = seek_request.borrow_mut().take() {
+            let new_pos = reader.position() as i64 + seek_offset as i64;
+            reader.set_position(core::cmp::max(0, new_pos) as u64);
+            continue;
         }
 
         if reader.position() as usize >= len {

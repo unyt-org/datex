@@ -9,7 +9,7 @@ use crate::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
                 FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
                 Int16Data, Int32Data, Int64Data, Int128Data, JumpData,
-                JumpWithValueData, ListData, MapData, MoveWithValue, SharedRef,
+                ListData, MapData, MoveWithValue, SharedRef,
                 SharedRefWithValue, ShortListData, ShortMapData,
                 ShortStatementsData, ShortTextData, SpliceData, StackIndex,
                 StatementsData, TaggedValue, TextData, UInt8Data, UInt16Data,
@@ -576,9 +576,8 @@ pub enum RegularInstruction {
     Jump(JumpData),
     #[magic(InstructionCode::JUMP_IF_FALSE)]
     JumpIfFalse(JumpData),
-    #[magic(InstructionCode::JUMP_WITH_VALUE)]
-    JumpWithValue(JumpWithValueData),
-
+    #[magic(InstructionCode::CONDITIONAL)]
+    Conditional,
     // comparison operator
     #[magic(InstructionCode::IS)]
     Is,

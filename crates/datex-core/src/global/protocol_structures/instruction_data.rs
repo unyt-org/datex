@@ -16,10 +16,7 @@ use crate::{
         SelfOwnedPointerAddress, SharedContainerMutability,
     },
     types::type_definition_with_metadata::TypeMetadata,
-    values::{
-        core_values::{decimal::Decimal, integer::Integer},
-        value_container::ValueContainer,
-    },
+    values::core_values::{decimal::Decimal, integer::Integer},
 };
 use alloc::string::FromUtf8Error;
 use binrw::{
@@ -456,14 +453,6 @@ cfg_if! {
 #[brw(little)]
 pub struct JumpData {
     pub offset: i32,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
-pub struct JumpWithValueData {
-    pub offset: i32,
-    pub value: i32, // For now it will be just "i32", to test loops and maybe some easy inline functions, but later will be changed to universal value
-                    // and maybe changed to something like "Vec<Value>", so we can send more then one Value at time
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
