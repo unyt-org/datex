@@ -1,4 +1,8 @@
 //! Implements [DatexValueProxy] for [HashMap<K, V>] where K: [DatexValueProxy] + Eq + Hash and V: [DatexValueProxy].
+
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
@@ -17,10 +21,7 @@ use crate::{
     types::type_definition::TypeDefinition,
 };
 use core::hash::Hash;
-use std::any::Any;
-use crate::ast::expressions::DatexExpressionData;
-use crate::ast::spanned::Spanned;
-use crate::traits::to_datex_expression_data::ToDatexExpressionData;
+use core::any::Any;
 use crate::values::core_values::native::DatexNative;
 
 impl<
@@ -107,27 +108,6 @@ where
                 ),
             ))
             .into(),
-        )
-    }
-}
-
-impl<K, V> ToDatexExpressionData for HashMap<K, V>
-where
-    K: ToDatexExpressionData + Eq + Hash,
-    V: ToDatexExpressionData,
-{
-    fn to_datex_expression_data(
-        &self,
-    ) -> DatexExpressionData {
-        DatexExpressionData::Map(
-            self.iter()
-                .map(|(k, v)| {
-                    (
-                        k.to_datex_expression_data().with_default_span(),
-                        v.to_datex_expression_data().with_default_span(),
-                    )
-                })
-                .collect(),
         )
     }
 }

@@ -4,6 +4,9 @@
 //! `Option<T>` in DATEX, where `None` is represented as a tagged type with the tag "None(null)", and `Some(T)` is represented as a tagged type with the tag "Some" and
 //! an inner type of `T`.
 
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+
 use core::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
@@ -16,8 +19,6 @@ use crate::{
     },
     values::value::Value,
 };
-use crate::ast::expressions::DatexExpressionData;
-use crate::traits::to_datex_expression_data::ToDatexExpressionData;
 use crate::values::core_values::native::DatexNative;
 
 impl<T: DatexValueProxy> DatexValueProxy for Option<T> {}
@@ -99,20 +100,6 @@ where
             ))
             .into(),
         )
-    }
-}
-
-impl<T> ToDatexExpressionData for Option<T>
-where
-    T: ToDatexExpressionData,
-{
-    fn to_datex_expression_data(
-        &self,
-    ) -> DatexExpressionData {
-        match self {
-            Some(value) => value.to_datex_expression_data(),
-            None => DatexExpressionData::Null,
-        }
     }
 }
 

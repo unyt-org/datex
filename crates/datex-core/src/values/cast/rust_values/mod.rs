@@ -1,8 +1,5 @@
 //! Implements [TryFrom] and [TryInto] for Rust native types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
 //! This allows to convert [u8] into DATEX [Value] and [ValueContainer] and allows to convert [CoreValue], [Value] and [ValueContainer] into [u8].
-
-#[cfg(feature = "decompiler")]
-mod to_datex_expression_data;
 mod bool;
 mod integers;
 mod floats;

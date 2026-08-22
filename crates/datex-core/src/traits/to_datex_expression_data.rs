@@ -1,7 +1,4 @@
 use crate::ast::expressions::{DatexExpressionData};
-use crate::values::value_container::ValueContainer;
-use crate::values::value::Value;
-use crate::values::core_value::CoreValue;
 
 /// This trait defines a method for converting any value into a [DatexExpressionData] representation.
 /// It is implemented for all layers of values, e.g. [ValueContainer], [Value], [CoreValue], and native values.

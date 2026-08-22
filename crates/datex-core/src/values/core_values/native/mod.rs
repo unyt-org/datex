@@ -10,6 +10,7 @@ use crate::{
     values::{value::Value, value_container::ValueContainer},
 };
 mod datex_native_trait;
+#[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 
 pub use datex_native_trait::*;
