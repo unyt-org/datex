@@ -49,7 +49,7 @@ use crate::{
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainer,
         SharedContainerOwnership,
-        traits::SharedContainerCommon,
+        shared_container_common::SharedContainerCommon,
     },
     types::{
         r#type::Type,

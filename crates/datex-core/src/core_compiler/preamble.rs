@@ -18,7 +18,7 @@ use crate::{
     shared_values::{
         OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
         SharedContainer, SharedContainerMutability,
-        traits::SharedContainerCommon,
+        shared_container_common::SharedContainerCommon,
     },
     types::r#type::Type,
     values::value_container::{ValueContainer, value_key::ValueKey},
@@ -584,7 +584,7 @@ mod tests {
             ReferencedSharedContainer, SelfOwnedPointerAddress,
             SelfOwnedSharedContainer, SharedContainer,
             SharedContainerMutability, SharedContainerOwnership,
-            traits::SharedContainerCommon,
+            shared_container_common::SharedContainerCommon,
         },
         values::{
             core_values::{list::List, map::Map},

@@ -58,7 +58,7 @@ use crate::{
         type_definition_with_metadata::{
             LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
         },
-        traits::type_match::{TypeSubset, TypeSuperset},
+        type_match::{TypeSubset, TypeSuperset},
     },
     values::{
         core_value::CoreValue,

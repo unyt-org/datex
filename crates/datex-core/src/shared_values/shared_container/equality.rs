@@ -1,7 +1,7 @@
 use crate::{
     shared_values::{
-        SharedContainer,
-        traits::{_ExposeRcInternal, SharedContainerCommon},
+        SharedContainer, internal_traits::_ExposeRcInternal,
+        shared_container_common::SharedContainerCommon,
     },
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,

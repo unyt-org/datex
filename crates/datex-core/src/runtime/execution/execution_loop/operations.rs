@@ -23,9 +23,9 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         base_shared_value_container::observers::TransceiverId,
-        traits::SharedContainerCommon,
+        shared_container_common::SharedContainerCommon,
     },
-    types::{r#type::Type, traits::type_match::TypeSatisfiesValueContainer},
+    types::{r#type::Type, type_match::TypeSatisfiesValueContainer},
     value_updates::{
         update_data::SetEntryUpdateData, update_handler::UpdateHandler,
     },

@@ -177,7 +177,7 @@ mod tests {
             literal_type_definition::LiteralTypeDefinition,
             r#type::Type,
             type_definition::{TypeDefinition, map::MapTypeDefinition},
-            traits::type_match::TypeSatisfiesValueContainer,
+            type_match::TypeSatisfiesValueContainer,
         },
         values::{
             core_value::CoreValue,

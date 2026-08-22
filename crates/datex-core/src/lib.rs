@@ -78,24 +78,19 @@ pub use inventory;
 
 /// HashMap and HashSet that work in both std and no_std environments.
 pub mod collections {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "std")] {
-            pub use std::collections::{HashMap, HashSet, hash_map, hash_set};
-        } else {
-            pub use hashbrown::{HashMap, HashSet, hash_map, hash_set};
-        }
-    }
+    #[cfg(feature = "std")]
+    pub use std::collections::{HashMap, HashSet, hash_map, hash_set};
+
+    #[cfg(not(feature = "std"))]
+    pub use hashbrown::{HashMap, HashSet, hash_map, hash_set};
 }
 
 /// Reexport of Mutex that works in both std and no_std environments.
 pub mod std_sync {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "std")] {
-            pub use std::sync::Mutex;
-        } else {
-            pub use spin::Mutex;
-        }
-    }
+    #[cfg(not(feature = "std"))]
+    pub use spin::Mutex;
+    #[cfg(feature = "std")]
+    pub use std::sync::Mutex;
 }
 
 /// Crypto implementations selection based on target architecture and features.
@@ -114,6 +109,7 @@ pub mod crypto {
 }
 
 pub mod time {
+
     mod system_time {
         cfg_if::cfg_if! {
             if #[cfg(feature = "target_wasm")] {
@@ -155,11 +151,8 @@ pub mod time {
 }
 
 pub mod random {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "std")] {
-            pub use std::hash::RandomState;
-        } else {
-            pub use foldhash::fast::RandomState;
-        }
-    }
+    #[cfg(not(feature = "std"))]
+    pub use foldhash::fast::RandomState;
+    #[cfg(feature = "std")]
+    pub use std::hash::RandomState;
 }

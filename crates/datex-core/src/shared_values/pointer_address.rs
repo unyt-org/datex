@@ -1,4 +1,3 @@
-//! This module contains the definition of pointer addresses for shared containers.
 use crate::prelude::*;
 
 use crate::values::core_values::endpoint::Endpoint;

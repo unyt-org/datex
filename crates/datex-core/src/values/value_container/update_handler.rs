@@ -2,7 +2,7 @@ use crate::{
     prelude::*,
     shared_values::{
         base_shared_value_container::observers::TransceiverId,
-        traits::SharedContainerCommon,
+        shared_container_common::SharedContainerCommon,
     },
     value_updates::{
         errors::UpdateError,

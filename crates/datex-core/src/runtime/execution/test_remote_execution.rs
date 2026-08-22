@@ -8,7 +8,7 @@ use crate::{
     },
     shared_values::{
         PointerAddress, SharedContainer, SharedContainerMutability,
-        traits::SharedContainerCommon,
+        shared_container_common::SharedContainerCommon,
     },
     values::{
         core_values::{

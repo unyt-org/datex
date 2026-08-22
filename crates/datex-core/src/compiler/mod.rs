@@ -58,7 +58,7 @@ use crate::{
     runtime::{Runtime, execution::context::ExecutionMode},
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
-        traits::SharedContainerCommon,
+        shared_container_common::SharedContainerCommon,
     },
     time::Instant as TimingInstant,
     utils::buffers::{append_u8, append_u16, append_u32},

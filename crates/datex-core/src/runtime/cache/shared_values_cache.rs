@@ -8,7 +8,7 @@ use crate::{
             UnexpectedImmutableReferenceError,
             UnexpectedSharedContainerOwnershipError,
         },
-        traits::SharedContainerCommon,
+        shared_container_common::SharedContainerCommon,
     },
 };
 use core::fmt::Display;

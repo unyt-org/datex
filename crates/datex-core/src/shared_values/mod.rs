@@ -3,15 +3,17 @@
 pub mod base_shared_value_container;
 pub mod errors;
 mod external_shared_container;
+mod internal_traits; // IMPORTANT: don't expose this module, for internal use only
+pub mod mutations;
 mod owned_shared_container;
 mod ownership;
 mod pointer_address;
 mod referenced_shared_container;
 mod self_owned_shared_container;
 mod shared_container;
+pub(crate) mod shared_container_common;
 mod shared_container_inner;
 mod shared_container_mutability;
-pub mod traits;
 
 pub use external_shared_container::*;
 pub use owned_shared_container::*;

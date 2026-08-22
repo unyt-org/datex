@@ -17,7 +17,7 @@ use crate::{
                 TransceiverId,
             },
         },
-        traits::SharedContainerCommon,
+        shared_container_common::SharedContainerCommon,
     },
     traits::apply::{Apply, ApplyError},
     value_updates::{
