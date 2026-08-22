@@ -90,7 +90,7 @@ where
 impl<T: DatexNative> ToDatexNativeValueContainer for Shared<T> {
     fn boxed_to_datex_native_value_container(
         self,
-        cache: &mut SharedReferencesCache,
+        _cache: &mut SharedReferencesCache,
     ) -> ValueContainer {
         ValueContainer::Shared(self.container)
     }

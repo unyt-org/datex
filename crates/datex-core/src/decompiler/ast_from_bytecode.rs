@@ -34,7 +34,6 @@ use crate::{
         RequestSharedRef, RootPropertyAccess, StackAssignment,
         StackListAssignment, TagExpression, UnboxAssignment,
     },
-    global,
     global::{
         operators::{ComparisonOperator, ModificationOperator},
         stack_index::StackIndex,

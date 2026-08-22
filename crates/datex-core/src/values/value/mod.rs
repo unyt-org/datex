@@ -6,7 +6,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::KeyNotFoundError,
     types::{
-        r#type::Type::{self, Entity},
+        r#type::Type::{self},
         type_definition::{TypeDefinition, callable::CallableTypeDefinition},
     },
     utils::sheep::Sheep,
@@ -14,7 +14,6 @@ use crate::{
         core_value::CoreValue,
         core_values::{
             callable::{Callable, CallableBody},
-            integer::typed_integer::TypedInteger,
             native::DatexNative,
         },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
@@ -157,8 +156,8 @@ impl Value {
     /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
     pub fn inner_non_native(
         &self,
-        cache: &mut SharedReferencesCache,
-    ) -> Result<Cow<CoreValue>, TryToDatexValueError> {
+        _cache: &mut SharedReferencesCache,
+    ) -> Result<Cow<'_, CoreValue>, TryToDatexValueError> {
         Ok(Cow::Borrowed(&self.inner)) // workaround
         // TODO: implement try_borrowed_boxed_to_value
         // match &self.inner {
@@ -292,7 +291,7 @@ impl Value {
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainerOrCallable, AccessError> {
+    ) -> Result<ValueContainerOrCallable<'_>, AccessError> {
         match self.inner {
             CoreValue::Map(ref map) => {
                 // If the value is a map, get the property
@@ -313,7 +312,7 @@ impl Value {
                         Ref::filter_map(
                             container.entity_definition(),
                             |entity_definition| {
-                                entity_definition.try_get_property(&key)
+                                entity_definition.try_get_property(key)
                             },
                         )
                         .map_err(|_| {

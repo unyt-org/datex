@@ -1,5 +1,4 @@
 use crate::{
-    ast::type_expressions::Intersection,
     instruction::{
         NextExpectedInstructions,
         instruction_data::{
@@ -12,7 +11,6 @@ use crate::{
     prelude::*,
     types::{
         literal_type_definition::LiteralTypeDefinition,
-        type_definition::callable::CallableTypeDefinition,
         type_definition_with_metadata::TypeMetadata,
     },
 };

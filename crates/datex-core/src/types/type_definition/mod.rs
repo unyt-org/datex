@@ -404,7 +404,7 @@ impl From<TypeDefinition> for TypeDefinitionWithMetadata {
 impl From<Type> for TypeDefinitionWithMetadata {
     fn from(ty: Type) -> Self {
         match ty {
-            Type::Definition(definition) => definition.into(),
+            Type::Definition(definition) => definition,
             _ => ty.convert_to_definition().into(),
         }
     }

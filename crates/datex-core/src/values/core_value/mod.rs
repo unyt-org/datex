@@ -13,11 +13,6 @@ use crate::{
 use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
 use crate::{
-    datex_proxy::{
-        DatexProxyType, DatexValueProxyDeserialize, DatexValueProxySerialize,
-        TryToDatexValueError,
-    },
-    runtime::cache::shared_references_cache::SharedReferencesCache,
     types::r#type::Type,
     values::{
         core_values::{
@@ -37,16 +32,11 @@ use crate::{
             range::Range,
             text::Text,
         },
-        value::Value,
         value_container::ValueContainer,
     },
 };
 use binrw::error::CustomError;
-use core::{
-    any::Any,
-    fmt::{Debug, Display, Formatter},
-    hash::Hash,
-};
+use core::fmt::{Debug, Display, Formatter};
 
 mod child_iterator;
 pub mod datex_proxy;
@@ -240,7 +230,7 @@ impl From<&CoreValue> for CoreLibTypeId {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
             }
             CoreValue::Box(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Box),
-            CoreValue::Native(native) => {
+            CoreValue::Native(_native) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Any)
             }
         }
@@ -524,7 +514,7 @@ impl Display for CoreValue {
             }
             CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
             CoreValue::Box(inner) => write!(f, "({})", inner),
-            CoreValue::Native(native) => {
+            CoreValue::Native(_native) => {
                 write!(f, "[[ native value ]]")
             }
         }

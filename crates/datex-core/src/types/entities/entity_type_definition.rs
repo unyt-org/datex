@@ -1,8 +1,6 @@
 use super::entity_impls::{EntityImpl, EntityImplMethod};
 use crate::{
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-    prelude::*,
-    types::type_definition::TypeDefinition,
+    prelude::*, types::type_definition::TypeDefinition,
     values::core_values::callable::Callable,
 };
 use core::fmt::Display;

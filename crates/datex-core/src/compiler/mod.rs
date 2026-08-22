@@ -31,7 +31,6 @@ use crate::{
             append_shared_container_from_stack, append_typed_decimal,
             append_value,
         },
-        value_visitor::ValueVisitor,
     },
     global::{
         dxb_block::DXBBlock,
@@ -51,7 +50,7 @@ use crate::{
     instruction::{
         instruction_codes::InstructionCode,
         instruction_data::{
-            ApplyData, CallableDeclarationData, CallableSignatureData,
+            CallableDeclarationData, CallableSignatureData,
             InstructionBlockData, JumpData, ShortTextData,
             UnboundedStatementsData,
         },
