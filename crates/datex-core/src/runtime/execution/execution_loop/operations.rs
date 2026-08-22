@@ -25,7 +25,7 @@ use crate::{
         base_shared_value_container::observers::TransceiverId,
         traits::SharedContainerCommon,
     },
-    types::{traits::type_match::TypeSatisfiesValueContainer, r#type::Type},
+    types::{r#type::Type, traits::type_match::TypeSatisfiesValueContainer},
     value_updates::{
         update_data::SetEntryUpdateData, update_handler::UpdateHandler,
     },

@@ -3,7 +3,9 @@ use crate::{
     prelude::*,
     random::RandomState,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
-    shared_values::{SharedContainer, traits::SharedContainerCommon},
+    shared_values::{
+        SharedContainer, traits::SharedContainerCommon,
+    },
     traits::child_iterator::ChildIterator,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,

@@ -37,7 +37,7 @@ impl SharedContainerCommon for OwnedSharedContainer {
     }
 
     fn is_borrowed(&self) -> bool {
-        self.inner.try_borrow_mut().is_err()
+        !self.inner.try_borrow_mut().is_ok()
     }
 
     /// Checks if the owned container can be mutated by the local endpoint
