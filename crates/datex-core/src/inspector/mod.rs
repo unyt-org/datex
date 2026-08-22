@@ -1,15 +1,8 @@
 use crate::{
-    datex_proxy::{
-        DatexProxyType, DatexValueContainerProxySerialize,
-        DatexValueProxyInfallibleSerialize,
-    },
+    datex_proxy::{DatexProxyType, DatexValueProxyInfallibleSerialize},
     prelude::*,
     runtime::Runtime,
-    types::type_definition::callable::CallableKind,
-    values::{
-        core_values::callable::native_sync_callable,
-        value_container::ValueContainer,
-    },
+    values::value_container::ValueContainer,
 };
 use datex_macros_internal::{Datex, datex};
 

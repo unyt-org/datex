@@ -143,7 +143,7 @@ pub fn execute_dxb_sync(
                 {
                     interrupt_provider.provide_result(
                         InterruptResult::ResolvedValue(try_call_method_sync(
-                            callee, &method, args, &runtime,
+                            callee, method, args, &runtime,
                         )?),
                     )
                 } else {
@@ -302,7 +302,7 @@ pub async fn execute_dxb(
                     interrupt_provider.provide_result(
                         InterruptResult::ResolvedValue(
                             try_call_method_async(
-                                callee, &method, args, &runtime,
+                                callee, method, args, &runtime,
                             )
                             .await?,
                         ),

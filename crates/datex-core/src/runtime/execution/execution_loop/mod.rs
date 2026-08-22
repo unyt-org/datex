@@ -13,20 +13,14 @@ use crate::{
         injected_values::compile_injected_values,
     },
     dxb_parser::{
-        body::{
-            DXBParserError, SeekRequest, iterate_instructions,
-            iterate_instructions_with_seek,
-        },
+        body::{DXBParserError, SeekRequest, iterate_instructions_with_seek},
         instruction_collector::{
             CollectionResultsPopper, FullOrPartialResult, InstructionCollector,
             LastUnboundedResultCollector, ResultCollector,
             StatementResultCollectionStrategy,
         },
     },
-    global::{
-        self,
-        operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-    },
+    global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
     instruction::{
         Instruction, NestedInstructionResolutionStrategy,
         instruction_data::{
@@ -1099,7 +1093,7 @@ pub gen fn inner_execution_loop(
                                     let collapsed_value = value_container.collapsed_value();
                                     let res = collapsed_value.borrow().try_get_property(
                                         property_index,
-                                    ).map(|v| ValueContainer::from(v))
+                                    ).map(ValueContainer::from)
                                         .map_err(ExecutionError::access_error)?; // FIXME: no clone?
                                     res.into()
                                 }
@@ -1112,7 +1106,7 @@ pub gen fn inner_execution_loop(
 
                                     let value_container = target.as_value_container(&state.stack)?;
                                     let collapsed_value = value_container.collapsed_value();
-                                    let res = collapsed_value.borrow().try_get_property(&key).map(|v| ValueContainer::from(v))
+                                    let res = collapsed_value.borrow().try_get_property(&key).map(ValueContainer::from)
                                         .map_err(ExecutionError::access_error)?; // FIXME: no clone?
 
                                     res.into()

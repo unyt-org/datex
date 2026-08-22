@@ -7,10 +7,7 @@ use crate::{
             Union,
         },
     },
-    types::{
-        literal_type_definition::LiteralTypeDefinition,
-        type_definition::impl_type,
-    },
+    types::literal_type_definition::LiteralTypeDefinition,
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
@@ -19,7 +16,7 @@ use crate::{
 use crate::{
     ast::{
         expressions::{
-            Apply, CallableDeclaration, CallableSignature, CreateShared,
+            CallableDeclaration, CallableSignature, CreateShared,
             DeriveSharedRef, EntityValueExpression, Statements, TagExpression,
         },
         type_expressions::{

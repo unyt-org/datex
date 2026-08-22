@@ -4,7 +4,7 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
-use syn::{Item, ItemImpl};
+use syn::ItemImpl;
 
 pub fn generate_impl_glue_code(
     input: TokenStream,

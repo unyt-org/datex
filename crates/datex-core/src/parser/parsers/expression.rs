@@ -705,12 +705,16 @@ mod tests {
             spanned::Spanned,
             type_expressions::TypeExpressionData,
         },
-        global::operators::{
-            ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
-            LogicalUnaryOperator, ModificationOperator, UnaryOperator,
-            binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
+        global::{
+            operators::{
+                ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
+                LogicalUnaryOperator, ModificationOperator, UnaryOperator,
+                binary::{
+                    ArithmeticOperator, BitwiseOperator, LogicalOperator,
+                },
+            },
+            stack_index::StackIndex,
         },
-        global::stack_index::StackIndex,
         parser::{
             errors::{ParserError, SpannedParserError},
             tests::{

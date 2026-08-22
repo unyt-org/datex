@@ -20,7 +20,6 @@ use core::{
     ops::{Deref, Range},
     result::Result,
 };
-use serde::Serialize;
 
 // This is needed to place correct Offsets for Jumps in Conditions
 pub type SeekRequest = Rc<RefCell<Option<i32>>>;
@@ -221,12 +220,12 @@ pub gen fn iterate_instructions_with_seek(
 
     loop {
         // check for pending seek request
-        if let Some(seek_request) = seek_request.as_ref() {
-            if let Some(seek_offset) = seek_request.borrow_mut().take() {
-                let new_pos = reader.position() as i64 + seek_offset as i64;
-                reader.set_position(new_pos.max(0) as u64);
-                continue;
-            }
+        if let Some(seek_request) = seek_request.as_ref()
+            && let Some(seek_offset) = seek_request.borrow_mut().take()
+        {
+            let new_pos = reader.position() as i64 + seek_offset as i64;
+            reader.set_position(new_pos.max(0) as u64);
+            continue;
         }
 
         if reader.position() as usize >= len {

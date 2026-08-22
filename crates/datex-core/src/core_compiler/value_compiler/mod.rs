@@ -5,7 +5,6 @@ use crate::{
         type_compiler::append_type_instruction,
         value_visitor::ValueVisitor,
     },
-    global::stack_index::StackIndex,
     instruction::{
         instruction_codes::InstructionCode,
         regular_instruction::RegularInstruction,

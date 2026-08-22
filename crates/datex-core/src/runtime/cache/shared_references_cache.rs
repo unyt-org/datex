@@ -1,9 +1,8 @@
 use crate::{
     collections::{HashMap, HashSet},
-    prelude::*,
     shared_values::{
-        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
-        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
+        PointerAddress, ReferencedSharedContainer, SelfOwnedPointerAddress,
+        SharedContainer, SharedContainerMutability,
         traits::SharedContainerCommon,
         weak_shared_container::WeakSharedContainer,
     },

@@ -4,7 +4,6 @@ use crate::{
     core_compiler::core_compilation_context::{
         CompileInput, DXBWithSharedValues,
     },
-    datex_proxy::DatexValueContainerProxySerialize,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{

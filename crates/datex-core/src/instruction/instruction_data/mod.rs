@@ -23,10 +23,7 @@ use binrw::{
     io::{Read, Seek, Write},
     meta::{EndianKind, ReadEndian},
 };
-use core::{
-    fmt::Display,
-    ops::{AddAssign, Deref},
-};
+use core::{fmt::Display, ops::Deref};
 use itertools::Itertools;
 use modular_bitfield::{bitfield, prelude::B4};
 

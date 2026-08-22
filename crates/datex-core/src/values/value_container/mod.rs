@@ -68,7 +68,7 @@ impl ValueContainer {
 
     pub fn owner(&self) -> Endpoint {
         match self {
-            ValueContainer::Local(value) => Endpoint::LOCAL,
+            ValueContainer::Local(_value) => Endpoint::LOCAL,
             ValueContainer::Shared(shared) => {
                 shared.pointer_address().endpoint()
             }
@@ -76,7 +76,7 @@ impl ValueContainer {
     }
 
     /// Gets a reference to the inner [ValueContainer], regardless of whether it is local or shared.
-    pub fn value_container(&self) -> Sheep<ValueContainer> {
+    pub fn value_container(&self) -> Sheep<'_, ValueContainer> {
         match self {
             ValueContainer::Local(_) => Sheep::Borrowed(self),
             ValueContainer::Shared(shared) => {
@@ -86,7 +86,7 @@ impl ValueContainer {
     }
 
     /// Gets a mutable reference to the inner [ValueContainer], regardless of whether it is local or shared.
-    pub fn value_container_mut(&mut self) -> SheepMut<ValueContainer> {
+    pub fn value_container_mut(&mut self) -> SheepMut<'_, ValueContainer> {
         match self {
             ValueContainer::Local(_) => SheepMut::Borrowed(self),
             ValueContainer::Shared(shared) => {

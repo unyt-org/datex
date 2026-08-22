@@ -5,7 +5,7 @@ use core::{
 };
 
 use crate::{
-    datex_proxy::{DatexValueProxySerialize, ToDatexNativeValueContainer},
+    datex_proxy::ToDatexNativeValueContainer,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     values::{value::Value, value_container::ValueContainer},
 };

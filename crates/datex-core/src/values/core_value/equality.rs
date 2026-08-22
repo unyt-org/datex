@@ -140,7 +140,7 @@ impl Hash for CoreValue {
             CoreValue::Callable(c) => c.hash(state),
             CoreValue::Range(r) => r.hash(state),
             CoreValue::Box(b) => b.hash(state),
-            CoreValue::Native(e) => {
+            CoreValue::Native(_e) => {
                 todo!("Hashing for native values is not implemented yet")
             }
         }

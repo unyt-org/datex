@@ -1,7 +1,6 @@
-use crate::utils::get_datex_core_crate_name;
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
-use syn::{Attribute, Item, ItemEnum, ItemMod, ItemStruct, Meta};
+use quote::quote;
+use syn::{Attribute, ItemMod};
 pub fn generate_mod_glue_code(
     input: TokenStream,
     item: &ItemMod,
@@ -12,7 +11,7 @@ pub fn generate_mod_glue_code(
         };
     };
 
-    let module_name = item.ident.to_string();
+    let _module_name = item.ident.to_string();
 
     let attrs = strip_datex_attributes(&item.attrs);
     let vis = &item.vis;
