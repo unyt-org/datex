@@ -583,7 +583,6 @@ fn struct_with_owned_shared_value_container() {
 #[test]
 fn get_datex_type_from_struct() {
     let dx_type = Example::datex_type_without_cache();
-    println!("{}", dx_type);
 
     assert_eq!(
         dx_type,
@@ -643,7 +642,6 @@ fn get_datex_type_from_struct() {
 #[test]
 fn get_datex_type_from_enum() {
     let dx_type = ExampleEnum::datex_type_without_cache();
-    println!("{}", dx_type);
 
     assert_eq!(
         dx_type,

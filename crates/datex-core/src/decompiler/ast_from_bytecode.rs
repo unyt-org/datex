@@ -472,15 +472,12 @@ pub fn ast_from_bytecode(
                             }
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             TypeInstruction::List(_)
+                            | TypeInstruction::Union(_)
                             | TypeInstruction::Range
                             | TypeInstruction::ImplType(_)
                             | TypeInstruction::TaggedType(_)
                             | TypeInstruction::Map(_)
                             | TypeInstruction::DefinitionWithMetadata(_) => {
-                                println!(
-                                    "TypeInstruction {:?} not yet implemented in ast_from_bytecode",
-                                    type_instruction
-                                );
                                 unreachable!()
                             }
                         }

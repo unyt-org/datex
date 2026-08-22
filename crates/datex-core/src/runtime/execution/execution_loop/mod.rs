@@ -31,6 +31,7 @@ use crate::{
                 FloatAsInt32Data, InstantData, JumpData, MapData,
                 ShortStatementsData, ShortTextData, StatementsData,
                 TaggedTypeData, TaggedValue, TextData, UnboundedStatementsData,
+                UnionData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
@@ -71,7 +72,7 @@ use crate::{
         type_definition::{
             TypeDefinition, impl_type::ImplTypeDefinition,
             map::MapTypeDefinition, range::RangeTypeDefinition,
-            tagged_type::TaggedTypeDefinition,
+            tagged_type::TaggedTypeDefinition, union::UnionTypeDefinition,
         },
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
@@ -478,7 +479,11 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::CallableDeclaration(_) |
                             RegularInstruction::Callable(_) |
                             RegularInstruction::BoxedValue |
-                            RegularInstruction::TypeExpression => unreachable!(),
+                            RegularInstruction::TypeExpression => {
+                                // Note: If we reach this unreachable statement, we most probably forget to add a match
+                                // arm to [RegularInstruction::get_next_expected_instructions](datex_core::global::protocol_structures::regular_instructions)
+                                unreachable!()
+                            },
                             #[cfg(feature = "disassembler")]
                             RegularInstruction::_RemoteExecutionDebugFlat(_) |
                             RegularInstruction::_RemoteExecutionDebugTree(_) |
@@ -574,6 +579,7 @@ pub gen fn inner_execution_loop(
 
                         // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                         TypeInstruction::List(_)
+                        | TypeInstruction::Union(_)
                         | TypeInstruction::Map(_)
                         | TypeInstruction::DefinitionWithMetadata(_)
                         | TypeInstruction::Range
@@ -771,8 +777,8 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 instruction @ (
-                                RegularInstruction::CreateShared |
-                                RegularInstruction::CreateSharedMut
+                                    RegularInstruction::CreateShared |
+                                    RegularInstruction::CreateSharedMut
                                 ) => {
                                     let value = collected_results
                                         .try_pop_value_container(&mut state)?;
@@ -1474,6 +1480,14 @@ pub gen fn inner_execution_loop(
                                             map_entries.push((key_type, value_type));
                                         }
                                         TypeDefinition::Map(MapTypeDefinition(map_entries)).into()
+                                    }
+                                    TypeInstruction::Union(UnionData {element_count}) => {
+                                        let mut union_entries = Vec::with_capacity(element_count as usize);
+                                        for _ in 0..element_count {
+                                            let ty = collected_results.pop_type();
+                                            union_entries.push(ty);
+                                        }
+                                        TypeDefinition::Union(UnionTypeDefinition(union_entries)).into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),
                                 }

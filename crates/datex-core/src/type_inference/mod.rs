@@ -1720,7 +1720,10 @@ mod tests {
             runtime.clone(),
         )
         .expect("Precompilation failed");
-        infer_expression_type_with_errors(&mut res, &runtime.shared_references_cache().borrow())
+        infer_expression_type_with_errors(
+            &mut res,
+            &runtime.shared_references_cache().borrow(),
+        )
     }
 
     /// Infers the type of the given expression.
@@ -1798,13 +1801,6 @@ mod tests {
             *res.get(0).unwrap().error,
             TypeError::SubvariantNotFound("x".into(), "whatever".into())
         );
-
-        // let src = r#"
-        // type x = integer;
-        // x/u8
-        // "#;
-        // let res = errors_for_script(src);
-        // println!("Inferred type: {:?}", res);
     }
 
     #[test]

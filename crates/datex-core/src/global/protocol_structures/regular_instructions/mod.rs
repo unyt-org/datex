@@ -926,7 +926,9 @@ impl RegularInstruction {
             RegularInstruction::Decrement => {
                 NextExpectedInstructions::Regular(2)
             }
-
+            RegularInstruction::BoxedValue => {
+                NextExpectedInstructions::Regular(1)
+            }
             RegularInstruction::CallableDeclaration(data) => {
                 NextExpectedInstructions::Type(
                     data.signature.total_type_count(),

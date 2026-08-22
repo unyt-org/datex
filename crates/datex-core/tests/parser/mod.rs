@@ -721,7 +721,6 @@ fn if_else() {
 
     let src = vec!["if (true + 1 == 2) (4) else (2)"];
     for s in src {
-        println!("{}", s);
         let val = parse_unwrap_data(s);
         assert_eq!(
             val,

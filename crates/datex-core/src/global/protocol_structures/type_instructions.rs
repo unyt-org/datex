@@ -2,6 +2,7 @@ use crate::{
     global::protocol_structures::{
         instruction_data::{
             ImplTypeData, ListData, MapData, TaggedTypeData, TypeReferenceData,
+            UnionData,
         },
         instructions::NextExpectedInstructions,
     },
@@ -39,6 +40,8 @@ pub enum TypeInstruction {
     TaggedType(TaggedTypeData),
     #[brw(magic = 0x8u8)]
     Map(MapData),
+    #[brw(magic = 0x9u8)]
+    Union(UnionData),
 }
 
 /// Serializes TypeInstruction to tuple (instruction code as string, optional metadata as string)
@@ -70,8 +73,12 @@ impl TypeInstruction {
             } // list elements
 
             TypeInstruction::Map(map) => {
-                NextExpectedInstructions::Type(map.element_count) // FIXME *2?
+                NextExpectedInstructions::Type(map.element_count * 2) // FIXME *2?
             } // map key-value pairs
+
+            TypeInstruction::Union(union) => {
+                NextExpectedInstructions::Type(union.element_count)
+            } // union elements
 
             TypeInstruction::ImplType(_) => NextExpectedInstructions::Type(1), // impl type
             TypeInstruction::TaggedType(ty) => {
@@ -113,6 +120,12 @@ impl TypeInstruction {
             }
             TypeInstruction::TaggedType(data) => {
                 write!(string, "[tag: {}]", data.tag.0)
+            }
+            TypeInstruction::Map(data) => {
+                write!(string, "[{} entries]", data.element_count)
+            }
+            TypeInstruction::Union(data) => {
+                write!(string, "[{} elements]", data.element_count)
             }
             _ => {
                 // no custom disassembly

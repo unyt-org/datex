@@ -396,6 +396,12 @@ pub struct MapData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
+pub struct UnionData {
+    pub element_count: u32,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
 pub struct InstructionCloseAndStore {
     pub instruction: Int8Data,
 }
