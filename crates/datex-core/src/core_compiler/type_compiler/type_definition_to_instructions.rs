@@ -5,7 +5,8 @@ use crate::{
     },
     instruction::{
         instruction_data::{
-            ImplTypeData, ListData, MapData, TaggedTypeData, UnionData,
+            ImplTypeData, IntersectionData, ListData, ListSliceCollectionData,
+            MapData, TaggedTypeData, UnionData,
         },
         type_instruction::TypeInstruction,
     },
@@ -301,7 +302,7 @@ impl ToInstructions for ListCollectionTypeDefinition {
         shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            todo!("Add instr");
+            yield TypeInstruction::ListCollection;
             for instruction in self.0.to_instructions(shared_value_tracking) {
                 yield instruction;
             }
@@ -316,7 +317,7 @@ impl ToInstructions for MapCollectionTypeDefinition {
         mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen move {
-            todo!("Add instr");
+            yield TypeInstruction::MapCollection;
             for instruction in self
                 .key_type
                 .to_instructions(shared_value_tracking.as_deref_mut())
@@ -340,9 +341,22 @@ impl ToInstructions for ListSliceCollectionTypeDefinition {
 
     fn to_instructions<'a>(
         &'a self,
-        _shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen { todo!() })
+        Box::new(gen move {
+            yield TypeInstruction::ListSliceCollection(
+                ListSliceCollectionData {
+                    element_count: self.size as u32,
+                },
+            );
+            for instruction in self
+                .item_type
+                .to_instructions(shared_value_tracking.as_deref_mut())
+                .collect::<Vec<_>>()
+            {
+                yield instruction;
+            }
+        })
     }
 }
 
@@ -354,7 +368,9 @@ impl ToInstructions for IntersectionTypeDefinition {
         mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen move {
-            todo!("Add instr");
+            yield TypeInstruction::Intersection(IntersectionData {
+                element_count: self.len() as u32,
+            });
             for ty in self.iter() {
                 for instruction in ty
                     .to_instructions(shared_value_tracking.as_deref_mut())

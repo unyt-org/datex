@@ -473,6 +473,10 @@ pub fn ast_from_bytecode(
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             TypeInstruction::List(_)
                             | TypeInstruction::Union(_)
+                            | TypeInstruction::Intersection(_)
+                            | TypeInstruction::ListSliceCollection(_)
+                            | TypeInstruction::ListCollection
+                            | TypeInstruction::MapCollection
                             | TypeInstruction::Range
                             | TypeInstruction::ImplType(_)
                             | TypeInstruction::TaggedType(_)

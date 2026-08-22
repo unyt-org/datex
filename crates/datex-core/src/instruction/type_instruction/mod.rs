@@ -1,9 +1,10 @@
 use crate::{
+    ast::type_expressions::Intersection,
     instruction::{
         NextExpectedInstructions,
         instruction_data::{
-            ImplTypeData, ListData, MapData, TaggedTypeData, TypeReferenceData,
-            UnionData,
+            ImplTypeData, IntersectionData, ListData, ListSliceCollectionData,
+            MapData, TaggedTypeData, TypeReferenceData, UnionData,
         },
     },
     libs::core::type_id::CoreLibTypeId,
@@ -42,6 +43,14 @@ pub enum TypeInstruction {
     Map(MapData),
     #[brw(magic = 0x9u8)]
     Union(UnionData),
+    #[brw(magic = 0xAu8)]
+    Intersection(IntersectionData),
+    #[brw(magic = 0xBu8)]
+    ListSliceCollection(ListSliceCollectionData),
+    #[brw(magic = 0xCu8)]
+    MapCollection,
+    #[brw(magic = 0xDu8)]
+    ListCollection,
 }
 
 /// Serializes TypeInstruction to tuple (instruction code as string, optional metadata as string)
@@ -70,31 +79,35 @@ impl TypeInstruction {
         match self {
             TypeInstruction::List(list) => {
                 NextExpectedInstructions::Type(list.element_count)
-            } // list elements
-
+            }
+            TypeInstruction::ListCollection => {
+                NextExpectedInstructions::Type(1)
+            }
+            TypeInstruction::MapCollection => NextExpectedInstructions::Type(2),
+            TypeInstruction::ListSliceCollection(data) => {
+                NextExpectedInstructions::Type(data.element_count)
+            }
+            TypeInstruction::Intersection(intersection) => {
+                NextExpectedInstructions::Type(intersection.element_count)
+            }
             TypeInstruction::Map(map) => {
-                NextExpectedInstructions::Type(map.element_count * 2) // FIXME *2?
-            } // map key-value pairs
-
+                NextExpectedInstructions::Type(map.element_count * 2) // map key-value pairs
+            }
             TypeInstruction::Union(union) => {
                 NextExpectedInstructions::Type(union.element_count)
-            } // union elements
-
-            TypeInstruction::ImplType(_) => NextExpectedInstructions::Type(1), // impl type
+            }
+            TypeInstruction::ImplType(_) => NextExpectedInstructions::Type(1),
             TypeInstruction::TaggedType(ty) => {
                 if ty.has_type {
                     NextExpectedInstructions::Type(1)
                 } else {
                     NextExpectedInstructions::None
                 }
-            } // tagged type
-
+            }
             TypeInstruction::DefinitionWithMetadata(_) => {
                 NextExpectedInstructions::Type(1)
-            } // metadata type instruction
-
-            TypeInstruction::Range => NextExpectedInstructions::Type(2), // range has 2 type instructions
-
+            }
+            TypeInstruction::Range => NextExpectedInstructions::Type(2),
             _ => NextExpectedInstructions::None,
         }
     }

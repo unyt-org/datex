@@ -40,10 +40,12 @@ pub mod update_handler;
     Serialize,
     Deserialize,
     Display,
+    Default,
 )]
 #[strum(serialize_all = "lowercase")]
 #[repr(u8)]
 pub enum DecimalTypeVariant {
+    #[default]
     F32,
     F64,
     DBig,

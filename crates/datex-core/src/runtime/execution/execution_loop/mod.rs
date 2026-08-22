@@ -23,15 +23,18 @@ use crate::{
             StatementResultCollectionStrategy,
         },
     },
-    global,
-    global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
+    global::{
+        self,
+        operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
+    },
     instruction::{
         Instruction, NestedInstructionResolutionStrategy,
         instruction_data::{
             ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, InstantData, JumpData, MapData,
-            ShortStatementsData, ShortTextData, StatementsData, TaggedTypeData,
-            TaggedValue, TextData, UnboundedStatementsData, UnionData,
+            FloatAsInt32Data, InstantData, IntersectionData, JumpData,
+            ListSliceCollectionData, MapData, ShortStatementsData,
+            ShortTextData, StatementsData, TaggedTypeData, TaggedValue,
+            TextData, UnboundedStatementsData, UnionData,
         },
         regular_instruction::RegularInstruction,
         type_instruction::TypeInstruction,
@@ -68,9 +71,21 @@ use crate::{
     types::{
         r#type::Type,
         type_definition::{
-            TypeDefinition, impl_type::ImplTypeDefinition,
-            map::MapTypeDefinition, range::RangeTypeDefinition,
-            tagged_type::TaggedTypeDefinition, union::UnionTypeDefinition,
+            TypeDefinition,
+            collection::{
+                CollectionTypeDefinition,
+                type_definition::{
+                    list::ListCollectionTypeDefinition,
+                    list_slice::ListSliceCollectionTypeDefinition,
+                    map::MapCollectionTypeDefinition,
+                },
+            },
+            impl_type::ImplTypeDefinition,
+            intersection::IntersectionTypeDefinition,
+            map::MapTypeDefinition,
+            range::RangeTypeDefinition,
+            tagged_type::TaggedTypeDefinition,
+            union::UnionTypeDefinition,
         },
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
@@ -575,6 +590,10 @@ pub gen fn inner_execution_loop(
 
                         // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                         TypeInstruction::List(_)
+                        | TypeInstruction::Intersection(_)
+                        | TypeInstruction::ListSliceCollection(_)
+                        | TypeInstruction::MapCollection
+                        | TypeInstruction::ListCollection
                         | TypeInstruction::Union(_)
                         | TypeInstruction::Map(_)
                         | TypeInstruction::DefinitionWithMetadata(_)
@@ -1485,7 +1504,37 @@ pub gen fn inner_execution_loop(
                                         }
                                         TypeDefinition::Union(UnionTypeDefinition(union_entries)).into()
                                     }
-                                    _ => todo!("#649 Undescribed by author."),
+                                    TypeInstruction::Intersection(IntersectionData {element_count}) => {
+                                        let mut intersection_entries = Vec::with_capacity(element_count as usize);
+                                        for _ in 0..element_count {
+                                            let ty = collected_results.pop_type();
+                                            intersection_entries.push(ty);
+                                        }
+                                        TypeDefinition::Intersection(IntersectionTypeDefinition(intersection_entries)).into()
+                                    }
+                                    TypeInstruction::ListSliceCollection(ListSliceCollectionData { element_count }) => {
+                                        let ty = collected_results.pop_type();
+                                        TypeDefinition::Collection(CollectionTypeDefinition::ListSlice(
+                                            ListSliceCollectionTypeDefinition::new(ty, element_count as usize)
+                                        )).into()
+                                    }
+                                    TypeInstruction::MapCollection => {
+                                        let value_type = collected_results.pop_type();
+                                        let key_type = collected_results.pop_type();
+                                        TypeDefinition::Collection(CollectionTypeDefinition::Map(
+                                            MapCollectionTypeDefinition::new(key_type, value_type)
+                                        )).into()
+                                    }
+                                    TypeInstruction::ListCollection => {
+                                        let ty = collected_results.pop_type();
+                                        TypeDefinition::Collection(CollectionTypeDefinition::List(
+                                            ListCollectionTypeDefinition::new(ty)
+                                        )).into()
+                                    }
+                                    e => todo!(
+                                        "Unhandled collected type instruction: {:?}",
+                                        e
+                                    ),
                                 }
                             }
                         }

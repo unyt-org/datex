@@ -531,6 +531,18 @@ impl TaggedTypeData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
+pub struct IntersectionData {
+    pub(crate) element_count: u32,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ListSliceCollectionData {
+    pub(crate) element_count: u32,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
 pub struct TypeReferenceData {
     pub address: PointerAddress,
 }

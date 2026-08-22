@@ -23,6 +23,7 @@ use datex_core::{
 pub mod local_values;
 pub mod shared_values;
 
+pub mod types;
 /// Compiles and executes a script that takes a single value input.
 /// Compiles local values and owned shared values as "?", and shared references as "'?" or "'mut ?" depending on their mutability.
 pub fn compile_and_execute(input: ValueContainer) -> ValueContainer {
