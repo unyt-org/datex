@@ -1,7 +1,9 @@
-use std::any::Any;
-use crate::datex_proxy::DatexValueProxySerialize;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::values::value::Value;
+use crate::{
+    datex_proxy::DatexValueProxySerialize, prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    values::value::Value,
+};
+use core::any::Any;
 pub trait DatexNative: Any + DatexValueProxySerialize + DynEq {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -36,7 +38,6 @@ where
     T: Any + PartialEq,
 {
     fn dyn_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<T>() == Some(self)
+        other.downcast_ref::<T>() == Some(self)
     }
 }

@@ -2,8 +2,12 @@ pub mod datex_proxy;
 
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError},
+    prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-    shared_values::{SharedContainer, SharedContainerMutability},
+    shared_values::{
+        SharedContainer, SharedContainerMutability,
+        traits::SharedContainerCommon,
+    },
     types::type_definition::TypeDefinition,
     values::{
         core_value::CoreValue,
@@ -12,9 +16,10 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::ops::{Deref, DerefMut};
-use core::cell::{Ref, RefMut};
-use crate::shared_values::traits::SharedContainerCommon;
+use core::{
+    cell::{Ref, RefMut},
+    ops::Deref,
+};
 
 pub struct Shared<T: DatexNative + ?Sized> {
     container: SharedContainer,
@@ -26,8 +31,7 @@ impl<T: DatexNative> Shared<T> {
         self.container
     }
 
-    pub fn borrow(&self) -> Ref<'_, T>
-    {
+    pub fn borrow(&self) -> Ref<'_, T> {
         Ref::map(self.container.value_container(), |value_container| {
             match value_container {
                 ValueContainer::Local(value) => {
@@ -42,8 +46,7 @@ impl<T: DatexNative> Shared<T> {
         })
     }
 
-    pub fn borrow_mut(&mut self) -> RefMut<'_, T>
-    {
+    pub fn borrow_mut(&mut self) -> RefMut<'_, T> {
         RefMut::map(self.container.value_container_mut(), |value_container| {
             match value_container {
                 ValueContainer::Local(value) => {
@@ -131,8 +134,7 @@ mod test {
         shared_values::{SharedContainer, SharedContainerMutability},
     };
 
-    use crate::prelude::*;
-    use crate::values::core_value::CoreValue;
+    use crate::{prelude::*, values::core_value::CoreValue};
 
     #[test]
     fn string_shared() {
