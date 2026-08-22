@@ -3,5 +3,3 @@
 rustc-ice-*
 target
 *.dbg
-extensions
-.datex-cache

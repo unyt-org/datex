@@ -3,7 +3,7 @@ use crate::{
     global::operators::UnaryOperator,
     parser::lexer::Token,
     values::core_values::{
-        endpoint::InvalidEndpointError, error::NumbersError,
+        endpoint::InvalidEndpointError, error::NumberParseError,
     },
 };
 
@@ -25,7 +25,7 @@ pub enum ParserError {
         details: InvalidEndpointError,
     },
     InvalidAssignmentTarget,
-    NumberParseError(NumbersError),
+    NumberParseError(NumberParseError),
     InvalidUnaryOperation {
         operator: UnaryOperator,
     },
