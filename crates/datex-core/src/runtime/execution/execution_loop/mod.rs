@@ -24,9 +24,9 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, ModifyStackValue,
-                ShortStatementsData, ShortTextData, StatementsData,
-                TaggedValue, TextData, UnboundedStatementsData,
+                FloatAsInt32Data, ModifyStackValue, ShortStatementsData,
+                ShortTextData, StatementsData, TaggedValue, TextData,
+                UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
@@ -83,7 +83,7 @@ use crate::{
             callable::{Callable, CallableBody, CoreStub},
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
+            integer::typed_integer::TypedInteger,
             list::List,
             map::{Map, MapKey},
         },

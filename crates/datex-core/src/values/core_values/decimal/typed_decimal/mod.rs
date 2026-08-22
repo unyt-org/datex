@@ -185,7 +185,7 @@ impl TypedDecimal {
     pub fn try_from_string_and_variant(
         value: &str,
         variant: DecimalTypeVariant,
-    ) -> Result<Self, NumberParseError> {
+    ) -> Result<Self, NumbersError> {
         match variant {
             DecimalTypeVariant::F32 => Self::parse_checked_f32(value),
             DecimalTypeVariant::F64 => Self::parse_checked_f64(value),
@@ -375,7 +375,7 @@ mod tests {
                 Decimal,
                 typed_decimal::{DecimalTypeVariant, TypedDecimal},
             },
-            error::NumberParseError,
+            error::NumbersError,
         },
     };
     use core::assert_matches;
@@ -687,34 +687,34 @@ mod tests {
     }
 
     #[test]
-    fn try_from_string_and_variant() {
-        let a = TypedDecimal::try_from_string_and_variant(
+    fn from_string_and_variant_in_range() {
+        let a = TypedDecimal::from_string_and_variant_in_range(
             "1e40",
             DecimalTypeVariant::F32,
         );
         assert!(a.is_err());
-        assert_eq!(a.err().unwrap(), NumberParseError::OutOfRange);
+        assert_eq!(a.err().unwrap(), NumbersError::OutOfRange);
 
-        let b = TypedDecimal::try_from_string_and_variant(
+        let b = TypedDecimal::from_string_and_variant_in_range(
             "-1e40",
             DecimalTypeVariant::F32,
         );
         assert!(b.is_err());
-        assert_eq!(b.err().unwrap(), NumberParseError::OutOfRange);
+        assert_eq!(b.err().unwrap(), NumbersError::OutOfRange);
 
-        let c = TypedDecimal::try_from_string_and_variant(
+        let c = TypedDecimal::from_string_and_variant_in_range(
             "1e1000",
             DecimalTypeVariant::F64,
         );
         assert!(c.is_err());
-        assert_eq!(c.err().unwrap(), NumberParseError::OutOfRange);
+        assert_eq!(c.err().unwrap(), NumbersError::OutOfRange);
 
-        let d = TypedDecimal::try_from_string_and_variant(
+        let d = TypedDecimal::from_string_and_variant_in_range(
             "-1e1000",
             DecimalTypeVariant::F64,
         );
         assert!(d.is_err());
-        assert_eq!(d.err().unwrap(), NumberParseError::OutOfRange);
+        assert_eq!(d.err().unwrap(), NumbersError::OutOfRange);
     }
 
     #[test]

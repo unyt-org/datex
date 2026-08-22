@@ -16,7 +16,6 @@ use crate::{
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
     values::core_values::{
-        Instant,
         boolean::Boolean,
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,

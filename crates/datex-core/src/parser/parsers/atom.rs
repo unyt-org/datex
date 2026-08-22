@@ -765,7 +765,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Does panic"]
     fn parse_iso_datetime_without_seconds() {
         let expr = parse("2026-04-13T18:28Z");
         assert_eq!(

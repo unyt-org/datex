@@ -27,10 +27,10 @@ use crate::{
         value_compiler::{
             append_boolean, append_decimal, append_encoded_integer,
             append_endpoint, append_float_as_i16, append_float_as_i32,
-            append_get_shared_ref, append_instant, append_integer,
-            append_key_string, append_regular_instruction,
-            append_shared_container_from_stack, append_statements_preamble,
-            append_text, append_typed_decimal, append_value,
+            append_get_shared_ref, append_integer, append_key_string,
+            append_regular_instruction, append_shared_container_from_stack,
+            append_statements_preamble, append_text, append_typed_decimal,
+            append_value,
         },
     },
     global::{

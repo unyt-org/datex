@@ -16,7 +16,6 @@ use crate::{
         SelfOwnedPointerAddress, SharedContainerMutability,
     },
     types::type_definition_with_metadata::TypeMetadata,
-    values::core_values::{decimal::Decimal, integer::Integer},
 };
 use alloc::string::FromUtf8Error;
 use binrw::{

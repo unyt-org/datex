@@ -404,7 +404,7 @@ fn parse_error_u8() {
     let error = errors[0].clone();
     assert_eq!(
         error.error,
-        ParserError::NumberParseError(NumberParseError::OutOfRange)
+        ParserError::NumberParseError(NumbersError::OutOfRange)
     );
     assert_eq!(error.span, 8..13);
 }
@@ -420,7 +420,7 @@ fn parse_error_typed_decimal() {
     let error = errors[0].clone();
     assert_eq!(
         error.error,
-        ParserError::NumberParseError(NumberParseError::OutOfRange)
+        ParserError::NumberParseError(NumbersError::OutOfRange)
     );
     // assert_eq!(error.span, 8..63);
 }
