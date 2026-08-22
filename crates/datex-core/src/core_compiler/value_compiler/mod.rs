@@ -130,6 +130,7 @@ pub fn append_shared_container_from_stack(
     let ownership = shared_container.ownership();
     let index = context
         .shared_value_tracking
+        .borrow_mut()
         .register_shared_value(shared_container);
     context.write(match ownership {
         SharedContainerOwnership::Owned => {
@@ -771,6 +772,7 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
+                .borrow()
                 .tracked_values
                 .get(&owned_shared_clone)
                 .unwrap(),
@@ -862,6 +864,7 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
+                .borrow()
                 .tracked_values
                 .get(&inner_a_shared)
                 .unwrap(),
@@ -871,6 +874,7 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
+                .borrow()
                 .tracked_values
                 .get(&inner_b_shared_clone)
                 .unwrap(),
@@ -880,6 +884,7 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
+                .borrow()
                 .tracked_values
                 .get(&outer_shared_clone)
                 .unwrap(),
@@ -991,6 +996,7 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
+                .borrow()
                 .tracked_values
                 .get(&inner_shared_clone)
                 .unwrap(),
@@ -1000,6 +1006,7 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
+                .borrow()
                 .tracked_values
                 .get(&outer_shared_clone)
                 .unwrap(),
@@ -1079,6 +1086,7 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
+                .borrow()
                 .tracked_values
                 .get(&reference)
                 .unwrap(),
@@ -1160,6 +1168,7 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
+                .borrow()
                 .tracked_values
                 .get(&a_shared_clone)
                 .unwrap(),
@@ -1171,6 +1180,7 @@ mod tests {
         assert_matches!(
             context
                 .shared_value_tracking
+                .borrow()
                 .tracked_values
                 .get(&b_shared_clone)
                 .unwrap(),

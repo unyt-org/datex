@@ -2,6 +2,7 @@ use crate::{
     prelude::*,
     values::value_container::{ValueContainer, error::ValueError},
 };
+mod to_instructions;
 
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, result::Result};

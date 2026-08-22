@@ -2,7 +2,7 @@ use crate::{
     ast::type_expressions::{TypeExpression, TypeExpressionData},
     core_compiler::{
         shared_value_tracking::SharedValueTracking,
-        to_instructions::ToInstructions,
+        to_instructions::{InstructionContext, ToInstructions},
     },
     instruction::type_instruction::TypeInstruction,
     prelude::*,
@@ -10,10 +10,10 @@ use crate::{
 };
 impl ToInstructions for TypeExpression {
     type InstructionType = TypeInstruction;
-    fn to_instructions<'a>(
-        &'a self,
-        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
         Box::new(gen move {
             match self.data() {
                 TypeExpressionData::Integer(integer) => {
@@ -36,17 +36,13 @@ impl ToInstructions for TypeExpression {
                 }
                 TypeExpressionData::Range(range) => {
                     yield TypeInstruction::Range;
-                    for instr in range
-                        .start
-                        .to_instructions(shared_value_tracking.as_deref_mut())
-                        .collect::<Vec<_>>()
+                    for instr in
+                        range.start.to_instructions(ctx).collect::<Vec<_>>()
                     {
                         yield instr;
                     }
-                    for instr in range
-                        .end
-                        .to_instructions(shared_value_tracking.as_deref_mut())
-                        .collect::<Vec<_>>()
+                    for instr in
+                        range.end.to_instructions(ctx).collect::<Vec<_>>()
                     {
                         yield instr;
                     }

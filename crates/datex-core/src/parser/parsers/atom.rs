@@ -350,7 +350,7 @@ impl Parser {
     ) -> Result<DatexExpression, SpannedParserError> {
         let span = self.advance()?.span.clone();
         let instant = Instant::instant_from_iso(&iso_string);
-        Ok(DatexExpressionData::DateTime(instant).with_span(span))
+        Ok(DatexExpressionData::Instant(instant).with_span(span))
     }
 }
 
@@ -743,7 +743,7 @@ mod tests {
         let expr = parse("2026-04-13T18:28:09.415Z");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::DateTime(
+            &DatexExpressionData::Instant(
                 crate::values::core_values::time::Instant::instant_from_iso(
                     "2026-04-13T18:28:09.415Z"
                 )
@@ -756,7 +756,7 @@ mod tests {
         let expr = parse("2026-04-13T18:28:09Z");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::DateTime(
+            &DatexExpressionData::Instant(
                 crate::values::core_values::time::Instant::instant_from_iso(
                     "2026-04-13T18:28:09Z"
                 )
@@ -770,7 +770,7 @@ mod tests {
         let expr = parse("2026-04-13T18:28Z");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::DateTime(
+            &DatexExpressionData::Instant(
                 crate::values::core_values::time::Instant::instant_from_iso(
                     "2026-04-13T18:28Z"
                 )
@@ -783,7 +783,7 @@ mod tests {
         let expr = parse("1970-01-01T00:00:00.000Z");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::DateTime(
+            &DatexExpressionData::Instant(
                 crate::values::core_values::time::Instant(0)
             )
         );

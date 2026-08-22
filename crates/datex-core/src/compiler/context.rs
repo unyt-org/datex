@@ -5,7 +5,8 @@ use crate::{
         core_compilation_context::{
             CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
-        to_instructions::ToInstructions,
+        shared_value_tracking::SharedValueTracking,
+        to_instructions::{InstructionContext, ToInstructions},
         type_compiler::append_type_instruction,
         value_compiler::append_instruction_code,
     },
@@ -84,13 +85,19 @@ impl<'a> CompilationContext<'a> {
     }
 
     /// Converts a [TypeExpression] to [TypeInstruction]s and appends them to the current buffer.
-    pub fn append_compiled_type_expression(
-        &mut self,
+    pub fn append_compiled_type_expression<'b>(
+        &'b mut self,
         type_expression: &TypeExpression,
     ) {
+        let mut ctx = InstructionContext {
+            shared_value_tracking: Some(
+                &mut self.core_context.shared_value_tracking,
+            ),
+        };
         let instructions = type_expression
-            .to_instructions(Some(&mut self.core_context.shared_value_tracking))
+            .to_instructions(&mut ctx)
             .collect::<Vec<_>>();
+        drop(ctx);
         for instruction in instructions {
             append_type_instruction(self.cursor(), instruction);
         }

@@ -80,6 +80,7 @@ use precompiler::{
 };
 
 pub mod context;
+pub mod datex_expression_to_instruction;
 pub mod error;
 pub mod metadata;
 pub mod precompiler;
@@ -560,7 +561,7 @@ fn compile_expression(
         DatexExpressionData::TypedInteger(typed_int) => {
             append_encoded_integer(compilation_context.cursor(), &typed_int);
         }
-        DatexExpressionData::DateTime(instant) => {
+        DatexExpressionData::Instant(instant) => {
             append_instant(compilation_context.cursor(), &instant);
         }
         DatexExpressionData::Decimal(decimal) => match &decimal {

@@ -5,13 +5,19 @@ use crate::{
         spanned::Spanned,
         type_expressions::TypeExpression,
     },
+    core_compiler::{
+        shared_value_tracking::SharedValueTracking,
+        to_instructions::{InstructionContext, ToInstructions},
+    },
     global::{
         operators::{
             ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
             UnaryOperator, modification::ModificationOperator,
         },
+        root_properties::RootProperty,
         stack_index::StackIndex,
     },
+    instruction::regular_instruction::RegularInstruction,
     libs::core::core_lib_id::CoreLibId,
     shared_values::{
         PointerAddress, ReferenceMutability, SelfOwnedPointerAddress,
@@ -35,7 +41,11 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{fmt::Display, ops, ops::Neg};
+use core::{
+    fmt::Display,
+    ops::{self, Neg},
+    str::FromStr,
+};
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -122,7 +132,7 @@ pub enum DatexExpressionData {
     Integer(Integer),
 
     /// DateTime, e.g. 2026-04-13T18:28:09.415Z (stored as Instant)
-    DateTime(Instant),
+    Instant(Instant),
 
     Range(RangeDeclaration),
 
@@ -360,11 +370,47 @@ pub struct BinaryOperation {
     pub right: DatexExpression,
     pub ty: Option<Type>,
 }
+impl ToInstructions for BinaryOperation {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            yield RegularInstruction::binary_operation(self.operator);
+            for instruction in self.left.to_instructions(ctx) {
+                yield instruction;
+            }
+            for instruction in self.right.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RangeDeclaration {
     pub start: DatexExpression,
     pub end: DatexExpression,
+}
+impl ToInstructions for RangeDeclaration {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            yield RegularInstruction::range();
+            for instruction in self.start.to_instructions(ctx) {
+                yield instruction;
+            }
+            for instruction in self.end.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -374,11 +420,63 @@ pub struct ComparisonOperation {
     pub right: DatexExpression,
 }
 
+impl ToInstructions for ComparisonOperation {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            yield RegularInstruction::comparison_operation(self.operator);
+            for instruction in self.left.to_instructions(ctx) {
+                yield instruction;
+            }
+            for instruction in self.right.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboxAssignment {
     pub operator: Option<ModificationOperator>,
     pub unbox_expression: DatexExpression,
     pub assigned_expression: DatexExpression,
+}
+impl ToInstructions for UnboxAssignment {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            match self.operator {
+                Some(operator) => match operator {
+                    ModificationOperator::AddAssign => {
+                        yield RegularInstruction::increment()
+                    }
+                    ModificationOperator::SubtractAssign => {
+                        yield RegularInstruction::decrement()
+                    }
+                    _ => todo!("Generate x = x * z instructions;"),
+                },
+                None => yield RegularInstruction::set_shared_container_value(),
+            };
+
+            // compile assigned expression
+            for instruction in self.assigned_expression.to_instructions(ctx) {
+                yield instruction;
+            }
+
+            // compile unbox expression
+            for instruction in self.unbox_expression.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -394,6 +492,54 @@ pub struct PropertyAssignment {
     pub base: DatexExpression,
     pub property: DatexExpression,
     pub assigned_expression: DatexExpression,
+}
+
+impl ToInstructions for PropertyAssignment {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            let PropertyAssignment {
+                base,
+                property,
+                assigned_expression,
+                ..
+            } = self;
+            // depending on the key, handle different property assignments
+
+            match &property.data() {
+                DatexExpressionData::Text(key)
+                    if key.0.len() <= u8::MAX as usize =>
+                {
+                    yield RegularInstruction::set_entry_text(key.0.clone());
+                }
+
+                DatexExpressionData::Integer(index)
+                    if let Some(index) = index.as_u32() =>
+                {
+                    yield RegularInstruction::set_entry_index(index);
+                }
+
+                _ => {
+                    for instruction in property.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+            }
+            // compile assigned expression
+            for instruction in assigned_expression.to_instructions(ctx) {
+                yield instruction;
+            }
+
+            // compile base expression
+            for instruction in base.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -415,6 +561,21 @@ pub struct TypeDeclarationExpression {
 pub struct UnaryOperation {
     pub operator: UnaryOperator,
     pub expression: DatexExpression,
+}
+impl ToInstructions for UnaryOperation {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            yield RegularInstruction::unary_operation(self.operator);
+            for instruction in self.expression.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Default, Hash, Eq)]
@@ -446,11 +607,89 @@ pub struct Apply {
     pub arguments: Vec<DatexExpression>,
 }
 
+impl ToInstructions for Apply {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            yield RegularInstruction::apply(self.arguments.len() as u8);
+            // compile arguments
+            for argument in &self.arguments {
+                for instruction in argument.to_instructions(ctx) {
+                    yield instruction;
+                }
+            }
+            // compile function expression
+            for instruction in self.base.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct InterfaceMethodCall {
     pub target: DatexExpression,
     pub method_name: String,
     pub arguments: Vec<DatexExpression>,
+}
+impl ToInstructions for InterfaceMethodCall {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            // TODO: replace with trait impls
+            match self.method_name.as_str() {
+                "append" => {
+                    yield RegularInstruction::append_entry();
+
+                    for argument in &self.arguments {
+                        for instruction in argument.to_instructions(ctx) {
+                            yield instruction;
+                        }
+                    }
+                }
+
+                "clear" => {
+                    yield RegularInstruction::clear();
+                }
+
+                "splice" => {
+                    yield RegularInstruction::splice_dynamic();
+
+                    for argument in &self.arguments {
+                        for instruction in argument.to_instructions(ctx) {
+                            yield instruction;
+                        }
+                    }
+                }
+
+                _ => {
+                    yield RegularInstruction::call_method(
+                        self.method_name.clone(),
+                        self.arguments.len() as u8,
+                    );
+
+                    for argument in &self.arguments {
+                        for instruction in argument.to_instructions(ctx) {
+                            yield instruction;
+                        }
+                    }
+                }
+            }
+
+            // compile target expression
+            for instruction in self.target.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
 }
 
 impl InterfaceMethodCall {
@@ -473,10 +712,59 @@ pub struct PropertyAccess {
     pub property: DatexExpression,
 }
 
+impl ToInstructions for PropertyAccess {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            // depending on the key, handle different property accesses
+            match self.property.data() {
+                // simple text key if length fits in u8
+                DatexExpressionData::Text(key) if key.0.len() <= 255 => {
+                    yield RegularInstruction::get_entry_text(key.0.clone());
+                }
+                // index access if integer fits in u32
+                DatexExpressionData::Integer(index)
+                    if let Some(index) = index.as_u32() =>
+                {
+                    yield RegularInstruction::get_entry_index(index);
+                }
+                _ => {
+                    yield RegularInstruction::get_entry_dynamic();
+                    for instruction in self.property.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+            }
+
+            // compile base expression
+            for instruction in self.base.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct GenericInstantiation {
     pub base: DatexExpression,
     pub generic_arguments: Vec<TypeExpression>,
+}
+impl ToInstructions for GenericInstantiation {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            // NOTE: might already be handled in type compilation
+            todo!()
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -499,6 +787,7 @@ pub struct Statements {
     pub is_terminated: bool,
     pub unbounded: Option<UnboundedStatement>,
 }
+
 impl Statements {
     pub fn empty() -> Self {
         Statements {
@@ -565,6 +854,19 @@ pub struct RequestSharedRef {
     pub mutability: ReferenceMutability,
     pub address: PointerAddress,
 }
+impl ToInstructions for RequestSharedRef {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(core::iter::once(RegularInstruction::get_shared_ref(
+            self.address.clone(),
+            &self.mutability,
+        )))
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CallableDeclaration {
@@ -588,6 +890,23 @@ pub struct CallableSignature {
 pub struct List {
     pub items: Vec<DatexExpression>,
 }
+impl ToInstructions for List {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            yield RegularInstruction::list(self.items.len() as u32);
+            for item in &self.items {
+                for instruction in item.to_instructions(ctx) {
+                    yield instruction;
+                }
+            }
+        })
+    }
+}
 
 impl List {
     pub fn new(items: Vec<DatexExpression>) -> Self {
@@ -598,6 +917,46 @@ impl List {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Map {
     pub entries: Vec<(DatexExpression, DatexExpression)>,
+}
+
+impl ToInstructions for Map {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            yield RegularInstruction::map(self.entries.len() as u32);
+            for (key, value) in &self.entries {
+                match &*key.data {
+                    // text -> insert key string
+                    DatexExpressionData::Text(text) => {
+                        if text.len() < 256 {
+                            yield RegularInstruction::key_value_short_text(
+                                text.0.clone(),
+                            );
+                        } else {
+                            yield RegularInstruction::key_value_dynamic();
+                            yield RegularInstruction::text(text.0.clone());
+                        }
+                    }
+                    // other -> insert key as dynamic
+                    _ => {
+                        yield RegularInstruction::key_value_dynamic();
+                        for instruction in key.to_instructions(ctx) {
+                            yield instruction;
+                        }
+                    }
+                };
+
+                // value
+                for instruction in value.to_instructions(ctx) {
+                    yield instruction;
+                }
+            }
+        })
+    }
 }
 
 impl Map {
@@ -627,6 +986,27 @@ pub struct TagExpression {
     pub expression: Option<DatexExpression>,
 }
 
+impl ToInstructions for TagExpression {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            yield RegularInstruction::tagged_value(
+                self.tag.clone(),
+                self.expression.is_none(),
+            );
+            if let Some(expression) = &self.expression {
+                for instruction in expression.to_instructions(ctx) {
+                    yield instruction;
+                }
+            }
+        })
+    }
+}
+
 impl Display for TagExpression {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(f, "#{}", self.tag)
@@ -636,6 +1016,21 @@ impl Display for TagExpression {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RootPropertyAccess {
     pub property_name: String,
+}
+
+impl ToInstructions for RootPropertyAccess {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            let root_property = RootProperty::from_str(&self.property_name)
+                .expect("invalid root property name");
+            yield RegularInstruction::get_root_property(root_property);
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -668,6 +1063,22 @@ pub struct Unbox {
     pub expression: DatexExpression,
 }
 
+impl ToInstructions for Unbox {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            yield RegularInstruction::unbox();
+            for instruction in self.expression.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct CloneExpression {
     pub expression: DatexExpression,
@@ -679,16 +1090,79 @@ pub struct DeriveRef {
     pub expression: DatexExpression,
 }
 
+impl ToInstructions for DeriveRef {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            for instruction in self.expression.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateShared {
     pub mutability: SharedContainerMutability,
     pub expression: DatexExpression,
 }
 
+impl ToInstructions for CreateShared {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            match self.mutability {
+                SharedContainerMutability::Immutable => {
+                    yield RegularInstruction::create_shared();
+                }
+                SharedContainerMutability::Mutable => {
+                    yield RegularInstruction::create_shared_mut();
+                }
+            }
+
+            for instruction in self.expression.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeriveSharedRef {
     pub mutability: ReferenceMutability,
     pub expression: DatexExpression,
+}
+
+impl ToInstructions for DeriveSharedRef {
+    type InstructionType = RegularInstruction;
+
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            match self.mutability {
+                ReferenceMutability::Immutable => {
+                    yield RegularInstruction::derive_shared_reference();
+                }
+                ReferenceMutability::Mutable => {
+                    yield RegularInstruction::derive_shared_reference_mut();
+                }
+            }
+
+            for instruction in self.expression.to_instructions(ctx) {
+                yield instruction;
+            }
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

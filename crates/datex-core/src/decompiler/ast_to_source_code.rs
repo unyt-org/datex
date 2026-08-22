@@ -545,7 +545,7 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::Noop => "".to_string(),
             DatexExpressionData::Integer(i) => i.to_string(),
-            DatexExpressionData::DateTime(instant) => instant.to_iso_string(),
+            DatexExpressionData::Instant(instant) => instant.to_iso_string(),
             DatexExpressionData::Range(RangeDeclaration { start, end }) => {
                 let left_code = self.format_child(start);
                 let right_code = self.format_child(end);

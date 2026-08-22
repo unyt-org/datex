@@ -7,6 +7,8 @@ use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 pub mod equality;
+mod to_instructions;
+
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,
 )]

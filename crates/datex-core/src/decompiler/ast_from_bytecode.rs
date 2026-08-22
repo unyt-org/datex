@@ -166,7 +166,7 @@ pub fn ast_from_bytecode(
                             )
                         }
                         RegularInstruction::Instant(instant_data) => {
-                            DatexExpressionData::DateTime(
+                            DatexExpressionData::Instant(
                                 crate::values::core_values::time::Instant(
                                     instant_data.0,
                                 ),

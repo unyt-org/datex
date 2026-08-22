@@ -2,6 +2,7 @@ use core::result::Result;
 pub mod rational;
 pub mod typed_decimal;
 use crate::prelude::*;
+mod to_instructions;
 
 use crate::values::core_values::{
     decimal::typed_decimal::TypedDecimal, error::NumberParseError,

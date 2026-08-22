@@ -7,6 +7,7 @@ use crate::{
         error::NumberParseError,
     },
 };
+mod to_instructions;
 
 use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
 use binrw::{BinRead, BinWrite};

@@ -1,13 +1,16 @@
+use core::cell::RefCell;
+
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
         shared_value_tracking::SharedValueTracking,
-        to_instructions::ToInstructions,
+        to_instructions::{InstructionContext, ToInstructions},
         type_compiler::append_type_instruction,
         value_compiler::{append_shared_container_from_stack, append_value},
         value_visitor::{ParentContext, ValueVisitor},
     },
+    global::protocol_structures::injected_values::SharedInjectedValueType::Ref,
     prelude::*,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     shared_values::SharedContainer,
@@ -68,7 +71,7 @@ pub(crate) unsafe fn default_compile_input<'a>() -> CompileInput<'a> {
 #[derive(Debug)]
 pub struct CoreCompilationContext<'a> {
     pub cursor: ByteCursor,
-    pub shared_value_tracking: SharedValueTracking<'a>,
+    pub shared_value_tracking: RefCell<SharedValueTracking<'a>>,
     pub input: CompileInput<'a>,
 }
 
@@ -87,10 +90,10 @@ impl<'a> CoreCompilationContext<'a> {
     ) -> CoreCompilationContext<'a> {
         CoreCompilationContext {
             cursor: Cursor::new(buffer),
-            shared_value_tracking: SharedValueTracking::new(
+            shared_value_tracking: RefCell::new(SharedValueTracking::new(
                 input.pointer_lookup,
                 input.receivers,
-            ),
+            )),
             input,
         }
     }
@@ -111,12 +114,10 @@ impl<'a> CoreCompilationContext<'a> {
     /// Finalizes the compilation context by appending a preamble with the injected shared values,
     /// and returns the final byte buffer and the list of shared values that were moved or referenced during compilation
     pub fn into_dxb_with_shared_values(self) -> DXBWithSharedValues {
-        let tracked_values = self.shared_value_tracking.into_tracked_values();
+        let tracked_values = self.shared_value_tracking;
+        let inner = tracked_values.into_inner().into_tracked_values();
         let (combined_buffer, top_level_values) =
-            append_injected_values_preamble(
-                tracked_values,
-                self.cursor.into_inner(),
-            );
+            append_injected_values_preamble(inner, self.cursor.into_inner());
         DXBWithSharedValues::new(combined_buffer, top_level_values)
     }
 }
@@ -148,9 +149,12 @@ impl ValueVisitor for CoreCompilationContext<'_> {
     }
 
     fn visit_type(&mut self, ty: Type) {
-        let instructions = ty
-            .to_instructions(Some(&mut self.shared_value_tracking))
-            .collect::<Vec<_>>();
+        let ctx = InstructionContext {
+            shared_value_tracking: Some(&self.shared_value_tracking),
+        };
+
+        let instructions = ty.to_instructions(&ctx).collect::<Vec<_>>();
+
         for instruction in instructions {
             append_type_instruction(self.cursor_mut(), instruction);
         }
