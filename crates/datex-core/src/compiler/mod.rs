@@ -45,8 +45,7 @@ use crate::{
                 SharedInjectedValueType,
             },
             instruction_data::{
-                InstructionBlockData, JumpData, StackIndex,
-                UnboundedStatementsData,
+                InstructionBlockData, StackIndex, UnboundedStatementsData,
             },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
@@ -1589,29 +1588,47 @@ fn compile_expression(
             };
             compilation_context.write(RegularInstruction::UnboundedStatements);
 
-            compilation_context.write(RegularInstruction::JumpIfFalse(
-                JumpData {
-                    offset: (then_bytes.len() + 5) as i32,
-                },
-            ));
-            compilation_context
-                .cursor()
-                .write_all(&condition_bytes)
-                .unwrap();
-            compilation_context.cursor().write_all(&then_bytes).unwrap();
-
-            if !else_bytes.is_empty() {
-                compilation_context.write(RegularInstruction::Jump(JumpData {
-                    offset: else_bytes.len() as i32,
-                }));
+            if else_bytes.is_empty() {
+                let after_then = compilation_context.new_label();
+                compilation_context.emit_jump_if_false_to_label(
+                    after_then,
+                    condition_bytes.len() as u32,
+                );
+                compilation_context
+                    .cursor()
+                    .write_all(&condition_bytes)
+                    .unwrap();
+                compilation_context.cursor().write_all(&then_bytes).unwrap();
+                compilation_context.bind_label(after_then);
+                compilation_context.write(
+                    RegularInstruction::UnboundedStatementsEnd(
+                        UnboundedStatementsData { terminated: false },
+                    ),
+                );
+            } else {
+                let else_start = compilation_context.new_label();
+                let after_else = compilation_context.new_label();
+                compilation_context.emit_jump_if_false_to_label(
+                    else_start,
+                    condition_bytes.len() as u32,
+                );
+                compilation_context
+                    .cursor()
+                    .write_all(&condition_bytes)
+                    .unwrap();
+                compilation_context.cursor().write_all(&then_bytes).unwrap();
+                compilation_context.emit_jump_to_label(after_else);
+                compilation_context.bind_label(else_start);
                 compilation_context.cursor().write_all(&else_bytes).unwrap();
+                compilation_context.bind_label(after_else);
+                compilation_context.write(
+                    RegularInstruction::UnboundedStatementsEnd(
+                        UnboundedStatementsData { terminated: false },
+                    ),
+                );
             }
 
-            compilation_context.write(
-                RegularInstruction::UnboundedStatementsEnd(
-                    UnboundedStatementsData { terminated: false },
-                ),
-            );
+            compilation_context.resolve_pending_jumps();
         }
 
         DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
