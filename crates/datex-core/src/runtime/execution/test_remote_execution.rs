@@ -10,9 +10,7 @@ use crate::{
         PointerAddress, SharedContainer, SharedContainerMutability,
     },
     values::{
-        core_values::{
-            endpoint::Endpoint, integer::Integer, list::List, time::Instant,
-        },
+        core_values::{endpoint::Endpoint, integer::Integer, list::List},
         value_container::ValueContainer,
     },
 };
@@ -329,74 +327,6 @@ pub async fn remote_shared_roundtrip_move(
             } else {
                 panic!("Expected SharedContainer");
             }
-        },
-    )
-    .await;
-}
-
-#[tokio::test]
-#[cfg(feature = "compiler")]
-pub async fn test_remote_datetime_literal() {
-    let endpoint_a = Endpoint::new("@test_a");
-    let endpoint_b = Endpoint::new("@test_b");
-
-    use_mock_setup_with_two_connected_runtimes(
-        endpoint_a.clone(),
-        endpoint_b.clone(),
-        async |runtime_a, _runtime_b| {
-            let mut execution_context = ExecutionContext::local(
-                ExecutionMode::unbounded(),
-                runtime_a.clone(),
-                ExecutionCallerMetadata::local_default(),
-            );
-
-            let result = runtime_a
-                .execute(
-                    "@test_b :: 2026-04-13T18:28:09.415Z",
-                    &[],
-                    Some(&mut execution_context),
-                )
-                .await
-                .unwrap()
-                .unwrap();
-
-            let expected =
-                Instant::instant_from_iso("2026-04-13T18:28:09.415Z");
-            assert_eq!(result, ValueContainer::from(Integer::new(expected.0)));
-        },
-    )
-    .await;
-}
-
-#[tokio::test]
-#[cfg(feature = "compiler")]
-pub async fn test_remote_datetime_arithmetic() {
-    let endpoint_a = Endpoint::new("@test_a");
-    let endpoint_b = Endpoint::new("@test_b");
-
-    use_mock_setup_with_two_connected_runtimes(
-        endpoint_a.clone(),
-        endpoint_b.clone(),
-        async |runtime_a, _runtime_b| {
-            let mut execution_context = ExecutionContext::local(
-                ExecutionMode::unbounded(),
-                runtime_a.clone(),
-                ExecutionCallerMetadata::local_default(),
-            );
-
-            let result = runtime_a
-                .execute(
-                    "@test_b :: 2026-04-13T18:28:09.415Z + 1000",
-                    &[],
-                    Some(&mut execution_context),
-                )
-                .await
-                .unwrap()
-                .unwrap();
-
-            let expected =
-                Instant::instant_from_iso("2026-04-13T18:28:10.415Z");
-            assert_eq!(result, ValueContainer::from(Integer::new(expected.0)));
         },
     )
     .await;

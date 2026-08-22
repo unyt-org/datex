@@ -64,10 +64,6 @@ c";"#,
     compare_compiled_with_decompiled("true");
     compare_compiled_with_decompiled("false");
     compare_compiled_with_decompiled("null");
-    compare_compiled_with_decompiled("2026-04-13T18:28:09.415Z");
-    compare_compiled_with_decompiled("2026-04-13T18:28:09.000Z");
-    compare_compiled_with_decompiled("2026-04-13T18:28:00.000Z");
-    compare_compiled_with_decompiled("1970-01-01T00:00:00.000Z");
 }
 
 #[test]

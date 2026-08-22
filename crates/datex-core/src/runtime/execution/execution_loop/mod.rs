@@ -397,11 +397,6 @@ pub fn inner_execution_loop(
                             // endpoint
                             RegularInstruction::Endpoint(endpoint) => Some(ValueContainer::from(endpoint).into()),
 
-                            // instant (datetime), stored as i128, convert to Integer
-                            RegularInstruction::Instant(InstantData(timestamp)) => {
-                                Some(ValueContainer::from(Integer::new(timestamp)).into())
-                            }
-
                             // null
                             RegularInstruction::Null => Some(ValueContainer::from(Value::null()).into()),
 

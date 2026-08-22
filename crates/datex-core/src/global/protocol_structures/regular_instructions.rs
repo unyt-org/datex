@@ -64,8 +64,6 @@ pub enum RegularInstruction {
 
     Endpoint(Endpoint),
 
-    Instant(InstantData),
-
     DecimalF32(Float32Data),
     DecimalF64(Float64Data),
     DecimalAsInt16(FloatAsInt16Data),
@@ -226,7 +224,6 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::BigInteger(_) => InstructionCode::INT_BIG,
             RegularInstruction::Integer(_) => InstructionCode::INT,
             RegularInstruction::Endpoint(_) => InstructionCode::ENDPOINT,
-            RegularInstruction::Instant(_) => InstructionCode::INSTANT,
             RegularInstruction::DecimalF32(_) => InstructionCode::DECIMAL_F32,
             RegularInstruction::DecimalF64(_) => InstructionCode::DECIMAL_F64,
             RegularInstruction::DecimalAsInt16(_) => {
@@ -616,9 +613,6 @@ impl RegularInstruction {
             InstructionCode::ENDPOINT => {
                 Endpoint::read(reader).map(RegularInstruction::Endpoint)
             }
-            InstructionCode::INSTANT => {
-                InstantData::read(reader).map(RegularInstruction::Instant)
-            }
             InstructionCode::TEXT => {
                 TextData::read(reader).map(RegularInstruction::Text)
             }
@@ -896,9 +890,6 @@ impl RegularInstruction {
             }
             RegularInstruction::Endpoint(data) => {
                 write!(string, "{data}")
-            }
-            RegularInstruction::Instant(data) => {
-                write!(string, "{}", Instant(data.0).to_iso_string())
             }
 
             RegularInstruction::DecimalAsInt16(data) => {

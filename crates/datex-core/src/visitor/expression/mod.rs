@@ -87,9 +87,6 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::Integer(i) => {
                 self.visit_integer(i, &expr.span)
             }
-            DatexExpressionData::DateTime(dt) => {
-                self.visit_datetime(dt, &expr.span)
-            }
             DatexExpressionData::Range(range) => {
                 self.visit_range(range, &expr.span)
             }
@@ -595,16 +592,6 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = integer;
-        Ok(VisitAction::SkipChildren)
-    }
-
-    /// Visit datetime literal
-    fn visit_datetime(
-        &mut self,
-        _instant: &mut Instant,
-        span: &Range<usize>,
-    ) -> ExpressionVisitResult<E> {
-        let _ = span;
         Ok(VisitAction::SkipChildren)
     }
 

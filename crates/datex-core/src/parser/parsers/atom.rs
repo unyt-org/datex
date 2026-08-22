@@ -20,7 +20,6 @@ use crate::{
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
-        time::Instant,
     },
 };
 use core::str::FromStr;
@@ -77,10 +76,6 @@ impl Parser {
 
             Token::FractionLiteral(fraction) => {
                 self.parse_fraction_literal(fraction)?
-            }
-
-            Token::IsoDateTime(iso_string) => {
-                self.parse_iso_datetime(iso_string)?
             }
 
             _ => {
@@ -342,15 +337,6 @@ impl Parser {
                 span,
             }),
         }
-    }
-
-    pub(crate) fn parse_iso_datetime(
-        &mut self,
-        iso_string: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        let span = self.advance()?.span.clone();
-        let instant = Instant::instant_from_iso(&iso_string);
-        Ok(DatexExpressionData::DateTime(instant).with_span(span))
     }
 }
 
@@ -734,56 +720,6 @@ mod tests {
             expr.data,
             DatexExpressionData::Decimal(
                 Decimal::try_from_string("-7500/2500").unwrap()
-            )
-        );
-    }
-
-    #[test]
-    fn parse_iso_datetime_with_millis() {
-        let expr = parse("2026-04-13T18:28:09.415Z");
-        assert_eq!(
-            expr.data,
-            DatexExpressionData::DateTime(
-                crate::values::core_values::time::Instant::instant_from_iso(
-                    "2026-04-13T18:28:09.415Z"
-                )
-            )
-        );
-    }
-
-    #[test]
-    fn parse_iso_datetime_without_millis() {
-        let expr = parse("2026-04-13T18:28:09Z");
-        assert_eq!(
-            expr.data,
-            DatexExpressionData::DateTime(
-                crate::values::core_values::time::Instant::instant_from_iso(
-                    "2026-04-13T18:28:09Z"
-                )
-            )
-        );
-    }
-
-    #[test]
-    fn parse_iso_datetime_without_seconds() {
-        let expr = parse("2026-04-13T18:28Z");
-        assert_eq!(
-            expr.data,
-            DatexExpressionData::DateTime(
-                crate::values::core_values::time::Instant::instant_from_iso(
-                    "2026-04-13T18:28Z"
-                )
-            )
-        );
-    }
-
-    #[test]
-    fn parse_iso_datetime_epoch() {
-        let expr = parse("1970-01-01T00:00:00.000Z");
-        assert_eq!(
-            expr.data,
-            DatexExpressionData::DateTime(
-                crate::values::core_values::time::Instant(0)
             )
         );
     }
