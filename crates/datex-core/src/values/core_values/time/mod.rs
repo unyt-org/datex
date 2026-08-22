@@ -120,10 +120,6 @@ impl Instant {
         }
     }
 
-    pub fn same_day() -> String {
-        "SameDay".to_string()
-    }
-
     // /// Sleep until this Instant
     // pub fn sleep_until(&self) {
     //     let now = Instant::now();
