@@ -137,7 +137,6 @@ impl Debug for ComHub {
     Serialize,
     Deserialize,
 )]
-#[datex(structural_recursive)]
 /// The priority of an interface, which determines the order in which interfaces are used for routing fallback logic.
 pub enum InterfacePriority {
     /// The interface will not be used for fallback routing if no other interface is available
@@ -1865,7 +1864,6 @@ pub mod tests {
     }
 
     #[derive(Datex, Debug, Clone)]
-    #[datex(structural_recursive)]
     struct MockupInterfaceSetupData {
         pub name: String,
     }

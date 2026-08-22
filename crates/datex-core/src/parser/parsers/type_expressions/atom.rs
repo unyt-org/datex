@@ -97,7 +97,7 @@ impl Parser {
     pub(crate) fn parse_type_null(
         &mut self,
     ) -> Result<TypeExpression, SpannedParserError> {
-        Ok(TypeExpressionData::null().with_span(self.advance()?.span))
+        Ok(TypeExpressionData::Null.with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_type_identifier(
@@ -275,75 +275,69 @@ mod tests {
     #[test]
     fn parse_boolean_true() {
         let expr = parse_type_expression("true");
-        assert_eq!(expr.data(), &TypeExpressionData::Boolean(true.into()));
+        assert_eq!(expr.data, TypeExpressionData::Boolean(true.into()));
     }
 
     #[test]
     fn parse_boolean_false() {
         let expr = parse_type_expression("false");
-        assert_eq!(expr.data(), &TypeExpressionData::Boolean(false.into()));
+        assert_eq!(expr.data, TypeExpressionData::Boolean(false.into()));
     }
 
     #[test]
     fn parse_null() {
         let expr = parse_type_expression("null");
-        assert_eq!(expr.data(), &TypeExpressionData::null());
+        assert_eq!(expr.data, TypeExpressionData::Null);
     }
 
     #[test]
     fn parse_identifier() {
         let expr = parse_type_expression("myVar");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Identifier("myVar".to_string())
+            expr.data,
+            TypeExpressionData::Identifier("myVar".to_string())
         );
     }
 
     #[test]
     fn parse_string_literal() {
         let expr = parse_type_expression("\"Hello, World!\"");
-        assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Text("Hello, World!".into())
-        );
+        assert_eq!(expr.data, TypeExpressionData::Text("Hello, World!".into()));
     }
 
     #[test]
     fn parse_infinity() {
         let expr = parse_type_expression("infinity");
-        assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Decimal(Decimal::Infinity)
-        );
+        assert_eq!(expr.data, TypeExpressionData::Decimal(Decimal::Infinity));
     }
 
     #[test]
     fn parse_nan() {
         let expr = parse_type_expression("nan");
-        assert_eq!(expr.data(), &TypeExpressionData::Decimal(Decimal::Nan));
+        assert_eq!(expr.data, TypeExpressionData::Decimal(Decimal::Nan));
     }
 
     #[test]
     fn parse_endpoint() {
         let expr = parse_type_expression("@example");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Endpoint(Endpoint::new("@example"))
+            expr.data,
+            TypeExpressionData::Endpoint(Endpoint::new("@example"))
         );
     }
 
     #[test]
     fn parse_integer_literal() {
         let expr = parse_type_expression("12345");
-        assert_eq!(expr.data(), &TypeExpressionData::Integer(12345.into()));
+        assert_eq!(expr.data, TypeExpressionData::Integer(12345.into()));
     }
 
     #[test]
     fn parse_typed_integer_literal() {
         let expr = parse_type_expression("12345u16");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::TypedInteger(
+            expr.data,
+            TypeExpressionData::TypedInteger(
                 TypedInteger::try_from_string_and_variant(
                     "12345",
                     IntegerTypeVariant::U16
@@ -356,33 +350,33 @@ mod tests {
     #[test]
     fn parse_negative_integer_literal() {
         let expr = parse_type_expression("-6789");
-        assert_eq!(expr.data(), &TypeExpressionData::Integer((-6789).into()));
+        assert_eq!(expr.data, TypeExpressionData::Integer((-6789).into()));
     }
 
     #[test]
     fn parse_hexadecimal_integer_literal() {
         let expr = parse_type_expression("0x1A3F");
-        assert_eq!(expr.data(), &TypeExpressionData::Integer(6719.into()));
+        assert_eq!(expr.data, TypeExpressionData::Integer(6719.into()));
     }
 
     #[test]
     fn parse_octal_integer_literal() {
         let expr = parse_type_expression("0o755");
-        assert_eq!(expr.data(), &TypeExpressionData::Integer(493.into()));
+        assert_eq!(expr.data, TypeExpressionData::Integer(493.into()));
     }
 
     #[test]
     fn parse_binary_integer_literal() {
         let expr = parse_type_expression("0b1101");
-        assert_eq!(expr.data(), &TypeExpressionData::Integer(13.into()));
+        assert_eq!(expr.data, TypeExpressionData::Integer(13.into()));
     }
 
     #[test]
     fn parse_decimal_literal() {
         let expr = parse_type_expression("123.456");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Decimal(
+            expr.data,
+            TypeExpressionData::Decimal(
                 Decimal::try_from_string("123.456").unwrap()
             )
         );
@@ -392,8 +386,8 @@ mod tests {
     fn parse_typed_decimal_literal() {
         let expr = parse_type_expression("123.456f32");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::TypedDecimal(
+            expr.data,
+            TypeExpressionData::TypedDecimal(
                 TypedDecimal::try_from_string_and_variant(
                     "123.456",
                     DecimalTypeVariant::F32
@@ -407,8 +401,8 @@ mod tests {
     fn parse_fraction_literal() {
         let expr = parse_type_expression("3/4");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Decimal(
+            expr.data,
+            TypeExpressionData::Decimal(
                 Decimal::try_from_string("3/4").unwrap()
             )
         );

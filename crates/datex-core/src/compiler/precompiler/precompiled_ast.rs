@@ -15,7 +15,6 @@ pub struct VariableMetadata {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VariableShape {
     Type,
-    Entity,
     Value(VariableKind),
 }
 
@@ -29,7 +28,6 @@ impl Display for VariableShape {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             VariableShape::Type => core::write!(f, "type"),
-            VariableShape::Entity => core::write!(f, "entity"),
             VariableShape::Value(kind) => core::write!(f, "{kind}"),
         }
     }

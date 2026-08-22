@@ -1,12 +1,12 @@
 use crate::{
     disassembler::options::DisassemblerOptions,
-    dxb_parser::body::{
-        DXBParserError, InstructionWithSpan, iterate_instructions,
-    },
-    instruction::{
-        CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
-        regular_instruction::RegularInstruction,
-        type_instruction::TypeInstruction,
+    dxb_parser::body::{DXBParserError, iterate_instructions},
+    global::protocol_structures::{
+        instruction_data::InstructionBlockDataDebugFlat,
+        instructions::{
+            CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
+        },
+        regular_instructions::RegularInstruction,
     },
     prelude::*,
     utils::ansi_colors::{AnsiColor, AnsiWrite},
@@ -48,34 +48,6 @@ where
 impl From<RegularInstruction> for InstructionTree<Instruction> {
     fn from(instruction: RegularInstruction) -> Self {
         InstructionTree::new(Instruction::Regular(instruction))
-    }
-}
-
-impl From<TypeInstruction> for InstructionTree<Instruction> {
-    fn from(instruction: TypeInstruction) -> Self {
-        InstructionTree::new(Instruction::Type(instruction))
-    }
-}
-
-impl From<RegularInstruction> for InstructionTree<InstructionWithSpan> {
-    fn from(instruction: RegularInstruction) -> Self {
-        InstructionTree::new(InstructionWithSpan::from(Instruction::Regular(
-            instruction,
-        )))
-    }
-}
-
-impl From<TypeInstruction> for InstructionTree<InstructionWithSpan> {
-    fn from(instruction: TypeInstruction) -> Self {
-        InstructionTree::new(InstructionWithSpan::from(Instruction::Type(
-            instruction,
-        )))
-    }
-}
-
-impl From<Instruction> for InstructionTree<InstructionWithSpan> {
-    fn from(instruction: Instruction) -> Self {
-        InstructionTree::new(InstructionWithSpan::from(instruction))
     }
 }
 
@@ -132,38 +104,32 @@ impl From<Vec<InstructionTree<Instruction>>> for InstructionTree<Instruction> {
     }
 }
 
-impl InstructionTree<InstructionWithSpan> {
-    /// Flattens the tree into a list of instructions,
-    /// also recursively flattens instructions like [RegularInstruction::_RemoteExecutionDebugTree]
-    /// into [RegularInstruction::_RemoteExecutionDebugFlat]
-    pub fn flatten_instructions(self) -> Vec<InstructionWithSpan> {
-        let mut result = if let Instruction::Regular(instruction) =
-            &self.instruction.instruction
-            && let Some(flattened) = instruction.clone().flatten_instruction()
-        {
-            vec![InstructionWithSpan {
-                instruction: Instruction::Regular(flattened),
-                span: self.instruction.span,
-            }]
-        } else {
-            vec![*self.instruction]
-        };
-
-        for child in self.children {
-            result.extend(child.flatten_instructions());
-        }
-        result
-    }
-}
-
 impl InstructionTree<Instruction> {
     /// Flattens the tree into a list of instructions,
+    /// also recursively flattens [RegularInstruction::_RemoteExecutionDebugTree]
+    /// into [RegularInstruction::_RemoteExecutionDebugFlat]
     pub fn flatten_instructions(self) -> Vec<Instruction> {
-        InstructionTree::<InstructionWithSpan>::from(self)
-            .flatten_instructions()
-            .into_iter()
-            .map(Instruction::from)
-            .collect()
+        if let Instruction::Regular(
+            RegularInstruction::_RemoteExecutionDebugTree(tree),
+        ) = *self.instruction
+        {
+            vec![Instruction::Regular(
+                RegularInstruction::_RemoteExecutionDebugFlat(
+                    InstructionBlockDataDebugFlat {
+                        length: tree.length,
+                        injected_variable_count: tree.injected_variable_count,
+                        injected_values: tree.injected_values,
+                        body: tree.body.flatten_instructions(),
+                    },
+                ),
+            )]
+        } else {
+            let mut result = vec![*self.instruction];
+            for child in self.children {
+                result.extend(child.flatten_instructions());
+            }
+            result
+        }
     }
 }
 
@@ -226,34 +192,15 @@ where
 /// An instruction tree containing an optional detailed instruction tree inside each node
 #[derive(Debug, Clone)]
 struct DetailedInstructionTree(
-    pub  InstructionTree<(
-        InstructionWithSpan,
-        Option<Box<DetailedInstructionTree>>,
-    )>,
+    pub InstructionTree<(Instruction, Option<Box<DetailedInstructionTree>>)>,
 );
 
 #[derive(Default, Clone, Debug, PartialEq)]
 pub enum InnerInstructions<'a> {
     #[default]
     None,
-    Flat(&'a Vec<InstructionWithSpan>),
-    Tree(&'a InstructionTree<InstructionWithSpan>),
-}
-
-impl From<InstructionTree<InstructionWithSpan>>
-    for InstructionTree<Instruction>
-{
-    fn from(value: InstructionTree<InstructionWithSpan>) -> Self {
-        value.map(|i| i.instruction)
-    }
-}
-
-impl From<InstructionTree<Instruction>>
-    for InstructionTree<InstructionWithSpan>
-{
-    fn from(value: InstructionTree<Instruction>) -> Self {
-        value.map(InstructionWithSpan::from)
-    }
+    Flat(&'a Vec<Instruction>),
+    Tree(&'a InstructionTree<Instruction>),
 }
 
 /// Converts a raw DXB body in to human-readable disassembled instructions string
@@ -270,7 +217,7 @@ pub(super) fn disassemble_body_to_string(
 
 /// Converts an instruction tree in to human-readable disassembled instructions string
 pub fn disassemble_instruction_tree_to_string(
-    instruction_tree: InstructionTree<InstructionWithSpan>,
+    instruction_tree: InstructionTree<Instruction>,
     error: Option<DXBParserError>,
     options: DisassemblerOptions,
 ) -> String {
@@ -318,7 +265,7 @@ pub fn disassemble_instruction_tree_to_string(
 pub fn disassemble_body(
     body: &[u8],
     nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
-) -> (InstructionTree<InstructionWithSpan>, Option<DXBParserError>) {
+) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
     let mut iterator = iterate_instructions(
         Rc::new(RefCell::new(body.to_vec())),
         nested_instruction_resolution_strategy,
@@ -328,19 +275,19 @@ pub fn disassemble_body(
 
 /// Converts a list of Instruction values into an instruction tree
 pub fn get_instruction_tree_from_list(
-    instructions: Vec<InstructionWithSpan>,
-) -> (InstructionTree<InstructionWithSpan>, Option<DXBParserError>) {
+    instructions: Vec<Instruction>,
+) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
     let mut iterator = instructions.into_iter().map(Ok);
     get_instruction_tree(&mut iterator)
 }
 
 /// Converts an instruction iterator into a list of disassembled Instruction values
 pub fn get_instruction_tree(
-    instructions: impl Iterator<Item = Result<InstructionWithSpan, DXBParserError>>,
-) -> (InstructionTree<InstructionWithSpan>, Option<DXBParserError>) {
-    let mut tree = InstructionTree::new(
-        Instruction::Regular(RegularInstruction::UnboundedStatements).into(),
-    ); // initial tree root, gets overridden
+    instructions: impl Iterator<Item = Result<Instruction, DXBParserError>>,
+) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
+    let mut tree = InstructionTree::new(Instruction::Regular(
+        RegularInstruction::UnboundedStatements,
+    )); // initial tree root, gets overridden
     let err = disassemble_body_inner(
         &mut instructions.into_iter(),
         &mut tree,
@@ -388,7 +335,7 @@ fn write_instruction(
         "{}",
         match instruction {
             Instruction::Regular(instr) => instr.instruction_code_string(),
-            Instruction::Type(instr) => format!("TYPE.{}", instr.as_ref()),
+            Instruction::Type(instr) => instr.as_ref().to_string(),
         }
     )
     .unwrap();
@@ -482,7 +429,7 @@ fn disassemble_body_to_string_inner(
 }
 
 fn instruction_tree_to_detailed_tree(
-    instructions: InstructionTree<InstructionWithSpan>,
+    instructions: InstructionTree<Instruction>,
 ) -> DetailedInstructionTree {
     DetailedInstructionTree(instructions.map(|i| {
         let inner = get_inner_instructions_as_detailed_tree(&i).map(Box::new);
@@ -491,30 +438,27 @@ fn instruction_tree_to_detailed_tree(
 }
 
 fn get_inner_instructions_as_detailed_tree(
-    instruction: &InstructionWithSpan,
+    instruction: &Instruction,
 ) -> Option<DetailedInstructionTree> {
-    match &instruction.instruction {
-        Instruction::Regular(instruction) => match instruction
-            .inner_instructions_from_debug_instruction()
-        {
-            InnerInstructions::Tree(tree) => {
-                Some(instruction_tree_to_detailed_tree(tree.clone()))
+    match instruction {
+        Instruction::Regular(
+            RegularInstruction::_RemoteExecutionDebugFlat(data),
+        ) => {
+            let (tree, err) = get_instruction_tree_from_list(data.body.clone());
+            if let Some(err) = err {
+                panic!("{}", err);
             }
-            InnerInstructions::Flat(flat) => {
-                let (tree, err) = get_instruction_tree_from_list(flat.clone());
-                if let Some(err) = err {
-                    panic!("{}", err);
-                }
-                Some(instruction_tree_to_detailed_tree(tree))
-            }
-            InnerInstructions::None => None,
-        },
+            Some(instruction_tree_to_detailed_tree(tree))
+        }
+        Instruction::Regular(
+            RegularInstruction::_RemoteExecutionDebugTree(data),
+        ) => Some(instruction_tree_to_detailed_tree(data.body.clone())),
         _ => None,
     }
 }
 fn disassemble_body_inner(
-    iterator: &mut impl Iterator<Item = Result<InstructionWithSpan, DXBParserError>>,
-    parent: &mut InstructionTree<InstructionWithSpan>,
+    iterator: &mut impl Iterator<Item = Result<Instruction, DXBParserError>>,
+    parent: &mut InstructionTree<Instruction>,
     count_or_unbounded: CountOrUnbounded,
     is_root: bool,
 ) -> Option<DXBParserError> {
@@ -584,18 +528,16 @@ mod tests {
     use super::*;
     use crate::{
         core_compiler::value_compiler::append_instruction,
-        disassembler::assertions::instructions_with_span,
-        dxb_parser::next_instructions_stack::{
-            NextInstructionsStack, NextScopeInstruction,
-        },
-        instruction::{
+        global::{
             instruction_codes::InstructionCode,
-            instruction_data::{
-                InstructionBlockData, InstructionBlockDataDebugFlat,
-                InstructionBlockDataDebugTree, StatementsData, UInt8Data,
-                UnboundedStatementsData,
+            protocol_structures::{
+                instruction_data::{
+                    InstructionBlockData, InstructionBlockDataDebugFlat,
+                    InstructionBlockDataDebugTree, StatementsData, UInt8Data,
+                    UnboundedStatementsData,
+                },
+                regular_instructions::RegularInstruction,
             },
-            regular_instruction::RegularInstruction,
         },
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
     };
@@ -613,7 +555,7 @@ mod tests {
     #[test_case(
         &[],
         InstructionTree::new(Instruction::Regular(RegularInstruction::UnboundedStatements)),
-        Some(DXBParserError::ExpectingMoreInstructions(NextInstructionsStack(vec![NextScopeInstruction::Regular(1)])))
+        Some(DXBParserError::ExpectingMoreInstructions)
          ; "empty dxb")]
     #[test_case(
         &[
@@ -702,7 +644,7 @@ mod tests {
                 InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
             ]
         },
-        Some(DXBParserError::ExpectingMoreInstructions(NextInstructionsStack(vec![NextScopeInstruction::Regular(1)])))
+        Some(DXBParserError::ExpectingMoreInstructions)
         ; "statements with missing instructions"
     )]
     #[test_case(
@@ -748,7 +690,7 @@ mod tests {
         );
 
         assert_eq!(err, expected_err);
-        assert_eq!(tree, expected_tree.into())
+        assert_eq!(tree, expected_tree,)
     }
 
     #[test]
@@ -778,7 +720,7 @@ mod tests {
 
         assert_eq!(err, None);
         assert_eq!(
-            InstructionTree::<Instruction>::from(tree),
+            tree,
             InstructionTree {
                 instruction: Box::new(Instruction::Regular(
                     RegularInstruction::_RemoteExecutionDebugFlat(
@@ -786,7 +728,7 @@ mod tests {
                             length: 5,
                             injected_variable_count: 0,
                             injected_values: vec![],
-                            body: instructions_with_span!(
+                            body: vec![
                                 Instruction::Regular(RegularInstruction::Add),
                                 Instruction::Regular(
                                     RegularInstruction::UInt8(UInt8Data(42))
@@ -794,7 +736,7 @@ mod tests {
                                 Instruction::Regular(
                                     RegularInstruction::UInt8(UInt8Data(43))
                                 ),
-                            )
+                            ]
                         }
                     )
                 )),
@@ -832,7 +774,7 @@ mod tests {
 
         assert_eq!(err, None);
         assert_eq!(
-            InstructionTree::<Instruction>::from(tree),
+            tree,
             InstructionTree {
                 instruction: Box::new(Instruction::Regular(
                     RegularInstruction::_RemoteExecutionDebugTree(
@@ -857,7 +799,6 @@ mod tests {
                                     )),
                                 ]
                             }
-                            .into()
                         }
                     )
                 )),

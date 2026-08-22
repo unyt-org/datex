@@ -909,7 +909,6 @@ dependencies = [
  "pretty",
  "realhydroper-lsp",
  "ringmap",
- "seq-macro",
  "serde",
  "serde-big-array",
  "serde-val",
@@ -924,7 +923,6 @@ dependencies = [
  "test-case",
  "thiserror 2.0.18",
  "tokio",
- "twox-hash",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -3607,12 +3605,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
 
 [[package]]
-name = "seq-macro"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bc711410fbe7399f390ca1c3b60ad0f53f80e95c5eb935e52268a0e2cd49acc"
-
-[[package]]
 name = "serde"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4320,12 +4312,6 @@ dependencies = [
  "tokio-util",
  "webrtc-util",
 ]
-
-[[package]]
-name = "twox-hash"
-version = "2.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8464ec13c3691491391d9fce00f6416c9a48e46972f72d7865688be2080192c9"
 
 [[package]]
 name = "typed-arena"

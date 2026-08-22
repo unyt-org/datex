@@ -15,9 +15,9 @@ use crate::{
         },
         value_compiler::{append_instruction, append_value_container},
     },
-    instruction::{
-        Instruction, regular_instruction::RegularInstruction,
-        type_instruction::TypeInstruction,
+    global::protocol_structures::{
+        instructions::Instruction, regular_instructions::RegularInstruction,
+        type_instructions::TypeInstruction,
     },
     prelude::*,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,

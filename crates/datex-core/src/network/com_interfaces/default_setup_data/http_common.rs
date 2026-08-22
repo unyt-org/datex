@@ -26,7 +26,6 @@ impl Display for URLError {
 }
 
 #[derive(Datex, Debug, Serialize, Deserialize, Clone)]
-#[datex(structural_recursive)]
 pub enum TLSMode {
     /// The TLS certificate is handled externally (e.g., by a reverse proxy or load balancer).
     HandledExternally,
@@ -38,7 +37,6 @@ pub enum TLSMode {
 }
 
 #[derive(Datex, Debug, Serialize, Deserialize, Clone)]
-#[datex(structural_recursive)]
 pub struct AcceptAddress {
     address: String,
     tls_mode: Option<TLSMode>,

@@ -16,7 +16,7 @@ use crate::{
 };
 
 use crate::{
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    libs::core::type_id::CoreLibTypeId,
     shared_values::PointerAddress,
     types::{r#type::Type, type_definition::callable::CallableKind},
 };
@@ -28,11 +28,12 @@ pub enum TypeExpressionData {
     // used for error recovery
     Recover,
 
+    Null,
+
+    Unit,
+
     // a variable name or generic type identifier, e.g. integer, string, User, MyType, T
     Identifier(String),
-
-    // a type name uniquely identified by a pointer address, e.g. User$1235
-    IdentifierWithPointerAddress(IdentifierWithPointerAddress),
 
     VariableAccess(VariableAccess),
     GetReference(PointerAddress),
@@ -86,37 +87,7 @@ pub enum TypeExpressionData {
     VariantAccess(TypeVariantAccess),
 }
 
-impl TypeExpressionData {
-    pub fn null() -> Self {
-        TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Null.into())
-    }
-
-    pub fn unit() -> Self {
-        TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Unit.into())
-    }
-}
-
 impl Spanned for TypeExpressionData {
-    type Output = TypeExpression;
-
-    fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
-        TypeExpression {
-            data: Box::new(self),
-            span: span.into(),
-            ty: None,
-        }
-    }
-
-    fn with_default_span(self) -> Self::Output {
-        TypeExpression {
-            data: Box::new(self),
-            span: 0..0,
-            ty: None,
-        }
-    }
-}
-
-impl Spanned for Box<TypeExpressionData> {
     type Output = TypeExpression;
 
     fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
@@ -139,25 +110,17 @@ impl Spanned for Box<TypeExpressionData> {
 #[derive(Clone, Debug)]
 /// A type expression in the AST
 pub struct TypeExpression {
-    pub data: Box<TypeExpressionData>,
+    pub data: TypeExpressionData,
     pub span: ops::Range<usize>,
     pub ty: Option<Type>,
 }
 impl TypeExpression {
     pub fn new(data: TypeExpressionData, span: ops::Range<usize>) -> Self {
         Self {
-            data: Box::new(data),
+            data,
             span,
             ty: None,
         }
-    }
-
-    pub fn data(&self) -> &TypeExpressionData {
-        &self.data
-    }
-
-    pub fn data_mut(&mut self) -> &mut TypeExpressionData {
-        &mut self.data
     }
 }
 
@@ -169,12 +132,6 @@ impl PartialEq for TypeExpression {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct StructuralList(pub Vec<TypeExpression>);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct IdentifierWithPointerAddress {
-    pub name: String,
-    pub pointer_address: PointerAddress,
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FixedSizeList {

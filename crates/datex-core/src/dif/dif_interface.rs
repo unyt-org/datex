@@ -2,7 +2,6 @@ use crate::{
     dif::error::{DIFObserveError, DIFUpdateError},
     prelude::*,
     runtime::{
-        Runtime,
         cache::shared_values_cache::{
             SharedValuesCache, ValueNotFoundInCacheError,
         },
@@ -10,8 +9,7 @@ use crate::{
     },
     shared_values::{
         OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
-        SelfOwnedSharedContainer, SharedContainer, SharedContainerMutability,
-        SharedContainerOwnership,
+        SelfOwnedSharedContainer, SharedContainer, SharedContainerOwnership,
         base_shared_value_container::{
             BaseSharedValueContainer,
             observers::{
@@ -22,14 +20,8 @@ use crate::{
         traits::SharedContainerCommon,
     },
     traits::apply::{Apply, ApplyError},
-    types::type_definition::{
-        TypeDefinition, callable::CallableTypeDefinition,
-    },
     value_updates::{UpdateReturn, update_data::Update},
-    values::{
-        core_values::callable::{Callable, CallableBody, NativeCallable},
-        value_container::ValueContainer,
-    },
+    values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
@@ -67,36 +59,13 @@ impl DIFInterface {
         Ok(shared_container.get_current_observers(source_id))
     }
 
-    /// Registers a native callable function in the DIFInterface as a shared value and returns its pointer address.
-    pub fn register_callable(
-        &mut self,
-        callable: NativeCallable,
-        name: Option<String>,
-        signature: CallableTypeDefinition,
-    ) -> SelfOwnedPointerAddress {
-        let callable = Callable {
-            name,
-            signature: signature.clone(),
-            body: CallableBody::Native(callable),
-            creator: Default::default(),
-        };
-        let shared_base = BaseSharedValueContainer::try_new(
-            ValueContainer::from(callable),
-            TypeDefinition::Callable(signature),
-            SharedContainerMutability::Immutable,
-        )
-        .unwrap();
-        self.create_pointer(shared_base)
-    }
-
     /// Executes an apply operation, applying the `value` to the `callee`.
     pub fn apply(
         &self,
-        runtime: &Runtime,
         callee: ValueContainer,
-        value: Vec<ValueContainer>,
+        value: ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        callee.try_apply_sync(runtime, value)
+        callee.try_apply_single(&value)
     }
 
     /// Creates a new owned local pointer and stores it in memory.
@@ -148,11 +117,13 @@ impl DIFInterface {
             .cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
-        Ok(shared_container_ref.observe(Observer {
-            transceiver_id: self.transceiver_id.clone(),
-            options,
-            callback: Rc::new(callback),
-        })?)
+        Ok(shared_container_ref.observe(
+            Observer {
+                transceiver_id: self.transceiver_id.clone(),
+                options,
+                callback: Rc::new(callback),
+            },
+        )?)
     }
 
     /// Updates the options for an existing observer on the pointer at the given address.
@@ -167,7 +138,8 @@ impl DIFInterface {
             .cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
-        shared_container_ref.update_observer_options(observer_id, options)?;
+        shared_container_ref
+            .update_observer_options(observer_id, options)?;
         Ok(())
     }
 
@@ -182,7 +154,8 @@ impl DIFInterface {
             .cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
-        shared_container_ref.unobserve(observer_id)?;
+        shared_container_ref
+            .unobserve(observer_id)?;
         Ok(())
     }
 

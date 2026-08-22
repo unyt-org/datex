@@ -5,8 +5,8 @@ use crate::{
     ast::{
         expressions::{DatexExpression, VariableAccess},
         type_expressions::{
-            CallableTypeExpression, IdentifierWithPointerAddress,
-            TypeExpression, TypeExpressionData, TypeVariantAccess,
+            CallableTypeExpression, TypeExpression, TypeExpressionData,
+            TypeVariantAccess,
         },
     },
     compiler::{
@@ -134,7 +134,7 @@ impl<'a> Formatter<'a> {
         type_expr: &'a TypeExpression,
     ) -> Format<'a> {
         let a = &self.alloc;
-        match type_expr.data() {
+        match &type_expr.data {
             TypeExpressionData::VariantAccess(TypeVariantAccess {
                 name,
                 variant,
@@ -145,6 +145,8 @@ impl<'a> Formatter<'a> {
             TypeExpressionData::Boolean(b) => a.text(b.to_string()),
             TypeExpressionData::Text(t) => a.text(format!("{:?}", t)),
             TypeExpressionData::Endpoint(ep) => a.text(ep.to_string()),
+            TypeExpressionData::Null => a.text("null"),
+            TypeExpressionData::Unit => a.text("()"),
 
             TypeExpressionData::Ref(inner) => {
                 a.text("&") + self.format_type_expression(inner)
@@ -161,13 +163,6 @@ impl<'a> Formatter<'a> {
                 a.text("mut") + a.space() + self.format_type_expression(inner)
             }
             TypeExpressionData::Identifier(lit) => a.text(lit.to_string()),
-            TypeExpressionData::IdentifierWithPointerAddress(
-                IdentifierWithPointerAddress {
-                    name,
-                    pointer_address,
-                },
-            ) => a.text(format!("{}{}", name, pointer_address)),
-
             TypeExpressionData::VariableAccess(VariableAccess {
                 name, ..
             }) => a.text(name.clone()),

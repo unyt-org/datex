@@ -201,7 +201,7 @@ impl LanguageServer for LanguageServerBackend {
                         variable_metadata.shape,
                         name,
                         variable_metadata.var_type.unwrap_or_else(|| {
-                            Type::core(CoreLibBaseTypeId::Any)
+                            Type::core(CoreLibBaseTypeId::Unknown)
                         })
                     )))
                 }
@@ -223,7 +223,7 @@ impl LanguageServer for LanguageServerBackend {
                         variable_metadata.shape,
                         name,
                         variable_metadata.var_type.unwrap_or_else(|| {
-                            Type::core(CoreLibBaseTypeId::Any)
+                            Type::core(CoreLibBaseTypeId::Unknown)
                         })
                     )))
                 }

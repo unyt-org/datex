@@ -164,7 +164,7 @@ pub fn datex_main_impl_with_config(
     let init_scoped = input.init_scoped;
     let init_unscoped = input.init_unscoped;
     let pre_body = input.pre_body;
-
+    
     let runtime_clone = if init_unscoped.is_some() || init_scoped.is_some() {
         quote! { let runtime = runner.runtime.clone(); }
     } else {
@@ -254,7 +254,7 @@ pub fn get_arg_ident_and_type(
 fn compile_datex_config(config: RuntimeConfig) -> Vec<u8> {
     let (dxb, _) = compile_template(
         "?",
-        vec![Some(config.to_value_container_without_cache())],
+        vec![Some(config.to_value_container())],
         CompileOptions::default(),
         // FIXME: stub runtime for now
         Runtime::stub(),

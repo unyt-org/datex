@@ -1,7 +1,7 @@
 //! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
     core_compiler::InstructionInput,
-    instruction::regular_instruction::RegularInstruction,
+    global::protocol_structures::regular_instructions::RegularInstruction,
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
     runtime::{
@@ -17,11 +17,7 @@ use crate::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         RemotePointerAddress, SelfOwnedPointerAddress, SharedContainer,
     },
-    traits::apply::Apply,
-    types::{
-        entities::entity_impls::EntityImplMethod, r#type::Type,
-        type_definition::TypeDefinition,
-    },
+    traits::apply::{Apply, ApplyError},
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
@@ -118,37 +114,9 @@ pub fn execute_dxb_sync(
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = callee.try_apply_sync(&runtime, args)?;
+                let res = handle_apply(&callee, &args)?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
-            }
-            ExternalExecutionInterrupt::CallMethod(
-                callee,
-                method_name,
-                args,
-            ) => {
-                let entity_type =
-                    if let TypeDefinition::Box(box Type::Entity(entity_type)) =
-                        callee.actual_type().as_ref()
-                    {
-                        Some(entity_type.clone())
-                    } else {
-                        None
-                    };
-
-                if let Some(entity_type) = entity_type
-                    && let Some(method) = entity_type
-                        .entity_definition()
-                        .try_get_method(&method_name)
-                {
-                    interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValue(try_call_method_sync(
-                            callee, &method, args, &runtime,
-                        )?),
-                    )
-                } else {
-                    return Err(ExecutionError::MethodNotFound(method_name));
-                }
             }
             _ => return Err(ExecutionError::RequiresAsyncExecution),
         }
@@ -276,103 +244,14 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = callee.try_apply_async(&runtime, args).await?;
+                let res = handle_apply(&callee, &args)?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
-            }
-            ExternalExecutionInterrupt::CallMethod(
-                callee,
-                method_name,
-                args,
-            ) => {
-                let entity_type =
-                    if let TypeDefinition::Box(box Type::Entity(entity_type)) =
-                        callee.actual_type().as_ref()
-                    {
-                        Some(entity_type.clone())
-                    } else {
-                        None
-                    };
-
-                if let Some(entity_type) = entity_type
-                    && let Some(method) = entity_type
-                        .entity_definition()
-                        .try_get_method(&method_name)
-                {
-                    interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValue(
-                            try_call_method_async(
-                                callee, &method, args, &runtime,
-                            )
-                            .await?,
-                        ),
-                    )
-                } else {
-                    return Err(ExecutionError::MethodNotFound(method_name));
-                }
             }
         }
     }
 
     unreachable!("Execution loop should always return a result");
-}
-
-fn try_call_method_sync(
-    callee: ValueContainer,
-    method: &EntityImplMethod,
-    mut args: Vec<ValueContainer>,
-    runtime: &Runtime,
-) -> Result<Option<ValueContainer>, ExecutionError> {
-    // prepend callee to args
-    args.insert(0, callee.clone());
-
-    // only local calls supported for sync execution
-    if !method.call_on_owner
-        || callee
-            .owner()
-            .is_local_or_equals_endpoint(runtime.endpoint())
-    {
-        let res = method.callable.try_apply_sync(runtime, args)?;
-        Ok(res)
-    } else {
-        Err(ExecutionError::RequiresAsyncExecution)
-    }
-}
-
-async fn try_call_method_async(
-    callee: ValueContainer,
-    method: &EntityImplMethod,
-    mut args: Vec<ValueContainer>,
-    runtime: &Runtime,
-) -> Result<Option<ValueContainer>, ExecutionError> {
-    // prepend callee to args
-    args.insert(0, callee.clone());
-
-    let owner_endpoint = callee.owner();
-    // call locally
-    if !method.call_on_owner
-        || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
-    {
-        let res = method.callable.try_apply_async(runtime, args).await?;
-        Ok(res)
-    }
-    // call on owner endpoint
-    else {
-        let mut instructions = vec![
-            RegularInstruction::call_method(
-                method.name().unwrap().clone(), // FIXME: don't use method name here
-                args.len() as u8,
-            )
-            .into(),
-        ];
-        instructions
-            .extend(args.into_iter().map(InstructionInput::ValueContainer));
-
-        let res = runtime
-            .execute_instructions_remote(vec![owner_endpoint], instructions)
-            .await?;
-        Ok(res)
-    }
 }
 
 async fn set_remote_endpoint_property(
@@ -409,13 +288,26 @@ async fn get_remote_endpoint_property(
         .await
 }
 
+fn handle_apply(
+    callee: &ValueContainer,
+    args: &[ValueContainer],
+) -> Result<Option<ValueContainer>, ApplyError> {
+    // callee is guaranteed to be Some here
+    // apply_single if one arg, apply otherwise
+    Ok(if args.len() == 1 {
+        callee.try_apply_single(&args[0])?
+    } else {
+        callee.try_apply(args)?
+    })
+}
+
 fn get_remote_shared_container_reference(
     runtime: &Runtime,
     address: RemotePointerAddress,
     _mutability: ReferenceMutability,
 ) -> Result<Option<ReferencedSharedContainer>, ExecutionError> {
     let address_provider = runtime.pointer_address_provider_mut();
-    let memory = runtime.shared_references_cache().borrow();
+    let memory = runtime.memory().borrow();
     let resolved_address = address_provider.normalize_address(address);
     // convert slot to InternalSlot enum
     // TODO #770: resolve from remote, handle mutability
@@ -436,7 +328,7 @@ fn get_local_pointer_value(
 ) -> Option<ReferencedSharedContainer> {
     // convert slot to InternalSlot enum
     runtime
-        .shared_references_cache()
+        .memory()
         .borrow()
         .get_reference(&PointerAddress::SelfOwned(address))
 }
@@ -448,11 +340,7 @@ mod tests {
     use crate::{
         collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
-        core_compiler::{
-            core_compilation_context::DXBWithSharedValues,
-            value_compiler::compile_instruction,
-        },
-        instruction::Instruction,
+        core_compiler::core_compilation_context::DXBWithSharedValues,
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
         runtime::{
@@ -475,15 +363,12 @@ mod tests {
         types::{
             r#type::Type,
             type_definition::{
-                TypeDefinition,
-                callable::{CallableKind, CallableTypeDefinition},
-                tagged_type::TaggedTypeDefinition,
+                TypeDefinition, tagged_type::TaggedTypeDefinition,
             },
         },
         values::{
             core_value::CoreValue,
             core_values::{
-                callable::{Callable, CallableBody, DatexBytecodeCallable},
                 decimal::Decimal,
                 endpoint::Endpoint,
                 integer::{Integer, typed_integer::TypedInteger},
@@ -550,10 +435,8 @@ mod tests {
                 )
                 .unwrap();
                 compilation_scope = new_compilation_scope;
-                yield execution_context.execute_dxb_sync(
-                    DXBWithSharedValues::new(dxb, vec![]),
-                    None,
-                );
+                yield execution_context
+                    .execute_dxb_sync(DXBWithSharedValues::new(dxb, vec![]));
             }
         }
     }
@@ -722,7 +605,7 @@ mod tests {
                 &value.custom_type,
                 &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "Example".to_string(),
-                    ty: Some(Box::new(Type::Definition(
+                    ty: Some(Box::new(Type::Alias(
                         TypeDefinition::CoreType(
                             CoreLibBaseTypeId::Unit.into()
                         )
@@ -936,125 +819,6 @@ mod tests {
     fn statements() {
         let result = execute_datex_script_debug_with_result("1; 2; 3");
         assert_eq!(result, Integer::from(3).into());
-    }
-
-    #[test]
-    fn empty_function() {
-        let result =
-            execute_datex_script_debug_with_result("function test() ()");
-        let callable: Callable = result.try_into_value().unwrap();
-
-        assert_eq!(
-            callable,
-            Callable {
-                name: Some("test".to_string()),
-                signature: CallableTypeDefinition {
-                    kind: CallableKind::Function,
-                    requires_async: false,
-                    parameters: vec![],
-                    rest_parameter: None,
-                    return_type: None,
-                    yeet_type: None,
-                },
-                body: CallableBody::DatexBytecode(DatexBytecodeCallable {
-                    requires_async: false,
-                    injected_values: vec![],
-                    body: compile_instruction(RegularInstruction::statements(
-                        0, false
-                    )),
-                }),
-                creator: Endpoint::LOCAL,
-            }
-        )
-    }
-
-    #[test]
-    fn function_no_params() {
-        let result =
-            execute_datex_script_debug_with_result("function test() (null)");
-        let callable: Callable = result.try_into_value().unwrap();
-
-        assert_eq!(
-            callable,
-            Callable {
-                name: Some("test".to_string()),
-                signature: CallableTypeDefinition {
-                    kind: CallableKind::Function,
-                    requires_async: false,
-                    parameters: vec![],
-                    rest_parameter: None,
-                    return_type: None,
-                    yeet_type: None,
-                },
-                body: CallableBody::DatexBytecode(DatexBytecodeCallable {
-                    requires_async: false,
-                    injected_values: vec![],
-                    body: compile_instruction(RegularInstruction::Null),
-                }),
-                creator: Endpoint::LOCAL,
-            }
-        );
-    }
-
-    #[test]
-    fn function() {
-        let result = execute_datex_script_debug_with_result(
-            "function test(a: integer) -> null (null)",
-        );
-        let callable: Callable = result.try_into_value().unwrap();
-
-        assert_eq!(
-            callable,
-            Callable {
-                name: Some("test".to_string()),
-                signature: CallableTypeDefinition {
-                    kind: CallableKind::Function,
-                    requires_async: false,
-                    parameters: vec![(
-                        Some("a".to_string()),
-                        Type::core(CoreLibBaseTypeId::Integer)
-                    )],
-                    rest_parameter: None,
-                    return_type: Some(Box::new(Type::core(
-                        CoreLibBaseTypeId::Null
-                    ))),
-                    yeet_type: None,
-                },
-                body: CallableBody::DatexBytecode(DatexBytecodeCallable {
-                    requires_async: false,
-                    injected_values: vec![],
-                    body: compile_instruction(RegularInstruction::Null),
-                }),
-                creator: Endpoint::LOCAL,
-            }
-        );
-    }
-
-    #[test]
-    fn function_call_no_args() {
-        let result = execute_datex_script_debug_with_result(
-            "function test() -> integer (1 + 2)()",
-        );
-        let integer: Integer = result.try_into_value().unwrap();
-        assert_eq!(integer, Integer::from(3));
-    }
-
-    #[test]
-    fn function_call_with_arg() {
-        let result = execute_datex_script_debug_with_result(
-            "function test(x: integer) -> integer (x + 2)(1)",
-        );
-        let integer: Integer = result.try_into_value().unwrap();
-        assert_eq!(integer, Integer::from(3));
-    }
-
-    #[test]
-    fn function_call_with_arg_and_injected_value() {
-        let result = execute_datex_script_debug_with_result(
-            "const y = 42; function test(x: integer) -> integer (y + x + 2)(1)",
-        );
-        let integer: Integer = result.try_into_value().unwrap();
-        assert_eq!(integer, Integer::from(45));
     }
 
     #[test]

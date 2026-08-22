@@ -4,49 +4,42 @@ use crate::{
         shared_value_tracking::SharedValueTracking,
         to_instructions::ToInstructions,
     },
-    instruction::type_instruction::TypeInstruction,
+    global::protocol_structures::type_instructions::TypeInstruction,
     prelude::*,
     types::literal_type_definition::LiteralTypeDefinition,
 };
-impl ToInstructions for TypeExpression {
+impl<'a> ToInstructions<'a> for TypeExpression {
     type InstructionType = TypeInstruction;
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen move {
-            match self.data() {
+        Box::new(gen {
+            match &self.data {
                 TypeExpressionData::Integer(integer) => {
-                    yield TypeInstruction::Literal(
+                    yield TypeInstruction::TypeDefinitionLiteral(
                         LiteralTypeDefinition::Integer(integer.clone()),
                     )
                 }
                 TypeExpressionData::Text(text) => {
-                    yield TypeInstruction::Literal(LiteralTypeDefinition::Text(
-                        text.clone(),
-                    ))
+                    yield TypeInstruction::TypeDefinitionLiteral(
+                        LiteralTypeDefinition::Text(text.clone()),
+                    )
                 }
                 TypeExpressionData::Boolean(boolean) => {
-                    yield TypeInstruction::Literal(
+                    yield TypeInstruction::TypeDefinitionLiteral(
                         LiteralTypeDefinition::Boolean(boolean.clone()),
                     )
                 }
-                TypeExpressionData::GetCoreLibType(core_lib_id) => {
-                    yield TypeInstruction::CoreType(*core_lib_id)
-                }
                 TypeExpressionData::Range(range) => {
-                    yield TypeInstruction::Range;
-                    for instr in range
-                        .start
-                        .to_instructions(shared_value_tracking.as_deref_mut())
-                        .collect::<Vec<_>>()
+                    yield TypeInstruction::TypeDefinitionRange;
+                    for instr in
+                        range.start.to_instructions(_shared_value_tracking)
                     {
                         yield instr;
                     }
-                    for instr in range
-                        .end
-                        .to_instructions(shared_value_tracking.as_deref_mut())
-                        .collect::<Vec<_>>()
+                    for instr in
+                        range.end.to_instructions(_shared_value_tracking)
                     {
                         yield instr;
                     }

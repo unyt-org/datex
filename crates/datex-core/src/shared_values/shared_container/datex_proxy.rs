@@ -1,12 +1,11 @@
 use crate::{
     datex_proxy::{
-        DatexProxyType, DatexValueContainerProxy,
+        DatexProxyTypes, DatexValueContainerProxy,
         DatexValueContainerProxyDeserialize,
         DatexValueContainerProxyInfallibleSerialize,
         DatexValueContainerProxySerialize, TryFromDatexValueError,
         TryToDatexValueError,
     },
-    instruction::instruction_data::SharedRef,
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -25,19 +24,15 @@ use crate::{
 };
 
 impl DatexValueContainerProxyInfallibleSerialize for SharedContainer {
-    fn boxed_to_value_container(
-        self: Box<Self>,
-        _cache: &mut SharedReferencesCache,
-    ) -> ValueContainer {
-        ValueContainer::Shared(*self)
+    fn to_value_container(self) -> ValueContainer {
+        ValueContainer::Shared(self)
     }
 }
 impl DatexValueContainerProxySerialize for SharedContainer {
-    fn try_boxed_to_value_container(
-        self: Box<Self>,
-        context: &mut SharedReferencesCache,
+    fn try_to_value_container(
+        self,
     ) -> Result<ValueContainer, TryToDatexValueError> {
-        Ok(self.boxed_to_value_container(context))
+        Ok(self.to_value_container())
     }
 }
 impl DatexValueContainerProxyDeserialize for SharedContainer {
@@ -54,10 +49,10 @@ impl DatexValueContainerProxyDeserialize for SharedContainer {
     }
 }
 
-impl DatexProxyType for SharedContainer {
-    fn datex_type(_context: &mut SharedReferencesCache) -> Type {
-        Type::Definition(TypeDefinitionWithMetadata::new(
-            TypeDefinition::CoreType(CoreLibBaseTypeId::Any.into()),
+impl DatexProxyTypes for SharedContainer {
+    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
+        Type::Alias(TypeDefinitionWithMetadata::new(
+            TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()),
             TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Referenced(
@@ -67,5 +62,4 @@ impl DatexProxyType for SharedContainer {
         ))
     }
 }
-
 impl DatexValueContainerProxy for SharedContainer {}

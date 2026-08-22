@@ -9,7 +9,6 @@ use strum::EnumString;
 #[derive(
     Datex, PartialEq, Eq, Debug, Clone, EnumString, Serialize, Deserialize,
 )]
-#[datex(structural_recursive)]
 pub enum InterfaceDirection {
     In,
     Out,
@@ -35,7 +34,6 @@ impl InterfaceDirection {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq, Eq)]
-#[datex(structural_recursive)]
 /// The properties of a communication interface, which are used to describe the capabilities and characteristics of the interface.
 pub struct ComInterfaceProperties {
     /// the type of the interface, by which it is identified
@@ -92,7 +90,6 @@ pub struct ComInterfaceProperties {
 }
 
 #[derive(Datex, Debug, PartialEq, Clone, Default, Eq)]
-#[datex(structural_recursive)]
 pub enum ReconnectionConfig {
     #[default]
     NoReconnect,

@@ -1,6 +1,3 @@
-[build]
-rustflags = ["-Z", "threads=8"]
-
 [alias]
 # Run tests with `std` features with `cargo test-std`
 test-std = [

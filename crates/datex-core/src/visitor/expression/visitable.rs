@@ -1,14 +1,13 @@
 use crate::{
     ast::expressions::{
-        Apply, BinaryOperation, CallableDeclaration, CallableSignature,
-        CloneExpression, ComparisonOperation, Conditional, CreateMut,
-        CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-        DeriveSharedRef, EntityDeclarationExpression, EntityValueExpression,
+        Apply, BinaryOperation, CallableDeclaration, CloneExpression,
+        ComparisonOperation, Conditional, CreateMut, CreateShared,
+        DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
         GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess,
         PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
-        StackListAssignment, Statements, TagExpression,
-        TypeDeclarationExpression, UnaryOperation, Unbox, UnboxAssignment,
-        UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
+        StackListAssignment, Statements, TagExpression, TypeDeclaration,
+        UnaryOperation, Unbox, UnboxAssignment, UnboxSlotAssignment,
+        VariableAssignment, VariableDeclaration,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
@@ -123,7 +122,7 @@ impl<E> VisitableExpression<E> for UnaryOperation {
         Ok(())
     }
 }
-impl<E> VisitableExpression<E> for TypeDeclarationExpression {
+impl<E> VisitableExpression<E> for TypeDeclaration {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -132,17 +131,6 @@ impl<E> VisitableExpression<E> for TypeDeclarationExpression {
         Ok(())
     }
 }
-
-impl<E> VisitableExpression<E> for EntityDeclarationExpression {
-    fn walk_children(
-        &mut self,
-        visitor: &mut impl ExpressionVisitor<E>,
-    ) -> Result<(), E> {
-        visitor.visit_type_expression(&mut self.definition)?;
-        Ok(())
-    }
-}
-
 impl<E> VisitableExpression<E> for ComparisonOperation {
     fn walk_children(
         &mut self,
@@ -182,16 +170,6 @@ impl<E> VisitableExpression<E> for TagExpression {
         if let Some(expression) = &mut self.expression {
             visitor.visit_datex_expression(expression)?;
         }
-        Ok(())
-    }
-}
-
-impl<E> VisitableExpression<E> for EntityValueExpression {
-    fn walk_children(
-        &mut self,
-        visitor: &mut impl ExpressionVisitor<E>,
-    ) -> Result<(), E> {
-        visitor.visit_datex_expression(&mut self.value)?;
         Ok(())
     }
 }
@@ -281,29 +259,13 @@ impl<E> VisitableExpression<E> for CallableDeclaration {
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E> {
-        self.signature.walk_children(visitor)?;
-        visitor.visit_datex_expression(&mut self.body)?;
-        Ok(())
-    }
-}
-
-impl<E> VisitableExpression<E> for CallableSignature {
-    fn walk_children(
-        &mut self,
-        visitor: &mut impl ExpressionVisitor<E>,
-    ) -> Result<(), E> {
         if let Some(return_type) = &mut self.return_type {
             visitor.visit_type_expression(return_type)?;
-        }
-        if let Some(yeet_type) = &mut self.yeet_type {
-            visitor.visit_type_expression(yeet_type)?;
         }
         for (_, param_type) in &mut self.parameters {
             visitor.visit_type_expression(param_type)?;
         }
-        if let Some(rest_parameter) = &mut self.rest_parameter {
-            visitor.visit_type_expression(&mut rest_parameter.1)?;
-        }
+        visitor.visit_datex_expression(&mut self.body)?;
         Ok(())
     }
 }
@@ -409,9 +371,6 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::TypeDeclaration(type_declaration) => {
                 type_declaration.walk_children(visitor)
             }
-            DatexExpressionData::EntityDeclaration(entity_declaration) => {
-                entity_declaration.walk_children(visitor)
-            }
             DatexExpressionData::TypeExpression(type_expression) => {
                 type_expression.walk_children(visitor)
             }
@@ -474,10 +433,6 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::Range(range) => range.walk_children(visitor),
 
             DatexExpressionData::Tag(tag) => tag.walk_children(visitor),
-
-            DatexExpressionData::EntityValue(entity_value) => {
-                entity_value.walk_children(visitor)
-            }
 
             DatexExpressionData::Noop
             | DatexExpressionData::OmitRecursive

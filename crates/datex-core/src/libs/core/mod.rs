@@ -45,27 +45,25 @@ impl Default for CoreLibraryValues {
                 Some("print".to_string()),
                 CallableTypeDefinition {
                     kind: CallableKind::Function,
-                    requires_async: false,
-                    parameters: vec![],
-                    rest_parameter: Some((
+                    parameter_types: vec![],
+                    rest_parameter_type: Some((
                         Some("values".to_string()),
-                        Box::new(Type::core(CoreLibBaseTypeId::Any)),
+                        Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
                     )),
                     return_type: None,
                     yeet_type: None,
                 },
-                CallableBody::native_sync(Self::print_impl),
+                CallableBody::Native(Self::print_impl),
                 Endpoint::LOCAL,
             ),
             panic: Value::callable(
                 Some("panic".to_string()),
                 CallableTypeDefinition {
                     kind: CallableKind::Function,
-                    requires_async: false,
-                    parameters: vec![],
-                    rest_parameter: Some((
+                    parameter_types: vec![],
+                    rest_parameter_type: Some((
                         Some("values".to_string()),
-                        Box::new(Type::core(CoreLibBaseTypeId::Any)),
+                        Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
                     )),
                     return_type: None,
                     yeet_type: None,
@@ -102,7 +100,7 @@ impl CoreLibraryValues {
     }
 
     fn print_impl(
-        mut args: Vec<ValueContainer>,
+        mut args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, CallableError> {
         // TODO #680: add I/O abstraction layer / interface
 
@@ -116,7 +114,7 @@ impl CoreLibraryValues {
         {
             output.push_str(&text.0);
             // remove first argument from args
-            args = args.into_iter().skip(1).collect();
+            args = &args[1..];
             // if there are still arguments, add a space
             if !args.is_empty() {
                 output.push(' ');

@@ -23,18 +23,19 @@ use crate::{
             StatementResultCollectionStrategy,
         },
     },
-    global,
-    global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-    instruction::{
-        Instruction, NestedInstructionResolutionStrategy,
-        instruction_data::{
-            ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, InstantData, JumpData, MapData,
-            ShortStatementsData, ShortTextData, StatementsData, TaggedTypeData,
-            TaggedValue, TextData, UnboundedStatementsData, UnionData,
+    global::{
+        operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
+        protocol_structures::{
+            instruction_data::{
+                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
+                FloatAsInt32Data, InstantData, JumpData, ShortStatementsData,
+                ShortTextData, StatementsData, TaggedValue, TextData,
+                UnboundedStatementsData,
+            },
+            instructions::{Instruction, NestedInstructionResolutionStrategy},
+            regular_instructions::RegularInstruction,
+            type_instructions::TypeInstruction,
         },
-        regular_instruction::RegularInstruction,
-        type_instruction::TypeInstruction,
     },
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
@@ -69,8 +70,7 @@ use crate::{
         r#type::Type,
         type_definition::{
             TypeDefinition, impl_type::ImplTypeDefinition,
-            map::MapTypeDefinition, range::RangeTypeDefinition,
-            tagged_type::TaggedTypeDefinition, union::UnionTypeDefinition,
+            range::RangeTypeDefinition, tagged_type::TaggedTypeDefinition,
         },
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
@@ -98,13 +98,8 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, ops::DerefMut};
 mod collected_execution_result;
-use crate::{
-    instruction::instruction_data::{CallMethodData, CallableSignatureData},
-    types::type_definition::callable::CallableTypeDefinition,
-    value_updates::update_data::{
-        DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
-    },
-    values::core_values::callable::DatexBytecodeCallable,
+use crate::value_updates::update_data::{
+    DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
 };
 use collected_execution_result::CollectedExecutionResult;
 
@@ -138,7 +133,7 @@ pub fn execution_loop(
                 Err(err) => {
                     match err {
                         ExecutionError::DXBParserError(
-                            box DXBParserError::ExpectingMoreInstructions(_),
+                            box DXBParserError::ExpectingMoreInstructions,
                         ) => {
                             yield Err(
                                 ExecutionError::IntermediateResultWithState(
@@ -177,10 +172,8 @@ pub gen fn inner_execution_loop(
     ) {
         let instruction = match instruction_result {
             Ok(instruction) => instruction,
-            Err(DXBParserError::ExpectingMoreInstructions(stack)) => {
-                yield Err(
-                    DXBParserError::ExpectingMoreInstructions(stack).into()
-                );
+            Err(DXBParserError::ExpectingMoreInstructions) => {
+                yield Err(DXBParserError::ExpectingMoreInstructions.into());
                 // assume that when continuing after this yield, more instructions will have been loaded
                 // so we run the loop again to try to get the next instruction
                 continue;
@@ -190,9 +183,7 @@ pub gen fn inner_execution_loop(
             }
         };
 
-        let result: Option<CollectedExecutionResult> = match instruction
-            .instruction
-        {
+        let result: Option<CollectedExecutionResult> = match instruction {
             // handle regular instructions
             Instruction::Regular(regular_instruction) => {
                 let regular_instruction = collector
@@ -435,7 +426,8 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::UnaryPlus |
                             RegularInstruction::BitwiseNot |
                             RegularInstruction::Apply(_) |
-                            RegularInstruction::CallMethod(_) |
+                            RegularInstruction::ApplySingle |
+                            RegularInstruction::ApplyZero |
                             RegularInstruction::GetEntryText(_) |
                             RegularInstruction::GetEntryIndex(_) |
                             RegularInstruction::GetEntryDynamic |
@@ -472,22 +464,9 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::MoveWithValue(_) |
                             RegularInstruction::SharedRefWithValue(_) |
-                            RegularInstruction::CallableDeclaration(_) |
-                            RegularInstruction::Callable(_) |
-                            RegularInstruction::BoxedValue |
-                            RegularInstruction::TypeExpression => {
-                                // Note: If we reach this unreachable statement, we most probably forget to add a match
-                                // arm to [RegularInstruction::get_next_expected_instructions](datex_core::global::regular_instructions)
-                                unreachable!()
-                            },
+                            RegularInstruction::TypeExpression => unreachable!(),
                             #[cfg(feature = "disassembler")]
-                            RegularInstruction::_RemoteExecutionDebugFlat(_) |
-                            RegularInstruction::_RemoteExecutionDebugTree(_) |
-                            RegularInstruction::_CallableDeclarationDebugFlat(_) |
-                            RegularInstruction::_CallableDeclarationDebugTree(_) |
-                            RegularInstruction::_CallableDebugFlat(_) |
-                            RegularInstruction::_CallableDebugTree(_)
-                            => unreachable!(),
+                            RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => unreachable!(),
                         }
                         };
                         Some(match regular_result {
@@ -507,27 +486,20 @@ pub gen fn inner_execution_loop(
 
                 if let Some(type_instruction) = type_instruction {
                     Some(match type_instruction {
-                        TypeInstruction::CoreType(core_lib_type_id) => {
-                            CollectedExecutionResult::type_definition(
-                                TypeDefinition::CoreType(core_lib_type_id),
-                            )
-                        }
-                        TypeInstruction::Literal(literal) => {
+                        TypeInstruction::TypeDefinitionCoreType(
+                            core_lib_type_id,
+                        ) => CollectedExecutionResult::type_definition(
+                            TypeDefinition::CoreType(core_lib_type_id),
+                        ),
+                        TypeInstruction::TypeDefinitionLiteral(literal) => {
                             CollectedExecutionResult::type_definition(
                                 literal.into(),
                             )
                         }
-                        TypeInstruction::TaggedType(TaggedTypeData {
-                            tag,
-                            has_type: false,
-                        }) => CollectedExecutionResult::type_definition(
-                            TypeDefinition::TaggedType(
-                                // TODO pointer addr
-                                TaggedTypeDefinition::new_without_type(tag.0),
-                            ),
-                        ),
 
-                        TypeInstruction::SharedTypeReference(type_ref) => {
+                        TypeInstruction::TypeDefinitionSharedTypeReference(
+                            type_ref,
+                        ) => {
                             let val = interrupt_with_maybe_value!(
                                 interrupt_provider,
                                 match type_ref.address {
@@ -574,20 +546,12 @@ pub gen fn inner_execution_loop(
                         }
 
                         // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                        TypeInstruction::List(_)
-                        | TypeInstruction::Union(_)
-                        | TypeInstruction::Map(_)
-                        | TypeInstruction::DefinitionWithMetadata(_)
-                        | TypeInstruction::Range
-                        | TypeInstruction::TaggedType(TaggedTypeData {
-                            has_type: true,
-                            ..
-                        })
-                        | TypeInstruction::ImplType(_) => {
-                            panic!(
-                                "Unexpected type instruction: {:?}",
-                                type_instruction
-                            );
+                        TypeInstruction::TypeDefinitionList(_)
+                        | TypeInstruction::TypeDefinitionMap(_)
+                        | TypeInstruction::TypeDefinitionWithMetadata(_)
+                        | TypeInstruction::TypeDefinitionRange
+                        | TypeInstruction::TypeDefinitionImplType(_) => {
+                            unreachable!()
                         }
                     })
                 } else {
@@ -705,64 +669,6 @@ pub gen fn inner_execution_loop(
                                     res.into()
                                 }
 
-                                RegularInstruction::CallableDeclaration(callable_declaration) => {
-                                    let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
-                                    let signature = resolve_callable_type_definition(types, &callable_declaration.signature);
-                                    let injected_values = state.stack.resolve_injected_values(&callable_declaration.body.injected_values)?;
-
-                                    ValueContainer::from(Callable {
-                                        name: if callable_declaration.signature.name.0.is_empty() {
-                                            None
-                                        } else {
-                                            Some(callable_declaration.signature.name.0)
-                                        },
-                                        signature,
-                                        body: CallableBody::DatexBytecode(DatexBytecodeCallable {
-                                            requires_async: callable_declaration.signature.requires_async,
-                                            injected_values,
-                                            body: callable_declaration.body.body,
-                                        }),
-                                        creator: state.caller_metadata.endpoint.clone(),
-                                    })
-                                        .into()
-                                }
-                                RegularInstruction::Callable(callable_declaration) => {
-
-                                    // indicates a native callable declaration which cannot be transferred
-                                    let has_native_impl = callable_declaration.body.length == 0;
-
-                                    let injected_values = collected_results
-                                        .pop_values(callable_declaration.body.injected_value_count)
-                                        .into_iter()
-                                        .flatten()
-                                        .map(|runtime_value| runtime_value.into_value_container(&mut state))
-                                        .collect::<Result<Vec<_>, ExecutionError>>()?;
-
-                                    let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
-                                    let signature = resolve_callable_type_definition(types, &callable_declaration.signature);
-
-                                    ValueContainer::from(Callable {
-                                        name: if callable_declaration.signature.name.0.is_empty() {
-                                            None
-                                        } else {
-                                            Some(callable_declaration.signature.name.0)
-                                        },
-                                        signature,
-                                        body: if has_native_impl {
-                                                CallableBody::Hidden
-                                            }
-                                            else {
-                                                CallableBody::DatexBytecode(DatexBytecodeCallable {
-                                                    requires_async: callable_declaration.signature.requires_async,
-                                                    injected_values,
-                                                    body: callable_declaration.body.body,
-                                                })
-                                            },
-                                        creator: state.caller_metadata.endpoint.clone(),
-                                    })
-                                        .into()
-                                }
-
                                 RegularInstruction::Matches => {
                                     let _target = collected_results
                                         .try_pop_runtime_value()?;
@@ -773,8 +679,8 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 instruction @ (
-                                    RegularInstruction::CreateShared |
-                                    RegularInstruction::CreateSharedMut
+                                RegularInstruction::CreateShared |
+                                RegularInstruction::CreateSharedMut
                                 ) => {
                                     let value = collected_results
                                         .try_pop_value_container(&mut state)?;
@@ -824,17 +730,13 @@ pub gen fn inner_execution_loop(
                                             regular_instruction,
                                         ),
                                         value_container, // TODO #646: is unary operation supposed to take ownership?
-                                        state.runtime.shared_references_cache(),
+                                        state.runtime.memory(),
                                     )?;
                                     RuntimeValue::ValueContainer(
                                         res
                                     ).into()
                                 }
-                                RegularInstruction::BoxedValue => {
-                                    let expression = collected_results.try_pop_runtime_value()?;
-                                    let value_container = expression.into_value_container(&mut state)?;
-                                    ValueContainer::from(Value::boxed(value_container)).into()
-                                }
+
                                 RegularInstruction::TypedValue => {
                                     let mut value_container = collected_results
                                         .try_pop_value_container(&mut state)?;
@@ -1060,7 +962,7 @@ pub gen fn inner_execution_loop(
                                         let collapsed_value = target.collapsed_value();
                                         collapsed_value.borrow().try_get_property(
                                             &property_name,
-                                        ).map(|v| v.into())
+                                        ).cloned()
                                             .map_err(ExecutionError::access_error)? // FIXME: no clone?
                                     };
 
@@ -1078,7 +980,7 @@ pub gen fn inner_execution_loop(
                                     let collapsed_value = value_container.collapsed_value();
                                     let res = collapsed_value.borrow().try_get_property(
                                         property_index,
-                                    ).map(|v| ValueContainer::from(v))
+                                    ).cloned()
                                         .map_err(ExecutionError::access_error)?; // FIXME: no clone?
                                     res.into()
                                 }
@@ -1091,7 +993,7 @@ pub gen fn inner_execution_loop(
 
                                     let value_container = target.as_value_container(&state.stack)?;
                                     let collapsed_value = value_container.collapsed_value();
-                                    let res = collapsed_value.borrow().try_get_property(&key).map(|v| ValueContainer::from(v))
+                                    let res = collapsed_value.borrow().try_get_property(&key).cloned()
                                         .map_err(ExecutionError::access_error)?; // FIXME: no clone?
 
                                     res.into()
@@ -1275,7 +1177,9 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
 
-                                RegularInstruction::Apply(ApplyData { .. }) => {
+                                RegularInstruction::Apply(ApplyData {
+                                                              ..
+                                                          }) | RegularInstruction::ApplySingle | RegularInstruction::ApplyZero => {
                                     let mut args = collected_results.try_collect_value_containers(&mut state)?;
                                     // last argument is the callee
                                     let callee = args.remove(args.len() - 1);
@@ -1310,28 +1214,6 @@ pub gen fn inner_execution_loop(
                                     }
                                     CollectedExecutionResult::value(None)
                                 }
-
-                                RegularInstruction::CallMethod(CallMethodData {method_name, ..}) => {
-                                    let method_name = method_name.0;
-
-                                    let mut args = collected_results.try_collect_value_containers(&mut state)?;
-                                    // last argument is the callee
-                                    let callee = args.remove(args.len() - 1);
-
-                                    interrupt_with_maybe_value!(
-                                        interrupt_provider,
-                                        ExecutionInterrupt::External(
-                                            ExternalExecutionInterrupt::CallMethod(
-                                                callee, method_name, args
-                                            )
-                                        )
-                                    )
-                                        .map(|val| {
-                                            RuntimeValue::ValueContainer(val)
-                                        })
-                                        .into()
-                                }
-
                                 RegularInstruction::UnboundedStatementsEnd(
                                     UnboundedStatementsData { terminated },
                                 ) => {
@@ -1424,20 +1306,7 @@ pub gen fn inner_execution_loop(
 
                             Instruction::Type(type_instruction) => {
                                 match type_instruction {
-                                    TypeInstruction::TaggedType(tagged_type_data) => {
-                                        if tagged_type_data.has_type {
-                                            let def = collected_results.pop_type();
-                                            TypeDefinition::TaggedType(TaggedTypeDefinition::new(
-                                                def,
-                                                tagged_type_data.tag.0
-                                            )).into()
-                                        } else {
-                                            TypeDefinition::TaggedType(TaggedTypeDefinition::new_without_type(
-                                                tagged_type_data.tag.0
-                                            )).into()
-                                        }
-                                    }
-                                    TypeInstruction::ImplType(
+                                    TypeInstruction::TypeDefinitionImplType(
                                         impl_type_data,
                                     ) => {
                                         let def =
@@ -1450,13 +1319,13 @@ pub gen fn inner_execution_loop(
                                                 .into_iter().collect(),
                                         )).into()
                                     }
-                                    TypeInstruction::Range => {
+                                    TypeInstruction::TypeDefinitionRange => {
                                         // TODO: add metadata everywhere
                                         let type_start =
                                             collected_results.pop_type();
                                         let type_end =
                                             collected_results.pop_type();
-                                        let x = Type::Definition(
+                                        let x = Type::Alias(
                                             TypeDefinition::Range(RangeTypeDefinition {
                                                 start: Box::new(type_start),
                                                 end: Box::new(type_end),
@@ -1464,26 +1333,9 @@ pub gen fn inner_execution_loop(
                                         );
                                         x.into()
                                     }
-                                    TypeInstruction::DefinitionWithMetadata(metadata) => {
+                                    TypeInstruction::TypeDefinitionWithMetadata(metadata) => {
                                         let definition = collected_results.pop_type_definition();
-                                        Type::Definition(TypeDefinitionWithMetadata::new(definition, metadata)).into()
-                                    }
-                                    TypeInstruction::Map(MapData { element_count}) => {
-                                        let mut map_entries = Vec::with_capacity(element_count as usize);
-                                        for _ in 0..element_count {
-                                            let value_type = collected_results.pop_type();
-                                            let key_type = collected_results.pop_type();
-                                            map_entries.push((key_type, value_type));
-                                        }
-                                        TypeDefinition::Map(MapTypeDefinition(map_entries)).into()
-                                    }
-                                    TypeInstruction::Union(UnionData {element_count}) => {
-                                        let mut union_entries = Vec::with_capacity(element_count as usize);
-                                        for _ in 0..element_count {
-                                            let ty = collected_results.pop_type();
-                                            union_entries.push(ty);
-                                        }
-                                        TypeDefinition::Union(UnionTypeDefinition(union_entries)).into()
+                                        Type::Alias(TypeDefinitionWithMetadata::new(definition, metadata)).into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),
                                 }
@@ -1600,50 +1452,6 @@ pub gen fn inner_execution_loop(
     }
 }
 
-fn resolve_callable_type_definition(
-    mut types: Vec<Type>,
-    signature_data: &CallableSignatureData,
-) -> CallableTypeDefinition {
-    let yeet_type = if signature_data.has_yeet_type {
-        Some(Box::new(types.pop().expect("Expected yeet type")))
-    } else {
-        None
-    };
-    let return_type = if signature_data.has_return_type {
-        Some(Box::new(types.pop().expect("Expected return type")))
-    } else {
-        None
-    };
-
-    let rest_parameter = if signature_data.has_rest_parameter {
-        Some((
-            signature_data
-                .rest_parameter_name
-                .as_ref()
-                .map(|name| name.0.clone()),
-            Box::new(types.pop().expect("Expected rest parameter type")),
-        ))
-    } else {
-        None
-    };
-
-    let parameters = signature_data
-        .parameter_names
-        .iter()
-        .zip(types)
-        .map(|(name, param_type)| (Some(name.0.clone()), param_type))
-        .collect::<Vec<_>>();
-
-    CallableTypeDefinition {
-        kind: signature_data.kind,
-        requires_async: signature_data.requires_async,
-        parameters,
-        rest_parameter,
-        return_type,
-        yeet_type,
-    }
-}
-
 /// Creates a new reference with the given value or returns the existing reference from the cache.
 /// Stores the new reference in the cache.
 fn create_new_reference_from_value(
@@ -1653,7 +1461,7 @@ fn create_new_reference_from_value(
     container_mutability: SharedContainerMutability,
     ref_mutability: ReferenceMutability,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
-    let memory = &mut runtime.shared_references_cache().borrow_mut();
+    let memory = &mut runtime.memory().borrow_mut();
 
     if let Some(reference) = memory.get_reference(pointer_address) {
         return Ok(reference.clone());
@@ -1669,7 +1477,7 @@ fn create_new_reference_from_value(
         PointerAddress::Remote(remote_address) => {
             let base = BaseSharedValueContainer::try_new(
                 value,
-                TypeDefinition::CoreType(CoreLibBaseTypeId::Any.into()),
+                TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()),
                 container_mutability,
             )?;
 
@@ -1712,7 +1520,7 @@ fn resolve_cache_value(
     else {
         if let Some(reference) = state
             .runtime
-            .shared_references_cache()
+            .memory()
             .borrow()
             .get_reference(pointer_address)
         {

@@ -2,12 +2,11 @@
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, DatexExpression, DatexExpressionData,
-            PropertyAssignment, RemoteExecution, RootPropertyAccess,
-            Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
-            ValueAccessType, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariableKind,
+            BinaryOperation, ComparisonOperation, Conditional, DatexExpression,
+            DatexExpressionData, PropertyAssignment, RemoteExecution,
+            RootPropertyAccess, Statements, UnaryOperation, UnboundedStatement,
+            UnboxAssignment, ValueAccessType, VariableAccess,
+            VariableAssignment, VariableDeclaration, VariableKind,
         },
         resolved_variable::VariableId,
     },
@@ -24,6 +23,8 @@ use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{CompileInput, DXBWithSharedValues},
+        to_instructions::ToInstructions,
+        type_compiler::append_type_instruction,
         value_compiler::{
             append_boolean, append_decimal, append_encoded_integer,
             append_float_as_i16, append_float_as_i32, append_get_shared_ref,
@@ -31,10 +32,10 @@ use crate::{
             append_shared_container_from_stack, append_typed_decimal,
             append_value,
         },
-        value_visitor::ValueVisitor,
     },
     global::{
         dxb_block::DXBBlock,
+        instruction_codes::InstructionCode,
         operators::modification::ModificationOperator,
         protocol_structures::{
             block_header::BlockHeader,
@@ -43,19 +44,14 @@ use crate::{
                 InjectedValueType, LocalInjectedValueType,
                 SharedInjectedValueType,
             },
+            instruction_data::{
+                InstructionBlockData, JumpData, StackIndex,
+                UnboundedStatementsData,
+            },
+            regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
         },
         root_properties::RootProperty,
-        stack_index::StackIndex,
-    },
-    instruction::{
-        instruction_codes::InstructionCode,
-        instruction_data::{
-            ApplyData, CallableDeclarationData, CallableSignatureData,
-            InstructionBlockData, JumpData, ShortTextData,
-            UnboundedStatementsData,
-        },
-        regular_instruction::RegularInstruction,
     },
     parser::{Parser, ParserOptions, errors::SpannedParserError},
     prelude::*,
@@ -65,7 +61,7 @@ use crate::{
         traits::SharedContainerCommon,
     },
     time::Instant as TimingInstant,
-    utils::buffers::{append_u8, append_u32},
+    utils::buffers::{append_u8, append_u16, append_u32},
     values::{
         core_values::{decimal::Decimal, endpoint::Endpoint},
         value_container::ValueContainer,
@@ -898,13 +894,27 @@ fn compile_expression(
 
             // append apply instruction code
             let len = apply.arguments.len();
-
-            // more than u8 size args -> error
-            if len > u8::MAX as usize {
-                return Err(CompilerError::TooManyApplyArguments);
+            match len {
+                0 => {
+                    compilation_context
+                        .append_instruction_code(InstructionCode::APPLY_ZERO);
+                }
+                1 => {
+                    compilation_context
+                        .append_instruction_code(InstructionCode::APPLY_SINGLE);
+                }
+                // u16 argument count
+                2..=65_535 => {
+                    compilation_context
+                        .append_instruction_code(InstructionCode::APPLY);
+                    // add argument count
+                    append_u16(
+                        compilation_context.cursor(),
+                        apply.arguments.len() as u16,
+                    );
+                }
+                _ => return Err(CompilerError::TooManyApplyArguments),
             }
-
-            compilation_context.write(RegularInstruction::apply(len as u8));
 
             // compile arguments
             for argument in apply.arguments.iter() {
@@ -982,23 +992,9 @@ fn compile_expression(
                     }
                 }
                 _ => {
-                    // TODO: check if method actually exists
-
-                    compilation_context.core_context.write(
-                        RegularInstruction::call_method(
-                            call.method_name,
-                            call.arguments.len() as u8,
-                        ),
-                    );
-
-                    for argument in call.arguments.drain(..) {
-                        scope = compile_expression(
-                            compilation_context,
-                            RichAst::new(argument, &metadata),
-                            CompileMetadata::default(),
-                            scope,
-                        )?;
-                    }
+                    return Err(CompilerError::UnknownInterfaceMethod(
+                        call.method_name.to_string(),
+                    ));
                 }
             }
 
@@ -1332,27 +1328,54 @@ fn compile_expression(
         // remote execution
         DatexExpressionData::RemoteExecution(RemoteExecution {
             left: caller,
-            right: ast,
+            right: script,
             injected_variable_count,
         }) => {
             compilation_context.mark_has_non_static_value();
+            let input = compilation_context.core_context.input.clone();
+            // compile remote execution block
+            let mut execution_block_ctx = CompilationContext::new(
+                Vec::with_capacity(256),
+                vec![],
+                ExecutionMode::Static,
+                input,
+            );
 
-            let (instruction_block_data, new_scope) =
-                compile_child_realm_instructions(
-                    compilation_context,
+            let stack_index_offset =
+                StackIndex(injected_variable_count.unwrap()); // must be set by precompiler
+
+            let external_scope = compile_rich_ast(
+                &mut execution_block_ctx,
+                RichAst::new(script, &metadata),
+                CompilationScope::new_with_external_parent_scope(
                     scope,
-                    ast,
-                    injected_variable_count.unwrap(), // must be set by precompiler
-                    &metadata,
-                    vec![],
-                )?;
+                    stack_index_offset,
+                ),
+            )?;
+            // reset to current scope
+            let external_parent_scope = external_scope
+                .pop_external()
+                .ok_or(CompilerError::ScopePopError)?;
 
-            scope = new_scope;
-
+            scope = *external_parent_scope.scope;
+            let DXBWithSharedValues {
+                dxb,
+                shared_values: _,
+            } = execution_block_ctx.into_dxb_with_shared_values();
             // insert remote execution instruction
             compilation_context.write(RegularInstruction::remote_execution(
-                instruction_block_data,
+                InstructionBlockData {
+                    // block size (len of compilation_context.buffer)
+                    length: dxb.len() as u32,
+                    injected_value_count: external_parent_scope
+                        .injected_values
+                        .len() as u32,
+                    injected_values: external_parent_scope.injected_values,
+                    body: dxb,
+                },
             ));
+
+            // TODO what to do with the shared values? [shared_values]
 
             // insert compiled caller expression
             scope = compile_expression(
@@ -1435,9 +1458,19 @@ fn compile_expression(
         }
 
         DatexExpressionData::TypeExpression(type_expression) => {
-            compilation_context.write(RegularInstruction::TypeExpression);
             compilation_context
-                .append_compiled_type_expression(&type_expression);
+                .append_instruction_code(InstructionCode::TYPE_EXPRESSION);
+            let instructions = type_expression
+                .to_instructions(
+                    &mut compilation_context.core_context.shared_value_tracking,
+                )
+                .collect::<Vec<_>>();
+            for instruction in instructions {
+                append_type_instruction(
+                    compilation_context.cursor(),
+                    instruction,
+                );
+            }
         }
         DatexExpressionData::Range(range_dec) => {
             compilation_context.append_instruction_code(InstructionCode::RANGE);
@@ -1592,82 +1625,6 @@ fn compile_expression(
             ));
         }
 
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
-            signature,
-            body,
-            injected_variable_count,
-        }) => {
-            compilation_context.mark_has_non_static_value();
-
-            // generate variables for parameters
-            let mut variables = vec![];
-            let mut index = StackIndex(0);
-            for (name, _) in &signature.parameters {
-                variables.push(
-                    Variable::new_const(name.clone(), index), // TODO: allow var
-                );
-                index += 1;
-            }
-            if let Some((name, _)) = &signature.rest_parameter {
-                variables.push(
-                    Variable::new_const(name.clone(), index), // TODO: allow var
-                );
-            }
-
-            let (instruction_block_data, new_scope) =
-                compile_child_realm_instructions(
-                    compilation_context,
-                    scope,
-                    body,
-                    injected_variable_count.unwrap(), // must be set by precompiler
-                    &metadata,
-                    variables,
-                )?;
-
-            scope = new_scope;
-
-            compilation_context.write(RegularInstruction::CallableDeclaration(
-                CallableDeclarationData {
-                    signature: CallableSignatureData {
-                        name: ShortTextData(signature.name.unwrap_or_default()),
-                        kind: signature.kind,
-                        requires_async: signature.requires_async,
-                        parameter_count: signature.parameters.len() as u8,
-                        has_rest_parameter: signature.rest_parameter.is_some(),
-                        has_return_type: signature.return_type.is_some(),
-                        has_yeet_type: signature.yeet_type.is_some(),
-                        parameter_names: signature
-                            .parameters
-                            .iter()
-                            .map(|(name, _)| ShortTextData(name.clone()))
-                            .collect(),
-                        rest_parameter_name: signature
-                            .rest_parameter
-                            .clone()
-                            .map(|(name, _)| ShortTextData(name)),
-                    },
-                    body: instruction_block_data,
-                },
-            ));
-
-            // add parameter types
-            for (_, param) in signature.parameters {
-                compilation_context.append_compiled_type_expression(&param);
-            }
-            // add rest parameter type
-            if let Some((_, param)) = signature.rest_parameter {
-                compilation_context.append_compiled_type_expression(&param);
-            }
-            // add return type
-            if let Some(ty) = signature.return_type {
-                compilation_context.append_compiled_type_expression(&ty);
-            }
-            // add yield type
-            if let Some(ty) = signature.yeet_type {
-                compilation_context.append_compiled_type_expression(&ty);
-            }
-        }
-
         _ => {
             log::error!("Unhandled expression in compiler: {:?}", data);
             let ast = DatexExpression { data, span, ty };
@@ -1676,68 +1633,6 @@ fn compile_expression(
     }
 
     Ok(scope)
-}
-
-fn compile_child_realm_instructions(
-    compilation_context: &mut CompilationContext,
-    scope: CompilationScope,
-    ast: DatexExpression,
-    injected_variable_count: u32,
-    metadata: &Rc<RefCell<AstMetadata>>,
-    existing_variables: Vec<Variable>,
-) -> Result<(InstructionBlockData, CompilationScope), CompilerError> {
-    let input = compilation_context.core_context.input.clone();
-    // compile remote execution block
-    let mut execution_block_ctx = CompilationContext::new(
-        Vec::with_capacity(256),
-        vec![],
-        ExecutionMode::Static,
-        input,
-    );
-
-    let stack_index_offset =
-        StackIndex(injected_variable_count + existing_variables.len() as u32);
-
-    let injected_values_offset = StackIndex(existing_variables.len() as u32);
-
-    let mut child_scope = CompilationScope::new_with_external_parent_scope(
-        scope,
-        stack_index_offset,
-        injected_values_offset,
-    );
-
-    for variable in existing_variables {
-        child_scope.register_variable_slot(variable);
-    }
-
-    let external_scope = compile_rich_ast(
-        &mut execution_block_ctx,
-        RichAst::new(ast, metadata),
-        child_scope,
-    )?;
-    // reset to current scope
-    let external_parent_scope = external_scope
-        .pop_external()
-        .ok_or(CompilerError::ScopePopError)?;
-
-    // TODO: what to do with the shared values? [shared_values]
-    let DXBWithSharedValues {
-        dxb,
-        shared_values: _,
-    } = execution_block_ctx.into_dxb_with_shared_values();
-
-    // insert remote execution instruction
-    Ok((
-        InstructionBlockData {
-            // block size (len of compilation_context.buffer)
-            length: dxb.len() as u32,
-            injected_value_count: external_parent_scope.injected_values.len()
-                as u32,
-            injected_values: external_parent_scope.injected_values,
-            body: dxb,
-        },
-        *external_parent_scope.scope,
-    ))
 }
 
 /// Compiles a direct assignment operation (e.g., `+=`, `-=`) into the corresponding regular instruction (e.g. [RegularInstruction::Increment]).
@@ -1871,55 +1766,50 @@ pub mod tests {
         compile_script, compile_script_or_return_static_value,
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
+
     use crate::{
-        ast::expressions::{CallableDeclaration, CallableSignature},
         compiler::scope::CompilationScope,
         core_compiler::core_compilation_context::{
             CompileInput, DXBWithSharedValues, default_compile_input,
         },
-        instruction::{
+        global::{
             instruction_codes::InstructionCode,
-            instruction_data::{
-                CallableDeclarationData, CallableSignatureData,
+            protocol_structures::{
+                regular_instructions::RegularInstruction,
+                type_instructions::TypeInstruction,
             },
-            regular_instruction::RegularInstruction,
-            type_instruction::TypeInstruction,
         },
         runtime::execution::context::ExecutionMode,
-        types::{
-            literal_type_definition::LiteralTypeDefinition,
-            type_definition::callable::CallableKind,
-        },
+        types::literal_type_definition::LiteralTypeDefinition,
         values::value_container::ValueContainer,
     };
 
-    use crate::instruction::instruction_data::{
-        CallableDeclarationDataDebugTree, InstructionBlockDataDebugFlat,
-    };
+    use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
 
     use crate::{
         compiler::error::CompilerError,
         disassembler::{
             assertions::{
-                assert_instructions_equal, instructions, instructions_with_span,
+                assert_instructions_equal, assert_regular_instructions_equal,
+                instructions,
             },
             print_disassembled,
         },
         global::{
-            protocol_structures::injected_values::{
-                InjectedValueDeclaration, InjectedValueType,
-                LocalInjectedValueType, SharedInjectedValueType,
+            protocol_structures::{
+                injected_values::{
+                    InjectedValueDeclaration, InjectedValueType,
+                    SharedInjectedValueType,
+                },
+                instruction_data::{
+                    InstructionBlockData, InstructionBlockDataDebugTree,
+                    ListData, MapData, ShortListData, ShortMapData,
+                    ShortTextData, StackIndex, StatementsData, TaggedValue,
+                    UInt8Data,
+                },
+                instructions::Instruction,
             },
             root_properties::RootProperty,
-            stack_index::StackIndex,
-        },
-        instruction::{
-            Instruction,
-            instruction_data::{
-                InstructionBlockData, InstructionBlockDataDebugTree, ListData,
-                MapData, ShortListData, ShortMapData, ShortTextData,
-                StatementsData, TaggedValue, UInt8Data,
-            },
         },
         libs::core::{
             core_lib_id::CoreLibId,
@@ -1933,12 +1823,6 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
-
-    fn compile_unwrap(script: &str) -> Vec<u8> {
-        compile_script(script, CompileOptions::default(), Runtime::stub())
-            .unwrap()
-            .0
-    }
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
@@ -2062,7 +1946,7 @@ pub mod tests {
     fn shared_value() {
         let datex_script = "shared null";
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (RegularInstruction::CreateShared, RegularInstruction::Null)
         );
@@ -2072,7 +1956,7 @@ pub mod tests {
     fn shared_mut_value() {
         let datex_script = "shared mut null";
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (
                 RegularInstruction::CreateSharedMut,
@@ -2338,7 +2222,7 @@ pub mod tests {
 
         assert_instructions_equal!(
             &result,
-            (
+            [
                 Instruction::Regular(RegularInstruction::Range),
                 Instruction::Regular(RegularInstruction::Integer(
                     Integer::new(start)
@@ -2346,7 +2230,7 @@ pub mod tests {
                 Instruction::Regular(RegularInstruction::Integer(
                     Integer::new(end)
                 ))
-            )
+            ]
         )
     }
 
@@ -2614,7 +2498,7 @@ pub mod tests {
     fn empty_tag() {
         let datex_script = "#Example";
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (RegularInstruction::TaggedValue(TaggedValue {
                 tag: ShortTextData("Example".to_string()),
@@ -2627,7 +2511,7 @@ pub mod tests {
     fn tag_with_map() {
         let datex_script = "#Example {a: true}";
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (
                 RegularInstruction::TaggedValue(TaggedValue {
@@ -2647,7 +2531,7 @@ pub mod tests {
     fn tag_with_single_value() {
         let datex_script = "#Example (\"test\")";
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (
                 RegularInstruction::TaggedValue(TaggedValue {
@@ -2665,7 +2549,7 @@ pub mod tests {
     fn tag_with_null_value() {
         let datex_script = "#Example (null)";
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (
                 RegularInstruction::TaggedValue(TaggedValue {
@@ -3018,9 +2902,12 @@ pub mod tests {
             x;
             z;
         "#;
-        let res = compile_unwrap(script);
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
         print_disassembled(&res);
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
                 true,
@@ -3048,7 +2935,10 @@ pub mod tests {
     #[test]
     fn remote_execution() {
         let script = "42u8 :: 43u8";
-        let res = compile_unwrap(script);
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
         assert_eq!(
             res,
             vec![
@@ -3078,7 +2968,10 @@ pub mod tests {
     #[test]
     fn remote_execution_expression() {
         let script = "42u8 :: 1u8 + 2u8";
-        let res = compile_unwrap(script);
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
         assert_eq!(
             res,
             vec![
@@ -3124,8 +3017,11 @@ pub mod tests {
     #[test]
     fn remote_execution_injected_const() {
         let script = "const x = 42u8; 1u8 :: x";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
                 false,
@@ -3143,13 +3039,11 @@ pub mod tests {
                                     SharedInjectedValueType::Move
                                 )
                             }],
-                            body: instructions_with_span!(
-                                Instruction::Regular(
-                                    RegularInstruction::take_stack_value(
-                                        StackIndex(0)
-                                    )
+                            body: vec![Instruction::Regular(
+                                RegularInstruction::take_stack_value(
+                                    StackIndex(0)
                                 )
-                            )
+                            ),]
                         }
                     ),
                     RegularInstruction::uint8(1),
@@ -3163,8 +3057,11 @@ pub mod tests {
         // var x only refers to a value, not a ref, but since it is transferred to a
         // remote context, its state is synced via a ref (VariableReference model)
         let script = "const x = shared 42u8; 1u8 :: x";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
                 false,
@@ -3182,13 +3079,11 @@ pub mod tests {
                                     SharedInjectedValueType::Move
                                 )
                             }],
-                            body: instructions_with_span!(
-                                Instruction::Regular(
-                                    RegularInstruction::take_stack_value(
-                                        StackIndex(0)
-                                    )
+                            body: vec![Instruction::Regular(
+                                RegularInstruction::take_stack_value(
+                                    StackIndex(0)
                                 )
-                            ),
+                            ),],
                         }
                     ),
                     RegularInstruction::uint8(1),
@@ -3200,8 +3095,11 @@ pub mod tests {
     #[test]
     fn remote_execution_injected_shared_ref() {
         let script = "const x = shared 42u8; 1u8 :: 'x";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
                 false,
@@ -3219,11 +3117,11 @@ pub mod tests {
                                     SharedInjectedValueType::Ref
                                 )
                             }],
-                            body: instructions_with_span!(Instruction::Regular(
+                            body: vec![Instruction::Regular(
                                 RegularInstruction::get_stack_value_shared_ref(
                                     StackIndex(0)
                                 )
-                            )),
+                            ),],
                         }
                     ),
                     RegularInstruction::uint8(1),
@@ -3235,8 +3133,11 @@ pub mod tests {
     #[test]
     fn remote_execution_injected_shared_ref_and_move() {
         let script = "const x = shared 42u8; 1u8 :: ('x; x)";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
                 false,
@@ -3264,7 +3165,7 @@ pub mod tests {
                                         StackIndex(0)
                                     )
                                 )
-                            ).into(),
+                            ),
                         }
                     ),
                     RegularInstruction::uint8(1),
@@ -3276,8 +3177,11 @@ pub mod tests {
     #[test]
     fn remote_execution_injected_consts() {
         let script = "const x = 42u8; const y = 69u8; 1u8 :: x + y";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
                 false,
@@ -3305,7 +3209,7 @@ pub mod tests {
                                     )
                                 },
                             ],
-                            body: instructions_with_span!(
+                            body: vec![
                                 Instruction::Regular(RegularInstruction::add()),
                                 Instruction::Regular(
                                     RegularInstruction::take_stack_value(
@@ -3317,7 +3221,7 @@ pub mod tests {
                                         StackIndex(1)
                                     )
                                 ),
-                            ),
+                            ],
                         }
                     ),
                     RegularInstruction::uint8(1),
@@ -3330,8 +3234,11 @@ pub mod tests {
     fn remote_execution_shadow_const() {
         let script =
             "const x = 42u8; const y = 69u8; 1u8 :: (const x = 5u8; x + y)";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
                 false,
@@ -3366,8 +3273,7 @@ pub mod tests {
                                         StackIndex(0)
                                     ),
                                 )
-                            )
-                            .into(),
+                            ),
                         }
                     ),
                     RegularInstruction::uint8(1),
@@ -3379,7 +3285,10 @@ pub mod tests {
     #[test]
     fn remote_execution_nested() {
         let script = "const x = 42u8; (1u8 :: (2u8 :: x))";
-        let res = compile_unwrap(script);
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
 
         assert_eq!(
             res,
@@ -3450,7 +3359,10 @@ pub mod tests {
     #[test]
     fn remote_execution_nested2() {
         let script = "const x = 42u8; const y = 43u8; (1u8 :: (y :: x))";
-        let res = compile_unwrap(script);
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
 
         assert_eq!(
             res,
@@ -3577,8 +3489,11 @@ pub mod tests {
     #[test]
     fn root_property_endpoint() {
         let script = "$.endpoint";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::GetRootProperty(RootProperty::ENDPOINT))
         );
@@ -3587,128 +3502,13 @@ pub mod tests {
     #[test]
     fn root_property_caller() {
         let script = "$.caller";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::GetRootProperty(RootProperty::CALLER))
-        );
-    }
-
-    #[test]
-    fn callable_declaration() {
-        let script = "function add(a: integer, b: integer) -> integer (a + b)";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
-            &res,
-            (RegularInstruction::_CallableDeclarationDebugTree(
-                CallableDeclarationDataDebugTree {
-                    signature: CallableSignatureData {
-                        has_rest_parameter: false,
-                        requires_async: false,
-                        name: ShortTextData("add".to_string()),
-                        kind: CallableKind::Function,
-                        parameter_names: vec![
-                            ShortTextData("a".to_string()),
-                            ShortTextData("b".to_string())
-                        ],
-                        has_return_type: true,
-                        has_yeet_type: false,
-                        parameter_count: 2,
-                        rest_parameter_name: None,
-                    },
-                    body: InstructionBlockDataDebugTree {
-                        length: 11,
-                        injected_variable_count: 0,
-                        injected_values: vec![],
-                        body: RegularInstruction::Add
-                            .with_children(instructions!(
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    0
-                                )),
-                                RegularInstruction::TakeStackValue(StackIndex(
-                                    1
-                                )),
-                            ))
-                            .into()
-                    }
-                }
-            )
-            .with_children(instructions!(
-                // parameter types
-                TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into()),
-                TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into()),
-                // return type
-                TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())
-            )))
-        )
-    }
-
-    #[test]
-    fn callable_declaration_with_injected_value() {
-        let script =
-            "const x = 42; function add(a: integer) -> integer (x + a)";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
-            &res,
-            (RegularInstruction::statements_with_children(
-                false,
-                instructions!(
-                    RegularInstruction::PushToStack.with_children(
-                        instructions!(RegularInstruction::Integer(
-                            Integer::from(42)
-                        ))
-                    ),
-                    RegularInstruction::_CallableDeclarationDebugTree(
-                        CallableDeclarationDataDebugTree {
-                            signature: CallableSignatureData {
-                                has_rest_parameter: false,
-                                name: ShortTextData("add".to_string()),
-                                kind: CallableKind::Function,
-                                requires_async: false,
-                                parameter_names: vec![ShortTextData(
-                                    "a".to_string()
-                                ),],
-                                has_return_type: true,
-                                has_yeet_type: false,
-                                parameter_count: 1,
-                                rest_parameter_name: None,
-                            },
-                            body: InstructionBlockDataDebugTree {
-                                length: 11,
-                                injected_variable_count: 1,
-                                injected_values: vec![
-                                    InjectedValueDeclaration {
-                                        index: StackIndex(0),
-                                        ty: InjectedValueType::Shared(
-                                            SharedInjectedValueType::Move
-                                        ),
-                                    }
-                                ],
-                                body: RegularInstruction::Add
-                                    .with_children(instructions!(
-                                        RegularInstruction::TakeStackValue(
-                                            StackIndex(1)
-                                        ),
-                                        RegularInstruction::TakeStackValue(
-                                            StackIndex(0)
-                                        ),
-                                    ))
-                                    .into()
-                            }
-                        }
-                    )
-                    .with_children(instructions!(
-                        // parameter types
-                        TypeInstruction::CoreType(
-                            CoreLibBaseTypeId::Integer.into()
-                        ),
-                        // return type
-                        TypeInstruction::CoreType(
-                            CoreLibBaseTypeId::Integer.into()
-                        )
-                    ))
-                )
-            ))
         );
     }
 
@@ -3716,7 +3516,10 @@ pub mod tests {
     #[test]
     fn unbox() {
         let script = "*10u8";
-        let res = compile_unwrap(script);
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
         assert_eq!(
             res,
             vec![
@@ -3731,7 +3534,10 @@ pub mod tests {
     #[test]
     fn unbox_slot() {
         let script = "const x = 10u8; *x";
-        let res = compile_unwrap(script);
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
         assert_eq!(
             res,
             vec![
@@ -3755,25 +3561,31 @@ pub mod tests {
     #[test]
     fn type_literal_integer() {
         let script = "type<1>";
-        let res = compile_unwrap(script);
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
 
         assert_instructions_equal!(
             &res,
-            (
+            [
                 Instruction::Regular(RegularInstruction::TypeExpression),
-                Instruction::Type(TypeInstruction::Literal(
+                Instruction::Type(TypeInstruction::TypeDefinitionLiteral(
                     LiteralTypeDefinition::Integer(1.into())
                 ))
-            )
+            ]
         );
     }
 
     #[test]
     fn type_core_type_integer() {
         let script = "integer";
-        let res = compile_unwrap(script);
+        let res =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap()
+                .0;
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::GetCoreLibValue(
                 CoreLibId::Type(CoreLibTypeId::Base(
@@ -4029,84 +3841,68 @@ pub mod tests {
     }
 
     #[test]
-    fn apply_callable_no_arguments() {
-        let script = "function add() (null) ()";
-        let res = compile_unwrap(script);
-        assert_instructions_equal!(
-            &res,
-            (RegularInstruction::apply(0).with_children(instructions!(
-                RegularInstruction::_CallableDeclarationDebugTree(
-                    CallableDeclarationDataDebugTree {
-                        signature: CallableSignatureData {
-                            has_rest_parameter: false,
-                            name: ShortTextData("add".to_string()),
-                            kind: CallableKind::Function,
-                            requires_async: false,
-                            parameter_names: vec![],
-                            has_return_type: false,
-                            has_yeet_type: false,
-                            parameter_count: 0,
-                            rest_parameter_name: None,
-                        },
-                        body: InstructionBlockDataDebugTree {
-                            length: 1,
-                            injected_variable_count: 0,
-                            injected_values: vec![],
-                            body: Instruction::Regular(
-                                RegularInstruction::Null
-                            )
-                            .into()
-                        }
-                    }
-                )
-            )))
-        )
-    }
-
-    #[test]
     fn apply_no_arguments() {
         let datex_script = r#""test"()"#;
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
-            &result,
-            (RegularInstruction::apply(0).with_children(instructions!(
-                RegularInstruction::ShortText(ShortTextData(
-                    "test".to_string()
-                )),
-            )))
-        )
+        let expected = vec![
+            InstructionCode::APPLY_ZERO.into(),
+            // base value
+            InstructionCode::SHORT_TEXT.into(),
+            4, // length of "test"
+            b't',
+            b'e',
+            b's',
+            b't',
+        ];
+        assert_eq!(result, expected);
     }
 
     #[test]
     fn apply_one_argument() {
         let datex_script = r#""test" 42u8"#;
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
-            &result,
-            (RegularInstruction::apply(1).with_children(instructions!(
-                RegularInstruction::uint8(42),
-                RegularInstruction::ShortText(ShortTextData(
-                    "test".to_string()
-                )),
-            )))
-        );
+        let expected = vec![
+            InstructionCode::APPLY_SINGLE.into(),
+            // argument
+            InstructionCode::UINT_8.into(),
+            42,
+            // base value
+            InstructionCode::SHORT_TEXT.into(),
+            4, // length of "test"
+            b't',
+            b'e',
+            b's',
+            b't',
+        ];
+        assert_eq!(result, expected);
     }
 
     #[test]
     fn apply_multiple_arguments() {
         let datex_script = r#""test"(1u8, 2u8, 3u8)"#;
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
-            &result,
-            (RegularInstruction::apply(3).with_children(instructions!(
-                RegularInstruction::uint8(1),
-                RegularInstruction::uint8(2),
-                RegularInstruction::uint8(3),
-                RegularInstruction::ShortText(ShortTextData(
-                    "test".to_string()
-                )),
-            )))
-        );
+        let expected = vec![
+            InstructionCode::APPLY.into(),
+            3, // number of arguments
+            0,
+            // argument 1
+            InstructionCode::UINT_8.into(),
+            1,
+            // argument 2
+            InstructionCode::UINT_8.into(),
+            2,
+            // argument 3
+            InstructionCode::UINT_8.into(),
+            3,
+            // base value
+            InstructionCode::SHORT_TEXT.into(),
+            4, // length of "test"
+            b't',
+            b'e',
+            b's',
+            b't',
+        ];
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -4142,7 +3938,7 @@ pub mod tests {
         let datex_script =
             "var x = 42u8; (var x = 43u8;); (var y = 43u8; y); x";
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (RegularInstruction::statements_with_children(
                 false,
@@ -4178,7 +3974,7 @@ pub mod tests {
     fn variable_shadowing_2() {
         let datex_script = "var x = 1u8; var y = (var x = 2u8; x); [x, y]";
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (RegularInstruction::statements_with_children(
                 false,
@@ -4210,7 +4006,7 @@ pub mod tests {
     fn interface_method_calls() {
         let datex_script = "var x = []; x->append(true);";
         let result = compile_and_log(datex_script);
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (RegularInstruction::statements_with_children(
                 true,
@@ -4241,7 +4037,7 @@ pub mod tests {
                 )";
         let result = compile_and_log(script);
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (
                 RegularInstruction::unbounded_statements(),
@@ -4260,7 +4056,7 @@ pub mod tests {
         let script = "const x = 10u8; if (true) (x) else (0u8)";
         let result = compile_and_log(script);
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (RegularInstruction::statements_with_children(
                 false,
@@ -4286,7 +4082,7 @@ pub mod tests {
         let script = "if (true) (42u8)";
         let result = compile_and_log(script);
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (
                 RegularInstruction::unbounded_statements(),
@@ -4313,7 +4109,7 @@ pub mod tests {
                 )";
         let result = compile_and_log(script);
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &result,
             (
                 RegularInstruction::unbounded_statements(),

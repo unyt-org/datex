@@ -1,34 +1,26 @@
 use crate::{
-    prelude::*,
-    runtime::Runtime,
     traits::apply::{Apply, ApplyError},
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
+
 impl Apply for Value {
-    fn try_apply_sync(
+    fn try_apply(
         &self,
-        runtime: &Runtime,
-        args: Vec<ValueContainer>,
+        args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self.inner {
-            CoreValue::Callable(ref callable) => {
-                callable.try_apply_sync(runtime, args)
-            }
+            CoreValue::Callable(ref callable) => callable.try_apply(args),
             _ => Err(ApplyError::UnsupportedApply),
         }
     }
-
-    async fn try_apply_async(
+    fn try_apply_single(
         &self,
-        runtime: &Runtime,
-        args: Vec<ValueContainer>,
+        arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self.inner {
-            CoreValue::Callable(ref callable) => {
-                callable.try_apply_async(runtime, args).await
-            }
+            CoreValue::Callable(ref callable) => callable.try_apply_single(arg),
             _ => Err(ApplyError::UnsupportedApply),
         }
     }

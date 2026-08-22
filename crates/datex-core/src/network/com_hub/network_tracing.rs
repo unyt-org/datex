@@ -4,7 +4,6 @@ use crate::{
     core_compiler::core_compilation_context::{
         CompileInput, DXBWithSharedValues,
     },
-    datex_proxy::DatexValueContainerProxySerialize,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -46,7 +45,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-#[datex(structural_recursive)]
+
 pub struct NetworkTraceHopSocket {
     pub interface_type: String,
     pub interface_name: Option<String>,
@@ -77,7 +76,7 @@ impl NetworkTraceHopSocket {
     Clone,
     strum_macros::Display,
 )]
-#[datex(structural_recursive)]
+
 pub enum NetworkTraceHopDirection {
     Outgoing,
     Incoming,
@@ -85,7 +84,7 @@ pub enum NetworkTraceHopDirection {
 
 #[serde_as]
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-#[datex(structural_recursive)]
+
 pub struct NetworkTraceHop {
     pub endpoint: Endpoint,
     pub distance: i8,
@@ -97,7 +96,7 @@ pub struct NetworkTraceHop {
 
 #[serde_as]
 #[derive(Datex, Debug, Clone, Deserialize, Serialize)]
-#[datex(structural_recursive)]
+
 pub struct NetworkTraceResult {
     pub sender: Endpoint,
     pub receiver: Endpoint,
@@ -621,7 +620,7 @@ impl ComHub {
         // convert hops to DATEX
         let hops_datex = hops
             .into_iter()
-            .map(|hop| hop.to_value_container_without_cache())
+            .map(|hop| hop.to_value_container())
             .collect::<Vec<ValueContainer>>();
 
         let pointer_lookup = PointerAvailabilityLookup::default();

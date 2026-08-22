@@ -41,7 +41,6 @@ pub enum ExternalExecutionInterrupt {
         property_name: String,
     },
     Apply(ValueContainer, Vec<ValueContainer>),
-    CallMethod(ValueContainer, String, Vec<ValueContainer>),
 }
 
 #[derive(Debug)]

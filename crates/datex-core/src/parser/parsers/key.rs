@@ -21,8 +21,7 @@ impl Parser {
             // TODO #661: add more keywords as needed
             t @ Token::True
             | t @ Token::False
-            | t @ Token::EntityTypeDeclaration
-            | t @ Token::TypeAlias
+            | t @ Token::TypeDeclaration
             | t @ Token::Compile
             | t @ Token::If
             | t @ Token::Else

@@ -6,7 +6,7 @@ use crate::{
         },
         spanned::Spanned,
     },
-    global::stack_index::StackIndex,
+    global::protocol_structures::instruction_data::StackIndex,
     parser::{
         Parser, SpannedParserError,
         errors::ParserError,
@@ -366,7 +366,7 @@ mod tests {
             spanned::Spanned,
             type_expressions::{TypeExpressionData, Union},
         },
-        global::stack_index::StackIndex,
+        global::protocol_structures::instruction_data::StackIndex,
         parser::{
             errors::ParserError,
             parser_result::ParserResult,

@@ -54,12 +54,12 @@ pub enum TypeDefinition {
     /// e.g. [integer], [integer; 5], Map<string, integer>
     Collection(CollectionTypeDefinition),
 
-    /// type A = {b: B} // $A
-    /// type B = {a: $A}
+    /// typealias A = {b: B} // $A
+    /// typealias B = {a: $A}
     Shared(SharedContainerContainingType), // integer
 
-    /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X or (integer | null) | null)
-    Box(Box<Type>),
+    /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X)
+    Nested(Box<Type>),
 
     /// a callable type definition (signature)
     Callable(CallableTypeDefinition),
@@ -87,25 +87,6 @@ pub enum TypeDefinition {
 
     // core types ("nominal")
     CoreType(CoreLibTypeId), // -> $123
-}
-
-impl TypeDefinition {
-    /// Returns true if the type definition is a structural type (e.g. a collection, literal, or shared type).
-    pub fn is_structural(&self) -> bool {
-        !matches!(self, TypeDefinition::CoreType(_)
-            | TypeDefinition::Box(box Type::Entity(_))
-            | TypeDefinition::ImplType(_))
-    }
-
-    pub fn is_tagged(&self) -> bool {
-        matches!(self, TypeDefinition::TaggedType(_))
-    }
-    pub fn try_unbox(&self) -> Option<&Type> {
-        match self {
-            TypeDefinition::Box(boxed) => Some(boxed),
-            _ => None,
-        }
-    }
 }
 
 impl Hash for TypeDefinition {
@@ -147,18 +128,18 @@ impl Hash for TypeDefinition {
             }
             TypeDefinition::Callable(callable) => {
                 callable.kind.hash(state);
-                for (name, ty) in callable.parameters.iter() {
+                for (name, ty) in callable.parameter_types.iter() {
                     name.hash(state);
                     ty.hash(state);
                 }
-                callable.rest_parameter.hash(state);
+                callable.rest_parameter_type.hash(state);
                 callable.return_type.hash(state);
                 callable.yeet_type.hash(state);
             }
             TypeDefinition::ImplType(definition) => {
                 definition.hash(state);
             }
-            TypeDefinition::Box(ty) => {
+            TypeDefinition::Nested(ty) => {
                 ty.hash(state);
             }
             TypeDefinition::CoreType(core) => {
@@ -217,7 +198,7 @@ impl Display for TypeDefinition {
             }
             TypeDefinition::Callable(callable) => {
                 let mut params_code: Vec<String> = callable
-                    .parameters
+                    .parameter_types
                     .iter()
                     .map(|(param_name, param_type)| match param_name {
                         Some(name) => format!("{}: {}", name, param_type),
@@ -225,7 +206,8 @@ impl Display for TypeDefinition {
                     })
                     .collect();
                 // handle rest parameter
-                if let Some((param_name, param_type)) = &callable.rest_parameter
+                if let Some((param_name, param_type)) =
+                    &callable.rest_parameter_type
                 {
                     params_code.push(match param_name {
                         Some(name) => format!("...{}: {}", name, param_type),
@@ -252,7 +234,7 @@ impl Display for TypeDefinition {
                     yeet_type_code
                 )
             }
-            TypeDefinition::Box(ty) => {
+            TypeDefinition::Nested(ty) => {
                 write!(f, "{}", ty)
             }
             TypeDefinition::CoreType(core) => {
@@ -361,15 +343,6 @@ impl TypeDefinition {
             _ => None,
         }
     }
-
-    /// Convert this type definition into a [Type] by wrapping it in a [Type::Definition] variant.
-    /// If the type definition is a [TypeDefinition::Container] variant, it will be unwrapped and returned as the inner [Type].
-    pub fn convert_to_type(self) -> Type {
-        match self {
-            TypeDefinition::Box(ty) => *ty,
-            _ => Type::Definition(self.into()),
-        }
-    }
 }
 
 impl TypeDefinition {
@@ -398,27 +371,6 @@ impl From<TypeDefinition> for TypeDefinitionWithMetadata {
             structural_definition,
             TypeMetadata::default(),
         )
-    }
-}
-
-impl From<Type> for TypeDefinitionWithMetadata {
-    fn from(ty: Type) -> Self {
-        match ty {
-            Type::Definition(definition) => definition.into(),
-            _ => ty.convert_to_definition().into(),
-        }
-    }
-}
-impl From<Type> for TypeDefinition {
-    fn from(ty: Type) -> Self {
-        match ty {
-            Type::Definition(definition)
-                if definition.has_default_metadata() =>
-            {
-                definition.definition
-            }
-            _ => ty.convert_to_definition(),
-        }
     }
 }
 

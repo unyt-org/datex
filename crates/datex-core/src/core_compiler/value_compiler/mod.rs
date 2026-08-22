@@ -5,10 +5,9 @@ use crate::{
         type_compiler::append_type_instruction,
         value_visitor::ValueVisitor,
     },
-    global::stack_index::StackIndex,
-    instruction::{
+    global::{
         instruction_codes::InstructionCode,
-        regular_instruction::RegularInstruction,
+        protocol_structures::regular_instructions::RegularInstruction,
     },
     utils::buffers::{append_i16, append_i32},
     values::{
@@ -16,29 +15,21 @@ use crate::{
         core_values::{
             Instant,
             decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
         },
         value::Value,
         value_container::ValueContainer,
     },
 };
-use binrw::{
-    BinWrite,
-    io::{Cursor, Write},
-};
+use binrw::{BinWrite, io::Write};
 
 use crate::{
     core_compiler::{
         core_compilation_context::{ByteCursor, CoreCompilationContext},
         value_visitor::{ParentAccessor, ParentContext},
     },
-    instruction::{
-        Instruction,
-        instruction_data::{
-            CallableData, CallableDataBody, CallableSignatureData,
-            ShortTextData,
-        },
-    },
+    global::protocol_structures::instructions::Instruction,
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdIndex},
         type_id::{CoreLibBaseTypeId, CoreLibTypeId},
@@ -55,10 +46,7 @@ use crate::{
         type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
-    values::{
-        core_values::callable::CallableBody,
-        value_container::value_key::ValueKey,
-    },
+    values::value_container::value_key::ValueKey,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -173,7 +161,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             // unit tagged value (e.g. #Example)
             TypeDefinition::TaggedType(TaggedTypeDefinition {
                 ty:
-                    Some(box Type::Definition(TypeDefinitionWithMetadata {
+                    Some(box Type::Alias(TypeDefinitionWithMetadata {
                         definition:
                             TypeDefinition::CoreType(CoreLibTypeId::Base(
                                 CoreLibBaseTypeId::Unit,
@@ -211,80 +199,10 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                 context.visit_type(ty);
             }
         }
-        CoreValue::Callable(callable) => {
-            let (body, injected_values) = match callable.body {
-                CallableBody::DatexBytecode(datex_bytecode) => (
-                    CallableDataBody {
-                        injected_value_count: datex_bytecode
-                            .injected_values
-                            .len()
-                            as u32,
-                        length: datex_bytecode.body.len() as u32,
-                        body: datex_bytecode.body,
-                    },
-                    datex_bytecode.injected_values,
-                ),
-                _ => (
-                    CallableDataBody {
-                        injected_value_count: 0,
-                        length: 0,
-                        body: vec![],
-                    },
-                    vec![],
-                ),
-            };
-
-            context.write(RegularInstruction::Callable(CallableData {
-                signature: CallableSignatureData {
-                    name: ShortTextData(callable.name.unwrap_or_default()),
-                    kind: callable.signature.kind,
-                    requires_async: callable.signature.requires_async,
-                    parameter_count: callable.signature.parameters.len() as u8,
-                    has_rest_parameter: callable
-                        .signature
-                        .rest_parameter
-                        .is_some(),
-                    has_return_type: callable.signature.return_type.is_some(),
-                    has_yeet_type: callable.signature.yeet_type.is_some(),
-                    parameter_names: callable
-                        .signature
-                        .parameters
-                        .iter()
-                        .map(|(name, _)| {
-                            ShortTextData(name.clone().unwrap_or_default())
-                        })
-                        .collect(),
-                    rest_parameter_name: callable
-                        .signature
-                        .rest_parameter
-                        .as_ref()
-                        .map(|(name, _)| {
-                            ShortTextData(name.clone().unwrap_or_default())
-                        }),
-                },
-                body,
-            }));
-
-            // add parameter types
-            for (_, param) in callable.signature.parameters {
-                context.visit_type(param);
-            }
-            // add rest parameter type
-            if let Some((_, param)) = callable.signature.rest_parameter {
-                context.visit_type(*param);
-            }
-            // add return type
-            if let Some(ty) = callable.signature.return_type {
-                context.visit_type(*ty);
-            }
-            // add yield type
-            if let Some(ty) = callable.signature.yeet_type {
-                context.visit_type(*ty);
-            }
-
-            for value in injected_values {
-                context.visit_value_container(value, None);
-            }
+        CoreValue::Callable(_callable) => {
+            core::todo!(
+                "#632 Callable value not supported in CompilationContext"
+            );
         }
         CoreValue::Integer(integer) => {
             // NOTE: we might optimize this later, but using INT with big integer encoding
@@ -340,18 +258,8 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             context.visit_value_container(*range.start, None);
             context.visit_value_container(*range.end, None);
         }
-        CoreValue::EntityTypeDefinition(_) => {
+        CoreValue::NominalTypeDefinition(_) => {
             todo!()
-        }
-        CoreValue::Box(inner) => {
-            context.write(RegularInstruction::boxed_value());
-            context.visit_value_container(*inner, parent_context);
-        }
-        CoreValue::Uninitialized => {
-            panic!("Tried to compile uninitialized value")
-        }
-        CoreValue::Native(_) => {
-            todo!("Tried to compile native value")
         }
     };
 }
@@ -369,7 +277,7 @@ pub fn append_apply<T: BufferProvider + ValueVisitor>(
     callee: RegularInstruction,
     args: Vec<ValueContainer>,
 ) {
-    context.write(RegularInstruction::apply(args.len() as u8));
+    context.write(RegularInstruction::apply(args.len() as u16));
     for arg in args {
         context.visit_value_container(arg, None);
     }
@@ -594,13 +502,6 @@ pub fn append_key_string<T: BufferProvider>(
     }
 }
 
-/// Helper function to directly compile an instruction into a byte vector
-pub fn compile_instruction(instruction: impl Into<Instruction>) -> Vec<u8> {
-    let mut cursor = Cursor::new(Vec::new());
-    append_instruction(&mut cursor, instruction.into());
-    cursor.into_inner()
-}
-
 pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
     match instruction {
         Instruction::Regular(instruction) => {
@@ -631,16 +532,15 @@ mod tests {
             value_visitor::ValueVisitor,
         },
         disassembler::{
-            assertions::{assert_instructions_equal, instructions},
+            assertions::{assert_regular_instructions_equal, instructions},
             print_disassembled,
         },
-        global::stack_index::StackIndex,
-        instruction::{
+        global::protocol_structures::{
             instruction_data::{
                 Int32Data, MoveWithValue, SharedRefWithValue, ShortListData,
-                ShortTextData, TaggedValue,
+                ShortTextData, StackIndex, TaggedValue,
             },
-            regular_instruction::RegularInstruction,
+            regular_instructions::RegularInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
@@ -677,7 +577,10 @@ mod tests {
                 receivers: &[],
             },
         );
-        assert_instructions_equal!(&compiled.dxb, expected_instructions,);
+        assert_regular_instructions_equal!(
+            &compiled.dxb,
+            expected_instructions,
+        );
     }
 
     #[test]
@@ -685,7 +588,7 @@ mod tests {
         let value = Value::new(
             CoreValue::Null,
             Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: Some(Box::new(Type::Definition(
+                ty: Some(Box::new(Type::Alias(
                     TypeDefinition::CoreType(CoreLibTypeId::Base(
                         CoreLibBaseTypeId::Unit,
                     ))
@@ -781,7 +684,7 @@ mod tests {
             }
         );
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &context.into_dxb_with_shared_values().dxb,
             (RegularInstruction::statements_with_children(
                 false,
@@ -892,7 +795,7 @@ mod tests {
 
         let dxb = context.into_dxb_with_shared_values().dxb;
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &dxb,
             (RegularInstruction::statements_with_children(
                 false,
@@ -1012,7 +915,7 @@ mod tests {
 
         let dxb = context.into_dxb_with_shared_values().dxb;
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &dxb,
             (RegularInstruction::statements_with_children(
                 false,
@@ -1092,7 +995,7 @@ mod tests {
 
         let dxb = context.into_dxb_with_shared_values().dxb;
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &dxb,
             (RegularInstruction::statements_with_children(
                 false,
@@ -1183,7 +1086,7 @@ mod tests {
 
         let dxb = context.into_dxb_with_shared_values().dxb;
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &dxb,
             (RegularInstruction::statements_with_children(
                 false,

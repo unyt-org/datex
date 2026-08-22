@@ -86,7 +86,7 @@ impl Parser {
                 let span = lhs.span.start..rhs_span.end;
 
                 // lhs must be an identifier
-                match *lhs.data {
+                match lhs.data {
                     TypeExpressionData::Identifier(identifier) => {
                         TypeExpressionData::VariantAccess(TypeVariantAccess {
                             name: identifier,
@@ -127,7 +127,7 @@ impl Parser {
                 let rhs = self.parse_type_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
 
-                Ok(match *rhs.data {
+                Ok(match rhs.data {
                     // if the rhs is a literal integer/decimal, parse it as negative literal
                     TypeExpressionData::Integer(value) => {
                         TypeExpressionData::Integer(-value)
@@ -255,8 +255,8 @@ mod tests {
     fn parse_simple_intersection_expression() {
         let expr = parse_type_expression("a & b");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Intersection(Intersection(vec![
+            expr.data,
+            TypeExpressionData::Intersection(Intersection(vec![
                 TypeExpressionData::Identifier("a".to_string())
                     .with_default_span(),
                 TypeExpressionData::Identifier("b".to_string())
@@ -269,8 +269,8 @@ mod tests {
     fn parse_simple_range_expression() {
         let expr = parse_type_expression("a .. b");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Range(RangeTypeExpr {
+            expr.data,
+            TypeExpressionData::Range(RangeTypeExpr {
                 start: Box::new(
                     TypeExpressionData::Identifier("a".to_string())
                         .with_default_span()
@@ -287,8 +287,8 @@ mod tests {
     fn parse_simple_union_expression() {
         let expr = parse_type_expression("a | b");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Union(Union(vec![
+            expr.data,
+            TypeExpressionData::Union(Union(vec![
                 TypeExpressionData::Identifier("a".to_string())
                     .with_default_span(),
                 TypeExpressionData::Identifier("b".to_string())
@@ -301,8 +301,8 @@ mod tests {
     fn parse_variant_access_expression() {
         let expr = parse_type_expression("MyType/variant");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::VariantAccess(
+            expr.data,
+            TypeExpressionData::VariantAccess(
                 crate::ast::type_expressions::TypeVariantAccess {
                     name: "MyType".to_string(),
                     variant: "variant".to_string(),
@@ -316,8 +316,8 @@ mod tests {
     fn parse_ref_type_expression() {
         let expr = parse_type_expression("&MyType");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Ref(Box::new(
+            expr.data,
+            TypeExpressionData::Ref(Box::new(
                 TypeExpressionData::Identifier("MyType".to_string())
                     .with_default_span()
             ))
@@ -328,8 +328,8 @@ mod tests {
     fn parse_mut_ref_type_expression() {
         let expr = parse_type_expression("&mut MyType");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::RefMut(Box::new(
+            expr.data,
+            TypeExpressionData::RefMut(Box::new(
                 TypeExpressionData::Identifier("MyType".to_string())
                     .with_default_span()
             ))
@@ -340,8 +340,8 @@ mod tests {
     fn parse_multiple_ref_type_expression() {
         let expr = parse_type_expression("&mut &MyType");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::RefMut(Box::new(
+            expr.data,
+            TypeExpressionData::RefMut(Box::new(
                 TypeExpressionData::Ref(Box::new(
                     TypeExpressionData::Identifier("MyType".to_string())
                         .with_default_span()
@@ -355,8 +355,8 @@ mod tests {
     fn parse_mut_ref_keyword_variant_precedence() {
         let expr = parse_type_expression("&mut integer/u8");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::RefMut(Box::new(
+            expr.data,
+            TypeExpressionData::RefMut(Box::new(
                 TypeExpressionData::VariantAccess(
                     crate::ast::type_expressions::TypeVariantAccess {
                         name: "integer".to_string(),
@@ -373,8 +373,8 @@ mod tests {
     fn parse_mut_keyword() {
         let expr = parse_type_expression("mut MyType");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Mut(Box::new(
+            expr.data,
+            TypeExpressionData::Mut(Box::new(
                 TypeExpressionData::Identifier("MyType".to_string())
                     .with_default_span()
             ))
@@ -385,8 +385,8 @@ mod tests {
     fn parse_shared_keyword() {
         let expr = parse_type_expression("shared MyType");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Shared(Box::new(
+            expr.data,
+            TypeExpressionData::Shared(Box::new(
                 TypeExpressionData::Identifier("MyType".to_string())
                     .with_default_span()
             ))
@@ -397,8 +397,8 @@ mod tests {
     fn parse_shared_mut_keyword() {
         let expr = parse_type_expression("shared mut MyType");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::Shared(Box::new(
+            expr.data,
+            TypeExpressionData::Shared(Box::new(
                 TypeExpressionData::Mut(Box::new(
                     TypeExpressionData::Identifier("MyType".to_string())
                         .with_default_span()
@@ -412,8 +412,8 @@ mod tests {
     fn parse_mut_ref_shared_mut() {
         let expr = parse_type_expression("&mut shared mut MyType");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::RefMut(Box::new(
+            expr.data,
+            TypeExpressionData::RefMut(Box::new(
                 TypeExpressionData::Shared(Box::new(
                     TypeExpressionData::Mut(Box::new(
                         TypeExpressionData::Identifier("MyType".to_string())

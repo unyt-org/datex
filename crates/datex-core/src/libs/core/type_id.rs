@@ -49,8 +49,8 @@ pub enum CoreLibBaseTypeId {
     Unit, // #core.Unit
     #[strum(serialize = "Never")]
     Never, // #core.Never
-    #[strum(serialize = "Any")]
-    Any, // #core.Any
+    #[strum(serialize = "Unknown")]
+    Unknown, // #core.Unknown
     #[strum(serialize = "List")]
     List, // #core.List
     #[strum(serialize = "Map")]
@@ -61,8 +61,6 @@ pub enum CoreLibBaseTypeId {
     Range, // #core.Range
     #[strum(serialize = "Type")]
     Type, // #core.Type
-    #[strum(serialize = "Container")]
-    Box, // #core.Container
 }
 
 impl CoreLibBaseTypeId {

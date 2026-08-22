@@ -211,22 +211,10 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 serializer,
                 false,
             ),
-            CoreValue::EntityTypeDefinition(_entity_type_definition) => {
+            CoreValue::NominalTypeDefinition(_nominal_type_definition) => {
                 todo!()
             }
-            CoreValue::Callable(callable) => self
-                .serialize_with_core_type_serde(
-                    callable,
-                    core_lib_type,
-                    &value.custom_type,
-                    serializer,
-                    false,
-                ),
-            CoreValue::Box(inner) => {
-                todo!()
-            }
-            CoreValue::Uninitialized => panic!("Uninitialized value"),
-            CoreValue::Native(_) => todo!(),
+            CoreValue::Callable(_callable) => todo!(),
         }
     }
 }

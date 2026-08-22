@@ -48,8 +48,8 @@ mod tests {
     fn parse_empty_map() {
         let expr = parse_type_expression("{}");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::StructuralMap(StructuralMap(vec![]))
+            expr.data,
+            TypeExpressionData::StructuralMap(StructuralMap(vec![]))
         );
     }
 
@@ -57,8 +57,8 @@ mod tests {
     fn parse_simple_map() {
         let expr = parse_type_expression(r#"{"key1": true, "key2": false}"#);
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::StructuralMap(StructuralMap(vec![
+            expr.data,
+            TypeExpressionData::StructuralMap(StructuralMap(vec![
                 (
                     TypeExpressionData::Text("key1".into()).with_default_span(),
                     TypeExpressionData::Boolean(true.into())
@@ -77,8 +77,8 @@ mod tests {
     fn parse_map_with_plain_identifier_keys() {
         let expr = parse_type_expression("{key1: true, key2: false}");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::StructuralMap(StructuralMap(vec![
+            expr.data,
+            TypeExpressionData::StructuralMap(StructuralMap(vec![
                 (
                     TypeExpressionData::Text("key1".into()).with_default_span(),
                     TypeExpressionData::Boolean(true.into())
@@ -97,8 +97,8 @@ mod tests {
     fn parse_map_with_reserved_keyword_keys() {
         let expr = parse_type_expression("{if: true, type: false}");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::StructuralMap(StructuralMap(vec![
+            expr.data,
+            TypeExpressionData::StructuralMap(StructuralMap(vec![
                 (
                     TypeExpressionData::Text("if".into()).with_default_span(),
                     TypeExpressionData::Boolean(true.into())
@@ -117,8 +117,8 @@ mod tests {
     fn parse_map_with_dynamic_expression_keys() {
         let expr = parse_type_expression("{(x): true, (y & true): false}");
         assert_eq!(
-            expr.data(),
-            &TypeExpressionData::StructuralMap(StructuralMap(vec![
+            expr.data,
+            TypeExpressionData::StructuralMap(StructuralMap(vec![
                 (
                     TypeExpressionData::Identifier("x".to_string())
                         .with_default_span(),

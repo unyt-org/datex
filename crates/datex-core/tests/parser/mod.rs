@@ -3,8 +3,7 @@ use core::assert_matches;
 use datex_core::{
     ast::{
         expressions::{
-            CallableSignature, RemoteExecution, Statements,
-            TypeDeclarationExpression,
+            RemoteExecution, Statements, TypeDeclaration, TypeDeclarationKind,
         },
         type_expressions::StructuralMap,
     },
@@ -30,11 +29,10 @@ use datex_core::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, CreateMut, CreateShared, DatexExpression,
-            DatexExpressionData, DeriveRef, EntityDeclarationExpression,
-            GenericInstantiation, List, Map, PropertyAccess,
-            PropertyAssignment, RequestSharedRef, RootPropertyAccess,
-            UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
-            VariableDeclaration, VariableKind,
+            DatexExpressionData, DeriveRef, GenericInstantiation, List, Map,
+            PropertyAccess, PropertyAssignment, RequestSharedRef,
+            RootPropertyAccess, UnaryOperation, Unbox, ValueAccessType,
+            VariableAssignment, VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
         type_expressions::{
@@ -42,7 +40,7 @@ use datex_core::{
             TypeVariantAccess, Union,
         },
     },
-    global::stack_index::StackIndex,
+    global::protocol_structures::instruction_data::StackIndex,
     parser::{
         Parser,
         errors::{ParserError, SpannedParserError},
@@ -209,12 +207,12 @@ fn type_expression() {
 
 #[test]
 fn structural_type_declaration() {
-    let src = "type A = integer";
+    let src = "typealias A = integer";
     let result = parse_print_error(src);
     let expr = result.unwrap();
     assert_matches!(expr,
         DatexExpression {
-            data: box DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
+            data: box DatexExpressionData::TypeDeclaration(TypeDeclaration { name, .. }), ..
         }
         if name == "A"
     );
@@ -227,7 +225,7 @@ fn nominal_type_declaration() {
     let expr = result.unwrap();
     assert_matches!(expr,
         DatexExpression {
-            data: box DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
+            data: box DatexExpressionData::TypeDeclaration(TypeDeclaration { name, .. }), ..
         }
         if name == "B"
     );
@@ -237,9 +235,19 @@ fn nominal_type_declaration() {
     let expr = result.unwrap();
     assert_matches!(expr,
         DatexExpression {
-            data: box DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
+            data: box DatexExpressionData::TypeDeclaration(TypeDeclaration { name, .. }), ..
         }
         if name == "User"
+    );
+
+    let src = "type User/admin = {id: integer}";
+    let result = parse_print_error(src);
+    let expr = result.unwrap();
+    assert_matches!(expr,
+        DatexExpression {
+            data: box DatexExpressionData::TypeDeclaration(TypeDeclaration { name, .. }), ..
+        }
+        if name == "User/admin"
     );
 }
 
@@ -427,20 +435,19 @@ fn function_simple() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
-            signature: CallableSignature {
+        DatexExpressionData::CallableDeclaration(Box::new(
+            CallableDeclaration {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
-                requires_async: false,
                 parameters: Vec::new(),
                 rest_parameter: None,
                 return_type: None,
                 yeet_type: None,
-            },
-            body: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
-            injected_variable_count: None,
-        })
+                body: (DatexExpressionData::Integer(Integer::from(42))
+                    .with_default_span()),
+                injected_variable_count: None,
+            }
+        ))
     );
 }
 
@@ -454,11 +461,10 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
-            signature: CallableSignature {
+        DatexExpressionData::CallableDeclaration(Box::new(
+            CallableDeclaration {
                 name: Some("myFunction".to_string()),
                 kind: CallableKind::Function,
-                requires_async: false,
                 parameters: vec![(
                     "x".to_string(),
                     TypeExpressionData::Identifier("integer".to_owned())
@@ -467,11 +473,11 @@ fn function_with_params() {
                 rest_parameter: None,
                 return_type: None,
                 yeet_type: None,
-            },
-            body: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
-            injected_variable_count: None,
-        })
+                body: (DatexExpressionData::Integer(Integer::from(42))
+                    .with_default_span()),
+                injected_variable_count: None,
+            }
+        ))
     );
 
     let src = r#"
@@ -482,11 +488,10 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
-            signature: CallableSignature {
+        DatexExpressionData::CallableDeclaration(Box::new(
+            CallableDeclaration {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
-                requires_async: false,
                 parameters: vec![
                     (
                         "x".to_string(),
@@ -502,25 +507,29 @@ fn function_with_params() {
                 rest_parameter: None,
                 return_type: None,
                 yeet_type: None,
-            },
-            body: (DatexExpressionData::Statements(
-                Statements::new_terminated(vec![
-                    DatexExpressionData::BinaryOperation(BinaryOperation {
-                        operator: BinaryOperator::Arithmetic(
-                            ArithmeticOperator::Add
-                        ),
-                        left: (DatexExpressionData::Integer(Integer::from(1))
+                body: (DatexExpressionData::Statements(
+                    Statements::new_terminated(vec![
+                        DatexExpressionData::BinaryOperation(BinaryOperation {
+                            operator: BinaryOperator::Arithmetic(
+                                ArithmeticOperator::Add
+                            ),
+                            left: (DatexExpressionData::Integer(
+                                Integer::from(1)
+                            )
                             .with_default_span()),
-                        right: (DatexExpressionData::Integer(Integer::from(2))
+                            right: (DatexExpressionData::Integer(
+                                Integer::from(2)
+                            )
                             .with_default_span()),
-                        ty: None
-                    })
-                    .with_default_span()
-                ])
-            )
-            .with_default_span()),
-            injected_variable_count: None,
-        })
+                            ty: None
+                        })
+                        .with_default_span()
+                    ])
+                )
+                .with_default_span()),
+                injected_variable_count: None,
+            }
+        ))
     );
 }
 
@@ -534,11 +543,10 @@ fn function_with_return_type() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
-            signature: CallableSignature {
+        DatexExpressionData::CallableDeclaration(Box::new(
+            CallableDeclaration {
                 name: Some("myFunction".into()),
                 kind: CallableKind::Function,
-                requires_async: false,
                 parameters: vec![(
                     "x".into(),
                     TypeExpressionData::Identifier("integer".to_owned())
@@ -555,11 +563,11 @@ fn function_with_return_type() {
                     .with_default_span()
                 ),
                 yeet_type: None,
-            },
-            body: (DatexExpressionData::Integer(Integer::from(42))
-                .with_default_span()),
-            injected_variable_count: None,
-        })
+                body: (DatexExpressionData::Integer(Integer::from(42))
+                    .with_default_span()),
+                injected_variable_count: None,
+            }
+        ))
     );
 }
 
@@ -721,6 +729,7 @@ fn if_else() {
 
     let src = vec!["if (true + 1 == 2) (4) else (2)"];
     for s in src {
+        println!("{}", s);
         let val = parse_unwrap_data(s);
         assert_eq!(
             val,
@@ -2276,36 +2285,35 @@ fn nested_apply_and_property_access() {
 }
 
 #[test]
-fn entity_declaration_statement() {
-    let src = "entity User = { age: 42, name: \"John\" };";
+fn type_declaration_statement() {
+    let src = "type User = { age: 42, name: \"John\" };";
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
         DatexExpressionData::Statements(Statements::new_terminated(vec![
-            DatexExpressionData::EntityDeclaration(
-                EntityDeclarationExpression {
-                    id: None,
-                    name: "User".to_string(),
-                    definition: TypeExpressionData::StructuralMap(
-                        StructuralMap(vec![
-                            (
-                                TypeExpressionData::Text("age".into())
-                                    .with_default_span(),
-                                TypeExpressionData::Integer(Integer::from(42))
-                                    .with_default_span()
-                            ),
-                            (
-                                TypeExpressionData::Text("name".into())
-                                    .with_default_span(),
-                                TypeExpressionData::Text("John".into())
-                                    .with_default_span()
-                            ),
-                        ])
-                    )
-                    .with_default_span(),
-                    hoisted: false,
-                }
-            )
+            DatexExpressionData::TypeDeclaration(TypeDeclaration {
+                id: None,
+                name: "User".to_string(),
+                definition: TypeExpressionData::StructuralMap(StructuralMap(
+                    vec![
+                        (
+                            TypeExpressionData::Text("age".into())
+                                .with_default_span(),
+                            TypeExpressionData::Integer(Integer::from(42))
+                                .with_default_span()
+                        ),
+                        (
+                            TypeExpressionData::Text("name".into())
+                                .with_default_span(),
+                            TypeExpressionData::Text("John".into())
+                                .with_default_span()
+                        ),
+                    ]
+                ))
+                .with_default_span(),
+                hoisted: false,
+                kind: TypeDeclarationKind::Nominal
+            })
             .with_default_span()
         ]))
     );

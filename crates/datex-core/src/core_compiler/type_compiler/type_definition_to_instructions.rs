@@ -3,11 +3,9 @@ use crate::{
         shared_value_tracking::SharedValueTracking,
         to_instructions::ToInstructions,
     },
-    instruction::{
-        instruction_data::{
-            ImplTypeData, ListData, MapData, TaggedTypeData, UnionData,
-        },
-        type_instruction::TypeInstruction,
+    global::protocol_structures::{
+        instruction_data::{ImplTypeData, ListData, MapData},
+        type_instructions::TypeInstruction,
     },
     prelude::*,
     types::{
@@ -34,12 +32,30 @@ use crate::{
     },
 };
 
-impl ToInstructions for TypeDefinition {
+impl<'a> ToInstructions<'a> for TypeDefinitionWithMetadata {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        shared_value_tracking: &'a mut SharedValueTracking,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
+        Box::new(gen {
+            yield TypeInstruction::TypeDefinitionWithMetadata(self.metadata);
+            for instruction in
+                self.definition.to_instructions(shared_value_tracking)
+            {
+                yield instruction;
+            }
+        })
+    }
+}
+
+impl<'a> ToInstructions<'a> for TypeDefinition {
+    type InstructionType = TypeInstruction;
+
+    fn to_instructions(
+        &'a self,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen move {
             match self {
@@ -51,7 +67,7 @@ impl ToInstructions for TypeDefinition {
                     }
                 }
                 TypeDefinition::Literal(literal_type_definition) => {
-                    yield TypeInstruction::Literal(
+                    yield TypeInstruction::TypeDefinitionLiteral(
                         literal_type_definition.clone(),
                     );
                 }
@@ -84,13 +100,15 @@ impl ToInstructions for TypeDefinition {
                     }
                 }
                 TypeDefinition::Shared(shared_container_containing_type) => {
-                    if let Some(shared_value_tracking) = shared_value_tracking {
-                        (*shared_value_tracking).register_shared_value(
-                            shared_container_containing_type.clone().into(),
-                        );
+                    let instructions: Vec<_> = shared_container_containing_type
+                        .with_collapsed_type_value(|f| {
+                            f.to_instructions(shared_value_tracking).collect()
+                        });
+                    for instruction in instructions {
+                        yield instruction;
                     }
                 }
-                TypeDefinition::Box(nested) => {
+                TypeDefinition::Nested(nested) => {
                     for instruction in
                         nested.to_instructions(shared_value_tracking)
                     {
@@ -126,39 +144,24 @@ impl ToInstructions for TypeDefinition {
                     }
                 }
                 TypeDefinition::CoreType(core_lib_type_id) => {
-                    yield TypeInstruction::CoreType(*core_lib_type_id)
+                    yield TypeInstruction::TypeDefinitionCoreType(
+                        *core_lib_type_id,
+                    )
                 }
             }
         })
     }
 }
 
-impl ToInstructions for TypeDefinitionWithMetadata {
+impl<'a> ToInstructions<'a> for ImplTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            yield TypeInstruction::DefinitionWithMetadata(self.metadata);
-            for instruction in
-                self.definition.to_instructions(shared_value_tracking)
-            {
-                yield instruction;
-            }
-        })
-    }
-}
-impl ToInstructions for ImplTypeDefinition {
-    type InstructionType = TypeInstruction;
-
-    fn to_instructions<'a>(
-        &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
-            yield TypeInstruction::ImplType(ImplTypeData {
+            yield TypeInstruction::TypeDefinitionImplType(ImplTypeData {
                 impl_count: self.impl_markers.len() as u8,
                 impls: self.impl_markers.to_vec(),
             });
@@ -171,22 +174,19 @@ impl ToInstructions for ImplTypeDefinition {
     }
 }
 
-impl ToInstructions for ListTypeDefinition {
+impl<'a> ToInstructions<'a> for ListTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen move {
-            yield TypeInstruction::List(ListData {
+        Box::new(gen {
+            yield TypeInstruction::TypeDefinitionList(ListData {
                 element_count: self.len() as u32,
             });
             for ty in self.iter() {
-                for instruction in ty
-                    .to_instructions(shared_value_tracking.as_deref_mut())
-                    .collect::<Vec<_>>()
-                {
+                for instruction in ty.to_instructions(shared_value_tracking) {
                     yield instruction;
                 }
             }
@@ -194,28 +194,24 @@ impl ToInstructions for ListTypeDefinition {
     }
 }
 
-impl ToInstructions for MapTypeDefinition {
+impl<'a> ToInstructions<'a> for MapTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen move {
-            yield TypeInstruction::Map(MapData {
+        Box::new(gen {
+            yield TypeInstruction::TypeDefinitionMap(MapData {
                 element_count: self.len() as u32,
             });
             for (key_ty, value_ty) in self.iter() {
-                // FIXME: collect required everywhere due to lifetime issues with the generator and optional mut ref
-                for instruction in key_ty
-                    .to_instructions(shared_value_tracking.as_deref_mut())
-                    .collect::<Vec<_>>()
+                for instruction in key_ty.to_instructions(shared_value_tracking)
                 {
                     yield instruction;
                 }
-                for instruction in value_ty
-                    .to_instructions(shared_value_tracking.as_deref_mut())
-                    .collect::<Vec<_>>()
+                for instruction in
+                    value_ty.to_instructions(shared_value_tracking)
                 {
                     yield instruction;
                 }
@@ -224,39 +220,32 @@ impl ToInstructions for MapTypeDefinition {
     }
 }
 
-impl ToInstructions for RangeTypeDefinition {
+impl<'a> ToInstructions<'a> for RangeTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen move {
-            yield TypeInstruction::Range;
-            for instruction in self
-                .start
-                .to_instructions(shared_value_tracking.as_deref_mut())
-                .collect::<Vec<_>>()
+        Box::new(gen {
+            yield TypeInstruction::TypeDefinitionRange;
+            for instruction in self.start.to_instructions(shared_value_tracking)
             {
                 yield instruction;
             }
-            for instruction in self
-                .end
-                .to_instructions(shared_value_tracking.as_deref_mut())
-                .collect::<Vec<_>>()
-            {
+            for instruction in self.end.to_instructions(shared_value_tracking) {
                 yield instruction;
             }
         })
     }
 }
 
-impl ToInstructions for CollectionTypeDefinition {
+impl<'a> ToInstructions<'a> for CollectionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen move {
             match self {
@@ -293,41 +282,35 @@ impl ToInstructions for CollectionTypeDefinition {
     }
 }
 
-impl ToInstructions for ListCollectionTypeDefinition {
+impl<'a> ToInstructions<'a> for ListCollectionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen {
-            todo!("Add instr");
             for instruction in self.0.to_instructions(shared_value_tracking) {
                 yield instruction;
             }
         })
     }
 }
-impl ToInstructions for MapCollectionTypeDefinition {
+impl<'a> ToInstructions<'a> for MapCollectionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen move {
-            todo!("Add instr");
-            for instruction in self
-                .key_type
-                .to_instructions(shared_value_tracking.as_deref_mut())
-                .collect::<Vec<_>>()
+        Box::new(gen {
+            for instruction in
+                self.key_type.to_instructions(shared_value_tracking)
             {
                 yield instruction;
             }
-            for instruction in self
-                .value_type
-                .to_instructions(shared_value_tracking.as_deref_mut())
-                .collect::<Vec<_>>()
+            for instruction in
+                self.value_type.to_instructions(shared_value_tracking)
             {
                 yield instruction;
             }
@@ -335,31 +318,27 @@ impl ToInstructions for MapCollectionTypeDefinition {
     }
 }
 
-impl ToInstructions for ListSliceCollectionTypeDefinition {
+impl<'a> ToInstructions<'a> for ListSliceCollectionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        _shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen { todo!() })
     }
 }
 
-impl ToInstructions for IntersectionTypeDefinition {
+impl<'a> ToInstructions<'a> for IntersectionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen move {
-            todo!("Add instr");
+        Box::new(gen {
             for ty in self.iter() {
-                for instruction in ty
-                    .to_instructions(shared_value_tracking.as_deref_mut())
-                    .collect::<Vec<_>>()
-                {
+                for instruction in ty.to_instructions(shared_value_tracking) {
                     yield instruction;
                 }
             }
@@ -367,33 +346,27 @@ impl ToInstructions for IntersectionTypeDefinition {
     }
 }
 
-impl ToInstructions for CallableTypeDefinition {
+impl<'a> ToInstructions<'a> for CallableTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        _shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen { todo!() })
     }
 }
 
-impl ToInstructions for UnionTypeDefinition {
+impl<'a> ToInstructions<'a> for UnionTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen move {
-            yield TypeInstruction::Union(UnionData {
-                element_count: self.len() as u32,
-            });
+        Box::new(gen {
             for ty in self.iter() {
-                for instruction in ty
-                    .to_instructions(shared_value_tracking.as_deref_mut())
-                    .collect::<Vec<_>>()
-                {
+                for instruction in ty.to_instructions(shared_value_tracking) {
                     yield instruction;
                 }
             }
@@ -401,26 +374,13 @@ impl ToInstructions for UnionTypeDefinition {
     }
 }
 
-impl ToInstructions for TaggedTypeDefinition {
+impl<'a> ToInstructions<'a> for TaggedTypeDefinition {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &'a self,
-        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
+        _shared_value_tracking: &'a mut SharedValueTracking,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen move {
-            yield TypeInstruction::TaggedType(TaggedTypeData::new(
-                self.tag.clone(),
-                self.ty.is_some(),
-            ));
-            if let Some(ty) = &self.ty {
-                for instruction in ty
-                    .to_instructions(shared_value_tracking.as_deref_mut())
-                    .collect::<Vec<_>>()
-                {
-                    yield instruction;
-                }
-            }
-        })
+        Box::new(gen { todo!() })
     }
 }

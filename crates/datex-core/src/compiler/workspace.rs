@@ -97,6 +97,6 @@ impl CompilerWorkspace {
     }
 
     pub fn memory(&self) -> Ref<'_, SharedReferencesCache> {
-        self.runtime.shared_references_cache().borrow()
+        self.runtime.memory().borrow()
     }
 }

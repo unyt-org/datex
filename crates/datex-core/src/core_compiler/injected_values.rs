@@ -8,15 +8,21 @@ use crate::{
         value_compiler::InjectedValueValidationError,
         value_visitor::ValueVisitor,
     },
-    global::protocol_structures::injected_values::{
-        InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType,
-    },
-    instruction::{
-        instruction_data::InstructionBlockData,
-        regular_instruction::RegularInstruction,
+    global::protocol_structures::{
+        injected_values::{
+            InjectedValueDeclaration, InjectedValueType,
+            SharedInjectedValueType,
+        },
+        instruction_data::{
+            InstructionBlockData, SharedRef, SharedRefWithValue,
+        },
+        regular_instructions::RegularInstruction,
     },
     prelude::*,
-    shared_values::SharedContainer,
+    shared_values::{
+        PointerAddress, ReferencedSharedContainer, SharedContainer,
+        traits::SharedContainerCommon,
+    },
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Write};
@@ -143,6 +149,67 @@ fn compile_injected_values_with_context(
     }
 }
 
+//
+// /// Prepends injected values to an instruction block
+// /// This is used for remote execution blocks and function bodies.
+// /// ```datex
+// /// #stack ..= (
+// ///    #0 = MOVE (1,2,34);
+// ///    -----
+// ///    #parent = SHARED_REF 1;
+// ///    #child = {p: #parent}
+// ///    #parent.c = #child;
+// ///    #3 = #0[1]
+// ///    -----
+// ///    [
+// ///      #stack[1],
+// ///       parent {
+// ///          x: parent,
+// ///          y: #stack[2]
+// ///       },
+// ///       #stack[3],
+// ///       {
+// ///         x: 1,
+// ///       }
+// ///    ]
+// /// )
+
+fn append_referenced_shared_container(
+    compilation_context: &mut CoreCompilationContext,
+    referenced_container: ReferencedSharedContainer,
+    insert_value: bool,
+) -> Result<(), InjectedValueValidationError> {
+    compilation_context.write(RegularInstruction::push_to_stack());
+
+    if insert_value {
+        compilation_context.write(RegularInstruction::shared_ref_with_value(
+            SharedRefWithValue {
+                address: match referenced_container.pointer_address() {
+                    PointerAddress::SelfOwned(self_owned_address) => {
+                        self_owned_address
+                    }
+                    _ => unreachable!(), // referenced containers with insert_value=true should always be self owned
+                },
+                ref_mutability: referenced_container.reference_mutability(),
+                container_mutability: referenced_container
+                    .container_mutability(),
+            },
+        ));
+        compilation_context.visit_value_container(
+            referenced_container.value_container().clone(),
+            None,
+        );
+    } else {
+        compilation_context.write(RegularInstruction::shared_ref(SharedRef {
+            address: referenced_container.pointer_address().clone(),
+            ref_mutability: referenced_container.reference_mutability(),
+            container_mutability: referenced_container.container_mutability(),
+        }));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 #[cfg(feature = "disassembler")]
 mod tests {
@@ -152,21 +219,23 @@ mod tests {
             core_compilation_context::{CompileInput, DXBWithSharedValues},
             value_compiler::InjectedValueValidationError,
         },
-        disassembler::assertions::{assert_instructions_equal, instructions},
-        global::{
-            protocol_structures::injected_values::{
-                InjectedValueDeclaration, InjectedValueType,
-                SharedInjectedValueType,
-            },
-            stack_index::StackIndex,
+        disassembler::assertions::{
+            assert_regular_instructions_equal, instructions,
         },
-        instruction::{
+        global::{
             instruction_codes::InstructionCode,
-            instruction_data::{
-                InstructionBlockData, Int32Data, ListData, MoveWithValue,
-                SharedRefWithValue, ShortListData, StatementsData, UInt32Data,
+            protocol_structures::{
+                injected_values::{
+                    InjectedValueDeclaration, InjectedValueType,
+                    SharedInjectedValueType,
+                },
+                instruction_data::{
+                    InstructionBlockData, Int32Data, ListData, MoveWithValue,
+                    SharedRefWithValue, ShortListData, StackIndex,
+                    StatementsData, UInt32Data,
+                },
+                regular_instructions::RegularInstruction,
             },
-            regular_instruction::RegularInstruction,
         },
         prelude::*,
         runtime::{
@@ -220,7 +289,7 @@ mod tests {
         let res = compile_injected_values_test(exec_block_data, vec![])
             .unwrap()
             .dxb;
-        assert_instructions_equal!(&res, (RegularInstruction::Null))
+        assert_regular_instructions_equal!(&res, (RegularInstruction::Null))
     }
 
     #[test]
@@ -253,7 +322,7 @@ mod tests {
         .unwrap()
         .dxb;
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &res,
                (
                     RegularInstruction::statements_with_children(false, instructions!(
@@ -341,7 +410,7 @@ mod tests {
         .unwrap()
         .dxb;
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &res,
             (
                 RegularInstruction::statements_with_children(false, instructions!(
@@ -418,7 +487,7 @@ mod tests {
         .unwrap()
         .dxb;
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &res,
             (RegularInstruction::statements_with_children(
                 false,
@@ -527,7 +596,7 @@ mod tests {
         .unwrap()
         .dxb;
 
-        assert_instructions_equal!(
+        assert_regular_instructions_equal!(
             &res,
             (
                 RegularInstruction::statements_with_children(false, instructions!(

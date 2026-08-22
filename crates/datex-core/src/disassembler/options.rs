@@ -1,9 +1,9 @@
-use crate::instruction::NestedInstructionResolutionStrategy;
+use crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Debug, Serialize, Deserialize)]
-#[datex(structural_recursive)]
+
 pub struct DisassemblerOptions {
     #[serde(default)]
     pub tree: bool,

@@ -30,7 +30,7 @@ impl StructuralEq for TypeDefinition {
                 }
                 true
             }
-            (TypeDefinition::Box(a), TypeDefinition::Box(b)) => {
+            (TypeDefinition::Nested(a), TypeDefinition::Nested(b)) => {
                 a.structural_eq(b)
             }
             (TypeDefinition::Shared(a), TypeDefinition::Shared(b)) => {

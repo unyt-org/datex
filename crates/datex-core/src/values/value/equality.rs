@@ -23,8 +23,7 @@ impl ValueEq for Value {
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
-        self.inner == other.inner
-            && self.actual_type().as_ref() == other.actual_type().as_ref()
+        self.inner == other.inner && self.custom_type == other.custom_type
     }
 }
 
@@ -32,6 +31,6 @@ impl Eq for Value {}
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.inner.hash(state);
-        self.actual_type().hash(state);
+        self.custom_type.hash(state);
     }
 }

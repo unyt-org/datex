@@ -23,10 +23,8 @@ mod runner;
 #[cfg(test)]
 pub mod test_utils;
 
-use crate::inspector::register_inspector_namespace;
 use crate::{
-    core_compiler::InstructionInput, //inspector::register_inspector_namespace,
-    values::core_values::endpoint::Endpoint,
+    core_compiler::InstructionInput, values::core_values::endpoint::Endpoint,
 };
 pub use config::*;
 pub use internal::*;
@@ -49,11 +47,9 @@ impl Deref for Runtime {
 /// around RuntimeInternal
 impl Runtime {
     pub(crate) fn new(runtime_internal: RuntimeInternal) -> Runtime {
-        let runtime = Runtime {
+        Runtime {
             internal: Rc::new(runtime_internal),
-        };
-        register_inspector_namespace(&runtime);
-        runtime
+        }
     }
 
     pub fn stub() -> Runtime {
@@ -98,14 +94,12 @@ impl Runtime {
     pub async fn execute_dxb<'a>(
         &'a self,
         input: DXBWithSharedValues,
-        initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<&'a mut ExecutionContext>,
         end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb(
             self.internal(),
             input,
-            initial_stack_values,
             execution_context,
             end_execution,
         )
@@ -115,20 +109,18 @@ impl Runtime {
     pub fn execute_dxb_sync(
         &self,
         input: DXBWithSharedValues,
-        initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<&mut ExecutionContext>,
         end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb_sync(
             self.internal(),
             input,
-            initial_stack_values,
             execution_context,
             end_execution,
         )
     }
 
-    pub async fn execute_remote(
+    async fn execute_remote(
         &self,
         remote_execution_context: &mut RemoteExecutionContext,
         input: DXBWithSharedValues,
@@ -141,7 +133,7 @@ impl Runtime {
         .await
     }
 
-    pub async fn execute_instructions_remote(
+    async fn execute_instructions_remote(
         &self,
         endpoints: Vec<Endpoint>,
         instructions_input: Vec<InstructionInput>,

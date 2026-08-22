@@ -1,6 +1,6 @@
 use crate::{
     core_compiler::core_compilation_context::ByteCursor,
-    instruction::type_instruction::TypeInstruction,
+    global::protocol_structures::type_instructions::TypeInstruction,
 };
 use binrw::BinWrite;
 
@@ -31,9 +31,10 @@ mod tests {
             value_compiler::compile_value,
         },
         disassembler::assertions::assert_instructions_equal,
-        instruction::{
-            Instruction, regular_instruction::RegularInstruction,
-            type_instruction::TypeInstruction,
+        global::protocol_structures::{
+            instructions::Instruction,
+            regular_instructions::RegularInstruction,
+            type_instructions::TypeInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
@@ -81,7 +82,7 @@ mod tests {
 
     #[test]
     fn type_definition_with_metadata() {
-        let ty = Type::Definition(TypeDefinitionWithMetadata::new(
+        let ty = Type::Alias(TypeDefinitionWithMetadata::new(
             TypeDefinition::CoreType(CoreLibTypeId::Base(
                 CoreLibBaseTypeId::Boolean,
             )),
@@ -93,11 +94,13 @@ mod tests {
         assert_type_instructions(
             ty,
             vec![
-                TypeInstruction::DefinitionWithMetadata(TypeMetadata::Local {
-                    mutability: LocalMutability::Mutable,
-                    ownership: LocalOwnership::Owned,
-                }),
-                TypeInstruction::CoreType(CoreLibTypeId::Base(
+                TypeInstruction::TypeDefinitionWithMetadata(
+                    TypeMetadata::Local {
+                        mutability: LocalMutability::Mutable,
+                        ownership: LocalOwnership::Owned,
+                    },
+                ),
+                TypeInstruction::TypeDefinitionCoreType(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Boolean,
                 )),
             ],
@@ -108,7 +111,7 @@ mod tests {
     fn core_type() {
         // We shortcut the type compilation for aliased core types, that don't have any metadata or a custom type
         // to just directly return the core lib value instruction, since the execution will treat them as the same type anyway
-        let ty = Type::Definition(
+        let ty = Type::Alias(
             TypeDefinition::CoreType(CoreLibTypeId::Base(
                 CoreLibBaseTypeId::Boolean,
             ))

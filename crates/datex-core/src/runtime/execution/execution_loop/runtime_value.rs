@@ -1,5 +1,5 @@
 use crate::{
-    global::stack_index::StackIndex,
+    global::protocol_structures::instruction_data::StackIndex,
     runtime::execution::{
         ExecutionError,
         execution_loop::state::{RuntimeExecutionStack, RuntimeExecutionState},

@@ -64,7 +64,7 @@ mod tests {
 
     struct MyAst;
     impl TypeExpressionVisitor<MyAstExpressionError> for MyAst {
-        fn visit_type_identifier(
+        fn visit_literal_type(
             &mut self,
             _literal: &mut String,
             span: &Range<usize>,

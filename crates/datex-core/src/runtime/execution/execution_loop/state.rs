@@ -1,8 +1,11 @@
 use crate::{
-    global::protocol_structures::injected_values::{
-        InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType,
+    global::protocol_structures::{
+        injected_values::{
+            InjectedValueDeclaration, InjectedValueType,
+            SharedInjectedValueType,
+        },
+        instruction_data::StackIndex,
     },
-    global::stack_index::StackIndex,
     prelude::*,
     runtime::{
         Runtime,
@@ -118,13 +121,6 @@ pub struct RuntimeExecutionStack {
 }
 
 impl RuntimeExecutionStack {
-    /// Creates a new stack with initial allocated stack values.
-    pub fn new(values: Vec<ValueContainer>) -> Self {
-        Self {
-            values: values.into_iter().map(Some).collect(),
-        }
-    }
-
     /// Pushes a value to the stack
     pub(crate) fn push(&mut self, value: ValueContainer) {
         self.values.push(Some(value));
@@ -239,10 +235,8 @@ impl RuntimeExecutionStack {
                 InjectedValueType::Shared(SharedInjectedValueType::Move) => {
                     match moved[i].take().unwrap() {
                         shared @ ValueContainer::Shared(_) => shared,
-                        local @ ValueContainer::Local(_) => {
-                            local
-                            // FIXME: should return this error, but since compiler currently also marks local values as shared, this is disabled for now
-                            // return Err(ExecutionError::ExpectedSharedValue);
+                        ValueContainer::Local(_) => {
+                            return Err(ExecutionError::ExpectedSharedValue);
                         }
                     }
                 }

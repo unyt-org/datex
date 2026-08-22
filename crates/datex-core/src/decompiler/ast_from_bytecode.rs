@@ -15,10 +15,12 @@ use crate::{
             InstructionCollector, StatementResultCollectionStrategy,
         },
     },
-    global::operators::{BinaryOperator, UnaryOperator},
-    instruction::{
-        Instruction,
-        instruction_data::{ShortStatementsData, StatementsData},
+    global::{
+        operators::{BinaryOperator, UnaryOperator},
+        protocol_structures::{
+            instruction_data::{ShortStatementsData, StatementsData},
+            instructions::Instruction,
+        },
     },
     types::literal_type_definition::LiteralTypeDefinition,
     values::core_values::{
@@ -29,24 +31,20 @@ use crate::{
 
 use crate::{
     ast::expressions::{
-        CallableDeclaration, CallableSignature, CloneExpression,
-        ComparisonOperation, CreateShared, DeriveSharedRef, RemoteExecution,
-        RequestSharedRef, RootPropertyAccess, StackAssignment,
+        CloneExpression, ComparisonOperation, CreateShared, DeriveSharedRef,
+        RemoteExecution, RequestSharedRef, RootPropertyAccess, StackAssignment,
         StackListAssignment, TagExpression, UnboxAssignment,
     },
-    global,
     global::{
         operators::{ComparisonOperator, ModificationOperator},
-        stack_index::StackIndex,
-    },
-    instruction::{
-        NestedInstructionResolutionStrategy,
-        instruction_data::{
-            CallableSignatureData, ShortTextData, TaggedValue,
-            UnboundedStatementsData,
+        protocol_structures::{
+            instruction_data::{
+                ShortTextData, StackIndex, TaggedValue, UnboundedStatementsData,
+            },
+            instructions::NestedInstructionResolutionStrategy,
+            regular_instructions::RegularInstruction,
+            type_instructions::TypeInstruction,
         },
-        regular_instruction::RegularInstruction,
-        type_instruction::TypeInstruction,
     },
     prelude::*,
     shared_values::{
@@ -138,7 +136,7 @@ pub fn ast_from_bytecode(
     ) {
         let instruction = instruction?;
 
-        let result = match instruction.instruction {
+        let result = match instruction {
             // handle regular instructions
             Instruction::Regular(regular_instruction) => {
                 let regular_instruction = collector
@@ -363,10 +361,10 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::UnaryMinus
                         | RegularInstruction::UnaryPlus
                         | RegularInstruction::BitwiseNot
-                        | RegularInstruction::BoxedValue
                         | RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. })
                         | RegularInstruction::Apply(_)
-                        | RegularInstruction::CallMethod(_)
+                        | RegularInstruction::ApplySingle
+                        | RegularInstruction::ApplyZero
                         | RegularInstruction::GetEntryText(_)
                         | RegularInstruction::GetEntryIndex(_)
                         | RegularInstruction::GetEntryDynamic
@@ -404,18 +402,11 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::Decrement
                         | RegularInstruction::MoveWithValue(_)
                         | RegularInstruction::RemoteExecution(_)
-                        | RegularInstruction::Callable(_)
-                        | RegularInstruction::CallableDeclaration(_)
                         | RegularInstruction::TypeExpression => {
                             unreachable!()
                         }
                         #[cfg(feature = "disassembler")]
-                        RegularInstruction::_RemoteExecutionDebugFlat(_) |
-                        RegularInstruction::_RemoteExecutionDebugTree(_)  |
-                        RegularInstruction::_CallableDeclarationDebugFlat(_) |
-                        RegularInstruction::_CallableDeclarationDebugTree(_) |
-                        RegularInstruction::_CallableDebugFlat(_) |
-                        RegularInstruction::_CallableDebugTree(_) => {
+                        RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => {
                             todo!("also map to ast")
                         }
                     }
@@ -430,12 +421,10 @@ pub fn ast_from_bytecode(
                 let type_expression: Option<TypeExpression> = type_instruction
                     .map(|type_instruction| {
                         match type_instruction {
-                            TypeInstruction::CoreType(core_lib_id) => {
-                                TypeExpressionData::Identifier(
-                                    core_lib_id.to_string(),
-                                )
+                            TypeInstruction::TypeDefinitionCoreType(core_lib_id) => {
+                                TypeExpressionData::Identifier(core_lib_id.to_string())
                             }
-                            TypeInstruction::Literal(literal) => {
+                            TypeInstruction::TypeDefinitionLiteral(literal) => {
                                 match literal {
                                     LiteralTypeDefinition::Integer(integer) => {
                                         TypeExpressionData::Integer(integer)
@@ -449,39 +438,33 @@ pub fn ast_from_bytecode(
                                     LiteralTypeDefinition::Boolean(boolean) => {
                                         TypeExpressionData::Boolean(boolean)
                                     }
-                                    LiteralTypeDefinition::Endpoint(
-                                        endpoint,
-                                    ) => TypeExpressionData::Endpoint(endpoint),
-                                    LiteralTypeDefinition::TypedDecimal(
-                                        decimal,
-                                    ) => TypeExpressionData::TypedDecimal(
-                                        decimal,
-                                    ),
-                                    LiteralTypeDefinition::TypedInteger(
-                                        integer,
-                                    ) => TypeExpressionData::TypedInteger(
-                                        integer,
-                                    ),
+                                    LiteralTypeDefinition::Endpoint(endpoint) => {
+                                        TypeExpressionData::Endpoint(endpoint)
+                                    }
+                                    LiteralTypeDefinition::TypedDecimal(decimal) => {
+                                        TypeExpressionData::TypedDecimal(decimal)
+                                    }
+                                    LiteralTypeDefinition::TypedInteger(integer) => {
+                                        TypeExpressionData::TypedInteger(integer)
+                                    }
                                 }
                             }
-                            TypeInstruction::SharedTypeReference(reference) => {
+                            TypeInstruction::TypeDefinitionSharedTypeReference(reference) => {
                                 // TODO #769: handle metadata
                                 TypeExpressionData::GetReference(
                                     reference.address,
                                 )
                             }
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                            TypeInstruction::List(_)
-                            | TypeInstruction::Union(_)
-                            | TypeInstruction::Range
-                            | TypeInstruction::ImplType(_)
-                            | TypeInstruction::TaggedType(_)
-                            | TypeInstruction::Map(_)
-                            | TypeInstruction::DefinitionWithMetadata(_) => {
+                            TypeInstruction::TypeDefinitionList(_) |
+                            TypeInstruction::TypeDefinitionRange |
+                            TypeInstruction::TypeDefinitionImplType(_) |
+                            TypeInstruction::TypeDefinitionMap(_) |
+                            TypeInstruction::TypeDefinitionWithMetadata(_) => {
                                 unreachable!()
                             }
                         }
-                        .with_default_span()
+                            .with_default_span()
                     });
 
                 type_expression.map(CollectedAstResult::from)
@@ -680,46 +663,6 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::Callable(callable) => {
-                                let injected_values = collected_results.pop_values(callable.body.injected_value_count);
-
-                                let types = collected_results.pop_types(callable.signature.total_type_count());
-                                let signature = resolve_signature(types, callable.signature);
-
-                                let body = DatexExpressionData::Statements(Statements {
-                                    statements: vec![ast_from_bytecode(&callable.body.body)?],
-                                    is_terminated: false,
-                                    unbounded: None,
-                                }).with_default_span();
-
-                                DatexExpressionData::CallableDeclaration(CallableDeclaration {
-                                    signature,
-                                    body,
-                                    injected_variable_count: Some(injected_values.len() as u32),
-                                })
-                                    .with_default_span()
-                                    .into()
-                            }
-
-                            RegularInstruction::CallableDeclaration(callable_declaration) => {
-                                let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
-                                let signature = resolve_signature(types, callable_declaration.signature);
-
-                                let body = DatexExpressionData::Statements(Statements {
-                                    statements: vec![ast_from_bytecode(&callable_declaration.body.body)?],
-                                    is_terminated: false,
-                                    unbounded: None,
-                                }).with_default_span();
-
-                                DatexExpressionData::CallableDeclaration(CallableDeclaration {
-                                    signature,
-                                    body,
-                                    injected_variable_count: None,
-                                })
-                                    .with_default_span()
-                                    .into()
-                            }
-
                             RegularInstruction::TypedValue => {
                                 let expr = collected_results.pop_value();
                                 let expr_type =
@@ -827,11 +770,6 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::BoxedValue => {
-                                let expression = collected_results.pop_value();
-                                expression.data.with_span(expression.span).into()
-                            }
-
                             RegularInstruction::Apply(_) => {
                                 let mut arguments =
                                     collected_results.collect_value_results();
@@ -845,18 +783,22 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-
-                            RegularInstruction::CallMethod(method_data) => {
-                                let mut arguments =
-                                    collected_results.collect_value_results();
-                                // base is the last collected argument
-                                let base =
-                                    arguments.remove(arguments.len() - 1);
-                                DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall::new(
+                            RegularInstruction::ApplySingle => {
+                                let argument = collected_results.pop_value();
+                                let base = collected_results.pop_value();
+                                DatexExpressionData::Apply(Apply {
                                     base,
-                                    method_data.method_name.0,
-                                    arguments,
-                                ))
+                                    arguments: vec![argument],
+                                })
+                                    .with_default_span()
+                                    .into()
+                            }
+                            RegularInstruction::ApplyZero => {
+                                let base = collected_results.pop_value();
+                                DatexExpressionData::Apply(Apply {
+                                    base,
+                                    arguments: vec![],
+                                })
                                     .with_default_span()
                                     .into()
                             }
@@ -1097,52 +1039,6 @@ pub fn ast_from_bytecode(
     }
 }
 
-fn resolve_signature(
-    mut types: Vec<TypeExpression>,
-    signature_data: CallableSignatureData,
-) -> CallableSignature {
-    let yeet_type = if signature_data.has_yeet_type {
-        Some(types.pop().expect("Expected yeet type"))
-    } else {
-        None
-    };
-    let return_type = if signature_data.has_return_type {
-        Some(types.pop().expect("Expected return type"))
-    } else {
-        None
-    };
-
-    let rest_parameter = if signature_data.has_rest_parameter {
-        Some((
-            signature_data.rest_parameter_name.unwrap().0,
-            types.pop().expect("Expected rest parameter type"),
-        ))
-    } else {
-        None
-    };
-
-    let parameters = signature_data
-        .parameter_names
-        .into_iter()
-        .zip(types)
-        .map(|(name, param_type)| (name.0, param_type))
-        .collect::<Vec<_>>();
-
-    CallableSignature {
-        name: if signature_data.name.0.is_empty() {
-            None
-        } else {
-            Some(signature_data.name.0)
-        },
-        kind: signature_data.kind,
-        requires_async: false, // TODO
-        parameters,
-        rest_parameter,
-        return_type,
-        yeet_type,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1153,8 +1049,10 @@ mod tests {
             },
             spanned::Spanned,
         },
-        global::operators::{ModificationOperator, binary::ArithmeticOperator},
-        instruction::instruction_codes::InstructionCode,
+        global::{
+            instruction_codes::InstructionCode,
+            operators::{ModificationOperator, binary::ArithmeticOperator},
+        },
         prelude::*,
         values::core_values::integer::{Integer, typed_integer::TypedInteger},
     };

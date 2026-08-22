@@ -45,7 +45,7 @@ impl WebRTCCommon {
     }
     pub fn on_ice_candidate(&self, candidate: RTCIceCandidateInitDX) {
         if let Some(ref on_ice_candidate) = self.on_ice_candidate {
-            if let Ok(candidate) = candidate.try_boxed_to_value_container() {
+            if let Ok(candidate) = candidate.try_to_value_container() {
                 let pointer_lookup = PointerAvailabilityLookup::default();
                 let compile_input = CompileInput::new(&pointer_lookup, &vec![]);
                 on_ice_candidate(
@@ -61,7 +61,6 @@ impl WebRTCCommon {
 }
 
 #[derive(Datex)]
-#[datex(structural_recursive)]
 pub struct WebRTCInterfaceSetupData {
     pub peer_endpoint: Endpoint,
     pub ice_servers: Option<Vec<RTCIceServer>>,

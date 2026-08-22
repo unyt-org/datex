@@ -7,11 +7,9 @@ use crate::{
             precompiled_ast::RichAst, scope_stack::PrecompilerScopeStack,
         },
     },
-    global::{
-        protocol_structures::injected_values::{
-            InjectedValueDeclaration, InjectedValueType,
-        },
-        stack_index::StackIndex,
+    global::protocol_structures::{
+        injected_values::{InjectedValueDeclaration, InjectedValueType},
+        instruction_data::StackIndex,
     },
     runtime::execution::context::ExecutionMode,
 };
@@ -52,7 +50,6 @@ impl ExternalParentScope {
         &mut self,
         name: &str,
         value_type: InjectedValueType,
-        injected_variables_index_offset: StackIndex,
     ) -> Result<Option<(StackIndex, VariableKind)>, ()> {
         let variable =
             self.scope.resolve_variable_name(name, Some(value_type))?;
@@ -82,11 +79,8 @@ impl ExternalParentScope {
                 return Ok(Some((*variable_child_index, variable_kind)));
             }
             // otherwise, map variable and store mapping
-            // start at injected_variables_index_offset
-            let child_stack_index = StackIndex(
-                injected_variables_index_offset.0
-                    + self.injected_variables_map.len() as u32,
-            );
+            let child_stack_index =
+                StackIndex(self.injected_variables_map.len() as u32);
             self.injected_variables_map
                 .insert(variable_parent_index, child_stack_index);
             self.injected_values.push(InjectedValueDeclaration {
@@ -110,8 +104,6 @@ pub struct CompilationScope {
     external_parent_scope_data: Option<ExternalParentScope>,
     /// next available index that can be allocated in the stack
     next_stack_index: StackIndex,
-    /// offset from which to start stack index for injected values. Default 0, incremented to make room e.g. for function parameters
-    injected_variables_index_offset: StackIndex,
 
     // ------- Data only relevant for the root scope (FIXME: refactor?) -------
     /// optional precompiler data, only on the root scope
@@ -130,7 +122,6 @@ impl Default for CompilationScope {
             parent_scope: None,
             external_parent_scope_data: None,
             next_stack_index: StackIndex(0),
-            injected_variables_index_offset: StackIndex(0),
             precompiler_data: Some(PrecompilerData::default()),
             execution_mode: ExecutionMode::Static,
             was_used: false,
@@ -149,14 +140,12 @@ impl CompilationScope {
     pub fn new_with_external_parent_scope(
         parent_context: CompilationScope,
         initial_stack_index: StackIndex,
-        injected_variables_index_offset: StackIndex,
     ) -> CompilationScope {
         CompilationScope {
             external_parent_scope_data: Some(ExternalParentScope::new(
                 parent_context,
             )),
             next_stack_index: initial_stack_index,
-            injected_variables_index_offset,
             ..CompilationScope::default()
         }
     }
@@ -204,11 +193,7 @@ impl CompilationScope {
             &mut self.external_parent_scope_data
         {
             if let Some(slot_type) = slot_type {
-                external_parent.resolve_variable_name(
-                    name,
-                    slot_type,
-                    self.injected_variables_index_offset,
-                )
+                external_parent.resolve_variable_name(name, slot_type)
             } else {
                 Err(())
             }
@@ -234,8 +219,6 @@ impl CompilationScope {
     pub fn push(self) -> CompilationScope {
         CompilationScope {
             next_stack_index: self.next_stack_index,
-            injected_variables_index_offset: self
-                .injected_variables_index_offset,
             parent_scope: Some(Box::new(self)),
             external_parent_scope_data: None,
             variables: HashMap::new(),

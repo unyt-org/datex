@@ -7,8 +7,8 @@ pub mod error;
 pub mod integer;
 pub mod list;
 pub mod map;
-pub mod native;
 pub mod range;
 pub mod text;
 pub mod time;
+
 pub use time::Instant;

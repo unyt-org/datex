@@ -1,6 +1,7 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
+    shared_values::base_shared_value_container::BaseSharedValueContainer,
     utils::{
         freemap::{FreeHashMap, NextKey},
         serde_serialize_seed::SerializeSeed,
@@ -339,10 +340,17 @@ impl ObserverData {
 
 #[cfg(test)]
 mod tests {
-    use crate::shared_values::base_shared_value_container::observers::{
-        Observer, ObserverData, ObserverError, ObserverId,
+    use crate::{
+        shared_values::{
+            base_shared_value_container::{
+                observers::{
+                    Observer, ObserverData, ObserverError,
+                    ObserverId,
+                },
+            },
+        },
     };
-    use core::assert_matches;
+    use core::{assert_matches};
 
     #[test]
     fn observe_and_unobserve() {

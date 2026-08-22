@@ -7,32 +7,20 @@ use crate::{
             Union,
         },
     },
-    types::{
-        literal_type_definition::LiteralTypeDefinition,
-        type_definition::impl_type,
-    },
+    types::literal_type_definition::LiteralTypeDefinition,
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
 
 use crate::{
-    ast::{
-        expressions::{
-            Apply, CallableDeclaration, CallableSignature, CreateShared,
-            DeriveSharedRef, EntityValueExpression, Statements, TagExpression,
-        },
-        type_expressions::{
-            IdentifierWithPointerAddress, StructuralList, StructuralMap,
-        },
+    ast::expressions::{
+        CallableDeclaration, CreateShared, DeriveSharedRef, TagExpression,
     },
-    decompiler::ast_from_bytecode::ast_from_bytecode,
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
-    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     types::{
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         r#type::Type,
         type_definition::{
             TypeDefinition, range::RangeTypeDefinition,
@@ -40,7 +28,6 @@ use crate::{
         },
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
-    values::core_values::callable::{CallableBody, DatexBytecodeCallable},
 };
 use alloc::format;
 
@@ -83,17 +70,8 @@ fn create_shared(
 }
 
 fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
-    // ensure all native values are collapsed
-    // TODO: pass cache
-    let inner_collapsed = value
-        .inner_non_native(&mut SharedReferencesCache::default())
-        .unwrap();
-    let core_value_expression =
-        core_value_to_datex_expression(inner_collapsed.as_ref());
-    // only entity types with a non default type need to be casted
-    if value.needs_type_cast()
-        && let Some(custom_type) = &value.custom_type
-    {
+    let core_value_expression = core_value_to_datex_expression(&value.inner);
+    if let Some(custom_type) = &value.custom_type {
         type_cast_expression(core_value_expression, custom_type)
     } else {
         core_value_expression
@@ -155,14 +133,13 @@ fn core_value_to_datex_expression(
             type_to_type_expression(type_value),
         ),
         CoreValue::Callable(callable) => {
-            DatexExpressionData::CallableDeclaration(CallableDeclaration {
-                signature: CallableSignature {
+            DatexExpressionData::CallableDeclaration(Box::new(
+                CallableDeclaration {
                     name: callable.name.clone(),
-                    kind: callable.signature.kind,
-                    requires_async: callable.signature.requires_async,
+                    kind: callable.signature.kind.clone(),
                     parameters: callable
                         .signature
-                        .parameters
+                        .parameter_types
                         .iter()
                         .map(|(maybe_name, ty)| {
                             (
@@ -173,7 +150,7 @@ fn core_value_to_datex_expression(
                         .collect(),
                     rest_parameter: callable
                         .signature
-                        .rest_parameter
+                        .rest_parameter_type
                         .as_ref()
                         .map(|(maybe_name, ty)| {
                             (
@@ -191,45 +168,14 @@ fn core_value_to_datex_expression(
                         .yeet_type
                         .as_ref()
                         .map(|ty| type_to_type_expression(ty)),
+                    body: (DatexExpressionData::NativeImplementationIndicator
+                        .with_default_span()),
+                    injected_variable_count: None,
                 },
-                body: match &callable.body {
-                    CallableBody::CoreStub(_) => {
-                        DatexExpressionData::NativeImplementationIndicator
-                            .with_default_span()
-                    }
-                    CallableBody::Native(_) => {
-                        DatexExpressionData::NativeImplementationIndicator
-                            .with_default_span()
-                    }
-                    CallableBody::Hidden => {
-                        DatexExpressionData::NativeImplementationIndicator
-                            .with_default_span()
-                    }
-                    CallableBody::DatexBytecode(DatexBytecodeCallable {
-                        body,
-                        ..
-                    }) => ast_from_bytecode(body).unwrap_or_else(|_| {
-                        DatexExpressionData::Noop.with_default_span()
-                    }), // TODO: handle error?
-                },
-                injected_variable_count: None,
-            })
+            ))
         }
-        CoreValue::EntityTypeDefinition(_) => {
+        CoreValue::NominalTypeDefinition(_) => {
             todo!()
-        }
-        CoreValue::Uninitialized => {
-            todo!()
-        }
-        CoreValue::Box(inner) => DatexExpressionData::Statements(Statements {
-            statements: vec![
-                DatexExpressionData::from(inner.as_ref()).with_default_span(),
-            ],
-            is_terminated: false,
-            unbounded: None,
-        }),
-        CoreValue::Native(_) => {
-            DatexExpressionData::NativeImplementationIndicator
         }
     }
 }
@@ -252,7 +198,7 @@ fn type_cast_expression(
         TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag,
             ty:
-                Some(box Type::Definition(TypeDefinitionWithMetadata {
+                Some(box Type::Alias(TypeDefinitionWithMetadata {
                     definition:
                         TypeDefinition::CoreType(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Unit,
@@ -263,52 +209,31 @@ fn type_cast_expression(
             tag: tag.clone(),
             expression: None,
         }),
-        // Entity {...}
-        TypeDefinition::Box(box Type::Entity(entity_container)) => {
-            DatexExpressionData::EntityValue(EntityValueExpression {
-                entity_name: entity_container.entity_definition().name.clone(),
-                entity_address: Some(entity_container.pointer_address()),
-                value: expression.with_default_span(),
-            })
-        }
-        e => {
-            todo!("Handle type cast to {:?} in decompiler", e)
-        }
+        _ => todo!(),
     }
 }
 
 fn type_to_type_expression(ty: &Type) -> TypeExpression {
     match ty {
-        Type::Entity(container) => {
-            entity_type_container_to_type_expression(container)
-        }
-        Type::Definition(definition) => {
-            type_definition_with_metadata_to_type_expression(definition)
+        Type::Nominal(_container) => todo!(),
+        Type::Alias(_definition) => {
+            ty.with_collapsed_definition_with_metadata(|def| {
+                type_definition_to_type_expression(def)
+            })
         }
     }
 }
 
-fn entity_type_container_to_type_expression(
-    container: &SharedContainerContainingEntityType,
-) -> TypeExpression {
-    let pointer_address = container.pointer_address();
-    TypeExpressionData::IdentifierWithPointerAddress(
-        IdentifierWithPointerAddress {
-            name: container.entity_definition().name.clone(),
-            pointer_address,
-        },
-    )
-    .with_default_span()
-}
-
-fn type_definition_with_metadata_to_type_expression(
+fn type_definition_to_type_expression(
     type_def_with_metadata: &TypeDefinitionWithMetadata,
 ) -> TypeExpression {
     // TODO: handle type metadata
-    type_definition_to_type_expression(&type_def_with_metadata.definition)
+    structural_type_definition_to_type_expression(
+        &type_def_with_metadata.definition,
+    )
 }
 // FIXME can we make this consuming?
-fn type_definition_to_type_expression(
+fn structural_type_definition_to_type_expression(
     type_definition: &TypeDefinition,
 ) -> TypeExpression {
     match type_definition {
@@ -369,28 +294,6 @@ fn type_definition_to_type_expression(
         TypeDefinition::CoreType(core_type) => {
             TypeExpressionData::Identifier(core_type.to_string())
                 .with_default_span()
-        }
-        TypeDefinition::Map(map_type) => {
-            TypeExpressionData::StructuralMap(StructuralMap(
-                map_type
-                    .0
-                    .iter()
-                    .map(|(k, v)| {
-                        (type_to_type_expression(k), type_to_type_expression(v))
-                    })
-                    .collect::<Vec<_>>(),
-            ))
-            .with_default_span()
-        }
-        TypeDefinition::List(list_type) => {
-            TypeExpressionData::StructuralList(StructuralList(
-                list_type
-                    .0
-                    .iter()
-                    .map(type_to_type_expression)
-                    .collect::<Vec<TypeExpression>>(),
-            ))
-            .with_default_span()
         }
         _ => TypeExpressionData::Text(
             format!("[[TYPE {:?}]]", type_definition).into(),

@@ -11,7 +11,7 @@ impl TypeSuperset<Type> for TypeDefinition {
     fn is_superset_of(&self, other: &Type) -> bool {
         match self {
             TypeDefinition::Union(union) => union.is_superset_of(other),
-            TypeDefinition::Box(nested) => nested.is_superset_of(other),
+            TypeDefinition::Nested(nested) => nested.is_superset_of(other),
             // TODO
             // TypeDefinition::Intersection(intersection) => intersection.is_superset_of(other),
             _ => false,

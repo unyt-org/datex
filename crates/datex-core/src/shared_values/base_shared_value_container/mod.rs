@@ -13,6 +13,7 @@ use crate::{
     },
     value_updates::errors::UpdateError,
 };
+pub mod apply;
 pub mod observers;
 pub mod serde_dif;
 
@@ -23,6 +24,7 @@ use core::{
     fmt::{Debug, Display},
     prelude::rust_2024::*,
 };
+use observers::{Observer, ObserverId};
 
 /// For the internal implementation of shared containers.
 /// A BaseSharedValueContainer can only exists, when it's inner value matches the allowed type.

@@ -1,24 +1,23 @@
 #[cfg(feature = "disassembler")]
-pub mod debug;
-
-#[cfg(feature = "disassembler")]
 use crate::disassembler::InnerInstructions;
 use crate::{
     dxb_parser::body::DXBParserError,
-    global::{root_properties::RootProperty, stack_index::StackIndex},
-    instruction::{
-        NextExpectedInstructions,
+    global::{
         instruction_codes::InstructionCode,
-        instruction_data::{
-            ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
-            Int16Data, Int32Data, Int64Data, Int128Data, JumpData,
-            JumpWithValueData, ListData, MapData, MoveWithValue, SharedRef,
-            SharedRefWithValue, ShortListData, ShortMapData,
-            ShortStatementsData, ShortTextData, SpliceData, StatementsData,
-            TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
-            UInt64Data, UInt128Data, UnboundedStatementsData,
+        protocol_structures::{
+            instruction_data::{
+                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
+                FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
+                Int16Data, Int32Data, Int64Data, Int128Data, JumpData,
+                JumpWithValueData, ListData, MapData, MoveWithValue, SharedRef,
+                SharedRefWithValue, ShortListData, ShortMapData,
+                ShortStatementsData, ShortTextData, SpliceData, StackIndex,
+                StatementsData, TaggedValue, TextData, UInt8Data, UInt16Data,
+                UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
+            },
+            instructions::NextExpectedInstructions,
         },
+        root_properties::RootProperty,
     },
     libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
@@ -203,16 +202,28 @@ impl RegularInstruction {
         })
     }
 
-    /// Creates an apply instruction with the count of arguments.
-    pub fn apply(arg_count: u8) -> Self {
+    /// Creates an apply instruction, choosing between the zero, single, and default variants based on the count of arguments.
+    pub fn apply(arg_count: u16) -> Self {
+        match arg_count {
+            0 => Self::apply_zero(),
+            1 => Self::apply_single(),
+            _ => Self::apply_default(arg_count),
+        }
+    }
+
+    /// Creates an apply instruction with the default variant, regardless of the count of arguments.
+    pub fn apply_default(arg_count: u16) -> Self {
         RegularInstruction::Apply(ApplyData { arg_count })
     }
 
-    pub fn call_method(method_name: String, arg_count: u8) -> Self {
-        RegularInstruction::CallMethod(CallMethodData {
-            method_name: ShortTextData(method_name),
-            arg_count,
-        })
+    /// Creates an apply instruction with the single variant.
+    pub fn apply_single() -> Self {
+        RegularInstruction::ApplySingle
+    }
+
+    /// Creates an apply instruction with the zero variant.
+    pub fn apply_zero() -> Self {
+        RegularInstruction::ApplyZero
     }
 
     pub fn jump(offset: i32) -> Self {
@@ -412,8 +423,19 @@ impl RegularInstruction {
     pub fn range() -> Self {
         RegularInstruction::Range
     }
-    pub fn boxed_value() -> Self {
-        RegularInstruction::BoxedValue
+
+    #[cfg(feature = "disassembler")]
+    pub fn remote_execution_debug_tree(
+        tree: super::instruction_data::InstructionBlockDataDebugTree,
+    ) -> Self {
+        RegularInstruction::_RemoteExecutionDebugTree(tree)
+    }
+
+    #[cfg(feature = "disassembler")]
+    pub fn remote_execution_debug_flat(
+        tree: super::instruction_data::InstructionBlockDataDebugFlat,
+    ) -> Self {
+        RegularInstruction::_RemoteExecutionDebugFlat(tree)
     }
 }
 
@@ -452,9 +474,6 @@ pub enum RegularInstruction {
     Integer(Integer),
     #[magic(InstructionCode::RANGE)]
     Range,
-
-    #[magic(InstructionCode::BOXED_VALUE)]
-    BoxedValue,
 
     #[magic(InstructionCode::ENDPOINT)]
     Endpoint(Endpoint),
@@ -534,11 +553,14 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::BITWISE_NOT)]
     BitwiseNot,
 
+    #[magic(InstructionCode::APPLY_ZERO)]
+    ApplyZero,
+
+    #[magic(InstructionCode::APPLY_SINGLE)]
+    ApplySingle,
+
     #[magic(InstructionCode::APPLY)]
     Apply(ApplyData),
-
-    #[magic(InstructionCode::CALL_METHOD)]
-    CallMethod(CallMethodData),
 
     #[magic(InstructionCode::GET_ENTRY_TEXT)]
     GetEntryText(ShortTextData),
@@ -624,12 +646,6 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::UNBOX)]
     Unbox,
 
-    #[magic(InstructionCode::CALLABLE_DECLARATION)]
-    CallableDeclaration(CallableDeclarationData),
-
-    #[magic(InstructionCode::CALLABLE)]
-    Callable(CallableData),
-
     #[magic(InstructionCode::TYPED_VALUE)]
     TypedValue,
     #[magic(InstructionCode::TYPE_EXPRESSION)]
@@ -679,59 +695,20 @@ pub enum RegularInstruction {
     /// This variant is only used by the disassembler
     #[cfg(feature = "disassembler")]
     #[instruction(skip)]
-    _RemoteExecutionDebugFlat(
-        crate::instruction::instruction_data::InstructionBlockDataDebugFlat,
-    ),
+    _RemoteExecutionDebugFlat(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat),
     /// Debug variant for RemoteExecution, includes full remote execution instruction tree instead of raw dxb
     /// This variant is only used by the disassembler
     #[cfg(feature = "disassembler")]
     #[instruction(skip)]
-    _RemoteExecutionDebugTree(
-        crate::instruction::instruction_data::InstructionBlockDataDebugTree,
-    ),
-
-    /// Debug variant for [CallableDeclarationData], includes full remote execution instruction list (flat) instead of raw dxb
-    /// This variant is only used by the disassembler
-    #[cfg(feature = "disassembler")]
-    #[instruction(skip)]
-    _CallableDeclarationDebugFlat(
-        crate::instruction::instruction_data::CallableDeclarationDataDebugFlat,
-    ),
-    /// Debug variant for [CallableDeclarationData], includes full remote execution instruction tree instead of raw dxb
-    /// This variant is only used by the disassembler
-    #[cfg(feature = "disassembler")]
-    #[instruction(skip)]
-    _CallableDeclarationDebugTree(
-        crate::instruction::instruction_data::CallableDeclarationDataDebugTree,
-    ),
-
-    /// Debug variant for [CallableData], includes full remote execution instruction list (flat) instead of raw dxb
-    /// This variant is only used by the disassembler
-    #[cfg(feature = "disassembler")]
-    #[instruction(skip)]
-    _CallableDebugFlat(
-        crate::instruction::instruction_data::CallableDataDebugFlat,
-    ),
-    /// Debug variant for [CallableData], includes full remote execution instruction tree instead of raw dxb
-    /// This variant is only used by the disassembler
-    #[cfg(feature = "disassembler")]
-    #[instruction(skip)]
-    _CallableDebugTree(
-        crate::instruction::instruction_data::CallableDataDebugTree,
-    ),
+    _RemoteExecutionDebugTree(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugTree),
 }
 
 impl RegularInstruction {
     pub fn instruction_code_string(&self) -> String {
         if let Some(code) = self.code() {
-            code.to_string()
+            format!("{}", code)
         } else {
-            #[cfg(feature = "disassembler")]
-            if let Some(code) = self.debug_instruction_code() {
-                return code.to_string();
-            }
-
-            "?".to_string()
+            "".to_string()
         }
     }
 
@@ -747,34 +724,6 @@ impl RegularInstruction {
             | RegularInstruction::_RemoteExecutionDebugFlat(_) => {
                 NextExpectedInstructions::Regular(1)
             } // receivers
-
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_CallableDeclarationDebugFlat(data) => {
-                NextExpectedInstructions::Type(
-                    data.signature.total_type_count(),
-                )
-            }
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_CallableDeclarationDebugTree(data) => {
-                NextExpectedInstructions::Type(
-                    data.signature.total_type_count(),
-                )
-            }
-
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_CallableDebugFlat(data) => {
-                NextExpectedInstructions::RegularAndType(
-                    data.body.injected_value_count,
-                    data.signature.total_type_count(),
-                )
-            }
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_CallableDebugTree(data) => {
-                NextExpectedInstructions::RegularAndType(
-                    data.body.injected_value_count,
-                    data.signature.total_type_count(),
-                )
-            }
 
             RegularInstruction::ShortList(list) => {
                 NextExpectedInstructions::Regular(list.element_count as u32)
@@ -814,12 +763,6 @@ impl RegularInstruction {
                     apply_data.arg_count as u32 + 1,
                 )
             } // arguments plus base to apply to
-
-            RegularInstruction::CallMethod(call_method_data) => {
-                NextExpectedInstructions::Regular(
-                    call_method_data.arg_count as u32 + 1,
-                )
-            } // arguments plus base to call method on
 
             RegularInstruction::GetEntryText(_)
             | RegularInstruction::GetEntryIndex(_)
@@ -936,20 +879,6 @@ impl RegularInstruction {
             RegularInstruction::Decrement => {
                 NextExpectedInstructions::Regular(2)
             }
-            RegularInstruction::BoxedValue => {
-                NextExpectedInstructions::Regular(1)
-            }
-            RegularInstruction::CallableDeclaration(data) => {
-                NextExpectedInstructions::Type(
-                    data.signature.total_type_count(),
-                )
-            }
-            RegularInstruction::Callable(data) => {
-                NextExpectedInstructions::RegularAndType(
-                    data.body.injected_value_count,
-                    data.signature.total_type_count(),
-                )
-            }
 
             _ => NextExpectedInstructions::None,
         }
@@ -1008,9 +937,6 @@ impl RegularInstruction {
             }
             RegularInstruction::JumpIfFalse(offset) => {
                 write!(string, "offset: {}", offset.offset)
-            }
-            RegularInstruction::CallMethod(data) => {
-                write!(string, "[method_name: {}, arg_count: {}]", data.method_name.0, data.arg_count)
             }
             RegularInstruction::BigInteger(data) => {
                 write!(string, "{}", data.0)
@@ -1159,24 +1085,27 @@ impl RegularInstruction {
             RegularInstruction::RemoteExecution(data) => {
                 write!(
                     string,
-                    "{}",
-                    data
+                    "[length: {}, injected_variables: {:?}]",
+                    data.length,
+                    data.injected_values
                 )
             }
-            RegularInstruction::CallableDeclaration(data) => {
+            #[cfg(feature = "disassembler")]
+            RegularInstruction::_RemoteExecutionDebugTree(data) => {
                 write!(
                     string,
-                    "[signature: {}, body: {}]",
-                    data.signature,
-                    data.body
+                    "[length: {}, injected_variables: {:?}]",
+                    data.length,
+                    data.injected_values
                 )
             }
-            RegularInstruction::Callable(data) => {
+            #[cfg(feature = "disassembler")]
+            RegularInstruction::_RemoteExecutionDebugFlat(data) => {
                 write!(
                     string,
-                    "[signature: {}, body: {}]",
-                    data.signature,
-                    data.body
+                    "[length: {}, injected_variables: {:?}]",
+                    data.length,
+                    data.injected_values
                 )
             }
             RegularInstruction::GetEntryIndex(uint_32_data) => {
@@ -1197,60 +1126,6 @@ impl RegularInstruction {
             RegularInstruction::SetEntryText(short_text_data) => {
                 write!(string, "{}", short_text_data.0)
             }
-
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_CallableDeclarationDebugTree(data) => {
-                write!(
-                    string,
-                    "[signature: {}, body: {}]",
-                    data.signature,
-                    data.body
-                )
-            }
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_CallableDeclarationDebugFlat(data) => {
-                write!(
-                    string,
-                    "[signature: {}, body: {}]",
-                    data.signature,
-                    data.body
-                )
-            }
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_CallableDebugTree(data) => {
-                write!(
-                    string,
-                    "[signature: {}, body: {}]",
-                    data.signature,
-                    data.body
-                )
-            }
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_CallableDebugFlat(data) => {
-                write!(
-                    string,
-                    "[signature: {}, body: {}]",
-                    data.signature,
-                    data.body
-                )
-            }
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_RemoteExecutionDebugTree(data) => {
-                write!(
-                    string,
-                    "{}",
-                    data
-                )
-            }
-            #[cfg(feature = "disassembler")]
-            RegularInstruction::_RemoteExecutionDebugFlat(data) => {
-                write!(
-                    string,
-                    "{}",
-                    data
-                )
-            }
-
             _ => {
                 // no custom disassembly
                 return None;
@@ -1259,15 +1134,24 @@ impl RegularInstruction {
 
         Some(string)
     }
+
+    #[cfg(feature = "disassembler")]
+    pub fn inner_instructions(&self) -> InnerInstructions<'_> {
+        match self {
+            RegularInstruction::_RemoteExecutionDebugTree(data) => {
+                InnerInstructions::Tree(&data.body)
+            }
+            RegularInstruction::_RemoteExecutionDebugFlat(data) => {
+                InnerInstructions::Flat(&data.body)
+            }
+            _ => InnerInstructions::None,
+        }
+    }
 }
 
-use crate::instruction::instruction_data::{
-    CallMethodData, CallableData, CallableDeclarationData,
-};
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
 #[cfg(feature = "disassembler")]
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-
 #[cfg(feature = "disassembler")]
 impl Serialize for RegularInstruction {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -1278,8 +1162,7 @@ impl Serialize for RegularInstruction {
         let metadata_string = self.metadata_string();
 
         if let Some(metadata_string) = metadata_string {
-            let inner_instructions =
-                self.inner_instructions_from_debug_instruction();
+            let inner_instructions = self.inner_instructions();
             let count = if inner_instructions == InnerInstructions::None {
                 2
             } else {

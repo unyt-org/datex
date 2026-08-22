@@ -23,6 +23,7 @@ fn injected_value_reference() {
     ));
     let referenced = input.clone();
     let result = compile_and_execute(input);
+    println!("Result: {:?}", result);
     assert_matches!(
         result,
         ValueContainer::Shared(SharedContainer::Referenced(_))
@@ -42,6 +43,7 @@ fn injected_value_owned() {
     );
     let referenced = input.clone();
     let result = compile_and_execute(input);
+    println!("Result: {:?}", result);
     assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(_)));
     assert_eq!(result, referenced);
 }

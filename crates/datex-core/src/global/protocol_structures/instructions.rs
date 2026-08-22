@@ -1,14 +1,7 @@
-//! This module contains all instruction related structs and enums, such as [InstructionCode](instruction_codes::InstructionCode), [InstructionData](instruction_data), [RegularInstruction](regular_instruction::RegularInstruction), and [TypeInstruction](type_instruction).
-pub mod instruction_codes;
-pub mod instruction_data;
-pub mod regular_instruction;
-pub mod type_instruction;
-pub mod type_instruction_codes;
-
 use crate::{
-    instruction::{
-        regular_instruction::RegularInstruction,
-        type_instruction::TypeInstruction,
+    global::protocol_structures::{
+        regular_instructions::RegularInstruction,
+        type_instructions::TypeInstruction,
     },
     prelude::*,
 };
@@ -88,18 +81,10 @@ impl NextExpectedInstructions {
         match self {
             NextExpectedInstructions::None => None,
             NextExpectedInstructions::Regular(count) => {
-                if count == &0 {
-                    None
-                } else {
-                    Some(CountOrUnbounded::Count(*count))
-                }
+                Some(CountOrUnbounded::Count(*count))
             }
             NextExpectedInstructions::Type(count) => {
-                if count == &0 {
-                    None
-                } else {
-                    Some(CountOrUnbounded::Count(*count))
-                }
+                Some(CountOrUnbounded::Count(*count))
             }
             NextExpectedInstructions::UnboundedStart => {
                 Some(CountOrUnbounded::UnboundedStart)
@@ -110,14 +95,7 @@ impl NextExpectedInstructions {
             NextExpectedInstructions::RegularAndType(
                 regular_count,
                 type_count,
-            ) => {
-                let total_count = regular_count + type_count;
-                if total_count == 0 {
-                    None
-                } else {
-                    Some(CountOrUnbounded::Count(total_count))
-                }
-            }
+            ) => Some(CountOrUnbounded::Count(regular_count + type_count)),
         }
     }
 }

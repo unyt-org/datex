@@ -1,9 +1,10 @@
-use crate::{global::stack_index::StackIndex, prelude::*};
+use crate::{
+    global::protocol_structures::instruction_data::StackIndex, prelude::*,
+};
 use binrw::{
     BinRead, BinResult, BinWrite, Endian,
     io::{Read, Seek, Write},
 };
-use core::fmt::Display;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SharedInjectedValueType {
@@ -25,7 +26,7 @@ pub enum LocalInjectedValueType {
     Copy = 0,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InjectedValueType {
     Local(LocalInjectedValueType),
     Shared(SharedInjectedValueType),
@@ -35,12 +36,6 @@ pub enum InjectedValueType {
 pub struct InjectedValueDeclaration {
     pub(crate) index: StackIndex,
     pub(crate) ty: InjectedValueType,
-}
-
-impl Display for InjectedValueDeclaration {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "[index:{}, type: {:?}]", self.index, self.ty)
-    }
 }
 
 impl From<InjectedValueType> for u8 {

@@ -1,6 +1,6 @@
 use crate::{
     datex_proxy::{
-        DatexProxyType, DatexValueContainerProxy,
+        DatexProxyTypes, DatexValueContainerProxy,
         DatexValueContainerProxyDeserialize,
         DatexValueContainerProxyInfallibleSerialize,
         DatexValueContainerProxySerialize, TryFromDatexValueError,
@@ -12,21 +12,16 @@ use crate::{
     values::value_container::ValueContainer,
 };
 
-use crate::prelude::*;
 impl DatexValueContainerProxyInfallibleSerialize for ValueContainer {
-    fn boxed_to_value_container(
-        self: Box<Self>,
-        _context: &mut SharedReferencesCache,
-    ) -> ValueContainer {
-        *self
+    fn to_value_container(self) -> ValueContainer {
+        self
     }
 }
 impl DatexValueContainerProxySerialize for ValueContainer {
-    fn try_boxed_to_value_container(
-        self: Box<Self>,
-        _context: &mut SharedReferencesCache,
+    fn try_to_value_container(
+        self,
     ) -> Result<ValueContainer, TryToDatexValueError> {
-        Ok(*self)
+        Ok(self)
     }
 }
 impl DatexValueContainerProxyDeserialize for ValueContainer {
@@ -37,10 +32,10 @@ impl DatexValueContainerProxyDeserialize for ValueContainer {
     }
 }
 
-impl DatexProxyType for ValueContainer {
-    fn datex_type(_context: &mut SharedReferencesCache) -> Type {
-        Type::Definition(
-            TypeDefinition::CoreType(CoreLibBaseTypeId::Any.into()).into(),
+impl DatexProxyTypes for ValueContainer {
+    fn datex_type(_memory: &mut SharedReferencesCache) -> Type {
+        Type::Alias(
+            TypeDefinition::CoreType(CoreLibBaseTypeId::Unknown.into()).into(),
         )
     }
 }

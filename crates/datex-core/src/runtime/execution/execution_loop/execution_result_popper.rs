@@ -29,9 +29,6 @@ impl
     ) -> Option<TypeDefinition> {
         match result {
             CollectedExecutionResult::TypeDefinition(ty) => Some(*ty),
-            CollectedExecutionResult::Type(ty) => {
-                Some(ty.convert_to_definition())
-            }
             _ => None,
         }
     }
@@ -47,9 +44,6 @@ impl
     fn try_extract_type(result: CollectedExecutionResult) -> Option<Type> {
         match result {
             CollectedExecutionResult::Type(ty) => Some(*ty),
-            CollectedExecutionResult::TypeDefinition(definition) => {
-                Some(definition.convert_to_type())
-            }
             _ => None,
         }
     }

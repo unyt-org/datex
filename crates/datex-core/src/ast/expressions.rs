@@ -10,7 +10,7 @@ use crate::{
             ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
             UnaryOperator, modification::ModificationOperator,
         },
-        stack_index::StackIndex,
+        protocol_structures::instruction_data::StackIndex,
     },
     libs::core::core_lib_id::CoreLibId,
     shared_values::{
@@ -166,16 +166,13 @@ pub enum DatexExpressionData {
     // This would remove the ability to have recursive type
     // definitions.
     /// Type declaration, e.g. type MyType = { x: 42, y: "John" };
-    TypeDeclaration(TypeDeclarationExpression),
-
-    /// Entity declaration, e.g. entity MyEntity = { x: 42, y: "John" };
-    EntityDeclaration(EntityDeclarationExpression),
+    TypeDeclaration(TypeDeclaration),
 
     /// Type expression, e.g. type(1 | 2)
     TypeExpression(TypeExpression),
 
     /// callable (function/procedure) declaration, e.g. function my_function() -> type ( ... )
-    CallableDeclaration(CallableDeclaration),
+    CallableDeclaration(Box<CallableDeclaration>),
 
     /// Create a new shared container
     CreateShared(CreateShared),
@@ -245,8 +242,6 @@ pub enum DatexExpressionData {
 
     /// Variant access, e.g. integer/u8
     VariantAccess(VariantAccess),
-
-    EntityValue(EntityValueExpression),
 }
 
 impl Spanned for DatexExpressionData {
@@ -404,11 +399,34 @@ pub struct Conditional {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct TypeDeclarationExpression {
+pub enum TypeDeclarationKind {
+    Nominal,
+    Alias,
+}
+impl Display for TypeDeclarationKind {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            TypeDeclarationKind::Nominal => core::write!(f, "type"),
+            TypeDeclarationKind::Alias => core::write!(f, "typealias"),
+        }
+    }
+}
+impl TypeDeclarationKind {
+    pub fn is_nominal(&self) -> bool {
+        matches!(self, TypeDeclarationKind::Nominal)
+    }
+    pub fn is_alias(&self) -> bool {
+        matches!(self, TypeDeclarationKind::Alias)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TypeDeclaration {
     pub id: Option<VariableId>,
     pub name: String, // TODO #614: separate variant from name
     pub definition: TypeExpression,
     pub hoisted: bool,
+    pub kind: TypeDeclarationKind,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -541,14 +559,6 @@ pub struct VariableAssignment {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct EntityDeclarationExpression {
-    pub id: Option<VariableId>,
-    pub name: String,
-    pub definition: TypeExpression,
-    pub hoisted: bool,
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct CompileExpression {
     pub expression: DatexExpression,
 }
@@ -568,20 +578,14 @@ pub struct RequestSharedRef {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CallableDeclaration {
-    pub signature: CallableSignature,
-    pub body: DatexExpression,
-    pub injected_variable_count: Option<u32>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct CallableSignature {
     pub name: Option<String>,
     pub kind: CallableKind,
-    pub requires_async: bool,
     pub parameters: Vec<(String, TypeExpression)>,
     pub rest_parameter: Option<(String, TypeExpression)>,
     pub return_type: Option<TypeExpression>,
     pub yeet_type: Option<TypeExpression>,
+    pub body: DatexExpression,
+    pub injected_variable_count: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -654,13 +658,6 @@ pub struct VariantAccess {
     pub name: String,
     pub variant: String,
     pub base: ResolvedVariable,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct EntityValueExpression {
-    pub entity_name: String,
-    pub entity_address: Option<PointerAddress>,
-    pub value: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]

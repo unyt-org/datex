@@ -1,6 +1,6 @@
 use crate::{
     dxb_parser::body::DXBParserError,
-    global::stack_index::StackIndex,
+    global::protocol_structures::instruction_data::StackIndex,
     libs::core::core_lib_id::CoreLibIdIndex,
     network::com_hub::network_response::ResponseError,
     prelude::*,
@@ -82,12 +82,10 @@ pub enum ExecutionError {
     ValueError(Box<ValueError>),
     InvalidProgram(Box<InvalidProgramError>),
     AccessError(Box<AccessError>),
-    MethodNotFound(String),
     CacheValueRetrievalError(Box<CacheValueRetrievalError>),
     UpdateError(Box<UpdateError>),
     SubscriberError(Box<SubscriberError>),
     Unknown,
-    InvalidExecutionState,
     NotImplemented(String),
     StackValueNotAllocated(StackIndex),
     StackOutOfBoundsAccess(StackIndex),
@@ -255,9 +253,6 @@ impl Display for ExecutionError {
             ExecutionError::Unknown => {
                 core::write!(f, "Unknown execution error")
             }
-            ExecutionError::InvalidExecutionState => {
-                core::write!(f, "Invalid execution state")
-            }
             ExecutionError::ValueError(err) => {
                 core::write!(f, "Value error: {err}")
             }
@@ -296,9 +291,6 @@ impl Display for ExecutionError {
             }
             ExecutionError::AccessError(err) => {
                 core::write!(f, "Access error: {err}")
-            }
-            ExecutionError::MethodNotFound(method_name) => {
-                core::write!(f, "Method not found: {method_name}")
             }
             ExecutionError::CacheValueRetrievalError(err) => {
                 core::write!(f, "Cache value retrieval error: {err}")
