@@ -1,9 +1,9 @@
 use crate::{
-    global::protocol_structures::{
-        instruction_data::StackIndex,
-        instructions::{Instruction, NextExpectedInstructions},
-        regular_instructions::RegularInstruction,
-        type_instructions::TypeInstruction,
+    global::stack_index::StackIndex,
+    instruction::{
+        Instruction, NextExpectedInstructions,
+        regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     prelude::*,
 };

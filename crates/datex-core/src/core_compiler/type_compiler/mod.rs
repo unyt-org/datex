@@ -1,6 +1,6 @@
 use crate::{
     core_compiler::core_compilation_context::ByteCursor,
-    global::protocol_structures::type_instructions::TypeInstruction,
+    instruction::type_instruction::TypeInstruction,
 };
 use binrw::BinWrite;
 
@@ -31,10 +31,9 @@ mod tests {
             value_compiler::compile_value,
         },
         disassembler::assertions::assert_instructions_equal,
-        global::protocol_structures::{
-            instructions::Instruction,
-            regular_instructions::RegularInstruction,
-            type_instructions::TypeInstruction,
+        instruction::{
+            Instruction, regular_instruction::RegularInstruction,
+            type_instruction::TypeInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,

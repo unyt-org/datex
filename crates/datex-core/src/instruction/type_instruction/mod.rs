@@ -1,10 +1,10 @@
 use crate::{
-    global::protocol_structures::{
+    instruction::{
+        NextExpectedInstructions,
         instruction_data::{
             ImplTypeData, ListData, MapData, TaggedTypeData, TypeReferenceData,
             UnionData,
         },
-        instructions::NextExpectedInstructions,
     },
     libs::core::type_id::CoreLibTypeId,
     prelude::*,

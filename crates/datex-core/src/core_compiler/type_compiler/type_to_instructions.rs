@@ -3,7 +3,7 @@ use crate::{
         shared_value_tracking::SharedValueTracking,
         to_instructions::ToInstructions,
     },
-    global::protocol_structures::type_instructions::TypeInstruction,
+    instruction::type_instruction::TypeInstruction,
     prelude::*,
     types::r#type::Type,
 };

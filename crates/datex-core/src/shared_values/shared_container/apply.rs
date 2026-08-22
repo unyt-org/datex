@@ -1,7 +1,7 @@
 use crate::{
     core_compiler::InstructionInput,
-    global::protocol_structures::{
-        instruction_data::ApplyData, regular_instructions::RegularInstruction,
+    instruction::{
+        instruction_data::ApplyData, regular_instruction::RegularInstruction,
     },
     prelude::*,
     runtime::Runtime,

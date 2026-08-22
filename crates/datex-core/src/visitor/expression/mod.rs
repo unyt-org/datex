@@ -13,7 +13,7 @@ use crate::{
         UnboxAssignment, UnboxSlotAssignment, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
-    global::protocol_structures::instruction_data::StackIndex,
+    global::stack_index::StackIndex,
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
     values::core_values::{

@@ -35,7 +35,6 @@ use crate::{
     },
     global::{
         dxb_block::DXBBlock,
-        instruction_codes::InstructionCode,
         operators::modification::ModificationOperator,
         protocol_structures::{
             block_header::BlockHeader,
@@ -44,15 +43,19 @@ use crate::{
                 InjectedValueType, LocalInjectedValueType,
                 SharedInjectedValueType,
             },
-            instruction_data::{
-                ApplyData, CallableDeclarationData, CallableSignatureData,
-                InstructionBlockData, JumpData, ShortTextData, StackIndex,
-                UnboundedStatementsData,
-            },
-            regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
         },
         root_properties::RootProperty,
+        stack_index::StackIndex,
+    },
+    instruction::{
+        instruction_codes::InstructionCode,
+        instruction_data::{
+            ApplyData, CallableDeclarationData, CallableSignatureData,
+            InstructionBlockData, JumpData, ShortTextData,
+            UnboundedStatementsData,
+        },
+        regular_instruction::RegularInstruction,
     },
     parser::{Parser, ParserOptions, errors::SpannedParserError},
     prelude::*,
@@ -1874,15 +1877,13 @@ pub mod tests {
         core_compiler::core_compilation_context::{
             CompileInput, DXBWithSharedValues, default_compile_input,
         },
-        global::{
+        instruction::{
             instruction_codes::InstructionCode,
-            protocol_structures::{
-                instruction_data::{
-                    CallableDeclarationData, CallableSignatureData,
-                },
-                regular_instructions::RegularInstruction,
-                type_instructions::TypeInstruction,
+            instruction_data::{
+                CallableDeclarationData, CallableSignatureData,
             },
+            regular_instruction::RegularInstruction,
+            type_instruction::TypeInstruction,
         },
         runtime::execution::context::ExecutionMode,
         types::{
@@ -1892,7 +1893,7 @@ pub mod tests {
         values::value_container::ValueContainer,
     };
 
-    use crate::global::protocol_structures::instruction_data::{
+    use crate::instruction::instruction_data::{
         CallableDeclarationDataDebugTree, InstructionBlockDataDebugFlat,
     };
 
@@ -1905,20 +1906,20 @@ pub mod tests {
             print_disassembled,
         },
         global::{
-            protocol_structures::{
-                injected_values::{
-                    InjectedValueDeclaration, InjectedValueType,
-                    LocalInjectedValueType, SharedInjectedValueType,
-                },
-                instruction_data::{
-                    InstructionBlockData, InstructionBlockDataDebugTree,
-                    ListData, MapData, ShortListData, ShortMapData,
-                    ShortTextData, StackIndex, StatementsData, TaggedValue,
-                    UInt8Data,
-                },
-                instructions::Instruction,
+            protocol_structures::injected_values::{
+                InjectedValueDeclaration, InjectedValueType,
+                LocalInjectedValueType, SharedInjectedValueType,
             },
             root_properties::RootProperty,
+            stack_index::StackIndex,
+        },
+        instruction::{
+            Instruction,
+            instruction_data::{
+                InstructionBlockData, InstructionBlockDataDebugTree, ListData,
+                MapData, ShortListData, ShortMapData, ShortTextData,
+                StatementsData, TaggedValue, UInt8Data,
+            },
         },
         libs::core::{
             core_lib_id::CoreLibId,

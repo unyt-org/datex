@@ -10,7 +10,7 @@ use crate::{
             ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
             UnaryOperator, modification::ModificationOperator,
         },
-        protocol_structures::instruction_data::StackIndex,
+        stack_index::StackIndex,
     },
     libs::core::core_lib_id::CoreLibId,
     shared_values::{

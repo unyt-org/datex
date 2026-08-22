@@ -42,7 +42,7 @@ use datex_core::{
             TypeVariantAccess, Union,
         },
     },
-    global::protocol_structures::instruction_data::StackIndex,
+    global::stack_index::StackIndex,
     parser::{
         Parser,
         errors::{ParserError, SpannedParserError},

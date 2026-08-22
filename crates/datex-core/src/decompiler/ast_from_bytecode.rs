@@ -15,12 +15,10 @@ use crate::{
             InstructionCollector, StatementResultCollectionStrategy,
         },
     },
-    global::{
-        operators::{BinaryOperator, UnaryOperator},
-        protocol_structures::{
-            instruction_data::{ShortStatementsData, StatementsData},
-            instructions::Instruction,
-        },
+    global::operators::{BinaryOperator, UnaryOperator},
+    instruction::{
+        Instruction,
+        instruction_data::{ShortStatementsData, StatementsData},
     },
     types::literal_type_definition::LiteralTypeDefinition,
     values::core_values::{
@@ -36,17 +34,19 @@ use crate::{
         RequestSharedRef, RootPropertyAccess, StackAssignment,
         StackListAssignment, TagExpression, UnboxAssignment,
     },
+    global,
     global::{
         operators::{ComparisonOperator, ModificationOperator},
-        protocol_structures::{
-            instruction_data::{
-                CallableSignatureData, ShortTextData, StackIndex, TaggedValue,
-                UnboundedStatementsData,
-            },
-            instructions::NestedInstructionResolutionStrategy,
-            regular_instructions::RegularInstruction,
-            type_instructions::TypeInstruction,
+        stack_index::StackIndex,
+    },
+    instruction::{
+        NestedInstructionResolutionStrategy,
+        instruction_data::{
+            CallableSignatureData, ShortTextData, TaggedValue,
+            UnboundedStatementsData,
         },
+        regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     prelude::*,
     shared_values::{
@@ -1153,10 +1153,8 @@ mod tests {
             },
             spanned::Spanned,
         },
-        global::{
-            instruction_codes::InstructionCode,
-            operators::{ModificationOperator, binary::ArithmeticOperator},
-        },
+        global::operators::{ModificationOperator, binary::ArithmeticOperator},
+        instruction::instruction_codes::InstructionCode,
         prelude::*,
         values::core_values::integer::{Integer, typed_integer::TypedInteger},
     };

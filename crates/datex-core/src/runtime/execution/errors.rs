@@ -1,6 +1,6 @@
 use crate::{
     dxb_parser::body::DXBParserError,
-    global::protocol_structures::instruction_data::StackIndex,
+    global::stack_index::StackIndex,
     libs::core::core_lib_id::CoreLibIdIndex,
     network::com_hub::network_response::ResponseError,
     prelude::*,

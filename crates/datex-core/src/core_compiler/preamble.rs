@@ -10,11 +10,10 @@ use crate::{
         value_compiler::append_value,
         value_visitor::{ParentAccessor, ParentContext, ValueVisitor},
     },
-    global::protocol_structures::{
-        instruction_data::{
-            MoveWithValue, SharedRef, SharedRefWithValue, StackIndex,
-        },
-        regular_instructions::RegularInstruction,
+    global::stack_index::StackIndex,
+    instruction::{
+        instruction_data::{MoveWithValue, SharedRef, SharedRefWithValue},
+        regular_instruction::RegularInstruction,
     },
     prelude::*,
     shared_values::{
@@ -511,23 +510,22 @@ mod tests {
             assertions::{assert_instructions_equal, instructions},
             print_disassembled,
         },
-        global::protocol_structures::{
+        global::stack_index::StackIndex,
+        instruction::{
+            Instruction,
             instruction_data::{
                 Int32Data, ListData, MoveWithValue, SharedRefWithValue,
-                ShortListData, ShortMapData, ShortTextData, StackIndex,
-                UInt32Data,
+                ShortListData, ShortMapData, ShortTextData, UInt32Data,
             },
-            instructions::Instruction,
-            regular_instructions::RegularInstruction,
+            regular_instruction::RegularInstruction,
         },
         prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
-            OwnedSharedContainer, PointerAddress, ReferenceMutability,
+            OwnedSharedContainer, ReferenceMutability,
             ReferencedSharedContainer, SelfOwnedPointerAddress,
-            SelfOwnedSharedContainer, SharedContainer,
-            SharedContainerMutability, SharedContainerOwnership,
-            traits::SharedContainerCommon,
+            SharedContainer, SharedContainerMutability,
+            SharedContainerOwnership, traits::SharedContainerCommon,
         },
         values::{
             core_values::{list::List, map::Map},

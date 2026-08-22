@@ -6,7 +6,7 @@ use crate::{
         DatexValueContainerProxySerialize, TryFromDatexValueError,
         TryToDatexValueError,
     },
-    global::protocol_structures::instruction_data::SharedRef,
+    instruction::instruction_data::SharedRef,
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,

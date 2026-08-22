@@ -1,7 +1,4 @@
-use crate::{
-    global::protocol_structures::instructions::NextExpectedInstructions,
-    prelude::*,
-};
+use crate::{instruction::NextExpectedInstructions, prelude::*};
 use core::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

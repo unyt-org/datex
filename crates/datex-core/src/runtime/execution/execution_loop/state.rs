@@ -1,11 +1,8 @@
 use crate::{
-    global::protocol_structures::{
-        injected_values::{
-            InjectedValueDeclaration, InjectedValueType,
-            SharedInjectedValueType,
-        },
-        instruction_data::StackIndex,
+    global::protocol_structures::injected_values::{
+        InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType,
     },
+    global::stack_index::StackIndex,
     prelude::*,
     runtime::{
         Runtime,

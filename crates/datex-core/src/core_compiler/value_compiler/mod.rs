@@ -5,9 +5,10 @@ use crate::{
         type_compiler::append_type_instruction,
         value_visitor::ValueVisitor,
     },
-    global::{
+    global::stack_index::StackIndex,
+    instruction::{
         instruction_codes::InstructionCode,
-        protocol_structures::regular_instructions::RegularInstruction,
+        regular_instruction::RegularInstruction,
     },
     utils::buffers::{append_i16, append_i32},
     values::{
@@ -31,12 +32,12 @@ use crate::{
         core_compilation_context::{ByteCursor, CoreCompilationContext},
         value_visitor::{ParentAccessor, ParentContext},
     },
-    global::protocol_structures::{
+    instruction::{
+        Instruction,
         instruction_data::{
             CallableData, CallableDataBody, CallableSignatureData,
             ShortTextData,
         },
-        instructions::Instruction,
     },
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdIndex},
@@ -633,12 +634,13 @@ mod tests {
             assertions::{assert_instructions_equal, instructions},
             print_disassembled,
         },
-        global::protocol_structures::{
+        global::stack_index::StackIndex,
+        instruction::{
             instruction_data::{
                 Int32Data, MoveWithValue, SharedRefWithValue, ShortListData,
-                ShortTextData, StackIndex, TaggedValue,
+                ShortTextData, TaggedValue,
             },
-            regular_instructions::RegularInstruction,
+            regular_instruction::RegularInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,

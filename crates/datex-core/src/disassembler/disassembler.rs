@@ -3,12 +3,10 @@ use crate::{
     dxb_parser::body::{
         DXBParserError, InstructionWithSpan, iterate_instructions,
     },
-    global::protocol_structures::{
-        instructions::{
-            CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
-        },
-        regular_instructions::RegularInstruction,
-        type_instructions::TypeInstruction,
+    instruction::{
+        CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
+        regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     prelude::*,
     utils::ansi_colors::{AnsiColor, AnsiWrite},
@@ -590,16 +588,14 @@ mod tests {
         dxb_parser::next_instructions_stack::{
             NextInstructionsStack, NextScopeInstruction,
         },
-        global::{
+        instruction::{
             instruction_codes::InstructionCode,
-            protocol_structures::{
-                instruction_data::{
-                    InstructionBlockData, InstructionBlockDataDebugFlat,
-                    InstructionBlockDataDebugTree, StatementsData, UInt8Data,
-                    UnboundedStatementsData,
-                },
-                regular_instructions::RegularInstruction,
+            instruction_data::{
+                InstructionBlockData, InstructionBlockDataDebugFlat,
+                InstructionBlockDataDebugTree, StatementsData, UInt8Data,
+                UnboundedStatementsData,
             },
+            regular_instruction::RegularInstruction,
         },
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
     };

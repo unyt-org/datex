@@ -2,9 +2,9 @@ use crate::{
     global::{
         operators::ModificationOperator,
         protocol_structures::injected_values::InjectedValueDeclaration,
-        type_instruction_codes::{
-            TypeLocalOrShared, TypeMutabilityCode, TypeOwnershipCode,
-        },
+    },
+    instruction::type_instruction_codes::{
+        TypeLocalOrShared, TypeMutabilityCode, TypeOwnershipCode,
     },
     prelude::*,
     shared_values::{
@@ -404,24 +404,6 @@ pub struct UnionData {
 #[brw(little)]
 pub struct InstructionCloseAndStore {
     pub instruction: Int8Data,
-}
-
-#[derive(
-    BinRead, BinWrite, Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord,
-)]
-#[brw(little)]
-pub struct StackIndex(pub u32);
-
-impl Display for StackIndex {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{{{}}}", self.0)
-    }
-}
-
-impl AddAssign<u32> for StackIndex {
-    fn add_assign(&mut self, rhs: u32) {
-        self.0 += rhs;
-    }
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

@@ -3,10 +3,10 @@ use crate::dxb_parser::next_instructions_stack::{
 };
 
 use crate::{
-    global::protocol_structures::{
-        instructions::{Instruction, NestedInstructionResolutionStrategy},
-        regular_instructions::RegularInstruction,
-        type_instructions::TypeInstruction,
+    instruction::{
+        Instruction, NestedInstructionResolutionStrategy,
+        regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
@@ -318,7 +318,7 @@ pub gen fn iterate_instructions_with_seek(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::global::instruction_codes::InstructionCode;
+    use crate::instruction::instruction_codes::InstructionCode;
     use core::assert_matches;
 
     fn iterate_dxb(

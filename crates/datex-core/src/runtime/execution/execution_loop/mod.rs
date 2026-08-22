@@ -23,20 +23,18 @@ use crate::{
             StatementResultCollectionStrategy,
         },
     },
-    global::{
-        operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-        protocol_structures::{
-            instruction_data::{
-                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, JumpData, MapData,
-                ShortStatementsData, ShortTextData, StatementsData,
-                TaggedTypeData, TaggedValue, TextData, UnboundedStatementsData,
-                UnionData,
-            },
-            instructions::{Instruction, NestedInstructionResolutionStrategy},
-            regular_instructions::RegularInstruction,
-            type_instructions::TypeInstruction,
+    global,
+    global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
+    instruction::{
+        Instruction, NestedInstructionResolutionStrategy,
+        instruction_data::{
+            ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
+            FloatAsInt32Data, InstantData, JumpData, MapData,
+            ShortStatementsData, ShortTextData, StatementsData, TaggedTypeData,
+            TaggedValue, TextData, UnboundedStatementsData, UnionData,
         },
+        regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
@@ -101,9 +99,7 @@ use alloc::rc::Rc;
 use core::{cell::RefCell, ops::DerefMut};
 mod collected_execution_result;
 use crate::{
-    global::protocol_structures::instruction_data::{
-        CallMethodData, CallableSignatureData,
-    },
+    instruction::instruction_data::{CallMethodData, CallableSignatureData},
     types::type_definition::callable::CallableTypeDefinition,
     value_updates::update_data::{
         DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
@@ -481,7 +477,7 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::BoxedValue |
                             RegularInstruction::TypeExpression => {
                                 // Note: If we reach this unreachable statement, we most probably forget to add a match
-                                // arm to [RegularInstruction::get_next_expected_instructions](datex_core::global::protocol_structures::regular_instructions)
+                                // arm to [RegularInstruction::get_next_expected_instructions](datex_core::global::regular_instructions)
                                 unreachable!()
                             },
                             #[cfg(feature = "disassembler")]

@@ -7,9 +7,11 @@ use crate::{
             precompiled_ast::RichAst, scope_stack::PrecompilerScopeStack,
         },
     },
-    global::protocol_structures::{
-        injected_values::{InjectedValueDeclaration, InjectedValueType},
-        instruction_data::StackIndex,
+    global::{
+        protocol_structures::injected_values::{
+            InjectedValueDeclaration, InjectedValueType,
+        },
+        stack_index::StackIndex,
     },
     runtime::execution::context::ExecutionMode,
 };

@@ -33,7 +33,7 @@ use crate::{
         },
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
-    global::protocol_structures::instruction_data::StackIndex,
+    global::stack_index::StackIndex,
     libs::core::{
         core_lib_id::CoreLibId,
         type_id::{CoreLibBaseTypeId, CoreLibTypeId},

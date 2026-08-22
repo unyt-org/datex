@@ -8,9 +8,9 @@ use crate::{
         },
         value_visitor::ValueVisitor,
     },
-    global::protocol_structures::{
-        instruction_data::{SharedRef, StackIndex},
-        regular_instructions::RegularInstruction,
+    global::stack_index::StackIndex,
+    instruction::{
+        instruction_data::SharedRef, regular_instruction::RegularInstruction,
     },
     prelude::*,
     shared_values::{
@@ -184,11 +184,10 @@ mod tests {
             update_compiler::compile_updates,
         },
         disassembler::assertions::{assert_instructions_equal, instructions},
-        global::protocol_structures::{
-            instruction_data::{
-                SharedRef, ShortTextData, StackIndex, UInt8Data,
-            },
-            regular_instructions::RegularInstruction,
+        global::stack_index::StackIndex,
+        instruction::{
+            instruction_data::{SharedRef, ShortTextData, UInt8Data},
+            regular_instruction::RegularInstruction,
         },
         prelude::*,
         runtime::{

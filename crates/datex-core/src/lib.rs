@@ -48,6 +48,7 @@ pub mod decompiler;
 #[cfg(feature = "compiler")]
 pub mod fmt;
 pub mod global;
+pub mod instruction;
 pub mod libs;
 #[cfg(all(feature = "lsp", feature = "std"))]
 pub mod lsp;

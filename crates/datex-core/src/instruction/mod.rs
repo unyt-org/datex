@@ -1,7 +1,14 @@
+//! This module contains all instruction related structs and enums, such as [InstructionCode](instruction_codes::InstructionCode), [InstructionData](instruction_data), [RegularInstruction](regular_instruction::RegularInstruction), and [TypeInstruction](type_instruction).
+pub mod instruction_codes;
+pub mod instruction_data;
+pub mod regular_instruction;
+pub mod type_instruction;
+pub mod type_instruction_codes;
+
 use crate::{
-    global::protocol_structures::{
-        regular_instructions::RegularInstruction,
-        type_instructions::TypeInstruction,
+    instruction::{
+        regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     prelude::*,
 };

@@ -1,4 +1,4 @@
-use crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
+use crate::instruction::NestedInstructionResolutionStrategy;
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 

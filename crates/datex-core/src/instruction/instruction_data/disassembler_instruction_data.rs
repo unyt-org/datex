@@ -2,11 +2,9 @@ use crate::{
     core_compiler::value_compiler::append_instruction,
     disassembler::InstructionTree,
     dxb_parser::body::InstructionWithSpan,
-    global::protocol_structures::{
-        injected_values::InjectedValueDeclaration,
-        instruction_data::{
-            CallableDataBody, CallableSignatureData, InstructionBlockData,
-        },
+    global::protocol_structures::injected_values::InjectedValueDeclaration,
+    instruction::instruction_data::{
+        CallableDataBody, CallableSignatureData, InstructionBlockData,
     },
     prelude::*,
 };

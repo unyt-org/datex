@@ -1,20 +1,18 @@
 use crate::{
     disassembler::{InnerInstructions, InstructionTree},
     dxb_parser::body::{DXBParserError, InstructionWithSpan},
-    global::{
+    instruction::{
+        NestedInstructionResolutionStrategy,
         instruction_codes::InstructionCode,
-        protocol_structures::{
-            instruction_data::{
-                CallableData, CallableDataBody, CallableDataBodyDebugFlat,
-                CallableDataBodyDebugTree, CallableDataDebugFlat,
-                CallableDataDebugTree, CallableDeclarationData,
-                CallableDeclarationDataDebugFlat,
-                CallableDeclarationDataDebugTree, InstructionBlockData,
-                InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree,
-            },
-            instructions::NestedInstructionResolutionStrategy,
-            regular_instructions::RegularInstruction,
+        instruction_data::{
+            CallableData, CallableDataBody, CallableDataBodyDebugFlat,
+            CallableDataBodyDebugTree, CallableDataDebugFlat,
+            CallableDataDebugTree, CallableDeclarationData,
+            CallableDeclarationDataDebugFlat, CallableDeclarationDataDebugTree,
+            InstructionBlockData, InstructionBlockDataDebugFlat,
+            InstructionBlockDataDebugTree,
         },
+        regular_instruction::RegularInstruction,
     },
     prelude::*,
 };

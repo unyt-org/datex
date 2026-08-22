@@ -5,11 +5,9 @@ use crate::{
         options::DisassemblerOptions,
     },
     dxb_parser::body::InstructionWithSpan,
-    global::protocol_structures::{
-        instructions::{
-            CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
-        },
-        regular_instructions::RegularInstruction,
+    instruction::{
+        CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy,
+        regular_instruction::RegularInstruction,
     },
     prelude::*,
 };
@@ -19,7 +17,7 @@ pub macro assert_instructions_equal {
     ($dxb:expr, ($($expr:expr),* $(,)?)) => {{
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
         use $crate::disassembler::{InstructionTree};
-        use $crate::global::protocol_structures::instructions::Instruction;
+        use $crate::instruction::Instruction;
 
         let dxb = $dxb;
         assert_instruction_lists_eq(
@@ -31,7 +29,7 @@ pub macro assert_instructions_equal {
     ($dxb:expr, $vec:expr $(,)?) => {{
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
         use $crate::disassembler::{InstructionTree};
-        use $crate::global::protocol_structures::instructions::Instruction;
+        use $crate::instruction::Instruction;
 
         let dxb = $dxb;
         assert_instruction_lists_eq(

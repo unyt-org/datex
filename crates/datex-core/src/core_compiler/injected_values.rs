@@ -8,13 +8,12 @@ use crate::{
         value_compiler::InjectedValueValidationError,
         value_visitor::ValueVisitor,
     },
-    global::protocol_structures::{
-        injected_values::{
-            InjectedValueDeclaration, InjectedValueType,
-            SharedInjectedValueType,
-        },
+    global::protocol_structures::injected_values::{
+        InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType,
+    },
+    instruction::{
         instruction_data::InstructionBlockData,
-        regular_instructions::RegularInstruction,
+        regular_instruction::RegularInstruction,
     },
     prelude::*,
     shared_values::SharedContainer,
@@ -155,19 +154,19 @@ mod tests {
         },
         disassembler::assertions::{assert_instructions_equal, instructions},
         global::{
-            instruction_codes::InstructionCode,
-            protocol_structures::{
-                injected_values::{
-                    InjectedValueDeclaration, InjectedValueType,
-                    SharedInjectedValueType,
-                },
-                instruction_data::{
-                    InstructionBlockData, Int32Data, ListData, MoveWithValue,
-                    SharedRefWithValue, ShortListData, StackIndex,
-                    StatementsData, UInt32Data,
-                },
-                regular_instructions::RegularInstruction,
+            protocol_structures::injected_values::{
+                InjectedValueDeclaration, InjectedValueType,
+                SharedInjectedValueType,
             },
+            stack_index::StackIndex,
+        },
+        instruction::{
+            instruction_codes::InstructionCode,
+            instruction_data::{
+                InstructionBlockData, Int32Data, ListData, MoveWithValue,
+                SharedRefWithValue, ShortListData, StatementsData, UInt32Data,
+            },
+            regular_instruction::RegularInstruction,
         },
         prelude::*,
         runtime::{

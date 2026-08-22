@@ -9,10 +9,8 @@ use crate::{
         type_compiler::append_type_instruction,
         value_compiler::append_instruction_code,
     },
-    global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::instruction_data::StackIndex,
-    },
+    global::stack_index::StackIndex,
+    instruction::instruction_codes::InstructionCode,
     prelude::*,
     runtime::execution::context::ExecutionMode,
     utils::buffers::append_u32,

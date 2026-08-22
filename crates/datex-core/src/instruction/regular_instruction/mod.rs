@@ -5,22 +5,20 @@ pub mod debug;
 use crate::disassembler::InnerInstructions;
 use crate::{
     dxb_parser::body::DXBParserError,
-    global::{
+    global::{root_properties::RootProperty, stack_index::StackIndex},
+    instruction::{
+        NextExpectedInstructions,
         instruction_codes::InstructionCode,
-        protocol_structures::{
-            instruction_data::{
-                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
-                Int16Data, Int32Data, Int64Data, Int128Data, JumpData,
-                JumpWithValueData, ListData, MapData, MoveWithValue, SharedRef,
-                SharedRefWithValue, ShortListData, ShortMapData,
-                ShortStatementsData, ShortTextData, SpliceData, StackIndex,
-                StatementsData, TaggedValue, TextData, UInt8Data, UInt16Data,
-                UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
-            },
-            instructions::NextExpectedInstructions,
+        instruction_data::{
+            ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
+            FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
+            Int16Data, Int32Data, Int64Data, Int128Data, JumpData,
+            JumpWithValueData, ListData, MapData, MoveWithValue, SharedRef,
+            SharedRefWithValue, ShortListData, ShortMapData,
+            ShortStatementsData, ShortTextData, SpliceData, StatementsData,
+            TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
+            UInt64Data, UInt128Data, UnboundedStatementsData,
         },
-        root_properties::RootProperty,
     },
     libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
@@ -681,34 +679,46 @@ pub enum RegularInstruction {
     /// This variant is only used by the disassembler
     #[cfg(feature = "disassembler")]
     #[instruction(skip)]
-    _RemoteExecutionDebugFlat(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat),
+    _RemoteExecutionDebugFlat(
+        crate::instruction::instruction_data::InstructionBlockDataDebugFlat,
+    ),
     /// Debug variant for RemoteExecution, includes full remote execution instruction tree instead of raw dxb
     /// This variant is only used by the disassembler
     #[cfg(feature = "disassembler")]
     #[instruction(skip)]
-    _RemoteExecutionDebugTree(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugTree),
+    _RemoteExecutionDebugTree(
+        crate::instruction::instruction_data::InstructionBlockDataDebugTree,
+    ),
 
     /// Debug variant for [CallableDeclarationData], includes full remote execution instruction list (flat) instead of raw dxb
     /// This variant is only used by the disassembler
     #[cfg(feature = "disassembler")]
     #[instruction(skip)]
-    _CallableDeclarationDebugFlat(crate::global::protocol_structures::instruction_data::CallableDeclarationDataDebugFlat),
+    _CallableDeclarationDebugFlat(
+        crate::instruction::instruction_data::CallableDeclarationDataDebugFlat,
+    ),
     /// Debug variant for [CallableDeclarationData], includes full remote execution instruction tree instead of raw dxb
     /// This variant is only used by the disassembler
     #[cfg(feature = "disassembler")]
     #[instruction(skip)]
-    _CallableDeclarationDebugTree(crate::global::protocol_structures::instruction_data::CallableDeclarationDataDebugTree),
+    _CallableDeclarationDebugTree(
+        crate::instruction::instruction_data::CallableDeclarationDataDebugTree,
+    ),
 
     /// Debug variant for [CallableData], includes full remote execution instruction list (flat) instead of raw dxb
     /// This variant is only used by the disassembler
     #[cfg(feature = "disassembler")]
     #[instruction(skip)]
-    _CallableDebugFlat(crate::global::protocol_structures::instruction_data::CallableDataDebugFlat),
+    _CallableDebugFlat(
+        crate::instruction::instruction_data::CallableDataDebugFlat,
+    ),
     /// Debug variant for [CallableData], includes full remote execution instruction tree instead of raw dxb
     /// This variant is only used by the disassembler
     #[cfg(feature = "disassembler")]
     #[instruction(skip)]
-    _CallableDebugTree(crate::global::protocol_structures::instruction_data::CallableDataDebugTree),
+    _CallableDebugTree(
+        crate::instruction::instruction_data::CallableDataDebugTree,
+    ),
 }
 
 impl RegularInstruction {
@@ -1251,7 +1261,7 @@ impl RegularInstruction {
     }
 }
 
-use crate::global::protocol_structures::instruction_data::{
+use crate::instruction::instruction_data::{
     CallMethodData, CallableData, CallableDeclarationData,
 };
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)

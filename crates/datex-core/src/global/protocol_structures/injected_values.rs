@@ -1,6 +1,4 @@
-use crate::{
-    global::protocol_structures::instruction_data::StackIndex, prelude::*,
-};
+use crate::{global::stack_index::StackIndex, prelude::*};
 use binrw::{
     BinRead, BinResult, BinWrite, Endian,
     io::{Read, Seek, Write},

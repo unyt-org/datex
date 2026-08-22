@@ -3,11 +3,11 @@ use crate::{
         shared_value_tracking::SharedValueTracking,
         to_instructions::ToInstructions,
     },
-    global::protocol_structures::{
+    instruction::{
         instruction_data::{
             ImplTypeData, ListData, MapData, TaggedTypeData, UnionData,
         },
-        type_instructions::TypeInstruction,
+        type_instruction::TypeInstruction,
     },
     prelude::*,
     types::{
