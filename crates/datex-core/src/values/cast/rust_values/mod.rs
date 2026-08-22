@@ -1,5 +1,17 @@
 //! Implements [TryFrom] and [TryInto] for Rust native types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
 //! This allows to convert [u8] into DATEX [Value] and [ValueContainer] and allows to convert [CoreValue], [Value] and [ValueContainer] into [u8].
+
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+mod bool;
+mod integers;
+mod floats;
+mod string;
+mod hash_map;
+mod option;
+mod r#box;
+mod vec;
+
 use core::any::Any;
 use num::ToPrimitive;
 
@@ -31,7 +43,7 @@ use crate::{
 
 /// Implements [TryFrom] and [TryInto] for Rust core types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
 /// Also implements [DatexValueProxy] for Rust core types to provide the correct [Type] for each implementation.
-macro_rules! derive_try_from_chain {
+macro_rules! implement_rust_native_traits {
     ($type:ty, $dx_type:expr, {$($core_match:tt)*}) => {
         impl TryFrom<CoreValue> for $type {
             type Error = TryFromDatexValueError;
@@ -65,6 +77,7 @@ macro_rules! derive_try_from_chain {
 
         // specialized unit impl:
         impl DatexValueProxy for $type {}
+
 
         impl DatexValueProxyInfallibleSerialize for $type {
             fn boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value {
@@ -105,7 +118,7 @@ macro_rules! derive_try_from_chain {
         }
     };
 }
-derive_try_from_chain!(
+implement_rust_native_traits!(
     bool,
     CoreLibBaseTypeId::Boolean,
     {
@@ -113,7 +126,7 @@ derive_try_from_chain!(
     }
 );
 
-derive_try_from_chain!(
+implement_rust_native_traits!(
     u8,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8),
     {
@@ -122,7 +135,7 @@ derive_try_from_chain!(
         CoreValue::TypedDecimal(value) => value.to_u8().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u8, value is not an integer", value))),
     }
 );
-derive_try_from_chain!(
+implement_rust_native_traits!(
     u16,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16),
     {
@@ -131,7 +144,7 @@ derive_try_from_chain!(
         CoreValue::TypedDecimal(value) => value.to_u16().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u16, value is not an integer", value))),
     }
 );
-derive_try_from_chain!(
+implement_rust_native_traits!(
     u32,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U32),
     {
@@ -140,7 +153,7 @@ derive_try_from_chain!(
         CoreValue::TypedDecimal(value) => value.to_u32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u32, value is not an integer", value))),
     }
 );
-derive_try_from_chain!(
+implement_rust_native_traits!(
     u64,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U64),
     {
@@ -152,7 +165,7 @@ derive_try_from_chain!(
 
 // usize depending on platform
 #[cfg(target_pointer_width = "32")]
-derive_try_from_chain!(
+implement_rust_native_traits!(
     usize,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U32),
     {
@@ -162,7 +175,7 @@ derive_try_from_chain!(
     }
 );
 #[cfg(target_pointer_width = "64")]
-derive_try_from_chain!(
+implement_rust_native_traits!(
     usize,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U64),
     {
@@ -172,7 +185,7 @@ derive_try_from_chain!(
     }
 );
 
-derive_try_from_chain!(
+implement_rust_native_traits!(
     i8,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I8),
     {
@@ -181,7 +194,7 @@ derive_try_from_chain!(
         CoreValue::TypedDecimal(value) => value.to_i8().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i8, value is not an integer", value))),
     }
 );
-derive_try_from_chain!(
+implement_rust_native_traits!(
     i16,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I16),
     {
@@ -190,7 +203,7 @@ derive_try_from_chain!(
         CoreValue::TypedDecimal(value) => value.to_i16().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i16, value is not an integer", value))),
     }
 );
-derive_try_from_chain!(
+implement_rust_native_traits!(
     i32,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I32),
     {
@@ -199,7 +212,7 @@ derive_try_from_chain!(
         CoreValue::TypedDecimal(value) => value.to_i32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i32, value is not an integer", value))),
     }
 );
-derive_try_from_chain!(
+implement_rust_native_traits!(
     i64,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I64),
     {
@@ -211,7 +224,7 @@ derive_try_from_chain!(
 
 // isize depending on platform
 #[cfg(target_pointer_width = "32")]
-derive_try_from_chain!(
+implement_rust_native_traits!(
     isize,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I32),
     {
@@ -221,7 +234,7 @@ derive_try_from_chain!(
     }
 );
 #[cfg(target_pointer_width = "64")]
-derive_try_from_chain!(
+implement_rust_native_traits!(
     isize,
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I64),
     {
@@ -231,7 +244,7 @@ derive_try_from_chain!(
     }
 );
 
-derive_try_from_chain!(
+implement_rust_native_traits!(
     f32,
     CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F32),
     {
@@ -240,7 +253,7 @@ derive_try_from_chain!(
         CoreValue::TypedDecimal(value) => value.to_f32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to f32, value is not a decimal", value))),
     }
 );
-derive_try_from_chain!(
+implement_rust_native_traits!(
     f64,
     CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F64),
     {
@@ -249,7 +262,7 @@ derive_try_from_chain!(
         CoreValue::TypedDecimal(value) => value.to_f64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to f64, value is not a decimal", value))),
     }
 );
-derive_try_from_chain!(
+implement_rust_native_traits!(
     String,
     CoreLibBaseTypeId::Text,
     {

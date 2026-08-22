@@ -1,3 +1,6 @@
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+
 use super::entity_impls::{EntityImpl, EntityImplMethod};
 use crate::{
     prelude::*, types::type_definition::TypeDefinition,

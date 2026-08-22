@@ -318,6 +318,24 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         }
     };
 
+    // only if decompiler feature is enabled in datex core
+    let to_datex_expression_data = {
+        // Note feature "decompiler" in macros-internal is derived from datex-core feature "decompiler" in the root crate
+        #[cfg(feature = "decompiler")]
+        quote! {
+            use #datex_core_crate_name::traits::to_datex_expression_data::ToDatexExpressionData;
+            use #datex_core_crate_name::ast::expressions::DatexExpressionData;
+
+            impl #generics ToDatexExpressionData for #ident #generics {
+                fn to_datex_expression_data(&self) -> DatexExpressionData {
+                    todo!("to datex expr data macro impl")
+                }
+            }
+        }
+        #[cfg(not(feature = "decompiler"))]
+        quote! { }
+    };
+
     let types_impl = if top_level_attributes.type_kind.is_structural() {
         quote! {
             #[automatically_derived]
@@ -393,6 +411,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             #deserialize
 
             #datex_native
+
+            #to_datex_expression_data
 
             #types_impl
 

@@ -15,6 +15,8 @@ pub mod apply;
 pub mod equality;
 pub mod error;
 mod serde_dif;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 

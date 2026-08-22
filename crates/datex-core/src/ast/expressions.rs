@@ -914,9 +914,23 @@ impl List {
     }
 }
 
+impl FromIterator<DatexExpression> for List {
+    fn from_iter<T: IntoIterator<Item = DatexExpression>>(iter: T) -> Self {
+        let items = iter.into_iter().collect();
+        List { items }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Map {
     pub entries: Vec<(DatexExpression, DatexExpression)>,
+}
+
+impl FromIterator<(DatexExpression, DatexExpression)> for Map {
+    fn from_iter<T: IntoIterator<Item = (DatexExpression, DatexExpression)>>(iter: T) -> Self {
+        let entries = iter.into_iter().collect();
+        Map { entries }
+    }
 }
 
 impl ToInstructions for Map {

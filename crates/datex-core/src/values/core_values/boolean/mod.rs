@@ -9,6 +9,8 @@ use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 pub mod equality;
 pub mod ops;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,

@@ -17,6 +17,11 @@ use crate::{
     types::type_definition::TypeDefinition,
 };
 use core::hash::Hash;
+use std::any::Any;
+use crate::ast::expressions::DatexExpressionData;
+use crate::ast::spanned::Spanned;
+use crate::traits::to_datex_expression_data::ToDatexExpressionData;
+use crate::values::core_values::native::DatexNative;
 
 impl<
     K: DatexValueContainerProxy + Eq + Hash + 'static,
@@ -105,6 +110,45 @@ where
         )
     }
 }
+
+impl<K, V> ToDatexExpressionData for HashMap<K, V>
+where
+    K: ToDatexExpressionData + Eq + Hash,
+    V: ToDatexExpressionData,
+{
+    fn to_datex_expression_data(
+        &self,
+    ) -> DatexExpressionData {
+        DatexExpressionData::Map(
+            self.iter()
+                .map(|(k, v)| {
+                    (
+                        k.to_datex_expression_data().with_default_span(),
+                        v.to_datex_expression_data().with_default_span(),
+                    )
+                })
+                .collect(),
+        )
+    }
+}
+
+// TODO: clean up traits
+impl<K, V> DatexNative for HashMap<K, V>
+where
+    K: DatexNative + DatexProxyType + DatexValueProxy + Eq + Hash,
+    V: DatexNative + DatexProxyType + DatexValueProxy,
+{
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+    fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
+        Value::native_boxed(self, cache)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

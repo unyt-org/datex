@@ -4,7 +4,14 @@ use crate::{
     values::value::Value,
 };
 use core::any::Any;
-pub trait DatexNative: Any + DatexValueProxySerialize + DynEq {
+use crate::traits::to_datex_expression_data::ToDatexExpressionData;
+
+pub trait DatexNative:
+    Any +
+    DatexValueProxySerialize + 
+    DynEq +
+    ToDatexExpressionData
+{
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 

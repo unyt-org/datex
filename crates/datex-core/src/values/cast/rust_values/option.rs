@@ -4,6 +4,7 @@
 //! `Option<T>` in DATEX, where `None` is represented as a tagged type with the tag "None(null)", and `Some(T)` is represented as a tagged type with the tag "Some" and
 //! an inner type of `T`.
 
+use core::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
@@ -15,6 +16,9 @@ use crate::{
     },
     values::value::Value,
 };
+use crate::ast::expressions::DatexExpressionData;
+use crate::traits::to_datex_expression_data::ToDatexExpressionData;
+use crate::values::core_values::native::DatexNative;
 
 impl<T: DatexValueProxy> DatexValueProxy for Option<T> {}
 impl<T: DatexValueProxyInfallibleSerialize> DatexValueProxyInfallibleSerialize
@@ -95,6 +99,33 @@ where
             ))
             .into(),
         )
+    }
+}
+
+impl<T> ToDatexExpressionData for Option<T>
+where
+    T: ToDatexExpressionData,
+{
+    fn to_datex_expression_data(
+        &self,
+    ) -> DatexExpressionData {
+        match self {
+            Some(value) => value.to_datex_expression_data(),
+            None => DatexExpressionData::Null,
+        }
+    }
+}
+
+// TODO: clean up traits
+impl<T: DatexNative + DatexProxyType + DatexValueProxy> DatexNative for Option<T> {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+    fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
+        Value::native_boxed(self, cache)
     }
 }
 

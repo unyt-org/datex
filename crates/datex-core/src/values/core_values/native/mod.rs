@@ -10,6 +10,8 @@ use crate::{
     values::{value::Value, value_container::ValueContainer},
 };
 mod datex_native_trait;
+mod to_datex_expression_data;
+
 pub use datex_native_trait::*;
 
 impl<T: DatexNative> ToDatexNativeValueContainer for T {

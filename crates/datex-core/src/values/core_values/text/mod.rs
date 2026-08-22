@@ -18,6 +18,9 @@ pub struct Text(
     pub String,
 );
 pub mod ops;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+
 impl Display for Text {
     // TODO #319: escape string content
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {

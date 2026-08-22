@@ -1,5 +1,6 @@
 //! Implements [DatexValueProxy] for [Vec<T>] where T: [DatexValueProxy].
 
+use std::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
@@ -17,6 +18,10 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::TypeDefinition,
 };
+use crate::ast::expressions::DatexExpressionData;
+use crate::ast::spanned::Spanned;
+use crate::traits::to_datex_expression_data::ToDatexExpressionData;
+use crate::values::core_values::native::DatexNative;
 
 impl<T> DatexValueProxy for Vec<T> where T: DatexValueContainerProxy + 'static {}
 
@@ -79,6 +84,31 @@ where
         )
     }
 }
+
+impl<T> ToDatexExpressionData for Vec<T>
+where
+    T: ToDatexExpressionData,
+{
+    fn to_datex_expression_data(
+        &self,
+    ) -> DatexExpressionData {
+        DatexExpressionData::List(self.iter().map(|v| v.to_datex_expression_data().with_default_span()).collect())
+    }
+}
+
+// TODO: clean up traits
+impl<T: DatexNative + DatexProxyType + DatexValueProxy> DatexNative for Vec<T> {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+    fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
+        Value::native_boxed(self, cache)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

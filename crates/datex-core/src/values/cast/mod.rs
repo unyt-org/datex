@@ -1,4 +1,3 @@
 mod datex_values;
-mod rust_types;
-mod special_rust_types;
+mod rust_values;
 mod try_from;
