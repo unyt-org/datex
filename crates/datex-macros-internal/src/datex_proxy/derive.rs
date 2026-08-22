@@ -1,9 +1,10 @@
-use proc_macro_crate::{FoundCrate, crate_name};
+use crate::utils::{get_datex_core_crate_name, get_project_relative_file_path};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
-use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta, Path, Token, punctuated::Punctuated, PathSegment};
-
-use crate::utils::get_project_relative_file_path;
+use syn::{
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta,
+    PathSegment, Token, punctuated::Punctuated,
+};
 
 #[derive(Debug, PartialEq)]
 enum SerdeMode {
@@ -67,6 +68,11 @@ pub struct TopLevelAttributes {
     /// If the decorated struct or enum should not be deserializable from a Datex value.
     no_deserialize: bool,
 
+    /// When set to true, the struct/enum will map to a DATEX structural type instead of a nominal entity type.
+    type_kind: TypeKind,
+
+    export_namespace: Namespace,
+
     /// If the decorated struct or enum should be exported to the Datex registry.
     /// `#[datex(export)]`
     export: bool,
@@ -86,12 +92,19 @@ pub struct DeriveData {
 pub fn derive(input: DeriveInput) -> TokenStream {
     let top_level_attributes = parse_top_level_attributes(&input.attrs);
 
-    let datex_core_crate_name =
-        if top_level_attributes.force_datex_core_namespace {
-            PathSegment::from(Ident::new("datex_core", Span::call_site())).into()
-        } else {
-            get_datex_core_crate_name()
-        };
+    let datex_core_crate_name = if top_level_attributes
+        .force_datex_core_namespace
+    {
+        PathSegment::from(Ident::new("datex_core", Span::call_site())).into()
+    } else {
+        get_datex_core_crate_name()
+    };
+
+    let context = if top_level_attributes.type_kind.is_structural_recursive() {
+        quote! {()}
+    } else {
+        quote! {SharedReferencesCache}
+    };
 
     let DeriveData {
         into_datex_fields_inner,
@@ -100,8 +113,10 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         is_fallible_serialization,
         helpers,
     } = match input.data {
-        Data::Struct(data_struct) => derive_struct(data_struct, &input.ident),
-        Data::Enum(data_enum) => derive_enum(data_enum, &input.ident),
+        Data::Struct(data_struct) => {
+            derive_struct(data_struct, &input.ident, &context)
+        }
+        Data::Enum(data_enum) => derive_enum(data_enum, &input.ident, &context),
         _ => unimplemented!(),
     };
 
@@ -131,11 +146,29 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             .to_string()
     });
 
+    let wrapped_datex_type = wrap_type_definition(
+        datex_type,
+        namespace,
+        &datex_name,
+        &top_level_attributes.type_kind,
+    );
+
+    let registration_new_method =
+        if top_level_attributes.type_kind.is_structural_recursive() {
+            quote! {
+                new_without_cache
+            }
+        } else {
+            quote! {
+                new_with_cache
+            }
+        };
+
     let registration = if export {
         quote! {
             #datex_core_crate_name::inventory::submit! {
-                #datex_core_crate_name::datex_registry::DatexRegistration::new::<#ident>(
-                    #datex_core_crate_name::datex_registry::DatexMetadata {
+                #datex_core_crate_name::datex_registry::DatexTypeRegistration::#registration_new_method::<#ident>(
+                    #datex_core_crate_name::datex_registry::DatexTypeMetadata {
                         name: #datex_name,
                         rust_ident: stringify!(#ident),
                         docs: #docs,
@@ -152,55 +185,75 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let serialize = match is_fallible_serialization {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         false => {
-            quote! {
-                #[automatically_derived]
-                impl #generics From<#ident> for Value #generics {
-                    fn from(value: #ident) -> Self {
-                        #into_datex_fields_inner
-                    }
-                }
-
+            let serialization_impls = quote! {
                 #[automatically_derived]
                 impl #generics DatexValueProxySerialize for #ident #generics {
-                    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
-                        Ok(self.into())
-                    }
-                }
-
-                #[automatically_derived]
-                impl #generics DatexValueProxyInfallibleSerialize for #ident #generics {
-                    fn to_value(self) -> Value {
-                       self.into()
-                    }
-                }
-            }
-        }
-        true => {
-            quote! {
-                #[automatically_derived]
-                impl #generics TryFrom<#ident> for Value #generics {
-                    type Error = TryToDatexValueError;
-
-                    fn try_from(value: #ident) -> Result<Self, Self::Error> {
+                    fn try_boxed_to_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+                        let value = *self;
                         Ok(#into_datex_fields_inner)
                     }
                 }
 
                 #[automatically_derived]
-                impl #generics TryFrom<#ident> for ValueContainer #generics {
-                    type Error = TryToDatexValueError;
-
-                    fn try_from(value: #ident) -> Result<Self, Self::Error> {
-                        Ok(ValueContainer::Local(Value::from(#into_datex_fields_inner)))
+                impl #generics DatexValueProxyInfallibleSerialize for #ident #generics {
+                    fn boxed_to_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
+                        let value = *self;
+                        #into_datex_fields_inner
                     }
                 }
+            };
+            // Also add From<T> for Value if possible without context.
+            if top_level_attributes.type_kind.is_structural_recursive() {
+                quote! {
+                    #serialization_impls
 
+                    #[automatically_derived]
+                    impl #generics From<#ident> for Value #generics {
+                        fn from(value: #ident) -> Self {
+                            value.to_value_without_cache()
+                        }
+                    }
+                }
+            } else {
+                serialization_impls
+            }
+        }
+        true => {
+            let serialization_impl = quote! {
                 #[automatically_derived]
                 impl #generics DatexValueProxySerialize for #ident #generics {
-                    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
-                        self.try_into()
+                    fn try_boxed_to_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+                        let value = *self;
+                        Ok(#into_datex_fields_inner)
                     }
                 }
+            };
+
+            // Also add TryFrom<T> for Value if possible without context.
+            if top_level_attributes.type_kind.is_structural_recursive() {
+                quote! {
+                    #serialization_impl
+
+                    #[automatically_derived]
+                    impl #generics TryFrom<#ident> for ValueContainer #generics {
+                        type Error = TryToDatexValueError;
+
+                        fn try_from(value: #ident) -> Result<Self, Self::Error> {
+                            value.try_to_value_without_cache().map(ValueContainer::Local)
+                        }
+                    }
+
+                    #[automatically_derived]
+                    impl #generics TryFrom<#ident> for Value #generics {
+                        type Error = TryToDatexValueError;
+
+                        fn try_from(value: #ident) -> Result<Self, Self::Error> {
+                            value.try_to_value_without_cache().map_err(|e| e.into())
+                        }
+                    }
+                }
+            } else {
+                serialization_impl
             }
         }
     };
@@ -250,6 +303,43 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         }
     };
 
+    let datex_native = quote! {
+        #[automatically_derived]
+        impl #generics DatexNative for #ident #generics {
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+            fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
+                Value::native_boxed(self, cache)
+            }
+        }
+    };
+
+    let types_impl = if top_level_attributes.type_kind.is_structural() {
+        quote! {
+            #[automatically_derived]
+            impl #generics DatexProxyType for #ident #generics {
+                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
+                    cache.resolve_structural_type::<Self, _>(
+                        |cache| (#wrapped_datex_type).with_name(#datex_name)
+                    )
+                }
+            }
+        }
+    } else {
+        quote! {
+            #[automatically_derived]
+            impl #generics DatexProxyType for #ident #generics {
+                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
+                    #wrapped_datex_type
+                }
+            }
+        }
+    };
+
     quote! {
         const _: () = {
             use #datex_core_crate_name::{
@@ -264,19 +354,23 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     DatexValueProxyDeserialize,
                     TryToDatexValueError,
                     TryFromDatexValueError,
-                    DatexProxyTypes,
+                    DatexProxyType,
                     serde_compat::{
                         try_serde_to_value_container,
                         try_serde_from_value_container
                     }
                 },
                 types::r#type::Type,
+                types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
                 types::literal_type_definition::LiteralTypeDefinition,
-                runtime::cache::shared_references_cache::SharedReferencesCache,
+                types::entities::entity_type_definition::EntityTypeDefinition,
+                runtime::cache::shared_references_cache::{SharedReferencesCache,SharedTypeReservation},
                 libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+                shared_values::SelfOwnedPointerAddress,
                 values::value_container::ValueContainer,
                 values::value::Value,
                 values::core_value::CoreValue,
+                values::core_values::native::DatexNative,
                 values::core_values::map::Map,
                 values::core_values::list::List,
                 types::type_definition::TypeDefinition,
@@ -284,8 +378,10 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 types::type_definition::map::MapTypeDefinition,
                 types::type_definition::list::ListTypeDefinition,
                 types::type_definition::tagged_type::TaggedTypeDefinition,
+                datex_registry::{get_impls, get_impls_for},
                 prelude::*
             };
+            use core::any::Any;
 
             #[automatically_derived]
             impl #generics DatexValueProxy for #ident #generics {}
@@ -296,12 +392,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
             #deserialize
 
-            #[automatically_derived]
-            impl #generics DatexProxyTypes for #ident #generics {
-                fn datex_type(cache: &mut SharedReferencesCache) -> Type {
-                    (#datex_type).with_name(#datex_name)
-                }
-            }
+            #datex_native
+
+            #types_impl
 
             #registration
         };
@@ -309,7 +402,11 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 }
 
 /// Derive implementation for structs
-fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
+fn derive_struct(
+    data_struct: DataStruct,
+    ident: &Ident,
+    context: &TokenStream,
+) -> DeriveData {
     let FieldDeriveData {
         is_fallible_serialization,
         fields_type,
@@ -317,35 +414,40 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         from_datex_fields,
         datex_type,
         field_names,
-    } = derive_fields(&data_struct.fields);
+    } = derive_fields(&data_struct.fields, context);
 
     let into_datex_fields_inner = match fields_type {
         FieldsType::Named => quote! {
-            Value::from(Map::structural_with_string_keys(vec![
-                #(#into_datex_fields),*
-            ]))
+            Value::new(
+                Map::structural_with_string_keys(vec![
+                    #(#into_datex_fields),*
+                ]),
+                Some(#ident::datex_type(cache.into()).into())
+            )
         },
         FieldsType::Unnamed => {
             quote! {
-                Value::from(List::from(vec![
+                Value::new(List::from(vec![
                     #(#into_datex_fields),*
-                ]))
+                ]), Some(#ident::datex_type(cache.into()).into()))
             }
         }
         FieldsType::Transparent => {
             let into_field = into_datex_fields.first().unwrap();
             quote! {
-                let container = #into_field;
-                if let ValueContainer::Local(value) = container {
-                    value
-                }
-                else {
-                    unreachable!("Expected ValueContainer::Local");
+                {
+                    let container = #into_field;
+                    if let ValueContainer::Local(value) = container {
+                        value
+                    }
+                    else {
+                        unreachable!("Expected ValueContainer::Local");
+                    }
                 }
             }
         }
         FieldsType::Unit => quote! {
-            Value::null()
+            Value::new(CoreValue::Null, Some(#ident::datex_type(cache.into()).into()))
         },
     };
 
@@ -370,7 +472,6 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         FieldsType::Unnamed => {
             quote! {{
                 let mut list: List = value.try_into()?;
-
                 #ident(
                     #(#from_datex_fields),*
                 )
@@ -384,11 +485,9 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         },
     };
 
-    let type_definition = datex_type.unwrap_or_else(|| {
-        quote! {
-            Type::Alias(TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into()))
-        }
-    });
+    let type_definition = datex_type.unwrap_or_else(
+        || quote! {TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into())},
+    );
 
     DeriveData {
         is_fallible_serialization,
@@ -399,7 +498,11 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
     }
 }
 
-fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
+fn derive_enum(
+    data_enum: DataEnum,
+    ident: &Ident,
+    context: &TokenStream,
+) -> DeriveData {
     // serialization is only infallible if the enum has no serde fields or only serde fields with datex(serde_infallible)
     let mut is_fallible_serialization = false;
 
@@ -429,7 +532,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             from_datex_fields,
             datex_type,
             field_names,
-        } = derive_fields(&variant.fields);
+        } = derive_fields(&variant.fields, context);
 
         // if any variant is fallible, mark as fallible
         if variant_is_fallible_serialization {
@@ -539,15 +642,15 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
 
         let datex_type_for_variant = match datex_type {
             None => quote! {
-                Type::Alias(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                Type::Definition(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: #variant_name.to_string(),
                     ty: None,
                 }).into())
             },
             Some(type_definition) => quote! {
-                Type::Alias(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                Type::Definition(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: #variant_name.to_string(),
-                    ty: Some(Box::new(#type_definition)),
+                    ty: Some(Box::new(Type::Definition(#type_definition.into()))),
                 }).into())
             },
         };
@@ -580,11 +683,9 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
     };
 
     let type_definition = quote! {
-        Type::Alias(
-            TypeDefinition::Union(UnionTypeDefinition(vec![
-                #(#variants_datex_types),*
-            ])).into()
-        )
+        TypeDefinition::Union(UnionTypeDefinition(vec![
+            #(#variants_datex_types),*
+        ]))
     };
 
     DeriveData {
@@ -704,7 +805,7 @@ fn generate_enum_helper_structs(
     }
 }
 
-fn derive_fields(fields: &Fields) -> FieldDeriveData {
+fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
     // serialization is only infallible if no serde fields or only serde fields with datex(serde_infallible)
     let mut is_fallible_serialization = false;
 
@@ -832,6 +933,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                     &field_attributes.serde_mode,
                     &field_name,
                     field_type,
+                    context,
                 ));
             }
 
@@ -873,6 +975,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                 field_types.push(generate_unnamed_field_type_code(
                     &field_attributes.serde_mode,
                     field_type,
+                    context,
                 ));
             }
         }
@@ -883,16 +986,21 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
     let datex_type = match fields_type {
         FieldsType::Unit => None,
         FieldsType::Named => Some(quote! {
-            Type::Alias(TypeDefinition::Map(MapTypeDefinition(vec![
+            TypeDefinition::Map(MapTypeDefinition(vec![
                 #(#field_types),*
-            ])).into())
+            ]))
         }),
         FieldsType::Unnamed => Some(quote! {
-            Type::Alias(TypeDefinition::List(ListTypeDefinition(vec![
+            TypeDefinition::List(ListTypeDefinition(vec![
                 #(#field_types),*
-            ])).into())
+            ]))
         }),
-        FieldsType::Transparent => Some(field_types.remove(0)),
+        FieldsType::Transparent => {
+            let first_field = field_types.remove(0);
+            Some(quote! {
+                #first_field.convert_to_definition()
+            })
+        }
     };
 
     FieldDeriveData {
@@ -1028,12 +1136,33 @@ fn parse_doc_comments(attrs: &[Attribute]) -> Option<String> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum TypeKind {
+    Entity,
+    Structural { recursive: bool },
+}
+impl TypeKind {
+    fn is_structural_recursive(&self) -> bool {
+        matches!(self, TypeKind::Structural { recursive: true })
+    }
+    fn is_structural(&self) -> bool {
+        matches!(self, TypeKind::Structural { .. })
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Namespace {
+    None,
+    Module,
+    Named(String),
+}
 fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
     let mut force_datex_core_namespace = false;
     let mut datex_name = None;
     let mut export = false;
-    let mut namespace = None;
     let mut no_deserialize = false;
+    let mut type_kind = TypeKind::Entity;
+    let mut namespace = None;
+    let mut export_namespace = Namespace::None;
 
     for attr in attrs {
         if !attr.path().is_ident("datex") {
@@ -1057,6 +1186,14 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
                 }
                 Meta::Path(path) if path.is_ident("export") => {
                     export = true;
+                }
+
+                Meta::Path(path) if path.is_ident("structural") => {
+                    type_kind = TypeKind::Structural { recursive: false };
+                }
+
+                Meta::Path(path) if path.is_ident("structural_recursive") => {
+                    type_kind = TypeKind::Structural { recursive: true };
                 }
 
                 Meta::Path(path) if path.is_ident("no_deserialize") => {
@@ -1085,6 +1222,25 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
                         Some(parse_string_attribute(&name_value, "namespace"));
                     export = true;
                 }
+
+                Meta::Path(path) if path.is_ident("public") => {
+                    if !matches!(export_namespace, Namespace::None) {
+                        panic!("datex(public) may only be specified once");
+                    }
+
+                    export_namespace = Namespace::Module;
+                }
+
+                Meta::NameValue(name_value)
+                    if name_value.path.is_ident("public") =>
+                {
+                    if !matches!(export_namespace, Namespace::None) {
+                        panic!("datex(public ...) may only be specified once");
+                    }
+                    export_namespace = Namespace::Named(
+                        parse_string_attribute(&name_value, "public"),
+                    );
+                }
                 _ => {}
             }
         }
@@ -1094,9 +1250,62 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
         force_datex_core_namespace,
         no_deserialize,
         datex_name,
+        type_kind,
         export,
         namespace,
+        export_namespace,
         docs: parse_doc_comments(attrs),
+    }
+}
+
+fn wrap_type_definition(
+    type_definition: TokenStream,
+    namespace: &str,
+    name: &str,
+    type_kind: &TypeKind,
+) -> TokenStream {
+    if type_kind.is_structural() {
+        quote! {
+            Type::Definition(
+                #type_definition.into()
+            )
+        }
+    } else {
+        // FIXME: calculate pointer address statically in macro at compile time
+        let unique_name = format!("{}::{}", namespace, name);
+        quote! {{
+            let address = unsafe {
+                SelfOwnedPointerAddress::new_static_from_name(
+                    #unique_name
+                )
+            };
+            match unsafe {cache.reserve_shared_type(address.clone())} {
+                SharedTypeReservation::Existing(ty) => {
+                    Type::Entity(ty)
+                }
+                // if not found, create new def and register in cache
+                SharedTypeReservation::New(ty) => {
+                    cache.with_entity_boundary(|cache| {
+                        let type_definition = #type_definition;
+
+                        let impls = get_impls_for::<Self>(cache);
+
+                        let definition = EntityTypeDefinition::new_with_impls(
+                            type_definition.into(),
+                            #name.to_string(),
+                            impls,
+                        );
+
+                        cache.finish_shared_type(
+                            address.clone(),
+                            definition,
+                        );
+
+                        Type::Entity(ty)
+                    })
+                }
+            }
+        }}
     }
 }
 
@@ -1110,7 +1319,7 @@ fn generate_field_conversion_code<T: ToTokens>(
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_identifier)
+                DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_identifier, cache.into())
             }
         }
         // Map serde fields and propagate the error if the serialization fails
@@ -1133,14 +1342,15 @@ fn generate_named_field_type_code(
     serde_mode: &SerdeMode,
     field_name: &String,
     field_type: &syn::Type,
+    _context: &TokenStream,
 ) -> TokenStream {
     match serde_mode {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
                 (
-                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
-                    <#field_type as DatexProxyTypes>::datex_type(cache)
+                    Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
+                    <#field_type as DatexProxyType>::datex_type(cache.into())
                 )
             }
         }
@@ -1148,8 +1358,8 @@ fn generate_named_field_type_code(
         SerdeMode::Fallible | SerdeMode::Infallible => {
             quote! {
                 (
-                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
-                    Type::Alias(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
+                    Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
+                    Type::Definition(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Any)).into())
                 )
             }
         }
@@ -1159,40 +1369,20 @@ fn generate_named_field_type_code(
 fn generate_unnamed_field_type_code(
     serde_mode: &SerdeMode,
     field_type: &syn::Type,
+    _context: &TokenStream,
 ) -> TokenStream {
     match serde_mode {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                <#field_type as DatexProxyTypes>::datex_type(cache)
+                <#field_type as DatexProxyType>::datex_type(cache.into())
             }
         }
         // Cannot infer type
         SerdeMode::Fallible | SerdeMode::Infallible => {
             quote! {
-               Type::Alias(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
+               Type::Definition(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Any)).into())
             }
         }
-    }
-}
-
-/// Tries to resolve the datex-core crate to a resolvable name in the current context.
-fn get_datex_core_crate_name() -> Path {
-    let found = match crate_name("datex-core") {
-        Ok(found) => found,
-        Err(_) =>
-        // TODO: decide which namespace to use, for now, fall back to datex-embedded
-        {
-            return Path {
-                leading_colon: None,
-                segments: Punctuated::from_iter(
-                    [PathSegment::from(format_ident!("datex_embedded")), PathSegment::from(format_ident!("core"))].into_iter()
-                )
-            }
-        }
-    };
-    match found {
-        FoundCrate::Itself => PathSegment::from(format_ident!("crate")).into(),
-        FoundCrate::Name(name) => PathSegment::from(Ident::new(&name, Span::call_site())).into(),
     }
 }

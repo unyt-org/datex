@@ -63,9 +63,26 @@ impl Display for RemotePointerAddress {
     }
 }
 
+const HASH_SEED: u32 = 0;
+
 impl SelfOwnedPointerAddress {
     pub fn new(address: [u8; 5]) -> Self {
         SelfOwnedPointerAddress(address)
+    }
+
+    /// # Safety
+    /// Calling this function multiple times with the same name is not allowed.
+    /// Hash collisions might also occur for different names (TODO)
+    pub unsafe fn new_static_from_name(name: &str) -> Self {
+        let hash = twox_hash::XxHash32::oneshot(HASH_SEED, name.as_bytes());
+        let hash_bytes = hash.to_le_bytes();
+        SelfOwnedPointerAddress([
+            hash_bytes[0],
+            hash_bytes[1],
+            hash_bytes[2],
+            hash_bytes[3],
+            255,
+        ])
     }
 
     pub fn to_address_string(&self) -> String {

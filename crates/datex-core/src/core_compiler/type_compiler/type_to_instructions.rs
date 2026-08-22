@@ -3,21 +3,21 @@ use crate::{
         shared_value_tracking::SharedValueTracking,
         to_instructions::ToInstructions,
     },
-    global::protocol_structures::type_instructions::TypeInstruction,
+    instruction::type_instruction::TypeInstruction,
     prelude::*,
     types::r#type::Type,
 };
-impl<'a> ToInstructions<'a> for Type {
+impl ToInstructions for Type {
     type InstructionType = TypeInstruction;
 
-    fn to_instructions(
+    fn to_instructions<'a>(
         &'a self,
-        shared_value_tracking: &'a mut SharedValueTracking,
+        shared_value_tracking: Option<&'a mut SharedValueTracking>,
     ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
         Box::new(gen move {
             match self {
-                Type::Nominal(_) => unreachable!(),
-                Type::Alias(def) => {
+                Type::Entity(_) => unreachable!(),
+                Type::Definition(def) => {
                     for instruction in
                         def.to_instructions(shared_value_tracking)
                     {

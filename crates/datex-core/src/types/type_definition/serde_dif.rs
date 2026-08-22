@@ -76,7 +76,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinition> {
                         shared_container_containing_type.deref(),
                         self.cast::<SharedContainer>(),
                     ))?,
-                    TypeDefinition::Nested(nested) => {
+                    TypeDefinition::Box(nested) => {
                         outer.serialize_value(&ValueWithSeed::new(
                             nested as &Type,
                             self.cast::<Type>(),
@@ -196,7 +196,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
 
             "nested" => {
                 let ty = map.next_value_seed(self.cast::<Type>())?;
-                TypeDefinition::Nested(Box::new(ty))
+                TypeDefinition::Box(Box::new(ty))
             }
 
             "callable" => {

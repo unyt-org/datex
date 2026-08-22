@@ -1,9 +1,13 @@
 //! This module contains the implementation of the [Value] struct, which represents a value in the DATEX type system.
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
+    datex_proxy::DatexProxyType,
     prelude::*,
-    types::type_definition::{
-        TypeDefinition, callable::CallableTypeDefinition,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::errors::KeyNotFoundError,
+    types::{
+        r#type::Type::{self, Entity},
+        type_definition::{TypeDefinition, callable::CallableTypeDefinition},
     },
     utils::sheep::Sheep,
     values::{
@@ -11,6 +15,7 @@ use crate::{
         core_values::{
             callable::{Callable, CallableBody},
             integer::typed_integer::TypedInteger,
+            native::DatexNative,
         },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
@@ -25,11 +30,12 @@ pub mod serde_dif;
 pub mod update_handler;
 
 use crate::{
-    shared_values::errors::AccessError,
+    datex_proxy::TryToDatexValueError, shared_values::errors::AccessError,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
     values::core_values::endpoint::Endpoint,
 };
 use core::{
+    cell::Ref,
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
@@ -63,18 +69,104 @@ impl<T: Into<CoreValue>> From<T> for Value {
     }
 }
 
+#[derive(Debug)]
+pub enum ValueContainerOrCallable<'a> {
+    Callable(Ref<'a, Callable>),
+    ValueContainer(&'a ValueContainer),
+}
+
+impl<'a> From<ValueContainerOrCallable<'a>> for ValueContainer {
+    fn from(value: ValueContainerOrCallable<'a>) -> Self {
+        match value {
+            ValueContainerOrCallable::Callable(callable) => {
+                ValueContainer::from(callable.clone())
+            }
+            ValueContainerOrCallable::ValueContainer(vc) => vc.clone(),
+        }
+    }
+}
+
 impl Value {
     pub fn null() -> Self {
         CoreValue::Null.into()
     }
-    pub fn new(inner: CoreValue, custom_type: Option<TypeDefinition>) -> Self {
-        Value { inner, custom_type }
+    pub fn new(
+        inner: impl Into<CoreValue>,
+        custom_type: Option<TypeDefinition>,
+    ) -> Self {
+        Value {
+            inner: inner.into(),
+            custom_type,
+        }
     }
+
+    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
+    pub fn native_boxed<T: DatexNative + DatexProxyType>(
+        value: Box<T>,
+        context: &mut SharedReferencesCache,
+    ) -> Value {
+        Value::new(
+            CoreValue::native_boxed(value),
+            Some(T::datex_type(context).convert_to_definition()),
+        )
+    }
+
+    pub fn native<T: DatexNative + DatexProxyType>(
+        value: T,
+        context: &mut SharedReferencesCache,
+    ) -> Value {
+        Value::new(
+            CoreValue::native(value),
+            Some(T::datex_type(context).convert_to_definition()),
+        )
+    }
+
     pub fn custom_type(&self) -> Option<&TypeDefinition> {
         self.custom_type.as_ref()
     }
     pub fn into_inner(self) -> CoreValue {
         self.inner
+    }
+    pub fn is_uninitialized(&self) -> bool {
+        matches!(&self.inner, CoreValue::Uninitialized)
+    }
+
+    /// Collapses the inner [CoreValue] of the [Value] to a DATEX value if it is a [CoreValue::Native].
+    pub fn into_non_native(
+        self,
+        cache: &mut SharedReferencesCache,
+    ) -> Result<Value, TryToDatexValueError> {
+        match self.inner {
+            CoreValue::Native(native) => {
+                Ok(native.value.try_boxed_to_value(cache)?)
+            }
+            _ => Ok(self),
+        }
+    }
+
+    /// Returns the inner [CoreValue] of the [Value].
+    /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
+    pub fn into_inner_non_native(
+        self,
+        cache: &mut SharedReferencesCache,
+    ) -> Result<CoreValue, TryToDatexValueError> {
+        self.into_non_native(cache).map(|v| v.inner)
+    }
+
+    /// Returns a reference to the inner [CoreValue] of the [Value].
+    /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
+    pub fn inner_non_native(
+        &self,
+        cache: &mut SharedReferencesCache,
+    ) -> Result<Cow<CoreValue>, TryToDatexValueError> {
+        Ok(Cow::Borrowed(&self.inner)) // workaround
+        // TODO: implement try_borrowed_boxed_to_value
+        // match &self.inner {
+        //     CoreValue::Native(native) => Ok(
+        //         Cow::Owned(native.value.try_boxed_to_value(cache)?.inner)
+        //     ),
+        //     _ => Ok(Cow::Borrowed(&self.inner)),
+        // }
     }
 
     /// Strips any local observers from the given value container.
@@ -82,6 +174,19 @@ impl Value {
     pub fn without_local_observers(mut self) -> Value {
         self.set_update_callback_data(None);
         self
+    }
+
+    /// Creates a new Value representing a boxed value.
+    /// This can be used to wrap a [ValueContainer] directly into a local [Value],
+    /// e.g. for #Tagged(shared X) or (X | null) | null
+    pub fn boxed(value: impl Into<ValueContainer>) -> Self {
+        Value::from(CoreValue::Box(Box::new(value.into())))
+    }
+    pub fn unbox(self) -> Result<ValueContainer, Value> {
+        match self.inner {
+            CoreValue::Box(box boxed) => Ok(boxed),
+            _ => Err(self),
+        }
     }
 }
 
@@ -103,24 +208,8 @@ impl Value {
         }
     }
 
-    #[deprecated]
     pub fn is_null(&self) -> bool {
         core::matches!(self.inner, CoreValue::Null)
-    }
-    #[deprecated]
-    pub fn is_text(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Text(_))
-    }
-    #[deprecated]
-    pub fn is_integer_i8(&self) -> bool {
-        core::matches!(
-            &self.inner,
-            CoreValue::TypedInteger(TypedInteger::I8(_))
-        )
-    }
-    #[deprecated]
-    pub fn is_map(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Map(_))
     }
 
     /// Tries to get a borrow of the current value as the specified type.
@@ -177,19 +266,62 @@ impl Value {
         }
     }
 
+    /// Returns true if the value is of structual type.
+    pub fn has_structural_type(&self) -> bool {
+        self.actual_type().is_structural()
+    }
+
+    /// Returns true if the value is of tagged type.
+    pub fn has_tagged_type(&self) -> bool {
+        self.actual_type().is_tagged()
+    }
+
+    /// Returns true if the value needs to be casted to its actual type.
+    /// This allows us to strip away the type cast on compilation, as not required.
+    pub fn needs_type_cast(&self) -> bool {
+        if self.has_default_type() {
+            return false;
+        }
+        if self.has_structural_type() && !self.has_tagged_type() {
+            return false;
+        }
+        true
+    }
+
     /// Gets a property on the value if applicable (e.g. for map and structs)
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<&ValueContainer, AccessError> {
+    ) -> Result<ValueContainerOrCallable, AccessError> {
         match self.inner {
             CoreValue::Map(ref map) => {
                 // If the value is a map, get the property
-                Ok(map.try_get(key)?)
+                Ok(ValueContainerOrCallable::ValueContainer(map.try_get(key)?))
             }
             CoreValue::List(ref list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_get(index)?)
+                    Ok(ValueContainerOrCallable::ValueContainer(
+                        list.try_get(index)?,
+                    ))
+                } else {
+                    Err(AccessError::InvalidIndexKey)
+                }
+            }
+            CoreValue::Type(Type::Entity(ref container)) => {
+                if let Some(key) = key.into().try_as_text() {
+                    Ok(ValueContainerOrCallable::Callable(
+                        Ref::filter_map(
+                            container.entity_definition(),
+                            |entity_definition| {
+                                entity_definition.try_get_property(&key)
+                            },
+                        )
+                        .map_err(|_| {
+                            AccessError::KeyNotFound(KeyNotFoundError::new(
+                                key.into(),
+                            ))
+                        })?,
+                    ))
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
@@ -380,7 +512,7 @@ mod tests {
             list::{List, datex_list},
         },
     };
-    use core::str::FromStr;
+    use core::{assert_matches, str::FromStr};
     use log::info;
 
     #[test]
@@ -496,14 +628,17 @@ mod tests {
         let a = Value::from("Hello ");
         let b = Value::from(42i8);
 
-        assert!(a.is_text());
-        assert!(b.is_integer_i8());
+        assert!(matches!(a.inner, CoreValue::Text(_)));
+        assert!(matches!(
+            b.inner,
+            CoreValue::TypedInteger(TypedInteger::I8(_))
+        ));
 
         let a_plus_b = (a.clone() + b.clone()).unwrap();
         let b_plus_a = (b.clone() + a.clone()).unwrap();
 
-        assert!(a_plus_b.is_text());
-        assert!(b_plus_a.is_text());
+        assert!(matches!(a_plus_b.inner, CoreValue::Text(_)));
+        assert!(matches!(b_plus_a.inner, CoreValue::Text(_)));
 
         assert_eq!(a_plus_b, Value::from("Hello 42"));
         assert_eq!(b_plus_a, Value::from("42Hello "));
@@ -516,7 +651,9 @@ mod tests {
     fn structural_equality() {
         let a = Value::from(42_i8);
         let b = Value::from(42_i32);
-        assert!(a.is_integer_i8());
+        assert_matches!(a.inner, CoreValue::TypedInteger(TypedInteger::I8(_)));
+        assert_matches!(b.inner, CoreValue::TypedInteger(TypedInteger::I32(_)));
+        assert_ne!(a, b);
 
         assert_structural_eq!(a, b);
 

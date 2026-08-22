@@ -4,15 +4,16 @@ use crate::{
         buffer_provider::BufferProvider,
         core_compilation_context::ByteCursor,
         shared_value_tracking::{TrackedValueCollection, TrackedValueMetadata},
+        to_instructions::ToInstructions,
+        type_compiler::append_type_instruction,
         update_compiler::append_set_property_value_key,
         value_compiler::append_value,
         value_visitor::{ParentAccessor, ParentContext, ValueVisitor},
     },
-    global::protocol_structures::{
-        instruction_data::{
-            MoveWithValue, SharedRef, SharedRefWithValue, StackIndex,
-        },
-        regular_instructions::RegularInstruction,
+    global::stack_index::StackIndex,
+    instruction::{
+        instruction_data::{MoveWithValue, SharedRef, SharedRefWithValue},
+        regular_instruction::RegularInstruction,
     },
     prelude::*,
     shared_values::{
@@ -120,8 +121,17 @@ impl ValueVisitor for PreambleContext<'_> {
         }
     }
 
-    fn visit_type(&mut self, _ty: Type) {
-        todo!()
+    fn visit_type(&mut self, ty: Type) {
+        match ty {
+            // intercept shared types
+            Type::Entity(_) => todo!(),
+            _ => {
+                let instructions = ty.to_instructions(None).collect::<Vec<_>>();
+                for instruction in instructions {
+                    append_type_instruction(self.cursor_mut(), instruction);
+                }
+            }
+        }
     }
 }
 
@@ -497,26 +507,25 @@ mod tests {
         },
         disassembler::{
             InstructionTree,
-            assertions::{assert_regular_instructions_equal, instructions},
+            assertions::{assert_instructions_equal, instructions},
             print_disassembled,
         },
-        global::protocol_structures::{
+        global::stack_index::StackIndex,
+        instruction::{
+            Instruction,
             instruction_data::{
                 Int32Data, ListData, MoveWithValue, SharedRefWithValue,
-                ShortListData, ShortMapData, ShortTextData, StackIndex,
-                UInt32Data,
+                ShortListData, ShortMapData, ShortTextData, UInt32Data,
             },
-            instructions::Instruction,
-            regular_instructions::RegularInstruction,
+            regular_instruction::RegularInstruction,
         },
         prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
-            OwnedSharedContainer, PointerAddress, ReferenceMutability,
+            OwnedSharedContainer, ReferenceMutability,
             ReferencedSharedContainer, SelfOwnedPointerAddress,
-            SelfOwnedSharedContainer, SharedContainer,
-            SharedContainerMutability, SharedContainerOwnership,
-            traits::SharedContainerCommon,
+            SharedContainer, SharedContainerMutability,
+            SharedContainerOwnership, traits::SharedContainerCommon,
         },
         values::{
             core_values::{list::List, map::Map},
@@ -546,7 +555,7 @@ mod tests {
         let (bytes, _) =
             append_injected_values_preamble(collection, cursor.into_inner());
 
-        assert_regular_instructions_equal!(&bytes, instructions);
+        assert_instructions_equal!(&bytes, instructions);
     }
 
     fn generate_shared_owned_value(

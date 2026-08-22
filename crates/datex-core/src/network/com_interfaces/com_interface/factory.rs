@@ -416,7 +416,7 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 /// }
 pub trait ComInterfaceSyncFactory
 where
-    Self: DatexValueProxyDeserialize,
+    Self: DatexValueProxyDeserialize + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
@@ -475,7 +475,7 @@ where
 /// }
 pub trait ComInterfaceAsyncFactory
 where
-    Self: DatexValueProxyDeserialize,
+    Self: DatexValueProxyDeserialize + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.

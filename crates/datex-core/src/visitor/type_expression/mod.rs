@@ -10,9 +10,10 @@ use crate::{
     ast::{
         expressions::VariableAccess,
         type_expressions::{
-            CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
-            SliceList, StructuralList, StructuralMap, TypeExpression,
-            TypeExpressionData, TypeVariantAccess, Union,
+            CallableTypeExpression, FixedSizeList, GenericAccess,
+            IdentifierWithPointerAddress, Intersection, SliceList,
+            StructuralList, StructuralMap, TypeExpression, TypeExpressionData,
+            TypeVariantAccess, Union,
         },
     },
     libs::core::type_id::CoreLibTypeId,
@@ -62,86 +63,89 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> Result<(), E> {
         self.before_visit_type_expression(expr);
 
-        let visit_result = match &mut expr.data {
+        let span = expr.span.clone();
+
+        let visit_result = match expr.data_mut() {
             TypeExpressionData::VariantAccess(variant_access) => {
-                self.visit_variant_access_type(variant_access, &expr.span)
+                self.visit_variant_access_type(variant_access, &span)
             }
             TypeExpressionData::GetReference(pointer_address) => {
-                self.visit_get_reference_type(pointer_address, &expr.span)
+                self.visit_get_reference_type(pointer_address, &span)
             }
-            TypeExpressionData::Null => self.visit_null_type(&expr.span),
-            TypeExpressionData::Unit => self.visit_unit_type(&expr.span),
             TypeExpressionData::VariableAccess(variable_access) => {
-                self.visit_variable_access_type(variable_access, &expr.span)
+                self.visit_variable_access_type(variable_access, &span)
             }
             TypeExpressionData::Integer(integer) => {
-                self.visit_integer_type(integer, &expr.span)
+                self.visit_integer_type(integer, &span)
             }
             TypeExpressionData::TypedInteger(typed_integer) => {
-                self.visit_typed_integer_type(typed_integer, &expr.span)
+                self.visit_typed_integer_type(typed_integer, &span)
             }
             TypeExpressionData::Decimal(decimal) => {
-                self.visit_decimal_type(decimal, &expr.span)
+                self.visit_decimal_type(decimal, &span)
             }
             TypeExpressionData::TypedDecimal(typed_decimal) => {
-                self.visit_typed_decimal_type(typed_decimal, &expr.span)
+                self.visit_typed_decimal_type(typed_decimal, &span)
             }
             TypeExpressionData::Boolean(boolean) => {
-                self.visit_boolean_type(boolean, &expr.span)
+                self.visit_boolean_type(boolean, &span)
             }
-            TypeExpressionData::Text(text) => {
-                self.visit_text_type(text, &expr.span)
-            }
+            TypeExpressionData::Text(text) => self.visit_text_type(text, &span),
             TypeExpressionData::Endpoint(endpoint) => {
-                self.visit_endpoint_type(endpoint, &expr.span)
+                self.visit_endpoint_type(endpoint, &span)
             }
             TypeExpressionData::StructuralList(structual_list) => {
-                self.visit_structural_list_type(structual_list, &expr.span)
+                self.visit_structural_list_type(structual_list, &span)
             }
             TypeExpressionData::FixedSizeList(fixed_size_list) => {
-                self.visit_fixed_size_list_type(fixed_size_list, &expr.span)
+                self.visit_fixed_size_list_type(fixed_size_list, &span)
             }
             TypeExpressionData::SliceList(slice_list) => {
-                self.visit_slice_list_type(slice_list, &expr.span)
+                self.visit_slice_list_type(slice_list, &span)
             }
             TypeExpressionData::Intersection(intersection) => {
-                self.visit_intersection_type(intersection, &expr.span)
+                self.visit_intersection_type(intersection, &span)
             }
             TypeExpressionData::Union(union) => {
-                self.visit_union_type(union, &expr.span)
+                self.visit_union_type(union, &span)
             }
             TypeExpressionData::GenericAccess(generic_access) => {
-                self.visit_generic_access_type(generic_access, &expr.span)
+                self.visit_generic_access_type(generic_access, &span)
             }
             TypeExpressionData::Callable(callable_type_expression) => {
-                self.visit_callable_type(callable_type_expression, &expr.span)
+                self.visit_callable_type(callable_type_expression, &span)
             }
             TypeExpressionData::StructuralMap(structural_map) => {
-                self.visit_structural_map_type(structural_map, &expr.span)
+                self.visit_structural_map_type(structural_map, &span)
             }
             TypeExpressionData::Ref(type_ref) => {
-                self.visit_ref_type(type_ref, &expr.span)
+                self.visit_ref_type(type_ref, &span)
             }
             TypeExpressionData::RefMut(type_ref_mut) => {
-                self.visit_ref_mut_type(type_ref_mut, &expr.span)
+                self.visit_ref_mut_type(type_ref_mut, &span)
             }
             TypeExpressionData::Shared(type_shared) => {
-                self.visit_shared_type(type_shared, &expr.span)
+                self.visit_shared_type(type_shared, &span)
             }
             TypeExpressionData::Mut(type_mut) => {
-                self.visit_mut_type(type_mut, &expr.span)
+                self.visit_mut_type(type_mut, &span)
             }
-            TypeExpressionData::Identifier(literal) => {
-                self.visit_literal_type(literal, &expr.span)
+            TypeExpressionData::Identifier(identifier) => {
+                self.visit_type_identifier(identifier, &span)
+            }
+            TypeExpressionData::IdentifierWithPointerAddress(identifier) => {
+                self.visit_type_identifier_with_pointer_address(
+                    identifier, &span,
+                )
             }
             TypeExpressionData::Range(range) => {
-                self.visit_range_type(range, &expr.span)
+                self.visit_range_type(range, &span)
             }
             TypeExpressionData::Recover => {
                 unreachable!("Recover expression should not be visited")
             }
             TypeExpressionData::GetCoreLibType(core_lib_type_id) => {
-                self.visit_get_core_lib_type(core_lib_type_id, &expr.span)
+                self.visit_get_core_lib_type(core_lib_type_id, &span)
             }
         };
         let action = match visit_result {
@@ -161,7 +165,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
             }
             VisitAction::AbortRecursion => Ok(()),
             VisitAction::ToNoop => {
-                expr.data = TypeExpressionData::Null;
+                *expr.data = TypeExpressionData::null();
                 Ok(())
             }
             VisitAction::ContinueRecursion => expr.walk_children(self),
@@ -184,14 +188,25 @@ pub trait TypeExpressionVisitor<E>: Sized {
         result
     }
 
-    /// Visit literal type expression
-    fn visit_literal_type(
+    /// Visit identifier expression
+    fn visit_type_identifier(
         &mut self,
         literal: &mut String,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = literal;
+        Ok(VisitAction::AbortRecursion)
+    }
+
+    /// Visit identifier with pointer address expression
+    fn visit_type_identifier_with_pointer_address(
+        &mut self,
+        identifier_with_pointer_address: &mut IdentifierWithPointerAddress,
+        span: &Range<usize>,
+    ) -> TypeExpressionVisitResult<E> {
+        let _ = span;
+        let _ = identifier_with_pointer_address;
         Ok(VisitAction::AbortRecursion)
     }
 
@@ -421,24 +436,6 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = endpoint;
-        Ok(VisitAction::AbortRecursion)
-    }
-
-    /// Visit null literal
-    fn visit_null_type(
-        &mut self,
-        span: &Range<usize>,
-    ) -> TypeExpressionVisitResult<E> {
-        let _ = span;
-        Ok(VisitAction::AbortRecursion)
-    }
-
-    // Visit unit type
-    fn visit_unit_type(
-        &mut self,
-        span: &Range<usize>,
-    ) -> TypeExpressionVisitResult<E> {
-        let _ = span;
         Ok(VisitAction::AbortRecursion)
     }
 

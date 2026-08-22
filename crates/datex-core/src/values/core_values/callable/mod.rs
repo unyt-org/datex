@@ -1,24 +1,150 @@
 use crate::{
+    datex_proxy::DatexProxyType,
     prelude::*,
-    types::type_definition::callable::CallableTypeDefinition,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::callable::IntoDatexCallable,
+    types::type_definition::callable::{CallableKind, CallableTypeDefinition},
     values::{
         core_values::{callable::error::CallableError, endpoint::Endpoint},
         value_container::ValueContainer,
     },
 };
+use core::{fmt::Debug, hash::Hash, pin::Pin};
 
 pub mod apply;
 pub mod equality;
 pub mod error;
+mod serde_dif;
 
-pub type NativeCallable =
-    fn(&[ValueContainer]) -> Result<Option<ValueContainer>, CallableError>;
+type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
+
+type AsyncCallable = Rc<
+    dyn Fn(
+            Vec<ValueContainer>,
+        ) -> BoxFuture<Result<Option<ValueContainer>, CallableError>>
+        + 'static,
+>;
+
+type SyncCallable = Rc<
+    dyn Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError>
+        + 'static,
+>;
+
+#[derive(Clone)]
+pub enum NativeCallable {
+    Sync(SyncCallable),
+    Async(AsyncCallable),
+}
+
+impl Debug for NativeCallable {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            NativeCallable::Sync(_) => write!(f, "NativeCallable(Sync)"),
+            NativeCallable::Async(_) => write!(f, "NativeCallable(Async)"),
+        }
+    }
+}
+impl PartialEq for NativeCallable {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (NativeCallable::Sync(f1), NativeCallable::Sync(f2)) => {
+                Rc::as_ptr(f1) == Rc::as_ptr(f2)
+            }
+            (NativeCallable::Async(f1), NativeCallable::Async(f2)) => {
+                Rc::as_ptr(f1) == Rc::as_ptr(f2)
+            }
+            _ => false,
+        }
+    }
+}
+impl Eq for NativeCallable {}
+
+impl Hash for NativeCallable {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            NativeCallable::Sync(f) => {
+                let ptr = Rc::as_ptr(f) as *const ();
+                ptr.hash(state);
+            }
+            NativeCallable::Async(f) => {
+                let ptr = Rc::as_ptr(f) as *const ();
+                ptr.hash(state);
+            }
+        }
+    }
+}
+
+impl NativeCallable {
+    pub fn new_sync(
+        function: impl Fn(
+            Vec<ValueContainer>,
+        ) -> Result<Option<ValueContainer>, CallableError>
+        + 'static,
+    ) -> Self {
+        NativeCallable::Sync(Rc::new(function))
+    }
+
+    pub fn new_async(
+        function: impl Fn(
+            Vec<ValueContainer>,
+        ) -> BoxFuture<
+            Result<Option<ValueContainer>, CallableError>,
+        > + 'static,
+    ) -> Self {
+        NativeCallable::Async(Rc::new(function))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct DatexBytecodeCallable {
+    pub injected_values: Vec<ValueContainer>,
+    pub body: Vec<u8>,
+    pub requires_async: bool,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CallableBody {
+    /// A callable implemented in native Rust code.
     Native(NativeCallable),
-    DatexBytecode,
+    /// A callable implemented in Datex bytecode.
+    DatexBytecode(DatexBytecodeCallable),
+    /// A callable that is a stub for core library functions that are implemented in the runtime.
     CoreStub(CoreStub),
+    /// A callable that is hidden and cannot be called directly (normally a callable that exists on a remote endpoint behind a shared value)
+    Hidden,
+}
+
+impl CallableBody {
+    pub fn native_sync(
+        native_callable: impl Fn(
+            Vec<ValueContainer>,
+        )
+            -> Result<Option<ValueContainer>, CallableError>
+        + 'static,
+    ) -> Self {
+        CallableBody::Native(NativeCallable::new_sync(native_callable))
+    }
+    pub fn native_async(
+        native_callable: impl Fn(
+            Vec<ValueContainer>,
+        ) -> BoxFuture<
+            Result<Option<ValueContainer>, CallableError>,
+        > + 'static,
+    ) -> Self {
+        CallableBody::Native(NativeCallable::new_async(native_callable))
+    }
+
+    pub fn requires_async(&self) -> bool {
+        match self {
+            CallableBody::Native(NativeCallable::Sync(_)) => false,
+            CallableBody::Native(NativeCallable::Async(_)) => true,
+            CallableBody::DatexBytecode(bytecode_callable) => {
+                bytecode_callable.requires_async
+            }
+            CallableBody::CoreStub(_) => false,
+            CallableBody::Hidden => false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -34,19 +160,69 @@ pub struct Callable {
     pub creator: Endpoint,
 }
 
-impl Callable {
-    pub fn call(
-        &self,
-        args: &[ValueContainer],
-    ) -> Result<Option<ValueContainer>, CallableError> {
-        match &self.body {
-            CallableBody::Native(func) => func(args),
-            CallableBody::DatexBytecode => {
-                todo!("#606 Calling Datex bytecode is not yet implemented")
-            }
-            CallableBody::CoreStub(_stub) => {
-                Err(CallableError::RuntimeOnlyCallable)
-            }
-        }
+/// Creates a new [Callable] from a native Rust function or closure
+pub fn native_sync_callable<F, Args, R>(
+    func: F,
+    name: Option<String>,
+    kind: CallableKind,
+    context: &mut SharedReferencesCache,
+) -> Callable
+where
+    F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
+    R: DatexProxyType + TryInto<ValueContainer> + 'static,
+    <R as TryInto<ValueContainer>>::Error: core::fmt::Debug,
+{
+    let parameters = F::parameters(context);
+    let return_type = R::datex_type(context);
+    Callable {
+        name,
+        signature: CallableTypeDefinition {
+            kind,
+            parameters,
+            requires_async: false,
+            rest_parameter: None,
+            return_type: Some(Box::new(return_type)),
+            yeet_type: None,
+        },
+        body: CallableBody::Native(NativeCallable::new_sync(move |args| {
+            let result = func.invoke(args)?;
+            Ok(Some(result.try_into().unwrap()))
+        })),
+        creator: Default::default(),
+    }
+}
+
+/// Creates a new [Callable] from a native Rust async function or closure
+pub fn native_async_callable<F, Args, R>(
+    func: F,
+    name: Option<String>,
+    kind: CallableKind,
+    context: &mut SharedReferencesCache,
+) -> Callable
+where
+    F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
+    R: DatexProxyType + TryInto<ValueContainer> + 'static,
+    <R as TryInto<ValueContainer>>::Error: core::fmt::Debug,
+{
+    let parameters = F::parameters(context);
+    let return_type = R::datex_type(context);
+    Callable {
+        name,
+        signature: CallableTypeDefinition {
+            kind,
+            parameters,
+            requires_async: true,
+            rest_parameter: None,
+            return_type: Some(Box::new(return_type)),
+            yeet_type: None,
+        },
+        body: CallableBody::Native(NativeCallable::new_async(move |args| {
+            let result = func.invoke(args);
+            Box::pin(async move {
+                let result = result?;
+                Ok(Some(result.try_into().unwrap()))
+            })
+        })),
+        creator: Default::default(),
     }
 }

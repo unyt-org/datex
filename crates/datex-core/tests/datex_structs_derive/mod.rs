@@ -1,6 +1,8 @@
+mod impls;
+
 use core::assert_matches;
 use datex_core::{
-    datex_proxy::{DatexProxyTypes, DatexValueContainerProxy},
+    datex_proxy::{DatexProxyType, DatexValueContainerProxy},
     prelude::*,
     values::{
         core_values::{endpoint::Endpoint, map::Map},
@@ -11,6 +13,7 @@ use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Debug)]
+#[datex(structural_recursive)]
 enum ExampleEnum {
     VariantA,
     VariantB(u8, u8),
@@ -19,6 +22,7 @@ enum ExampleEnum {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
+#[datex(structural_recursive)]
 struct Example {
     a: u8,
     b: String,
@@ -32,6 +36,7 @@ struct SerdeExample {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
+#[datex(structural_recursive)]
 struct SerdeDatexExample {
     a: u8,
     #[datex(serde)]
@@ -39,27 +44,31 @@ struct SerdeDatexExample {
 }
 
 #[derive(Datex, Debug, PartialEq)]
+#[datex(structural_recursive)]
 struct ExampleNewType(Example);
 
 fn assert_round_trip<T>(value: T)
 where
     T: DatexValueContainerProxy + PartialEq + std::fmt::Debug + Clone,
 {
-    let value_container = value.clone().try_to_value_container().unwrap();
+    let value_container = value
+        .clone()
+        .try_to_value_container_without_cache()
+        .unwrap();
     let deserialized_value =
         T::try_from_value_container(value_container).unwrap();
     assert_eq!(value, deserialized_value);
 }
 
 use datex_core::{
+    self,
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     runtime::{
         cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
-        OwnedSharedContainer, PointerAddress, SharedContainer,
-        SharedContainerMutability,
+        OwnedSharedContainer, SharedContainer, SharedContainerMutability,
     },
     traits::structural_eq::assert_structural_eq,
     types::{
@@ -128,6 +137,7 @@ fn struct_to_value_container() {
 #[test]
 fn skip() {
     #[derive(Datex, Debug, PartialEq)]
+    #[datex(structural_recursive)]
     struct SerdeDatexWithSkip {
         a: u8,
 
@@ -159,6 +169,7 @@ fn skip2() {
         b: String,
     }
     #[derive(Datex, Debug, PartialEq)]
+    #[datex(structural_recursive)]
     struct SerdeDatexWithSkip2 {
         a: u8,
         #[datex(skip)]
@@ -180,6 +191,7 @@ fn skip2() {
 #[test]
 fn default() {
     #[derive(Datex, Debug, PartialEq)]
+    #[datex(structural_recursive)]
     struct SerdeDatexWithDefault {
         a: u8,
         #[datex(default)]
@@ -448,6 +460,7 @@ fn struct_with_serde_to_value_container() {
 #[test]
 fn struct_with_serde_infallible_to_value_container() {
     #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural_recursive)]
     struct SerdeDatexExampleInfallible {
         a: u8,
         #[datex(serde_infallible)]
@@ -488,6 +501,7 @@ fn struct_with_value_container() {
     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
     #[derive(Datex, Debug, PartialEq)]
+    #[datex(structural_recursive)]
     struct ExampleWithValueContainer {
         a: u8,
         val: ValueContainer,
@@ -536,6 +550,7 @@ fn struct_with_owned_shared_value_container() {
     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
     #[derive(Datex, Debug, PartialEq)]
+    #[datex(structural_recursive)]
     struct ExampleWithOwnedContainer {
         owned: OwnedSharedContainer,
     }
@@ -567,21 +582,20 @@ fn struct_with_owned_shared_value_container() {
 
 #[test]
 fn get_datex_type_from_struct() {
-    let dx_type = Example::datex_type(&mut SharedReferencesCache::default());
-    println!("{}", dx_type);
+    let dx_type = Example::datex_type_without_cache();
 
     assert_eq!(
         dx_type,
-        Type::Alias(
+        Type::Definition(
             TypeDefinition::Map(MapTypeDefinition(vec![
                 (
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::Literal(LiteralTypeDefinition::Text(
                             "a".into()
                         ))
                         .into()
                     ),
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::CoreType(
                             CoreLibVariantTypeId::Integer(
                                 IntegerTypeVariant::U8
@@ -592,13 +606,13 @@ fn get_datex_type_from_struct() {
                     )
                 ),
                 (
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::Literal(LiteralTypeDefinition::Text(
                             "b".into()
                         ))
                         .into()
                     ),
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::CoreType(
                             CoreLibBaseTypeId::Text.into()
                         )
@@ -606,13 +620,13 @@ fn get_datex_type_from_struct() {
                     )
                 ),
                 (
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::Literal(LiteralTypeDefinition::Text(
                             "c".into()
                         ))
                         .into()
                     ),
-                    Type::Alias(
+                    Type::Definition(
                         TypeDefinition::CoreType(
                             CoreLibBaseTypeId::Endpoint.into()
                         )
@@ -627,13 +641,11 @@ fn get_datex_type_from_struct() {
 
 #[test]
 fn get_datex_type_from_enum() {
-    let dx_type =
-        ExampleEnum::datex_type(&mut SharedReferencesCache::default());
-    println!("{}", dx_type);
+    let dx_type = ExampleEnum::datex_type_without_cache();
 
     assert_eq!(
         dx_type,
-        Type::Alias(
+        Type::Definition(
             TypeDefinition::Union(UnionTypeDefinition(vec![
                 TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "VariantA".to_string(),
@@ -644,7 +656,7 @@ fn get_datex_type_from_enum() {
                     tag: "VariantB".to_string(),
                     ty: Some(Box::new(
                         TypeDefinition::List(ListTypeDefinition(vec![
-                            Type::Alias(
+                            Type::Definition(
                                 TypeDefinition::CoreType(
                                     CoreLibVariantTypeId::Integer(
                                         IntegerTypeVariant::U8
@@ -653,7 +665,7 @@ fn get_datex_type_from_enum() {
                                 )
                                 .into()
                             ),
-                            Type::Alias(
+                            Type::Definition(
                                 TypeDefinition::CoreType(
                                     CoreLibVariantTypeId::Integer(
                                         IntegerTypeVariant::U8
@@ -672,13 +684,13 @@ fn get_datex_type_from_enum() {
                     ty: Some(Box::new(
                         TypeDefinition::Map(MapTypeDefinition(vec![
                             (
-                                Type::Alias(
+                                Type::Definition(
                                     TypeDefinition::Literal(
                                         LiteralTypeDefinition::Text("x".into())
                                     )
                                     .into()
                                 ),
-                                Type::Alias(
+                                Type::Definition(
                                     TypeDefinition::CoreType(
                                         CoreLibVariantTypeId::Integer(
                                             IntegerTypeVariant::U8
@@ -689,13 +701,13 @@ fn get_datex_type_from_enum() {
                                 )
                             ),
                             (
-                                Type::Alias(
+                                Type::Definition(
                                     TypeDefinition::Literal(
                                         LiteralTypeDefinition::Text("y".into())
                                     )
                                     .into()
                                 ),
-                                Type::Alias(
+                                Type::Definition(
                                     TypeDefinition::CoreType(
                                         CoreLibBaseTypeId::Text.into()
                                     )
@@ -724,4 +736,324 @@ fn get_datex_type_from_enum() {
             .into()
         )
     );
+}
+
+#[test]
+fn recursive_struct() {
+    #[derive(Datex)]
+    struct Node {
+        next: Option<Box<Node>>,
+    }
+    let cache = &mut SharedReferencesCache::default();
+    let ty = Node::datex_type(cache);
+    ty.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            let next_type = map
+                .first()
+                .expect("Expected 'next' field in map type definition")
+                .1
+                .clone();
+            next_type.with_collapsed_type_definition(|next_ty_def| {
+                next_ty_def
+                    .try_unbox()
+                    .expect("Expected Option type for 'next' field")
+                    .with_collapsed_type_definition(|ty_def| match &ty_def {
+                        TypeDefinition::Union(union_ty_def) => {
+                            union_ty_def.0 == vec![Type::NULL, ty.clone()]
+                        }
+                        _ => panic!(
+                            "Expected Union type for Option, got {:?}",
+                            next_ty_def
+                        ),
+                    });
+            })
+        }
+        _ => panic!("Expected map type definition"),
+    });
+}
+
+#[test]
+fn mutual_recursion_structural_containing_entity() {
+    #[derive(Datex)]
+    #[datex(structural)]
+    struct A {
+        b: Box<B>,
+    }
+
+    #[derive(Datex)]
+    struct B {
+        a: Box<A>,
+    }
+    let cache = &mut SharedReferencesCache::default();
+
+    let ty_a = A::datex_type(cache);
+    let ty_b = B::datex_type(cache);
+
+    ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.first().expect("wtf").1, ty_b);
+        }
+        _ => panic!("Expected map type definition for A"),
+    });
+    ty_b.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.first().expect("wtf").1, ty_a);
+        }
+        _ => panic!("Expected map type definition for B"),
+    });
+}
+
+#[test]
+fn mutual_recursion_entity_containing_structural() {
+    #[derive(Datex)]
+    struct A {
+        b: Box<B>,
+    }
+
+    #[derive(Datex)]
+    #[datex(structural)]
+    struct B {
+        a: Box<A>,
+    }
+    let cache = &mut SharedReferencesCache::default();
+
+    let ty_a = A::datex_type(cache);
+    let ty_b = B::datex_type(cache);
+
+    ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.first().expect("wtf").1, ty_b);
+        }
+        _ => panic!("Expected map type definition for A"),
+    });
+    ty_b.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.first().expect("wtf").1, ty_a);
+        }
+        _ => panic!("Expected map type definition for B"),
+    });
+}
+
+#[test]
+fn mutual_recursion_entity() {
+    #[derive(Datex)]
+    struct A {
+        b: Box<B>,
+    }
+
+    #[derive(Datex)]
+    struct B {
+        a: Box<A>,
+    }
+    let cache = &mut SharedReferencesCache::default();
+
+    let ty_a = A::datex_type(cache);
+    let ty_b = B::datex_type(cache);
+
+    ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.first().expect("wtf").1, ty_b);
+        }
+        _ => panic!("Expected map type definition for A"),
+    });
+    ty_b.with_collapsed_type_definition(|ty_def| match ty_def {
+        TypeDefinition::Map(map) => {
+            assert_eq!(map.first().expect("wtf").1, ty_a);
+        }
+        _ => panic!("Expected map type definition for B"),
+    });
+}
+
+#[test]
+#[should_panic(expected = "Can not use recursive structural")]
+fn mutual_recursion_panic_with_structural() {
+    #[derive(Datex)]
+    #[datex(structural)]
+    struct A {
+        b: Box<B>,
+    }
+    #[derive(Datex)]
+    #[datex(structural)]
+    struct B {
+        a: Box<A>,
+    }
+    let cache = &mut SharedReferencesCache::default();
+    let _ = A::datex_type(cache);
+    let _ = B::datex_type(cache);
+}
+
+#[test_case(None ; "none")]
+#[test_case(Some(0u8) ; "some zero")]
+#[test_case(Some(u8::MAX) ; "some max")]
+fn round_trip_option(value: Option<u8>) {
+    assert_round_trip(value);
+}
+
+#[test_case(None ; "outer none")]
+#[test_case(Some(None) ; "inner none")]
+#[test_case(Some(Some(42u8)) ; "some value")]
+fn round_trip_nested_option(value: Option<Option<u8>>) {
+    assert_round_trip(value);
+}
+
+#[test_case(Box::new(0u8) ; "boxed zero")]
+#[test_case(Box::new(42u8) ; "boxed primitive")]
+#[test_case(Box::new(u8::MAX) ; "boxed max")]
+fn round_trip_box(value: Box<u8>) {
+    assert_round_trip(value);
+}
+
+#[test_case(None ; "none")]
+#[test_case(Some(Box::new(0u8)) ; "some boxed zero")]
+#[test_case(Some(Box::new(42u8)) ; "some boxed value")]
+fn round_trip_option_box(value: Option<Box<u8>>) {
+    assert_round_trip(value);
+}
+
+#[test_case(Box::new(None) ; "boxed none")]
+#[test_case(Box::new(Some(0u8)) ; "boxed some zero")]
+#[test_case(Box::new(Some(42u8)) ; "boxed some value")]
+fn round_trip_box_option(value: Box<Option<u8>>) {
+    assert_round_trip(value);
+}
+
+#[test_case(None ; "outer none")]
+#[test_case(Some(Box::new(None)) ; "boxed none")]
+#[test_case(Some(Box::new(Some(42u8))) ; "boxed some value")]
+fn round_trip_option_box_option(value: Option<Box<Option<u8>>>) {
+    assert_round_trip(value);
+}
+
+#[test]
+fn round_trip_boxed_struct() {
+    let example = Box::new(Example {
+        a: 42u8,
+        b: "Test".to_string(),
+        c: Endpoint::default(),
+    });
+    assert_round_trip(example);
+}
+
+#[test]
+fn struct_with_option() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural_recursive)]
+    struct ExampleWithOption {
+        value: Option<u8>,
+    }
+    assert_round_trip(ExampleWithOption { value: None });
+    assert_round_trip(ExampleWithOption { value: Some(42) });
+}
+
+#[test]
+fn struct_with_box() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural_recursive)]
+    struct ExampleWithBox {
+        value: Box<u8>,
+    }
+    assert_round_trip(ExampleWithBox {
+        value: Box::new(42),
+    });
+}
+
+#[test]
+fn struct_with_option_box() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural_recursive)]
+    struct ExampleWithOptionBox {
+        value: Option<Box<u8>>,
+    }
+    assert_round_trip(ExampleWithOptionBox { value: None });
+    assert_round_trip(ExampleWithOptionBox {
+        value: Some(Box::new(42)),
+    });
+}
+
+#[test]
+fn struct_with_box_option() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural_recursive)]
+    struct ExampleWithBoxOption {
+        value: Box<Option<u8>>,
+    }
+    assert_round_trip(ExampleWithBoxOption {
+        value: Box::new(None),
+    });
+    assert_round_trip(ExampleWithBoxOption {
+        value: Box::new(Some(42)),
+    });
+}
+
+#[test]
+fn struct_with_nested_option() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural_recursive)]
+    struct ExampleWithNestedOption {
+        value: Option<Option<u8>>,
+    }
+    assert_round_trip(ExampleWithNestedOption { value: None });
+    assert_round_trip(ExampleWithNestedOption { value: Some(None) });
+    assert_round_trip(ExampleWithNestedOption {
+        value: Some(Some(42)),
+    });
+}
+
+#[test_case(
+    ExampleEnumWithOptionAndBox::Optional(None)
+    ; "option none"
+)]
+#[test_case(
+    ExampleEnumWithOptionAndBox::Optional(Some(42))
+    ; "option some"
+)]
+#[test_case(
+    ExampleEnumWithOptionAndBox::Boxed(Box::new(42))
+    ; "boxed"
+)]
+#[test_case(
+    ExampleEnumWithOptionAndBox::OptionalBoxed(None)
+    ; "option boxed none"
+)]
+#[test_case(
+    ExampleEnumWithOptionAndBox::OptionalBoxed(Some(Box::new(42)))
+    ; "option boxed some"
+)]
+fn round_trip_enum_with_option_and_box(value: ExampleEnumWithOptionAndBox) {
+    assert_round_trip(value);
+}
+
+#[derive(Datex, Debug, Clone, PartialEq)]
+#[datex(structural_recursive)]
+enum ExampleEnumWithOptionAndBox {
+    Optional(Option<u8>),
+    Boxed(Box<u8>),
+    OptionalBoxed(Option<Box<u8>>),
+}
+
+#[test]
+fn recursive_struct_round_trip() {
+    #[derive(Datex, Debug, Clone, PartialEq)]
+    struct Node {
+        value: u8,
+        next: Option<Box<Node>>,
+    }
+
+    let node = Node {
+        value: 42,
+        next: Some(Box::new(Node {
+            value: 69,
+            next: Some(Box::new(Node {
+                value: 10,
+                next: None,
+            })),
+        })),
+    };
+    assert_round_trip(node);
+}
+
+#[test]
+fn vec_with_option_box() {
+    let value = vec![None, Some(Box::new(0u8)), Some(Box::new(42u8)), None];
+    assert_round_trip(value);
 }

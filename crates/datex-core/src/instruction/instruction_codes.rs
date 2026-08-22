@@ -33,6 +33,7 @@ pub enum InstructionCode {
     APPLY_ZERO,
     APPLY_SINGLE,
     APPLY,
+    CALL_METHOD,
 
     GET_ENTRY_DYNAMIC, // get property with arbitrary key value
     GET_ENTRY_INDEX,   // get property with integer index
@@ -91,6 +92,9 @@ pub enum InstructionCode {
     TAKE_STACK_VALUE,  // #stack[i]
 
     GET_ROOT_PROPERTY, // e.g. $.endpoint
+
+    CALLABLE,             // for functions/procedures
+    CALLABLE_DECLARATION, // for inline DATEX script function/procedure declarations
 
     // Note: fix to sync with PointerAddress
     REQUEST_REMOTE_SHARED_REF,     // '$x
@@ -154,8 +158,9 @@ pub enum InstructionCode {
 
     ENDPOINT,
 
+    BOXED_VALUE, // boxed value (for Option<T> and other types that require boxing)
     TAGGED_VALUE, // e.g. #Example or #Example {example: 42}
-    INSTANT,      // ISO 8601 datetime stored as i128 milliseconds since epoch
+    INSTANT,     // ISO 8601 datetime stored as i128 milliseconds since epoch
 
     // lists and maps 0xe0 - 0xef
     LIST,       // (1,2,3)

@@ -73,7 +73,6 @@ fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
 
 fn compare_datex_result_with_json(json_string: &str) {
     let runtime = Runtime::stub();
-    println!(" JSON String: {json_string}");
     let json_value = json_syntax::Value::parse_str(json_string).unwrap().0;
     let (dxb, _) =
         compile_script(json_string, CompileOptions::default(), runtime.clone())
@@ -131,9 +130,6 @@ fn compare_datex_result_with_expected(
     path: PathBuf,
 ) {
     let datex_decompiled = get_datex_decompiled_from_json(json_string);
-
-    // println!(" Expected: {expected}");
-    // println!(" Decompiled: {datex_decompiled}");
     assert_eq!(
         normalize_newlines(&datex_decompiled),
         normalize_newlines(expected),

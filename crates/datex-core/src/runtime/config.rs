@@ -5,6 +5,7 @@ use crate::{
     },
     network::com_hub::InterfacePriority,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::{core_values::endpoint::Endpoint, value::Value},
 };
 use datex_macros_internal::Datex;
@@ -14,6 +15,7 @@ pub fn is_priority_none(v: &InterfacePriority) -> bool {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq, Eq)]
+#[datex(structural_recursive)]
 /// A generic interface configuration to setup a runtime interface.
 pub struct RuntimeConfigInterface {
     #[datex(rename = "type")]
@@ -30,7 +32,7 @@ impl RuntimeConfigInterface {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            config: setup_data.try_to_value().map_err(|e| {
+            config: setup_data.try_to_value_without_cache().map_err(|e| {
                 format!(
                     "Failed to convert setup_data to ValueContainer: {:?}",
                     e
@@ -52,6 +54,7 @@ impl RuntimeConfigInterface {
 }
 
 #[derive(Datex, Debug, Default, Clone)]
+#[datex(structural_recursive)]
 pub struct RuntimeConfig {
     pub endpoint: Endpoint,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
@@ -73,7 +76,7 @@ impl RuntimeConfig {
         config: T,
         priority: InterfacePriority,
     ) {
-        let config = config.to_value();
+        let config = config.to_value_without_cache();
         let interface = RuntimeConfigInterface {
             interface_type,
             config,
@@ -128,13 +131,18 @@ pub mod tests {
         datex_proxy::{
             DatexValueContainerProxyDeserialize,
             DatexValueContainerProxyInfallibleSerialize,
+            DatexValueProxyInfallibleSerialize,
         },
         prelude::*,
-        runtime::{RuntimeConfig, RuntimeConfigInterface},
+        runtime::{
+            RuntimeConfig, RuntimeConfigInterface,
+            cache::shared_references_cache::SharedReferencesCache,
+        },
         values::core_values::{endpoint::Endpoint, map::Map},
     };
 
     #[derive(Datex)]
+    #[datex(structural_recursive)]
     struct MySetupData {
         field1: String,
         field2: i32,
@@ -178,7 +186,7 @@ pub mod tests {
             42
         );
 
-        let value_container = config_interface.to_value_container();
+        let value_container = config_interface.to_value_without_cache();
         let parsed_config_interface: RuntimeConfigInterface =
             value_container.try_into().unwrap();
         assert_eq!(parsed_config_interface.interface_type, "test");
@@ -187,7 +195,8 @@ pub mod tests {
     #[test]
     fn datex_proxy_runtime_config() {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
-        let value_container = config.to_value_container();
+        let value_container =
+            config.to_value_container(&mut SharedReferencesCache::default());
         let parsed_config: RuntimeConfig =
             RuntimeConfig::try_from_value_container(value_container).unwrap();
         assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));

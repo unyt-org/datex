@@ -26,11 +26,15 @@ pub mod apply;
 pub mod ops;
 pub mod update_handler;
 pub mod value_key;
-use crate::shared_values::{
-    collapsed_container_value::{
-        CollapsedContainerValue, CollapsedContainerValueMut,
+use crate::{
+    shared_values::{
+        collapsed_container_value::{
+            CollapsedContainerValue, CollapsedContainerValueMut,
+        },
+        traits::SharedContainerCommon,
     },
-    traits::SharedContainerCommon,
+    utils::sheep_mut::SheepMut,
+    values::core_values::endpoint::Endpoint,
 };
 use core::{
     fmt::Display,
@@ -60,6 +64,35 @@ impl ValueContainer {
     /// Creates a new [ValueContainer::Local] from a [Value]
     pub fn local(value: impl Into<Value>) -> Self {
         ValueContainer::Local(value.into())
+    }
+
+    pub fn owner(&self) -> Endpoint {
+        match self {
+            ValueContainer::Local(value) => Endpoint::LOCAL,
+            ValueContainer::Shared(shared) => {
+                shared.pointer_address().endpoint()
+            }
+        }
+    }
+
+    /// Gets a reference to the inner [ValueContainer], regardless of whether it is local or shared.
+    pub fn value_container(&self) -> Sheep<ValueContainer> {
+        match self {
+            ValueContainer::Local(_) => Sheep::Borrowed(self),
+            ValueContainer::Shared(shared) => {
+                Sheep::Ref(shared.value_container())
+            }
+        }
+    }
+
+    /// Gets a mutable reference to the inner [ValueContainer], regardless of whether it is local or shared.
+    pub fn value_container_mut(&mut self) -> SheepMut<ValueContainer> {
+        match self {
+            ValueContainer::Local(_) => SheepMut::Borrowed(self),
+            ValueContainer::Shared(shared) => {
+                SheepMut::Ref(shared.value_container_mut())
+            }
+        }
     }
 
     pub fn collapsed_value(&self) -> CollapsedContainerValue<'_> {
@@ -169,7 +202,7 @@ impl ValueContainer {
                 let inner_type =
                     shared.value_container().actual_container_type();
                 TypeDefinitionWithMetadata::new(
-                    TypeDefinition::Nested(Box::new(Type::from(inner_type))),
+                    TypeDefinition::Box(Box::new(Type::from(inner_type))),
                     TypeMetadata::Shared {
                         mutability: shared.container_mutability(),
                         ownership: shared.ownership(),
@@ -232,6 +265,25 @@ impl ValueContainer {
             ValueContainer::Shared(shared) => shared,
             _ => {
                 core::panic!("Cannot convert ValueContainer to SharedContainer")
+            }
+        }
+    }
+
+    /// Returns true if the underlaying value is uninitialized (recursive).
+    pub fn is_uninitialized(&self) -> bool {
+        match self {
+            ValueContainer::Local(value) => value.is_uninitialized(),
+            ValueContainer::Shared(shared) => {
+                shared.value_container().is_uninitialized()
+            }
+        }
+    }
+
+    pub fn is_null(&self) -> bool {
+        match self {
+            ValueContainer::Local(value) => value.is_null(),
+            ValueContainer::Shared(shared) => {
+                shared.value_container().is_null()
             }
         }
     }

@@ -1,3 +1,6 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+
+[profile.dev]
+debug = "line-tables-only"

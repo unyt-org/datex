@@ -23,8 +23,13 @@ pub fn get_root_property(
             ValueContainer::from(Map::from(runtime.internal.get_env()))
         }
         RootProperty::CONFIG => {
-            runtime_state.runtime.config().clone().to_value_container()
-        }
+            runtime_state.runtime.config().clone().to_value_container(
+                &mut runtime_state
+                    .runtime
+                    .shared_references_cache()
+                    .borrow_mut(),
+            )
+        } // TODO pass context?
     };
     Ok(res)
 }

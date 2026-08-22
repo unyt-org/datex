@@ -1,9 +1,10 @@
 use crate::{
-    global::protocol_structures::{
+    instruction::{
+        NextExpectedInstructions,
         instruction_data::{
-            ImplTypeData, ListData, MapData, TypeReferenceData,
+            ImplTypeData, ListData, MapData, TaggedTypeData, TypeReferenceData,
+            UnionData,
         },
-        instructions::NextExpectedInstructions,
     },
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
@@ -18,26 +19,29 @@ use serde::{Serialize, Serializer, ser::SerializeTuple};
 use strum::AsRefStr;
 
 #[derive(Clone, Debug, PartialEq, BinWrite, BinRead, AsRefStr)]
-#[strum(serialize_all = "snake_case")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 #[brw(little)]
 pub enum TypeInstruction {
     #[brw(magic = 0x0u8)]
-    TypeDefinitionCoreType(CoreLibTypeId),
+    CoreType(CoreLibTypeId),
     #[brw(magic = 0x1u8)]
-    TypeDefinitionImplType(ImplTypeData),
+    ImplType(ImplTypeData),
     #[brw(magic = 0x2u8)]
-    TypeDefinitionSharedTypeReference(TypeReferenceData),
+    SharedTypeReference(TypeReferenceData),
     #[brw(magic = 0x3u8)]
-    TypeDefinitionList(ListData),
+    List(ListData),
     #[brw(magic = 0x4u8)]
-    TypeDefinitionLiteral(LiteralTypeDefinition),
+    Literal(LiteralTypeDefinition),
     #[brw(magic = 0x5u8)]
-    TypeDefinitionRange,
+    Range,
     #[brw(magic = 0x6u8)]
-    TypeDefinitionWithMetadata(TypeMetadata),
-
+    DefinitionWithMetadata(TypeMetadata),
+    #[brw(magic = 0x7u8)]
+    TaggedType(TaggedTypeData),
     #[brw(magic = 0x8u8)]
-    TypeDefinitionMap(MapData),
+    Map(MapData),
+    #[brw(magic = 0x9u8)]
+    Union(UnionData),
 }
 
 /// Serializes TypeInstruction to tuple (instruction code as string, optional metadata as string)
@@ -46,7 +50,7 @@ impl Serialize for TypeInstruction {
     where
         S: Serializer,
     {
-        let instruction_code = self.as_ref().to_string();
+        let instruction_code = format!("TYPE.{}", self.as_ref());
         let metadata_string = self.metadata_string();
 
         if let Some(metadata_string) = metadata_string {
@@ -64,21 +68,32 @@ impl TypeInstruction {
     /// Returns how many (if any) regular or type instructions are expected as child instructions for a given instructions
     pub fn get_next_expected_instructions(&self) -> NextExpectedInstructions {
         match self {
-            TypeInstruction::TypeDefinitionList(list) => {
+            TypeInstruction::List(list) => {
                 NextExpectedInstructions::Type(list.element_count)
             } // list elements
 
-            TypeInstruction::TypeDefinitionImplType(_) => {
-                NextExpectedInstructions::Type(1)
-            } // impl type
+            TypeInstruction::Map(map) => {
+                NextExpectedInstructions::Type(map.element_count * 2) // FIXME *2?
+            } // map key-value pairs
 
-            TypeInstruction::TypeDefinitionWithMetadata(_) => {
+            TypeInstruction::Union(union) => {
+                NextExpectedInstructions::Type(union.element_count)
+            } // union elements
+
+            TypeInstruction::ImplType(_) => NextExpectedInstructions::Type(1), // impl type
+            TypeInstruction::TaggedType(ty) => {
+                if ty.has_type {
+                    NextExpectedInstructions::Type(1)
+                } else {
+                    NextExpectedInstructions::None
+                }
+            } // tagged type
+
+            TypeInstruction::DefinitionWithMetadata(_) => {
                 NextExpectedInstructions::Type(1)
             } // metadata type instruction
 
-            TypeInstruction::TypeDefinitionRange => {
-                NextExpectedInstructions::Type(2)
-            } // range has 2 type instructions
+            TypeInstruction::Range => NextExpectedInstructions::Type(2), // range has 2 type instructions
 
             _ => NextExpectedInstructions::None,
         }
@@ -88,19 +103,29 @@ impl TypeInstruction {
         let mut string = String::new();
 
         match self {
-            TypeInstruction::TypeDefinitionLiteral(data) => {
+            TypeInstruction::Literal(data) => {
                 write!(string, "{}", data)
             }
-            TypeInstruction::TypeDefinitionList(data) => {
+            TypeInstruction::List(data) => {
                 write!(string, "{}", data.element_count)
             }
-            TypeInstruction::TypeDefinitionSharedTypeReference(
-                reference_data,
-            ) => {
-                write!(string, "(address: {})", reference_data.address.clone())
+            TypeInstruction::SharedTypeReference(reference_data) => {
+                write!(string, "[address: {}]", reference_data.address.clone())
             }
-            TypeInstruction::TypeDefinitionImplType(data) => {
-                write!(string, "({} impls)", data.impl_count)
+            TypeInstruction::CoreType(data) => {
+                write!(string, "{}", data)
+            }
+            TypeInstruction::ImplType(data) => {
+                write!(string, "[{} impls]", data.impl_count)
+            }
+            TypeInstruction::TaggedType(data) => {
+                write!(string, "[tag: {}]", data.tag.0)
+            }
+            TypeInstruction::Map(data) => {
+                write!(string, "[{} entries]", data.element_count)
+            }
+            TypeInstruction::Union(data) => {
+                write!(string, "[{} elements]", data.element_count)
             }
             _ => {
                 // no custom disassembly

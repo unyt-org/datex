@@ -8,9 +8,9 @@ use crate::{
         },
         value_visitor::ValueVisitor,
     },
-    global::protocol_structures::{
-        instruction_data::{SharedRef, StackIndex},
-        regular_instructions::RegularInstruction,
+    global::stack_index::StackIndex,
+    instruction::{
+        instruction_data::SharedRef, regular_instruction::RegularInstruction,
     },
     prelude::*,
     shared_values::{
@@ -183,14 +183,11 @@ mod tests {
             core_compilation_context::CompileInput,
             update_compiler::compile_updates,
         },
-        disassembler::assertions::{
-            assert_regular_instructions_equal, instructions,
-        },
-        global::protocol_structures::{
-            instruction_data::{
-                SharedRef, ShortTextData, StackIndex, UInt8Data,
-            },
-            regular_instructions::RegularInstruction,
+        disassembler::assertions::{assert_instructions_equal, instructions},
+        global::stack_index::StackIndex,
+        instruction::{
+            instruction_data::{SharedRef, ShortTextData, UInt8Data},
+            regular_instruction::RegularInstruction,
         },
         prelude::*,
         runtime::{
@@ -233,7 +230,7 @@ mod tests {
         let dxb_with_shared_values =
             compile_updates(&container, &[&update_data], compile_input);
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &dxb_with_shared_values.dxb,
             (RegularInstruction::statements_with_children(
                 true,
@@ -280,7 +277,7 @@ mod tests {
         let dxb_with_shared_values =
             compile_updates(&container, &[&update_data], compile_input);
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &dxb_with_shared_values.dxb,
             (RegularInstruction::statements_with_children(
                 true,

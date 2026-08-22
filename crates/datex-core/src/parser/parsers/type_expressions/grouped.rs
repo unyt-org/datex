@@ -15,7 +15,7 @@ impl Parser {
         // if right parenthesis follows immediately, it's a unit type
         if self.peek()?.token == Token::RightParen {
             let end = self.expect(Token::RightParen)?.span.end;
-            return Ok(TypeExpressionData::Unit.with_span(start..end));
+            return Ok(TypeExpressionData::unit().with_span(start..end));
         }
 
         let inner_expression = self.parse_type_expression(0)?;

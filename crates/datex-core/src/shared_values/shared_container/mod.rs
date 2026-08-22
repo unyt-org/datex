@@ -22,7 +22,7 @@ use crate::{
         ReferenceMutability,
         base_shared_value_container::observers::{
             ObserveOptions, Observer, ObserverCallback, ObserverError,
-            ObserverId, TransceiverId,
+            ObserverId,
         },
         collapsed_container_value::{
             CollapsedContainerValue, CollapsedContainerValueMut,
