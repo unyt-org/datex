@@ -3,14 +3,16 @@ use crate::{
     instruction::{
         NextExpectedInstructions,
         instruction_data::{
-            ImplTypeData, IntersectionData, ListData, ListSliceCollectionData,
-            MapData, TaggedTypeData, TypeReferenceData, UnionData,
+            CallableSignatureData, ImplTypeData, IntersectionData, ListData,
+            ListSliceCollectionData, MapData, TaggedTypeData,
+            TypeReferenceData, UnionData,
         },
     },
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
     types::{
         literal_type_definition::LiteralTypeDefinition,
+        type_definition::callable::CallableTypeDefinition,
         type_definition_with_metadata::TypeMetadata,
     },
 };
@@ -51,6 +53,10 @@ pub enum TypeInstruction {
     MapCollection,
     #[brw(magic = 0xDu8)]
     ListCollection,
+    #[brw(magic = 0xEu8)]
+    Boxed,
+    #[brw(magic = 0xFFu8)]
+    Callable(CallableSignatureData),
 }
 
 /// Serializes TypeInstruction to tuple (instruction code as string, optional metadata as string)
@@ -80,6 +86,7 @@ impl TypeInstruction {
             TypeInstruction::List(list) => {
                 NextExpectedInstructions::Type(list.element_count)
             }
+            TypeInstruction::Boxed => NextExpectedInstructions::Type(1),
             TypeInstruction::ListCollection => {
                 NextExpectedInstructions::Type(1)
             }
@@ -95,6 +102,9 @@ impl TypeInstruction {
             }
             TypeInstruction::Union(union) => {
                 NextExpectedInstructions::Type(union.element_count)
+            }
+            TypeInstruction::Callable(callable) => {
+                NextExpectedInstructions::Type(callable.total_type_count())
             }
             TypeInstruction::ImplType(_) => NextExpectedInstructions::Type(1),
             TypeInstruction::TaggedType(ty) => {
@@ -139,6 +149,18 @@ impl TypeInstruction {
             }
             TypeInstruction::Union(data) => {
                 write!(string, "[{} elements]", data.element_count)
+            }
+            TypeInstruction::Intersection(data) => {
+                write!(string, "[{} elements]", data.element_count)
+            }
+            TypeInstruction::ListSliceCollection(data) => {
+                write!(string, "[{} elements]", data.element_count)
+            }
+            TypeInstruction::DefinitionWithMetadata(data) => {
+                write!(string, "[metadata: {}]", data)
+            }
+            TypeInstruction::Boxed => {
+                write!(string, "[boxed]")
             }
             _ => {
                 // no custom disassembly

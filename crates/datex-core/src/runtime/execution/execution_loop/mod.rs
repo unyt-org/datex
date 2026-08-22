@@ -594,7 +594,9 @@ pub gen fn inner_execution_loop(
                         | TypeInstruction::ListSliceCollection(_)
                         | TypeInstruction::MapCollection
                         | TypeInstruction::ListCollection
+                        | TypeInstruction::Boxed
                         | TypeInstruction::Union(_)
+                        | TypeInstruction::Callable(_)
                         | TypeInstruction::Map(_)
                         | TypeInstruction::DefinitionWithMetadata(_)
                         | TypeInstruction::Range
@@ -1470,10 +1472,9 @@ pub gen fn inner_execution_loop(
                                         )).into()
                                     }
                                     TypeInstruction::Range => {
-                                        // TODO: add metadata everywhere
-                                        let type_start =
-                                            collected_results.pop_type();
                                         let type_end =
+                                            collected_results.pop_type();
+                                        let type_start =
                                             collected_results.pop_type();
                                         let x = Type::Definition(
                                             TypeDefinition::Range(RangeTypeDefinition {
@@ -1494,7 +1495,7 @@ pub gen fn inner_execution_loop(
                                             let key_type = collected_results.pop_type();
                                             map_entries.push((key_type, value_type));
                                         }
-                                        TypeDefinition::Map(MapTypeDefinition(map_entries)).into()
+                                        TypeDefinition::Map(MapTypeDefinition(map_entries.into_iter().rev().collect())).into()
                                     }
                                     TypeInstruction::Union(UnionData {element_count}) => {
                                         let mut union_entries = Vec::with_capacity(element_count as usize);
@@ -1502,7 +1503,7 @@ pub gen fn inner_execution_loop(
                                             let ty = collected_results.pop_type();
                                             union_entries.push(ty);
                                         }
-                                        TypeDefinition::Union(UnionTypeDefinition(union_entries)).into()
+                                        TypeDefinition::Union(UnionTypeDefinition(union_entries.into_iter().rev().collect())).into()
                                     }
                                     TypeInstruction::Intersection(IntersectionData {element_count}) => {
                                         let mut intersection_entries = Vec::with_capacity(element_count as usize);
@@ -1510,7 +1511,7 @@ pub gen fn inner_execution_loop(
                                             let ty = collected_results.pop_type();
                                             intersection_entries.push(ty);
                                         }
-                                        TypeDefinition::Intersection(IntersectionTypeDefinition(intersection_entries)).into()
+                                        TypeDefinition::Intersection(IntersectionTypeDefinition(intersection_entries.into_iter().rev().collect())).into()
                                     }
                                     TypeInstruction::ListSliceCollection(ListSliceCollectionData { element_count }) => {
                                         let ty = collected_results.pop_type();
@@ -1530,6 +1531,17 @@ pub gen fn inner_execution_loop(
                                         TypeDefinition::Collection(CollectionTypeDefinition::List(
                                             ListCollectionTypeDefinition::new(ty)
                                         )).into()
+                                    }
+                                    TypeInstruction::Boxed => {
+                                        let ty = collected_results.pop_type();
+                                        TypeDefinition::Box(Box::new(ty)).into()
+                                    }
+                                    TypeInstruction::Callable(signature_data) => {
+                                        let callable_type = resolve_callable_type_definition(
+                                            collected_results.pop_types(signature_data.total_type_count()),
+                                            &signature_data,
+                                        );
+                                        TypeDefinition::Callable(callable_type).into()
                                     }
                                     e => todo!(
                                         "Unhandled collected type instruction: {:?}",
