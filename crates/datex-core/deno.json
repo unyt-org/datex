@@ -6,7 +6,7 @@
         "serve": "deno run -A https://raw.githubusercontent.com/unyt-org/ts-file-server/main/src/run.ts -p tests/network/network-builder -w --minify=false --port 8043"
     },
     "imports": {
-        "@opentf/obj-diff": "jsr:@opentf/obj-diff@^0.11.0",
+        "@opentf/obj-diff": "jsr:@opentf/obj-diff@^0.12.0",
         "example-dxb": "https://raw.githubusercontent.com/unyt-org/speck/refs/heads/main/examples/dxb.json?token",
         "@unyt/speck": "jsr:@unyt/speck@^0.0.11"
     },
