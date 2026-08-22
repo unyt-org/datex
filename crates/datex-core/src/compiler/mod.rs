@@ -981,9 +981,12 @@ fn compile_expression(
                 _ => {
                     // TODO: check if method actually exists
 
-                    compilation_context
-                        .core_context
-                        .write(RegularInstruction::call_method(call.method_name, call.arguments.len() as u8));
+                    compilation_context.core_context.write(
+                        RegularInstruction::call_method(
+                            call.method_name,
+                            call.arguments.len() as u8,
+                        ),
+                    );
 
                     for argument in call.arguments.drain(..) {
                         scope = compile_expression(
@@ -3616,16 +3619,16 @@ pub mod tests {
                         length: 11,
                         injected_variable_count: 0,
                         injected_values: vec![],
-                        body: RegularInstruction::Add.with_children(
-                            instructions!(
+                        body: RegularInstruction::Add
+                            .with_children(instructions!(
                                 RegularInstruction::TakeStackValue(StackIndex(
                                     0
                                 )),
                                 RegularInstruction::TakeStackValue(StackIndex(
                                     1
                                 )),
-                            )
-                        )
+                            ))
+                            .into()
                     }
                 }
             )
@@ -4237,7 +4240,7 @@ pub mod tests {
                 )";
         let result = compile_and_log(script);
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &result,
             (
                 RegularInstruction::unbounded_statements(),
@@ -4256,7 +4259,7 @@ pub mod tests {
         let script = "const x = 10u8; if (true) (x) else (0u8)";
         let result = compile_and_log(script);
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &result,
             (RegularInstruction::statements_with_children(
                 false,
@@ -4282,7 +4285,7 @@ pub mod tests {
         let script = "if (true) (42u8)";
         let result = compile_and_log(script);
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &result,
             (
                 RegularInstruction::unbounded_statements(),
@@ -4309,7 +4312,7 @@ pub mod tests {
                 )";
         let result = compile_and_log(script);
 
-        assert_regular_instructions_equal!(
+        assert_instructions_equal!(
             &result,
             (
                 RegularInstruction::unbounded_statements(),

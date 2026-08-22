@@ -217,16 +217,6 @@ impl RegularInstruction {
         })
     }
 
-    /// Creates an apply instruction with the single variant.
-    pub fn apply_single() -> Self {
-        RegularInstruction::ApplySingle
-    }
-
-    /// Creates an apply instruction with the zero variant.
-    pub fn apply_zero() -> Self {
-        RegularInstruction::ApplyZero
-    }
-
     pub fn jump(offset: i32) -> Self {
         RegularInstruction::Jump(JumpData { offset })
     }
