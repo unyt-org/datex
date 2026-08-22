@@ -4,8 +4,8 @@ use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
-        CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-        DeriveSharedRef, GenericInstantiation, List, Map, PropertyAccess,
+        CreateShared, DatexExpression, DatexExpressionData,
+        GenericInstantiation, GetRef, GetSharedRef, List, Map, PropertyAccess,
         PropertyAssignment, RemoteExecution, RequestSharedRef,
         RootPropertyAccess, StackAssignment, Statements, TagExpression,
         TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
@@ -63,7 +63,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         expr: &mut DatexExpression,
     ) -> Result<(), E> {
         self.before_visit_datex_expression(expr);
-        let visit_result = match &mut *expr.data {
+        let visit_result = match &mut expr.data {
             DatexExpressionData::PropertyAssignment(property_assignment) => {
                 self.visit_property_assignment(property_assignment, &expr.span)
             }
@@ -132,10 +132,10 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                     &expr.span,
                 )
             }
-            DatexExpressionData::DeriveRef(get_ref) => {
+            DatexExpressionData::GetRef(get_ref) => {
                 self.visit_get_ref(get_ref, &expr.span)
             }
-            DatexExpressionData::DeriveSharedRef(get_shared_ref) => {
+            DatexExpressionData::GetSharedRef(get_shared_ref) => {
                 self.visit_get_shared_ref(get_shared_ref, &expr.span)
             }
             DatexExpressionData::CreateShared(create_shared) => {
@@ -217,9 +217,6 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
                 self.visit_get_core_lib_id(core_lib_id, &expr.span)
             }
-            DatexExpressionData::OmitRecursive => {
-                unreachable!("Omit expressions should not be visited")
-            }
         };
 
         let action = match visit_result {
@@ -238,7 +235,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             VisitAction::SkipChildren => Ok(()),
             VisitAction::ToNoop => {
-                *expr.data = DatexExpressionData::Noop;
+                expr.data = DatexExpressionData::Noop;
                 Ok(())
             }
             VisitAction::VisitChildren => {
@@ -506,7 +503,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit create reference expression
     fn visit_get_ref(
         &mut self,
-        create_ref: &mut DeriveRef,
+        create_ref: &mut GetRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
@@ -517,7 +514,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit create shared reference expression
     fn visit_get_shared_ref(
         &mut self,
-        get_shared_ref: &mut DeriveSharedRef,
+        get_shared_ref: &mut GetSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;

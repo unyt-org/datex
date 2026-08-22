@@ -92,8 +92,8 @@ mod tests {
     fn parse_type_declaration() {
         let expr = parse("type myType = true");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclaration {
+            expr.data,
+            DatexExpressionData::TypeDeclaration(TypeDeclaration {
                 id: None,
                 kind: TypeDeclarationKind::Nominal,
                 name: "myType".to_string(),
@@ -108,8 +108,8 @@ mod tests {
     fn parse_type_alias_declaration() {
         let expr = parse("typealias myAlias = false");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclaration {
+            expr.data,
+            DatexExpressionData::TypeDeclaration(TypeDeclaration {
                 id: None,
                 kind: TypeDeclarationKind::Alias,
                 name: "myAlias".to_string(),
@@ -124,8 +124,8 @@ mod tests {
     fn parse_type_declaration_with_variant() {
         let expr = parse("type myType/variantA = null");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclaration {
+            expr.data,
+            DatexExpressionData::TypeDeclaration(TypeDeclaration {
                 id: None,
                 kind: TypeDeclarationKind::Nominal,
                 name: "myType/variantA".to_string(),
@@ -140,8 +140,8 @@ mod tests {
     fn parse_type_declaration_with_generic_parameters() {
         let expr = parse("type myType<T, U> = true");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclaration {
+            expr.data,
+            DatexExpressionData::TypeDeclaration(TypeDeclaration {
                 id: None,
                 kind: TypeDeclarationKind::Nominal,
                 name: "myType".to_string(),
@@ -156,8 +156,8 @@ mod tests {
     fn parse_type_declaration_with_variant_and_generic_parameters() {
         let expr = parse("type myType/variantA<T> = false");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::TypeDeclaration(TypeDeclaration {
+            expr.data,
+            DatexExpressionData::TypeDeclaration(TypeDeclaration {
                 id: None,
                 kind: TypeDeclarationKind::Nominal,
                 name: "myType/variantA".to_string(),

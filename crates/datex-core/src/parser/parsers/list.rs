@@ -57,8 +57,8 @@ mod tests {
     fn parse_empty_list() {
         let expr = parse("[]");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::List(List { items: vec![] })
+            expr.data,
+            DatexExpressionData::List(List { items: vec![] })
         );
     }
 
@@ -66,8 +66,8 @@ mod tests {
     fn parse_simple_list() {
         let expr = parse("[true, false, null]");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::List(List {
+            expr.data,
+            DatexExpressionData::List(List {
                 items: vec![
                     DatexExpressionData::Boolean(true.into())
                         .with_default_span(),
@@ -83,8 +83,8 @@ mod tests {
     fn parse_list_with_trailing_comma() {
         let expr = parse("[true, false, null,]");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::List(List {
+            expr.data,
+            DatexExpressionData::List(List {
                 items: vec![
                     DatexExpressionData::Boolean(true.into())
                         .with_default_span(),
@@ -133,8 +133,8 @@ mod tests {
                 }
             );
             assert_eq!(
-                res.ast.data(),
-                &DatexExpressionData::List(List {
+                res.ast.data,
+                DatexExpressionData::List(List {
                     items: vec![
                         DatexExpressionData::Boolean(true.into())
                             .with_default_span(),
@@ -161,8 +161,8 @@ mod tests {
                 }
             );
             assert_eq!(
-                res.ast.data(),
-                &DatexExpressionData::List(List {
+                res.ast.data,
+                DatexExpressionData::List(List {
                     items: vec![
                         DatexExpressionData::Boolean(true.into())
                             .with_default_span(),

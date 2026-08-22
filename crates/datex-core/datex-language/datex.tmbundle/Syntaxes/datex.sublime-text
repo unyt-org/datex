@@ -9,6 +9,9 @@ contexts:
     - match: '"([^"\\]|\\.)*"'   # Match double-quoted strings, including escaped quotes
       scope: string.quoted.double.datex
 
+    - match: "'([^'\\\\.]|\\\\..)*'"   # Match single-quoted strings, including escaped quotes
+      scope: string.quoted.single.datex
+
     - match: '\b(true|false|null)\b'  # Booleans and null
       scope: constant.language.datex
 
@@ -24,7 +27,7 @@ contexts:
     - match: '\s+'                # Whitespace (ignored)
       scope: text.whitespace.datex
 
-    - match: '\b(var|const|type|if|else|function|procedure|shared|mut)\b'           # Keywords
+    - match: '\b(var|const|type|if|else|function|procedure)\b'           # Keywords
       scope: keyword.control.datex
 
     - match: '//.*$'   # single-line comments

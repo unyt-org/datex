@@ -23,7 +23,6 @@ use crate::{
     prelude::*,
     shared_values::{
         PointerAddress, ReferencedSharedContainer, SharedContainer,
-        shared_container_common::SharedContainerCommon,
     },
     values::value_container::ValueContainer,
 };
@@ -151,7 +150,7 @@ fn compile_injected_values_with_context(
     );
 
     for value_container in injected_values {
-        compilation_context.visit_value_container(value_container, None);
+        compilation_context.visit_value_container(value_container);
     }
 }
 
@@ -207,7 +206,6 @@ fn append_referenced_shared_container(
         );
         compilation_context.visit_value_container(
             referenced_container.value_container().clone(),
-            None,
         );
     } else {
         append_regular_instruction(
@@ -228,13 +226,11 @@ fn append_referenced_shared_container(
 #[cfg(feature = "disassembler")]
 mod tests {
     use crate::{
+        assert_regular_instructions_equal,
         core_compiler::{
             self,
             core_compilation_context::{CompileInput, DXBWithSharedValues},
             value_compiler::InjectedValueValidationError,
-        },
-        disassembler::assertions::{
-            assert_regular_instructions_equal, instructions,
         },
         global::{
             instruction_codes::InstructionCode,
@@ -244,13 +240,14 @@ mod tests {
                     SharedInjectedValueType,
                 },
                 instruction_data::{
-                    InstructionBlockData, Int32Data, ListData, MoveWithValue,
+                    InstructionBlockData, Int32Data, ListData, PerformMoves,
                     SharedRefWithValue, ShortListData, StackIndex,
                     StatementsData, UInt32Data,
                 },
                 regular_instructions::RegularInstruction,
             },
         },
+        instructions,
         prelude::*,
         runtime::{
             pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -515,16 +512,13 @@ mod tests {
                             RegularInstruction::statements_with_children(
                                 false,
                                 instructions!(
-                                    RegularInstruction::PushToStack,
-                                    RegularInstruction::MoveWithValue(
-                                        MoveWithValue {
-                                            mutability: SharedContainerMutability::Immutable,
-                                            previous_address: owned_address
+                                    RegularInstruction::PushListToStack,
+                                    RegularInstruction::PerformMoves(
+                                        PerformMoves {
+                                            pointer_count: 1,
+                                            pointers: vec![(0, owned_address)]
                                         }
                                     ),
-                                    RegularInstruction::Int32(Int32Data(42)),
-                                    RegularInstruction::PushToStack,
-                                    RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
                                     RegularInstruction::list_with_children(
                                         instructions!(
                                             RegularInstruction::TakeStackValue(
@@ -619,6 +613,12 @@ mod tests {
                         // injected values preamble
                         RegularInstruction::PushListToStack,
                         RegularInstruction::statements_with_children(false, instructions!(
+                            RegularInstruction::PushListToStack,
+                            RegularInstruction::PerformMoves(PerformMoves {
+                                pointer_count: 1,
+                                pointers: vec![(0, shared_value1_address)]
+                            }),
+
                             RegularInstruction::PushToStack,
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: shared_value2_address,
@@ -627,19 +627,9 @@ mod tests {
                             }),
                             RegularInstruction::Int32(Int32Data(100)),
 
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::MoveWithValue(MoveWithValue {
-                                mutability: SharedContainerMutability::Immutable,
-                                previous_address: shared_value1_address
-                            }),
-                            RegularInstruction::Int32(Int32Data(42)),
-
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(StackIndex(1)),
-
                             RegularInstruction::list_with_children(instructions!(
-                                RegularInstruction::TakeStackValue(StackIndex(1)),
                                 RegularInstruction::TakeStackValue(StackIndex(0)),
+                                RegularInstruction::TakeStackValue(StackIndex(1)),
                             )),
                         )),
 

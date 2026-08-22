@@ -326,18 +326,10 @@ pub struct GetOrCreateRemoteRefData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct MoveWithValue {
-    pub mutability: SharedContainerMutability,
-    pub previous_address: SelfOwnedPointerAddress,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
-pub struct ConfirmMoves {
+pub struct PerformMoves {
     pub pointer_count: u32,
     #[br(count = pointer_count)]
-    pub address_mappings:
-        Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>,
+    pub pointers: Vec<(u8, SelfOwnedPointerAddress)>, // FIXME: bool instead of u8
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -367,6 +359,15 @@ pub struct ModifySharedContainerValue {
 pub struct ModifyStackValue {
     pub index: StackIndex,
     pub operator: AssignmentOperator,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct Move {
+    pub pointer_count: u32,
+    #[br(count = pointer_count)]
+    pub address_mappings:
+        Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

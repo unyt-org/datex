@@ -14,7 +14,8 @@ use crate::{
 };
 use core::slice::Iter;
 
-pub macro assert_instructions_equal {
+#[macro_export]
+macro_rules! assert_instructions_equal {
     ($dxb:expr, $expected:expr) => {{
         use $crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
         use $crate::disassembler::disassemble_body;
@@ -30,7 +31,8 @@ pub macro assert_instructions_equal {
     }}
 }
 
-pub macro assert_regular_instructions_equal {
+#[macro_export]
+macro_rules! assert_regular_instructions_equal {
     ($dxb:expr, ($($expr:expr),* $(,)?)) => {{
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
         use $crate::disassembler::{InstructionTree};
@@ -42,7 +44,7 @@ pub macro assert_regular_instructions_equal {
             InstructionTree::<Instruction>::from(vec![$(InstructionTree::<Instruction>::from($expr),)*]).flatten_instructions(),
             dxb,
         );
-    }},
+    }};
     ($dxb:expr, $vec:expr $(,)?) => {{
         use $crate::disassembler::assertions::{resolve_instructions, assert_instruction_lists_eq};
         use $crate::disassembler::{InstructionTree};
@@ -80,19 +82,13 @@ pub fn assert_instruction_lists_eq(
     }
 }
 
-/// Resolves the instructions from a DXB byte slice, panicking if there is an error
-/// This is called by the [assert_regular_instructions_equal!] macro to resolve the instructions from the DXB and compare them to the expected instructions
 pub fn resolve_instructions(dxb: &[u8]) -> Vec<Instruction> {
     let (instructions, err) = disassemble_body(
         dxb,
         NestedInstructionResolutionStrategy::ResolveNestedScopesFlat,
     );
     if let Some(err) = err {
-        panic!(
-            "Disassembly error: {}:\n{}",
-            err,
-            disassemble_body_to_string(dxb, DisassemblerOptions::default())
-        );
+        panic!("Parser error: {}", err);
     }
     instructions.flatten()
 }
@@ -185,8 +181,9 @@ impl RegularInstruction {
     }
 }
 
-pub macro instructions {
+#[macro_export]
+macro_rules! instructions {
     ($($expr:expr),* $(,)?) => {vec![
         $($expr.into(),)*
-    ]}
+    ]};
 }

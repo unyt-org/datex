@@ -31,7 +31,6 @@ pub enum InvalidProgramError {
     ExpectedRegularInstruction,
     ExpectedTypeInstruction,
     InvalidCoreLibId(CoreLibIdIndex),
-    InvalidInstructionFormat,
 }
 
 impl Display for InvalidProgramError {
@@ -66,9 +65,6 @@ impl Display for InvalidProgramError {
             }
             InvalidProgramError::InvalidCoreLibId(core_lib_id) => {
                 core::write!(f, "Invalid core library id: {core_lib_id}")
-            }
-            InvalidProgramError::InvalidInstructionFormat => {
-                core::write!(f, "Invalid instruction format")
             }
         }
     }

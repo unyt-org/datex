@@ -6,15 +6,14 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                ApplyData, ConfirmMoves, Float32Data, Float64Data,
-                FloatAsInt16Data, FloatAsInt32Data, InstantData,
-                InstructionBlockData, Int8Data, Int16Data, Int32Data,
-                Int64Data, Int128Data, ListData, MapData,
-                ModifySharedContainerValue, ModifyStackValue, MoveWithValue,
-                SharedRef, SharedRefWithValue, ShortListData, ShortMapData,
-                ShortStatementsData, ShortTextData, StackIndex, StatementsData,
-                TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
-                UInt64Data, UInt128Data, UnboundedStatementsData,
+                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
+                FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
+                Int16Data, Int32Data, Int64Data, Int128Data, ListData, MapData,
+                ModifySharedContainerValue, ModifyStackValue, Move,
+                PerformMoves, SharedRef, SharedRefWithValue, ShortListData,
+                ShortMapData, ShortStatementsData, ShortTextData, StackIndex,
+                StatementsData, TaggedValue, TextData, UInt8Data, UInt16Data,
+                UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -90,7 +89,7 @@ pub enum RegularInstruction {
     List(ListData),
     ShortList(ShortListData),
     Map(MapData),
-    ShortMap(ShortMapData),
+    ShortMap(MapData),
 
     KeyValueDynamic,
     KeyValueShortText(ShortTextData),
@@ -152,9 +151,8 @@ pub enum RegularInstruction {
     SharedRef(SharedRef),
     SharedRefWithValue(SharedRefWithValue), // shared ref with current value (only if caller owns the pointer)
 
-    MoveWithValue(MoveWithValue),
-
-    ConfirmMoves(ConfirmMoves), // confirms moves from old origin to new, containing both addresses
+    PerformMoves(PerformMoves),
+    Move(Move),
 
     PushToStack,
     PushListToStack,
@@ -340,12 +338,10 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::SharedRefWithValue(_) => {
                 InstructionCode::SHARED_REF_WITH_VALUE
             }
-            RegularInstruction::MoveWithValue(_) => {
-                InstructionCode::MOVE_WITH_VALUE
+            RegularInstruction::PerformMoves(_) => {
+                InstructionCode::PERFORM_MOVES
             }
-            RegularInstruction::ConfirmMoves(_) => {
-                InstructionCode::CONFIRM_MOVES
-            }
+            RegularInstruction::Move(_) => InstructionCode::MOVE,
             RegularInstruction::PushToStack => InstructionCode::PUSH_TO_STACK,
             RegularInstruction::PushListToStack => {
                 InstructionCode::PUSH_LIST_TO_STACK
@@ -417,11 +413,8 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(list.element_count)
             } // list elements
 
-            RegularInstruction::ShortMap(map) => {
-                NextExpectedInstructions::Regular(map.element_count as u32)
-            } // map entries
-
-            RegularInstruction::Map(map) => {
+            RegularInstruction::ShortMap(map)
+            | RegularInstruction::Map(map) => {
                 NextExpectedInstructions::Regular(map.element_count)
             } // map entries
 
@@ -548,9 +541,6 @@ impl RegularInstruction {
             RegularInstruction::SharedRefWithValue(_) => {
                 NextExpectedInstructions::Regular(1)
             }
-            RegularInstruction::MoveWithValue(_) => {
-                NextExpectedInstructions::Regular(1)
-            }
             _ => NextExpectedInstructions::None,
         }
     }
@@ -647,9 +637,11 @@ impl RegularInstruction {
             InstructionCode::MAP => {
                 MapData::read(reader).map(RegularInstruction::Map)
             }
-            InstructionCode::SHORT_MAP => {
-                ShortMapData::read(reader).map(RegularInstruction::ShortMap)
-            }
+            InstructionCode::SHORT_MAP => ShortMapData::read(reader)
+                .map(|map| MapData {
+                    element_count: map.element_count as u32,
+                })
+                .map(RegularInstruction::ShortMap),
 
             InstructionCode::STATEMENTS => {
                 StatementsData::read(reader).map(RegularInstruction::Statements)
@@ -819,11 +811,12 @@ impl RegularInstruction {
             InstructionCode::GET_CORE_LIB_VALUE => CoreLibIdIndex::read(reader)
                 .map(RegularInstruction::GetCoreLibValue),
 
-            InstructionCode::MOVE_WITH_VALUE => MoveWithValue::read(reader)
-                .map(RegularInstruction::MoveWithValue),
+            InstructionCode::PERFORM_MOVES => {
+                PerformMoves::read(reader).map(RegularInstruction::PerformMoves)
+            }
 
-            InstructionCode::CONFIRM_MOVES => {
-                ConfirmMoves::read(reader).map(RegularInstruction::ConfirmMoves)
+            InstructionCode::MOVE => {
+                Move::read(reader).map(RegularInstruction::Move)
             }
 
             InstructionCode::MODIFY_STACK_VALUE => {
@@ -1032,15 +1025,14 @@ impl RegularInstruction {
                     shared_ref.container_mutability
                 )
             }
-            RegularInstruction::MoveWithValue(move_with_value) => {
+            RegularInstruction::PerformMoves(perform_move) => {
                 write!(
                     string,
-                    "[mutability: {:?}, previous address: {}]",
-                    move_with_value.mutability,
-                    move_with_value.previous_address
+                    "[pointers: {}]",
+                    perform_move.pointers.iter().map(|(_mut, addr)| addr.to_string()).collect::<Vec<_>>().join(", ")
                 )
             }
-            RegularInstruction::ConfirmMoves(mv) => {
+            RegularInstruction::Move(mv) => {
                 write!(
                     string,
                     "[pointer_count: {}, mappings: {:?}]",

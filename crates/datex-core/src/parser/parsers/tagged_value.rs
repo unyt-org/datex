@@ -36,7 +36,7 @@ impl Parser {
                     )?;
                     DatexExpressionData::Tag(TagExpression {
                         tag,
-                        expression: Some(expression),
+                        expression: Some(Box::new(expression)),
                     })
                     .with_default_span()
                 }
@@ -89,8 +89,8 @@ mod tests {
     fn parse_empty_tag() {
         let expr = parse("#MyTag");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Tag(TagExpression {
+            expr.data,
+            DatexExpressionData::Tag(TagExpression {
                 tag: "MyTag".to_string(),
                 expression: None
             })
@@ -101,11 +101,11 @@ mod tests {
     fn parse_tagged_map() {
         let expr = parse("#MyTag { a: 42u8 }");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Tag(TagExpression {
+            expr.data,
+            DatexExpressionData::Tag(TagExpression {
                 tag: "MyTag".to_string(),
-                expression: Some(
-                    (DatexExpressionData::Map(Map {
+                expression: Some(Box::new(
+                    DatexExpressionData::Map(Map {
                         entries: vec![(
                             DatexExpressionData::Text("a".into())
                                 .with_default_span(),
@@ -115,8 +115,8 @@ mod tests {
                             .with_default_span(),
                         )]
                     })
-                    .with_default_span())
-                )
+                    .with_default_span()
+                ))
             })
         );
     }
@@ -125,11 +125,11 @@ mod tests {
     fn parse_tagged_array() {
         let expr = parse("#MyTag [true, false]");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Tag(TagExpression {
+            expr.data,
+            DatexExpressionData::Tag(TagExpression {
                 tag: "MyTag".to_string(),
-                expression: Some(
-                    (DatexExpressionData::List(List {
+                expression: Some(Box::new(
+                    DatexExpressionData::List(List {
                         items: vec![
                             DatexExpressionData::Boolean(true.into())
                                 .with_default_span(),
@@ -137,8 +137,8 @@ mod tests {
                                 .with_default_span(),
                         ]
                     })
-                    .with_default_span())
-                )
+                    .with_default_span()
+                ))
             })
         );
     }
@@ -147,13 +147,13 @@ mod tests {
     fn parse_tagged_single_value() {
         let expr = parse("#MyTag (42u8)");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Tag(TagExpression {
+            expr.data,
+            DatexExpressionData::Tag(TagExpression {
                 tag: "MyTag".to_string(),
-                expression: Some(
-                    (DatexExpressionData::TypedInteger(TypedInteger::U8(42))
-                        .with_default_span())
-                )
+                expression: Some(Box::new(
+                    DatexExpressionData::TypedInteger(TypedInteger::U8(42))
+                        .with_default_span()
+                ))
             })
         );
     }
@@ -163,13 +163,13 @@ mod tests {
         let expr = parse("[#Tag1 { a: 1u8 }, #Tag2, #Tag3 (42u8)]");
 
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::List(List {
+            expr.data,
+            DatexExpressionData::List(List {
                 items: vec![
                     DatexExpressionData::Tag(TagExpression {
                         tag: "Tag1".to_string(),
-                        expression: Some(
-                            (DatexExpressionData::Map(Map {
+                        expression: Some(Box::new(
+                            DatexExpressionData::Map(Map {
                                 entries: vec![(
                                     DatexExpressionData::Text("a".into())
                                         .with_default_span(),
@@ -179,8 +179,8 @@ mod tests {
                                     .with_default_span(),
                                 )]
                             })
-                            .with_default_span())
-                        )
+                            .with_default_span()
+                        ))
                     })
                     .with_default_span(),
                     DatexExpressionData::Tag(TagExpression {
@@ -190,12 +190,12 @@ mod tests {
                     .with_default_span(),
                     DatexExpressionData::Tag(TagExpression {
                         tag: "Tag3".to_string(),
-                        expression: Some(
-                            (DatexExpressionData::TypedInteger(
+                        expression: Some(Box::new(
+                            DatexExpressionData::TypedInteger(
                                 TypedInteger::U8(42)
                             )
-                            .with_default_span())
-                        )
+                            .with_default_span()
+                        ))
                     })
                     .with_default_span(),
                 ]
@@ -207,21 +207,25 @@ mod tests {
     fn parse_precedence() {
         let expr = parse("#Test (4u8) == 4u8");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::ComparisonOperation(ComparisonOperation {
+            expr.data,
+            DatexExpressionData::ComparisonOperation(ComparisonOperation {
                 operator: ComparisonOperator::StructuralEqual,
-                left: (DatexExpressionData::Tag(TagExpression {
-                    tag: "Test".to_string(),
-                    expression: Some(
-                        (DatexExpressionData::TypedInteger(TypedInteger::U8(
-                            4
+                left: Box::new(
+                    DatexExpressionData::Tag(TagExpression {
+                        tag: "Test".to_string(),
+                        expression: Some(Box::new(
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::U8(4)
+                            )
+                            .with_default_span()
                         ))
-                        .with_default_span())
-                    )
-                })
-                .with_default_span()),
-                right: (DatexExpressionData::TypedInteger(TypedInteger::U8(4))
-                    .with_default_span()),
+                    })
+                    .with_default_span()
+                ),
+                right: Box::new(
+                    DatexExpressionData::TypedInteger(TypedInteger::U8(4))
+                        .with_default_span()
+                ),
             })
         );
     }

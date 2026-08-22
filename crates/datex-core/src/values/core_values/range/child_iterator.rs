@@ -10,13 +10,4 @@ impl<'a> ChildIterator<'a> for Range {
             yield self.end.as_ref();
         }
     }
-
-    fn iter_children_mut(
-        &'a mut self,
-    ) -> impl Iterator<Item = &'a mut ValueContainer> + 'a {
-        gen {
-            yield self.start.as_mut();
-            yield self.end.as_mut();
-        }
-    }
 }

@@ -407,10 +407,6 @@ impl<T> InstructionCollector<T> {
         self.result_collectors.last()
     }
 
-    pub fn last_mut(&mut self) -> Option<&mut ResultCollector<T>> {
-        self.result_collectors.last_mut()
-    }
-
     pub fn take_root_result(&mut self) -> Option<T> {
         self.root_result.take()
     }

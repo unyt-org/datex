@@ -1,5 +1,6 @@
 use alloc::rc::Rc;
 use datex_core::{
+    assert_structural_eq,
     compiler::{CompileOptions, compile_script},
     core_compiler::core_compilation_context::DXBWithSharedValues,
     decompiler::{
@@ -12,7 +13,7 @@ use datex_core::{
             execution_input::ExecutionCallerMetadata,
         },
     },
-    traits::structural_eq::{StructuralEq, assert_structural_eq},
+    traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
         core_values::{decimal::Decimal, integer::Integer, map::Map},

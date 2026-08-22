@@ -6,6 +6,7 @@ use crate::{
         spanned::Spanned,
     },
     parser::{Parser, SpannedParserError, lexer::Token},
+    prelude::*,
 };
 impl Parser {
     pub(crate) fn parse_compile_expression(
@@ -16,7 +17,7 @@ impl Parser {
         let compile_expression = self.parse_expression(0)?;
 
         Ok(DatexExpressionData::Compile(CompileExpression {
-            expression: compile_expression,
+            expression: Box::new(compile_expression),
         })
         .with_span(start..self.get_current_source_position()))
     }
@@ -43,14 +44,16 @@ mod tests {
     fn parse_empty_compile() {
         let expr = parse("compile ()");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Compile(CompileExpression {
-                expression: DatexExpressionData::Statements(Statements {
-                    statements: vec![],
-                    is_terminated: false,
-                    unbounded: None,
-                })
-                .with_default_span()
+            expr.data,
+            DatexExpressionData::Compile(CompileExpression {
+                expression: Box::new(
+                    DatexExpressionData::Statements(Statements {
+                        statements: vec![],
+                        is_terminated: false,
+                        unbounded: None,
+                    })
+                    .with_default_span()
+                )
             })
         );
     }
@@ -59,21 +62,25 @@ mod tests {
     fn parse_compile_with_expression() {
         let expr = parse("compile (1 + 2)");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Compile(CompileExpression {
-                expression: (DatexExpressionData::BinaryOperation(
-                    BinaryOperation {
-                        left: (DatexExpressionData::Integer(Integer::from(1))
-                            .with_default_span()),
+            expr.data,
+            DatexExpressionData::Compile(CompileExpression {
+                expression: Box::new(
+                    DatexExpressionData::BinaryOperation(BinaryOperation {
+                        left: Box::new(
+                            DatexExpressionData::Integer(Integer::from(1))
+                                .with_default_span()
+                        ),
                         operator: BinaryOperator::Arithmetic(
                             ArithmeticOperator::Add
                         ),
-                        right: (DatexExpressionData::Integer(Integer::from(2))
-                            .with_default_span()),
+                        right: Box::new(
+                            DatexExpressionData::Integer(Integer::from(2))
+                                .with_default_span()
+                        ),
                         ty: None,
-                    }
+                    })
+                    .with_default_span()
                 )
-                .with_default_span())
             })
         );
     }
@@ -82,10 +89,12 @@ mod tests {
     fn parse_compile_with_single_literal() {
         let expr = parse("compile 42");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Compile(CompileExpression {
-                expression: (DatexExpressionData::Integer(Integer::from(42))
-                    .with_default_span())
+            expr.data,
+            DatexExpressionData::Compile(CompileExpression {
+                expression: Box::new(
+                    DatexExpressionData::Integer(Integer::from(42))
+                        .with_default_span()
+                )
             })
         );
     }

@@ -84,7 +84,7 @@ impl Parser {
 
         let statements_data = self.parse_statements()?;
 
-        Ok(match statements_data.data() {
+        Ok(match statements_data.data {
             // if statements expression, set span correctly
             DatexExpressionData::Statements(_) => {
                 let full_token_span =
@@ -125,8 +125,8 @@ mod tests {
     fn parse_empty_statements() {
         let expr = parse("()");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            expr.data,
+            DatexExpressionData::Statements(Statements {
                 statements: vec![],
                 is_terminated: false,
                 unbounded: None
@@ -138,8 +138,8 @@ mod tests {
     fn parse_simple_statements() {
         let expr = parse("(true; false; null;)");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            expr.data,
+            DatexExpressionData::Statements(Statements {
                 statements: vec![
                     DatexExpressionData::Boolean(true.into())
                         .with_default_span(),
@@ -157,8 +157,8 @@ mod tests {
     fn parse_simple_unterminated_statements() {
         let expr = parse("(true; false; null)");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            expr.data,
+            DatexExpressionData::Statements(Statements {
                 statements: vec![
                     DatexExpressionData::Boolean(true.into())
                         .with_default_span(),
@@ -176,8 +176,8 @@ mod tests {
     fn parse_statements_with_no_statements_but_terminated() {
         let expr = parse("(;)");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            expr.data,
+            DatexExpressionData::Statements(Statements {
                 statements: vec![],
                 is_terminated: true,
                 unbounded: None,
@@ -188,8 +188,8 @@ mod tests {
     fn parse_statements_with_multiple_semicolons() {
         let expr = parse("(;;true;;; false;; ; null;)");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            expr.data,
+            DatexExpressionData::Statements(Statements {
                 statements: vec![
                     DatexExpressionData::Boolean(true.into())
                         .with_default_span(),
@@ -216,8 +216,8 @@ mod tests {
     fn top_level_statements() {
         let expr = parse("true; false; null;");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            expr.data,
+            DatexExpressionData::Statements(Statements {
                 statements: vec![
                     DatexExpressionData::Boolean(true.into())
                         .with_default_span(),
@@ -234,15 +234,15 @@ mod tests {
     #[test]
     fn top_level_single_statement_unterminated() {
         let expr = parse("true");
-        assert_eq!(expr.data(), &DatexExpressionData::Boolean(true.into()));
+        assert_eq!(expr.data, DatexExpressionData::Boolean(true.into()));
     }
 
     #[test]
     fn top_level_single_statement_terminated() {
         let expr = parse("true;");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            expr.data,
+            DatexExpressionData::Statements(Statements {
                 statements: vec![
                     DatexExpressionData::Boolean(true.into())
                         .with_default_span(),
@@ -257,8 +257,8 @@ mod tests {
     fn top_level_statements_with_shebang() {
         let expr = parse("#!/usr/bin/env datex\ntrue; false;");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Statements(Statements {
+            expr.data,
+            DatexExpressionData::Statements(Statements {
                 statements: vec![
                     DatexExpressionData::Boolean(true.into())
                         .with_default_span(),

@@ -45,7 +45,7 @@ impl Parser {
                     kind,
                     name,
                     type_annotation,
-                    init_expression,
+                    init_expression: Box::new(init_expression),
                 })
                 .with_default_span()
             }
@@ -82,14 +82,16 @@ mod tests {
     fn parse_variable_declaration_var() {
         let expr = parse("var myVar = true");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::VariableDeclaration(VariableDeclaration {
+            expr.data,
+            DatexExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Var,
                 name: "myVar".to_string(),
                 type_annotation: None,
-                init_expression: (DatexExpressionData::Boolean(true.into())
-                    .with_default_span()),
+                init_expression: Box::new(
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
+                ),
             })
         );
     }
@@ -98,14 +100,16 @@ mod tests {
     fn parse_variable_declaration_const() {
         let expr = parse("const myConst = false");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::VariableDeclaration(VariableDeclaration {
+            expr.data,
+            DatexExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Const,
                 name: "myConst".to_string(),
                 type_annotation: None,
-                init_expression: (DatexExpressionData::Boolean(false.into())
-                    .with_default_span()),
+                init_expression: Box::new(
+                    DatexExpressionData::Boolean(false.into())
+                        .with_default_span()
+                ),
             })
         );
     }
@@ -114,8 +118,8 @@ mod tests {
     fn parse_variable_declaration_with_type_annotation() {
         let expr = parse("var myVar: boolean = true");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::VariableDeclaration(VariableDeclaration {
+            expr.data,
+            DatexExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Var,
                 name: "myVar".to_string(),
@@ -123,8 +127,10 @@ mod tests {
                     TypeExpressionData::Identifier("boolean".to_string())
                         .with_default_span()
                 ),
-                init_expression: (DatexExpressionData::Boolean(true.into())
-                    .with_default_span()),
+                init_expression: Box::new(
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
+                ),
             })
         );
     }
@@ -133,8 +139,8 @@ mod tests {
     fn parse_variable_declaration_with_complex_type_annotation() {
         let expr = parse("const myConst: integer|text = true");
         assert_eq!(
-            expr.data(),
-            &DatexExpressionData::VariableDeclaration(VariableDeclaration {
+            expr.data,
+            DatexExpressionData::VariableDeclaration(VariableDeclaration {
                 id: None,
                 kind: VariableKind::Const,
                 name: "myConst".to_string(),
@@ -147,8 +153,10 @@ mod tests {
                     ]))
                     .with_default_span()
                 ),
-                init_expression: (DatexExpressionData::Boolean(true.into())
-                    .with_default_span()),
+                init_expression: Box::new(
+                    DatexExpressionData::Boolean(true.into())
+                        .with_default_span()
+                ),
             })
         );
     }

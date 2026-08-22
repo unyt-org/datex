@@ -26,7 +26,7 @@ pub mod value_id;
 use crate::{
     prelude::*,
     types::{r#type::Type, type_definition::callable::CallableKind},
-    values::core_values::{callable::CoreStub, endpoint::Endpoint},
+    values::core_values::callable::CoreStub,
 };
 use indexmap::IndexMap;
 use log::info;
@@ -54,7 +54,6 @@ impl Default for CoreLibraryValues {
                     yeet_type: None,
                 },
                 CallableBody::Native(Self::print_impl),
-                Endpoint::LOCAL,
             ),
             panic: Value::callable(
                 Some("panic".to_string()),
@@ -69,7 +68,6 @@ impl Default for CoreLibraryValues {
                     yeet_type: None,
                 },
                 CallableBody::CoreStub(CoreStub::Panic),
-                Endpoint::LOCAL,
             ),
         }
     }

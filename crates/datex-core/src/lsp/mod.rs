@@ -182,7 +182,7 @@ impl LanguageServer for LanguageServerBackend {
             .get_expression_at_position(&params.text_document_position_params);
 
         if let Some(expression) = expression {
-            Ok(match *expression.data {
+            Ok(match expression.data {
                 // show variable type info on hover
                 DatexExpressionData::VariableDeclaration(
                     VariableDeclaration {
@@ -302,7 +302,7 @@ impl LanguageServer for LanguageServerBackend {
         let expression = self
             .get_expression_at_position(&params.text_document_position_params);
         if let Some(expression) = expression {
-            match *expression.data {
+            match expression.data {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id,
                     name: _,

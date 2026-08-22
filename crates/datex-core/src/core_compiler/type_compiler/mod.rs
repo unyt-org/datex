@@ -21,6 +21,7 @@ mod tests {
     use binrw::BinRead;
 
     use crate::{
+        assert_instructions_equal,
         core_compiler::{
             core_compilation_context::{
                 ByteCursor, default_compile_input,
@@ -30,7 +31,6 @@ mod tests {
             to_instructions::ToInstructions,
             value_compiler::compile_value,
         },
-        disassembler::assertions::assert_instructions_equal,
         global::protocol_structures::{
             instructions::Instruction,
             regular_instructions::RegularInstruction,

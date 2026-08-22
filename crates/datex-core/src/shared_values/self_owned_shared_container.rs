@@ -1,5 +1,5 @@
 use crate::{
-    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         ExternalSharedContainer, RemotePointerAddress, SelfOwnedPointerAddress,
         base_shared_value_container::BaseSharedValueContainer,
@@ -18,18 +18,6 @@ pub struct SelfOwnedSharedContainer {
 impl SelfOwnedSharedContainer {
     /// Creates a new [SelfOwnedSharedContainer]
     pub fn new(
-        shared_value_container: BaseSharedValueContainer,
-        self_owned_pointer_address_provider: &mut SelfOwnedPointerAddressProvider,
-    ) -> Self {
-        SelfOwnedSharedContainer {
-            value: shared_value_container,
-            address: self_owned_pointer_address_provider
-                .get_new_self_owned_address(),
-        }
-    }
-
-    /// Creates a new [SelfOwnedSharedContainer]
-    pub unsafe fn new_with_address(
         shared_value_container: BaseSharedValueContainer,
         address: SelfOwnedPointerAddress,
     ) -> Self {
@@ -64,7 +52,14 @@ impl SelfOwnedSharedContainer {
     pub unsafe fn convert_to_external_container(
         self,
         remote_address: RemotePointerAddress,
+        memory: &SharedReferencesCache,
     ) -> ExternalSharedContainer {
-        unsafe { ExternalSharedContainer::new(self.value, remote_address) }
+        unsafe {
+            ExternalSharedContainer::create_external_shared_container(
+                self.value,
+                remote_address,
+                memory,
+            )
+        }
     }
 }

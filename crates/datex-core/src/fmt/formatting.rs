@@ -26,7 +26,7 @@ impl<'a> Formatter<'a> {
         expr: &'a DatexExpression,
     ) -> Format<'a> {
         let a = &self.alloc;
-        match expr.data() {
+        match &expr.data {
             DatexExpressionData::Integer(i) => a.as_string(i),
             DatexExpressionData::TypedInteger(ti) => {
                 self.typed_integer_to_source_code(ti, &expr.span)
@@ -44,13 +44,13 @@ impl<'a> Formatter<'a> {
             ),
             DatexExpressionData::Map(map) => self.map_to_source_code(map),
             DatexExpressionData::List(list) => self.list_to_source_code(list),
-            DatexExpressionData::DeriveRef(create_ref) => {
+            DatexExpressionData::GetRef(create_ref) => {
                 (match create_ref.mutability {
                     LocalReferenceMutability::Immutable => a.text("&"),
                     LocalReferenceMutability::Mutable => a.text("&mut "),
                 }) + self.format_datex_expression(&create_ref.expression)
             }
-            DatexExpressionData::DeriveSharedRef(create_shared_ref) => {
+            DatexExpressionData::GetSharedRef(create_shared_ref) => {
                 (match create_shared_ref.mutability {
                     ReferenceMutability::Immutable => a.text("'"),
                     ReferenceMutability::Mutable => a.text("'mut "),

@@ -27,7 +27,6 @@ use crate::{
     runtime::{
         Runtime, RuntimeConfig, RuntimeConfigInterface,
         cache::shared_references_cache::SharedReferencesCache,
-        confirm_moves::compile_request_moves,
         execution::{
             ExecutionError, InvalidProgramError,
             context::{
@@ -38,6 +37,7 @@ use crate::{
         },
         pointer_address_provider::SelfOwnedPointerAddressProvider,
         pointer_availability_lookup::PointerAvailabilityLookup,
+        request_move::compile_request_move,
     },
     shared_values::{
         OwnedSharedContainer, PointerAddress, RemotePointerAddress,
@@ -82,6 +82,14 @@ pub struct RuntimeInternal {
     /// active execution contexts, stored by context_id
     execution_contexts:
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
+
+    /// list of currently owned shared values that were approved to be transfered to another endpoint
+    moving_pointers: RefCell<
+        HashMap<
+            Endpoint,
+            HashMap<SelfOwnedPointerAddress, OwnedSharedContainer>,
+        >,
+    >,
 
     pointer_availability_lookup: RefCell<PointerAvailabilityLookup>,
 }
@@ -135,6 +143,7 @@ impl RuntimeInternal {
                 incoming_sections_receiver,
             ),
             execution_contexts: RefCell::new(HashMap::new()),
+            moving_pointers: RefCell::new(HashMap::new()),
             transceiver_counter: RefCell::new(0),
             pointer_availability_lookup: RefCell::new(
                 pointer_availability_lookup,
@@ -567,7 +576,7 @@ impl RuntimeInternal {
         }
     }
 
-    /// Registers a list of shared containers for a list of endpoints to subscribe.
+    /// Registers a list of shared containers for a list of endpoints.
     /// The caller must ensure that endpoints is not empty.
     pub unsafe fn register_shared_containers_for_endpoints(
         &self,
@@ -578,8 +587,22 @@ impl RuntimeInternal {
             panic!("endpoints must not be empty");
         }
 
-        for _shared_container in shared_containers {
-            // TODO: Subscribe
+        for shared_container in shared_containers {
+            match shared_container {
+                SharedContainer::Owned(owned_shared_container) => {
+                    if endpoints.len() == 1 {
+                        self.add_moving_shared_container(
+                            endpoints[0].clone(),
+                            owned_shared_container,
+                        );
+                    } else {
+                        return Err(());
+                    }
+                }
+                SharedContainer::Referenced(_referenced_shared_container) => {
+                    // TODO: Subscribe
+                }
+            }
         }
 
         Ok(())
@@ -605,7 +628,7 @@ impl RuntimeInternal {
                 )
             })
             .collect::<Vec<_>>();
-        let body = compile_request_moves(
+        let body = compile_request_move(
             pointer_mapping
                 .iter()
                 .map(|((_, original), new)| (original.clone(), new.clone()))
@@ -626,10 +649,6 @@ impl RuntimeInternal {
             )
             .await?;
 
-        /**
-         * MOVE $abab [1,2,#3] // {mut}
-         * CONFIRM_MOVES [$a -> $b, ...]
-         */
         // moved values should be list
         match moved_values {
             Some(ValueContainer::Local(Value {
@@ -658,6 +677,22 @@ impl RuntimeInternal {
         }
     }
 
+    /// Adds a pointer that is approved for move to a specific endpoint
+    /// Returns an error if any moving shared container is not an owned pointer
+    pub(crate) fn add_moving_shared_container(
+        &self,
+        new_owner: Endpoint,
+        moving_owned_container: OwnedSharedContainer,
+    ) {
+        let address = moving_owned_container.pointer_address().clone();
+
+        self.moving_pointers
+            .borrow_mut()
+            .entry(new_owner)
+            .or_default()
+            .insert(address, moving_owned_container);
+    }
+
     pub(crate) fn handle_pointer_move_to_remote(
         self: Rc<RuntimeInternal>,
         from_endpoint: &Endpoint,
@@ -666,33 +701,39 @@ impl RuntimeInternal {
             SelfOwnedPointerAddress,
         )>,
         memory: &SharedReferencesCache,
-    ) -> Result<(), ExecutionError> {
-        pointer_mapping
-            .into_iter()
-            .try_for_each(|(original_address, new)| {
-                let new_address = PointerAddress::Remote(
-                    RemotePointerAddress::for_endpoint(from_endpoint, &new),
-                );
+    ) -> Result<Vec<ValueContainer>, ExecutionError> {
+        let mut pointer_borrow = self.moving_pointers.borrow_mut();
+        let moving_pointers = pointer_borrow
+            .get_mut(from_endpoint)
+            .ok_or(ExecutionError::UnauthorizedMove)?;
 
-                // not allowed if new pointer address already in memory
-                if memory.has_reference(&new_address) {
-                    return Err(ExecutionError::InvalidMove);
-                }
+        let values = pointer_mapping
+            .into_iter()
+            .map(|(original_address, new)| {
+                let new_address =
+                    RemotePointerAddress::for_endpoint(from_endpoint, &new);
+                let shared_container = moving_pointers
+                    .remove(&original_address)
+                    .ok_or(ExecutionError::UnauthorizedMove)?;
+
+                let value = shared_container.value_container().clone();
 
                 // make sure external pointer does not already exist in memory
-                if let Some(reference) = memory
-                    .get_reference(&PointerAddress::SelfOwned(original_address))
+                if memory
+                    .has_reference(&PointerAddress::Remote(new_address.clone()))
                 {
+                    return Err(ExecutionError::InvalidMove);
+                } else {
                     // Note: safe because we checked before if address is already in memory
                     unsafe {
-                        reference.change_address(new_address);
+                        shared_container.move_to_remote(new_address, memory);
                     }
-                } else {
-                    return Err(ExecutionError::InvalidMove);
                 }
 
-                Ok(())
+                Ok(value)
             })
+            .collect::<Result<Vec<_>, ExecutionError>>()?;
+        Ok(values)
     }
 
     pub fn get_env(&self) -> HashMap<String, String> {

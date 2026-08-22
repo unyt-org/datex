@@ -31,8 +31,8 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, DatexExpression, DatexExpressionData,
-                DeriveRef, Statements, ValueAccessType, VariableAccess,
+                BinaryOperation, DatexExpression, DatexExpressionData, GetRef,
+                Statements, ValueAccessType, VariableAccess,
             },
             type_expressions::{TypeExpression, TypeExpressionData},
         },
@@ -99,7 +99,7 @@ mod tests {
         }
         fn visit_get_ref(
             &mut self,
-            create_ref: &mut DeriveRef,
+            create_ref: &mut GetRef,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::VisitChildren)
@@ -111,13 +111,11 @@ mod tests {
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::Replace(DatexExpression {
-                data: Box::new(DatexExpressionData::VariableAccess(
-                    VariableAccess {
-                        id: 0,
-                        name: identifier.clone(),
-                        access_type: ValueAccessType::MoveOrCopy,
-                    },
-                )),
+                data: DatexExpressionData::VariableAccess(VariableAccess {
+                    id: 0,
+                    name: identifier.clone(),
+                    access_type: ValueAccessType::MoveOrCopy,
+                }),
                 span: span.clone(),
                 ty: None,
             }))
@@ -153,40 +151,36 @@ mod tests {
     #[test]
     fn test() {
         let mut ast = DatexExpression {
-            data: Box::new(DatexExpressionData::Statements(Statements {
+            data: DatexExpressionData::Statements(Statements {
                 statements: vec![DatexExpression {
-                    data: Box::new(DatexExpressionData::BinaryOperation(
+                    data: DatexExpressionData::BinaryOperation(
                         BinaryOperation {
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add,
                             ),
-                            left: (DatexExpression {
-                                data: Box::new(
-                                    DatexExpressionData::Identifier(
-                                        "x".to_string(),
-                                    ),
+                            left: Box::new(DatexExpression {
+                                data: DatexExpressionData::Identifier(
+                                    "x".to_string(),
                                 ),
                                 span: 0..1,
                                 ty: None,
                             }),
-                            right: (DatexExpression {
-                                data: Box::new(
-                                    DatexExpressionData::Identifier(
-                                        "y".to_string(),
-                                    ),
+                            right: Box::new(DatexExpression {
+                                data: DatexExpressionData::Identifier(
+                                    "y".to_string(),
                                 ),
                                 span: 2..3,
                                 ty: None,
                             }),
                             ty: None,
                         },
-                    )),
+                    ),
                     span: 0..3,
                     ty: None,
                 }],
                 is_terminated: true,
                 unbounded: None,
-            })),
+            }),
             span: 1..2,
             ty: None,
         };

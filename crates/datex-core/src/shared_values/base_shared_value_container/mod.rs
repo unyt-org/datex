@@ -147,11 +147,11 @@ impl Display for BaseSharedValueContainer {
         write!(
             f,
             "shared {}{}",
+            self.value_container,
             match &self.mutability {
                 SharedContainerMutability::Mutable => "mut ",
                 SharedContainerMutability::Immutable => "",
-            },
-            self.value_container,
+            }
         )
     }
 }

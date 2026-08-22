@@ -1,5 +1,9 @@
-use crate::shared_values::{
-    RemotePointerAddress, base_shared_value_container::BaseSharedValueContainer,
+use crate::{
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::{
+        PointerAddress, RemotePointerAddress,
+        base_shared_value_container::BaseSharedValueContainer,
+    },
 };
 
 /// A shared container with an external pointer
@@ -14,10 +18,17 @@ impl ExternalSharedContainer {
     /// Create a new [ExternalSharedContainer] with a given [RemotePointerAddress].
     /// # Safety
     /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [SharedReferencesCache]
-    pub unsafe fn new(
+    pub unsafe fn create_external_shared_container(
         shared_value_container: BaseSharedValueContainer,
         address: RemotePointerAddress,
+        memory: &SharedReferencesCache,
     ) -> ExternalSharedContainer {
+        if memory.has_reference(&PointerAddress::Remote(address.clone())) {
+            panic!(
+                "Cannot create ExternalSharedContainer with address that already exists in memory"
+            );
+        }
+
         ExternalSharedContainer {
             value: shared_value_container,
             address,

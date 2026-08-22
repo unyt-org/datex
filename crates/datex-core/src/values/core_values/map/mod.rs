@@ -23,7 +23,7 @@ use core::{
 mod child_iterator;
 pub mod serde_dif;
 
-use indexmap::{IndexMap, map::MutableKeys};
+use indexmap::IndexMap;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Map {
@@ -380,52 +380,6 @@ impl Display for BorrowedMapKey<'_> {
     }
 }
 
-pub enum BorrowedMutMapKey<'a> {
-    Text(&'a mut str),
-    Value(&'a mut ValueContainer),
-}
-
-impl<'a> From<&'a mut MapKey> for BorrowedMutMapKey<'a> {
-    fn from(key: &'a mut MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => BorrowedMutMapKey::Text(text),
-            MapKey::Value(value) => BorrowedMutMapKey::Value(value),
-        }
-    }
-}
-
-impl<'a> From<BorrowedMutMapKey<'a>> for ValueContainer {
-    fn from(key: BorrowedMutMapKey) -> Self {
-        match key {
-            BorrowedMutMapKey::Text(text) => {
-                ValueContainer::Local(Value::from(text as &_))
-            }
-            BorrowedMutMapKey::Value(value) => value.clone(),
-        }
-    }
-}
-
-impl Hash for BorrowedMutMapKey<'_> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            BorrowedMutMapKey::Text(text) => text.hash(state),
-            BorrowedMutMapKey::Value(value) => value.hash(state),
-        }
-    }
-}
-
-impl Display for BorrowedMutMapKey<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            // TODO #331: escape string
-            BorrowedMutMapKey::Text(string) => {
-                core::write!(f, "\"{}\"", string)
-            }
-            BorrowedMutMapKey::Value(value) => core::write!(f, "{value}"),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum MapKey {
     Text(String),
@@ -515,13 +469,13 @@ impl<'a> Iterator for MapIterator<'a> {
 }
 
 pub enum MapMutIterator<'a> {
-    Dynamic(indexmap::map::IterMut2<'a, ValueContainer, ValueContainer>),
+    Dynamic(indexmap::map::IterMut<'a, ValueContainer, ValueContainer>),
     Fixed(core::slice::IterMut<'a, (ValueContainer, ValueContainer)>),
     Structural(core::slice::IterMut<'a, (String, ValueContainer)>),
 }
 
 impl<'a> Iterator for MapMutIterator<'a> {
-    type Item = (BorrowedMutMapKey<'a>, &'a mut ValueContainer);
+    type Item = (BorrowedMapKey<'a>, &'a mut ValueContainer);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -530,8 +484,8 @@ impl<'a> Iterator for MapMutIterator<'a> {
                     ValueContainer::Local(Value {
                         inner: CoreValue::Text(text),
                         ..
-                    }) => BorrowedMutMapKey::Text(&mut text.0),
-                    _ => BorrowedMutMapKey::Value(k),
+                    }) => BorrowedMapKey::Text(&text.0),
+                    _ => BorrowedMapKey::Value(k),
                 };
                 (key, v)
             }),
@@ -540,51 +494,67 @@ impl<'a> Iterator for MapMutIterator<'a> {
                     ValueContainer::Local(Value {
                         inner: CoreValue::Text(text),
                         ..
-                    }) => BorrowedMutMapKey::Text(&mut text.0),
-                    _ => BorrowedMutMapKey::Value(k),
+                    }) => BorrowedMapKey::Text(&text.0),
+                    _ => BorrowedMapKey::Value(k),
                 };
                 (key, v)
             }),
-            MapMutIterator::Structural(iter) => {
-                iter.next().map(|(k, v)| (BorrowedMutMapKey::Text(k), v))
-            }
+            MapMutIterator::Structural(iter) => iter
+                .next()
+                .map(|(k, v)| (BorrowedMapKey::Text(k.as_str()), v)),
         }
     }
 }
 
-pub enum IntoMapIterator {
-    Dynamic(indexmap::map::IntoIter<ValueContainer, ValueContainer>),
-    Fixed(vec::IntoIter<(ValueContainer, ValueContainer)>),
-    Structural(vec::IntoIter<(String, ValueContainer)>),
+pub struct IntoMapIterator {
+    map: Map,
+    index: usize,
 }
 
 impl Iterator for IntoMapIterator {
     type Item = (MapKey, ValueContainer);
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            IntoMapIterator::Dynamic(iter) => iter.next().map(|(k, v)| {
-                let key = match k {
-                    ValueContainer::Local(Value {
-                        inner: CoreValue::Text(text),
-                        ..
-                    }) => MapKey::Text(text.0),
-                    _ => MapKey::Value(k),
-                };
-                (key, v)
-            }),
-            IntoMapIterator::Fixed(iter) => iter.next().map(|(k, v)| {
-                let key = match k {
-                    ValueContainer::Local(Value {
-                        inner: CoreValue::Text(text),
-                        ..
-                    }) => MapKey::Text(text.0),
-                    _ => MapKey::Value(k),
-                };
-                (key, v)
-            }),
-            IntoMapIterator::Structural(iter) => {
-                iter.next().map(|(k, v)| (MapKey::Text(k), v))
+        // TODO #332: optimize to avoid cloning keys and values
+        match &self.map {
+            Map::Dynamic(map) => {
+                let item = map.iter().nth(self.index);
+                self.index += 1;
+                item.map(|(k, v)| {
+                    let key = match k {
+                        ValueContainer::Local(Value {
+                            inner: CoreValue::Text(text),
+                            ..
+                        }) => MapKey::Text(text.0.clone()),
+                        _ => MapKey::Value(k.clone()),
+                    };
+                    (key, v.clone())
+                })
+            }
+            Map::Structural(vec) => {
+                if self.index < vec.len() {
+                    let item = &vec[self.index];
+                    self.index += 1;
+                    let key = match &item.0 {
+                        ValueContainer::Local(Value {
+                            inner: CoreValue::Text(text),
+                            ..
+                        }) => MapKey::Text(text.0.clone()),
+                        _ => MapKey::Value(item.0.clone()),
+                    };
+                    Some((key, item.1.clone()))
+                } else {
+                    None
+                }
+            }
+            Map::StructuralWithStringKeys(vec) => {
+                if self.index < vec.len() {
+                    let item = &vec[self.index];
+                    self.index += 1;
+                    Some((MapKey::Text(item.0.clone()), item.1.clone()))
+                } else {
+                    None
+                }
             }
         }
     }
@@ -627,23 +597,20 @@ impl IntoIterator for Map {
     type IntoIter = IntoMapIterator;
 
     fn into_iter(self) -> Self::IntoIter {
-        match self {
-            Map::Dynamic(map) => IntoMapIterator::Dynamic(map.into_iter()),
-            Map::Structural(vec) => IntoMapIterator::Fixed(vec.into_iter()),
-            Map::StructuralWithStringKeys(vec) => {
-                IntoMapIterator::Structural(vec.into_iter())
-            }
+        IntoMapIterator {
+            map: self,
+            index: 0,
         }
     }
 }
 
 impl<'a> IntoIterator for &'a mut Map {
-    type Item = (BorrowedMutMapKey<'a>, &'a mut ValueContainer);
+    type Item = (BorrowedMapKey<'a>, &'a mut ValueContainer);
     type IntoIter = MapMutIterator<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            Map::Dynamic(map) => MapMutIterator::Dynamic(map.iter_mut2()),
+            Map::Dynamic(map) => MapMutIterator::Dynamic(map.iter_mut()),
             Map::Structural(vec) => MapMutIterator::Fixed(vec.iter_mut()),
             Map::StructuralWithStringKeys(vec) => {
                 MapMutIterator::Structural(vec.iter_mut())

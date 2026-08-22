@@ -170,12 +170,16 @@ pub async fn execute_dxb(
                     InterruptResult::ResolvedValues(moved_values),
                 );
             }
-            ExternalExecutionInterrupt::ConfirmMoves(address_mapping) => {
-                runtime.internal.clone().handle_pointer_move_to_remote(
-                    &caller_metadata.endpoint,
-                    address_mapping,
-                    &runtime.memory().borrow(),
-                )?;
+            ExternalExecutionInterrupt::Move(address_mapping) => {
+                let moved_values =
+                    runtime.internal.clone().handle_pointer_move_to_remote(
+                        &caller_metadata.endpoint,
+                        address_mapping,
+                        &runtime.memory().borrow(),
+                    )?;
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValues(moved_values),
+                );
             }
         }
     }
@@ -234,9 +238,11 @@ fn get_local_pointer_value(
 mod tests {
     use super::*;
     use crate::{
+        assert_structural_eq, assert_value_eq,
         collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         core_compiler::core_compilation_context::DXBWithSharedValues,
+        datex_list,
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
         runtime::{
@@ -250,12 +256,8 @@ mod tests {
             OwnedSharedContainer, ReferencedSharedContainer, SharedContainer,
             SharedContainerInner, SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
-            shared_container_common::SharedContainerCommon,
         },
-        traits::{
-            structural_eq::{StructuralEq, assert_structural_eq},
-            value_eq::{ValueEq, assert_value_eq},
-        },
+        traits::{structural_eq::StructuralEq, value_eq::ValueEq},
         types::{
             r#type::Type,
             type_definition::{
@@ -268,7 +270,7 @@ mod tests {
                 decimal::Decimal,
                 endpoint::Endpoint,
                 integer::{Integer, typed_integer::TypedInteger},
-                list::{List, datex_list},
+                list::List,
                 map::Map,
             },
             value::Value,
@@ -749,7 +751,7 @@ mod tests {
             "const x = 'mut shared mut 42; x",
         );
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
-            container.container_mutability() == SharedContainerMutability::Mutable &&
+            container.container_mutability().clone() == SharedContainerMutability::Mutable &&
             container.reference_mutability() == ReferenceMutability::Mutable
         );
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
@@ -761,7 +763,7 @@ mod tests {
             "const x = 'shared mut 42; x",
         );
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
-            container.container_mutability() == SharedContainerMutability::Mutable &&
+            container.container_mutability().clone() == SharedContainerMutability::Mutable &&
             container.reference_mutability() == ReferenceMutability::Immutable
         );
 

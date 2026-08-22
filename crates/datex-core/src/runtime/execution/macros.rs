@@ -49,6 +49,7 @@ macro_rules! interrupt_with_values {
         }
     }};
 }
+pub(crate) use interrupt_with_values;
 
 /// Unwrap a Result expression, yielding an error if it is an Err variant
 /// This is similar to the `?` operator but works within generator functions

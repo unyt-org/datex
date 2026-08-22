@@ -17,17 +17,6 @@ pub enum ValueKey {
     Index(i64),
     Value(ValueContainer),
 }
-impl Display for ValueKey {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            ValueKey::Text(text) => core::write!(f, "{}", text),
-            ValueKey::Index(index) => core::write!(f, "{}", index),
-            ValueKey::Value(value_container) => {
-                core::write!(f, "{}", value_container)
-            }
-        }
-    }
-}
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
     type Value = ValueKey;
