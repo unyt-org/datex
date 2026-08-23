@@ -116,6 +116,7 @@ use crate::{
     values::core_values::callable::DatexBytecodeCallable,
 };
 use collected_execution_result::CollectedExecutionResult;
+use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -839,7 +840,7 @@ pub gen fn inner_execution_loop(
                                             regular_instruction,
                                         ),
                                         value_container, // TODO #646: is unary operation supposed to take ownership?
-                                        state.runtime.shared_references_cache(),
+                                        state.runtime.shared_references_cache_refcell(),
                                     )?;
                                     RuntimeValue::ValueContainer(
                                         res
@@ -1075,8 +1076,11 @@ pub gen fn inner_execution_loop(
                                         let collapsed_value = target.collapsed_value();
                                         collapsed_value.borrow().try_get_property(
                                             &property_name,
-                                        ).map(|v| v.into())
-                                            .map_err(ExecutionError::access_error)? // FIXME: no clone?
+                                            state.runtime.shared_references_cache_mut().deref_mut(),
+                                        )
+                                            .map(BorrowedValueContainer::try_clone_to_value_container)  // FIXME: no clone?
+                                            .map_err(ExecutionError::access_error)?
+                                            .map_err(|_| ExecutionError::UnclonableValue)?
                                     };
 
                                     res.into()
@@ -1091,10 +1095,13 @@ pub gen fn inner_execution_loop(
 
                                     let value_container = target.as_value_container(&state.stack)?;
                                     let collapsed_value = value_container.collapsed_value();
-                                    let res = collapsed_value.borrow().try_get_property(
-                                        property_index,
-                                    ).map(ValueContainer::from)
-                                        .map_err(ExecutionError::access_error)?; // FIXME: no clone?
+                                    let res = collapsed_value.borrow()
+                                        .try_get_property(
+                                            property_index, state.runtime.shared_references_cache_mut().deref_mut()
+                                        )
+                                        .map(BorrowedValueContainer::try_clone_to_value_container) // FIXME: no clone?
+                                        .map_err(ExecutionError::access_error)?
+                                        .map_err(|_| ExecutionError::UnclonableValue)?; 
                                     res.into()
                                 }
 
@@ -1106,8 +1113,11 @@ pub gen fn inner_execution_loop(
 
                                     let value_container = target.as_value_container(&state.stack)?;
                                     let collapsed_value = value_container.collapsed_value();
-                                    let res = collapsed_value.borrow().try_get_property(&key).map(ValueContainer::from)
-                                        .map_err(ExecutionError::access_error)?; // FIXME: no clone?
+                                    let res = collapsed_value.borrow()
+                                        .try_get_property(&key, state.runtime.shared_references_cache_mut().deref_mut())
+                                        .map(BorrowedValueContainer::try_clone_to_value_container)  // FIXME: no clone?
+                                        .map_err(ExecutionError::access_error)?
+                                        .map_err(|_| ExecutionError::UnclonableValue)?;
 
                                     res.into()
                                 }
@@ -1708,7 +1718,7 @@ fn create_new_reference_from_value(
     container_mutability: SharedContainerMutability,
     ref_mutability: ReferenceMutability,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
-    let memory = &mut runtime.shared_references_cache().borrow_mut();
+    let memory = &mut runtime.shared_references_cache_refcell().borrow_mut();
 
     if let Some(reference) = memory.get_reference(pointer_address) {
         return Ok(reference.clone());
@@ -1767,7 +1777,7 @@ fn resolve_cache_value(
     else {
         if let Some(reference) = state
             .runtime
-            .shared_references_cache()
+            .shared_references_cache_refcell()
             .borrow()
             .get_reference(pointer_address)
         {

@@ -1,4 +1,10 @@
+use num_traits::ToPrimitive;
+use crate::datex_proxy::TryFromDatexValueError;
 use crate::traits::value_access::ValueAccess;
+use crate::utils::goat::Goat;
+use crate::utils::goat_mut::GoatMut;
+use crate::values::core_values::integer::typed_integer::TypedInteger;
+use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
@@ -106,3 +112,77 @@ impl ValueAccess for i64 {}
 impl ValueAccess for i128 {}
 impl ValueAccess for usize {}
 impl ValueAccess for isize {}
+
+
+macro_rules! impl_try_from_borrowed_integer_goat {
+    ($(($ty:ty, $borrow_as:ident, $borrow_mut_as:ident)),* $(,)?) => {
+        $(
+            impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, $ty> {
+                type Error = TryFromDatexValueError;
+
+                fn try_from(
+                    value: BorrowedCoreValue<'a>,
+                ) -> Result<Self, Self::Error> {
+                    match value {
+                        BorrowedCoreValue::TypedInteger(value) => {
+                            value
+                                .filter_map(|v| v.$borrow_as())
+                                .ok_or_else(|| {
+                                    TryFromDatexValueError(
+                                        format!(
+                                            "Cannot cast value to {}",
+                                            stringify!($ty)
+                                        )
+                                    )
+                                })
+                        }
+                        _ => Err(TryFromDatexValueError(format!(
+                            "Cannot cast BorrowedCoreValue to {}",
+                            stringify!($ty)
+                        ))),
+                    }
+                }
+            }
+
+            impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, $ty> {
+                type Error = TryFromDatexValueError;
+
+                fn try_from(
+                    value: BorrowedCoreValueMut<'a>,
+                ) -> Result<Self, Self::Error> {
+                    match value {
+                        BorrowedCoreValueMut::TypedInteger(value) => {
+                            value
+                                .filter_map(|v| v.$borrow_mut_as())
+                                .ok_or_else(|| {
+                                    TryFromDatexValueError(
+                                        format!(
+                                            "Cannot cast value to {}",
+                                            stringify!($ty)
+                                        )
+                                    )
+                                })
+                        }
+                        _ => Err(TryFromDatexValueError(format!(
+                            "Cannot cast BorrowedCoreValueMut to {}",
+                            stringify!($ty)
+                        ))),
+                    }
+                }
+            }
+        )*
+    };
+}
+
+impl_try_from_borrowed_integer_goat!(
+    (i8,    borrow_as_i8,    borrow_mut_as_i8),
+    (i16,   borrow_as_i16,   borrow_mut_as_i16),
+    (i32,   borrow_as_i32,   borrow_mut_as_i32),
+    (i64,   borrow_as_i64,   borrow_mut_as_i64),
+    (i128,  borrow_as_i128,  borrow_mut_as_i128),
+    (u8,    borrow_as_u8,    borrow_mut_as_u8),
+    (u16,   borrow_as_u16,   borrow_mut_as_u16),
+    (u32,   borrow_as_u32,   borrow_mut_as_u32),
+    (u64,   borrow_as_u64,   borrow_mut_as_u64),
+    (u128,  borrow_as_u128,  borrow_mut_as_u128),
+);

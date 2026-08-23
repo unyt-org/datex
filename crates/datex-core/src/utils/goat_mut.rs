@@ -1,0 +1,93 @@
+use core::{ops::Deref};
+use core::fmt::Debug;
+use core::cell::RefMut;
+use core::ops::DerefMut;
+use std::cell::Ref;
+use crate::utils::goat::Goat;
+
+/// A goat can be a Ref or a borrowed value
+pub enum GoatMut<'a, T: ?Sized> {
+    Ref(RefMut<'a, T>),
+    Borrowed(&'a mut T),
+}
+
+impl<'a, T> GoatMut<'a, T> {
+    /// equivalent to [RefMut::map] function
+    pub fn map<U: ?Sized, F>(self, f: F) -> GoatMut<'a, U>
+    where
+        F: FnOnce(&mut T) -> &mut U,
+    {
+        match self {
+            GoatMut::Ref(r) => GoatMut::Ref(RefMut::map(r, f)),
+            GoatMut::Borrowed(b) => GoatMut::Borrowed(f(b)),
+        }
+    }
+
+    /// equivalent to [RefMut::filter_map] function
+    pub fn filter_map<U: ?Sized, F>(self, f: F) -> Option<GoatMut<'a, U>>
+    where
+        F: FnOnce(&mut T) -> Option<&mut U>,
+    {
+        match self {
+            GoatMut::Ref(r) => RefMut::filter_map(r, f).map(GoatMut::Ref).ok(),
+            GoatMut::Borrowed(b) => f(b).map(GoatMut::Borrowed),
+        }
+    }
+}
+
+impl<T> Debug for GoatMut<'_, T> where T: Debug {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            GoatMut::Ref(r) => r.fmt(f),
+            GoatMut::Borrowed(b) => b.fmt(f),
+        }
+    }
+}
+
+impl<'a, T> From<RefMut<'a, T>> for GoatMut<'a, T> {
+    fn from(r: RefMut<'a, T>) -> Self {
+        GoatMut::Ref(r)
+    }
+}
+impl<'a, T> From<&'a mut T> for GoatMut<'a, T> {
+    fn from(b: &'a mut T) -> Self {
+        GoatMut::Borrowed(b)
+    }
+}
+
+impl<T> Deref for GoatMut<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            GoatMut::Ref(r) => r.deref(),
+            GoatMut::Borrowed(b) => b,
+        }
+    }
+}
+impl<T> DerefMut for GoatMut<'_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            GoatMut::Ref(r) => r.deref_mut(),
+            GoatMut::Borrowed(b) => b,
+        }
+    }
+}
+
+impl<T> AsRef<T> for GoatMut<'_, T> {
+    fn as_ref(&self) -> &T {
+        match self {
+            GoatMut::Ref(r) => r.deref(),
+            GoatMut::Borrowed(b) => b,
+        }
+    }
+}
+
+impl<T: Clone> GoatMut<'_, T> {
+    pub fn into_owned(self) -> T {
+        match self {
+            GoatMut::Ref(r) => r.clone(),
+            GoatMut::Borrowed(b) => b.clone(),
+        }
+    }
+}

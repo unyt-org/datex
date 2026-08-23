@@ -1,6 +1,5 @@
 use core::{cell::Ref, ops::Deref};
 use core::fmt::Debug;
-use crate::values::core_values::callable::Callable;
 
 /// A sheep can be a reference, a borrowed value, or an owned value.
 pub enum Sheep<'a, T> {
@@ -8,6 +7,7 @@ pub enum Sheep<'a, T> {
     Borrowed(&'a T),
     Owned(T),
 }
+
 
 impl<T> Debug for Sheep<'_, T> where T: Debug {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

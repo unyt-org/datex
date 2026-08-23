@@ -4,11 +4,7 @@ use crate::{
     values::value::Value,
 };
 use core::any::Any;
-use crate::shared_values::errors::AccessError;
 use crate::traits::value_access::ValueAccess;
-use crate::values::value::ValueContainerOrBorrowedValue;
-use crate::values::value_container::value_key::BorrowedValueKey;
-use crate::values::value_container::ValueContainer;
 
 // TODO: better solution than duplicate definition of trait for different feature flags?
 #[cfg(feature = "decompiler")]

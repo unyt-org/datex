@@ -38,6 +38,9 @@ use crate::{
         integer::typed_integer::IntegerTypeVariant,
     },
 };
+use crate::utils::goat::Goat;
+use crate::utils::goat_mut::GoatMut;
+use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 /// Implements [TryFrom] and [TryInto] for Rust core types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
 /// Also implements [DatexValueProxy] for Rust core types to provide the correct [Type] for each implementation.
@@ -78,12 +81,12 @@ macro_rules! implement_rust_native_traits {
 
 
         impl DatexValueProxyInfallibleSerialize for $type {
-            fn boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Value {
+            fn boxed_to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Value {
                Value::from(*self)
             }
         }
         impl DatexValueProxySerialize for $type {
-            fn try_boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+            fn try_boxed_to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
                 Ok(Value::from(*self))
             }
         }

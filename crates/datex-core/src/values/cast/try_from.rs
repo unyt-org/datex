@@ -21,6 +21,9 @@ use crate::{
         value::Value,
     },
 };
+use crate::utils::goat::Goat;
+use crate::utils::goat_mut::GoatMut;
+use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 /// Implements [TryFrom] for each [CoreValue] variant to its corresponding type. This allows to convert e.g. [CoreValue::Integer] to [Integer].
 macro_rules! impl_try_from_core_value {
@@ -39,6 +42,26 @@ macro_rules! impl_try_from_core_value {
                     match value {
                         CoreValue::$variant(v) => Ok(v),
                         _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
+                    }
+                }
+            }
+
+            impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, $type> {
+                type Error = TryFromDatexValueError;
+                fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
+                    match value {
+                        BorrowedCoreValue::$variant(v) => Ok(v),
+                        _ => Err(TryFromDatexValueError(format!("Cannot cast BorrowedCoreValue to {}, expected BorrowedCoreValue::{}", stringify!($type), stringify!($variant)))),
+                    }
+                }
+            }
+
+            impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, $type> {
+                type Error = TryFromDatexValueError;
+                fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
+                    match value {
+                        BorrowedCoreValueMut::$variant(v) => Ok(v),
+                        _ => Err(TryFromDatexValueError(format!("Cannot cast BorrowedCoreValueMut to {}, expected BorrowedCoreValueMut::{}", stringify!($type), stringify!($variant)))),
                     }
                 }
             }

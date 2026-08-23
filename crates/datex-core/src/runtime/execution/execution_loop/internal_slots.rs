@@ -26,7 +26,7 @@ pub fn get_root_property(
             runtime_state.runtime.config().clone().to_value_container(
                 &mut runtime_state
                     .runtime
-                    .shared_references_cache()
+                    .shared_references_cache_refcell()
                     .borrow_mut(),
             )
         } // TODO pass context?

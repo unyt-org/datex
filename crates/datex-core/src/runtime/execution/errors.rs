@@ -114,6 +114,7 @@ pub enum ExecutionError {
     UnauthorizedMove,
     InvalidMove,
     MoveToMultipleEndpoints,
+    UnclonableValue, // happens for native rust structs that don't implement clone. FIXME: this should not happen in execution loop
 }
 impl ExecutionError {
     pub fn intermediate_result_with_state(
@@ -322,6 +323,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::MoveToMultipleEndpoints => {
                 core::write!(f, "Illegal move to multiple endpoints")
+            }
+            ExecutionError::UnclonableValue => {
+                core::write!(f, "Tried to clone an unclonable value")
             }
             ExecutionError::ExpectedSharedValue => {
                 core::write!(

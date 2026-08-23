@@ -376,7 +376,138 @@ impl TypedInteger {
     pub fn as_usize(&self) -> Option<usize> {
         self.as_u128().and_then(|v| usize::try_from(v).ok())
     }
-
+    
+    pub fn borrow_as_u8(&self) -> Option<&u8> {
+        match self {
+            TypedInteger::U8(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_u8(&mut self) -> Option<&mut u8> {
+        match self {
+            TypedInteger::U8(v) => Some(v),
+            _ => None,
+        }
+    }
+    
+    pub fn borrow_as_u16(&self) -> Option<&u16> {
+        match self {
+            TypedInteger::U16(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_u16(&mut self) -> Option<&mut u16> {
+        match self {
+            TypedInteger::U16(v) => Some(v),
+            _ => None,
+        }
+    }
+    
+    pub fn borrow_as_u32(&self) -> Option<&u32> {
+        match self {
+            TypedInteger::U32(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_u32(&mut self) -> Option<&mut u32> {
+        match self {
+            TypedInteger::U32(v) => Some(v),
+            _ => None,
+        }
+    }
+    
+    pub fn borrow_as_u64(&self) -> Option<&u64> {
+        match self {
+            TypedInteger::U64(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_u64(&mut self) -> Option<&mut u64> {
+        match self {
+            TypedInteger::U64(v) => Some(v),
+            _ => None,
+        }
+    }
+    
+    pub fn borrow_as_u128(&self) -> Option<&u128> {
+        match self {
+            TypedInteger::U128(v) => Some(v),
+            _ => None,
+        }
+    }
+    
+    pub fn borrow_mut_as_u128(&mut self) -> Option<&mut u128> {
+        match self {
+            TypedInteger::U128(v) => Some(v),
+            _ => None,
+        }
+    }
+    
+    pub fn borrow_as_i8(&self) -> Option<&i8> {
+        match self {
+            TypedInteger::I8(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_i8(&mut self) -> Option<&mut i8> {
+        match self {
+            TypedInteger::I8(v) => Some(v),
+            _ => None,
+        }
+    }
+    
+    pub fn borrow_as_i16(&self) -> Option<&i16> {
+        match self {
+            TypedInteger::I16(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_i16(&mut self) -> Option<&mut i16> {
+        match self {
+            TypedInteger::I16(v) => Some(v),
+            _ => None,
+        }
+    }
+    
+    pub fn borrow_as_i32(&self) -> Option<&i32> {
+        match self {
+            TypedInteger::I32(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_i32(&mut self) -> Option<&mut i32> {
+        match self {
+            TypedInteger::I32(v) => Some(v),
+            _ => None,
+        }
+    }
+    
+    pub fn borrow_as_i64(&self) -> Option<&i64> {
+        match self {
+            TypedInteger::I64(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_i64(&mut self) -> Option<&mut i64> {
+        match self {
+            TypedInteger::I64(v) => Some(v),
+            _ => None,
+        }
+    }
+    
+    pub fn borrow_as_i128(&self) -> Option<&i128> {
+        match self {
+            TypedInteger::I128(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn borrow_mut_as_i128(&mut self) -> Option<&mut i128> {
+        match self {
+            TypedInteger::I128(v) => Some(v),
+            _ => None,
+        }
+    }
+    
     /// Returns true if the integer is of a signed type.
     pub fn is_signed_variant(&self) -> bool {
         if let TypedInteger::IBig(_) = self {

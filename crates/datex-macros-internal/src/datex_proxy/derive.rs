@@ -338,6 +338,12 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         quote! { }
     };
 
+    let value_access = quote! {
+        impl #generics ValueAccess for #ident #generics {
+
+        }
+    };
+
     let types_impl = if top_level_attributes.type_kind.is_structural() {
         quote! {
             #[automatically_derived]
@@ -380,6 +386,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                         try_serde_from_value_container
                     }
                 },
+                traits::value_access::ValueAccess,
                 types::r#type::Type,
                 types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
                 types::literal_type_definition::LiteralTypeDefinition,
@@ -418,6 +425,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             #to_datex_expression_data
 
             #types_impl
+
+            #value_access
 
             #registration
         };

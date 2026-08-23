@@ -49,7 +49,7 @@ mod datex_inspector {
 
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.
 pub fn register_inspector_namespace(runtime: &Runtime) {
-    let mut memory = runtime.shared_references_cache().borrow_mut();
+    let mut memory = runtime.shared_references_cache_refcell().borrow_mut();
     let inspector_type = ValueContainer::from(
         datex_inspector::Inspector::datex_type(&mut memory),
     );
@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn test_function() {
         let runtime = Runtime::stub();
-        let memory = runtime.shared_references_cache();
+        let memory = runtime.shared_references_cache_refcell();
         // 1 arg
         let func = |x: u8| x + 1;
         let dx_func_1 = ValueContainer::from(native_sync_callable(

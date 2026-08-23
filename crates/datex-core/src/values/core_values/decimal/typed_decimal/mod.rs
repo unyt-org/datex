@@ -222,6 +222,40 @@ impl TypedDecimal {
         }
     }
 
+
+    /// Tries to borrow the inner f32 value if the TypedDecimal is of variant F32.
+    pub fn borrow_as_f32(&self) -> Option<&f32> {
+        match self {
+            TypedDecimal::F32(value) => Some(value.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// Tries to borrow the inner f32 value if the TypedDecimal is of variant F32.
+    pub fn borrow_mut_as_f32(&mut self) -> Option<&mut f32> {
+        match self {
+            TypedDecimal::F32(value) => Some(value.as_mut()),
+            _ => None,
+        }
+    }
+
+    /// Tries to borrow the inner f64 value if the TypedDecimal is of variant F64.
+    pub fn borrow_as_f64(&self) -> Option<&f64> {
+        match self {
+            TypedDecimal::F64(value) => Some(value.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// Tries to borrow the inner f64 value if the TypedDecimal is of variant F64.
+    pub fn borrow_mut_as_f64(&mut self) -> Option<&mut f64> {
+        match self {
+            TypedDecimal::F64(value) => Some(value.as_mut()),
+            _ => None,
+        }
+    }
+
+
     /// Returns true if the value is zero (positive or negative).
     pub fn is_zero(&self) -> bool {
         match self {

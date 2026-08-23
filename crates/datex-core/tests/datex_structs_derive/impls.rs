@@ -79,7 +79,7 @@ fn entity_type_definition_from_type(
 #[test]
 fn take_from_cache() {
     let runtime = Runtime::stub();
-    let mut memory = runtime.shared_references_cache().borrow_mut();
+    let mut memory = runtime.shared_references_cache_refcell().borrow_mut();
     let example_type = Example::datex_type(memory.deref_mut());
 
     // when calling the datex_type function multiple times, it should return the same type definition from cache
@@ -89,7 +89,7 @@ fn take_from_cache() {
 #[test]
 fn signatures() {
     let runtime = Runtime::stub();
-    let mut memory = runtime.shared_references_cache().borrow_mut();
+    let mut memory = runtime.shared_references_cache_refcell().borrow_mut();
     let example_type = Example::datex_type(memory.deref_mut());
     let type_definition = entity_type_definition_from_type(&example_type);
 

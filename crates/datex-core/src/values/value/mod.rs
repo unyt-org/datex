@@ -43,7 +43,8 @@ use core::{
     result::Result,
 };
 use crate::traits::value_access::ValueAccess;
-use crate::values::value::borrowed_value::BorrowedValue;
+use crate::values::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
+use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
 
 #[derive(Debug)]
 pub struct Value {
@@ -72,13 +73,6 @@ impl<T: Into<CoreValue>> From<T> for Value {
             custom_type: None,
         }
     }
-}
-
-// TODO: move
-#[derive(Debug)]
-pub enum ValueContainerOrBorrowedValue<'a> {
-    BorrowedValue(BorrowedValue<'a>),
-    ValueContainer(&'a ValueContainer),
 }
 
 impl Value {
@@ -287,22 +281,26 @@ impl Value {
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainerOrBorrowedValue<'_>, AccessError> {
-        <Self as ValueAccess>::try_get_property(self, key.into())
+        cache: &mut SharedReferencesCache,
+    ) -> Result<BorrowedValueContainer<'_>, AccessError> {
+        <Self as ValueAccess>::try_get_property(self, key.into(), cache)
     }
 
     pub fn try_get_property_mut<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<&mut ValueContainer, AccessError> {
-        <Self as ValueAccess>::try_get_property_mut(self, key.into())
+        cache: &mut SharedReferencesCache,
+    ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
+        <Self as ValueAccess>::try_get_property_mut(self, key.into(), cache)
     }
 
     /// Takes (removes) a property from the value if applicable (e.g. for map and structs)
     pub fn try_take_property<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
+        cache: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, AccessError> {
+        // TODO
         match self.inner {
             CoreValue::Map(ref mut map) => {
                 // If the value is a map, get the property

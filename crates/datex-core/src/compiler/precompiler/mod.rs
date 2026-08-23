@@ -235,7 +235,7 @@ impl<'a> Precompiler<'a> {
         if options.detailed_errors {
             let type_res = infer_expression_type_detailed_errors(
                 &mut rich_ast,
-                &self.runtime.shared_references_cache().borrow(),
+                &self.runtime.shared_references_cache_refcell().borrow(),
             );
 
             // append type errors to collected_errors if any

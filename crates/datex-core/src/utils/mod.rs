@@ -12,3 +12,5 @@ pub mod sheep;
 pub mod sheep_mut;
 pub mod task_manager;
 pub mod uuid;
+pub mod goat;
+pub mod goat_mut;
