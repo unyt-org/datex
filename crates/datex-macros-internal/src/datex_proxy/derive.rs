@@ -87,6 +87,7 @@ pub struct DeriveData {
     datex_type: TokenStream,
     helpers: Option<TokenStream>,
     to_datex_expression_data: Option<TokenStream>,
+    try_get_property: TokenStream,
 }
 
 /// Derive implementation for the [Datex] derive macro.
@@ -114,6 +115,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         is_fallible_serialization,
         helpers,
         to_datex_expression_data,
+        try_get_property,
     } = match input.data {
         Data::Struct(data_struct) => {
             derive_struct(data_struct, &input.ident, &context)
@@ -318,6 +320,20 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 Value::native_boxed(self, cache)
             }
         }
+
+        #[automatically_derived]
+        impl<'a> AsBorrowed<'a> for #ident #generics { // FIXME: generics
+            fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
+                BorrowedValueContainer::native_borrowed(self)
+            }
+        }
+
+        #[automatically_derived]
+        impl<'a> AsBorrowedMut<'a> for #ident #generics { // FIXME: generics
+            fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
+                BorrowedValueContainerMut::native_borrowed(self)
+            }
+        }
     };
 
     // only if decompiler feature is enabled in datex core
@@ -340,7 +356,13 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
     let value_access = quote! {
         impl #generics ValueAccess for #ident #generics {
-
+            fn try_get_property(
+                &self,
+                key: BorrowedValueKey,
+                cache: &mut SharedReferencesCache
+            ) -> Result<BorrowedValueContainer<'_>, AccessError> {
+                #try_get_property
+            }
         }
     };
 
@@ -394,8 +416,11 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 runtime::cache::shared_references_cache::{SharedReferencesCache,SharedTypeReservation},
                 libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
                 shared_values::SelfOwnedPointerAddress,
+                shared_values::errors::KeyNotFoundError,
                 values::value_container::ValueContainer,
                 values::value::Value,
+                values::value_container::value_key::BorrowedValueKey,
+                values::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut, AsBorrowed, AsBorrowedMut},
                 values::core_value::CoreValue,
                 values::core_values::native::DatexNative,
                 values::core_values::map::Map,
@@ -407,6 +432,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 types::type_definition::list::ListTypeDefinition,
                 types::type_definition::tagged_type::TaggedTypeDefinition,
                 datex_registry::{get_impls, get_impls_for},
+                shared_values::errors::AccessError,
                 prelude::*
             };
             use core::any::Any;
@@ -447,6 +473,7 @@ fn derive_struct(
         from_datex_fields,
         datex_type,
         field_names,
+        try_get_properties,
     } = derive_fields(&data_struct.fields, context);
 
     let to_datex_expression_data = to_datex_expression_data_fields.map(|to_datex_expression_data_fields| match fields_type {
@@ -548,6 +575,29 @@ fn derive_struct(
         },
     };
 
+    let try_get_property = match fields_type {
+        FieldsType::Named => quote! {
+            if let Some(key) = key.try_as_text() {
+                match key {
+                    #(#try_get_properties)*,
+                    _ => Err(AccessError::KeyNotFound(KeyNotFoundError::new(key.to_string().into()))),
+                }
+            }
+            else {
+                Err(AccessError::KeyNotFound(KeyNotFoundError::new(key.into())))
+            }
+
+        },
+        FieldsType::Transparent => {
+            quote! {
+                todo!("try_get_property")
+            }
+        }
+        FieldsType::Unnamed | FieldsType::Unit => quote! {
+            todo!("try_get_property")
+        },
+    };
+
     let type_definition = datex_type.unwrap_or_else(
         || quote! {TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into())},
     );
@@ -559,6 +609,7 @@ fn derive_struct(
         datex_type: type_definition,
         helpers: None,
         to_datex_expression_data,
+        try_get_property,
     }
 }
 
@@ -597,6 +648,7 @@ fn derive_enum(
             datex_type,
             field_names,
             to_datex_expression_data_fields,
+            try_get_properties,
         } = derive_fields(&variant.fields, context);
 
         // if any variant is fallible, mark as fallible
@@ -763,6 +815,8 @@ fn derive_enum(
         None
     };
 
+    let try_get_property = quote! {todo!("try_get_property")};
+
     DeriveData {
         is_fallible_serialization,
         into_datex_fields_inner,
@@ -770,6 +824,7 @@ fn derive_enum(
         datex_type: type_definition,
         helpers: Some(helpers),
         to_datex_expression_data,
+        try_get_property,
     }
 }
 
@@ -781,6 +836,7 @@ struct FieldDeriveData {
     from_datex_fields: Vec<TokenStream>,
     datex_type: Option<TokenStream>,
     field_names: Vec<String>,
+    try_get_properties: Vec<TokenStream>,
 }
 
 fn generate_enum_helper_structs(
@@ -888,6 +944,7 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
 
     let mut into_datex_fields: Vec<TokenStream> = vec![];
     let mut from_datex_fields: Vec<TokenStream> = vec![];
+    let mut try_get_properties: Vec<TokenStream> = vec![];
     let mut field_types: Vec<TokenStream> = vec![];
     let mut field_names: Vec<String> = vec![];
     let mut to_datex_expression_data_fields: Option<Vec<TokenStream>> = {
@@ -950,6 +1007,7 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
                         #field_into
                     )
                 });
+
                 if field_names.contains(&field_name) {
                     // This can happen, if the user makes invalid use of #[datex(rename = "whatever")]
                     panic!(
@@ -1023,6 +1081,20 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
                             .with_default_span()
                     },
                 };
+
+                match field_attributes.serde_mode {
+                    SerdeMode::None => {
+                        try_get_properties.push(quote! {
+                            #field_name => {
+                                Ok((
+                                    &self.#field_ident
+                                ).as_borrowed())
+                            }
+                        })}
+                    SerdeMode::Fallible | SerdeMode::Infallible => {
+                        // skip serde fields, not accessible via borrow
+                    }
+                }
 
                 from_datex_fields.push(quote! {
                     #field_ident: #field_from
@@ -1125,6 +1197,7 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
         datex_type,
         field_names,
         to_datex_expression_data_fields,
+        try_get_properties,
     }
 }
 

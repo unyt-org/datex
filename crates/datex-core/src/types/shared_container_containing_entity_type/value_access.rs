@@ -22,10 +22,7 @@ impl ValueAccess for SharedContainerContainingEntityType {
                         key.into(),
                     ))
                 })?;
-            Ok(BorrowedValueContainer::Local(BorrowedValue {
-                inner: BorrowedCoreValue::Native(Goat::Ref(callable_ref)),
-                custom_type: None
-            }))
+            Ok(BorrowedValueContainer::native_ref(callable_ref))
         } else {
             Err(AccessError::InvalidIndexKey)
         }

@@ -3,6 +3,7 @@
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
+mod as_borrowed;
 
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},

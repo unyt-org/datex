@@ -1,7 +1,7 @@
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::shared_values::errors::{AccessError};
 use crate::traits::value_access::ValueAccess;
-use crate::values::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
+use crate::values::borrowed_value_container::{AsBorrowed, AsBorrowedMut, BorrowedValueContainer, BorrowedValueContainerMut};
 use crate::values::core_values::list::List;
 use crate::values::value_container::value_key::BorrowedValueKey;
 
@@ -12,7 +12,7 @@ impl ValueAccess for List {
         cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         if let Some(index) = key.try_as_index() {
-            Ok(self.try_get(index)?.into())
+            Ok(self.try_get(index)?.as_borrowed())
         } else {
             Err(AccessError::InvalidIndexKey)
         }
@@ -24,7 +24,7 @@ impl ValueAccess for List {
         cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         if let Some(index) = key.try_as_index() {
-            Ok(self.try_get_mut(index)?.into())
+            Ok(self.try_get_mut(index)?.as_borrowed_mut())
         } else {
             Err(AccessError::InvalidIndexKey)
         }

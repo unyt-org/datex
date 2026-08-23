@@ -23,6 +23,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::TypeDefinition,
 };
+use crate::values::borrowed_value_container::{AsBorrowed, AsBorrowedMut, BorrowedValueContainer, BorrowedValueContainerMut};
 
 /// Implements [DatexValueProxy] for a [CoreValue](crate::values::core_values) implementation.
 /// This allows to convert e.g. [Endpoint] to [ValueContainer] and back.
@@ -59,6 +60,17 @@ macro_rules! impl_datex_direct_via_value_container {
             }
             fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
                 Value::native_boxed(self, cache)
+            }
+        }
+
+        impl<'a> AsBorrowed<'a> for $type {
+            fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
+                BorrowedValueContainer::native_borrowed(self)
+            }
+        }
+        impl<'a> AsBorrowedMut<'a> for $type {
+            fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
+                BorrowedValueContainerMut::native_borrowed(self)
             }
         }
 

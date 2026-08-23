@@ -7,6 +7,7 @@
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
+mod as_borrowed;
 
 use core::any::Any;
 use crate::{

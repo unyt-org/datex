@@ -40,6 +40,7 @@ use crate::{
 };
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
+use crate::values::borrowed_value_container::{AsBorrowed, AsBorrowedMut, BorrowedValueContainer, BorrowedValueContainerMut};
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 /// Implements [TryFrom] and [TryInto] for Rust core types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
@@ -109,6 +110,17 @@ macro_rules! implement_rust_native_traits {
             }
             fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
                 Value::native_boxed(self, cache)
+            }
+        }
+        
+        impl<'a> AsBorrowed<'a> for $type {
+            fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
+                BorrowedValueContainer::native_borrowed(self)
+            }
+        }
+        impl<'a> AsBorrowedMut<'a> for $type {
+            fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
+                BorrowedValueContainerMut::native_borrowed(self)
             }
         }
 
@@ -270,6 +282,7 @@ implement_rust_native_traits!(
         CoreValue::Text(Text(value)) => Ok(value),
     }
 );
+
 
 // &str
 impl<'a> TryFrom<&'a CoreValue> for &'a str {
