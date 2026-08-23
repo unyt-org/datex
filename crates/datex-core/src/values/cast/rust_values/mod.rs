@@ -8,6 +8,7 @@ mod hash_map;
 mod option;
 mod r#box;
 mod vec;
+mod duration;
 
 use core::any::Any;
 use num::ToPrimitive;

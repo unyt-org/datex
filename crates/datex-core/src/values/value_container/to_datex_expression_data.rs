@@ -23,15 +23,3 @@ impl ToDatexExpressionData for ValueContainer {
         }
     }
 }
-
-impl ToDatexExpressionData for Box<ValueContainer> {
-    fn to_datex_expression_data(&self) -> DatexExpressionData {
-        DatexExpressionData::Statements(Statements {
-            statements: vec![
-                self.to_datex_expression_data().with_default_span(),
-            ],
-            is_terminated: false,
-            unbounded: None,
-        })
-    }
-}

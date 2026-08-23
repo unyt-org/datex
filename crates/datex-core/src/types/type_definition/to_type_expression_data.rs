@@ -1,9 +1,11 @@
+use crate::prelude::*;
 use crate::ast::spanned::Spanned;
 use crate::ast::type_expressions::{Intersection, RangeTypeExpr, StructuralList, StructuralMap, TypeExpression, TypeExpressionData, Union};
 use crate::traits::to_type_expression_data::ToTypeExpressionData;
 use crate::types::literal_type_definition::LiteralTypeDefinition;
 use crate::types::type_definition::range::RangeTypeDefinition;
 use crate::types::type_definition::TypeDefinition;
+
 
 impl ToTypeExpressionData for TypeDefinition {
     fn to_type_expression_data(&self) -> TypeExpressionData {

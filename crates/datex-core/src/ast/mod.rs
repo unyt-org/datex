@@ -7,3 +7,5 @@ pub mod spanned;
 #[cfg(feature = "std")]
 pub mod src_id;
 pub mod type_expressions;
+#[cfg(feature = "compiler")]
+mod to_instructions;

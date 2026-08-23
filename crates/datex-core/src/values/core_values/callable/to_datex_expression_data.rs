@@ -4,6 +4,7 @@ use crate::decompiler::ast_from_bytecode::ast_from_bytecode;
 use crate::traits::to_datex_expression_data::ToDatexExpressionData;
 use crate::traits::to_type_expression_data::ToTypeExpressionData;
 use crate::values::core_values::callable::{Callable, CallableBody, DatexBytecodeCallable};
+use crate::prelude::*;
 
 impl ToDatexExpressionData for Callable {
     fn to_datex_expression_data(&self) -> DatexExpressionData {

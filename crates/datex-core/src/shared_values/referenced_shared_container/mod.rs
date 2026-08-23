@@ -1,5 +1,7 @@
 mod common;
 pub mod datex_proxy;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 
 use crate::{
     prelude::*,

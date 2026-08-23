@@ -1,4 +1,6 @@
 //! Implements [DatexValueProxy] for [Box<T>] where T: [DatexValueProxy].
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
