@@ -3,6 +3,7 @@ use crate::shared_values::errors::{AccessError};
 use crate::values::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 use crate::values::value_container::value_key::BorrowedValueKey;
 use crate::values::value_container::ValueContainer;
+use crate::prelude::*;
 
 /// Trait for accessing properties of a value as [ValueContainers] or [BorrowedValueContainer]. This is used for accessing properties of values in a generic way, such as for maps and structs.
 pub trait ValueAccess {

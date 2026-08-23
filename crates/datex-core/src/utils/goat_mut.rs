@@ -2,8 +2,6 @@ use core::{ops::Deref};
 use core::fmt::Debug;
 use core::cell::RefMut;
 use core::ops::DerefMut;
-use std::cell::Ref;
-use crate::utils::goat::Goat;
 
 /// A goat can be a Ref or a borrowed value
 pub enum GoatMut<'a, T: ?Sized> {
@@ -35,7 +33,7 @@ impl<'a, T> GoatMut<'a, T> {
     }
 }
 
-impl<T> Debug for GoatMut<'_, T> where T: Debug {
+impl<T: ?Sized> Debug for GoatMut<'_, T> where T: Debug {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             GoatMut::Ref(r) => r.fmt(f),
@@ -44,18 +42,18 @@ impl<T> Debug for GoatMut<'_, T> where T: Debug {
     }
 }
 
-impl<'a, T> From<RefMut<'a, T>> for GoatMut<'a, T> {
+impl<'a, T: ?Sized> From<RefMut<'a, T>> for GoatMut<'a, T> {
     fn from(r: RefMut<'a, T>) -> Self {
         GoatMut::Ref(r)
     }
 }
-impl<'a, T> From<&'a mut T> for GoatMut<'a, T> {
+impl<'a, T: ?Sized> From<&'a mut T> for GoatMut<'a, T> {
     fn from(b: &'a mut T) -> Self {
         GoatMut::Borrowed(b)
     }
 }
 
-impl<T> Deref for GoatMut<'_, T> {
+impl<T: ?Sized> Deref for GoatMut<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -65,7 +63,7 @@ impl<T> Deref for GoatMut<'_, T> {
         }
     }
 }
-impl<T> DerefMut for GoatMut<'_, T> {
+impl<T: ?Sized> DerefMut for GoatMut<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
             GoatMut::Ref(r) => r.deref_mut(),
@@ -74,7 +72,7 @@ impl<T> DerefMut for GoatMut<'_, T> {
     }
 }
 
-impl<T> AsRef<T> for GoatMut<'_, T> {
+impl<T: ?Sized> AsRef<T> for GoatMut<'_, T> {
     fn as_ref(&self) -> &T {
         match self {
             GoatMut::Ref(r) => r.deref(),

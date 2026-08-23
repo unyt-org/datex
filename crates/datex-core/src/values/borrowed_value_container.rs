@@ -1,5 +1,7 @@
 use core::cell::Ref;
 use core::cell::RefMut;
+use core::fmt::{Debug, Formatter};
+use log::info;
 use crate::shared_values::{OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
@@ -14,6 +16,7 @@ pub trait AsBorrowed<'a> {
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a>;
 }
 
+#[derive(Debug)]
 pub enum BorrowedValueContainer<'a> {
     Local(BorrowedValue<'a>),
     Shared(SharedContainer),
@@ -54,11 +57,14 @@ impl<'a> BorrowedValueContainer<'a> {
         CoreValue: Clone,
     {
         match self {
-            BorrowedValueContainer::Local(value) => Ok(ValueContainer::Local(value.try_clone_to_value()?)),
+            BorrowedValueContainer::Local(value) => Ok(
+                ValueContainer::Local(value.try_clone_to_value()?)
+            ),
             BorrowedValueContainer::Shared(shared) => Ok(ValueContainer::Shared(shared.clone())),
         }
     }
 }
+
 
 pub trait AsBorrowedMut<'a> {
     fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a>;

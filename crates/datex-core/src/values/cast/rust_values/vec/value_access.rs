@@ -7,6 +7,7 @@ use crate::values::borrowed_value_container::{BorrowedValueContainer, BorrowedVa
 use crate::values::core_values::native::{DatexNative};
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedValue};
 use crate::values::value_container::value_key::BorrowedValueKey;
+use crate::prelude::*;
 
 impl<T> ValueAccess for Vec<T> where T: DatexNative + DatexProxyType {
     fn try_get_property(&self, key: BorrowedValueKey, cache: &mut SharedReferencesCache) -> Result<BorrowedValueContainer<'_>, AccessError> {

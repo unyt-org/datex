@@ -16,6 +16,7 @@ use crate::{
         },
     },
     values::{core_values::map::Map, value::Value},
+    collections::HashMap,
 };
 
 use crate::{

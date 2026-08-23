@@ -114,7 +114,7 @@ mod tests {
         },
     };
     use core::{assert_matches, cell::RefCell};
-    use std::ops::Deref;
+    use core::ops::Deref;
     use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
     use crate::values::borrowed_value_container::{AsBorrowed, BorrowedValueContainer};
 

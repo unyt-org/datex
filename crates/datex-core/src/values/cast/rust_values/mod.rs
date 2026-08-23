@@ -38,6 +38,7 @@ use crate::{
         integer::typed_integer::IntegerTypeVariant,
     },
 };
+use crate::traits::try_clone::TryClone;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
 use crate::values::borrowed_value_container::{AsBorrowed, AsBorrowedMut, BorrowedValueContainer, BorrowedValueContainerMut};
@@ -80,7 +81,6 @@ macro_rules! implement_rust_native_traits {
         // specialized unit impl:
         impl DatexValueProxy for $type {}
 
-
         impl DatexValueProxyInfallibleSerialize for $type {
             fn boxed_to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Value {
                Value::from(*self)
@@ -112,7 +112,7 @@ macro_rules! implement_rust_native_traits {
                 Value::native_boxed(self, cache)
             }
         }
-        
+
         impl<'a> AsBorrowed<'a> for $type {
             fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
                 BorrowedValueContainer::native_borrowed(self)

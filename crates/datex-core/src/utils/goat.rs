@@ -7,7 +7,7 @@ pub enum Goat<'a, T: ?Sized> {
     Borrowed(&'a T),
 }
 
-impl<'a, T> Goat<'a, T> {
+impl<'a, T: ?Sized> Goat<'a, T> {
     /// equivalent to [Ref::map] function
     pub fn map<U: ?Sized, F>(self, f: F) -> Goat<'a, U>
     where
@@ -31,7 +31,7 @@ impl<'a, T> Goat<'a, T> {
     }
 }
 
-impl<T> Debug for Goat<'_, T> where T: Debug {
+impl<T> Debug for Goat<'_, T> where T: Debug + ?Sized {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Goat::Ref(r) => r.fmt(f),
@@ -40,17 +40,17 @@ impl<T> Debug for Goat<'_, T> where T: Debug {
     }
 }
 
-impl<'a, T> From<Ref<'a, T>> for Goat<'a, T> {
+impl<'a, T: ?Sized> From<Ref<'a, T>> for Goat<'a, T> {
     fn from(r: Ref<'a, T>) -> Self {
         Goat::Ref(r)
     }
 }
-impl<'a, T> From<&'a T> for Goat<'a, T> {
+impl<'a, T: ?Sized> From<&'a T> for Goat<'a, T> {
     fn from(b: &'a T) -> Self {
         Goat::Borrowed(b)
     }
 }
-impl<T> Deref for Goat<'_, T> {
+impl<T: ?Sized> Deref for Goat<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -61,7 +61,7 @@ impl<T> Deref for Goat<'_, T> {
     }
 }
 
-impl<T> AsRef<T> for Goat<'_, T> {
+impl<T: ?Sized> AsRef<T> for Goat<'_, T> {
     fn as_ref(&self) -> &T {
         match self {
             Goat::Ref(r) => r.deref(),

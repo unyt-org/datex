@@ -1101,7 +1101,7 @@ pub gen fn inner_execution_loop(
                                         )
                                         .map(BorrowedValueContainer::try_clone_to_value_container) // FIXME: no clone?
                                         .map_err(ExecutionError::access_error)?
-                                        .map_err(|_| ExecutionError::UnclonableValue)?; 
+                                        .map_err(|_| ExecutionError::UnclonableValue)?;
                                     res.into()
                                 }
 

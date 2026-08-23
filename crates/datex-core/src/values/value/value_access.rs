@@ -9,6 +9,7 @@ use crate::values::core_value::CoreValue;
 use crate::values::value::{Value};
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedValue};
 use crate::values::value_container::value_key::BorrowedValueKey;
+use crate::prelude::*;
 
 impl ValueAccess for Value {
     fn try_get_property(

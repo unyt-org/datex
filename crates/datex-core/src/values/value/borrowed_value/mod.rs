@@ -1,10 +1,13 @@
+use core::fmt::{Debug, Pointer};
 use core::ops::{Deref, DerefMut};
+use log::info;
+use crate::traits::try_clone::TryClone;
 use crate::types::entities::entity_type_definition::EntityTypeDefinition;
 use crate::types::r#type::Type;
 use crate::types::type_definition::TypeDefinition;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
-use crate::values::borrowed_value_container::BorrowedValueContainer;
+use crate::prelude::*;
 use crate::values::core_value::CoreValue;
 use crate::values::core_values::boolean::Boolean;
 use crate::values::core_values::callable::Callable;
@@ -23,6 +26,7 @@ use crate::values::value_container::ValueContainer;
 
 /// Similar to [Value], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.
+#[derive(Debug)]
 pub struct BorrowedValue<'a> {
     pub(crate) inner: BorrowedCoreValue<'a>,
     pub(crate) custom_type: Option<TypeDefinition>,
@@ -102,7 +106,7 @@ impl<'a> BorrowedCoreValue<'a> {
             BorrowedCoreValue::Callable(callable) => Ok(CoreValue::Callable(callable.deref().clone())),
             BorrowedCoreValue::Range(range) => Ok(CoreValue::Range(range.deref().clone())),
             BorrowedCoreValue::Box(boxed_value) => Ok(CoreValue::Box(boxed_value.deref().clone())),
-            BorrowedCoreValue::Native(native) => todo!("implement TryClone for native values")
+            BorrowedCoreValue::Native(native) => native.deref().try_clone(),
         }
     }
 }
@@ -131,6 +135,29 @@ impl<'a> From<&'a CoreValue> for BorrowedCoreValue<'a> {
     }
 }
 
+impl Debug for BorrowedCoreValue<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            BorrowedCoreValue::Uninitialized => write!(f, "Uninitialized"),
+            BorrowedCoreValue::Null => write!(f, "Null"),
+            BorrowedCoreValue::Boolean(boolean) => boolean.fmt(f),
+            BorrowedCoreValue::Integer(integer) => integer.fmt(f),
+            BorrowedCoreValue::TypedInteger(typed_integer) => typed_integer.fmt(f),
+            BorrowedCoreValue::Decimal(decimal) => decimal.fmt(f),
+            BorrowedCoreValue::TypedDecimal(typed_decimal) => typed_decimal.fmt(f),
+            BorrowedCoreValue::Text(text) => text.fmt(f),
+            BorrowedCoreValue::Endpoint(endpoint) => endpoint.fmt(f),
+            BorrowedCoreValue::List(list) => list.fmt(f),
+            BorrowedCoreValue::Map(map) => map.fmt(f),
+            BorrowedCoreValue::Type(type_value) => type_value.fmt(f),
+            BorrowedCoreValue::EntityTypeDefinition(entity_type_definition) => entity_type_definition.fmt(f),
+            BorrowedCoreValue::Callable(callable) => callable.fmt(f),
+            BorrowedCoreValue::Range(range) => range.fmt(f),
+            BorrowedCoreValue::Box(boxed_value) => boxed_value.fmt(f),
+            BorrowedCoreValue::Native(native) => native.fmt(f),
+        }
+    }
+}
 
 
 /// Similar to [Value], but contains a [BorrowedCoreValueMut] instead of a [CoreValue].

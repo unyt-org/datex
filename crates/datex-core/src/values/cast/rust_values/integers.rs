@@ -3,8 +3,8 @@ use crate::datex_proxy::TryFromDatexValueError;
 use crate::traits::value_access::ValueAccess;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::prelude::*;
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {

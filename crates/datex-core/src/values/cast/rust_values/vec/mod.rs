@@ -100,7 +100,6 @@ impl<T: DatexNative + DatexProxyType + DatexValueProxy> DatexNative for Vec<T> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

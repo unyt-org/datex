@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use std::hash::Hash;
+use crate::collections::HashMap;
+use core::hash::Hash;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::shared_values::errors::AccessError;
 use crate::traits::value_access::ValueAccess;
