@@ -41,21 +41,6 @@ mod hal {
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 pub use hal::rng;
 
-#[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
-use esp_hal::rng::Rng;
-
-/* pqc rng setup
-#[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
-#[unsafe(no_mangle)]
-unsafe extern "Rust" fn __getrandom_v03_custom(
-    dest: *mut u8,
-    len: usize,
-) -> Result<(), getrandom::Error> {
-    unsafe { esp_hal::rng::Rng::new().read_into_raw(dest, len) };
-    Ok(())
-}
-*/
-
 struct InfallibleRng;
 impl InfallibleRng {
     fn read(&mut self, _: &mut [u8]) {

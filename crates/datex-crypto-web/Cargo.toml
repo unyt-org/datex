@@ -29,10 +29,6 @@ der = { version = "0.7", default-features = false }
 ed25519-dalek = {version = "2.2", default-features = false }
 x25519-dalek = {version = "2.0", features = ["static_secrets"], default-features = false }
 spki = { version = "0.7", default-features = false }
-# PQC
-# ml-kem = { version = "0.3.2", default-features = false, features = ["alloc", "getrandom"] }
-# ml-dsa = { version = "0.1.1", default-features = false, features = ["alloc", "getrandom"] }
-# getrandom = { version = "0.4.3", default-features = false, features = ["wasm_js"] }
 
 [dependencies.web-sys]
 version = "0.3.100"

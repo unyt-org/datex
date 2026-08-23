@@ -426,7 +426,7 @@ impl DXBBlock {
                     }
                     SignatureType::Encrypted => {
                         log::info!("Validating encrypted signature");
-                        unimplemented!();
+                        unimplemented!("To be implemented...");
                     }
 
                     _ => unreachable!(),

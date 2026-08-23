@@ -200,8 +200,6 @@ target_esp_shared = [
     "no_std",
     "embassy_runtime",
     "dep:datex-crypto-esp32",
-    # FIXME: enable once crypto is fully implemented for esp32
-    # "allow_unsigned_blocks",
     "crypto_enabled"
 ]
 target_esp32 = ["target_esp_shared", "datex-crypto-esp32/esp32"]

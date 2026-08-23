@@ -699,7 +699,7 @@ mod tests {
         let (_pub, pri) = CryptoNative::gen_x25519().await.expect("gen");
 
         // peer key with wrong bytes should error
-        let bad_peer = [0u8; 32]; // not a valid DER public key usually, but your impl uses raw_bytes
+        let bad_peer = [0u8; 32];
         let err = CryptoNative::derive_x25519(&pri, &bad_peer)
             .await
             .unwrap_err();
