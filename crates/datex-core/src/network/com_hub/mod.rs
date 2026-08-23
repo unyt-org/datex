@@ -2,12 +2,9 @@
 use crate::{
     channel::mpsc::UnboundedSender,
     collections::HashMap,
-    global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::{
-            block_header::BlockType,
-            routing_header::{EncryptionType, SignatureType},
-        },
+    global::protocol_structures::{
+        block_header::BlockType,
+        routing_header::{EncryptionType, SignatureType},
     },
     network::com_hub::{
         errors::{ComHubError, SocketEndpointRegistrationError},
