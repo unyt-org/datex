@@ -23,6 +23,7 @@ use strum_macros::{AsRefStr, EnumIter, EnumString};
 pub mod primitive;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).

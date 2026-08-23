@@ -22,6 +22,7 @@ pub mod primitive;
 pub mod update_handler;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 pub const DECIMAL_NAN: &str = "nan";
 pub const DECIMAL_INFINITY: &str = "infinity";

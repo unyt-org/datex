@@ -26,6 +26,7 @@ pub mod update_handler;
 pub mod updates;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 #[derive(Debug, Default)]
 pub struct List {

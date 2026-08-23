@@ -11,3 +11,4 @@ pub mod value_eq;
 pub mod to_datex_expression_data;
 #[cfg(feature = "decompiler")]
 pub mod to_type_expression_data;
+pub mod value_access;

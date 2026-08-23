@@ -29,6 +29,7 @@ pub mod serde_dif;
 pub mod update_handler;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 use crate::{
     datex_proxy::TryToDatexValueError, shared_values::errors::AccessError,
@@ -40,6 +41,7 @@ use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
+use crate::traits::value_access::ValueAccess;
 
 #[derive(Debug)]
 pub struct Value {
@@ -294,71 +296,14 @@ impl Value {
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<ValueContainerOrCallable<'_>, AccessError> {
-        match self.inner {
-            CoreValue::Map(ref map) => {
-                // If the value is a map, get the property
-                Ok(ValueContainerOrCallable::ValueContainer(map.try_get(key)?))
-            }
-            CoreValue::List(ref list) => {
-                if let Some(index) = key.into().try_as_index() {
-                    Ok(ValueContainerOrCallable::ValueContainer(
-                        list.try_get(index)?,
-                    ))
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            CoreValue::Type(Type::Entity(ref container)) => {
-                if let Some(key) = key.into().try_as_text() {
-                    Ok(ValueContainerOrCallable::Callable(
-                        Ref::filter_map(
-                            container.entity_definition(),
-                            |entity_definition| {
-                                entity_definition.try_get_property(key)
-                            },
-                        )
-                        .map_err(|_| {
-                            AccessError::KeyNotFound(KeyNotFoundError::new(
-                                key.into(),
-                            ))
-                        })?,
-                    ))
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            _ => {
-                // If the value is not an map, we cannot get a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot get property".to_string(),
-                ))
-            }
-        }
+        <Self as ValueAccess>::try_get_property(self, key.into())
     }
 
     pub fn try_get_property_mut<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<&mut ValueContainer, AccessError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                // If the value is a map, get the property
-                Ok(map.try_get_mut(key)?)
-            }
-            CoreValue::List(ref mut list) => {
-                if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_get_mut(index)?)
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            _ => {
-                // If the value is not an map, we cannot get a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot get property".to_string(),
-                ))
-            }
-        }
+        <Self as ValueAccess>::try_get_property_mut(self, key.into())
     }
 
     /// Takes (removes) a property from the value if applicable (e.g. for map and structs)

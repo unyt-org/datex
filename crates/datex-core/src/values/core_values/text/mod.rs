@@ -20,6 +20,7 @@ pub struct Text(
 pub mod ops;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 impl Display for Text {
     // TODO #319: escape string content

@@ -1,3 +1,6 @@
+use core::time::Duration;
+use crate::traits::value_access::ValueAccess;
+
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
     use core::time::Duration;
@@ -12,3 +15,5 @@ mod to_datex_expression_data {
         }
     }
 }
+
+impl ValueAccess for Duration {}

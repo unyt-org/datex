@@ -18,6 +18,7 @@ use hex::decode;
 pub mod serde_dif;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 #[derive(
     BinWrite, BinRead, Debug, Clone, Copy, Hash, PartialEq, Eq, Default,

@@ -1,3 +1,5 @@
+use crate::traits::value_access::ValueAccess;
+
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
     use crate::ast::expressions::DatexExpressionData;
@@ -9,61 +11,61 @@ mod to_datex_expression_data {
             DatexExpressionData::TypedInteger(TypedInteger::U8(*self))
         }
     }
-    
+
     impl ToDatexExpressionData for u16 {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             DatexExpressionData::TypedInteger(TypedInteger::U16(*self))
         }
     }
-    
+
     impl ToDatexExpressionData for u32 {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             DatexExpressionData::TypedInteger(TypedInteger::U32(*self))
         }
     }
-    
+
     impl ToDatexExpressionData for u64 {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             DatexExpressionData::TypedInteger(TypedInteger::U64(*self))
         }
     }
-    
+
     impl ToDatexExpressionData for u128 {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             DatexExpressionData::TypedInteger(TypedInteger::U128(*self))
         }
     }
-    
+
     impl ToDatexExpressionData for i8 {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             DatexExpressionData::TypedInteger(TypedInteger::I8(*self))
         }
     }
-    
+
     impl ToDatexExpressionData for i16 {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             DatexExpressionData::TypedInteger(TypedInteger::I16(*self))
         }
     }
-    
+
     impl ToDatexExpressionData for i32 {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             DatexExpressionData::TypedInteger(TypedInteger::I32(*self))
         }
     }
-    
+
     impl ToDatexExpressionData for i64 {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             DatexExpressionData::TypedInteger(TypedInteger::I64(*self))
         }
     }
-    
+
     impl ToDatexExpressionData for i128 {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             DatexExpressionData::TypedInteger(TypedInteger::I128(*self))
         }
     }
-    
+
     impl ToDatexExpressionData for usize {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             #[cfg(target_pointer_width = "32")]
@@ -76,7 +78,7 @@ mod to_datex_expression_data {
             }
         }
     }
-    
+
     impl ToDatexExpressionData for isize {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             #[cfg(target_pointer_width = "32")]
@@ -90,3 +92,17 @@ mod to_datex_expression_data {
         }
     }
 }
+
+
+impl ValueAccess for u8 {}
+impl ValueAccess for u16 {}
+impl ValueAccess for u32 {}
+impl ValueAccess for u64 {}
+impl ValueAccess for u128 {}
+impl ValueAccess for i8 {}
+impl ValueAccess for i16 {}
+impl ValueAccess for i32 {}
+impl ValueAccess for i64 {}
+impl ValueAccess for i128 {}
+impl ValueAccess for usize {}
+impl ValueAccess for isize {}

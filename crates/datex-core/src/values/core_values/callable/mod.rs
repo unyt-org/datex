@@ -17,6 +17,7 @@ pub mod error;
 mod serde_dif;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 

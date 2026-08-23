@@ -21,6 +21,7 @@ pub mod primitive;
 pub mod update_handler;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]
 pub struct Integer(pub BigInt);

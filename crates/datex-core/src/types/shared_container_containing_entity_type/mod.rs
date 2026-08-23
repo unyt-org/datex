@@ -1,5 +1,6 @@
 #[cfg(feature = "decompiler")]
 mod to_type_expression_data;
+mod value_access;
 
 use crate::{
     prelude::*,

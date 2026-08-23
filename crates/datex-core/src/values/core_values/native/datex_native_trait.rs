@@ -4,6 +4,11 @@ use crate::{
     values::value::Value,
 };
 use core::any::Any;
+use crate::shared_values::errors::AccessError;
+use crate::traits::value_access::ValueAccess;
+use crate::values::value::ValueContainerOrCallable;
+use crate::values::value_container::value_key::BorrowedValueKey;
+use crate::values::value_container::ValueContainer;
 
 // TODO: better solution than duplicate definition of trait for different feature flags?
 #[cfg(feature = "decompiler")]
@@ -11,6 +16,7 @@ pub trait DatexNative:
     Any +
     DynEq +
     DatexValueProxySerialize +
+    ValueAccess +
     crate::traits::to_datex_expression_data::ToDatexExpressionData
 {
     fn as_any(&self) -> &dyn Any;
@@ -27,7 +33,8 @@ pub trait DatexNative:
 pub trait DatexNative:
     Any +
     DynEq +
-    DatexValueProxySerialize
+    DatexValueProxySerialize +
+    ValueAccess
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

@@ -12,6 +12,7 @@ use crate::{
 mod datex_native_trait;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 pub use datex_native_trait::*;
 

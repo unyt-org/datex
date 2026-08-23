@@ -11,6 +11,7 @@ pub mod equality;
 pub mod ops;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,

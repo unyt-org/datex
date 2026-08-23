@@ -1,3 +1,5 @@
+use crate::traits::value_access::ValueAccess;
+
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
     use ordered_float::OrderedFloat;
@@ -17,3 +19,6 @@ mod to_datex_expression_data {
         }
     }
 }
+
+impl ValueAccess for f32 {}
+impl ValueAccess for f64 {}

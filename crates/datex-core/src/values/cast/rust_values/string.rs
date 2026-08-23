@@ -1,3 +1,6 @@
+use crate::traits::value_access::ValueAccess;
+use crate::prelude::*;
+
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
     use crate::ast::expressions::DatexExpressionData;
@@ -11,3 +14,5 @@ mod to_datex_expression_data {
         }
     }
 }
+
+impl ValueAccess for String {}

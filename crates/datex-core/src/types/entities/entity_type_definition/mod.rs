@@ -1,5 +1,6 @@
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 use super::entity_impls::{EntityImpl, EntityImplMethod};
 use crate::{

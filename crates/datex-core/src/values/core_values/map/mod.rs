@@ -26,6 +26,7 @@ pub mod serde_dif;
 pub mod updates;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod value_access;
 
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
