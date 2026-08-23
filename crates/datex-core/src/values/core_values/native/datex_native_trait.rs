@@ -6,7 +6,7 @@ use crate::{
 use core::any::Any;
 use crate::shared_values::errors::AccessError;
 use crate::traits::value_access::ValueAccess;
-use crate::values::value::ValueContainerOrCallable;
+use crate::values::value::ValueContainerOrBorrowedValue;
 use crate::values::value_container::value_key::BorrowedValueKey;
 use crate::values::value_container::ValueContainer;
 

@@ -30,6 +30,7 @@ pub mod update_handler;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
+pub mod borrowed_value;
 
 use crate::{
     datex_proxy::TryToDatexValueError, shared_values::errors::AccessError,
@@ -42,6 +43,7 @@ use core::{
     result::Result,
 };
 use crate::traits::value_access::ValueAccess;
+use crate::values::value::borrowed_value::BorrowedValue;
 
 #[derive(Debug)]
 pub struct Value {
@@ -72,21 +74,11 @@ impl<T: Into<CoreValue>> From<T> for Value {
     }
 }
 
+// TODO: move
 #[derive(Debug)]
-pub enum ValueContainerOrCallable<'a> {
-    Callable(Ref<'a, Callable>),
+pub enum ValueContainerOrBorrowedValue<'a> {
+    BorrowedValue(BorrowedValue<'a>),
     ValueContainer(&'a ValueContainer),
-}
-
-impl<'a> From<ValueContainerOrCallable<'a>> for ValueContainer {
-    fn from(value: ValueContainerOrCallable<'a>) -> Self {
-        match value {
-            ValueContainerOrCallable::Callable(callable) => {
-                ValueContainer::from(callable.clone())
-            }
-            ValueContainerOrCallable::ValueContainer(vc) => vc.clone(),
-        }
-    }
 }
 
 impl Value {
@@ -295,7 +287,7 @@ impl Value {
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainerOrCallable<'_>, AccessError> {
+    ) -> Result<ValueContainerOrBorrowedValue<'_>, AccessError> {
         <Self as ValueAccess>::try_get_property(self, key.into())
     }
 

@@ -78,6 +78,10 @@ pub mod values;
 // reexport macros
 pub use datex_macros_internal as macros;
 extern crate core;
+extern crate core;
+extern crate core;
+extern crate core;
+extern crate core;
 
 pub mod datex_registry;
 pub mod inspector;

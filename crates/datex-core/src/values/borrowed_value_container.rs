@@ -3,6 +3,8 @@ use crate::{
     values::{value::Value, value_container::ValueContainer},
 };
 
+// TODO: still needed or remove?
+
 /// A variant of the normal [`ValueContainer`] which holds a borrowed reference to a local value instead
 /// of an owned value
 /// Shared values are still owned.

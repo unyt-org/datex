@@ -2,12 +2,23 @@ use core::{
     cell::RefMut,
     ops::{Deref, DerefMut},
 };
+use core::fmt::Debug;
 
 /// A sheep can be a reference, a borrowed value, or an owned value.
 pub enum SheepMut<'a, T> {
     Ref(RefMut<'a, T>),
     Borrowed(&'a mut T),
     Owned(T),
+}
+
+impl<T> Debug for SheepMut<'_, T> where T: Debug {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SheepMut::Ref(r) => r.fmt(f),
+            SheepMut::Borrowed(b) => b.fmt(f),
+            SheepMut::Owned(o) => o.fmt(f),
+        }
+    }
 }
 
 impl<'a, T> From<RefMut<'a, T>> for SheepMut<'a, T> {

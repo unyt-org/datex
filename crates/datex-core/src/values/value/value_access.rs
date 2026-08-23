@@ -3,7 +3,7 @@ use crate::shared_values::errors::{AccessError, KeyNotFoundError};
 use crate::traits::value_access::ValueAccess;
 use crate::types::r#type::Type;
 use crate::values::core_value::CoreValue;
-use crate::values::value::{Value, ValueContainerOrCallable};
+use crate::values::value::{Value, ValueContainerOrBorrowedValue};
 use crate::values::value_container::value_key::BorrowedValueKey;
 use crate::values::value_container::ValueContainer;
 
@@ -11,13 +11,13 @@ impl ValueAccess for Value {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-    ) -> Result<ValueContainerOrCallable<'_>, AccessError> {
+    ) -> Result<ValueContainerOrBorrowedValue<'_>, AccessError> {
         match &self.inner {
             CoreValue::Map(map) => map.try_get_property(key),
             CoreValue::List(list) => list.try_get_property(key),
             CoreValue::Type(Type::Entity(container)) => {
                 if let Some(key) = key.try_as_text() {
-                    Ok(ValueContainerOrCallable::Callable(
+                    Ok(ValueContainerOrBorrowedValue::BorrowedValue(
                         Ref::filter_map(
                             container.entity_definition(),
                             |entity_definition| {
