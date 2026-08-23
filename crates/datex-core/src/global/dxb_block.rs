@@ -621,7 +621,7 @@ mod tests {
             .routing_header
             .flags
             .set_signature_type(SignatureType::Unencrypted);
-        block.signature = Some(vec![0u8; 96]);
+        block.signature = Some(vec![0u8; 64]);
 
         let block_bytes = block.to_bytes();
         let parse_result = DXBBlock::from_bytes(&block_bytes);
