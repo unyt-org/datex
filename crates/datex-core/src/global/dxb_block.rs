@@ -17,7 +17,7 @@ use binrw::{
     io::{Cursor, Read},
 };
 use core::{fmt::Display, result::Result, unimplemented};
-use datex_crypto_facade::crypto::{Crypto, PQCrypto};
+use datex_crypto_facade::crypto::{Crypto, CryptoSync};
 use strum::Display;
 use thiserror::Error;
 

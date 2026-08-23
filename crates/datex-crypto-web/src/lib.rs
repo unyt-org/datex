@@ -1,5 +1,5 @@
 use datex_crypto_facade::{
-    crypto::{AsyncCryptoResult, Crypto, PQCrypto},
+    crypto::{AsyncCryptoResult, Crypto, CryptoSync},
     error::BackendError,
 };
 use wasm_bindgen::{JsCast, JsError, JsValue};
@@ -714,7 +714,7 @@ impl Crypto for CryptoWeb {
     }
 }
 
-impl PQCrypto for CryptoWeb {
+impl CryptoSync for CryptoWeb {
     fn derive_x25519_cheat(
         pri_key: &[u8; 32],
         peer_raw: &[u8; 32],

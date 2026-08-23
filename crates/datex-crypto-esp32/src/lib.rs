@@ -11,7 +11,7 @@ pub struct ReadmeDoctests;
 
 use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 use datex_crypto_facade::{
-    crypto::{AsyncCryptoResult, Crypto, PQCrypto},
+    crypto::{AsyncCryptoResult, Crypto, CryptoSync},
     error::BackendError,
 };
 
@@ -263,7 +263,7 @@ impl Crypto for CryptoEsp32 {
     }
 }
 
-impl PQCrypto for CryptoEsp32 {
+impl CryptoSync for CryptoEsp32 {
     // hack around async implementation
     fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
         let key: [u8; 32] = Self::random_bytes(32)

@@ -1,5 +1,5 @@
 use datex_crypto_facade::{
-    crypto::{AsyncCryptoResult, Crypto, CryptoVault, PQCrypto},
+    crypto::{AsyncCryptoResult, Crypto, CryptoSync, CryptoVault},
     error::{
         AesCtrError, BackendError, Ed25519GenError, Ed25519SignError,
         Ed25519VerifyError, HkdfError, KeyUnwrapError, KeyWrapError,
@@ -26,7 +26,7 @@ pub struct ReadmeDoctests;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CryptoNative;
-impl PQCrypto for CryptoNative {
+impl CryptoSync for CryptoNative {
     fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
         let key = PKey::generate_ed25519()
             .map_err(|_| BackendError::Unavailable("openssl ed25519 gen"))?;
@@ -529,7 +529,7 @@ impl Crypto for CryptoNative {
 
 #[cfg(test)]
 mod tests {
-    use super::{CryptoNative, CryptoVault, PQCrypto};
+    use super::{CryptoNative, CryptoSync, CryptoVault};
     use datex_crypto_facade::{
         crypto::Crypto,
         error::{Ed25519VerifyError, KeyUnwrapError, X25519DeriveError},

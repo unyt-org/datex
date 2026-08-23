@@ -92,6 +92,6 @@ pub enum X25519DeriveError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PQCError {
+pub enum CryptoSyncError {
     PlaceHolder,
 }

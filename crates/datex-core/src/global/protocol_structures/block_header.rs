@@ -17,15 +17,14 @@ use strum_macros::Display;
     serde::Serialize,
     serde::Deserialize,
 )]
-#[bits = 5]
+#[bits = 4]
 pub enum BlockType {
     #[default]
     Request = 0,
     Response = 1,
     Hello = 2,
-    HelloBack = 3,
-    Trace = 4,
-    TraceBack = 5,
+    Trace = 3,
+    TraceBack = 4,
 }
 
 impl BlockType {
@@ -68,6 +67,8 @@ pub struct FlagsAndTimestamp {
     unused_5: bool,
     #[allow(unused)]
     unused_6: bool,
+    #[allow(unused)]
+    unused_7: bool,
 
     pub creation_timestamp: B43,
 }

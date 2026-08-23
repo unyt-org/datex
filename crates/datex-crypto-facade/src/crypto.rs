@@ -180,9 +180,9 @@ pub trait Crypto: Send + Sync {
     }
 }
 
-pub trait PQCrypto: Send + Sync {
-    type PQCError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::PQCError;
+pub trait CryptoSync: Send + Sync {
+    type CryptoSyncError: core::fmt::Debug + Send + Sync + 'static =
+        crate::error::CryptoSyncError;
 
     fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError>;
     fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError>;
