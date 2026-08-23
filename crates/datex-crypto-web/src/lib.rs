@@ -26,12 +26,6 @@ use hkdf::Hkdf;
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
 
-use ml_dsa::{Generate, Keypair, MlDsa65, Signer, SigningKey, Verifier};
-use ml_kem::{
-    MlKem512,
-    kem::{Decapsulate, Encapsulate, Kem},
-};
-
 mod sealed {
     use super::*;
     pub trait CryptoKeyType: JsCast {}
