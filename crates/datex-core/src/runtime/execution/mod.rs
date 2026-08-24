@@ -120,7 +120,7 @@ pub fn execute_dxb_sync(
             ExternalExecutionInterrupt::Apply(callee, args) => {
                 let res = callee.try_apply_sync(&runtime, args)?;
                 interrupt_provider
-                    .provide_result(InterruptResult::BorrowedArgsAndResolvedValue(res));
+                    .provide_result(InterruptResult::ResolvedValueAndBorrowedArgs(res));
             }
             ExternalExecutionInterrupt::CallMethod(
                 callee,
@@ -142,7 +142,7 @@ pub fn execute_dxb_sync(
                         .try_get_method(&method_name)
                 {
                     interrupt_provider.provide_result(
-                        InterruptResult::BorrowedArgsAndResolvedValue(try_call_method_sync(
+                        InterruptResult::ResolvedValueAndBorrowedArgs(try_call_method_sync(
                             callee, method, args, &runtime,
                         )?),
                     )
@@ -278,7 +278,7 @@ pub async fn execute_dxb(
             ExternalExecutionInterrupt::Apply(callee, args) => {
                 let res = callee.try_apply_async(&runtime, args).await?;
                 interrupt_provider
-                    .provide_result(InterruptResult::BorrowedArgsAndResolvedValue(res));
+                    .provide_result(InterruptResult::ResolvedValueAndBorrowedArgs(res));
             }
             ExternalExecutionInterrupt::CallMethod(
                 callee,
@@ -300,7 +300,7 @@ pub async fn execute_dxb(
                         .try_get_method(&method_name)
                 {
                     interrupt_provider.provide_result(
-                        InterruptResult::BorrowedArgsAndResolvedValue(
+                        InterruptResult::ResolvedValueAndBorrowedArgs(
                             try_call_method_async(
                                 callee, method, args, &runtime,
                             )
@@ -322,7 +322,7 @@ fn try_call_method_sync(
     method: &EntityImplMethod,
     mut args: Vec<ValueContainer>,
     runtime: &Runtime,
-) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ExecutionError> {
+) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ExecutionError> {
     // prepend callee to args
     args.insert(0, callee.clone());
 
@@ -344,7 +344,7 @@ async fn try_call_method_async(
     method: &EntityImplMethod,
     mut args: Vec<ValueContainer>,
     runtime: &Runtime,
-) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ExecutionError> {
+) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ExecutionError> {
     // prepend callee to args
     args.insert(0, callee.clone());
 
@@ -371,7 +371,10 @@ async fn try_call_method_async(
         let res = runtime
             .execute_instructions_remote(vec![owner_endpoint], instructions)
             .await?;
-        Ok(res)
+
+        // FIXME: restore borrowed stack values across remote execution.
+        // For now, local borrows are not supported cross endpoint
+        Ok((res, vec![]))
     }
 }
 

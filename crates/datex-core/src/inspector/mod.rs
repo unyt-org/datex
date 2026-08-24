@@ -120,6 +120,7 @@ mod tests {
         let res = dx_func_1
             .try_apply_sync(&runtime, vec![4u8.into()])
             .unwrap()
+            .0
             .expect("Function should return a value");
         assert_eq!(res, 5u8.into());
 
@@ -134,6 +135,7 @@ mod tests {
         let res_2 = dx_func_2
             .try_apply_sync(&runtime, vec![3u8.into(), 4u8.into()])
             .unwrap()
+            .0
             .expect("Function should return a value");
         assert_eq!(res_2, 7u8.into());
     }

@@ -1304,27 +1304,46 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::Apply(ApplyData { .. }) => {
-                                    let mut args = collected_results.try_collect_value_containers_with_previous_stack_index(&mut state)?;
+                                    let mut args = collected_results.try_collect_runtime_values()?;
                                     // last argument is the callee
                                     let callee = args.remove(args.len() - 1);
 
                                     // special handling for panic function - abort execution
-                                    if let ValueContainer::Local(Value { inner: CoreValue::Callable(Callable { body: CallableBody::CoreStub(CoreStub::Panic), .. }), .. }) = &callee.0
+                                    if let RuntimeValue::ValueContainer(ValueContainer::Local(Value { inner: CoreValue::Callable(Callable { body: CallableBody::CoreStub(CoreStub::Panic), .. }), .. })) = &callee
                                     {
                                         // assert for now that single string arg
-                                        let error: String = args.remove(0).0.try_into_value().unwrap();
+                                        let error = args
+                                            .remove(0)
+                                            .into_value_container(&mut state)?
+                                            .try_into_value::<String>()
+                                            .ok_or_else(|| ExecutionError::InvalidProgram(Box::new(InvalidProgramError::InvalidType)))?;
                                         return yield Err(ExecutionError::Unspecified(error));
                                     }
 
-                                    interrupt_with_maybe_value!(
+                                    let (callee, callee_stack_index) = callee.into_value_container_with_previous_stack_index(&mut state)?;
+                                    let (args, borrowed_args_stack_indices) = state.stack.take_runtime_values_with_stack_indices(args)?;
+
+                                    let (result, mut borrowed_args) = interrupt_with_borrowed_args_and_maybe_result!(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::Apply(
                                                 callee, args
                                             )
                                         )
-                                    )
-                                        .map(|val| {
+                                    );
+
+                                    // TODO: better solution than remove(0)
+                                    // put the callee back on the stack if it was borrowed
+                                    let borrowed_callee = borrowed_args.remove(0);
+                                    if let Some(callee_stack_index) = callee_stack_index && let Some(borrowed_callee) = borrowed_callee {
+                                        state.stack.set_stack_value(callee_stack_index, borrowed_callee)?;
+                                    }
+
+                                    // put the borrowed args back on the stack
+                                    state.stack.restore_stack_values(borrowed_args, borrowed_args_stack_indices)?;
+
+
+                                    result.map(|val| {
                                             RuntimeValue::ValueContainer(val)
                                         })
                                         .into()
@@ -1343,11 +1362,12 @@ pub gen fn inner_execution_loop(
                                     let method_name = method_name.0;
 
                                     let callee = collected_results.try_pop_runtime_value()?;
-                                    let mut args = collected_results.try_collect_value_containers(&mut state)?;
+                                    let args = collected_results.try_collect_runtime_values()?;
 
                                     let (callee, callee_stack_index) = callee.into_value_container_with_previous_stack_index(&mut state)?;
+                                    let (args, borrowed_args_stack_indices) = state.stack.take_runtime_values_with_stack_indices(args)?;
 
-                                    let (borrowed_args, val) = interrupt_with_borrowed_args_and_maybe_result!(
+                                    let (val, mut borrowed_args) = interrupt_with_borrowed_args_and_maybe_result!(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::CallMethod(
@@ -1357,11 +1377,17 @@ pub gen fn inner_execution_loop(
                                             )
                                         )
                                     );
-                                    // write callee back into original slot
-                                    if let Some(callee_stack_index) = callee_stack_index
-                                        && let Some(callee) = borrowed_args {
-                                        state.stack.set_stack_value(callee_stack_index, callee)?;
+
+                                    // TODO: better solution than remove(0)
+                                    // put the callee back on the stack if it was borrowed
+                                    let borrowed_callee = borrowed_args.remove(0);
+                                    if let Some(callee_stack_index) = callee_stack_index && let Some(borrowed_callee) = borrowed_callee {
+                                        state.stack.set_stack_value(callee_stack_index, borrowed_callee)?;
                                     }
+
+                                    // put the borrowed args back on the stack
+                                    state.stack.restore_stack_values(borrowed_args, borrowed_args_stack_indices)?;
+
 
                                     val.map(|val| {
                                         RuntimeValue::ValueContainer(val)

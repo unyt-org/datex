@@ -33,6 +33,7 @@ pub enum InvalidProgramError {
     ExpectedTypeInstruction,
     InvalidCoreLibId(CoreLibIdIndex),
     InvalidInstructionFormat,
+    InvalidType,
 }
 
 impl Display for InvalidProgramError {
@@ -70,6 +71,9 @@ impl Display for InvalidProgramError {
             }
             InvalidProgramError::InvalidInstructionFormat => {
                 core::write!(f, "Invalid instruction format")
+            }
+            InvalidProgramError::InvalidType => {
+                core::write!(f, "Invalid type")
             }
         }
     }

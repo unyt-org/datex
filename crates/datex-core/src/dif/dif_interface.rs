@@ -95,7 +95,7 @@ impl DIFInterface {
         runtime: &Runtime,
         callee: ValueContainer,
         value: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         callee.try_apply_sync(runtime, value)
     }
 

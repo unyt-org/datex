@@ -51,7 +51,7 @@ pub enum InterruptResult {
     /// Used to return multiple resolved values
     ResolvedValues(Vec<ValueContainer>),
     /// Used in function calls: returns all borrowed arguments back, as well as an optional result value
-    BorrowedArgsAndResolvedValue((Vec<ValueContainer>, Option<ValueContainer>)),
+    ResolvedValueAndBorrowedArgs((Option<ValueContainer>, Vec<Option<ValueContainer>>)),
 }
 
 #[derive(Debug, Clone)]

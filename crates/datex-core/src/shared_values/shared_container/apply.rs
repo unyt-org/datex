@@ -18,7 +18,7 @@ impl Apply for SharedContainer {
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         if !self.is_self_owned() {
             return Err(ApplyError::AsyncCallableRequiresAsyncExecution);
         }
@@ -34,7 +34,7 @@ impl Apply for SharedContainer {
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         if !self.is_self_owned() {
             return self.apply_remote(runtime, args).await;
         }
@@ -58,7 +58,7 @@ impl SharedContainer {
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         let mut instructions: Vec<InstructionInput> = vec![
             RegularInstruction::Apply(ApplyData {
                 arg_count: args.len() as u8,
@@ -73,7 +73,10 @@ impl SharedContainer {
             ValueContainer::Shared(self.clone()),
         ));
 
-        runtime
+        // FIXME: restore borrowed stack values across remote execution.
+        // For now, local borrows are not supported cross endpoint
+        
+        let res = runtime
             .execute_instructions_remote(
                 vec![self.pointer_address().endpoint()],
                 instructions,
@@ -83,6 +86,8 @@ impl SharedContainer {
                 ApplyError::CallableError(Box::new(
                     CallableError::ExecutionError(e),
                 ))
-            })
+            })?;
+
+        Ok((res, vec![]))
     }
 }

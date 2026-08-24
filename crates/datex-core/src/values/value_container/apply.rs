@@ -9,7 +9,7 @@ impl Apply for ValueContainer {
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         match self {
             ValueContainer::Local(value) => value.try_apply_sync(runtime, args),
             ValueContainer::Shared(reference) => {
@@ -22,7 +22,7 @@ impl Apply for ValueContainer {
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         match self {
             ValueContainer::Local(value) => {
                 value.try_apply_async(runtime, args).await

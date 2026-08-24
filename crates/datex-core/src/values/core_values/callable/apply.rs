@@ -23,7 +23,7 @@ impl Apply for Callable {
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         match &self.body {
             CallableBody::Native(native_callable) => {
                 native_callable.try_apply_sync(runtime, args)
@@ -42,7 +42,7 @@ impl Apply for Callable {
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         match &self.body {
             CallableBody::Native(native_callable) => {
                 native_callable.try_apply_async(runtime, args).await
@@ -63,7 +63,7 @@ impl Apply for NativeCallable {
         &self,
         _runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         match self {
             NativeCallable::Sync(f) => f(args).map_err(|e| e.into()),
             NativeCallable::Async(_f) => {
@@ -76,7 +76,7 @@ impl Apply for NativeCallable {
         &self,
         _runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         match self {
             NativeCallable::Sync(f) => f(args).map_err(|e| e.into()),
             NativeCallable::Async(f) => f(args).await.map_err(|e| e.into()),
@@ -89,7 +89,7 @@ impl Apply for DatexBytecodeCallable {
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         if self.requires_async {
             return Err(ApplyError::AsyncCallableRequiresAsyncExecution);
         }
@@ -101,7 +101,7 @@ impl Apply for DatexBytecodeCallable {
             .cloned()
             .collect::<Vec<_>>();
 
-        Ok(runtime
+        let res = runtime
             .execute_dxb_sync(
                 DXBWithSharedValues::new(self.body.clone(), vec![]), // TODO: no clone?
                 Some(stack_values),
@@ -112,22 +112,25 @@ impl Apply for DatexBytecodeCallable {
                 ))),
                 true,
             )
-            .map_err(CallableError::from)?)
+            .map_err(CallableError::from)?;
+
+        // TODO: restore borrowed stack values from execution and return
+        Ok((res, vec![]))
     }
 
     async fn try_apply_async(
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ApplyError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
         // construct the initial stack values by combining the provided arguments with the injected values
         let stack_values = args
             .iter()
             .chain(self.injected_values.iter())
             .cloned()
             .collect::<Vec<_>>();
-
-        Ok(runtime
+        
+        let res = runtime
             .execute_dxb(
                 DXBWithSharedValues::new(self.body.clone(), vec![]), // TODO: no clone?
                 Some(stack_values),
@@ -139,6 +142,9 @@ impl Apply for DatexBytecodeCallable {
                 true,
             )
             .await
-            .map_err(CallableError::from)?)
+            .map_err(CallableError::from)?;
+
+        // TODO: restore borrowed stack values from execution and return
+        Ok((res, vec![]))
     }
 }

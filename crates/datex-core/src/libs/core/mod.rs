@@ -103,7 +103,7 @@ impl CoreLibraryValues {
 
     fn print_impl(
         mut args: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, CallableError> {
+    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), CallableError> {
         // TODO #680: add I/O abstraction layer / interface
 
         let mut output = String::new();
@@ -145,7 +145,9 @@ impl CoreLibraryValues {
         #[cfg(feature = "std")]
         println!("[PRINT] {}", output);
         info!("[PRINT] {}", output);
-        Ok(None)
+
+        // return all borrowed args
+        Ok((None, args.into_iter().map(Some).collect()))
     }
 }
 

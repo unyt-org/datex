@@ -24,12 +24,12 @@ type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 type AsyncCallable = Rc<
     dyn Fn(
             Vec<ValueContainer>,
-        ) -> BoxFuture<Result<Option<ValueContainer>, CallableError>>
+        ) -> BoxFuture<Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), CallableError>>
         + 'static,
 >;
 
 type SyncCallable = Rc<
-    dyn Fn(Vec<ValueContainer>) -> Result<Option<ValueContainer>, CallableError>
+    dyn Fn(Vec<ValueContainer>) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), CallableError>
         + 'static,
 >;
 
@@ -81,7 +81,7 @@ impl NativeCallable {
     pub fn new_sync(
         function: impl Fn(
             Vec<ValueContainer>,
-        ) -> Result<Option<ValueContainer>, CallableError>
+        ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), CallableError>
         + 'static,
     ) -> Self {
         NativeCallable::Sync(Rc::new(function))
@@ -91,7 +91,7 @@ impl NativeCallable {
         function: impl Fn(
             Vec<ValueContainer>,
         ) -> BoxFuture<
-            Result<Option<ValueContainer>, CallableError>,
+            Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), CallableError>,
         > + 'static,
     ) -> Self {
         NativeCallable::Async(Rc::new(function))
@@ -122,7 +122,7 @@ impl CallableBody {
         native_callable: impl Fn(
             Vec<ValueContainer>,
         )
-            -> Result<Option<ValueContainer>, CallableError>
+            -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), CallableError>
         + 'static,
     ) -> Self {
         CallableBody::Native(NativeCallable::new_sync(native_callable))
@@ -131,7 +131,7 @@ impl CallableBody {
         native_callable: impl Fn(
             Vec<ValueContainer>,
         ) -> BoxFuture<
-            Result<Option<ValueContainer>, CallableError>,
+            Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), CallableError>,
         > + 'static,
     ) -> Self {
         CallableBody::Native(NativeCallable::new_async(native_callable))
@@ -189,7 +189,7 @@ where
         },
         body: CallableBody::Native(NativeCallable::new_sync(move |args| {
             let result = func.invoke(args)?;
-            Ok(Some(result.try_into().unwrap()))
+            Ok((Some(result.try_into().unwrap()), vec![]))
         })),
         creator: Default::default(),
     }
@@ -223,7 +223,7 @@ where
             let result = func.invoke(args);
             Box::pin(async move {
                 let result = result?;
-                Ok(Some(result.try_into().unwrap()))
+                Ok((Some(result.try_into().unwrap()), vec![]))
             })
         })),
         creator: Default::default(),

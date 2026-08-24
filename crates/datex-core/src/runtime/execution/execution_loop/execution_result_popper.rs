@@ -82,16 +82,14 @@ impl CollectedResults<CollectedExecutionResult> {
         Ok(expressions)
     }
 
-    /// Collect multiple owned value containers
-    /// Also returns the previous stack index of each value container if it was on the stack.
-    pub fn try_collect_value_containers_with_previous_stack_index(
+    /// Collect multiple owned runtime values.
+    pub fn try_collect_runtime_values(
         mut self,
-        state: &mut RuntimeExecutionState,
-    ) -> Result<Vec<(ValueContainer, Option<StackIndex>)>, ExecutionError> {
+    ) -> Result<Vec<RuntimeValue>, ExecutionError> {
         let count = self.len();
         let mut expressions = Vec::with_capacity(count);
         for _ in 0..count {
-            expressions.push(self.try_pop_value_container_with_previous_stack_index(state)?);
+            expressions.push(self.try_pop_runtime_value()?);
         }
         expressions.reverse();
         Ok(expressions)
@@ -114,17 +112,6 @@ impl CollectedResults<CollectedExecutionResult> {
     ) -> Result<ValueContainer, ExecutionError> {
         self.try_pop_runtime_value()?.into_value_container(state)
     }
-
-    /// Pops an owned value container, returning an error if none exists.
-    /// If the value is a slot address, it is resolved to a value container and the slot is removed from the runtime state.
-    /// Also returns the previous stack index of the value container if it was on the stack.
-    pub fn try_pop_value_container_with_previous_stack_index(
-        &mut self,
-        state: &mut RuntimeExecutionState,
-    ) -> Result<(ValueContainer, Option<StackIndex>), ExecutionError> {
-        self.try_pop_runtime_value()?.into_value_container_with_previous_stack_index(state)
-    }
-
 
     /// Pops a key-value pair result, returning an error if none exists
     pub fn try_collect_key_value_pair(

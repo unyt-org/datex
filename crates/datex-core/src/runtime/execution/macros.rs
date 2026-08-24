@@ -20,14 +20,14 @@ pub(crate) macro interrupt_with_maybe_value {
     }}
 }
 
-/// Yield an interrupt and get the next resolved callee and value
+/// Yield an interrupt and get the returned borrowed args and the result value
 pub(crate) macro interrupt_with_borrowed_args_and_maybe_result {
     ($input:expr, $arg:expr) => {{
         use crate::runtime::execution::macros::interrupt;
 
         let res = interrupt!($input, $arg).unwrap();
         match res {
-            crate::runtime::execution::execution_loop::interrupts::InterruptResult::BorrowedArgsAndResolvedValue((callee, value)) => (callee, value),
+            crate::runtime::execution::execution_loop::interrupts::InterruptResult::ResolvedValueAndBorrowedArgs((value, args)) => (value, args),
             _ => unreachable!(),
         }
     }}
