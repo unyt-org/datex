@@ -26,6 +26,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, fmt::Debug};
+use itertools::{EitherOrBoth, Itertools};
 use crate::runtime::execution::execution_loop::runtime_value::RuntimeValue;
 
 pub struct ExecutionLoopState {
@@ -259,7 +260,7 @@ impl RuntimeExecutionStack {
 
     /// Resolves a list of runtime values to actual values on the stack,
     /// returning both the resolved values and their corresponding stack indices (for values stored on the stack)
-    pub fn take_runtime_values_with_stack_indices(&mut self, values: Vec<RuntimeValue>) -> Result<(Vec<ValueContainer>, Vec<Option<StackIndex>>), ExecutionError> {
+    pub fn take_runtime_values_with_stack_indices(&mut self, values: Vec<RuntimeValue>) -> Result<(Vec<(ValueContainer)>, Vec<Option<StackIndex>>), ExecutionError> {
         let mut stack_indices = Vec::new();
         let mut resolved_values = Vec::new();
 
@@ -280,11 +281,17 @@ impl RuntimeExecutionStack {
     }
 
     /// Restores values to the stack at the given indices, if both the index and value are available.
-    pub fn restore_stack_values(&mut self, values: Vec<Option<ValueContainer>>, stack_indices: Vec<Option<StackIndex>>) -> Result<(), ExecutionError> {
-        for (index_option, value) in stack_indices.into_iter().zip(values) {
-            // If a stack index is available, and the value for the reserved stack index is available, restore the value to the stack at the given index.
-            if let Some(index) = index_option && let Some(value) = value {
-                self.set_stack_value(index, value)?;
+    pub fn restore_stack_values(&mut self, values: Vec<ValueContainer>, stack_indices: Vec<Option<StackIndex>>) -> Result<(), ExecutionError> {
+        for x in stack_indices.into_iter().filter_map(|i| i).zip_longest(values) {
+            match x {
+                EitherOrBoth::Both(previous, next) => {
+                    // If a stack index is available, and the value for the reserved stack index is available, restore the value to the stack at the given index.
+                    self.set_stack_value(previous, next)?;
+                }
+                _ => {
+                    // error if the number of stack indices does not match the number of values
+                    return Err(ExecutionError::StackRestoreMismatch);
+                }
             }
         }
         Ok(())

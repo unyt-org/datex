@@ -119,6 +119,7 @@ pub enum ExecutionError {
     InvalidMove,
     MoveToMultipleEndpoints,
     UnclonableValue, // happens for native rust structs that don't implement clone. FIXME: this should not happen in execution loop
+    StackRestoreMismatch,
 }
 impl ExecutionError {
     pub fn intermediate_result_with_state(
@@ -375,6 +376,12 @@ impl Display for ExecutionError {
             }
             ExecutionError::Unspecified(msg) => {
                 core::write!(f, "Unspecified error: {msg}")
+            }
+            ExecutionError::StackRestoreMismatch => {
+                core::write!(
+                    f,
+                    "Stack restore mismatch"
+                )
             }
         }
     }

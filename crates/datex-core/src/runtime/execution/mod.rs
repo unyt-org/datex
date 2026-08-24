@@ -30,6 +30,7 @@ use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
+use crate::traits::apply::ApplyArgument;
 
 pub mod context;
 mod errors;
@@ -118,7 +119,7 @@ pub fn execute_dxb_sync(
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = callee.try_apply_sync(&runtime, args)?;
+                let res = callee.try_apply_sync_checked(&runtime, args)?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValueAndBorrowedArgs(res));
             }
@@ -129,7 +130,7 @@ pub fn execute_dxb_sync(
             ) => {
                 let entity_type =
                     if let TypeDefinition::Box(box Type::Entity(entity_type)) =
-                        callee.actual_type().as_ref()
+                        callee.value.actual_type().as_ref()
                     {
                         Some(entity_type.clone())
                     } else {
@@ -276,7 +277,7 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = callee.try_apply_async(&runtime, args).await?;
+                let res = callee.try_apply_async_checked(&runtime, args).await?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValueAndBorrowedArgs(res));
             }
@@ -287,7 +288,7 @@ pub async fn execute_dxb(
             ) => {
                 let entity_type =
                     if let TypeDefinition::Box(box Type::Entity(entity_type)) =
-                        callee.actual_type().as_ref()
+                        callee.value.actual_type().as_ref()
                     {
                         Some(entity_type.clone())
                     } else {
@@ -318,21 +319,22 @@ pub async fn execute_dxb(
 }
 
 fn try_call_method_sync(
-    callee: ValueContainer,
+    callee: ApplyArgument,
     method: &EntityImplMethod,
-    mut args: Vec<ValueContainer>,
+    mut args: Vec<ApplyArgument>,
     runtime: &Runtime,
-) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ExecutionError> {
+) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    let owner_endpoint = callee.value.owner();
+
     // prepend callee to args
-    args.insert(0, callee.clone());
+    args.insert(0, callee);
 
     // only local calls supported for sync execution
     if !method.call_on_owner
-        || callee
-            .owner()
+        || owner_endpoint
             .is_local_or_equals_endpoint(runtime.endpoint())
     {
-        let res = method.callable.try_apply_sync(runtime, args)?;
+        let res = method.callable.try_apply_sync_checked(runtime, args)?;
         Ok(res)
     } else {
         Err(ExecutionError::RequiresAsyncExecution)
@@ -340,20 +342,21 @@ fn try_call_method_sync(
 }
 
 async fn try_call_method_async(
-    callee: ValueContainer,
+    callee: ApplyArgument,
     method: &EntityImplMethod,
-    mut args: Vec<ValueContainer>,
+    mut args: Vec<ApplyArgument>,
     runtime: &Runtime,
-) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ExecutionError> {
-    // prepend callee to args
-    args.insert(0, callee.clone());
+) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    let owner_endpoint = callee.value.owner();
 
-    let owner_endpoint = callee.owner();
+    // prepend callee to args
+    args.insert(0, callee);
+
     // call locally
     if !method.call_on_owner
         || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
     {
-        let res = method.callable.try_apply_async(runtime, args).await?;
+        let res = method.callable.try_apply_async_checked(runtime, args).await?;
         Ok(res)
     }
     // call on owner endpoint
@@ -366,7 +369,7 @@ async fn try_call_method_async(
             .into(),
         ];
         instructions
-            .extend(args.into_iter().map(InstructionInput::ValueContainer));
+            .extend(args.into_iter().map(|v| InstructionInput::ValueContainer(v.value)));
 
         let res = runtime
             .execute_instructions_remote(vec![owner_endpoint], instructions)

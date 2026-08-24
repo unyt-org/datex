@@ -143,7 +143,7 @@ pub fn generate_native_callable(
             // handle & and &mut
             if is_borrowed {
                 quote! {
-                    let mut value_sheep = #var_ident_container.value_container_mut(); // collapse potential Shared to inner ValueContainer
+                    let mut value_sheep = (&mut #var_ident_container.value).value_container_mut(); // collapse potential Shared to inner ValueContainer
                     // try to get stored native value from the value container
                     let #var_ident = if let Some(mut inner) = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_native_from_value_container(core::ops::DerefMut::deref_mut(&mut value_sheep)) {
                         inner
@@ -157,7 +157,7 @@ pub fn generate_native_callable(
             else {
                 quote! {
                     // try to get stored native value from the value container
-                    let #var_ident = match <#ty as DatexValueContainerProxyDeserialize>::try_native_from_value_container(#var_ident_container) {
+                    let #var_ident = match <#ty as DatexValueContainerProxyDeserialize>::try_native_from_value_container(#var_ident_container.value) {
                         Ok(inner) => inner,
                         Err(box value) => {
                             // fallback: convert from DATEX value to native value
@@ -172,7 +172,7 @@ pub fn generate_native_callable(
         call_argument_collections.push(
             // borrowed values are collected and returned back
             if is_borrowed {
-                quote! { Some(#var_ident_container) }
+                quote! { if #var_ident_container.passed_as_ref { Some(#var_ident_container.value) } else { None } }
             }
             // moved values can no longer be accessed, so we return None
             else {
@@ -214,14 +214,14 @@ pub fn generate_native_callable(
                 }
                 ValueContainer::Shared(_) => {} // shared container must already have an assigned type since it already contained a full ValueContainer
             }
-            (Some(result_value), vec![#(#call_argument_collections),*])
+            (Some(result_value), vec![#(#call_argument_collections),*].into_iter().filter_map(|v| v).collect())
         }}
     } else {
         quote! {{
             #(#call_argument_inits)*
-            
+
             #method_call_body;
-            (None, vec![#(#call_argument_collections),*])
+            (None, vec![#(#call_argument_collections),*].into_iter().filter_map(|v| v).collect())
         }}
     };
 

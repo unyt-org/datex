@@ -33,6 +33,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
+use crate::traits::apply::ApplyArgument;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
@@ -94,8 +95,8 @@ impl DIFInterface {
         &self,
         runtime: &Runtime,
         callee: ValueContainer,
-        value: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        value: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         callee.try_apply_sync(runtime, value)
     }
 

@@ -31,6 +31,7 @@ use crate::{
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
+use crate::traits::apply::{get_borrowed_apply_argument_values, ApplyArgument};
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
@@ -102,33 +103,35 @@ impl CoreLibraryValues {
     }
 
     fn print_impl(
-        mut args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), CallableError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError> {
         // TODO #680: add I/O abstraction layer / interface
 
         let mut output = String::new();
 
         // if first argument is a string value, print it directly
-        if let Some(ValueContainer::Local(Value {
+        let value_args = if let Some(ValueContainer::Local(Value {
             inner: CoreValue::Text(text),
             ..
-        })) = args.first()
+        })) = args.first().map(|v| &v.value)
         {
             output.push_str(&text.0);
-            // remove first argument from args
-            args = args.into_iter().skip(1).collect();
-            // if there are still arguments, add a space
-            if !args.is_empty() {
+            // if there are still values after the string, add a space
+            if args.len() > 1 {
                 output.push(' ');
             }
+            &args[1..]
         }
+        else {
+            &args
+        };
 
         #[cfg(feature = "decompiler")]
         let args_string = args
             .iter()
             .map(|v| {
                 crate::decompiler::decompile_value(
-                    v,
+                    &v.value,
                     crate::decompiler::DecompileOptions::colorized(),
                 )
             })
@@ -137,7 +140,7 @@ impl CoreLibraryValues {
         #[cfg(not(feature = "decompiler"))]
         let args_string = args
             .iter()
-            .map(|v| v.to_string())
+            .map(|v| v.value.to_string())
             .collect::<Vec<_>>()
             .join(" ");
         output.push_str(&args_string);
@@ -147,7 +150,7 @@ impl CoreLibraryValues {
         info!("[PRINT] {}", output);
 
         // return all borrowed args
-        Ok((None, args.into_iter().map(Some).collect()))
+        Ok((None, get_borrowed_apply_argument_values(args)))
     }
 }
 

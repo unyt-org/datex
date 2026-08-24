@@ -17,13 +17,14 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::traits::apply::ApplyArgument;
 
 impl Apply for Callable {
     fn try_apply_sync(
         &self,
         runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match &self.body {
             CallableBody::Native(native_callable) => {
                 native_callable.try_apply_sync(runtime, args)
@@ -41,8 +42,8 @@ impl Apply for Callable {
     async fn try_apply_async(
         &self,
         runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match &self.body {
             CallableBody::Native(native_callable) => {
                 native_callable.try_apply_async(runtime, args).await
@@ -62,8 +63,8 @@ impl Apply for NativeCallable {
     fn try_apply_sync(
         &self,
         _runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match self {
             NativeCallable::Sync(f) => f(args).map_err(|e| e.into()),
             NativeCallable::Async(_f) => {
@@ -75,8 +76,8 @@ impl Apply for NativeCallable {
     async fn try_apply_async(
         &self,
         _runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match self {
             NativeCallable::Sync(f) => f(args).map_err(|e| e.into()),
             NativeCallable::Async(f) => f(args).await.map_err(|e| e.into()),
@@ -88,17 +89,17 @@ impl Apply for DatexBytecodeCallable {
     fn try_apply_sync(
         &self,
         runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         if self.requires_async {
             return Err(ApplyError::AsyncCallableRequiresAsyncExecution);
         }
 
         // construct the initial stack values by combining the provided arguments with the injected values
         let stack_values = args
-            .iter()
-            .chain(self.injected_values.iter())
-            .cloned()
+            .into_iter()
+            .map(|v| v.value)
+            .chain(self.injected_values.iter().cloned())
             .collect::<Vec<_>>();
 
         let res = runtime
@@ -121,13 +122,13 @@ impl Apply for DatexBytecodeCallable {
     async fn try_apply_async(
         &self,
         runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         // construct the initial stack values by combining the provided arguments with the injected values
         let stack_values = args
-            .iter()
-            .chain(self.injected_values.iter())
-            .cloned()
+            .into_iter()
+            .map(|v| v.value)
+            .chain(self.injected_values.iter().cloned())
             .collect::<Vec<_>>();
         
         let res = runtime

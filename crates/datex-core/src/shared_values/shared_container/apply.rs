@@ -12,13 +12,14 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::traits::apply::ApplyArgument;
 
 impl Apply for SharedContainer {
     fn try_apply_sync(
         &self,
         runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         if !self.is_self_owned() {
             return Err(ApplyError::AsyncCallableRequiresAsyncExecution);
         }
@@ -33,8 +34,8 @@ impl Apply for SharedContainer {
     async fn try_apply_async(
         &self,
         runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         if !self.is_self_owned() {
             return self.apply_remote(runtime, args).await;
         }
@@ -57,8 +58,8 @@ impl SharedContainer {
     async fn apply_remote(
         &self,
         runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         let mut instructions: Vec<InstructionInput> = vec![
             RegularInstruction::Apply(ApplyData {
                 arg_count: args.len() as u8,
@@ -67,7 +68,7 @@ impl SharedContainer {
         ];
         // append args
         instructions
-            .extend(args.into_iter().map(InstructionInput::ValueContainer));
+            .extend(args.into_iter().map(|v| InstructionInput::ValueContainer(v.value)));
         // append the callee
         instructions.push(InstructionInput::ValueContainer(
             ValueContainer::Shared(self.clone()),
@@ -75,7 +76,7 @@ impl SharedContainer {
 
         // FIXME: restore borrowed stack values across remote execution.
         // For now, local borrows are not supported cross endpoint
-        
+
         let res = runtime
             .execute_instructions_remote(
                 vec![self.pointer_address().endpoint()],

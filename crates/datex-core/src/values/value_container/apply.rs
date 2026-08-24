@@ -4,12 +4,14 @@ use crate::{
     traits::apply::{Apply, ApplyError},
     values::value_container::ValueContainer,
 };
+use crate::traits::apply::ApplyArgument;
+
 impl Apply for ValueContainer {
     fn try_apply_sync(
         &self,
         runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match self {
             ValueContainer::Local(value) => value.try_apply_sync(runtime, args),
             ValueContainer::Shared(reference) => {
@@ -21,8 +23,8 @@ impl Apply for ValueContainer {
     async fn try_apply_async(
         &self,
         runtime: &Runtime,
-        args: Vec<ValueContainer>,
-    ) -> Result<(Option<ValueContainer>, Vec<Option<ValueContainer>>), ApplyError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match self {
             ValueContainer::Local(value) => {
                 value.try_apply_async(runtime, args).await

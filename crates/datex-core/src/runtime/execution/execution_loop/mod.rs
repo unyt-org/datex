@@ -117,6 +117,7 @@ use crate::{
 };
 use collected_execution_result::CollectedExecutionResult;
 use crate::runtime::execution::macros::interrupt_with_borrowed_args_and_maybe_result;
+use crate::traits::apply::{into_apply_arguments_with_stack_indices, ApplyArgument};
 use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 /// Main execution loop that drives the execution of the DXB body
@@ -1327,17 +1328,14 @@ pub gen fn inner_execution_loop(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::Apply(
-                                                callee, args
+                                                callee,
+                                                into_apply_arguments_with_stack_indices(
+                                                    args,
+                                                    &borrowed_args_stack_indices,
+                                                )
                                             )
                                         )
                                     );
-
-                                    // TODO: better solution than remove(0)
-                                    // put the callee back on the stack if it was borrowed
-                                    let borrowed_callee = borrowed_args.try_remove(0);
-                                    if let Some(callee_stack_index) = callee_stack_index && let Some(Some(borrowed_callee)) = borrowed_callee {
-                                        state.stack.set_stack_value(callee_stack_index, borrowed_callee)?;
-                                    }
 
                                     // put the borrowed args back on the stack
                                     state.stack.restore_stack_values(borrowed_args, borrowed_args_stack_indices)?;
@@ -1371,19 +1369,28 @@ pub gen fn inner_execution_loop(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::CallMethod(
-                                                callee,
+                                                ApplyArgument {
+                                                    value: callee,
+                                                    passed_as_ref: callee_stack_index.is_some(),
+                                                },
                                                 method_name,
-                                                args
+                                                into_apply_arguments_with_stack_indices(
+                                                    args,
+                                                    &borrowed_args_stack_indices,
+                                                )
                                             )
                                         )
                                     );
 
-                                    // TODO: better solution than remove(0)
+                                    let mut borrowed_args_iter = borrowed_args.into_iter();
+
                                     // put the callee back on the stack if it was borrowed
-                                    let borrowed_callee = borrowed_args.try_remove(0);
-                                    if let Some(callee_stack_index) = callee_stack_index && let Some(Some(borrowed_callee)) = borrowed_callee {
+                                    if let Some(callee_stack_index) = callee_stack_index {
+                                        let borrowed_callee = borrowed_args_iter.next().unwrap();
                                         state.stack.set_stack_value(callee_stack_index, borrowed_callee)?;
                                     }
+
+                                    let borrowed_args = borrowed_args_iter.collect::<Vec<_>>();
 
                                     // put the borrowed args back on the stack
                                     state.stack.restore_stack_values(borrowed_args, borrowed_args_stack_indices)?;

@@ -11,6 +11,7 @@ use crate::{
     },
     values::core_values::endpoint::Endpoint,
 };
+use crate::traits::apply::ApplyArgument;
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {
@@ -40,8 +41,8 @@ pub enum ExternalExecutionInterrupt {
         endpoint: Endpoint,
         property_name: String,
     },
-    Apply(ValueContainer, Vec<ValueContainer>),
-    CallMethod(ValueContainer, String, Vec<ValueContainer>),
+    Apply(ValueContainer, Vec<ApplyArgument>),
+    CallMethod(ApplyArgument, String, Vec<ApplyArgument>),
 }
 
 #[derive(Debug)]
@@ -51,7 +52,7 @@ pub enum InterruptResult {
     /// Used to return multiple resolved values
     ResolvedValues(Vec<ValueContainer>),
     /// Used in function calls: returns all borrowed arguments back, as well as an optional result value
-    ResolvedValueAndBorrowedArgs((Option<ValueContainer>, Vec<Option<ValueContainer>>)),
+    ResolvedValueAndBorrowedArgs((Option<ValueContainer>, Vec<ValueContainer>)),
 }
 
 #[derive(Debug, Clone)]
