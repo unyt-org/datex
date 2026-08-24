@@ -18,16 +18,6 @@ mod datex_inspector {
 
     #[datex]
     impl Inspector {
-        // todo: remove create method here
-        /// Creates a new Inspector instance.
-        pub fn create(
-            // TODO
-            // #[runtime] runtime: Runtime,
-            name: String,
-        ) -> Shared<Inspector> {
-            // TODO: add SharedRef here, caller should not own inspector
-            Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
-        }
         pub fn name_getter(&self) -> String {
             self.name.clone()
         }
