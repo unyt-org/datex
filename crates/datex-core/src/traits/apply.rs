@@ -45,11 +45,11 @@ pub trait Apply {
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, ApplyError>;
+    ) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ApplyError>;
 
     async fn try_apply_async(
         &self,
         runtime: &Runtime,
         args: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, ApplyError>;
+    ) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ApplyError>;
 }

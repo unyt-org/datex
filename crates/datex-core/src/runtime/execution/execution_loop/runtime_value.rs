@@ -63,4 +63,18 @@ impl RuntimeValue {
             }
         }
     }
+
+    /// Creates an owned `ValueContainer` from the `RuntimeValue`.
+    /// If the runtime value is inside a slot, it is popped and the previous stack index is returned as well
+    pub fn into_value_container_with_previous_stack_index(
+        self,
+        state: &mut RuntimeExecutionState,
+    ) -> Result<(ValueContainer, Option<StackIndex>), ExecutionError> {
+        match self {
+            RuntimeValue::ValueContainer(vc) => Ok((vc, None)),
+            RuntimeValue::StackValue(addr) => {
+                Ok((state.stack.take_stack_value(addr)?, Some(addr)))
+            }
+        }
+    }
 }

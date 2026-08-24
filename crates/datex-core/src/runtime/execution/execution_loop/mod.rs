@@ -116,6 +116,7 @@ use crate::{
     values::core_values::callable::DatexBytecodeCallable,
 };
 use collected_execution_result::CollectedExecutionResult;
+use crate::runtime::execution::macros::interrupt_with_borrowed_args_and_maybe_result;
 use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 /// Main execution loop that drives the execution of the DXB body
@@ -311,7 +312,7 @@ pub gen fn inner_execution_loop(
 
                             // null
                             RegularInstruction::Null => Some(ValueContainer::from(Value::null()).into()),
-                                
+
                             RegularInstruction::Uninitialized => Some(ValueContainer::from(Value::unitialized()).into()),
 
                             // text
@@ -1303,15 +1304,15 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::Apply(ApplyData { .. }) => {
-                                    let mut args = collected_results.try_collect_value_containers(&mut state)?;
+                                    let mut args = collected_results.try_collect_value_containers_with_previous_stack_index(&mut state)?;
                                     // last argument is the callee
                                     let callee = args.remove(args.len() - 1);
 
                                     // special handling for panic function - abort execution
-                                    if let ValueContainer::Local(Value { inner: CoreValue::Callable(Callable { body: CallableBody::CoreStub(CoreStub::Panic), .. }), .. }) = callee
+                                    if let ValueContainer::Local(Value { inner: CoreValue::Callable(Callable { body: CallableBody::CoreStub(CoreStub::Panic), .. }), .. }) = &callee.0
                                     {
                                         // assert for now that single string arg
-                                        let error: String = args.remove(0).try_into_value().unwrap();
+                                        let error: String = args.remove(0).0.try_into_value().unwrap();
                                         return yield Err(ExecutionError::Unspecified(error));
                                     }
 
@@ -1341,21 +1342,30 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::CallMethod(CallMethodData {method_name, ..}) => {
                                     let method_name = method_name.0;
 
+                                    let callee = collected_results.try_pop_runtime_value()?;
                                     let mut args = collected_results.try_collect_value_containers(&mut state)?;
-                                    // last argument is the callee
-                                    let callee = args.remove(args.len() - 1);
 
-                                    interrupt_with_maybe_value!(
+                                    let (callee, callee_stack_index) = callee.into_value_container_with_previous_stack_index(&mut state)?;
+
+                                    let (borrowed_args, val) = interrupt_with_borrowed_args_and_maybe_result!(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::CallMethod(
-                                                callee, method_name, args
+                                                callee,
+                                                method_name,
+                                                args
                                             )
                                         )
-                                    )
-                                        .map(|val| {
-                                            RuntimeValue::ValueContainer(val)
-                                        })
+                                    );
+                                    // write callee back into original slot
+                                    if let Some(callee_stack_index) = callee_stack_index
+                                        && let Some(callee) = borrowed_args {
+                                        state.stack.set_stack_value(callee_stack_index, callee)?;
+                                    }
+
+                                    val.map(|val| {
+                                        RuntimeValue::ValueContainer(val)
+                                    })
                                         .into()
                                 }
 

@@ -120,7 +120,7 @@ pub fn execute_dxb_sync(
             ExternalExecutionInterrupt::Apply(callee, args) => {
                 let res = callee.try_apply_sync(&runtime, args)?;
                 interrupt_provider
-                    .provide_result(InterruptResult::ResolvedValue(res));
+                    .provide_result(InterruptResult::BorrowedArgsAndResolvedValue(res));
             }
             ExternalExecutionInterrupt::CallMethod(
                 callee,
@@ -142,7 +142,7 @@ pub fn execute_dxb_sync(
                         .try_get_method(&method_name)
                 {
                     interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValue(try_call_method_sync(
+                        InterruptResult::BorrowedArgsAndResolvedValue(try_call_method_sync(
                             callee, method, args, &runtime,
                         )?),
                     )
@@ -278,7 +278,7 @@ pub async fn execute_dxb(
             ExternalExecutionInterrupt::Apply(callee, args) => {
                 let res = callee.try_apply_async(&runtime, args).await?;
                 interrupt_provider
-                    .provide_result(InterruptResult::ResolvedValue(res));
+                    .provide_result(InterruptResult::BorrowedArgsAndResolvedValue(res));
             }
             ExternalExecutionInterrupt::CallMethod(
                 callee,
@@ -300,7 +300,7 @@ pub async fn execute_dxb(
                         .try_get_method(&method_name)
                 {
                     interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValue(
+                        InterruptResult::BorrowedArgsAndResolvedValue(
                             try_call_method_async(
                                 callee, method, args, &runtime,
                             )
@@ -322,7 +322,7 @@ fn try_call_method_sync(
     method: &EntityImplMethod,
     mut args: Vec<ValueContainer>,
     runtime: &Runtime,
-) -> Result<Option<ValueContainer>, ExecutionError> {
+) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ExecutionError> {
     // prepend callee to args
     args.insert(0, callee.clone());
 
@@ -344,7 +344,7 @@ async fn try_call_method_async(
     method: &EntityImplMethod,
     mut args: Vec<ValueContainer>,
     runtime: &Runtime,
-) -> Result<Option<ValueContainer>, ExecutionError> {
+) -> Result<(Vec<ValueContainer>, Option<ValueContainer>), ExecutionError> {
     // prepend callee to args
     args.insert(0, callee.clone());
 

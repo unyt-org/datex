@@ -49,4 +49,8 @@ pub trait DatexNative:
         self: Box<Self>,
         cache: &mut SharedReferencesCache,
     ) -> Value;
+
+    fn core_lib_type_id(&self) -> CoreLibTypeId {
+        CoreLibBaseTypeId::Any.into()
+    }
 }

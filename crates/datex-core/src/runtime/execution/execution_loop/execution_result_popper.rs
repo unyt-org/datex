@@ -13,6 +13,7 @@ use crate::{
     types::{r#type::Type, type_definition::TypeDefinition},
     values::{core_values::map::MapKey, value_container::ValueContainer},
 };
+use crate::global::stack_index::StackIndex;
 
 impl
     CollectionResultsPopper<
@@ -81,6 +82,21 @@ impl CollectedResults<CollectedExecutionResult> {
         Ok(expressions)
     }
 
+    /// Collect multiple owned value containers
+    /// Also returns the previous stack index of each value container if it was on the stack.
+    pub fn try_collect_value_containers_with_previous_stack_index(
+        mut self,
+        state: &mut RuntimeExecutionState,
+    ) -> Result<Vec<(ValueContainer, Option<StackIndex>)>, ExecutionError> {
+        let count = self.len();
+        let mut expressions = Vec::with_capacity(count);
+        for _ in 0..count {
+            expressions.push(self.try_pop_value_container_with_previous_stack_index(state)?);
+        }
+        expressions.reverse();
+        Ok(expressions)
+    }
+
     /// Pops a runtime value result, returning an error if none exists
     pub fn try_pop_runtime_value(
         &mut self,
@@ -98,6 +114,17 @@ impl CollectedResults<CollectedExecutionResult> {
     ) -> Result<ValueContainer, ExecutionError> {
         self.try_pop_runtime_value()?.into_value_container(state)
     }
+
+    /// Pops an owned value container, returning an error if none exists.
+    /// If the value is a slot address, it is resolved to a value container and the slot is removed from the runtime state.
+    /// Also returns the previous stack index of the value container if it was on the stack.
+    pub fn try_pop_value_container_with_previous_stack_index(
+        &mut self,
+        state: &mut RuntimeExecutionState,
+    ) -> Result<(ValueContainer, Option<StackIndex>), ExecutionError> {
+        self.try_pop_runtime_value()?.into_value_container_with_previous_stack_index(state)
+    }
+
 
     /// Pops a key-value pair result, returning an error if none exists
     pub fn try_collect_key_value_pair(

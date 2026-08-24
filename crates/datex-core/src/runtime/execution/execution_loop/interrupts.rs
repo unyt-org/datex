@@ -46,8 +46,12 @@ pub enum ExternalExecutionInterrupt {
 
 #[derive(Debug)]
 pub enum InterruptResult {
+    /// Used to return a single resolved value or None
     ResolvedValue(Option<ValueContainer>),
+    /// Used to return multiple resolved values
     ResolvedValues(Vec<ValueContainer>),
+    /// Used in function calls: returns all borrowed arguments back, as well as an optional result value
+    BorrowedArgsAndResolvedValue((Vec<ValueContainer>, Option<ValueContainer>)),
 }
 
 #[derive(Debug, Clone)]

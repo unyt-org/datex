@@ -754,7 +754,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         {
             variable_access.access_type = ValueAccessType::Borrow;
         }
-        
+
         Ok(VisitAction::AbortRecursion)
     }
 
@@ -1074,18 +1074,13 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         call: &mut InterfaceMethodCall,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
-        self.visit_datex_expression(&mut call.target)?;
+        call.walk_children(self)?;
 
-        if let DatexExpressionData::VariableAccess(VariableAccess {
-            access_type,
-            ..
-        }) = call.target.data_mut()
+        if let DatexExpressionData::VariableAccess(variable_access) = call.target.data_mut()
         {
-            *access_type = ValueAccessType::Borrow
+            variable_access.access_type = ValueAccessType::Borrow;
         };
-        for arg in &mut call.arguments {
-            self.visit_datex_expression(arg)?;
-        }
+
         Ok(VisitAction::AbortRecursion)
     }
 
@@ -1244,6 +1239,7 @@ mod tests {
     };
     use alloc::rc::Rc;
     use core::{assert_matches, cell::RefCell, str::FromStr};
+    use crate::ast::expressions::InterfaceMethodCall;
 
     fn precompile(
         ast: DatexExpression,
@@ -2598,6 +2594,37 @@ mod tests {
                 })
                 .with_default_span(),
             ]))
+        );
+    }
+
+    #[test]
+    fn interface_method_call() {
+        let result = parse_and_precompile(
+            "var x = 0; x->test()",
+        )
+        .unwrap();
+
+        let statements =
+            if let DatexExpressionData::Statements(stmts) = result.ast.data() {
+                stmts
+            } else {
+                core::panic!("Expected statements");
+            };
+
+        assert_eq!(
+            *statements.statements.get(1).unwrap(),
+            DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                target: (
+                    DatexExpressionData::VariableAccess(VariableAccess {
+                        id: 0,
+                        name: "x".to_string(),
+                        access_type: ValueAccessType::Borrow,
+                    })
+                    .with_default_span()
+                ),
+                method_name: "test".to_string(),
+                arguments: vec![],
+            }).with_default_span()
         );
     }
 

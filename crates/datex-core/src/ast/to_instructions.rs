@@ -5,6 +5,7 @@ use crate::global::operators::ModificationOperator;
 use crate::global::root_properties::RootProperty;
 use crate::instruction::regular_instruction::RegularInstruction;
 use crate::shared_values::{ReferenceMutability, SharedContainerMutability};
+use crate::prelude::*;
 
 impl ToInstructions for RangeDeclaration {
     type InstructionType = RegularInstruction;
