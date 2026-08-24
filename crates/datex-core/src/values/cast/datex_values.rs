@@ -23,6 +23,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::TypeDefinition,
 };
+use crate::libs::core::type_id::CoreLibTypeId;
 use crate::traits::try_clone::TryClone;
 use crate::values::borrowed_value_container::{AsBorrowed, AsBorrowedMut, BorrowedValueContainer, BorrowedValueContainerMut};
 use crate::values::core_value::CoreValue;
@@ -62,6 +63,9 @@ macro_rules! impl_datex_direct_via_value_container {
             }
             fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
                 Value::native_boxed(self, cache)
+            }
+            fn core_lib_type_id(&self) -> CoreLibTypeId {
+                $dx_type.into()
             }
         }
 

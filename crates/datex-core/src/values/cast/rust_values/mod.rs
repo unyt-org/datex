@@ -38,6 +38,7 @@ use crate::{
         integer::typed_integer::IntegerTypeVariant,
     },
 };
+use crate::libs::core::type_id::CoreLibTypeId;
 use crate::traits::try_clone::TryClone;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
@@ -110,6 +111,9 @@ macro_rules! implement_rust_native_traits {
             }
             fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
                 Value::native_boxed(self, cache)
+            }
+            fn core_lib_type_id(&self) -> CoreLibTypeId {
+                $dx_type.into()
             }
         }
 

@@ -4,6 +4,7 @@ use crate::{
     values::value::Value,
 };
 use core::any::Any;
+use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
 use crate::traits::dyn_eq::DynEq;
 use crate::traits::try_clone::TryClone;
 use crate::traits::value_access::ValueAccess;
@@ -26,6 +27,10 @@ pub trait DatexNative:
         self: Box<Self>,
         cache: &mut SharedReferencesCache,
     ) -> Value;
+    
+    fn core_lib_type_id(&self) -> CoreLibTypeId {
+        CoreLibBaseTypeId::Any.into()
+    }
 }
 
 #[cfg(not(feature = "decompiler"))]

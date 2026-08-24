@@ -23,6 +23,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::TypeDefinition,
 };
+use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
 use crate::values::core_values::native::DatexNative;
 
 impl<T> DatexValueProxy for Vec<T> where T: DatexValueContainerProxy + 'static {}
@@ -97,6 +98,9 @@ impl<T: DatexNative + DatexProxyType + DatexValueProxy> DatexNative for Vec<T> {
     }
     fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
         Value::native_boxed(self, cache)
+    }
+    fn core_lib_type_id(&self) -> CoreLibTypeId {
+        CoreLibBaseTypeId::List.into()
     }
 }
 

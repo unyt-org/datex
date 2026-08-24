@@ -15,6 +15,7 @@ mod to_datex_expression_data;
 mod value_access;
 
 pub use datex_native_trait::*;
+use crate::libs::core::type_id::CoreLibTypeId;
 
 impl<T: DatexNative> ToDatexNativeValueContainer for T {
     fn boxed_to_datex_native_value_container(
@@ -54,6 +55,10 @@ impl NativeCoreValue {
         cache: &mut SharedReferencesCache,
     ) -> Value {
         self.value.boxed_to_datex_native_value(cache)
+    }
+    
+    pub fn core_lib_type_id(&self) -> CoreLibTypeId {
+        self.value.core_lib_type_id()
     }
 }
 

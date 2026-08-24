@@ -232,8 +232,8 @@ impl From<&CoreValue> for CoreLibTypeId {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
             }
             CoreValue::Box(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Box),
-            CoreValue::Native(_native) => {
-                CoreLibTypeId::Base(CoreLibBaseTypeId::Any)
+            CoreValue::Native(native) => {
+                native.core_lib_type_id()
             }
         }
     }
