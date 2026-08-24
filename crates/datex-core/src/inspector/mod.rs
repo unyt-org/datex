@@ -6,27 +6,25 @@ use crate::{
 };
 use datex_macros_internal::{Datex, datex};
 
-#[datex(public = "yy")]
+#[datex(name = "inspector")]
 mod datex_inspector {
+    use crate::datex_proxy::shared::Shared;
     use super::*;
+
     #[derive(Datex, Debug, Clone)]
-    #[datex(public = "xxx")]
     pub struct Inspector {
-        name: String, // TODO: We must make private properties to be ignore by the type definition and only use public ones, otherwise the prop and methods would colide in DATEX
+        name: String, // TODO: distinguish between pub and private entity properties
     }
 
-    #[datex(public)]
+    #[datex]
     impl Inspector {
-        // NOTE: the create function can probably not stay here as a static method,
-        // since the Inspector type is a global shared type of the std lib not bound to a specific endpoint
-        // so it is not possible to define a static method that is called on a specific endpoint,
-        // since the definition of "Inspector" must be exactly the same on every endpoint.
+        // todo: remove create method here
         /// Creates a new Inspector instance.
         pub fn create(
             // TODO
             // #[runtime] runtime: Runtime,
             name: String,
-        ) -> crate::datex_proxy::shared::Shared<Inspector> {
+        ) -> Shared<Inspector> {
             // TODO: add SharedRef here, caller should not own inspector
             Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
         }
@@ -40,11 +38,11 @@ mod datex_inspector {
         // }
     }
 
-    // TODO
-    // #[datex]
-    // pub fn create(name: String) -> Inspector {
-    //     Inspector { name }
-    // }
+    /// Creates a new [Inspector] instance.
+    pub fn create(name: String) -> Shared<Inspector> {
+        // TODO: add SharedRef here, caller should not own inspector
+        Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
+    }
 }
 
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.

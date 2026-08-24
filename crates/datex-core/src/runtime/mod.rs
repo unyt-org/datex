@@ -7,6 +7,7 @@ use crate::{
 
 use crate::prelude::*;
 use core::{fmt::Debug, ops::Deref, result::Result};
+use std::ops::DerefMut;
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
@@ -23,14 +24,14 @@ mod runner;
 #[cfg(test)]
 pub mod test_utils;
 
-use crate::inspector::register_inspector_namespace;
 use crate::{
-    core_compiler::InstructionInput, //inspector::register_inspector_namespace,
+    core_compiler::InstructionInput,
     values::core_values::endpoint::Endpoint,
 };
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
+use crate::datex_registry::get_all_modules;
 
 #[derive(Clone, Debug)]
 pub struct Runtime {
@@ -52,8 +53,20 @@ impl Runtime {
         let runtime = Runtime {
             internal: Rc::new(runtime_internal),
         };
-        register_inspector_namespace(&runtime);
+        // register all registered rust modules as datex endpoint properties
+        get_all_modules(runtime.shared_references_cache_mut().deref_mut())
+            .into_iter()
+            .for_each(|(name, value)| {
+                runtime.register_endpoint_property(&name, value.into());
+            });
+
         runtime
+    }
+
+    fn register_endpoint_property(&self, name: &str, value: ValueContainer) {
+        self.internal
+            .endpoint_properties_mut()
+            .insert(name.to_string(), value);
     }
 
     pub fn stub() -> Runtime {

@@ -145,11 +145,11 @@ pub fn generate_native_callable(
                 quote! {
                     let mut value_sheep = (&mut #var_ident_container.value).value_container_mut(); // collapse potential Shared to inner ValueContainer
                     // try to get stored native value from the value container
-                    let #var_ident = if let Some(mut inner) = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_native_from_value_container(core::ops::DerefMut::deref_mut(&mut value_sheep)) {
+                    let #var_ident = if let Some(mut inner) = <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_borrow_native_from_value_container(core::ops::DerefMut::deref_mut(&mut value_sheep)) {
                         inner
                     } else {
                         // fallback: convert from DATEX value to native value
-                        &mut (<#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(value_sheep.clone()).unwrap())
+                        &mut (<#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_from_value_container(value_sheep.clone()).unwrap())
                     };
                 }
             }
@@ -157,11 +157,11 @@ pub fn generate_native_callable(
             else {
                 quote! {
                     // try to get stored native value from the value container
-                    let #var_ident = match <#ty as DatexValueContainerProxyDeserialize>::try_native_from_value_container(#var_ident_container.value) {
+                    let #var_ident = match <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_native_from_value_container(#var_ident_container.value) {
                         Ok(inner) => inner,
                         Err(box value) => {
                             // fallback: convert from DATEX value to native value
-                            <#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(value.clone()).unwrap()
+                            <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_from_value_container(value.clone()).unwrap()
                         }
                     };
                 }
@@ -226,9 +226,9 @@ pub fn generate_native_callable(
     };
 
     let kind = if has_mutable_inputs {
-        quote! { CallableKind::Procedure }
+        quote! {  #datex_core_crate_name::types::type_definition::callable::CallableKind::Procedure }
     } else {
-        quote! { CallableKind::Function }
+        quote! {  #datex_core_crate_name::types::type_definition::callable::CallableKind::Function }
     };
 
     let return_type_init = match return_type {

@@ -5,7 +5,7 @@ use datex_core::{
         DatexValueContainerProxySerialize,
     },
     datex_registry::{
-        all_datex_impl_registrations, all_datex_type_registrations, get_impls,
+        all_datex_module_registrations, all_datex_type_registrations, get_all_modules,
     },
     libs::core::type_id::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
