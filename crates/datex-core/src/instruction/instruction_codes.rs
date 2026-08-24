@@ -20,6 +20,8 @@ use strum_macros::EnumIter;
 #[brw(repr = u8)]
 #[repr(u8)]
 pub enum InstructionCode {
+    UNINITIALIZED, // placeholder for an uninitialized value
+    
     // flow instructions 0x00 - 0x0f
     STATEMENTS,       // statements block
     SHORT_STATEMENTS, // optimized statements block with up to 255 instructions

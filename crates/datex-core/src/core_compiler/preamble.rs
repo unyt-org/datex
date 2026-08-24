@@ -499,41 +499,32 @@ fn append_referenced_shared_container_with_value(
 mod tests {
     use binrw::BinWrite;
 
-    use crate::{
-        core_compiler::{
-            core_compilation_context::ByteCursor,
-            preamble::append_injected_values_preamble,
-            shared_value_tracking::{
-                TrackedValueCollection, TrackedValueMetadata,
-            },
+    use crate::{core_compiler::{
+        core_compilation_context::ByteCursor,
+        preamble::append_injected_values_preamble,
+        shared_value_tracking::{
+            TrackedValueCollection, TrackedValueMetadata,
         },
-        disassembler::{
-            InstructionTree,
-            assertions::{assert_instructions_equal, instructions},
-            print_disassembled,
+    }, disassembler::{
+        InstructionTree,
+        assertions::{assert_instructions_equal, instructions},
+        print_disassembled,
+    }, global::stack_index::StackIndex, instruction, instruction::{
+        Instruction,
+        instruction_data::{
+            Int32Data, ListData, MoveWithValue, SharedRefWithValue,
+            ShortListData, ShortMapData, ShortTextData, UInt32Data,
         },
-        global::stack_index::StackIndex,
-        instruction::{
-            Instruction,
-            instruction_data::{
-                Int32Data, ListData, MoveWithValue, SharedRefWithValue,
-                ShortListData, ShortMapData, ShortTextData, UInt32Data,
-            },
-            regular_instruction::RegularInstruction,
-        },
-        prelude::*,
-        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
-        shared_values::{
-            OwnedSharedContainer, ReferenceMutability,
-            ReferencedSharedContainer, SelfOwnedPointerAddress,
-            SharedContainer, SharedContainerMutability,
-            SharedContainerOwnership, traits::SharedContainerCommon,
-        },
-        values::{
-            core_values::{list::List, map::Map},
-            value_container::ValueContainer,
-        },
-    };
+        regular_instruction::RegularInstruction,
+    }, prelude::*, runtime::pointer_address_provider::SelfOwnedPointerAddressProvider, shared_values::{
+        OwnedSharedContainer, ReferenceMutability,
+        ReferencedSharedContainer, SelfOwnedPointerAddress,
+        SharedContainer, SharedContainerMutability,
+        SharedContainerOwnership, traits::SharedContainerCommon,
+    }, values::{
+        core_values::{list::List, map::Map},
+        value_container::ValueContainer,
+    }};
 
     fn assert_preamble_instructions(
         tracked_values: Vec<(SharedContainer, TrackedValueMetadata)>,
@@ -686,6 +677,7 @@ mod tests {
         );
     }
 
+    // FIXME: implement new preamble recursion handling
     #[test]
     fn preamble_single_recursive_ref() {
         // var a = shared mut [];
@@ -725,36 +717,29 @@ mod tests {
                     RegularInstruction::statements_with_children(
                         false,
                         instructions!(
-                            // shared mut a = [null]
+                            // shared mut a = [[Uninitialized]];
                             RegularInstruction::PushToStack,
                             RegularInstruction::MoveWithValue(MoveWithValue {
                                 mutability: SharedContainerMutability::Mutable,
                                 previous_address: address.clone(),
                             })
-                            .with_children(
+                            .with_children(instructions!(RegularInstruction::Uninitialized)),
+
+                            // *a = ['mut a];
+                            RegularInstruction::SetSharedContainerValue.with_children(
                                 instructions!(
                                     RegularInstruction::ShortList(
                                         ShortListData { element_count: 1 }
                                     )
                                     .with_children(instructions!(
-                                        RegularInstruction::Null
-                                    ))
+                                        RegularInstruction::GetStackValueSharedRefMut(
+                                            StackIndex(0)
+                                        )
+                                    )),
+                                    RegularInstruction::BorrowStackValue(StackIndex(0))
                                 )
                             ),
-                            // ('mut a).0 = 'mut a
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRefMut(
-                                StackIndex(0)
-                            ),
-                            RegularInstruction::SetEntryIndex(UInt32Data(0))
-                                .with_children(instructions!(
-                                    RegularInstruction::BorrowStackValue(
-                                        StackIndex(1)
-                                    ),
-                                    RegularInstruction::BorrowStackValue(
-                                        StackIndex(1)
-                                    )
-                                )),
+
                             RegularInstruction::list_with_children(
                                 instructions!(
                                     RegularInstruction::TakeStackValue(

@@ -264,6 +264,10 @@ pub fn ast_from_bytecode(
                         RegularInstruction::Null => {
                             DatexExpressionData::Null
                         }
+                        
+                        RegularInstruction::Uninitialized => {
+                            DatexExpressionData::NativeImplementationIndicator // TODO: how to display?
+                        }
 
                         RegularInstruction::RequestRemoteSharedRef(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {

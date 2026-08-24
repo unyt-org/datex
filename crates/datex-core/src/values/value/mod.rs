@@ -79,6 +79,11 @@ impl Value {
     pub fn null() -> Self {
         CoreValue::Null.into()
     }
+
+    pub fn unitialized() -> Self {
+        CoreValue::Uninitialized.into()
+    }
+
     pub fn new(
         inner: impl Into<CoreValue>,
         custom_type: Option<TypeDefinition>,

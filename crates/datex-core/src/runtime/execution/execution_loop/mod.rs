@@ -311,6 +311,8 @@ pub gen fn inner_execution_loop(
 
                             // null
                             RegularInstruction::Null => Some(ValueContainer::from(Value::null()).into()),
+                                
+                            RegularInstruction::Uninitialized => Some(ValueContainer::from(Value::unitialized()).into()),
 
                             // text
                             RegularInstruction::ShortText(ShortTextData(text)) => {
