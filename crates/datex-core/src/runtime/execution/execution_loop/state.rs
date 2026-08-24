@@ -281,7 +281,7 @@ impl RuntimeExecutionStack {
 
     /// Restores values to the stack at the given indices, if both the index and value are available.
     pub fn restore_stack_values(&mut self, values: Vec<Option<ValueContainer>>, stack_indices: Vec<Option<StackIndex>>) -> Result<(), ExecutionError> {
-        for (index_option, value) in stack_indices.into_iter().zip(values.into_iter()) {
+        for (index_option, value) in stack_indices.into_iter().zip(values) {
             // If a stack index is available, and the value for the reserved stack index is available, restore the value to the stack at the given index.
             if let Some(index) = index_option && let Some(value) = value {
                 self.set_stack_value(index, value)?;

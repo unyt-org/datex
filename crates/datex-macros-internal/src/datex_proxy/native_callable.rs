@@ -109,7 +109,10 @@ pub fn generate_native_callable(
     });
 
     let mut call_argument_inits = Vec::new();
+    let mut call_argument_accesses = Vec::new();
     let mut call_arguments = Vec::new();
+    let mut call_argument_collections = Vec::new();
+
     for (index, param) in sig.inputs.iter().enumerate() {
         let ty = match param {
             syn::FnArg::Receiver(_receiver) => self_ty.unwrap().clone(),
@@ -117,6 +120,10 @@ pub fn generate_native_callable(
                 replace_self_type(&pat_type.ty, self_ty)
             }
         };
+        let var_ident_container = syn::Ident::new(
+            &format!("arg_container_{}", index),
+            proc_macro2::Span::call_site(),
+        );
         let var_ident = syn::Ident::new(
             &format!("arg_{}", index),
             proc_macro2::Span::call_site(),
@@ -127,14 +134,16 @@ pub fn generate_native_callable(
                 matches!(&*pat_type.ty, Type::Reference(_type_reference))
             }
         };
+        call_argument_inits.push(quote! {
+            let mut #var_ident_container = vals.pop().unwrap();
+        });
 
         // distinguish between move, & and &mut
-        call_argument_inits.push(
+        call_argument_accesses.push(
             // handle & and &mut
             if is_borrowed {
                 quote! {
-                    let value = &mut vals.pop().unwrap();
-                    let mut value_sheep = value.value_container_mut(); // collapse potential Shared to inner ValueContainer
+                    let mut value_sheep = #var_ident_container.value_container_mut(); // collapse potential Shared to inner ValueContainer
                     // try to get stored native value from the value container
                     let #var_ident = if let Some(mut inner) = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_native_from_value_container(core::ops::DerefMut::deref_mut(&mut value_sheep)) {
                         inner
@@ -147,9 +156,8 @@ pub fn generate_native_callable(
             // handle move
             else {
                 quote! {
-                    let value = vals.pop().unwrap();
                     // try to get stored native value from the value container
-                    let #var_ident = match <#ty as DatexValueContainerProxyDeserialize>::try_native_from_value_container(value) {
+                    let #var_ident = match <#ty as DatexValueContainerProxyDeserialize>::try_native_from_value_container(#var_ident_container) {
                         Ok(inner) => inner,
                         Err(box value) => {
                             // fallback: convert from DATEX value to native value
@@ -160,10 +168,21 @@ pub fn generate_native_callable(
             }
         );
         call_arguments.push(quote! { #var_ident });
+
+        call_argument_collections.push(
+            // borrowed values are collected and returned back
+            if is_borrowed {
+                quote! { Some(#var_ident_container) }
+            }
+            // moved values can no longer be accessed, so we return None
+            else {
+                quote! { None }
+            }
+        );
     }
 
     // reverse the call_arguments initialization, but keep usage in the original order
-    call_argument_inits.reverse();
+    call_argument_accesses.reverse();
 
     let method_path = if let Some(self_ty) = self_ty {
         quote! { #self_ty::#method_ident }
@@ -172,7 +191,7 @@ pub fn generate_native_callable(
     };
 
     let method_call_body = quote! {{
-        #(#call_argument_inits)*
+        #(#call_argument_accesses)*
         #method_path(#(#call_arguments),*)
     }};
 
@@ -181,6 +200,8 @@ pub fn generate_native_callable(
         // Note: since the borrowed cache is no longer accessible inside the function body,
         // the return type is fetched during creation and stored in the closure context.
         quote! {{
+            #(#call_argument_inits)*
+
             let mut result_value = #datex_core_crate_name::datex_proxy::ToDatexNativeValueContainer::boxed_to_datex_native_value_container(
                 #method_call_body,
                 &mut #datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache::default(), // empty placeholder cache to satisfy the trait bound, FIXME: better solution
@@ -193,12 +214,14 @@ pub fn generate_native_callable(
                 }
                 ValueContainer::Shared(_) => {} // shared container must already have an assigned type since it already contained a full ValueContainer
             }
-            Some(result_value)
+            (Some(result_value), vec![#(#call_argument_collections),*])
         }}
     } else {
         quote! {{
+            #(#call_argument_inits)*
+            
             #method_call_body;
-            None
+            (None, vec![#(#call_argument_collections),*])
         }}
     };
 

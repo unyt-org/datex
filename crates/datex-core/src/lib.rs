@@ -25,7 +25,7 @@
 #![feature(try_blocks)]
 #![rustfmt::skip::macros(assert_regular_instructions_equal)]
 #![feature(arbitrary_self_types)]
-
+#![feature(vec_try_remove)]
 extern crate alloc;
 extern crate num_integer;
 

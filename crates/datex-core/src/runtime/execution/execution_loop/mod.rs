@@ -1334,8 +1334,8 @@ pub gen fn inner_execution_loop(
 
                                     // TODO: better solution than remove(0)
                                     // put the callee back on the stack if it was borrowed
-                                    let borrowed_callee = borrowed_args.remove(0);
-                                    if let Some(callee_stack_index) = callee_stack_index && let Some(borrowed_callee) = borrowed_callee {
+                                    let borrowed_callee = borrowed_args.try_remove(0);
+                                    if let Some(callee_stack_index) = callee_stack_index && let Some(Some(borrowed_callee)) = borrowed_callee {
                                         state.stack.set_stack_value(callee_stack_index, borrowed_callee)?;
                                     }
 
@@ -1380,8 +1380,8 @@ pub gen fn inner_execution_loop(
 
                                     // TODO: better solution than remove(0)
                                     // put the callee back on the stack if it was borrowed
-                                    let borrowed_callee = borrowed_args.remove(0);
-                                    if let Some(callee_stack_index) = callee_stack_index && let Some(borrowed_callee) = borrowed_callee {
+                                    let borrowed_callee = borrowed_args.try_remove(0);
+                                    if let Some(callee_stack_index) = callee_stack_index && let Some(Some(borrowed_callee)) = borrowed_callee {
                                         state.stack.set_stack_value(callee_stack_index, borrowed_callee)?;
                                     }
 

@@ -111,6 +111,7 @@ fn signatures() {
                     ],
                 )
                 .unwrap()
+                .0
                 .unwrap();
             assert_eq!(
                 result,
