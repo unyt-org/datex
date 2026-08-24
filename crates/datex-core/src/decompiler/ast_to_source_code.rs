@@ -249,7 +249,9 @@ impl AstToSourceCodeConverter {
                     pointer_address,
                 },
             ) => {
-                format!("{}{}", name, pointer_address)
+                // TODO: also print pointer address in debug mode
+                // format!("{}{}", name, pointer_address)
+                name.clone()
             }
             TypeExpressionData::VariableAccess(VariableAccess {
                 name, ..

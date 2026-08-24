@@ -89,8 +89,9 @@ impl ToTypeExpressionData for TypeDefinition {
                         .map(|ty| ty.to_type_expression_data().with_default_span())
                         .collect::<Vec<TypeExpression>>(),
                 ))
-                    
             }
+            // TODO: correctly handle nested types with parentheses?
+            TypeDefinition::Box(ty) => ty.to_type_expression_data(),
             _ => TypeExpressionData::Text(
                 format!("[[TYPE {:?}]]", self).into(),
             )

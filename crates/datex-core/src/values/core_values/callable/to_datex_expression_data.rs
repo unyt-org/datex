@@ -1,5 +1,6 @@
 use crate::ast::expressions::{CallableDeclaration, CallableSignature, DatexExpressionData};
 use crate::ast::spanned::Spanned;
+use crate::ast::type_expressions::TypeExpressionData;
 use crate::decompiler::ast_from_bytecode::ast_from_bytecode;
 use crate::traits::to_datex_expression_data::ToDatexExpressionData;
 use crate::traits::to_type_expression_data::ToTypeExpressionData;
