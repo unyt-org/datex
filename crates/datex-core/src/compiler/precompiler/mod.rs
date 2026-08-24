@@ -71,6 +71,7 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
+use crate::ast::expressions::PropertyAccess;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -736,24 +737,27 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         create_ref.walk_children(self)?;
 
-        match create_ref.expression.data_mut() {
-            // for &(x.y), access to x should be a borrow access
-            DatexExpressionData::PropertyAccess(property_access) => {
-                if let DatexExpressionData::VariableAccess(variable_access) =
-                    property_access.base.data_mut()
-                {
-                    variable_access.access_type = ValueAccessType::Borrow;
-                }
-            }
-            // for &x, access to x should be a borrow access
-            DatexExpressionData::VariableAccess(variable_access) => {
-                variable_access.access_type = ValueAccessType::Borrow;
-            }
-            _ => {}
+        // for &x, access to x should be a borrow access
+        if let DatexExpressionData::VariableAccess(variable_access) = create_ref.expression.data_mut() {
+            variable_access.access_type = ValueAccessType::Borrow;
         }
 
         Ok(VisitAction::AbortRecursion)
     }
+
+    fn visit_property_access(&mut self, property_access: &mut PropertyAccess, span: &Range<usize>) -> ExpressionVisitResult<SpannedCompilerError> {
+        // if lhs is variable, access it as Borrow
+        property_access.walk_children(self)?;
+
+        if let DatexExpressionData::VariableAccess(variable_access) =
+            property_access.base.data_mut()
+        {
+            variable_access.access_type = ValueAccessType::Borrow;
+        }
+        
+        Ok(VisitAction::AbortRecursion)
+    }
+
 
     fn visit_statements(
         &mut self,
