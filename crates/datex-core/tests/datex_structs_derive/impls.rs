@@ -1,7 +1,7 @@
 use core::{cell::Ref, ops::DerefMut};
 use datex_core::{
     datex_proxy::{
-        DatexProxyType, DatexValueContainerProxyDeserialize,
+        DatexProxyType,
         DatexValueContainerProxySerialize,
     },
     datex_registry::{
@@ -116,7 +116,6 @@ fn call_instance_method_from_runtime() {
 
     let example = Example::new(1, 2);
     let example_vc = Value::native(example, cache.deref_mut());
-    let example_vc_clone = example_vc.clone();
 
     let example_type = Example::datex_type(cache.deref_mut());
     let set_a = example_type.try_get_property("set_a".into(), cache.deref_mut()).unwrap();
@@ -136,7 +135,37 @@ fn call_instance_method_from_runtime() {
     // borrows should contain the original example value
     assert_eq!(
         borrows.remove(0),
-        ValueContainer::from(example_vc_clone)
+        // a was updated to 10
+        ValueContainer::from(Value::native(Example {a: 10, b: 2}, cache.deref_mut()))
+    );
+}
+
+#[tokio::test]
+async fn call_async_instance_method_from_runtime() {
+    let runtime = Runtime::stub();
+
+    let example = Example::new(1, 2);
+    let example_vc = Value::native(example, runtime.shared_references_cache_mut().deref_mut());
+
+    let example_type = Example::datex_type(runtime.shared_references_cache_mut().deref_mut());
+    let async_test = example_type.try_get_property("async_test".into(), runtime.shared_references_cache_mut().deref_mut()).unwrap();
+    let async_test_callable = async_test.try_as::<Callable>().unwrap();
+
+    let (res, mut borrows) = async_test_callable.try_apply_async_checked(
+        &runtime,
+        vec![ApplyArgument::referenced(example_vc), "test".into()],
+    ).await.unwrap();
+
+    let res = res.unwrap();
+    let result_string = res.try_as::<String>().unwrap();
+    assert_eq!(
+        result_string,
+        "a = test"
+    );
+    // borrows should contain the original example value
+    assert_eq!(
+        borrows.remove(0),
+        ValueContainer::from(Value::native(Example::new(1, 2), runtime.shared_references_cache_mut().deref_mut()))
     );
 }
 

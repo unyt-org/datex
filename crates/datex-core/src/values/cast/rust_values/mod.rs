@@ -219,9 +219,7 @@ implement_rust_native_traits!(
         CoreValue::TypedInteger(value) => value.to_u32().map(|v| v as usize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to usize, value is not an integer", value))),
         CoreValue::TypedDecimal(value) => value.to_u32().map(|v| v as usize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to usize, value is not an integer", value))),
     },
-    {
-        CoreValue::TypedInteger(TypedInteger::U32(value)) => Ok(value as usize),
-    }
+    {}
 );
 #[cfg(target_pointer_width = "64")]
 implement_rust_native_traits!(

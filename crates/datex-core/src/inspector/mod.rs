@@ -27,11 +27,15 @@ mod datex_inspector {
         //     self.borrow().name.clone()
         // }
     }
-    
+
     /// Creates a new [Inspector] instance.
     pub fn create(name: String) -> Shared<Inspector> {
         // TODO: add SharedRef here, caller should not own inspector
         Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
+    }
+
+    pub async fn async_test(a: String) -> String {
+        format!("a = {}", a)
     }
 }
 
