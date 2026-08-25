@@ -10,7 +10,7 @@ use crate::{
 };
 use alloc::boxed::Box;
 use crate::global::stack_index::StackIndex;
-use crate::values::core_value::CoreValue;
+use crate::types::type_definition::callable::InvalidArgumentError;
 use crate::values::value::Value;
 
 #[derive(Debug)]
@@ -18,6 +18,7 @@ pub enum ApplyError {
     UnsupportedApply,
     AsyncCallableRequiresAsyncExecution,
     CallableError(Box<CallableError>),
+    InvalidArgumentError(Box<InvalidArgumentError>),
 }
 impl Display for ApplyError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -31,12 +32,20 @@ impl Display for ApplyError {
             ApplyError::AsyncCallableRequiresAsyncExecution => {
                 write!(f, "Async callable requires async execution")
             }
+            ApplyError::InvalidArgumentError(error) => {
+                write!(f, "{}", error)
+            }
         }
     }
 }
 impl From<CallableError> for ApplyError {
     fn from(error: CallableError) -> Self {
         ApplyError::CallableError(Box::new(error))
+    }
+}
+impl From<InvalidArgumentError> for ApplyError {
+    fn from(error: InvalidArgumentError) -> Self {
+        ApplyError::InvalidArgumentError(Box::new(error))
     }
 }
 
@@ -96,7 +105,7 @@ pub fn get_borrowed_apply_argument_values(values: Vec<ApplyArgument>) -> Vec<Val
 
 /// Returns a vector of ApplyArguments with the passed_as_ref field set based on the provided borrowed_args_stack_indices.
 pub fn into_apply_arguments_with_stack_indices(
-    values: Vec<ValueContainer>, 
+    values: Vec<ValueContainer>,
     borrowed_args_stack_indices: &[Option<StackIndex>]
 ) -> Vec<ApplyArgument> {
     values
@@ -112,7 +121,7 @@ pub fn into_apply_arguments_with_stack_indices(
 
 // TODO #351: return ApplyErrors including call stack information (or store call stack directly in ExecutionError)
 pub trait Apply {
-    /// Calls the [try_apply_sync] method and checks that the number of returned local references 
+    /// Calls the [try_apply_sync] method and checks that the number of returned local references
     /// matches the number of arguments that were passed as local references.
     fn try_apply_sync_checked(
         &self,
@@ -133,7 +142,7 @@ pub trait Apply {
 
         Ok(res)
     }
-    
+
     /// Calls the [try_apply_async] method and checks that the number of returned local references
     /// matches the number of arguments that were passed as local references.
     async fn try_apply_async_checked(

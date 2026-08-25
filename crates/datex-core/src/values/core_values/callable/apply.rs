@@ -25,6 +25,8 @@ impl Apply for Callable {
         runtime: &Runtime,
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
+        self.signature.validate_arguments(&args)?;
+        
         match &self.body {
             CallableBody::Native(native_callable) => {
                 native_callable.try_apply_sync(runtime, args)
@@ -44,6 +46,8 @@ impl Apply for Callable {
         runtime: &Runtime,
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
+        self.signature.validate_arguments(&args)?;
+        
         match &self.body {
             CallableBody::Native(native_callable) => {
                 native_callable.try_apply_async(runtime, args).await

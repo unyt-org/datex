@@ -26,6 +26,8 @@ use crate::{
     },
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
+use crate::values::core_values::native::DatexNative;
+
 pub mod callable;
 pub mod collection;
 pub mod impl_type;
@@ -360,6 +362,7 @@ impl TypeDefinition {
             TypeDefinition::Callable(_) => {
                 Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Callable))
             }
+            TypeDefinition::CoreType(id) => Some(*id),
             _ => None,
         }
     }
