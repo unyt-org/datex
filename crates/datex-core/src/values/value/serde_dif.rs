@@ -1,5 +1,5 @@
 use core::fmt;
-
+use std::ops::Deref;
 use crate::{
     dif::serde_context::SerdeContext,
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
@@ -18,6 +18,7 @@ use serde::{
     de::{DeserializeSeed, Error as DeError, Visitor},
     ser::SerializeTuple,
 };
+use crate::values::value_container::ValueContainer;
 
 impl<'ctx> SerdeContext<'ctx, Value> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -222,8 +223,8 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                     serializer,
                     false,
                 ),
-            CoreValue::Box(_inner) => {
-                todo!()
+            CoreValue::Box(inner) => {
+                self.cast::<ValueContainer>().serialize(inner, serializer)
             }
             CoreValue::Uninitialized => panic!("Uninitialized value"),
             CoreValue::Native(_) => todo!(),
