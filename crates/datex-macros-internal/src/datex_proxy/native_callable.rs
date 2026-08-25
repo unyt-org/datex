@@ -75,8 +75,14 @@ pub fn generate_native_callable(
 
     for param in &sig.inputs {
         match param {
-            syn::FnArg::Receiver(_) => {
-                // todo
+            syn::FnArg::Receiver(ty) => {
+                let ty = self_ty.expect("Self type must be provided for methods");
+                parameter_defs.push(quote! {
+                    (
+                        Some("self".to_string()),
+                        <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache)
+                    )
+                });
             }
             syn::FnArg::Typed(pat_type) => {
                 let name = match &*pat_type.pat {

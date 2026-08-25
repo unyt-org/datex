@@ -19,6 +19,8 @@ use crate::{
     },
 };
 use core::{cell::Ref, ops::Deref};
+use crate::types::r#type::Type;
+use crate::types::type_definition::TypeDefinition;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SharedContainerContainingEntityType(SharedContainer);
@@ -130,7 +132,12 @@ impl TypeSuperset<SharedContainerContainingEntityType>
 }
 
 impl TypeSatisfiesValueContainer for SharedContainerContainingEntityType {
-    fn satisfies_value_container(&self, _value: &ValueContainer) -> bool {
-        todo!()
+    fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
+        match value.actual_type().deref() {
+            TypeDefinition::Box(box Type::Entity(entity)) => {
+                self.is_superset_of(entity)
+            }
+            _ => false,
+        }
     }
 }

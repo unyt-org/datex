@@ -230,12 +230,18 @@ fn signatures() {
             &CallableTypeDefinition {
                 kind: CallableKind::Procedure,
                 requires_async: false,
-                parameters: vec![(
-                    Some("a".to_string()),
-                    Type::core(CoreLibTypeId::Variant(
-                        CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
-                    ))
-                ),],
+                parameters: vec![
+                    (
+                        Some("self".to_string()),
+                        example_type.clone(),
+                    ),
+                    (
+                        Some("a".to_string()),
+                        Type::core(CoreLibTypeId::Variant(
+                            CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
+                        ))
+                    )
+                ],
                 rest_parameter: None,
                 return_type: Some(Box::new(Type::core(
                     CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
@@ -257,12 +263,18 @@ fn signatures() {
             &CallableTypeDefinition {
                 kind: CallableKind::Procedure,
                 requires_async: false,
-                parameters: vec![(
-                    Some("b".to_string()),
-                    Type::core(CoreLibTypeId::Variant(
-                        CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
-                    ))
-                )],
+                parameters: vec![
+                    (
+                        Some("self".to_string()),
+                        example_type.clone(),
+                    ),
+                    (
+                        Some("b".to_string()),
+                        Type::core(CoreLibTypeId::Variant(
+                            CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
+                        ))
+                    )
+                ],
                 rest_parameter: None,
                 return_type: None,
                 yeet_type: None,
