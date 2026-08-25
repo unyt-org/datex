@@ -1,5 +1,5 @@
 use core::{cell::Ref, ops::Deref};
-use core::fmt::Debug;
+use core::fmt::{Debug, Pointer};
 
 /// A goat can be a Ref or a borrowed value
 pub enum Goat<'a, T: ?Sized> {
@@ -31,11 +31,17 @@ impl<'a, T: ?Sized> Goat<'a, T> {
     }
 }
 
+impl<T> Debug for Goat<'_, T> where T: ?Sized {
+    default fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "?")
+    }
+}
+
 impl<T> Debug for Goat<'_, T> where T: Debug + ?Sized {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Goat::Ref(r) => r.fmt(f),
-            Goat::Borrowed(b) => b.fmt(f),
+            Goat::Borrowed(b) => (*b).fmt(f),
         }
     }
 }

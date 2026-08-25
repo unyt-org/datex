@@ -38,6 +38,13 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
+use datex_core::runtime::cache::shared_references_cache::SharedReferencesCache;
+use datex_core::traits::apply::ApplyArgument;
+use datex_core::traits::try_clone::TryClone;
+use datex_core::traits::value_access::ValueAccess;
+use datex_core::values::borrowed_value_container::BorrowedValueContainer;
+use datex_core::values::core_values::callable::Callable;
+use datex_core::values::core_values::native::NativeCoreValue;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -45,7 +52,6 @@ struct Example {
     a: u8,
     b: u8,
 }
-
 #[datex]
 impl Example {
     pub fn new(a: u8, b: u8) -> Self {
@@ -64,6 +70,10 @@ impl Example {
     pub fn add(a: u8, b: u8) -> u8 {
         a + b
     }
+
+    pub async fn async_test(&self, a: String) -> String {
+        format!("a = {}", a)
+    }
 }
 
 /// Helper function to extract the [EntityTypeDefinition] from a given [Type].
@@ -79,7 +89,7 @@ fn entity_type_definition_from_type(
 #[test]
 fn take_from_cache() {
     let runtime = Runtime::stub();
-    let mut memory = runtime.shared_references_cache_refcell().borrow_mut();
+    let mut memory = runtime.shared_references_cache_mut();
     let example_type = Example::datex_type(memory.deref_mut());
 
     // when calling the datex_type function multiple times, it should return the same type definition from cache
@@ -87,9 +97,53 @@ fn take_from_cache() {
 }
 
 #[test]
+fn try_clone() {
+    // validate that try clone works since Example implements Clone
+    let example = Example::new(1, 2);
+    example.try_clone().unwrap();
+
+    42u8.try_clone().unwrap();
+
+    // rust core types that implement Clone should also be able to be cloned via try_clone
+    let u8_value = CoreValue::native(42u8);
+    u8_value.try_clone().unwrap();
+}
+
+#[test]
+fn call_instance_method_from_runtime() {
+    let runtime = Runtime::stub();
+    let mut cache = runtime.shared_references_cache_mut();
+
+    let example = Example::new(1, 2);
+    let example_vc = Value::native(example, cache.deref_mut());
+    let example_vc_clone = example_vc.clone();
+
+    let example_type = Example::datex_type(cache.deref_mut());
+    let set_a = example_type.try_get_property("set_a".into(), cache.deref_mut()).unwrap();
+    let set_a_callable = set_a.try_as::<Callable>().unwrap();
+
+    let (res, mut borrows) = set_a_callable.try_apply_sync_checked(
+        &runtime,
+        vec![ApplyArgument::referenced(example_vc), TypedInteger::U8(10).into()],
+    ).unwrap();
+
+    let res = res.unwrap();
+    let result_u8 = res.try_as::<u8>().unwrap();
+    assert_eq!(
+        result_u8,
+        &10u8
+    );
+    // borrows should contain the original example value
+    assert_eq!(
+        borrows.remove(0),
+        ValueContainer::from(example_vc_clone)
+    );
+}
+
+#[test]
 fn signatures() {
     let runtime = Runtime::stub();
-    let mut memory = runtime.shared_references_cache_refcell().borrow_mut();
+    let mut memory = runtime.shared_references_cache_mut();
     let example_type = Example::datex_type(memory.deref_mut());
     let type_definition = entity_type_definition_from_type(&example_type);
 

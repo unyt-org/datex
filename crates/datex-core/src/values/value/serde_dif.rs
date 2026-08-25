@@ -1,5 +1,5 @@
 use core::fmt;
-use std::ops::Deref;
+use core::ops::Deref;
 use crate::{
     dif::serde_context::SerdeContext,
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},

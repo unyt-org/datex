@@ -3,7 +3,6 @@ use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::shared_values::errors::{AccessError, KeyNotFoundError};
 use crate::traits::value_access::ValueAccess;
 use crate::types::shared_container_containing_entity_type::SharedContainerContainingEntityType;
-use crate::utils::goat::Goat;
 use crate::values::borrowed_value_container::BorrowedValueContainer;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedValue};
 use crate::values::value_container::value_key::BorrowedValueKey;
@@ -22,7 +21,10 @@ impl ValueAccess for SharedContainerContainingEntityType {
                         key.into(),
                     ))
                 })?;
-            Ok(BorrowedValueContainer::native_ref(callable_ref))
+            Ok(BorrowedValueContainer::Local(BorrowedValue { 
+                inner: BorrowedCoreValue::Callable(callable_ref.into()), 
+                custom_type: None 
+            }))
         } else {
             Err(AccessError::InvalidIndexKey)
         }

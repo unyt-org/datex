@@ -7,7 +7,7 @@ use crate::{
 
 use crate::prelude::*;
 use core::{fmt::Debug, ops::Deref, result::Result};
-use std::ops::DerefMut;
+use core::ops::DerefMut;
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };

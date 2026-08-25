@@ -37,6 +37,7 @@ use crate::{
 };
 use binrw::error::CustomError;
 use core::fmt::{Debug, Display, Formatter};
+use crate::traits::try_clone::TryClone;
 
 mod child_iterator;
 pub mod datex_proxy;
@@ -44,6 +45,7 @@ pub mod equality;
 pub mod ops;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+pub mod try_clone;
 
 #[derive(Default, Clone, Debug, FromCoreValue)]
 pub enum CoreValue {

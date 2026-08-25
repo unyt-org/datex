@@ -27,7 +27,7 @@ mod datex_inspector {
         //     self.borrow().name.clone()
         // }
     }
-
+    
     /// Creates a new [Inspector] instance.
     pub fn create(name: String) -> Shared<Inspector> {
         // TODO: add SharedRef here, caller should not own inspector

@@ -20,15 +20,18 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Callable> {
     ) -> Result<S::Ok, S::Error> {
         // put callable into cache
         let hash = self.shared_container_cache.store_callable(value.clone());
-        let mut data = serializer.serialize_tuple(1)?;
+        let mut data = serializer.serialize_tuple(3)?;
 
         // store hash
         data.serialize_element(&hash.to_string())?;
 
         // store name
         data.serialize_element(&value.name)?;
-        data.end()
 
+        // async bool
+        data.serialize_element(&value.signature.requires_async)?;
+
+        data.end()
         // todo: also store function signature information
     }
 }
@@ -62,8 +65,9 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Callable> {
         let hash_u64 = hash.parse::<u64>().map_err(|_| {
             serde::de::Error::custom("Failed to parse hash string to u64")
         })?;
-
+        
         let _name: Option<Option<String>> = seq.next_element()?;
+        let _requires_async: Option<bool> = seq.next_element()?;
 
         let callable = self
             .shared_container_cache

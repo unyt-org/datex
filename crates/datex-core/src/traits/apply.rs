@@ -49,12 +49,24 @@ pub struct ApplyArgument {
     pub passed_as_ref: bool,
 }
 
-impl From<ValueContainer> for ApplyArgument {
-    fn from(value: ValueContainer) -> Self {
+impl ApplyArgument {
+    pub fn referenced<T: Into<ValueContainer>>(value: T) -> Self {
         ApplyArgument {
-            value,
+            value: value.into(),
+            passed_as_ref: true,
+        }
+    }
+    pub fn owned<T: Into<ValueContainer>>(value: T) -> Self {
+        ApplyArgument {
+            value: value.into(),
             passed_as_ref: false,
         }
+    }
+}
+
+impl From<ValueContainer> for ApplyArgument {
+    fn from(value: ValueContainer) -> Self {
+        ApplyArgument::owned(value)
     }
 }
 

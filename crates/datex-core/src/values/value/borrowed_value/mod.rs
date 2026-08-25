@@ -28,8 +28,8 @@ use crate::values::value_container::ValueContainer;
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.
 #[derive(Debug)]
 pub struct BorrowedValue<'a> {
-    pub(crate) inner: BorrowedCoreValue<'a>,
-    pub(crate) custom_type: Option<TypeDefinition>,
+    pub inner: BorrowedCoreValue<'a>,
+    pub custom_type: Option<TypeDefinition>,
 }
 
 impl<'a> BorrowedValue<'a> {
@@ -55,7 +55,7 @@ impl<'a> From<&'a Value> for BorrowedValue<'a> {
 }
 
 /// Similar to [CoreValue], but it is a potentially borrowed reference to a [CoreValue] variant instead of owning it.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub enum BorrowedCoreValue<'a> {
     #[default]
     Uninitialized,
@@ -135,29 +135,31 @@ impl<'a> From<&'a CoreValue> for BorrowedCoreValue<'a> {
     }
 }
 
-impl Debug for BorrowedCoreValue<'_> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            BorrowedCoreValue::Uninitialized => write!(f, "Uninitialized"),
-            BorrowedCoreValue::Null => write!(f, "Null"),
-            BorrowedCoreValue::Boolean(boolean) => boolean.fmt(f),
-            BorrowedCoreValue::Integer(integer) => integer.fmt(f),
-            BorrowedCoreValue::TypedInteger(typed_integer) => typed_integer.fmt(f),
-            BorrowedCoreValue::Decimal(decimal) => decimal.fmt(f),
-            BorrowedCoreValue::TypedDecimal(typed_decimal) => typed_decimal.fmt(f),
-            BorrowedCoreValue::Text(text) => text.fmt(f),
-            BorrowedCoreValue::Endpoint(endpoint) => endpoint.fmt(f),
-            BorrowedCoreValue::List(list) => list.fmt(f),
-            BorrowedCoreValue::Map(map) => map.fmt(f),
-            BorrowedCoreValue::Type(type_value) => type_value.fmt(f),
-            BorrowedCoreValue::EntityTypeDefinition(entity_type_definition) => entity_type_definition.fmt(f),
-            BorrowedCoreValue::Callable(callable) => callable.fmt(f),
-            BorrowedCoreValue::Range(range) => range.fmt(f),
-            BorrowedCoreValue::Box(boxed_value) => boxed_value.fmt(f),
-            BorrowedCoreValue::Native(native) => native.fmt(f),
-        }
-    }
-}
+// impl Debug for BorrowedCoreValue<'_> {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(f, "{}(", self.as_ref())?;
+//         match self {
+//             BorrowedCoreValue::Uninitialized => Ok(()),
+//             BorrowedCoreValue::Null => Ok(()),
+//             BorrowedCoreValue::Boolean(boolean) => boolean.fmt(f),
+//             BorrowedCoreValue::Integer(integer) => integer.fmt(f),
+//             BorrowedCoreValue::TypedInteger(typed_integer) => typed_integer.fmt(f),
+//             BorrowedCoreValue::Decimal(decimal) => decimal.fmt(f),
+//             BorrowedCoreValue::TypedDecimal(typed_decimal) => typed_decimal.fmt(f),
+//             BorrowedCoreValue::Text(text) => text.fmt(f),
+//             BorrowedCoreValue::Endpoint(endpoint) => endpoint.fmt(f),
+//             BorrowedCoreValue::List(list) => list.fmt(f),
+//             BorrowedCoreValue::Map(map) => map.fmt(f),
+//             BorrowedCoreValue::Type(type_value) => type_value.fmt(f),
+//             BorrowedCoreValue::EntityTypeDefinition(entity_type_definition) => entity_type_definition.fmt(f),
+//             BorrowedCoreValue::Callable(callable) => callable.fmt(f),
+//             BorrowedCoreValue::Range(range) => range.fmt(f),
+//             BorrowedCoreValue::Box(boxed_value) => boxed_value.fmt(f),
+//             BorrowedCoreValue::Native(native) => native.fmt(f),
+//         }?;
+//         write!(f, ")")
+//     }
+// }
 
 
 /// Similar to [Value], but contains a [BorrowedCoreValueMut] instead of a [CoreValue].

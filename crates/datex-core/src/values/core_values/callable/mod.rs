@@ -25,13 +25,11 @@ type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 type AsyncCallable = Rc<
     dyn Fn(
             Vec<ApplyArgument>,
-        ) -> BoxFuture<Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>>
-        + 'static,
+        ) -> BoxFuture<Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>>,
 >;
 
 type SyncCallable = Rc<
-    dyn Fn(Vec<ApplyArgument>) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>
-        + 'static,
+    dyn Fn(Vec<ApplyArgument>) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>,
 >;
 
 #[derive(Clone)]

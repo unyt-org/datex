@@ -3,7 +3,7 @@ use core::{
     any::Any,
     fmt::{Debug, Formatter},
 };
-
+use core::ops::Deref;
 use crate::{
     datex_proxy::ToDatexNativeValueContainer,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -16,6 +16,8 @@ mod value_access;
 
 pub use datex_native_trait::*;
 use crate::libs::core::type_id::CoreLibTypeId;
+use crate::traits::try_clone::TryClone;
+use crate::values::core_value::CoreValue;
 
 impl<T: DatexNative> ToDatexNativeValueContainer for T {
     fn boxed_to_datex_native_value_container(
@@ -28,6 +30,12 @@ impl<T: DatexNative> ToDatexNativeValueContainer for T {
 
 pub struct NativeCoreValue {
     pub value: Box<dyn DatexNative + 'static>,
+}
+
+impl TryClone for NativeCoreValue {
+    fn try_clone(&self) -> Result<CoreValue, ()> {
+        self.value.deref().try_clone()
+    }
 }
 
 impl NativeCoreValue {
@@ -56,15 +64,33 @@ impl NativeCoreValue {
     ) -> Value {
         self.value.boxed_to_datex_native_value(cache)
     }
-    
+
     pub fn core_lib_type_id(&self) -> CoreLibTypeId {
         self.value.core_lib_type_id()
+    }
+
+    /// Attempt to downcast the native value to a specific type.
+    /// Returns `Some(&T)` if the downcast is successful, or `None` if it fails.
+    pub fn try_as<T: 'static>(&self) -> Option<&T> {
+        self.value.as_any().downcast_ref::<T>()
+    }
+
+    /// Attempt to downcast the native value to a specific type.
+    /// Returns `Some(&mut T)` if the downcast is successful, or `None` if it fails.
+    pub fn try_into_value<T: 'static>(self) -> Option<T> {
+        match self.into_any().downcast::<T>() {
+            Ok(boxed) => Some(*boxed),
+            Err(original) => None,
+        }
     }
 }
 
 impl Clone for NativeCoreValue {
     fn clone(&self) -> Self {
-        todo!()
+        match self.try_clone().unwrap() {
+            CoreValue::Native(n) => n,
+            _ => unreachable!()
+        }
     }
 }
 
