@@ -13,6 +13,7 @@ mod datex_native_trait;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
+mod serde_dif;
 
 pub use datex_native_trait::*;
 use crate::libs::core::type_id::CoreLibTypeId;

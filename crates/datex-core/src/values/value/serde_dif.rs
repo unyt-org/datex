@@ -18,6 +18,7 @@ use serde::{
     de::{DeserializeSeed, Error as DeError, Visitor},
     ser::SerializeTuple,
 };
+use crate::values::core_values::native::NativeCoreValue;
 use crate::values::value_container::ValueContainer;
 
 impl<'ctx> SerdeContext<'ctx, Value> {
@@ -227,7 +228,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 self.cast::<ValueContainer>().serialize(inner, serializer)
             }
             CoreValue::Uninitialized => panic!("Uninitialized value"),
-            CoreValue::Native(_) => todo!(),
+            CoreValue::Native(native) => self.cast::<NativeCoreValue>().serialize(native, serializer),
         }
     }
 }
