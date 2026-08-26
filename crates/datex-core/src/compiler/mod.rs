@@ -555,6 +555,7 @@ fn compile_expression(
 
     let DatexExpression { data, span, ty } = ast;
     match *data {
+        // TODO remove all the instructions and switch to [ToInstruction] trait, fix scopes
         DatexExpressionData::List(list) => {
             compilation_context
                 .core_context
