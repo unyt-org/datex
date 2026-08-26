@@ -605,7 +605,7 @@ fn compile_expression(
             if let Some(value_container) = placeholder.take() {
                 // TODO: validate in precompiler that the value container is actually a shared value
 
-                match value_container {
+                match &value_container {
                     ValueContainer::Local(value) => match placeholder_type {
                         ValueAccessType::SharedRef
                         | ValueAccessType::SharedRefMut => {
@@ -617,21 +617,18 @@ fn compile_expression(
                             append_value(
                                 compilation_context.core_context(),
                                 value,
-                                None,
                             );
                         }
                         ValueAccessType::Clone => {
                             append_value(
                                 compilation_context.core_context(),
                                 value,
-                                None,
                             );
                         }
                         ValueAccessType::Borrow => {
                             append_value(
                                 compilation_context.core_context(),
                                 value,
-                                None,
                             );
                         }
                     },
@@ -643,13 +640,13 @@ fn compile_expression(
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
                                 append_shared_container_from_stack(
                                     compilation_context.core_context(),
-                                    shared_container_mut_ref.into(),
+                                    &shared_container_mut_ref.into(),
                                 );
                             }
                             ValueAccessType::SharedRef => {
                                 append_shared_container_from_stack(
                                     compilation_context.core_context(),
-                                    shared_container.derive_immutable_reference().into(),
+                                        &shared_container.derive_immutable_reference().into(),
                                 )
                             },
                             ValueAccessType::MoveOrCopy => {
@@ -657,7 +654,7 @@ fn compile_expression(
                                     SharedContainer::Owned(shared_container) => {
                                         append_shared_container_from_stack(
                                             compilation_context.core_context(),
-                                            shared_container.into(),
+                                            &shared_container.clone_with_move_indicator().into(),
                                         );
                                     }
                                     _ => return Err(CompilerError::InvalidConversionFromRefToOwnedValue),
@@ -669,14 +666,13 @@ fn compile_expression(
                                     ValueContainer::Local(value) => {
                                         append_value(
                                             compilation_context.core_context(),
-                                            value,
-                                            None,
+                                            &value,
                                         );
                                     }
                                     ValueContainer::Shared(shared_container) => {
                                         append_shared_container_from_stack(
                                             compilation_context.core_context(),
-                                            shared_container,
+                                            &shared_container.clone(), // FIXME: Do we need to derive ref here, and what mutability ?
                                         )
                                     }
                                 }
@@ -684,7 +680,7 @@ fn compile_expression(
                             ValueAccessType::Borrow => {
                                 append_shared_container_from_stack(
                                     compilation_context.core_context(),
-                                    shared_container.derive_reference_with_max_mutability().into(),
+                                    &shared_container.derive_reference_with_max_mutability().into(),
                                 );
                             }
                         };
@@ -1693,7 +1689,7 @@ fn compile_key_value_entry(
     match *key.data {
         // text -> insert key string
         DatexExpressionData::Text(text) => {
-            append_key_string(compilation_context.core_context(), text.0);
+            append_key_string(compilation_context.core_context(), &text.0);
         }
         // other -> insert key as dynamic
         _ => {

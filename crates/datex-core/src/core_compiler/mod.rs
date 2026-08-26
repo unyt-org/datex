@@ -40,7 +40,7 @@ impl InstructionInput {
                 append_instruction(ctx.cursor_mut(), instruction);
             }
             InstructionInput::ValueContainer(value_container) => {
-                append_value_container(ctx, value_container);
+                append_value_container(ctx, &value_container);
             }
         }
     }

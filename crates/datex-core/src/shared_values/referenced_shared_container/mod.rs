@@ -6,8 +6,9 @@ mod to_datex_expression_data;
 use crate::{
     prelude::*,
     shared_values::{
-        ExternalSharedContainer, PointerAddress, ReferenceMutability,
-        RemotePointerAddress, SharedContainerInner, SharedContainerMutability,
+        ExternalSharedContainer, OwnedSharedContainer, PointerAddress,
+        ReferenceMutability, RemotePointerAddress, SelfOwnedSharedContainer,
+        SharedContainerInner, SharedContainerMutability,
         base_shared_value_container::{
             BaseSharedValueContainer, observers::ObserverData,
         },
@@ -40,7 +41,7 @@ pub struct ReferencedSharedContainer {
     pub(super) reference_mutability: ReferenceMutability,
     pub(super) container_mutability: SharedContainerMutability,
     /// Field used internally to indicate that this reference should be treated as a move in the context of the compiler
-    pub(super) move_indicator: bool,
+    pub(super) move_indicator: bool, // FIXME must this be omitted on clone?
     /// Observer data (e.g. observer list) for this shared container. Can be borrowed separately from the [SharedContainerInner]
     pub(super) observer_data: Rc<RefCell<ObserverData>>,
 }

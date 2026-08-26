@@ -57,10 +57,6 @@ impl ParentContext {
 }
 
 pub trait ValueVisitor: BufferProvider {
-    fn visit_value_container(
-        &mut self,
-        value: ValueContainer,
-        parent_context: Option<ParentContext>,
-    );
-    fn visit_type(&mut self, ty: Type);
+    fn visit_value_container(&mut self, value: &ValueContainer);
+    fn visit_type(&mut self, ty: &Type);
 }

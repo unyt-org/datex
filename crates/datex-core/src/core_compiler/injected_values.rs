@@ -138,8 +138,8 @@ fn compile_injected_values_with_context(
     compilation_context
         .write(RegularInstruction::list(injected_values.len() as u32));
 
-    for value_container in injected_values {
-        compilation_context.visit_value_container(value_container, None);
+    for value_container in &injected_values {
+        compilation_context.visit_value_container(value_container);
     }
 }
 
@@ -350,6 +350,15 @@ mod tests {
                         // injected values preamble
                         RegularInstruction::PushListToStack,
                         RegularInstruction::statements_with_children(false, instructions!(
+                            
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                                address: owned_address_1,
+                                ref_mutability: ReferenceMutability::Immutable,
+                                container_mutability: SharedContainerMutability::Immutable
+                            }),
+                            RegularInstruction::Int32(Int32Data(42)),
+                            
                             RegularInstruction::PushToStack,
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: owned_address_2,
@@ -358,17 +367,9 @@ mod tests {
                             }),
                             RegularInstruction::Int32(Int32Data(100)),
 
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                                address: owned_address_1,
-                                ref_mutability: ReferenceMutability::Immutable,
-                                container_mutability: SharedContainerMutability::Immutable
-                            }),
-                            RegularInstruction::Int32(Int32Data(42)),
-
                             RegularInstruction::list_with_children(instructions!(
-                                RegularInstruction::TakeStackValue(StackIndex(1)),
                                 RegularInstruction::TakeStackValue(StackIndex(0)),
+                                RegularInstruction::TakeStackValue(StackIndex(1)),
                             )),
                         )),
 
@@ -440,8 +441,6 @@ mod tests {
                                         }
                                     ),
                                     RegularInstruction::Int32(Int32Data(42)),
-                                    RegularInstruction::PushToStack,
-                                    RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
                                     RegularInstruction::list_with_children(
                                         instructions!(
                                             RegularInstruction::TakeStackValue(
@@ -537,14 +536,6 @@ mod tests {
                         RegularInstruction::PushListToStack,
                         RegularInstruction::statements_with_children(false, instructions!(
                             RegularInstruction::PushToStack,
-                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                                address: shared_value2_address,
-                                ref_mutability: ReferenceMutability::Immutable,
-                                container_mutability: SharedContainerMutability::Immutable
-                            }),
-                            RegularInstruction::Int32(Int32Data(100)),
-
-                            RegularInstruction::PushToStack,
                             RegularInstruction::MoveWithValue(MoveWithValue {
                                 mutability: SharedContainerMutability::Immutable,
                                 previous_address: shared_value1_address
@@ -552,11 +543,16 @@ mod tests {
                             RegularInstruction::Int32(Int32Data(42)),
 
                             RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(StackIndex(1)),
+                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                                address: shared_value2_address,
+                                ref_mutability: ReferenceMutability::Immutable,
+                                container_mutability: SharedContainerMutability::Immutable
+                            }),
+                            RegularInstruction::Int32(Int32Data(100)),
 
                             RegularInstruction::list_with_children(instructions!(
-                                RegularInstruction::TakeStackValue(StackIndex(1)),
                                 RegularInstruction::TakeStackValue(StackIndex(0)),
+                                RegularInstruction::TakeStackValue(StackIndex(1)),
                             )),
                         )),
 

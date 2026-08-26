@@ -123,7 +123,7 @@ impl RuntimeInternal {
             let dxb = match result {
                 Ok(value) => {
                     // info!("Sending result value {:?}", value);
-                    if let Some(value) = value {
+                    if let Some(value) = &value {
                         let res = compile_value_container(value, compile_input);
                         drop(lookup);
 

@@ -92,9 +92,9 @@ fn append_set_entry<T: BufferProvider + ValueVisitor>(
     set_entry_update_data: &SetEntryUpdateData,
 ) {
     // key
-    append_set_property_value_key(context, set_entry_update_data.key.clone()); // TODO: ensure clone is ok here
+    append_set_property_value_key(context, &set_entry_update_data.key);
     // value
-    context.visit_value_container(set_entry_update_data.value.clone(), None); // TODO: ensure clone is ok here
+    context.visit_value_container(&set_entry_update_data.value);
     // target
     context.write(RegularInstruction::borrow_stack_value(StackIndex(0)));
 }
@@ -105,7 +105,7 @@ fn append_replace<T: BufferProvider + ValueVisitor>(
     replace_update_data: &ReplaceUpdateData,
 ) {
     context.write(RegularInstruction::set_shared_container_value());
-    context.visit_value_container(replace_update_data.value.clone(), None); // TODO: ensure clone is ok here
+    context.visit_value_container(&replace_update_data.value);
     // target
     context.write(RegularInstruction::borrow_stack_value(StackIndex(0)));
 }
@@ -116,7 +116,7 @@ fn append_append_entry<T: BufferProvider + ValueVisitor>(
     append_entry_update_data: &AppendEntryUpdateData,
 ) {
     context.write(RegularInstruction::append_entry());
-    context.visit_value_container(append_entry_update_data.value.clone(), None); // TODO: ensure clone is ok here
+    context.visit_value_container(&append_entry_update_data.value);
     // target
     context.write(RegularInstruction::borrow_stack_value(StackIndex(0)));
 }
@@ -133,7 +133,7 @@ fn append_list_splice<T: BufferProvider + ValueVisitor>(
     ));
 
     for item in &list_splice_update_data.items {
-        context.visit_value_container(item.clone(), None); // TODO: ensure clone is ok here
+        context.visit_value_container(item);
     }
 
     // target
@@ -159,18 +159,18 @@ fn append_delete_entry<T: BufferProvider + ValueVisitor>(
 /// Appends a set property operation on a shared container, based on the provided value key.
 pub fn append_set_property_value_key<T: BufferProvider + ValueVisitor>(
     context: &mut T,
-    value_key: ValueKey,
+    value_key: &ValueKey,
 ) {
-    match value_key {
-        ValueKey::Text(text) => {
-            context.write(RegularInstruction::set_entry_text(text))
+    match *value_key {
+        ValueKey::Text(ref text) => {
+            context.write(RegularInstruction::set_entry_text(text.clone()));
         }
         ValueKey::Index(index) => {
             context.write(RegularInstruction::set_entry_index(index as u32))
         }
-        ValueKey::Value(value) => {
+        ValueKey::Value(ref value) => {
             context.write(RegularInstruction::set_entry_dynamic());
-            context.visit_value_container(value, None);
+            context.visit_value_container(value);
         }
     }
 }

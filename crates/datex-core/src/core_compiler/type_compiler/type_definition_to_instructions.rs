@@ -91,7 +91,9 @@ where
                 TypeDefinition::Shared(shared_container_containing_type) => {
                     if let Some(tracking) = ctx.shared_value_tracking() {
                         tracking.borrow_mut().register_shared_value(
-                            shared_container_containing_type.clone().into(),
+                            &shared_container_containing_type
+                                .clone_with_move_indicator_if_owned()
+                                .into(),
                         );
                     }
                 }
