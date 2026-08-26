@@ -24,6 +24,7 @@ use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{CompileInput, DXBWithSharedValues},
+        to_instructions::ToInstructions,
         value_compiler::{
             append_boolean, append_decimal, append_encoded_integer,
             append_float_as_i16, append_float_as_i32, append_get_shared_ref,
@@ -1668,10 +1669,13 @@ fn compile_expression(
             }
         }
 
-        _ => {
-            log::error!("Unhandled expression in compiler: {:?}", data);
-            let ast = DatexExpression { data, span, ty };
-            return Err(CompilerError::UnexpectedTerm(Box::new(ast)));
+        data => {
+            let expressions = data
+                .to_instructions(compilation_context)
+                .collect::<Vec<_>>();
+            for instruction in expressions {
+                compilation_context.write(instruction);
+            }
         }
     }
 
