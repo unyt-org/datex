@@ -1,5 +1,6 @@
 use crate::{
     ast::type_expressions::TypeExpression,
+    compiler::scope::CompilationScope,
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{
@@ -31,6 +32,7 @@ pub struct CompilationContext<'a> {
     /// this flag is set to true if any non-static value is encountered
     pub has_non_static_value: bool,
     pub execution_mode: ExecutionMode,
+    pub scope: CompilationScope,
 }
 
 impl<'a> CompilationContext<'a> {
@@ -48,6 +50,7 @@ impl<'a> CompilationContext<'a> {
             inserted_values,
             has_non_static_value: false,
             execution_mode,
+            scope: CompilationScope::new(ExecutionMode::default()),
         }
     }
 

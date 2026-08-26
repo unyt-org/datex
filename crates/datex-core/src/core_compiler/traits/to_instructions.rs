@@ -31,8 +31,8 @@ where
 {
     type InstructionType: Sized;
 
-    fn to_instructions<'a>(
+    fn to_instructions(
         &self,
-        ctx: &'a mut T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>>;
 }
