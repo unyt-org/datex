@@ -6,19 +6,23 @@ use crate::{
             CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
         shared_value_tracking::SharedValueTracking,
-        to_instructions::{InstructionContext, ToInstructions},
+        to_instructions::{
+            InstructionContext, SharedValueTrackingProvider, ToInstructions,
+        },
         type_compiler::append_type_instruction,
         value_compiler::append_instruction_code,
     },
     global::stack_index::StackIndex,
-    instruction::instruction_codes::InstructionCode,
+    instruction::{
+        instruction_codes::InstructionCode, type_instruction::TypeInstruction,
+    },
     prelude::*,
     runtime::execution::context::ExecutionMode,
     utils::buffers::append_u32,
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Cursor, meta::WriteEndian};
-
+use core::cell::RefCell;
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext<'a> {
     pub core_context: CoreCompilationContext<'a>,
@@ -89,15 +93,9 @@ impl<'a> CompilationContext<'a> {
         &'b mut self,
         type_expression: &TypeExpression,
     ) {
-        let mut ctx = InstructionContext {
-            shared_value_tracking: Some(
-                &mut self.core_context.shared_value_tracking,
-            ),
-        };
         let instructions = type_expression
-            .to_instructions(&mut ctx)
-            .collect::<Vec<_>>();
-        drop(ctx);
+            .to_instructions(self)
+            .collect::<Vec<TypeInstruction>>();
         for instruction in instructions {
             append_type_instruction(self.cursor(), instruction);
         }
@@ -106,5 +104,13 @@ impl<'a> CompilationContext<'a> {
     #[deprecated(note = "use write() instead")]
     pub fn append_instruction_code(&mut self, code: InstructionCode) {
         append_instruction_code(self.cursor(), code);
+    }
+}
+
+impl<'ctx> SharedValueTrackingProvider<'ctx> for CompilationContext<'ctx> {
+    fn shared_value_tracking<'a>(
+        &'a self,
+    ) -> Option<&'a RefCell<SharedValueTracking<'ctx>>> {
+        Some(&self.core_context.shared_value_tracking)
     }
 }

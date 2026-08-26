@@ -1,7 +1,10 @@
 use core::cell::RefCell;
 
 use crate::{
-    core_compiler::shared_value_tracking::SharedValueTracking, prelude::*,
+    compiler::context::CompilationContext,
+    core_compiler::shared_value_tracking::SharedValueTracking,
+    global::stack_index::StackIndex, prelude::*,
+    shared_values::SharedContainer,
 };
 
 pub struct InstructionContext<'tracking, 'ctx> {
@@ -17,11 +20,19 @@ impl<'tracking, 'ctx> InstructionContext<'tracking, 'ctx> {
     }
 }
 
-pub trait ToInstructions {
+pub trait SharedValueTrackingProvider<'ctx> {
+    fn shared_value_tracking<'a>(
+        &'a self,
+    ) -> Option<&'a RefCell<SharedValueTracking<'ctx>>>;
+}
+pub trait ToInstructions<'ctx, T>
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType: Sized;
 
-    fn to_instructions<'tracking, 'ctx>(
-        &'ctx self,
-        ctx: &'ctx InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'ctx>;
+    fn to_instructions<'a>(
+        &self,
+        ctx: &'a T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>>;
 }

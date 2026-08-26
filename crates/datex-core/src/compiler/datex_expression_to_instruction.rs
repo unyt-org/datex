@@ -1,15 +1,22 @@
 use crate::{
     ast::expressions::DatexExpression,
-    core_compiler::to_instructions::{InstructionContext, ToInstructions},
+    compiler::context::CompilationContext,
+    core_compiler::to_instructions::{
+        InstructionContext, SharedValueTrackingProvider, ToInstructions,
+    },
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
 };
-impl ToInstructions for DatexExpression {
+use core::cell::RefCell;
+impl<'ctx, T> ToInstructions<'ctx, T> for DatexExpression
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(self.data().to_instructions(ctx))
     }
 }

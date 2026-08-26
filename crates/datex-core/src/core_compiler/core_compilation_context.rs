@@ -1,6 +1,7 @@
 use core::cell::RefCell;
 
 use crate::{
+    compiler::context::CompilationContext,
     core_compiler::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
@@ -11,8 +12,12 @@ use crate::{
         value_visitor::{ParentContext, ValueVisitor},
     },
     global::protocol_structures::injected_values::SharedInjectedValueType::Ref,
+    instruction::type_instruction::TypeInstruction,
     prelude::*,
-    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
+    runtime::{
+        execution::context::ExecutionMode,
+        pointer_availability_lookup::PointerAvailabilityLookup,
+    },
     shared_values::SharedContainer,
     types::r#type::Type,
     values::{
@@ -149,11 +154,16 @@ impl ValueVisitor for CoreCompilationContext<'_> {
     }
 
     fn visit_type(&mut self, ty: Type) {
-        let ctx = InstructionContext {
-            shared_value_tracking: Some(&self.shared_value_tracking),
-        };
+        // FIXME
+        let ctx = CompilationContext::new(
+            vec![],
+            vec![],
+            ExecutionMode::default(),
+            self.input.clone(),
+        );
 
-        let instructions = ty.to_instructions(&ctx).collect::<Vec<_>>();
+        let instructions =
+            ty.to_instructions(&ctx).collect::<Vec<TypeInstruction>>();
 
         for instruction in instructions {
             append_type_instruction(self.cursor_mut(), instruction);

@@ -6,20 +6,26 @@ use crate::{
         RangeDeclaration, RequestSharedRef, RootPropertyAccess, TagExpression,
         UnaryOperation, Unbox, UnboxAssignment,
     },
-    core_compiler::to_instructions::{InstructionContext, ToInstructions},
+    compiler::context::CompilationContext,
+    core_compiler::to_instructions::{
+        InstructionContext, SharedValueTrackingProvider, ToInstructions,
+    },
     global::{operators::ModificationOperator, root_properties::RootProperty},
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
     shared_values::{ReferenceMutability, SharedContainerMutability},
 };
-use core::str::FromStr;
+use core::{cell::RefCell, str::FromStr};
 
-impl ToInstructions for DatexExpressionData {
+impl<'ctx, T> ToInstructions<'ctx, T> for DatexExpressionData
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self {
                 DatexExpressionData::Integer(integer) => {
@@ -270,13 +276,16 @@ impl ToInstructions for DatexExpressionData {
     }
 }
 
-impl ToInstructions for RangeDeclaration {
+impl<'ctx, T> ToInstructions<'ctx, T> for RangeDeclaration
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::range();
             for instruction in self.start.to_instructions(ctx) {
@@ -289,13 +298,16 @@ impl ToInstructions for RangeDeclaration {
     }
 }
 
-impl ToInstructions for ComparisonOperation {
+impl<'ctx, T> ToInstructions<'ctx, T> for ComparisonOperation
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::comparison_operation(self.operator);
             for instruction in self.left.to_instructions(ctx) {
@@ -308,13 +320,16 @@ impl ToInstructions for ComparisonOperation {
     }
 }
 
-impl ToInstructions for UnboxAssignment {
+impl<'ctx, T> ToInstructions<'ctx, T> for UnboxAssignment
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self.operator {
                 Some(operator) => match operator {
@@ -342,13 +357,16 @@ impl ToInstructions for UnboxAssignment {
     }
 }
 
-impl ToInstructions for PropertyAssignment {
+impl<'ctx, T> ToInstructions<'ctx, T> for PropertyAssignment
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             let PropertyAssignment {
                 base,
@@ -390,13 +408,16 @@ impl ToInstructions for PropertyAssignment {
     }
 }
 
-impl ToInstructions for UnaryOperation {
+impl<'ctx, T> ToInstructions<'ctx, T> for UnaryOperation
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::unary_operation(self.operator);
             for instruction in self.expression.to_instructions(ctx) {
@@ -406,13 +427,16 @@ impl ToInstructions for UnaryOperation {
     }
 }
 
-impl ToInstructions for Apply {
+impl<'ctx, T> ToInstructions<'ctx, T> for Apply
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::apply(self.arguments.len() as u8);
             // compile arguments
@@ -429,13 +453,16 @@ impl ToInstructions for Apply {
     }
 }
 
-impl ToInstructions for InterfaceMethodCall {
+impl<'ctx, T> ToInstructions<'ctx, T> for InterfaceMethodCall
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             // TODO: replace with trait impls
             match self.method_name.as_str() {
@@ -485,13 +512,16 @@ impl ToInstructions for InterfaceMethodCall {
     }
 }
 
-impl ToInstructions for PropertyAccess {
+impl<'ctx, T> ToInstructions<'ctx, T> for PropertyAccess
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             // depending on the key, handle different property accesses
             match self.property.data() {
@@ -521,13 +551,16 @@ impl ToInstructions for PropertyAccess {
     }
 }
 
-impl ToInstructions for GenericInstantiation {
+impl<'ctx, T> ToInstructions<'ctx, T> for GenericInstantiation
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             // NOTE: might already be handled in type compilation
             todo!()
@@ -535,13 +568,16 @@ impl ToInstructions for GenericInstantiation {
     }
 }
 
-impl ToInstructions for RequestSharedRef {
+impl<'ctx, T> ToInstructions<'ctx, T> for RequestSharedRef
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(core::iter::once(RegularInstruction::get_shared_ref(
             self.address.clone(),
             &self.mutability,
@@ -549,13 +585,16 @@ impl ToInstructions for RequestSharedRef {
     }
 }
 
-impl ToInstructions for List {
+impl<'ctx, T> ToInstructions<'ctx, T> for List
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::list(self.items.len() as u32);
             for item in &self.items {
@@ -567,13 +606,16 @@ impl ToInstructions for List {
     }
 }
 
-impl ToInstructions for Map {
+impl<'ctx, T> ToInstructions<'ctx, T> for Map
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::map(self.entries.len() as u32);
             for (key, value) in &self.entries {
@@ -607,13 +649,16 @@ impl ToInstructions for Map {
     }
 }
 
-impl ToInstructions for TagExpression {
+impl<'ctx, T> ToInstructions<'ctx, T> for TagExpression
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::tagged_value(
                 self.tag.clone(),
@@ -628,13 +673,16 @@ impl ToInstructions for TagExpression {
     }
 }
 
-impl ToInstructions for RootPropertyAccess {
+impl<'ctx, T> ToInstructions<'ctx, T> for RootPropertyAccess
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             let root_property = RootProperty::from_str(&self.property_name)
                 .expect("invalid root property name");
@@ -643,13 +691,16 @@ impl ToInstructions for RootPropertyAccess {
     }
 }
 
-impl ToInstructions for Unbox {
+impl<'ctx, T> ToInstructions<'ctx, T> for Unbox
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::unbox();
             for instruction in self.expression.to_instructions(ctx) {
@@ -659,13 +710,16 @@ impl ToInstructions for Unbox {
     }
 }
 
-impl ToInstructions for DeriveRef {
+impl<'ctx, T> ToInstructions<'ctx, T> for DeriveRef
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             for instruction in self.expression.to_instructions(ctx) {
                 yield instruction;
@@ -674,13 +728,16 @@ impl ToInstructions for DeriveRef {
     }
 }
 
-impl ToInstructions for CreateShared {
+impl<'ctx, T> ToInstructions<'ctx, T> for CreateShared
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self.mutability {
                 SharedContainerMutability::Immutable => {
@@ -698,13 +755,16 @@ impl ToInstructions for CreateShared {
     }
 }
 
-impl ToInstructions for DeriveSharedRef {
+impl<'ctx, T> ToInstructions<'ctx, T> for DeriveSharedRef
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self.mutability {
                 ReferenceMutability::Immutable => {
@@ -722,13 +782,16 @@ impl ToInstructions for DeriveSharedRef {
     }
 }
 
-impl ToInstructions for BinaryOperation {
+impl<'ctx, T> ToInstructions<'ctx, T> for BinaryOperation
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
 
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::binary_operation(self.operator);
             for instruction in self.left.to_instructions(ctx) {

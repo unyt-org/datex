@@ -1,19 +1,24 @@
 use crate::{
     core_compiler::{
         shared_value_tracking::SharedValueTracking,
-        to_instructions::{InstructionContext, ToInstructions},
+        to_instructions::{
+            InstructionContext, SharedValueTrackingProvider, ToInstructions,
+        },
     },
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
     values::core_values::list::List,
 };
 
-impl ToInstructions for List {
+impl<'ctx, T> ToInstructions<'ctx, T> for List
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = RegularInstruction;
-    fn to_instructions<'tracking, 'ctx, 'iter>(
-        &'iter self,
-        ctx: &'iter InstructionContext<'tracking, 'ctx>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+    fn to_instructions(
+        &self,
+        ctx: &T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::list(self.items.len() as u32);
             for item in &self.items {

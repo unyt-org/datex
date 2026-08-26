@@ -1,10 +1,16 @@
+use core::cell::RefCell;
+
 use crate::{
     collections::HashMap,
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::ByteCursor,
-        shared_value_tracking::{TrackedValueCollection, TrackedValueMetadata},
-        to_instructions::{InstructionContext, ToInstructions},
+        shared_value_tracking::{
+            SharedValueTracking, TrackedValueCollection, TrackedValueMetadata,
+        },
+        to_instructions::{
+            InstructionContext, SharedValueTrackingProvider, ToInstructions,
+        },
         type_compiler::append_type_instruction,
         update_compiler::append_set_property_value_key,
         value_compiler::append_value,
@@ -14,6 +20,7 @@ use crate::{
     instruction::{
         instruction_data::{MoveWithValue, SharedRef, SharedRefWithValue},
         regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     prelude::*,
     shared_values::{
@@ -126,14 +133,21 @@ impl ValueVisitor for PreambleContext<'_> {
             // intercept shared types
             Type::Entity(_) => todo!(),
             _ => {
-                let instructions = ty
-                    .to_instructions(&mut InstructionContext::empty())
-                    .collect::<Vec<_>>();
+                let instructions =
+                    ty.to_instructions(self).collect::<Vec<TypeInstruction>>();
                 for instruction in instructions {
                     append_type_instruction(self.cursor_mut(), instruction);
                 }
             }
         }
+    }
+}
+
+impl<'ctx> SharedValueTrackingProvider<'ctx> for PreambleContext<'ctx> {
+    fn shared_value_tracking<'a>(
+        &'a self,
+    ) -> Option<&'a RefCell<SharedValueTracking<'ctx>>> {
+        None
     }
 }
 
@@ -499,32 +513,42 @@ fn append_referenced_shared_container_with_value(
 mod tests {
     use binrw::BinWrite;
 
-    use crate::{core_compiler::{
-        core_compilation_context::ByteCursor,
-        preamble::append_injected_values_preamble,
-        shared_value_tracking::{
-            TrackedValueCollection, TrackedValueMetadata,
+    use crate::{
+        core_compiler::{
+            core_compilation_context::ByteCursor,
+            preamble::append_injected_values_preamble,
+            shared_value_tracking::{
+                TrackedValueCollection, TrackedValueMetadata,
+            },
         },
-    }, disassembler::{
-        InstructionTree,
-        assertions::{assert_instructions_equal, instructions},
-        print_disassembled,
-    }, global::stack_index::StackIndex, instruction, instruction::{
-        Instruction,
-        instruction_data::{
-            Int32Data, ListData, MoveWithValue, SharedRefWithValue,
-            ShortListData, ShortMapData, ShortTextData, UInt32Data,
+        disassembler::{
+            InstructionTree,
+            assertions::{assert_instructions_equal, instructions},
+            print_disassembled,
         },
-        regular_instruction::RegularInstruction,
-    }, prelude::*, runtime::pointer_address_provider::SelfOwnedPointerAddressProvider, shared_values::{
-        OwnedSharedContainer, ReferenceMutability,
-        ReferencedSharedContainer, SelfOwnedPointerAddress,
-        SharedContainer, SharedContainerMutability,
-        SharedContainerOwnership, traits::SharedContainerCommon,
-    }, values::{
-        core_values::{list::List, map::Map},
-        value_container::ValueContainer,
-    }};
+        global::stack_index::StackIndex,
+        instruction,
+        instruction::{
+            Instruction,
+            instruction_data::{
+                Int32Data, ListData, MoveWithValue, SharedRefWithValue,
+                ShortListData, ShortMapData, ShortTextData, UInt32Data,
+            },
+            regular_instruction::RegularInstruction,
+        },
+        prelude::*,
+        runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+        shared_values::{
+            OwnedSharedContainer, ReferenceMutability,
+            ReferencedSharedContainer, SelfOwnedPointerAddress,
+            SharedContainer, SharedContainerMutability,
+            SharedContainerOwnership, traits::SharedContainerCommon,
+        },
+        values::{
+            core_values::{list::List, map::Map},
+            value_container::ValueContainer,
+        },
+    };
 
     fn assert_preamble_instructions(
         tracked_values: Vec<(SharedContainer, TrackedValueMetadata)>,
