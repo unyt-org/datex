@@ -33,6 +33,6 @@ where
 
     fn to_instructions<'a>(
         &self,
-        ctx: &'a T,
+        ctx: &'a mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>>;
 }

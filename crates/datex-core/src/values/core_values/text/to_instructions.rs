@@ -17,7 +17,7 @@ where
     type InstructionType = RegularInstruction;
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(core::iter::once(RegularInstruction::text(self.0.clone())))
     }

@@ -554,55 +554,6 @@ fn compile_expression(
 
     let DatexExpression { data, span, ty } = ast;
     match *data {
-        DatexExpressionData::Integer(int) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::Integer(int));
-        }
-        DatexExpressionData::TypedInteger(typed_int) => {
-            append_encoded_integer(compilation_context.cursor(), &typed_int);
-        }
-        DatexExpressionData::Instant(instant) => {
-            append_instant(compilation_context.cursor(), &instant);
-        }
-        DatexExpressionData::Decimal(decimal) => match &decimal {
-            Decimal::Finite(big_decimal) if big_decimal.is_integer() => {
-                if let Some(int) = big_decimal.to_i16() {
-                    append_float_as_i16(compilation_context.cursor(), int);
-                } else if let Some(int) = big_decimal.to_i32() {
-                    append_float_as_i32(compilation_context.cursor(), int);
-                } else {
-                    append_decimal(compilation_context.cursor(), &decimal);
-                }
-            }
-            _ => {
-                append_decimal(compilation_context.cursor(), &decimal);
-            }
-        },
-        DatexExpressionData::TypedDecimal(typed_decimal) => {
-            append_typed_decimal(
-                &mut compilation_context.core_context,
-                &typed_decimal,
-            );
-        }
-        DatexExpressionData::Text(text) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::text(text.0));
-        }
-        DatexExpressionData::Boolean(boolean) => {
-            append_boolean(compilation_context.cursor(), boolean.0);
-        }
-        DatexExpressionData::Endpoint(endpoint) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::endpoint(endpoint));
-        }
-        DatexExpressionData::Null => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::null());
-        }
         DatexExpressionData::List(list) => {
             compilation_context
                 .core_context

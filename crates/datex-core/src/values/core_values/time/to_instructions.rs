@@ -18,7 +18,7 @@ where
     type InstructionType = RegularInstruction;
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(core::iter::once(RegularInstruction::instant(self.0)))
     }

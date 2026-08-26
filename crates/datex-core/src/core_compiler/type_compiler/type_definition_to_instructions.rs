@@ -48,7 +48,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self {
@@ -145,7 +145,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen {
             yield TypeInstruction::DefinitionWithMetadata(self.metadata);
@@ -163,7 +163,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen {
             yield TypeInstruction::ImplType(ImplTypeData {
@@ -185,7 +185,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield TypeInstruction::List(ListData {
@@ -208,7 +208,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield TypeInstruction::Map(MapData {
@@ -239,7 +239,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield TypeInstruction::Range;
@@ -264,7 +264,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self {
@@ -301,7 +301,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen {
             yield TypeInstruction::ListCollection;
@@ -319,7 +319,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield TypeInstruction::MapCollection;
@@ -345,7 +345,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield TypeInstruction::ListSliceCollection(
@@ -370,7 +370,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield TypeInstruction::Intersection(IntersectionData {
@@ -393,7 +393,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield TypeInstruction::Callable(CallableSignatureData {
@@ -455,7 +455,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield TypeInstruction::Union(UnionData {
@@ -478,7 +478,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield TypeInstruction::TaggedType(TaggedTypeData::new(

@@ -20,7 +20,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self {

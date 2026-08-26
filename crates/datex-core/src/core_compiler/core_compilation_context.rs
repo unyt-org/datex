@@ -6,7 +6,9 @@ use crate::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
         shared_value_tracking::SharedValueTracking,
-        to_instructions::{InstructionContext, ToInstructions},
+        to_instructions::{
+            InstructionContext, SharedValueTrackingProvider, ToInstructions,
+        },
         type_compiler::append_type_instruction,
         value_compiler::{append_shared_container_from_stack, append_value},
         value_visitor::{ParentContext, ValueVisitor},
@@ -154,19 +156,19 @@ impl ValueVisitor for CoreCompilationContext<'_> {
     }
 
     fn visit_type(&mut self, ty: Type) {
-        // FIXME
-        let ctx = CompilationContext::new(
-            vec![],
-            vec![],
-            ExecutionMode::default(),
-            self.input.clone(),
-        );
-
         let instructions =
-            ty.to_instructions(&ctx).collect::<Vec<TypeInstruction>>();
+            ty.to_instructions(self).collect::<Vec<TypeInstruction>>();
 
         for instruction in instructions {
             append_type_instruction(self.cursor_mut(), instruction);
         }
+    }
+}
+
+impl<'a> SharedValueTrackingProvider<'a> for CoreCompilationContext<'a> {
+    fn shared_value_tracking<'b>(
+        &'b self,
+    ) -> Option<&'b RefCell<SharedValueTracking<'a>>> {
+        Some(&self.shared_value_tracking)
     }
 }

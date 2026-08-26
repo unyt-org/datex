@@ -24,7 +24,7 @@ where
     type InstructionType = RegularInstruction;
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self {
@@ -284,7 +284,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::range();
@@ -306,7 +306,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::comparison_operation(self.operator);
@@ -328,7 +328,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self.operator {
@@ -365,7 +365,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             let PropertyAssignment {
@@ -416,7 +416,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::unary_operation(self.operator);
@@ -435,7 +435,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::apply(self.arguments.len() as u8);
@@ -461,7 +461,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             // TODO: replace with trait impls
@@ -520,7 +520,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             // depending on the key, handle different property accesses
@@ -559,7 +559,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             // NOTE: might already be handled in type compilation
@@ -576,7 +576,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(core::iter::once(RegularInstruction::get_shared_ref(
             self.address.clone(),
@@ -593,7 +593,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::list(self.items.len() as u32);
@@ -614,7 +614,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::map(self.entries.len() as u32);
@@ -657,7 +657,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::tagged_value(
@@ -681,7 +681,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             let root_property = RootProperty::from_str(&self.property_name)
@@ -699,7 +699,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::unbox();
@@ -718,7 +718,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             for instruction in self.expression.to_instructions(ctx) {
@@ -736,7 +736,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self.mutability {
@@ -763,7 +763,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self.mutability {
@@ -790,7 +790,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &T,
+        ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::binary_operation(self.operator);
