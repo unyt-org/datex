@@ -122,15 +122,13 @@ impl<'a> SharedValueTracking<'a> {
         &mut self,
         shared_container: &SharedContainer,
     ) -> StackIndex {
-        let shared_container_clone = shared_container.clone();
-
         self.register_shared_value_with_parents(
             shared_container.clone_with_move_indicator_if_owned(),
             &mut HashSet::new(),
         );
 
         // ensure tracked value is a top level tracked value with stack index
-        match self.tracked_values.get(&shared_container_clone).unwrap() {
+        match self.tracked_values.get(shared_container).unwrap() {
             TrackedValueMetadata::Child {
                 is_known,
                 is_self_referencing,
@@ -141,7 +139,7 @@ impl<'a> SharedValueTracking<'a> {
                 let index = self.get_next_stack_index();
                 let tracked_value = self
                     .tracked_values
-                    .get_mut(&shared_container_clone)
+                    .get_mut(shared_container)
                     .unwrap();
                 *tracked_value = TrackedValueMetadata::Root {
                     index,

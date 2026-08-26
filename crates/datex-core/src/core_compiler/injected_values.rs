@@ -47,7 +47,7 @@ pub fn compile_injected_values(
             &injected_values,
         )?;
 
-        compile_injected_values_with_context(&mut context, injected_values);
+        compile_injected_values_with_context(&mut context, &injected_values);
 
         let DXBWithSharedValues {
             dxb: preambles_dxb,
@@ -65,11 +65,11 @@ pub fn compile_injected_values(
 
         cursor.write_all(&preambles_dxb).unwrap();
         cursor.write_all(&instruction_block_data.body).unwrap();
-
-        Ok(DXBWithSharedValues {
-            dxb: cursor.into_inner(),
+        
+        Ok(DXBWithSharedValues::new(
+            cursor.into_inner(),
             shared_values,
-        })
+        ))
     }
 }
 
@@ -130,7 +130,7 @@ fn validate_injected_value_declaration_for_values(
 /// The caller must ensure that minimum a single injected value is provided, as this function assumes that the injected values are not empty.
 fn compile_injected_values_with_context(
     compilation_context: &mut CoreCompilationContext,
-    injected_values: Vec<ValueContainer>,
+    injected_values: &[ValueContainer],
 ) {
     if injected_values.is_empty() {
         unreachable!(); // injected values should not be empty, this function should only be called if there are injected values
@@ -138,7 +138,7 @@ fn compile_injected_values_with_context(
     compilation_context
         .write(RegularInstruction::list(injected_values.len() as u32));
 
-    for value_container in &injected_values {
+    for value_container in injected_values {
         compilation_context.visit_value_container(value_container);
     }
 }

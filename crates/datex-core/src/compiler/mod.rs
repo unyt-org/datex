@@ -29,7 +29,7 @@ use crate::{
             append_boolean, append_decimal, append_encoded_integer,
             append_float_as_i16, append_float_as_i32, append_get_shared_ref,
             append_instant, append_key_string,
-            append_shared_container_from_stack, append_typed_decimal,
+            append_shared_container_from_preamble, append_typed_decimal,
             append_value,
         },
     },
@@ -639,13 +639,13 @@ fn compile_expression(
                                 let shared_container_mut_ref = shared_container
                                     .try_derive_mutable_reference()
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
-                                append_shared_container_from_stack(
+                                append_shared_container_from_preamble(
                                     compilation_context.core_context(),
                                     &shared_container_mut_ref.into(),
                                 );
                             }
                             ValueAccessType::SharedRef => {
-                                append_shared_container_from_stack(
+                                append_shared_container_from_preamble(
                                     compilation_context.core_context(),
                                         &shared_container.derive_immutable_reference().into(),
                                 )
@@ -653,7 +653,7 @@ fn compile_expression(
                             ValueAccessType::MoveOrCopy => {
                                 match shared_container {
                                     SharedContainer::Owned(shared_container) => {
-                                        append_shared_container_from_stack(
+                                        append_shared_container_from_preamble(
                                             compilation_context.core_context(),
                                             &shared_container.clone_with_move_indicator().into(),
                                         );
@@ -671,7 +671,7 @@ fn compile_expression(
                                         );
                                     }
                                     ValueContainer::Shared(shared_container) => {
-                                        append_shared_container_from_stack(
+                                        append_shared_container_from_preamble(
                                             compilation_context.core_context(),
                                             &shared_container.clone(), // FIXME: Do we need to derive ref here, and what mutability ?
                                         )
@@ -679,7 +679,7 @@ fn compile_expression(
                                 }
                             },
                             ValueAccessType::Borrow => {
-                                append_shared_container_from_stack(
+                                append_shared_container_from_preamble(
                                     compilation_context.core_context(),
                                     &shared_container.derive_reference_with_max_mutability().into(),
                                 );

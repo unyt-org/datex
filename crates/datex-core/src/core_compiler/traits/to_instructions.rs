@@ -1,10 +1,8 @@
 use core::cell::RefCell;
 
 use crate::{
-    compiler::context::CompilationContext,
     core_compiler::shared_value_tracking::SharedValueTracking,
-    global::stack_index::StackIndex, prelude::*,
-    shared_values::SharedContainer,
+    prelude::*,
 };
 
 pub struct InstructionContext<'tracking, 'ctx> {

@@ -362,6 +362,28 @@ impl SharedContainer {
         }
     }
 
+    /// Tries to upgrade an inner [ReferencedSharedContainer] to an [OwnedSharedContainer].
+    /// If the container is already an [OwnedSharedContainer], it will be returned as is.
+    /// If the move indicator is set, the inner value is moved into a new [OwnedSharedContainer] and returned.
+    /// If the move indicator is not set, an [Err] is returned with the original [ReferencedSharedContainer].
+    /// Panics if the move indicator is set but the address is not a [SelfOwnedPointerAddress].
+    ///
+    /// # Safety
+    /// The caller must ensure that no other [OwnedSharedContainer] for the same inner value exists
+    /// if move_indicator of the [ReferencedSharedContainer] is set.
+    pub unsafe fn try_upgrade_to_owned(self) -> Result<OwnedSharedContainer, ReferencedSharedContainer> {
+        match self {
+            SharedContainer::Referenced(referenced_container) => {
+                unsafe {
+                    referenced_container.try_upgrade_to_owned()
+                }
+            }
+            SharedContainer::Owned(owned_container) => {
+                Ok(owned_container)
+            }
+        }
+    }
+
     /// Clones the shared container with the move indicator if it is an [OwnedSharedContainer],
     /// otherwise as a normal reference
     pub fn clone_with_move_indicator_if_owned(&self) -> SharedContainer {

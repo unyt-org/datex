@@ -1,11 +1,7 @@
-use core::{cell::RefCell, ops::DerefMut};
-
 use crate::{
-    compiler::context::CompilationContext,
     core_compiler::{
-        shared_value_tracking::SharedValueTracking,
         to_instructions::{
-            InstructionContext, SharedValueTrackingProvider, ToInstructions,
+            SharedValueTrackingProvider, ToInstructions,
         },
     },
     instruction::{

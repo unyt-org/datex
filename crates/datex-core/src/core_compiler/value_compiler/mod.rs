@@ -122,7 +122,7 @@ pub fn compile_panic(
 }
 
 /// Appends a shared container to the buffer by registering it in the shared value tracking and appending the stack index
-pub fn append_shared_container_from_stack(
+pub fn append_shared_container_from_preamble(
     context: &mut CoreCompilationContext,
     shared_container: &SharedContainer,
 ) {

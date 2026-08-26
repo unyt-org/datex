@@ -9,10 +9,9 @@ use crate::{
             SharedValueTracking, TrackedValueCollection, TrackedValueMetadata,
         },
         to_instructions::{
-            InstructionContext, SharedValueTrackingProvider, ToInstructions,
+            SharedValueTrackingProvider, ToInstructions,
         },
         type_compiler::append_type_instruction,
-        update_compiler::append_set_property_value_key,
         value_compiler::append_value,
         value_visitor::{ValueVisitor},
     },
@@ -30,7 +29,7 @@ use crate::{
         traits::SharedContainerCommon,
     },
     types::r#type::Type,
-    values::value_container::{ValueContainer, value_key::ValueKey},
+    values::value_container::{ValueContainer},
 };
 use binrw::{BinWrite, io::Write};
 
@@ -57,15 +56,15 @@ impl ValueVisitor for PreambleContext<'_> {
             ValueContainer::Shared(shared_container) => {
                 match self
                     .self_referencing_containers
-                    .get_mut(&shared_container)
+                    .get_mut(shared_container)
                 {
                     // not self referencing
                     None => {
                         // placeholder, will be later replaced via setter
                         append_shared_container(
                             self,
-                            &shared_container,
-                            self.known_container.contains(&shared_container),
+                            shared_container,
+                            self.known_container.contains(shared_container),
                         );
                     }
                     // shared container has already been inserted, use stack value
@@ -166,7 +165,7 @@ pub(super) fn append_injected_values_preamble(
         // loop through the tracked values in reverse order (as optimization)
         for (tracked_value, metadata) in tracked_values.iter() {
             if metadata.is_self_referencing() {
-                let new_index = append_unitialized_shared_container(
+                let new_index = append_uninitialized_shared_container(
                     context,
                     tracked_value,
                     metadata,
@@ -257,7 +256,7 @@ pub(super) fn append_injected_values_preamble(
     (byte_cursor.into_inner(), root_containers)
 }
 
-fn append_unitialized_shared_container(
+fn append_uninitialized_shared_container(
     context: &mut PreambleContext,
     container: &SharedContainer,
     metadata: &TrackedValueMetadata,
@@ -278,7 +277,20 @@ fn append_unitialized_shared_container(
             );
         }
         SharedContainer::Referenced(referenced_container) => {
-            if !metadata.is_known() {
+            if referenced_container.treat_as_move() {
+                append_move_with_value(
+                    context,
+                    referenced_container.container_mutability(),
+                    match referenced_container.pointer_address() {
+                        PointerAddress::SelfOwned(address) => address.clone(),
+                        _ => unreachable!(
+                            "Referenced shared container should not have a remote pointer address"
+                        ),
+                    },
+                    None,
+                )
+            }
+            else if !metadata.is_known() {
                 append_referenced_shared_container_with_value(
                     context,
                     referenced_container,
