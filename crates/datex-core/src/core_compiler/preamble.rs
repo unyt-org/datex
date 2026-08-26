@@ -14,7 +14,7 @@ use crate::{
         type_compiler::append_type_instruction,
         update_compiler::append_set_property_value_key,
         value_compiler::append_value,
-        value_visitor::{ParentAccessor, ParentContext, ValueVisitor},
+        value_visitor::{ValueVisitor},
     },
     global::stack_index::StackIndex,
     instruction::{
@@ -33,14 +33,6 @@ use crate::{
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
 use binrw::{BinWrite, io::Write};
-
-#[derive(Debug)]
-enum VisitedValue {
-    /// Indicates that the shared container was already inserted and is available at the given stack index
-    Inserted { stack_index: StackIndex },
-    /// Indicates that the shared container is referenced by one or multiple shared containers that were already inserted
-    Required { parent_contexts: Vec<ParentContext> },
-}
 
 #[derive(Debug)]
 struct PreambleContext<'a> {

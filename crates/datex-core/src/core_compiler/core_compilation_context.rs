@@ -11,7 +11,6 @@ use crate::{
         },
         type_compiler::append_type_instruction,
         value_compiler::{append_shared_container_from_stack, append_value},
-        value_visitor::{ParentContext, ValueVisitor},
     },
     global::protocol_structures::injected_values::SharedInjectedValueType::Ref,
     instruction::type_instruction::TypeInstruction,
@@ -27,6 +26,7 @@ use crate::{
     },
 };
 use binrw::io::Cursor;
+use crate::core_compiler::value_visitor::ValueVisitor;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 

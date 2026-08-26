@@ -29,7 +29,6 @@ use binrw::{
 use crate::{
     core_compiler::{
         core_compilation_context::{ByteCursor, CoreCompilationContext},
-        value_visitor::{ParentAccessor, ParentContext},
     },
     instruction::{
         Instruction,
