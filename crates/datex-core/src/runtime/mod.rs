@@ -6,8 +6,11 @@ use crate::{
 };
 
 use crate::prelude::*;
-use core::{fmt::Debug, ops::Deref, result::Result};
-use core::ops::DerefMut;
+use core::{
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+    result::Result,
+};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
@@ -25,13 +28,12 @@ mod runner;
 pub mod test_utils;
 
 use crate::{
-    core_compiler::InstructionInput,
+    core_compiler::InstructionInput, datex_registry::get_all_modules,
     values::core_values::endpoint::Endpoint,
 };
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
-use crate::datex_registry::get_all_modules;
 
 #[derive(Clone, Debug)]
 pub struct Runtime {

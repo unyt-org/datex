@@ -577,7 +577,6 @@ pub struct RequestSharedRef {
     pub address: PointerAddress,
 }
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct CallableDeclaration {
     pub signature: CallableSignature,
@@ -620,7 +619,9 @@ pub struct Map {
 }
 
 impl FromIterator<(DatexExpression, DatexExpression)> for Map {
-    fn from_iter<T: IntoIterator<Item = (DatexExpression, DatexExpression)>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = (DatexExpression, DatexExpression)>>(
+        iter: T,
+    ) -> Self {
         let entries = iter.into_iter().collect();
         Map { entries }
     }
@@ -653,7 +654,6 @@ pub struct TagExpression {
     pub expression: Option<DatexExpression>,
 }
 
-
 impl Display for TagExpression {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(f, "#{}", self.tag)
@@ -664,7 +664,6 @@ impl Display for TagExpression {
 pub struct RootPropertyAccess {
     pub property_name: String,
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct StackAssignment {
@@ -696,7 +695,6 @@ pub struct Unbox {
     pub expression: DatexExpression,
 }
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct CloneExpression {
     pub expression: DatexExpression,
@@ -714,13 +712,11 @@ pub struct CreateShared {
     pub expression: DatexExpression,
 }
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeriveSharedRef {
     pub mutability: ReferenceMutability,
     pub expression: DatexExpression,
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateMut {

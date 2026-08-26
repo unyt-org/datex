@@ -1,17 +1,16 @@
 use core::fmt::Display;
 
 use crate::{
+    global::stack_index::StackIndex,
     prelude::*,
     runtime::Runtime,
+    types::type_definition::callable::InvalidArgumentError,
     values::{
-        core_values::callable::error::CallableError,
+        core_values::callable::error::CallableError, value::Value,
         value_container::ValueContainer,
     },
 };
 use alloc::boxed::Box;
-use crate::global::stack_index::StackIndex;
-use crate::types::type_definition::callable::InvalidArgumentError;
-use crate::values::value::Value;
 
 #[derive(Debug)]
 pub enum ApplyError {
@@ -95,7 +94,9 @@ impl From<ApplyArgument> for ValueContainer {
 }
 
 /// Returns a vector of ValueContainers for all arguments that were passed as local references.
-pub fn get_borrowed_apply_argument_values(values: Vec<ApplyArgument>) -> Vec<ValueContainer> {
+pub fn get_borrowed_apply_argument_values(
+    values: Vec<ApplyArgument>,
+) -> Vec<ValueContainer> {
     values
         .into_iter()
         .filter(|arg| arg.passed_as_ref)
@@ -106,7 +107,7 @@ pub fn get_borrowed_apply_argument_values(values: Vec<ApplyArgument>) -> Vec<Val
 /// Returns a vector of ApplyArguments with the passed_as_ref field set based on the provided borrowed_args_stack_indices.
 pub fn into_apply_arguments_with_stack_indices(
     values: Vec<ValueContainer>,
-    borrowed_args_stack_indices: &[Option<StackIndex>]
+    borrowed_args_stack_indices: &[Option<StackIndex>],
 ) -> Vec<ApplyArgument> {
     values
         .into_iter()
@@ -118,7 +119,6 @@ pub fn into_apply_arguments_with_stack_indices(
         .collect()
 }
 
-
 // TODO #351: return ApplyErrors including call stack information (or store call stack directly in ExecutionError)
 pub trait Apply {
     /// Calls the [try_apply_sync] method and checks that the number of returned local references
@@ -128,7 +128,8 @@ pub trait Apply {
         runtime: &Runtime,
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
-        let expected_ref_count = args.iter().filter(|arg| arg.passed_as_ref).count();
+        let expected_ref_count =
+            args.iter().filter(|arg| arg.passed_as_ref).count();
         let res = self.try_apply_sync(runtime, args)?;
 
         if res.1.len() != expected_ref_count {
@@ -150,7 +151,8 @@ pub trait Apply {
         runtime: &Runtime,
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
-        let expected_ref_count = args.iter().filter(|arg| arg.passed_as_ref).count();
+        let expected_ref_count =
+            args.iter().filter(|arg| arg.passed_as_ref).count();
         let res = self.try_apply_async(runtime, args).await?;
 
         if res.1.len() != expected_ref_count {
@@ -165,7 +167,6 @@ pub trait Apply {
         Ok(res)
     }
 
-
     /// Applies multiple ValueContainer arguments to self
     /// Returns an Error if the value does not support sync apply.
     /// The return value is a tuple of the return value of the apply operation,
@@ -176,7 +177,6 @@ pub trait Apply {
         runtime: &Runtime,
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError>;
-
 
     /// Applies multiple ValueContainer arguments to self on a sync or async callable.
     /// The return value is a tuple of the return value of the apply operation,

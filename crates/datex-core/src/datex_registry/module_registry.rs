@@ -1,7 +1,7 @@
 use crate::{
     prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
+    values::core_values::map::Map,
 };
-use crate::values::core_values::map::Map;
 
 #[derive(Debug)]
 pub struct DatexModuleRegistration {
@@ -21,6 +21,11 @@ pub fn get_all_modules(
     memory: &mut SharedReferencesCache,
 ) -> Vec<(String, Map)> {
     all_datex_module_registrations()
-        .map(|registration| (registration.name.to_string(), (registration.create_module)(memory)))
+        .map(|registration| {
+            (
+                registration.name.to_string(),
+                (registration.create_module)(memory),
+            )
+        })
         .collect()
 }

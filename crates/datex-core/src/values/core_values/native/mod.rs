@@ -1,24 +1,25 @@
-use crate::prelude::*;
-use core::{
-    any::Any,
-    fmt::{Debug, Formatter},
-};
-use core::ops::Deref;
 use crate::{
     datex_proxy::ToDatexNativeValueContainer,
+    prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     values::{value::Value, value_container::ValueContainer},
 };
+use core::{
+    any::Any,
+    fmt::{Debug, Formatter},
+    ops::Deref,
+};
 mod datex_native_trait;
+mod serde_dif;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
-mod serde_dif;
 
+use crate::{
+    libs::core::type_id::CoreLibTypeId, traits::try_clone::TryClone,
+    values::core_value::CoreValue,
+};
 pub use datex_native_trait::*;
-use crate::libs::core::type_id::CoreLibTypeId;
-use crate::traits::try_clone::TryClone;
-use crate::values::core_value::CoreValue;
 
 impl<T: DatexNative> ToDatexNativeValueContainer for T {
     fn boxed_to_datex_native_value_container(
@@ -90,7 +91,7 @@ impl Clone for NativeCoreValue {
     fn clone(&self) -> Self {
         match self.try_clone().unwrap() {
             CoreValue::Native(n) => n,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

@@ -20,31 +20,36 @@ use crate::{
     },
 };
 pub mod apply;
+pub mod borrowed_value;
 mod child_iterator;
 pub mod datex_proxy;
 pub mod equality;
 mod local_child_path_resolver;
 pub mod ops;
 pub mod serde_dif;
-pub mod update_handler;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+pub mod update_handler;
 mod value_access;
-pub mod borrowed_value;
 
 use crate::{
-    datex_proxy::TryToDatexValueError, shared_values::errors::AccessError,
+    datex_proxy::TryToDatexValueError,
+    shared_values::errors::AccessError,
+    traits::value_access::ValueAccess,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
-    values::core_values::endpoint::Endpoint,
+    values::{
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
+        core_values::endpoint::Endpoint,
+        value::borrowed_value::{BorrowedValue, BorrowedValueMut},
+    },
 };
 use core::{
     cell::Ref,
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
-use crate::traits::value_access::ValueAccess;
-use crate::values::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
-use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
 
 #[derive(Debug)]
 pub struct Value {

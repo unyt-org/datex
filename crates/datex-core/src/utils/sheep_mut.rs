@@ -1,8 +1,8 @@
 use core::{
     cell::RefMut,
+    fmt::Debug,
     ops::{Deref, DerefMut},
 };
-use core::fmt::Debug;
 
 /// A sheep can be a reference, a borrowed value, or an owned value.
 pub enum SheepMut<'a, T> {
@@ -11,7 +11,10 @@ pub enum SheepMut<'a, T> {
     Owned(T),
 }
 
-impl<T> Debug for SheepMut<'_, T> where T: Debug {
+impl<T> Debug for SheepMut<'_, T>
+where
+    T: Debug,
+{
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             SheepMut::Ref(r) => r.fmt(f),

@@ -15,7 +15,9 @@ use crate::{
 
 use crate::{
     decompiler::ast_from_bytecode::ast_from_bytecode,
-    dxb_parser::body::DXBParserError, values::value_container::ValueContainer,
+    dxb_parser::body::DXBParserError,
+    traits::to_datex_expression_data::ToDatexExpressionData,
+    values::value_container::ValueContainer,
 };
 #[cfg(feature = "syntax_highlighting_legacy")]
 use syntect::{
@@ -24,7 +26,6 @@ use syntect::{
     parsing::{SyntaxDefinition, SyntaxSetBuilder},
     util::{LinesWithEndings, as_24_bit_terminal_escaped},
 };
-use crate::traits::to_datex_expression_data::ToDatexExpressionData;
 
 /// Decompiles a DXB bytecode body into a human-readable string representation.
 pub fn decompile_body(

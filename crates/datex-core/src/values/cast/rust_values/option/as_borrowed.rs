@@ -1,4 +1,6 @@
-use crate::values::borrowed_value_container::{AsBorrowed, BorrowedValueContainer};
+use crate::values::borrowed_value_container::{
+    AsBorrowed, BorrowedValueContainer,
+};
 
 impl<'a, T> AsBorrowed<'a> for Option<T>
 where
@@ -7,7 +9,7 @@ where
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
         match self {
             Some(value) => value.as_borrowed(),
-            None => todo!("borrow none option")
+            None => todo!("borrow none option"),
         }
     }
 }

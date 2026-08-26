@@ -1,12 +1,19 @@
-use crate::ast::expressions::{DatexExpressionData, EntityValueExpression, TagExpression};
-use crate::ast::spanned::Spanned;
-use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
-use crate::traits::to_datex_expression_data::ToDatexExpressionData;
-use crate::types::r#type::Type;
-use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
-use crate::types::type_definition::TypeDefinition;
-use crate::types::type_definition_with_metadata::TypeDefinitionWithMetadata;
-use crate::values::value::Value;
+use crate::{
+    ast::{
+        expressions::{
+            DatexExpressionData, EntityValueExpression, TagExpression,
+        },
+        spanned::Spanned,
+    },
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    traits::to_datex_expression_data::ToDatexExpressionData,
+    types::{
+        r#type::Type,
+        type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
+        type_definition_with_metadata::TypeDefinitionWithMetadata,
+    },
+    values::value::Value,
+};
 
 impl ToDatexExpressionData for Value {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
@@ -22,7 +29,6 @@ impl ToDatexExpressionData for Value {
     }
 }
 
-
 /// Helper function to handle type casting of expressions based on the target type.
 fn type_cast_expression(
     expression: DatexExpressionData,
@@ -32,23 +38,23 @@ fn type_cast_expression(
     match target_type {
         // #SomeTag (...)
         TypeDefinition::TaggedType(TaggedTypeDefinition {
-           tag,
-           ty: Option::None,
+            tag,
+            ty: Option::None,
         }) => DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),
             expression: Some(expression.with_default_span()),
         }),
         // #SomeTag
         TypeDefinition::TaggedType(TaggedTypeDefinition {
-           tag,
-           ty:
-           Some(box Type::Definition(TypeDefinitionWithMetadata {
-             definition:
-                TypeDefinition::CoreType(CoreLibTypeId::Base(
-                CoreLibBaseTypeId::Unit,
-                    )),
-                 ..
-                 })),
+            tag,
+            ty:
+                Some(box Type::Definition(TypeDefinitionWithMetadata {
+                    definition:
+                        TypeDefinition::CoreType(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Unit,
+                        )),
+                    ..
+                })),
         }) => DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),
             expression: None,

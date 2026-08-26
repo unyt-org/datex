@@ -21,9 +21,9 @@ use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 pub mod equality;
 pub mod primitive;
-pub mod update_handler;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+pub mod update_handler;
 mod value_access;
 
 /// The decimal type variants to be used as a inline
@@ -222,7 +222,6 @@ impl TypedDecimal {
         }
     }
 
-
     /// Tries to borrow the inner f32 value if the TypedDecimal is of variant F32.
     pub fn borrow_as_f32(&self) -> Option<&f32> {
         match self {
@@ -254,7 +253,6 @@ impl TypedDecimal {
             _ => None,
         }
     }
-
 
     /// Returns true if the value is zero (positive or negative).
     pub fn is_zero(&self) -> bool {

@@ -1,14 +1,13 @@
-use crate::prelude::*;
-use crate::ast::expressions::DatexExpressionData;
-use crate::traits::to_datex_expression_data::ToDatexExpressionData;
+use crate::{
+    ast::expressions::DatexExpressionData, prelude::*,
+    traits::to_datex_expression_data::ToDatexExpressionData,
+};
 
 impl<T> ToDatexExpressionData for Option<T>
 where
     T: ToDatexExpressionData,
 {
-    fn to_datex_expression_data(
-        &self,
-    ) -> DatexExpressionData {
+    fn to_datex_expression_data(&self) -> DatexExpressionData {
         match self {
             Some(value) => value.to_datex_expression_data(),
             None => DatexExpressionData::Null,

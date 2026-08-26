@@ -109,16 +109,18 @@ use core::{cell::RefCell, ops::DerefMut};
 mod collected_execution_result;
 use crate::{
     instruction::instruction_data::{CallMethodData, CallableSignatureData},
+    runtime::execution::macros::interrupt_with_borrowed_args_and_maybe_result,
+    traits::apply::{ApplyArgument, into_apply_arguments_with_stack_indices},
     types::type_definition::callable::CallableTypeDefinition,
     value_updates::update_data::{
         DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
     },
-    values::core_values::callable::DatexBytecodeCallable,
+    values::{
+        borrowed_value_container::BorrowedValueContainer,
+        core_values::callable::DatexBytecodeCallable,
+    },
 };
 use collected_execution_result::CollectedExecutionResult;
-use crate::runtime::execution::macros::interrupt_with_borrowed_args_and_maybe_result;
-use crate::traits::apply::{into_apply_arguments_with_stack_indices, ApplyArgument};
-use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations

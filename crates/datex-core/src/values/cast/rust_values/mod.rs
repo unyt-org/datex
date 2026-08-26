@@ -1,14 +1,14 @@
 //! Implements [TryFrom] and [TryInto] for Rust native types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
 //! This allows to convert [u8] into DATEX [Value] and [ValueContainer] and allows to convert [CoreValue], [Value] and [ValueContainer] into [u8].
 mod bool;
-mod integers;
-mod floats;
-mod string;
-mod hash_map;
-mod option;
 mod r#box;
-mod vec;
 mod duration;
+mod floats;
+mod hash_map;
+mod integers;
+mod option;
+mod string;
+mod vec;
 
 use core::any::Any;
 use num::ToPrimitive;
@@ -31,19 +31,23 @@ use crate::{
 };
 
 use crate::{
+    libs::core::type_id::CoreLibTypeId,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::try_clone::TryClone,
     types::type_definition::TypeDefinition,
-    values::core_values::{
-        decimal::typed_decimal::DecimalTypeVariant,
-        integer::typed_integer::IntegerTypeVariant,
+    utils::{goat::Goat, goat_mut::GoatMut},
+    values::{
+        borrowed_value_container::{
+            AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
+            BorrowedValueContainerMut,
+        },
+        core_values::{
+            decimal::typed_decimal::DecimalTypeVariant,
+            integer::typed_integer::IntegerTypeVariant,
+        },
+        value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
-use crate::libs::core::type_id::CoreLibTypeId;
-use crate::traits::try_clone::TryClone;
-use crate::utils::goat::Goat;
-use crate::utils::goat_mut::GoatMut;
-use crate::values::borrowed_value_container::{AsBorrowed, AsBorrowedMut, BorrowedValueContainer, BorrowedValueContainerMut};
-use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 /// Implements [TryFrom] and [TryInto] for Rust core types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
 /// Also implements [DatexValueProxy] for Rust core types to provide the correct [Type] for each implementation.
@@ -340,7 +344,6 @@ implement_rust_native_traits!(
         CoreValue::Text(Text(value)) => Ok(value),
     }
 );
-
 
 // &str
 impl<'a> TryFrom<&'a CoreValue> for &'a str {

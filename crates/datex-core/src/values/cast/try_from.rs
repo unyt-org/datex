@@ -5,6 +5,7 @@ use crate::{
     types::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
     },
+    utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
         core_values::{
@@ -18,12 +19,12 @@ use crate::{
             range::Range,
             text::Text,
         },
-        value::Value,
+        value::{
+            Value,
+            borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
+        },
     },
 };
-use crate::utils::goat::Goat;
-use crate::utils::goat_mut::GoatMut;
-use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 /// Implements [TryFrom] for each [CoreValue] variant to its corresponding type. This allows to convert e.g. [CoreValue::Integer] to [Integer].
 macro_rules! impl_try_from_core_value {

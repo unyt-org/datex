@@ -2,6 +2,7 @@ use crate::{
     dxb_parser::instruction_collector::{
         CollectedResults, CollectionResultsPopper,
     },
+    global::stack_index::StackIndex,
     prelude::*,
     runtime::execution::{
         ExecutionError, InvalidProgramError,
@@ -13,7 +14,6 @@ use crate::{
     types::{r#type::Type, type_definition::TypeDefinition},
     values::{core_values::map::MapKey, value_container::ValueContainer},
 };
-use crate::global::stack_index::StackIndex;
 
 impl
     CollectionResultsPopper<

@@ -1,22 +1,31 @@
-use core::time::Duration;
-use core::any::Any;
-use crate::datex_proxy::{DatexProxyType, DatexValueProxySerialize, TryToDatexValueError};
-use crate::libs::core::type_id::CoreLibBaseTypeId;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::traits::try_clone::TryClone;
-use crate::traits::value_access::ValueAccess;
-use crate::types::r#type::Type;
-use crate::values::borrowed_value_container::{AsBorrowed, AsBorrowedMut, BorrowedValueContainer, BorrowedValueContainerMut};
-use crate::prelude::*;
-use crate::values::core_values::native::DatexNative;
-use crate::values::value::Value;
+use crate::{
+    datex_proxy::{
+        DatexProxyType, DatexValueProxySerialize, TryToDatexValueError,
+    },
+    libs::core::type_id::CoreLibBaseTypeId,
+    prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::{try_clone::TryClone, value_access::ValueAccess},
+    types::r#type::Type,
+    values::{
+        borrowed_value_container::{
+            AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
+            BorrowedValueContainerMut,
+        },
+        core_values::native::DatexNative,
+        value::Value,
+    },
+};
+use core::{any::Any, time::Duration};
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
+    use crate::{
+        ast::expressions::DatexExpressionData,
+        traits::to_datex_expression_data::ToDatexExpressionData,
+        values::core_values::integer::Integer,
+    };
     use core::time::Duration;
-    use crate::ast::expressions::DatexExpressionData;
-    use crate::traits::to_datex_expression_data::ToDatexExpressionData;
-    use crate::values::core_values::integer::Integer;
 
     impl ToDatexExpressionData for Duration {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
@@ -30,7 +39,10 @@ impl ValueAccess for Duration {}
 
 // Note: implemented manually here until amounts are implemented
 impl DatexValueProxySerialize for Duration {
-    fn try_boxed_to_value(self: Box<Self>, context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
+    fn try_boxed_to_value(
+        self: Box<Self>,
+        context: &mut SharedReferencesCache,
+    ) -> Result<Value, TryToDatexValueError> {
         todo!()
     }
 }
@@ -49,7 +61,10 @@ impl DatexNative for Duration {
         self
     }
 
-    fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
+    fn boxed_to_datex_native_value(
+        self: Box<Self>,
+        cache: &mut SharedReferencesCache,
+    ) -> Value {
         Value::native_boxed(self, cache)
     }
 }

@@ -22,10 +22,10 @@ use core::{
 
 mod child_iterator;
 pub mod local_child_path_resolver;
-pub mod update_handler;
-pub mod updates;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+pub mod update_handler;
+pub mod updates;
 mod value_access;
 
 #[derive(Debug, Default)]

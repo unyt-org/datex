@@ -2,7 +2,7 @@ use crate::{
     datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    traits::callable::IntoDatexCallable,
+    traits::{apply::ApplyArgument, callable::IntoDatexCallable},
     types::type_definition::callable::{CallableKind, CallableTypeDefinition},
     values::{
         core_values::{callable::error::CallableError, endpoint::Endpoint},
@@ -10,7 +10,6 @@ use crate::{
     },
 };
 use core::{fmt::Debug, hash::Hash, pin::Pin};
-use crate::traits::apply::ApplyArgument;
 
 pub mod apply;
 pub mod equality;
@@ -24,12 +23,19 @@ type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
 type AsyncCallable = Rc<
     dyn Fn(
-            Vec<ApplyArgument>,
-        ) -> BoxFuture<Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>>,
+        Vec<ApplyArgument>,
+    ) -> BoxFuture<
+        Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>,
+    >,
 >;
 
 type SyncCallable = Rc<
-    dyn Fn(Vec<ApplyArgument>) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>,
+    dyn Fn(
+        Vec<ApplyArgument>,
+    ) -> Result<
+        (Option<ValueContainer>, Vec<ValueContainer>),
+        CallableError,
+    >,
 >;
 
 #[derive(Clone)]
@@ -80,8 +86,10 @@ impl NativeCallable {
     pub fn new_sync(
         function: impl Fn(
             Vec<ApplyArgument>,
-        ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>
-        + 'static,
+        ) -> Result<
+            (Option<ValueContainer>, Vec<ValueContainer>),
+            CallableError,
+        > + 'static,
     ) -> Self {
         NativeCallable::Sync(Rc::new(function))
     }
@@ -90,7 +98,10 @@ impl NativeCallable {
         function: impl Fn(
             Vec<ApplyArgument>,
         ) -> BoxFuture<
-            Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>,
+            Result<
+                (Option<ValueContainer>, Vec<ValueContainer>),
+                CallableError,
+            >,
         > + 'static,
     ) -> Self {
         NativeCallable::Async(Rc::new(function))
@@ -120,9 +131,10 @@ impl CallableBody {
     pub fn native_sync(
         native_callable: impl Fn(
             Vec<ApplyArgument>,
-        )
-            -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>
-        + 'static,
+        ) -> Result<
+            (Option<ValueContainer>, Vec<ValueContainer>),
+            CallableError,
+        > + 'static,
     ) -> Self {
         CallableBody::Native(NativeCallable::new_sync(native_callable))
     }
@@ -130,7 +142,10 @@ impl CallableBody {
         native_callable: impl Fn(
             Vec<ApplyArgument>,
         ) -> BoxFuture<
-            Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>,
+            Result<
+                (Option<ValueContainer>, Vec<ValueContainer>),
+                CallableError,
+            >,
         > + 'static,
     ) -> Self {
         CallableBody::Native(NativeCallable::new_async(native_callable))
@@ -187,7 +202,8 @@ where
             yeet_type: None,
         },
         body: CallableBody::Native(NativeCallable::new_sync(move |args| {
-            let result = func.invoke(args.into_iter().map(|v|v.value).collect())?;
+            let result =
+                func.invoke(args.into_iter().map(|v| v.value).collect())?;
             Ok((Some(result.try_into().unwrap()), vec![]))
         })),
         creator: Default::default(),
@@ -219,7 +235,8 @@ where
             yeet_type: None,
         },
         body: CallableBody::Native(NativeCallable::new_async(move |args| {
-            let result = func.invoke(args.into_iter().map(|v|v.value).collect());
+            let result =
+                func.invoke(args.into_iter().map(|v| v.value).collect());
             Box::pin(async move {
                 let result = result?;
                 Ok((Some(result.try_into().unwrap()), vec![]))

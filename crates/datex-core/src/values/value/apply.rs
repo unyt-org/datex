@@ -1,12 +1,11 @@
 use crate::{
     prelude::*,
     runtime::Runtime,
-    traits::apply::{Apply, ApplyError},
+    traits::apply::{Apply, ApplyArgument, ApplyError},
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
-use crate::traits::apply::ApplyArgument;
 
 impl Apply for Value {
     fn try_apply_sync(

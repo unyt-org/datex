@@ -25,11 +25,11 @@ use crate::{
         expressions::{
             BinaryOperation, CallableDeclaration, CloneExpression,
             DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
-            EntityDeclarationExpression, PropertyAssignment, RemoteExecution,
-            RequestSharedRef, Statements, TypeDeclarationExpression, Unbox,
-            UnboxAssignment, ValueAccessType, VariableAccess,
-            VariableAssignment, VariableDeclaration, VariableKind,
-            VariantAccess,
+            EntityDeclarationExpression, PropertyAccess, PropertyAssignment,
+            RemoteExecution, RequestSharedRef, Statements,
+            TypeDeclarationExpression, Unbox, UnboxAssignment, ValueAccessType,
+            VariableAccess, VariableAssignment, VariableDeclaration,
+            VariableKind, VariantAccess,
         },
         resolved_variable::ResolvedVariable,
         spanned::Spanned,
@@ -71,7 +71,6 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
-use crate::ast::expressions::PropertyAccess;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -738,14 +737,20 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         create_ref.walk_children(self)?;
 
         // for &x, access to x should be a borrow access
-        if let DatexExpressionData::VariableAccess(variable_access) = create_ref.expression.data_mut() {
+        if let DatexExpressionData::VariableAccess(variable_access) =
+            create_ref.expression.data_mut()
+        {
             variable_access.access_type = ValueAccessType::Borrow;
         }
 
         Ok(VisitAction::AbortRecursion)
     }
 
-    fn visit_property_access(&mut self, property_access: &mut PropertyAccess, span: &Range<usize>) -> ExpressionVisitResult<SpannedCompilerError> {
+    fn visit_property_access(
+        &mut self,
+        property_access: &mut PropertyAccess,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
         // if lhs is variable, access it as Borrow
         property_access.walk_children(self)?;
 
@@ -757,7 +762,6 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
         Ok(VisitAction::AbortRecursion)
     }
-
 
     fn visit_statements(
         &mut self,
@@ -1076,7 +1080,8 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         call.walk_children(self)?;
 
-        if let DatexExpressionData::VariableAccess(variable_access) = call.target.data_mut()
+        if let DatexExpressionData::VariableAccess(variable_access) =
+            call.target.data_mut()
         {
             variable_access.access_type = ValueAccessType::Borrow;
         };
@@ -1197,11 +1202,11 @@ mod tests {
             expressions::{
                 BinaryOperation, CallableDeclaration, CallableSignature,
                 CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-                DeriveSharedRef, EntityDeclarationExpression, Map,
-                PropertyAccess, PropertyAssignment, RemoteExecution,
-                Statements, TypeDeclarationExpression, Unbox, ValueAccessType,
-                VariableAccess, VariableDeclaration, VariableKind,
-                VariantAccess,
+                DeriveSharedRef, EntityDeclarationExpression,
+                InterfaceMethodCall, Map, PropertyAccess, PropertyAssignment,
+                RemoteExecution, Statements, TypeDeclarationExpression, Unbox,
+                ValueAccessType, VariableAccess, VariableDeclaration,
+                VariableKind, VariantAccess,
             },
             resolved_variable::ResolvedVariable,
             spanned::Spanned,
@@ -1239,7 +1244,6 @@ mod tests {
     };
     use alloc::rc::Rc;
     use core::{assert_matches, cell::RefCell, str::FromStr};
-    use crate::ast::expressions::InterfaceMethodCall;
 
     fn precompile(
         ast: DatexExpression,
@@ -2599,10 +2603,7 @@ mod tests {
 
     #[test]
     fn interface_method_call() {
-        let result = parse_and_precompile(
-            "var x = 0; x->test()",
-        )
-        .unwrap();
+        let result = parse_and_precompile("var x = 0; x->test()").unwrap();
 
         let statements =
             if let DatexExpressionData::Statements(stmts) = result.ast.data() {
@@ -2614,17 +2615,16 @@ mod tests {
         assert_eq!(
             *statements.statements.get(1).unwrap(),
             DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
-                target: (
-                    DatexExpressionData::VariableAccess(VariableAccess {
-                        id: 0,
-                        name: "x".to_string(),
-                        access_type: ValueAccessType::Borrow,
-                    })
-                    .with_default_span()
-                ),
+                target: (DatexExpressionData::VariableAccess(VariableAccess {
+                    id: 0,
+                    name: "x".to_string(),
+                    access_type: ValueAccessType::Borrow,
+                })
+                .with_default_span()),
                 method_name: "test".to_string(),
                 arguments: vec![],
-            }).with_default_span()
+            })
+            .with_default_span()
         );
     }
 

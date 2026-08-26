@@ -378,10 +378,7 @@ impl Display for ExecutionError {
                 core::write!(f, "Unspecified error: {msg}")
             }
             ExecutionError::StackRestoreMismatch => {
-                core::write!(
-                    f,
-                    "Stack restore mismatch"
-                )
+                core::write!(f, "Stack restore mismatch")
             }
         }
     }

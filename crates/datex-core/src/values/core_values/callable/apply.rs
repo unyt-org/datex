@@ -8,7 +8,7 @@ use crate::{
             execution_input::ExecutionCallerMetadata,
         },
     },
-    traits::apply::{Apply, ApplyError},
+    traits::apply::{Apply, ApplyArgument, ApplyError},
     values::{
         core_values::callable::{
             Callable, CallableBody, DatexBytecodeCallable, NativeCallable,
@@ -17,7 +17,6 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use crate::traits::apply::ApplyArgument;
 
 impl Apply for Callable {
     fn try_apply_sync(
@@ -26,7 +25,7 @@ impl Apply for Callable {
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         self.signature.validate_arguments(&args)?;
-        
+
         match &self.body {
             CallableBody::Native(native_callable) => {
                 native_callable.try_apply_sync(runtime, args)
@@ -47,7 +46,7 @@ impl Apply for Callable {
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         self.signature.validate_arguments(&args)?;
-        
+
         match &self.body {
             CallableBody::Native(native_callable) => {
                 native_callable.try_apply_async(runtime, args).await
@@ -134,7 +133,7 @@ impl Apply for DatexBytecodeCallable {
             .map(|v| v.value)
             .chain(self.injected_values.iter().cloned())
             .collect::<Vec<_>>();
-        
+
         let res = runtime
             .execute_dxb(
                 DXBWithSharedValues::new(self.body.clone(), vec![]), // TODO: no clone?

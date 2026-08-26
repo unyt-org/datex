@@ -13,6 +13,7 @@ use crate::{
 use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
 use crate::{
+    traits::try_clone::TryClone,
     types::r#type::Type,
     values::{
         core_values::{
@@ -37,7 +38,6 @@ use crate::{
 };
 use binrw::error::CustomError;
 use core::fmt::{Debug, Display, Formatter};
-use crate::traits::try_clone::TryClone;
 
 mod child_iterator;
 pub mod datex_proxy;
@@ -234,9 +234,7 @@ impl From<&CoreValue> for CoreLibTypeId {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
             }
             CoreValue::Box(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Box),
-            CoreValue::Native(native) => {
-                native.core_lib_type_id()
-            }
+            CoreValue::Native(native) => native.core_lib_type_id(),
         }
     }
 }

@@ -1,20 +1,22 @@
 use core::{cell::Ref, ops::DerefMut};
 use datex_core::{
-    datex_proxy::{
-        DatexProxyType,
-        DatexValueContainerProxySerialize,
-    },
+    datex_proxy::{DatexProxyType, DatexValueContainerProxySerialize},
     datex_registry::{
-        all_datex_module_registrations, all_datex_type_registrations, get_all_modules,
+        all_datex_module_registrations, all_datex_type_registrations,
+        get_all_modules,
     },
     libs::core::type_id::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
     },
-    runtime::Runtime,
+    runtime::{Runtime, cache::shared_references_cache::SharedReferencesCache},
     shared_values::{
         SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
     },
-    traits::apply::Apply,
+    traits::{
+        apply::{Apply, ApplyArgument},
+        try_clone::TryClone,
+        value_access::ValueAccess,
+    },
     types::{
         entities::{
             entity_impls::{EntityImpl, EntityImplMethod},
@@ -29,22 +31,17 @@ use datex_core::{
         },
     },
     values::{
+        borrowed_value_container::BorrowedValueContainer,
         core_value::CoreValue,
         core_values::{
+            callable::Callable,
             integer::typed_integer::{IntegerTypeVariant, TypedInteger},
-            native::DatexNative,
+            native::{DatexNative, NativeCoreValue},
         },
         value::Value,
         value_container::ValueContainer,
     },
 };
-use datex_core::runtime::cache::shared_references_cache::SharedReferencesCache;
-use datex_core::traits::apply::ApplyArgument;
-use datex_core::traits::try_clone::TryClone;
-use datex_core::traits::value_access::ValueAccess;
-use datex_core::values::borrowed_value_container::BorrowedValueContainer;
-use datex_core::values::core_values::callable::Callable;
-use datex_core::values::core_values::native::NativeCoreValue;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -118,25 +115,32 @@ fn call_instance_method_from_runtime() {
     let example_vc = Value::native(example, cache.deref_mut());
 
     let example_type = Example::datex_type(cache.deref_mut());
-    let set_a = example_type.try_get_property("set_a".into(), cache.deref_mut()).unwrap();
+    let set_a = example_type
+        .try_get_property("set_a".into(), cache.deref_mut())
+        .unwrap();
     let set_a_callable = set_a.try_as::<Callable>().unwrap();
 
-    let (res, mut borrows) = set_a_callable.try_apply_sync_checked(
-        &runtime,
-        vec![ApplyArgument::referenced(example_vc), TypedInteger::U8(10).into()],
-    ).unwrap();
+    let (res, mut borrows) = set_a_callable
+        .try_apply_sync_checked(
+            &runtime,
+            vec![
+                ApplyArgument::referenced(example_vc),
+                TypedInteger::U8(10).into(),
+            ],
+        )
+        .unwrap();
 
     let res = res.unwrap();
     let result_u8 = res.try_as::<u8>().unwrap();
-    assert_eq!(
-        result_u8,
-        &10u8
-    );
+    assert_eq!(result_u8, &10u8);
     // borrows should contain the original example value
     assert_eq!(
         borrows.remove(0),
         // a was updated to 10
-        ValueContainer::from(Value::native(Example {a: 10, b: 2}, cache.deref_mut()))
+        ValueContainer::from(Value::native(
+            Example { a: 10, b: 2 },
+            cache.deref_mut()
+        ))
     );
 }
 
@@ -145,27 +149,39 @@ async fn call_async_instance_method_from_runtime() {
     let runtime = Runtime::stub();
 
     let example = Example::new(1, 2);
-    let example_vc = Value::native(example, runtime.shared_references_cache_mut().deref_mut());
+    let example_vc = Value::native(
+        example,
+        runtime.shared_references_cache_mut().deref_mut(),
+    );
 
-    let example_type = Example::datex_type(runtime.shared_references_cache_mut().deref_mut());
-    let async_test = example_type.try_get_property("async_test".into(), runtime.shared_references_cache_mut().deref_mut()).unwrap();
+    let example_type =
+        Example::datex_type(runtime.shared_references_cache_mut().deref_mut());
+    let async_test = example_type
+        .try_get_property(
+            "async_test".into(),
+            runtime.shared_references_cache_mut().deref_mut(),
+        )
+        .unwrap();
     let async_test_callable = async_test.try_as::<Callable>().unwrap();
 
-    let (res, mut borrows) = async_test_callable.try_apply_async_checked(
-        &runtime,
-        vec![ApplyArgument::referenced(example_vc), "test".into()],
-    ).await.unwrap();
+    let (res, mut borrows) = async_test_callable
+        .try_apply_async_checked(
+            &runtime,
+            vec![ApplyArgument::referenced(example_vc), "test".into()],
+        )
+        .await
+        .unwrap();
 
     let res = res.unwrap();
     let result_string = res.try_as::<String>().unwrap();
-    assert_eq!(
-        result_string,
-        "a = test"
-    );
+    assert_eq!(result_string, "a = test");
     // borrows should contain the original example value
     assert_eq!(
         borrows.remove(0),
-        ValueContainer::from(Value::native(Example::new(1, 2), runtime.shared_references_cache_mut().deref_mut()))
+        ValueContainer::from(Value::native(
+            Example::new(1, 2),
+            runtime.shared_references_cache_mut().deref_mut()
+        ))
     );
 }
 
@@ -231,14 +247,13 @@ fn signatures() {
                 kind: CallableKind::Procedure,
                 requires_async: false,
                 parameters: vec![
-                    (
-                        Some("self".to_string()),
-                        example_type.clone(),
-                    ),
+                    (Some("self".to_string()), example_type.clone(),),
                     (
                         Some("a".to_string()),
                         Type::core(CoreLibTypeId::Variant(
-                            CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
+                            CoreLibVariantTypeId::Integer(
+                                IntegerTypeVariant::U8
+                            )
                         ))
                     )
                 ],
@@ -264,14 +279,13 @@ fn signatures() {
                 kind: CallableKind::Procedure,
                 requires_async: false,
                 parameters: vec![
-                    (
-                        Some("self".to_string()),
-                        example_type.clone(),
-                    ),
+                    (Some("self".to_string()), example_type.clone(),),
                     (
                         Some("b".to_string()),
                         Type::core(CoreLibTypeId::Variant(
-                            CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
+                            CoreLibVariantTypeId::Integer(
+                                IntegerTypeVariant::U8
+                            )
                         ))
                     )
                 ],

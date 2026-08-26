@@ -65,7 +65,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Callable> {
         let hash_u64 = hash.parse::<u64>().map_err(|_| {
             serde::de::Error::custom("Failed to parse hash string to u64")
         })?;
-        
+
         let _name: Option<Option<String>> = seq.next_element()?;
         let _requires_async: Option<bool> = seq.next_element()?;
 

@@ -1,8 +1,12 @@
-use crate::collections::HashMap;
+use crate::{
+    collections::HashMap,
+    datex_proxy::DatexValueProxy,
+    values::{
+        borrowed_value_container::{AsBorrowed, BorrowedValueContainer},
+        core_values::native::DatexNative,
+    },
+};
 use core::hash::Hash;
-use crate::datex_proxy::DatexValueProxy;
-use crate::values::borrowed_value_container::{AsBorrowed, BorrowedValueContainer};
-use crate::values::core_values::native::DatexNative;
 
 impl<'a, K, V> AsBorrowed<'a> for HashMap<K, V>
 where

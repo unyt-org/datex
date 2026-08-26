@@ -20,13 +20,18 @@ use crate::{
 use core::any::Any;
 
 use crate::{
+    libs::core::type_id::CoreLibTypeId,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::try_clone::TryClone,
     types::type_definition::TypeDefinition,
+    values::{
+        borrowed_value_container::{
+            AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
+            BorrowedValueContainerMut,
+        },
+        core_value::CoreValue,
+    },
 };
-use crate::libs::core::type_id::CoreLibTypeId;
-use crate::traits::try_clone::TryClone;
-use crate::values::borrowed_value_container::{AsBorrowed, AsBorrowedMut, BorrowedValueContainer, BorrowedValueContainerMut};
-use crate::values::core_value::CoreValue;
 
 /// Implements [DatexValueProxy] for a [CoreValue](crate::values::core_values) implementation.
 /// This allows to convert e.g. [Endpoint] to [ValueContainer] and back.

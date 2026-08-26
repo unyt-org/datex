@@ -8,10 +8,7 @@ pub enum CallableError {
     RuntimeOnlyCallable,
     HiddenCallable,
     ExecutionError(ExecutionError),
-    LostBorrowedArguments {
-        expected: usize,
-        actual: usize,
-    },
+    LostBorrowedArguments { expected: usize, actual: usize },
 }
 impl Display for CallableError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

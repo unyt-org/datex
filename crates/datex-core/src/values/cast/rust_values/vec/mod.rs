@@ -1,11 +1,10 @@
 //! Implements [DatexValueProxy] for [Vec<T>] where T: [DatexValueProxy].
 
+mod as_borrowed;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
-mod as_borrowed;
 
-use core::any::Any;
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
@@ -18,13 +17,14 @@ use crate::{
     },
     values::{core_values::list::List, value::Value},
 };
+use core::any::Any;
 
 use crate::{
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::TypeDefinition,
+    values::core_values::native::DatexNative,
 };
-use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
-use crate::values::core_values::native::DatexNative;
 
 impl<T> DatexValueProxy for Vec<T> where T: DatexValueContainerProxy + 'static {}
 
@@ -96,7 +96,10 @@ impl<T: DatexNative + DatexProxyType + DatexValueProxy> DatexNative for Vec<T> {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-    fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
+    fn boxed_to_datex_native_value(
+        self: Box<Self>,
+        cache: &mut SharedReferencesCache,
+    ) -> Value {
         Value::native_boxed(self, cache)
     }
     fn core_lib_type_id(&self) -> CoreLibTypeId {

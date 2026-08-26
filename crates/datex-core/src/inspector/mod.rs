@@ -8,8 +8,8 @@ use datex_macros_internal::{Datex, datex};
 
 #[datex(name = "inspector")]
 mod datex_inspector {
-    use crate::datex_proxy::shared::Shared;
     use super::*;
+    use crate::datex_proxy::shared::Shared;
 
     #[derive(Datex, Debug, Clone)]
     pub struct Inspector {

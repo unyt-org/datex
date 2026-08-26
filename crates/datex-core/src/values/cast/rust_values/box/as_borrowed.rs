@@ -1,5 +1,7 @@
-use crate::values::borrowed_value_container::{AsBorrowed, BorrowedValueContainer};
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    values::borrowed_value_container::{AsBorrowed, BorrowedValueContainer},
+};
 
 impl<'a, T> AsBorrowed<'a> for Box<T>
 where

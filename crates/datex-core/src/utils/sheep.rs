@@ -1,5 +1,4 @@
-use core::{cell::Ref, ops::Deref};
-use core::fmt::Debug;
+use core::{cell::Ref, fmt::Debug, ops::Deref};
 
 /// A sheep can be a reference, a borrowed value, or an owned value.
 pub enum Sheep<'a, T> {
@@ -8,8 +7,10 @@ pub enum Sheep<'a, T> {
     Owned(T),
 }
 
-
-impl<T> Debug for Sheep<'_, T> where T: Debug {
+impl<T> Debug for Sheep<'_, T>
+where
+    T: Debug,
+{
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Sheep::Ref(r) => r.fmt(f),

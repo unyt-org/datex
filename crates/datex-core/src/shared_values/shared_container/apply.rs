@@ -6,13 +6,12 @@ use crate::{
     prelude::*,
     runtime::Runtime,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
-    traits::apply::{Apply, ApplyError},
+    traits::apply::{Apply, ApplyArgument, ApplyError},
     values::{
         core_values::callable::{Callable, error::CallableError},
         value_container::ValueContainer,
     },
 };
-use crate::traits::apply::ApplyArgument;
 
 impl Apply for SharedContainer {
     fn try_apply_sync(
@@ -67,8 +66,10 @@ impl SharedContainer {
             .into(),
         ];
         // append args
-        instructions
-            .extend(args.into_iter().map(|v| InstructionInput::ValueContainer(v.value)));
+        instructions.extend(
+            args.into_iter()
+                .map(|v| InstructionInput::ValueContainer(v.value)),
+        );
         // append the callee
         instructions.push(InstructionInput::ValueContainer(
             ValueContainer::Shared(self.clone()),

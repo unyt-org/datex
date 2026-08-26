@@ -1,10 +1,8 @@
 /// Yield an interrupt and get the next input
-pub(crate) macro interrupt {
-    ($input:expr, $arg:expr) => {{
-        yield Ok($arg);
-        $input.take_result()
-    }}
-}
+pub(crate) macro interrupt($input:expr, $arg:expr) {{
+    yield Ok($arg);
+    $input.take_result()
+}}
 
 /// Yield an interrupt and get the next resolved value or None
 /// expecting the next input to be a ResolvedValue variant
@@ -35,17 +33,15 @@ pub(crate) macro interrupt_with_borrowed_args_and_maybe_result {
 
 /// Yield an interrupt and get the next resolved value
 /// expecting the next input to be a ResolvedValue variant with Some value
-pub(crate) macro interrupt_with_value {
-    ($input:expr, $arg:expr) => {{
-        use crate::runtime::execution::macros::interrupt_with_maybe_value;
-        let maybe_value = interrupt_with_maybe_value!($input, $arg);
-        if let Some(value) = maybe_value {
-            value
-        } else {
-            unreachable!();
-        }
-    }}
-}
+pub(crate) macro interrupt_with_value($input:expr, $arg:expr) {{
+    use crate::runtime::execution::macros::interrupt_with_maybe_value;
+    let maybe_value = interrupt_with_maybe_value!($input, $arg);
+    if let Some(value) = maybe_value {
+        value
+    } else {
+        unreachable!();
+    }
+}}
 
 /// Yield an interrupt and get the next resolved values
 /// expecting the next input to be a ResolvedValues variant

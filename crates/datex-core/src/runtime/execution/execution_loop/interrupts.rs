@@ -9,9 +9,9 @@ use crate::{
     shared_values::{
         ReferenceMutability, RemotePointerAddress, SelfOwnedPointerAddress,
     },
+    traits::apply::ApplyArgument,
     values::core_values::endpoint::Endpoint,
 };
-use crate::traits::apply::ApplyArgument;
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {

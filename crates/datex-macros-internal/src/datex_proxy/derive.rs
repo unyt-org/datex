@@ -337,7 +337,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     };
 
     // only if decompiler feature is enabled in datex core
-    let to_datex_expression_data = if let Some(to_datex_expression_data) = to_datex_expression_data {
+    let to_datex_expression_data = if let Some(to_datex_expression_data) =
+        to_datex_expression_data
+    {
         quote! {
             use #datex_core_crate_name::traits::to_datex_expression_data::ToDatexExpressionData;
             use #datex_core_crate_name::ast::expressions::DatexExpressionData;
@@ -351,7 +353,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             }
         }
     } else {
-        quote! { }
+        quote! {}
     };
 
     let value_access = quote! {
@@ -476,35 +478,38 @@ fn derive_struct(
         try_get_properties,
     } = derive_fields(&data_struct.fields, context);
 
-    let to_datex_expression_data = to_datex_expression_data_fields.map(|to_datex_expression_data_fields| match fields_type {
-        FieldsType::Named => quote! {
-            DatexExpressionData::Map(ast::expressions::Map::new(
-                vec![
-                    #(#to_datex_expression_data_fields),*
-                ]
-            ))
-        },
-        FieldsType::Unnamed => {
-            quote! {
-                DatexExpressionData::List(List::new(
+    let to_datex_expression_data = to_datex_expression_data_fields.map(
+        |to_datex_expression_data_fields| match fields_type {
+            FieldsType::Named => quote! {
+                DatexExpressionData::Map(ast::expressions::Map::new(
                     vec![
                         #(#to_datex_expression_data_fields),*
                     ]
                 ))
-            }
-        }
-        FieldsType::Transparent => {
-            let to_datex_expression_data_field = to_datex_expression_data_fields.first().unwrap();
-            quote! {
-                {
-                    *(#to_datex_expression_data_field.data)
+            },
+            FieldsType::Unnamed => {
+                quote! {
+                    DatexExpressionData::List(List::new(
+                        vec![
+                            #(#to_datex_expression_data_fields),*
+                        ]
+                    ))
                 }
             }
-        }
-         FieldsType::Unit => quote! {
-            DatexExpressionData::Null
-        }
-    });
+            FieldsType::Transparent => {
+                let to_datex_expression_data_field =
+                    to_datex_expression_data_fields.first().unwrap();
+                quote! {
+                    {
+                        *(#to_datex_expression_data_field.data)
+                    }
+                }
+            }
+            FieldsType::Unit => quote! {
+                DatexExpressionData::Null
+            },
+        },
+    );
 
     let into_datex_fields_inner = match fields_type {
         FieldsType::Named => quote! {
@@ -950,7 +955,9 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
     let mut to_datex_expression_data_fields: Option<Vec<TokenStream>> = {
         // Note feature "decompiler" in macros-internal is derived from datex-core feature "decompiler" in the root crate
         #[cfg(feature = "decompiler")]
-        {Some(vec![])}
+        {
+            Some(vec![])
+        }
         #[cfg(not(feature = "decompiler"))]
         None
     };
@@ -1067,7 +1074,9 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
                     }
                 };
 
-                let field_to_datex_expression_data = match field_attributes.serde_mode {
+                let field_to_datex_expression_data = match field_attributes
+                    .serde_mode
+                {
                     SerdeMode::None => quote! {
                         self.#field_ident.to_datex_expression_data().with_default_span()
                     },
@@ -1083,14 +1092,13 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
                 };
 
                 match field_attributes.serde_mode {
-                    SerdeMode::None => {
-                        try_get_properties.push(quote! {
-                            #field_name => {
-                                Ok((
-                                    &self.#field_ident
-                                ).as_borrowed())
-                            }
-                        })}
+                    SerdeMode::None => try_get_properties.push(quote! {
+                        #field_name => {
+                            Ok((
+                                &self.#field_ident
+                            ).as_borrowed())
+                        }
+                    }),
                     SerdeMode::Fallible | SerdeMode::Infallible => {
                         // skip serde fields, not accessible via borrow
                     }
@@ -1100,7 +1108,9 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
                     #field_ident: #field_from
                 });
 
-                if let Some(to_datex_expression_data_fields) = &mut to_datex_expression_data_fields {
+                if let Some(to_datex_expression_data_fields) =
+                    &mut to_datex_expression_data_fields
+                {
                     to_datex_expression_data_fields.push(quote! {
                         (
                             DatexExpressionData::Text(Text(#field_name.to_string())).with_default_span(),
@@ -1152,7 +1162,9 @@ fn derive_fields(fields: &Fields, context: &TokenStream) -> FieldDeriveData {
                     });
                 }
 
-                if let Some(to_datex_expression_data_fields) = &mut to_datex_expression_data_fields {
+                if let Some(to_datex_expression_data_fields) =
+                    &mut to_datex_expression_data_fields
+                {
                     to_datex_expression_data_fields.push(quote! {
                         self.#field_index.to_datex_expression_data().with_default_span()
                     });

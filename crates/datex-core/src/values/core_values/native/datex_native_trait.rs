@@ -1,23 +1,22 @@
 use crate::{
-    datex_proxy::DatexValueProxySerialize, prelude::*,
+    datex_proxy::DatexValueProxySerialize,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::{dyn_eq::DynEq, try_clone::TryClone, value_access::ValueAccess},
     values::value::Value,
 };
 use core::any::Any;
-use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
-use crate::traits::dyn_eq::DynEq;
-use crate::traits::try_clone::TryClone;
-use crate::traits::value_access::ValueAccess;
 
 // TODO: better solution than duplicate definition of trait for different feature flags?
 #[cfg(feature = "decompiler")]
 pub trait DatexNative:
-    Any +
-    DynEq +
-    DatexValueProxySerialize +
-    ValueAccess +
-    TryClone +
-    crate::traits::to_datex_expression_data::ToDatexExpressionData
+    Any
+    + DynEq
+    + DatexValueProxySerialize
+    + ValueAccess
+    + TryClone
+    + crate::traits::to_datex_expression_data::ToDatexExpressionData
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -27,7 +26,7 @@ pub trait DatexNative:
         self: Box<Self>,
         cache: &mut SharedReferencesCache,
     ) -> Value;
-    
+
     fn core_lib_type_id(&self) -> CoreLibTypeId {
         CoreLibBaseTypeId::Any.into()
     }
@@ -35,11 +34,7 @@ pub trait DatexNative:
 
 #[cfg(not(feature = "decompiler"))]
 pub trait DatexNative:
-    Any +
-    DynEq +
-    DatexValueProxySerialize +
-    ValueAccess +
-    TryClone
+    Any + DynEq + DatexValueProxySerialize + ValueAccess + TryClone
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

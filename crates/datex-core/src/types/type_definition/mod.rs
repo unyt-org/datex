@@ -24,9 +24,9 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
+    values::core_values::native::DatexNative,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
-use crate::values::core_values::native::DatexNative;
 
 pub mod callable;
 pub mod collection;
@@ -270,9 +270,9 @@ impl Display for TypeDefinition {
 pub mod equality;
 pub mod intersection;
 mod serde_dif;
-pub mod union;
 #[cfg(feature = "decompiler")]
 mod to_type_expression_data;
+pub mod union;
 
 impl TypeDefinition {
     pub const UNIT: TypeDefinition =

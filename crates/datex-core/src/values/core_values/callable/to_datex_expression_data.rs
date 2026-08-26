@@ -1,11 +1,21 @@
-use crate::ast::expressions::{CallableDeclaration, CallableSignature, DatexExpressionData};
-use crate::ast::spanned::Spanned;
-use crate::ast::type_expressions::TypeExpressionData;
-use crate::decompiler::ast_from_bytecode::ast_from_bytecode;
-use crate::traits::to_datex_expression_data::ToDatexExpressionData;
-use crate::traits::to_type_expression_data::ToTypeExpressionData;
-use crate::values::core_values::callable::{Callable, CallableBody, DatexBytecodeCallable};
-use crate::prelude::*;
+use crate::{
+    ast::{
+        expressions::{
+            CallableDeclaration, CallableSignature, DatexExpressionData,
+        },
+        spanned::Spanned,
+        type_expressions::TypeExpressionData,
+    },
+    decompiler::ast_from_bytecode::ast_from_bytecode,
+    prelude::*,
+    traits::{
+        to_datex_expression_data::ToDatexExpressionData,
+        to_type_expression_data::ToTypeExpressionData,
+    },
+    values::core_values::callable::{
+        Callable, CallableBody, DatexBytecodeCallable,
+    },
+};
 
 impl ToDatexExpressionData for Callable {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
@@ -25,16 +35,14 @@ impl ToDatexExpressionData for Callable {
                         )
                     })
                     .collect(),
-                rest_parameter: self
-                    .signature
-                    .rest_parameter
-                    .as_ref()
-                    .map(|(maybe_name, ty)| {
+                rest_parameter: self.signature.rest_parameter.as_ref().map(
+                    |(maybe_name, ty)| {
                         (
                             maybe_name.clone().unwrap_or("_".to_string()),
                             ty.to_type_expression_data().with_default_span(),
                         )
-                    }),
+                    },
+                ),
                 return_type: self
                     .signature
                     .return_type

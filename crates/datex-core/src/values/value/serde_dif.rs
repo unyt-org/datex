@@ -1,5 +1,3 @@
-use core::fmt;
-use core::ops::Deref;
 use crate::{
     dif::serde_context::SerdeContext,
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
@@ -8,18 +6,21 @@ use crate::{
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
         core_value::{CoreValue, serde_dif::CoreValueVisitor},
-        core_values::{boolean::Boolean, decimal::typed_decimal::TypedDecimal},
+        core_values::{
+            boolean::Boolean, decimal::typed_decimal::TypedDecimal,
+            native::NativeCoreValue,
+        },
         value::Value,
+        value_container::ValueContainer,
     },
 };
+use core::{fmt, ops::Deref};
 use num::ToPrimitive;
 use serde::{
     Deserializer, Serialize, Serializer,
     de::{DeserializeSeed, Error as DeError, Visitor},
     ser::SerializeTuple,
 };
-use crate::values::core_values::native::NativeCoreValue;
-use crate::values::value_container::ValueContainer;
 
 impl<'ctx> SerdeContext<'ctx, Value> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -228,7 +229,9 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 self.cast::<ValueContainer>().serialize(inner, serializer)
             }
             CoreValue::Uninitialized => panic!("Uninitialized value"),
-            CoreValue::Native(native) => self.cast::<NativeCoreValue>().serialize(native, serializer),
+            CoreValue::Native(native) => {
+                self.cast::<NativeCoreValue>().serialize(native, serializer)
+            }
         }
     }
 }

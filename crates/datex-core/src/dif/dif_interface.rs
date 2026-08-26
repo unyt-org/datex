@@ -21,7 +21,7 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
-    traits::apply::{Apply, ApplyError},
+    traits::apply::{Apply, ApplyArgument, ApplyError},
     types::type_definition::{
         TypeDefinition, callable::CallableTypeDefinition,
     },
@@ -33,7 +33,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
-use crate::traits::apply::ApplyArgument;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 

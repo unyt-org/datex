@@ -18,9 +18,9 @@ use num_integer::Integer as NumInteger;
 use serde::Deserialize;
 pub mod binrw;
 pub mod primitive;
-pub mod update_handler;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+pub mod update_handler;
 mod value_access;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]

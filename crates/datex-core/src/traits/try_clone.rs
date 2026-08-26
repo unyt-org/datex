@@ -1,5 +1,4 @@
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::native::DatexNative;
+use crate::values::{core_value::CoreValue, core_values::native::DatexNative};
 
 /// This trait is completely auto derived for all types and must
 /// not be implemented manually.
@@ -27,18 +26,20 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::traits::try_clone::TryClone;
-    use crate::values::core_value::CoreValue;
-    use crate::prelude::*;
+    use crate::{
+        prelude::*, traits::try_clone::TryClone, values::core_value::CoreValue,
+    };
 
     #[test]
     fn test_try_string() {
         let value = "Hello, world!".to_string();
         let cloned_value = value.try_clone().unwrap();
-        assert_eq!(cloned_value, CoreValue::native("Hello, world!".to_string()));
+        assert_eq!(
+            cloned_value,
+            CoreValue::native("Hello, world!".to_string())
+        );
     }
 
     #[test]

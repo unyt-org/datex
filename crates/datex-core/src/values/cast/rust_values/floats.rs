@@ -1,9 +1,10 @@
-use crate::datex_proxy::TryFromDatexValueError;
-use crate::traits::value_access::ValueAccess;
-use crate::utils::goat::Goat;
-use crate::utils::goat_mut::GoatMut;
-use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
-use crate::prelude::*;
+use crate::{
+    datex_proxy::TryFromDatexValueError,
+    prelude::*,
+    traits::value_access::ValueAccess,
+    utils::{goat::Goat, goat_mut::GoatMut},
+    values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
+};
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
@@ -40,7 +41,9 @@ impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, f32> {
         match value {
             BorrowedCoreValue::TypedDecimal(value) => {
                 value.filter_map(|v| v.borrow_as_f32()).ok_or_else(|| {
-                    TryFromDatexValueError("Cannot cast value to f32".to_string())
+                    TryFromDatexValueError(
+                        "Cannot cast value to f32".to_string(),
+                    )
                 })
             }
             _ => Err(TryFromDatexValueError(format!(
@@ -57,7 +60,9 @@ impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, f32> {
         match value {
             BorrowedCoreValueMut::TypedDecimal(value) => {
                 value.filter_map(|v| v.borrow_mut_as_f32()).ok_or_else(|| {
-                    TryFromDatexValueError("Cannot cast value to f32".to_string())
+                    TryFromDatexValueError(
+                        "Cannot cast value to f32".to_string(),
+                    )
                 })
             }
             _ => Err(TryFromDatexValueError(format!(
@@ -74,7 +79,9 @@ impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, f64> {
         match value {
             BorrowedCoreValue::TypedDecimal(value) => {
                 value.filter_map(|v| v.borrow_as_f64()).ok_or_else(|| {
-                    TryFromDatexValueError("Cannot cast value to f64".to_string())
+                    TryFromDatexValueError(
+                        "Cannot cast value to f64".to_string(),
+                    )
                 })
             }
             _ => Err(TryFromDatexValueError(format!(
@@ -91,7 +98,9 @@ impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, f64> {
         match value {
             BorrowedCoreValueMut::TypedDecimal(value) => {
                 value.filter_map(|v| v.borrow_mut_as_f64()).ok_or_else(|| {
-                    TryFromDatexValueError("Cannot cast value to f64".to_string())
+                    TryFromDatexValueError(
+                        "Cannot cast value to f64".to_string(),
+                    )
                 })
             }
             _ => Err(TryFromDatexValueError(format!(

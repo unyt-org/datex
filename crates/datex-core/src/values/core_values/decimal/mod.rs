@@ -19,9 +19,9 @@ use serde::{Deserialize, Serialize};
 pub mod binrw;
 pub mod ops;
 pub mod primitive;
-pub mod update_handler;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+pub mod update_handler;
 mod value_access;
 
 pub const DECIMAL_NAN: &str = "nan";

@@ -95,6 +95,7 @@ impl UpdateHandlerImpl for Value {
 mod tests {
     use crate::{
         prelude::*,
+        runtime::cache::shared_references_cache::SharedReferencesCache,
         shared_values::{
             base_shared_value_container::observers::TransceiverId,
             errors::{AccessError, IndexOutOfBoundsError},
@@ -108,15 +109,13 @@ mod tests {
             },
         },
         values::{
+            borrowed_value_container::{AsBorrowed, BorrowedValueContainer},
             core_values::{list::List, map::Map},
             value::Value,
             value_container::{ValueContainer, value_key::ValueKey},
         },
     };
-    use core::{assert_matches, cell::RefCell};
-    use core::ops::Deref;
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-    use crate::values::borrowed_value_container::{AsBorrowed, BorrowedValueContainer};
+    use core::{assert_matches, cell::RefCell, ops::Deref};
 
     #[test]
     fn push() {

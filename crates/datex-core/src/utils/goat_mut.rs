@@ -1,7 +1,8 @@
-use core::{ops::Deref};
-use core::fmt::Debug;
-use core::cell::RefMut;
-use core::ops::DerefMut;
+use core::{
+    cell::RefMut,
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+};
 
 /// A goat can be a Ref or a borrowed value
 pub enum GoatMut<'a, T: ?Sized> {
@@ -33,7 +34,10 @@ impl<'a, T> GoatMut<'a, T> {
     }
 }
 
-impl<T: ?Sized> Debug for GoatMut<'_, T> where T: Debug {
+impl<T: ?Sized> Debug for GoatMut<'_, T>
+where
+    T: Debug,
+{
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             GoatMut::Ref(r) => r.fmt(f),

@@ -25,13 +25,13 @@ pub mod value_id;
 
 use crate::{
     prelude::*,
+    traits::apply::{ApplyArgument, get_borrowed_apply_argument_values},
     types::{r#type::Type, type_definition::callable::CallableKind},
     values::core_values::{callable::CoreStub, endpoint::Endpoint},
 };
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::traits::apply::{get_borrowed_apply_argument_values, ApplyArgument};
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
@@ -104,7 +104,8 @@ impl CoreLibraryValues {
 
     fn print_impl(
         args: Vec<ApplyArgument>,
-    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError> {
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>
+    {
         // TODO #680: add I/O abstraction layer / interface
 
         let mut output = String::new();
@@ -121,8 +122,7 @@ impl CoreLibraryValues {
                 output.push(' ');
             }
             &args[1..]
-        }
-        else {
+        } else {
             &args
         };
 

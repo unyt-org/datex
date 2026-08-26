@@ -520,10 +520,9 @@ impl RegularInstruction {
 
 #[derive(Clone, Debug, PartialEq, Instruction)]
 pub enum RegularInstruction {
-
     #[magic(InstructionCode::UNINITIALIZED)]
     Uninitialized,
-    
+
     // signed integers
     #[magic(InstructionCode::INT_8)]
     Int8(Int8Data),

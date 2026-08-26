@@ -13,14 +13,14 @@ use crate::{
         entities::entity_type_definition::EntityTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+        r#type::Type,
+        type_definition::TypeDefinition,
     },
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
 use core::{cell::Ref, ops::Deref};
-use crate::types::r#type::Type;
-use crate::types::type_definition::TypeDefinition;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SharedContainerContainingEntityType(SharedContainer);

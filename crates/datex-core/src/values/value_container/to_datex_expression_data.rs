@@ -1,8 +1,12 @@
-use crate::ast::expressions::{DatexExpressionData, DeriveSharedRef, Statements};
-use crate::ast::spanned::Spanned;
-use crate::shared_values::SharedContainer;
-use crate::traits::to_datex_expression_data::ToDatexExpressionData;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    ast::{
+        expressions::{DatexExpressionData, DeriveSharedRef, Statements},
+        spanned::Spanned,
+    },
+    shared_values::SharedContainer,
+    traits::to_datex_expression_data::ToDatexExpressionData,
+    values::value_container::ValueContainer,
+};
 
 impl ToDatexExpressionData for ValueContainer {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
@@ -12,7 +16,8 @@ impl ToDatexExpressionData for ValueContainer {
                 SharedContainer::Referenced(referenced_container) => {
                     DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
                         mutability: referenced_container.reference_mutability(),
-                        expression: referenced_container.to_datex_expression_data()
+                        expression: referenced_container
+                            .to_datex_expression_data()
                             .with_default_span(),
                     })
                 }

@@ -1,16 +1,19 @@
+use crate::{
+    datex_proxy::TryFromDatexValueError,
+    prelude::*,
+    traits::value_access::ValueAccess,
+    utils::{goat::Goat, goat_mut::GoatMut},
+    values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
+};
 use num_traits::ToPrimitive;
-use crate::datex_proxy::TryFromDatexValueError;
-use crate::traits::value_access::ValueAccess;
-use crate::utils::goat::Goat;
-use crate::utils::goat_mut::GoatMut;
-use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
-use crate::prelude::*;
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
-    use crate::ast::expressions::DatexExpressionData;
-    use crate::traits::to_datex_expression_data::ToDatexExpressionData;
-    use crate::values::core_values::integer::typed_integer::TypedInteger;
+    use crate::{
+        ast::expressions::DatexExpressionData,
+        traits::to_datex_expression_data::ToDatexExpressionData,
+        values::core_values::integer::typed_integer::TypedInteger,
+    };
 
     impl ToDatexExpressionData for u8 {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
@@ -76,11 +79,15 @@ mod to_datex_expression_data {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             #[cfg(target_pointer_width = "32")]
             {
-                DatexExpressionData::TypedInteger(TypedInteger::U32(*self as u32))
+                DatexExpressionData::TypedInteger(TypedInteger::U32(
+                    *self as u32,
+                ))
             }
             #[cfg(target_pointer_width = "64")]
             {
-                DatexExpressionData::TypedInteger(TypedInteger::U64(*self as u64))
+                DatexExpressionData::TypedInteger(TypedInteger::U64(
+                    *self as u64,
+                ))
             }
         }
     }
@@ -89,16 +96,19 @@ mod to_datex_expression_data {
         fn to_datex_expression_data(&self) -> DatexExpressionData {
             #[cfg(target_pointer_width = "32")]
             {
-                DatexExpressionData::TypedInteger(TypedInteger::I32(*self as i32))
+                DatexExpressionData::TypedInteger(TypedInteger::I32(
+                    *self as i32,
+                ))
             }
             #[cfg(target_pointer_width = "64")]
             {
-                DatexExpressionData::TypedInteger(TypedInteger::I64(*self as i64))
+                DatexExpressionData::TypedInteger(TypedInteger::I64(
+                    *self as i64,
+                ))
             }
         }
     }
 }
-
 
 impl ValueAccess for u8 {}
 impl ValueAccess for u16 {}
@@ -112,7 +122,6 @@ impl ValueAccess for i64 {}
 impl ValueAccess for i128 {}
 impl ValueAccess for usize {}
 impl ValueAccess for isize {}
-
 
 macro_rules! impl_try_from_borrowed_integer_goat {
     ($(($ty:ty, $borrow_as:ident, $borrow_mut_as:ident)),* $(,)?) => {
@@ -175,14 +184,14 @@ macro_rules! impl_try_from_borrowed_integer_goat {
 }
 
 impl_try_from_borrowed_integer_goat!(
-    (i8,    borrow_as_i8,    borrow_mut_as_i8),
-    (i16,   borrow_as_i16,   borrow_mut_as_i16),
-    (i32,   borrow_as_i32,   borrow_mut_as_i32),
-    (i64,   borrow_as_i64,   borrow_mut_as_i64),
-    (i128,  borrow_as_i128,  borrow_mut_as_i128),
-    (u8,    borrow_as_u8,    borrow_mut_as_u8),
-    (u16,   borrow_as_u16,   borrow_mut_as_u16),
-    (u32,   borrow_as_u32,   borrow_mut_as_u32),
-    (u64,   borrow_as_u64,   borrow_mut_as_u64),
-    (u128,  borrow_as_u128,  borrow_mut_as_u128),
+    (i8, borrow_as_i8, borrow_mut_as_i8),
+    (i16, borrow_as_i16, borrow_mut_as_i16),
+    (i32, borrow_as_i32, borrow_mut_as_i32),
+    (i64, borrow_as_i64, borrow_mut_as_i64),
+    (i128, borrow_as_i128, borrow_mut_as_i128),
+    (u8, borrow_as_u8, borrow_mut_as_u8),
+    (u16, borrow_as_u16, borrow_mut_as_u16),
+    (u32, borrow_as_u32, borrow_mut_as_u32),
+    (u64, borrow_as_u64, borrow_mut_as_u64),
+    (u128, borrow_as_u128, borrow_mut_as_u128),
 );

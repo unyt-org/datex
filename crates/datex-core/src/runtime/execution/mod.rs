@@ -17,7 +17,7 @@ use crate::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         RemotePointerAddress, SelfOwnedPointerAddress, SharedContainer,
     },
-    traits::apply::Apply,
+    traits::apply::{Apply, ApplyArgument},
     types::{
         entities::entity_impls::EntityImplMethod, r#type::Type,
         type_definition::TypeDefinition,
@@ -30,7 +30,6 @@ use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
-use crate::traits::apply::ApplyArgument;
 
 pub mod context;
 mod errors;
@@ -120,8 +119,9 @@ pub fn execute_dxb_sync(
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
                 let res = callee.try_apply_sync_checked(&runtime, args)?;
-                interrupt_provider
-                    .provide_result(InterruptResult::ResolvedValueAndBorrowedArgs(res));
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValueAndBorrowedArgs(res),
+                );
             }
             ExternalExecutionInterrupt::CallMethod(
                 callee,
@@ -143,9 +143,11 @@ pub fn execute_dxb_sync(
                         .try_get_method(&method_name)
                 {
                     interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValueAndBorrowedArgs(try_call_method_sync(
-                            callee, method, args, &runtime,
-                        )?),
+                        InterruptResult::ResolvedValueAndBorrowedArgs(
+                            try_call_method_sync(
+                                callee, method, args, &runtime,
+                            )?,
+                        ),
                     )
                 } else {
                     return Err(ExecutionError::MethodNotFound(method_name));
@@ -277,9 +279,11 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = callee.try_apply_async_checked(&runtime, args).await?;
-                interrupt_provider
-                    .provide_result(InterruptResult::ResolvedValueAndBorrowedArgs(res));
+                let res =
+                    callee.try_apply_async_checked(&runtime, args).await?;
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValueAndBorrowedArgs(res),
+                );
             }
             ExternalExecutionInterrupt::CallMethod(
                 callee,
@@ -331,8 +335,7 @@ fn try_call_method_sync(
 
     // only local calls supported for sync execution
     if !method.call_on_owner
-        || owner_endpoint
-            .is_local_or_equals_endpoint(runtime.endpoint())
+        || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
     {
         let res = method.callable.try_apply_sync_checked(runtime, args)?;
         Ok(res)
@@ -356,7 +359,10 @@ async fn try_call_method_async(
     if !method.call_on_owner
         || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
     {
-        let res = method.callable.try_apply_async_checked(runtime, args).await?;
+        let res = method
+            .callable
+            .try_apply_async_checked(runtime, args)
+            .await?;
         Ok(res)
     }
     // call on owner endpoint
@@ -368,8 +374,10 @@ async fn try_call_method_async(
             )
             .into(),
         ];
-        instructions
-            .extend(args.into_iter().map(|v| InstructionInput::ValueContainer(v.value)));
+        instructions.extend(
+            args.into_iter()
+                .map(|v| InstructionInput::ValueContainer(v.value)),
+        );
 
         let res = runtime
             .execute_instructions_remote(vec![owner_endpoint], instructions)

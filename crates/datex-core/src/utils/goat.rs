@@ -1,5 +1,8 @@
-use core::{cell::Ref, ops::Deref};
-use core::fmt::{Debug, Pointer};
+use core::{
+    cell::Ref,
+    fmt::{Debug, Pointer},
+    ops::Deref,
+};
 
 /// A goat can be a Ref or a borrowed value
 pub enum Goat<'a, T: ?Sized> {
@@ -18,7 +21,7 @@ impl<'a, T: ?Sized> Goat<'a, T> {
             Goat::Borrowed(b) => Goat::Borrowed(f(b)),
         }
     }
-    
+
     /// equivalent to [Ref::filter_map] function
     pub fn filter_map<U: ?Sized, F>(self, f: F) -> Option<Goat<'a, U>>
     where
@@ -31,13 +34,22 @@ impl<'a, T: ?Sized> Goat<'a, T> {
     }
 }
 
-impl<T> Debug for Goat<'_, T> where T: ?Sized {
-    default fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl<T> Debug for Goat<'_, T>
+where
+    T: ?Sized,
+{
+    default fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
         write!(f, "?")
     }
 }
 
-impl<T> Debug for Goat<'_, T> where T: Debug + ?Sized {
+impl<T> Debug for Goat<'_, T>
+where
+    T: Debug + ?Sized,
+{
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Goat::Ref(r) => r.fmt(f),

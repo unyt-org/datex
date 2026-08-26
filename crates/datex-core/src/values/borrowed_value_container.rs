@@ -1,16 +1,26 @@
-use core::cell::Ref;
-use core::cell::RefMut;
-use core::fmt::{Debug, Formatter};
+use crate::{
+    shared_values::{
+        OwnedSharedContainer, ReferencedSharedContainer, SharedContainer,
+    },
+    utils::{goat::Goat, goat_mut::GoatMut},
+    values::{
+        core_value::CoreValue,
+        core_values::native::DatexNative,
+        value::{
+            Value,
+            borrowed_value::{
+                BorrowedCoreValue, BorrowedCoreValueMut, BorrowedValue,
+                BorrowedValueMut,
+            },
+        },
+        value_container::ValueContainer,
+    },
+};
+use core::{
+    cell::{Ref, RefMut},
+    fmt::{Debug, Formatter},
+};
 use log::info;
-use crate::shared_values::{OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
-use crate::utils::goat::Goat;
-use crate::utils::goat_mut::GoatMut;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::native::DatexNative;
-use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut, BorrowedValue, BorrowedValueMut};
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-
 
 pub trait AsBorrowed<'a> {
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a>;
@@ -27,7 +37,7 @@ impl<'a> BorrowedValueContainer<'a> {
     pub fn native_borrowed<T: DatexNative>(val: &'a T) -> Self {
         BorrowedValueContainer::Local(BorrowedValue {
             inner: BorrowedCoreValue::Native(Goat::Borrowed(val)),
-            custom_type: None
+            custom_type: None,
         })
     }
 
@@ -35,7 +45,7 @@ impl<'a> BorrowedValueContainer<'a> {
     pub fn native_ref<T: DatexNative>(val: Ref<'a, T>) -> Self {
         BorrowedValueContainer::Local(BorrowedValue {
             inner: BorrowedCoreValue::Native(Goat::Ref(val)),
-            custom_type: None
+            custom_type: None,
         })
     }
 
@@ -57,19 +67,19 @@ impl<'a> BorrowedValueContainer<'a> {
         CoreValue: Clone,
     {
         match self {
-            BorrowedValueContainer::Local(value) => Ok(
-                ValueContainer::Local(value.try_clone_to_value()?)
-            ),
-            BorrowedValueContainer::Shared(shared) => Ok(ValueContainer::Shared(shared.clone())),
+            BorrowedValueContainer::Local(value) => {
+                Ok(ValueContainer::Local(value.try_clone_to_value()?))
+            }
+            BorrowedValueContainer::Shared(shared) => {
+                Ok(ValueContainer::Shared(shared.clone()))
+            }
         }
     }
 }
 
-
 pub trait AsBorrowedMut<'a> {
     fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a>;
 }
-
 
 pub enum BorrowedValueContainerMut<'a> {
     Local(BorrowedValueMut<'a>),
@@ -81,7 +91,7 @@ impl<'a> BorrowedValueContainerMut<'a> {
     pub fn native_borrowed<T: DatexNative>(val: &'a mut T) -> Self {
         BorrowedValueContainerMut::Local(BorrowedValueMut {
             inner: BorrowedCoreValueMut::Native(GoatMut::Borrowed(val)),
-            custom_type: None
+            custom_type: None,
         })
     }
 
@@ -89,7 +99,7 @@ impl<'a> BorrowedValueContainerMut<'a> {
     pub fn native_ref<T: DatexNative>(val: RefMut<'a, T>) -> Self {
         BorrowedValueContainerMut::Local(BorrowedValueMut {
             inner: BorrowedCoreValueMut::Native(GoatMut::Ref(val)),
-            custom_type: None
+            custom_type: None,
         })
     }
 
@@ -133,13 +143,17 @@ impl<'a> AsBorrowed<'a> for SharedContainer {
 }
 impl<'a> AsBorrowed<'a> for OwnedSharedContainer {
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
-        BorrowedValueContainer::Shared(SharedContainer::Referenced(self.derive_with_max_mutability()))
+        BorrowedValueContainer::Shared(SharedContainer::Referenced(
+            self.derive_with_max_mutability(),
+        ))
     }
 }
 
 impl<'a> AsBorrowed<'a> for ReferencedSharedContainer {
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
-        BorrowedValueContainer::Shared(SharedContainer::Referenced(self.clone()))
+        BorrowedValueContainer::Shared(SharedContainer::Referenced(
+            self.clone(),
+        ))
     }
 }
 
@@ -160,7 +174,6 @@ impl<'a> AsBorrowed<'a> for ValueContainer {
     }
 }
 
-
 impl<'a> From<BorrowedValueMut<'a>> for BorrowedValueContainerMut<'a> {
     fn from(borrowed_value: BorrowedValueMut<'a>) -> Self {
         BorrowedValueContainerMut::Local(borrowed_value)
@@ -175,13 +188,17 @@ impl<'a> AsBorrowedMut<'a> for SharedContainer {
 
 impl<'a> AsBorrowedMut<'a> for OwnedSharedContainer {
     fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
-        BorrowedValueContainerMut::Shared(SharedContainer::Referenced(self.derive_with_max_mutability()))
+        BorrowedValueContainerMut::Shared(SharedContainer::Referenced(
+            self.derive_with_max_mutability(),
+        ))
     }
 }
 
 impl<'a> AsBorrowedMut<'a> for ReferencedSharedContainer {
     fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
-        BorrowedValueContainerMut::Shared(SharedContainer::Referenced(self.clone()))
+        BorrowedValueContainerMut::Shared(SharedContainer::Referenced(
+            self.clone(),
+        ))
     }
 }
 
@@ -197,9 +214,7 @@ impl<'a> AsBorrowedMut<'a> for ValueContainer {
             ValueContainer::Shared(shared_container) => {
                 shared_container.as_borrowed_mut()
             }
-            ValueContainer::Local(local_value) => {
-                local_value.as_borrowed_mut()
-            }
+            ValueContainer::Local(local_value) => local_value.as_borrowed_mut(),
         }
     }
 }
