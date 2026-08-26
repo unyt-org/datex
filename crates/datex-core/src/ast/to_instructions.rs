@@ -1,11 +1,274 @@
+use crate::{
+    ast::expressions::{
+        Apply, BinaryOperation, ComparisonOperation, CreateShared,
+        DatexExpressionData, DeriveRef, DeriveSharedRef, GenericInstantiation,
+        InterfaceMethodCall, List, Map, PropertyAccess, PropertyAssignment,
+        RangeDeclaration, RequestSharedRef, RootPropertyAccess, TagExpression,
+        UnaryOperation, Unbox, UnboxAssignment,
+    },
+    core_compiler::to_instructions::{InstructionContext, ToInstructions},
+    global::{operators::ModificationOperator, root_properties::RootProperty},
+    instruction::regular_instruction::RegularInstruction,
+    prelude::*,
+    shared_values::{ReferenceMutability, SharedContainerMutability},
+};
 use core::str::FromStr;
-use crate::ast::expressions::{Apply, BinaryOperation, ComparisonOperation, CreateShared, DatexExpressionData, DeriveRef, DeriveSharedRef, GenericInstantiation, InterfaceMethodCall, List, Map, PropertyAccess, PropertyAssignment, RangeDeclaration, RequestSharedRef, RootPropertyAccess, TagExpression, UnaryOperation, Unbox, UnboxAssignment};
-use crate::core_compiler::to_instructions::{InstructionContext, ToInstructions};
-use crate::global::operators::ModificationOperator;
-use crate::global::root_properties::RootProperty;
-use crate::instruction::regular_instruction::RegularInstruction;
-use crate::shared_values::{ReferenceMutability, SharedContainerMutability};
-use crate::prelude::*;
+
+impl ToInstructions for DatexExpressionData {
+    type InstructionType = RegularInstruction;
+    fn to_instructions<'tracking, 'ctx, 'iter>(
+        &'iter self,
+        ctx: &'iter InstructionContext<'tracking, 'ctx>,
+    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'iter> {
+        Box::new(gen move {
+            match self {
+                DatexExpressionData::Integer(integer) => {
+                    yield RegularInstruction::Integer(integer.clone())
+                }
+                DatexExpressionData::TypedInteger(typed_integer) => {
+                    for instruction in typed_integer.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::Instant(instant) => {
+                    for instruction in instant.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::Decimal(decimal) => {
+                    for instruction in decimal.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::TypedDecimal(typed_decimal) => {
+                    for instruction in typed_decimal.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::Text(text) => {
+                    for instruction in text.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::Boolean(boolean) => {
+                    for instruction in boolean.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::Endpoint(endpoint) => {
+                    for instruction in endpoint.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::Null => {
+                    yield RegularInstruction::null();
+                }
+
+                DatexExpressionData::List(list) => {
+                    for instruction in list.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::Map(map) => {
+                    for instruction in map.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                // unary operations
+                DatexExpressionData::UnaryOperation(unary_operation) => {
+                    for instruction in unary_operation.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                // binary operations
+                DatexExpressionData::BinaryOperation(binary_operation) => {
+                    for instruction in binary_operation.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                // comparisons
+                DatexExpressionData::ComparisonOperation(
+                    comparison_operation,
+                ) => {
+                    for instruction in comparison_operation.to_instructions(ctx)
+                    {
+                        yield instruction;
+                    }
+                }
+
+                // apply
+                DatexExpressionData::Apply(apply) => {
+                    for instruction in apply.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                // interface methods
+                DatexExpressionData::InterfaceMethodCall(
+                    interface_method_call,
+                ) => {
+                    for instruction in
+                        interface_method_call.to_instructions(ctx)
+                    {
+                        yield instruction;
+                    }
+                }
+
+                // property access
+                DatexExpressionData::PropertyAccess(property_access) => {
+                    for instruction in property_access.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::GenericInstantiation(
+                    generic_instantiation,
+                ) => {
+                    for instruction in
+                        generic_instantiation.to_instructions(ctx)
+                    {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::PropertyAssignment(
+                    property_assignment,
+                ) => {
+                    for instruction in property_assignment.to_instructions(ctx)
+                    {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::RequestSharedRef(request_shared_ref) => {
+                    for instruction in request_shared_ref.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::UnboxAssignment(unbox_assignment) => {
+                    for instruction in unbox_assignment.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                // root property
+                DatexExpressionData::RootPropertyAccess(
+                    root_property_access,
+                ) => {
+                    for instruction in root_property_access.to_instructions(ctx)
+                    {
+                        yield instruction;
+                    }
+                }
+
+                // refs
+                DatexExpressionData::DeriveRef(derive_ref) => {
+                    for instruction in derive_ref.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                // shared refs
+                DatexExpressionData::DeriveSharedRef(derive_shared_ref) => {
+                    for instruction in derive_shared_ref.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                // shared values
+                DatexExpressionData::CreateShared(create_shared) => {
+                    for instruction in create_shared.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::TypeExpression(type_expression) => {
+                    yield RegularInstruction::TypeExpression;
+                    for instruction in type_expression.to_instructions(ctx) {
+                        todo!(
+                            "Transparent yield of typeinstructions over egular instructions"
+                        ); //yield instruction;
+                    }
+                }
+
+                DatexExpressionData::Range(range_dec) => {
+                    for instruction in range_dec.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::Unbox(unbox) => {
+                    for instruction in unbox.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::Tag(tag_expression) => {
+                    for instruction in tag_expression.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
+                    yield RegularInstruction::get_core_lib_value(
+                        (*core_lib_id).into(),
+                    );
+                }
+
+                DatexExpressionData::CallableDeclaration(
+                    callable_declaration,
+                ) => {
+                    todo!("Need context and scope data and stuff");
+                }
+
+                DatexExpressionData::Conditional(conditional) => {
+                    todo!(
+                        "Need actual byte positions and not instruction counts for jumps"
+                    );
+                }
+                DatexExpressionData::RemoteExecution(remote_execution) => {
+                    todo!("Need context and scope data and stuff");
+                }
+
+                DatexExpressionData::VariableDeclaration(
+                    variable_declaration,
+                ) => {
+                    todo!("Need context and scope data and stuff");
+                }
+                DatexExpressionData::Statements(statements) => {
+                    todo!("Need context and scope data and stuff");
+                }
+
+                DatexExpressionData::VariableAssignment(
+                    variable_assignment,
+                ) => {
+                    todo!("Need context and scope data and stuff");
+                }
+
+                DatexExpressionData::VariableAccess(variable_access) => {
+                    todo!("Need context and scope data and stuff");
+                }
+
+                e => panic!(
+                    "Expression to instruction not implemented for {:?}",
+                    e
+                ),
+            }
+        })
+    }
+}
 
 impl ToInstructions for RangeDeclaration {
     type InstructionType = RegularInstruction;
@@ -45,7 +308,6 @@ impl ToInstructions for ComparisonOperation {
     }
 }
 
-
 impl ToInstructions for UnboxAssignment {
     type InstructionType = RegularInstruction;
 
@@ -80,7 +342,6 @@ impl ToInstructions for UnboxAssignment {
     }
 }
 
-
 impl ToInstructions for PropertyAssignment {
     type InstructionType = RegularInstruction;
 
@@ -99,16 +360,16 @@ impl ToInstructions for PropertyAssignment {
 
             match &property.data() {
                 DatexExpressionData::Text(key)
-                if key.0.len() <= u8::MAX as usize =>
-                    {
-                        yield RegularInstruction::set_entry_text(key.0.clone());
-                    }
+                    if key.0.len() <= u8::MAX as usize =>
+                {
+                    yield RegularInstruction::set_entry_text(key.0.clone());
+                }
 
                 DatexExpressionData::Integer(index)
-                if let Some(index) = index.as_u32() =>
-                    {
-                        yield RegularInstruction::set_entry_index(index);
-                    }
+                    if let Some(index) = index.as_u32() =>
+                {
+                    yield RegularInstruction::set_entry_index(index);
+                }
 
                 _ => {
                     for instruction in property.to_instructions(ctx) {
@@ -129,7 +390,6 @@ impl ToInstructions for PropertyAssignment {
     }
 }
 
-
 impl ToInstructions for UnaryOperation {
     type InstructionType = RegularInstruction;
 
@@ -145,7 +405,6 @@ impl ToInstructions for UnaryOperation {
         })
     }
 }
-
 
 impl ToInstructions for Apply {
     type InstructionType = RegularInstruction;
@@ -169,7 +428,6 @@ impl ToInstructions for Apply {
         })
     }
 }
-
 
 impl ToInstructions for InterfaceMethodCall {
     type InstructionType = RegularInstruction;
@@ -227,7 +485,6 @@ impl ToInstructions for InterfaceMethodCall {
     }
 }
 
-
 impl ToInstructions for PropertyAccess {
     type InstructionType = RegularInstruction;
 
@@ -244,10 +501,10 @@ impl ToInstructions for PropertyAccess {
                 }
                 // index access if integer fits in u32
                 DatexExpressionData::Integer(index)
-                if let Some(index) = index.as_u32() =>
-                    {
-                        yield RegularInstruction::get_entry_index(index);
-                    }
+                    if let Some(index) = index.as_u32() =>
+                {
+                    yield RegularInstruction::get_entry_index(index);
+                }
                 _ => {
                     yield RegularInstruction::get_entry_dynamic();
                     for instruction in self.property.to_instructions(ctx) {
@@ -263,7 +520,6 @@ impl ToInstructions for PropertyAccess {
         })
     }
 }
-
 
 impl ToInstructions for GenericInstantiation {
     type InstructionType = RegularInstruction;
@@ -310,7 +566,6 @@ impl ToInstructions for List {
         })
     }
 }
-
 
 impl ToInstructions for Map {
     type InstructionType = RegularInstruction;
@@ -388,7 +643,6 @@ impl ToInstructions for RootPropertyAccess {
     }
 }
 
-
 impl ToInstructions for Unbox {
     type InstructionType = RegularInstruction;
 
@@ -405,7 +659,6 @@ impl ToInstructions for Unbox {
     }
 }
 
-
 impl ToInstructions for DeriveRef {
     type InstructionType = RegularInstruction;
 
@@ -420,7 +673,6 @@ impl ToInstructions for DeriveRef {
         })
     }
 }
-
 
 impl ToInstructions for CreateShared {
     type InstructionType = RegularInstruction;
@@ -445,7 +697,6 @@ impl ToInstructions for CreateShared {
         })
     }
 }
-
 
 impl ToInstructions for DeriveSharedRef {
     type InstructionType = RegularInstruction;
