@@ -2,20 +2,20 @@ use proc_macro2::Ident;
 use syn::{Generics, Type};
 
 #[derive(Debug, PartialEq, Eq)]
-enum TypeKind {
+pub enum TypeKind {
     Entity,
     Structural,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Namespace {
+pub enum Namespace {
     None,
     Module,
     Named(String),
 }
 
 #[derive(Debug, PartialEq)]
-enum SerdeMode {
+pub enum SerdeMode {
     /// Serde serializable/deserializable fields are not allowed inside the datex proxy value.
     /// Since the generated code will not attempt to serialize any fields with serde,
     /// it will only provide an infallible into method to convert to ValueContainer
@@ -35,56 +35,53 @@ enum SerdeMode {
 pub struct StructureAttributes {
     /// Internally used attribute to indicate that the macro should use the `datex_core` namespace
     /// instead of inferring it. This is required for doctests to work.
-    force_datex_core_namespace: bool,
+    pub force_datex_core_namespace: bool,
 
     /// Optional override for the exported name of the type. Defaults to the Rust struct or enum name.
-    datex_name: Option<String>,
+    pub datex_name: Option<String>,
 
     /// If the decorated struct or enum should not be deserializable from a Datex value.
-    no_deserialize: bool,
+    pub no_deserialize: bool,
 
     /// When set to true, the struct/enum will map to a DATEX structural type instead of a nominal entity type.
-    type_kind: TypeKind,
-
-    export_namespace: Namespace,
-
+    pub type_kind: TypeKind,
+    
     /// If the decorated struct or enum should be exported to the Datex registry.
     /// `#[datex(export)]`
-    export: bool,
-    namespace: Option<String>,
-    docs: Option<String>,
+    pub export: bool,
+    pub docs: Option<String>,
 }
 
 #[derive(Debug, PartialEq)]
 /// Represents a field in a struct or enum variant, along with its type and attributes.
 pub struct Field {
-    ty: Type,
-    attributes: FieldAttributes,
+    pub ty: Type,
+    pub attributes: FieldAttributes,
 }
 
 #[derive(Debug, PartialEq)]
 /// General attributes that can be applied to any field.
 pub struct FieldAttributes {
-    serde_mode: SerdeMode,
+    pub serde_mode: SerdeMode,
 }
 
 #[derive(Debug, PartialEq)]
 /// Attributes specific to named fields in structs or enum variants.
 pub struct NamedFieldAttributes {
     /// If true, this field will be invisible to DATEX.
-    skip: bool,
+    pub skip: bool,
     /// TODO:
-    default: bool,
+    pub default: bool,
     /// An optional rename for the field used for the DATEX representation. If not provided, the rust field name will be used.
-    rename: Option<String>,
+    pub rename: Option<String>,
 }
 
 #[derive(Debug, PartialEq)]
 /// Represents a named field in a struct or enum variant.
 pub struct NamedField {
-    name: String,
-    field: Field,
-    attributes: NamedFieldAttributes,
+    pub name: String,
+    pub field: Field,
+    pub attributes: NamedFieldAttributes,
 }
 
 #[derive(Debug, PartialEq)]
@@ -98,8 +95,9 @@ pub enum Fields {
 
 #[derive(Debug, PartialEq)]
 pub struct EnumVariant {
-    name: String,
-    fields: Fields,
+    pub name: String,
+    pub fields: Fields,
+    // TODO: enum variant attributes?
 }
 
 #[derive(Debug, PartialEq)]
@@ -111,10 +109,10 @@ pub enum Structure {
 
 #[derive(Debug, PartialEq)]
 pub struct StructureData {
-    ident: Ident,
-    generics: Generics,
-    attributes: StructureAttributes,
-    structure: Structure,
+    pub ident: Ident,
+    pub generics: Generics,
+    pub attributes: StructureAttributes,
+    pub structure: Structure,
 }
 
 // TODO: derive is_fallible_serialization from fields
