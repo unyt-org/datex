@@ -58,4 +58,8 @@ pub trait SharedContainerCommon {
     ) -> Vec<ObserverCallback> {
         self.observer_data().get_current_observers(source_id)
     }
+
+    /// Returns true if the shared container is uninitialized (i.e., it has no value assigned yet)
+    fn is_uninitialized(&self) -> bool;
+
 }

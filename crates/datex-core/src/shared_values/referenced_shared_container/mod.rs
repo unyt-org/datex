@@ -28,6 +28,7 @@ use core::{
     fmt::Display,
     hash::{Hash, Hasher},
 };
+use crate::shared_values::SharedContainer;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -42,6 +43,10 @@ pub struct ReferencedSharedContainer {
     pub(super) container_mutability: SharedContainerMutability,
     /// Field used internally to indicate that this reference should be treated as a move in the context of the compiler
     pub(super) move_indicator: bool, // FIXME must this be omitted on clone?
+    /// Flag indicating that the inner value is uninitialized. This must get reset to false when the inner value is updated.
+    /// When set to true, an update to the value is allowed even if the reference is immutable, since the value is not yet initialized.
+    /// TODO: better way to handle uninitialized values, maybe don't store on top level, but this is more efficient since we don't have to deref the inner value
+    pub(super) is_uninitialized: bool,
     /// Observer data (e.g. observer list) for this shared container. Can be borrowed separately from the [SharedContainerInner]
     pub(super) observer_data: Rc<RefCell<ObserverData>>,
 }
@@ -60,6 +65,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Mutable,
             container_mutability: SharedContainerMutability::Mutable,
             move_indicator: false,
+            is_uninitialized: false,
             observer_data,
         }
     }
@@ -77,6 +83,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Immutable,
             container_mutability,
             move_indicator: false,
+            is_uninitialized: false,
             observer_data,
         }
     }
@@ -103,6 +110,7 @@ impl ReferencedSharedContainer {
         address: RemotePointerAddress,
         reference_mutability: ReferenceMutability,
     ) -> Result<Self, ()> {
+        let is_uninitialized = container.value_container().is_uninitialized();
         let container_mutability = *container.mutability();
         // invalid reference mutability
         if reference_mutability == ReferenceMutability::Mutable
@@ -118,6 +126,7 @@ impl ReferencedSharedContainer {
             reference_mutability,
             container_mutability,
             move_indicator: false,
+            is_uninitialized,
             observer_data: Rc::new(RefCell::new(ObserverData::default())),
         })
     }
@@ -184,6 +193,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Immutable,
             container_mutability: self.container_mutability(),
             move_indicator: false,
+            is_uninitialized: false,
             observer_data: self.observer_data.clone(),
         }
     }
@@ -256,6 +266,16 @@ impl ReferencedSharedContainer {
         } else {
             Err(self)
         }
+    }
+
+    /// Marks the shared container as uninitialized.
+    pub(crate) fn mark_uninitialized(&mut self) {
+        self.is_uninitialized = true;
+    }
+
+    /// Unmarks the shared container as uninitialized.
+    pub(crate) fn unset_uninitialized(&mut self) {
+        self.is_uninitialized = false;
     }
 }
 

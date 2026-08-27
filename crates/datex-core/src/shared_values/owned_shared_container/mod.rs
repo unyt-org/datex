@@ -47,6 +47,10 @@ pub struct OwnedSharedContainer {
     container_mutability: SharedContainerMutability,
     /// Observer data (e.g. observer list) for this shared container. Can be borrowed separately from the [SharedContainerInner]
     observer_data: Rc<RefCell<ObserverData>>,
+    /// Flag indicating that the inner value is uninitialized. This must get reset to false when the inner value is updated.
+    /// When set to true, an update to the value is allowed even if the reference is immutable, since the value is not yet initialized.
+    /// TODO: better way to handle uninitialized values, maybe don't store on top level, but this is more efficient since we don't have to deref the inner value
+    pub(super) is_uninitialized: bool,
 }
 
 impl OwnedSharedContainer {
@@ -61,6 +65,7 @@ impl OwnedSharedContainer {
             ))),
             container_mutability,
             observer_data: Rc::new(RefCell::new(ObserverData::default())),
+            is_uninitialized: false,
         }
     }
 
@@ -94,7 +99,9 @@ impl OwnedSharedContainer {
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
     ) -> Self {
-        OwnedSharedContainer::new_from_self_owned_container(unsafe {
+        let is_uninitialized = value_container.is_uninitialized();
+
+        let mut container = OwnedSharedContainer::new_from_self_owned_container(unsafe {
             SelfOwnedSharedContainer::new_with_address(
                 BaseSharedValueContainer::new_with_inferred_allowed_type(
                     value_container,
@@ -102,7 +109,13 @@ impl OwnedSharedContainer {
                 ),
                 address,
             )
-        })
+        });
+        
+        if is_uninitialized {
+            container.mark_uninitialized();
+        }
+
+        container
     }
 
     /// Creates a new [OwnedSharedContainer] from parts.
@@ -119,6 +132,7 @@ impl OwnedSharedContainer {
             inner,
             container_mutability,
             observer_data,
+            is_uninitialized: false,
         }
     }
 
@@ -232,6 +246,16 @@ impl OwnedSharedContainer {
 
     pub fn to_string_omit_content(&self) -> String {
         "(...)".to_string()
+    }
+
+    /// Marks the shared container as uninitialized.
+    pub(crate) fn mark_uninitialized(&mut self) {
+        self.is_uninitialized = true;
+    }
+
+    /// Unmarks the shared container as uninitialized.
+    pub(crate) fn unset_uninitialized(&mut self) {
+        self.is_uninitialized = false;
     }
 }
 
