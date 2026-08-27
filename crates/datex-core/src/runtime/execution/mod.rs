@@ -129,7 +129,7 @@ pub fn execute_dxb_sync(
                 args,
             ) => {
                 let entity_type =
-                    if let TypeDefinition::Box(box Type::Entity(entity_type)) =
+                    if let TypeDefinition::Box(Type::Entity(entity_type)) =
                         callee.value.actual_type().as_ref()
                     {
                         Some(entity_type.clone())
@@ -291,7 +291,7 @@ pub async fn execute_dxb(
                 args,
             ) => {
                 let entity_type =
-                    if let TypeDefinition::Box(box Type::Entity(entity_type)) =
+                    if let TypeDefinition::Box(Type::Entity(entity_type)) =
                         callee.value.actual_type().as_ref()
                     {
                         Some(entity_type.clone())

@@ -45,7 +45,7 @@ pub fn generate_native_callable(
 
     let return_type = match &sig.output {
         syn::ReturnType::Default => None,
-        syn::ReturnType::Type(_, box Type::Tuple(tuple))
+        syn::ReturnType::Type(_, Type::Tuple(tuple))
             if tuple.elems.is_empty() =>
         {
             None
@@ -166,9 +166,9 @@ pub fn generate_native_callable(
                     // try to get stored native value from the value container
                     let #var_ident = match <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_native_from_value_container(#var_ident_container.value) {
                         Ok(inner) => inner,
-                        Err(box value) => {
+                        Err(value) => {
                             // fallback: convert from DATEX value to native value
-                            <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_from_value_container(value.clone()).unwrap()
+                            <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_from_value_container((*value).clone()).unwrap()
                         }
                     };
                 }

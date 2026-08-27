@@ -5,7 +5,7 @@
 #![feature(async_iterator)]
 #![feature(type_alias_impl_trait)]
 #![feature(trait_alias)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(if_let_guard)]
 #![feature(try_trait_v2)]
 // #![allow(unused_parens)]

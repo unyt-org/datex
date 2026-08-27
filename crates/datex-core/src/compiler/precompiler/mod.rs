@@ -1398,7 +1398,7 @@ mod tests {
                 ast:
                     DatexExpression {
                         data:
-                            box DatexExpressionData::ResolveCoreLibId(
+                            DatexExpressionData::ResolveCoreLibId(
                                 CoreLibId::Type(CoreLibTypeId::Base(
                                     CoreLibBaseTypeId::Boolean,
                                 )),
@@ -1415,7 +1415,7 @@ mod tests {
                 ast:
                     DatexExpression {
                         data:
-                            box DatexExpressionData::ResolveCoreLibId(
+                            DatexExpressionData::ResolveCoreLibId(
                                 CoreLibId::Type(CoreLibTypeId::Base(
                                     CoreLibBaseTypeId::Integer,
                                 )),

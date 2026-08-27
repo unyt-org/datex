@@ -40,7 +40,7 @@ impl
         result: CollectedExecutionResult,
     ) -> Option<Option<RuntimeValue>> {
         match result {
-            CollectedExecutionResult::Value(box val) => Some(val),
+            CollectedExecutionResult::Value(val) => Some(*val),
             _ => None,
         }
     }
@@ -59,7 +59,7 @@ impl
         result: CollectedExecutionResult,
     ) -> Option<(MapKey, ValueContainer)> {
         match result {
-            CollectedExecutionResult::KeyValuePair(box (key, value)) => {
+            CollectedExecutionResult::KeyValuePair(deref!((key, value))) => {
                 Some((key, value))
             }
             _ => None,

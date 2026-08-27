@@ -134,7 +134,7 @@ impl TypeSuperset<SharedContainerContainingEntityType>
 impl TypeSatisfiesValueContainer for SharedContainerContainingEntityType {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
         match value.actual_type().deref() {
-            TypeDefinition::Box(box Type::Entity(entity)) => {
+            TypeDefinition::Box(Type::Entity(entity)) => {
                 self.is_superset_of(entity)
             }
             _ => false,

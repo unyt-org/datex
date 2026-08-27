@@ -152,7 +152,7 @@ pub fn execution_loop(
                 Err(err) => {
                     match err {
                         ExecutionError::DXBParserError(
-                            box DXBParserError::ExpectingMoreInstructions(_),
+                            DXBParserError::ExpectingMoreInstructions(_),
                         ) => {
                             yield Err(
                                 ExecutionError::IntermediateResultWithState(
@@ -1423,7 +1423,7 @@ pub gen fn inner_execution_loop(
                                             )
                                         } else {
                                             match collected_result {
-                                                Some(CollectedExecutionResult::Value(box val)) => val.into(),
+                                                Some(CollectedExecutionResult::Value(val)) => (*val).into(),
                                                 None => {
                                                     // if no last result, it might have been moved to the active value, try to get back
                                                     let active_value = interrupt_with_maybe_value!(interrupt_provider, ExecutionInterrupt::TakeActiveValue);
@@ -1629,9 +1629,9 @@ pub gen fn inner_execution_loop(
                                             match collected_result {
                                                 Some(
                                                     CollectedExecutionResult::Value(
-                                                        box val,
+                                                        val,
                                                     ),
-                                                ) => val.into(),
+                                                ) => (*val).into(),
                                                 None => {
                                                     CollectedExecutionResult::value(
                                                         None,

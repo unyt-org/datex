@@ -171,7 +171,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             // unit tagged value (e.g. #Example)
             TypeDefinition::TaggedType(TaggedTypeDefinition {
                 ty:
-                    Some(box Type::Definition(TypeDefinitionWithMetadata {
+                    Some(Type::Definition(TypeDefinitionWithMetadata {
                         definition:
                             TypeDefinition::CoreType(CoreLibTypeId::Base(
                                 CoreLibBaseTypeId::Unit,

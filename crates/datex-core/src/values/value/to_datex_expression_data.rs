@@ -48,7 +48,7 @@ fn type_cast_expression(
         TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag,
             ty:
-                Some(box Type::Definition(TypeDefinitionWithMetadata {
+                Some(Type::Definition(TypeDefinitionWithMetadata {
                     definition:
                         TypeDefinition::CoreType(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Unit,
@@ -60,7 +60,7 @@ fn type_cast_expression(
             expression: None,
         }),
         // Entity {...}
-        TypeDefinition::Box(box Type::Entity(entity_container)) => {
+        TypeDefinition::Box(Type::Entity(entity_container)) => {
             DatexExpressionData::EntityValue(EntityValueExpression {
                 entity_name: entity_container.entity_definition().name.clone(),
                 entity_address: Some(entity_container.pointer_address()),

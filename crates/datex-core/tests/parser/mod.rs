@@ -214,7 +214,7 @@ fn structural_type_declaration() {
     let expr = result.unwrap();
     assert_matches!(expr,
         DatexExpression {
-            data: box DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
+            data: DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
         }
         if name == "A"
     );
@@ -227,7 +227,7 @@ fn nominal_type_declaration() {
     let expr = result.unwrap();
     assert_matches!(expr,
         DatexExpression {
-            data: box DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
+            data: DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
         }
         if name == "B"
     );
@@ -237,7 +237,7 @@ fn nominal_type_declaration() {
     let expr = result.unwrap();
     assert_matches!(expr,
         DatexExpression {
-            data: box DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
+            data: DatexExpressionData::TypeDeclaration(TypeDeclarationExpression { name, .. }), ..
         }
         if name == "User"
     );
@@ -3157,12 +3157,12 @@ fn negation() {
             expression:
                 DatexExpression {
                     data:
-                        box DatexExpressionData::UnaryOperation(UnaryOperation {
+                        DatexExpressionData::UnaryOperation(UnaryOperation {
                             operator:
                                 UnaryOperator::Logical(LogicalUnaryOperator::Not),
                             expression:
                                 DatexExpression {
-                                    data: box DatexExpressionData::List(_),
+                                    data: DatexExpressionData::List(_),
                                     ..
                                 },
                         }),

@@ -1,6 +1,6 @@
 #![feature(assert_matches)]
 #![feature(thread_local)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(gen_blocks)]
 #![allow(static_mut_refs)]
 #![allow(clippy::std_instead_of_core)]

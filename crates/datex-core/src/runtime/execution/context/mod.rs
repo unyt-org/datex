@@ -259,8 +259,8 @@ impl ExecutionContext {
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         match execution_result {
             Err(ExecutionError::IntermediateResultWithState(
-                box intermediate_result,
-                box Some(state),
+                intermediate_result,
+                Some(state),
             )) => {
                 match self {
                     ExecutionContext::Local(LocalExecutionContext {
@@ -268,7 +268,7 @@ impl ExecutionContext {
                         ..
                     }) => {
                         loop_state.replace(state);
-                        Ok(intermediate_result)
+                        Ok(*intermediate_result)
                     }
                     _ => unreachable!(), // note: this must be ensured by the caller
                 }

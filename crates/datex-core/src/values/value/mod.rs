@@ -183,7 +183,7 @@ impl Value {
     }
     pub fn unbox(self) -> Result<ValueContainer, Value> {
         match self.inner {
-            CoreValue::Box(box boxed) => Ok(boxed),
+            CoreValue::Box(boxed) => Ok(*boxed),
             _ => Err(self),
         }
     }

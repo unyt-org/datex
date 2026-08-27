@@ -306,26 +306,26 @@ pub trait UpdateHandlerImpl: UpdateCallbackDataAccess {
         };
 
         let ret = match operation {
-            UpdateOperation::SetEntry(box data) => {
-                into_update_result(self.try_set_entry(data))
+            UpdateOperation::SetEntry(data) => {
+                into_update_result(self.try_set_entry(*data))
             }
-            UpdateOperation::DeleteEntry(box data) => {
-                into_update_result(self.try_delete_entry(data))
+            UpdateOperation::DeleteEntry(data) => {
+                into_update_result(self.try_delete_entry(*data))
             }
-            UpdateOperation::AppendEntry(box data) => {
-                into_update_result(self.try_append_entry(data))
+            UpdateOperation::AppendEntry(data) => {
+                into_update_result(self.try_append_entry(*data))
             }
             UpdateOperation::Clear => into_update_result(self.try_clear()),
-            UpdateOperation::ListSplice(box data) => {
-                into_update_result(self.try_list_splice(data))
+            UpdateOperation::ListSplice(data) => {
+                into_update_result(self.try_list_splice(*data))
             }
-            UpdateOperation::Increment(box data) => {
-                into_update_result(self.try_increment(data))
+            UpdateOperation::Increment(data) => {
+                into_update_result(self.try_increment(*data))
             }
-            UpdateOperation::Decrement(box data) => {
-                into_update_result(self.try_decrement(data))
+            UpdateOperation::Decrement(data) => {
+                into_update_result(self.try_decrement(*data))
             }
-            UpdateOperation::Replace(box _data) => {
+            UpdateOperation::Replace(_data) => {
                 Err(UpdateError::InvalidUpdate)
             }
         }?;

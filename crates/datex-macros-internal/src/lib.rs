@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 use crate::datex_proxy::generate_item_glue_code;
 use proc_macro::TokenStream;

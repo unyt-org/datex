@@ -95,7 +95,7 @@ impl TypeDefinition {
     /// Returns true if the type definition is a structural type (e.g. a collection, literal, or shared type).
     pub fn is_structural(&self) -> bool {
         !matches!(self, TypeDefinition::CoreType(_)
-            | TypeDefinition::Box(box Type::Entity(_))
+            | TypeDefinition::Box(Type::Entity(_))
             | TypeDefinition::ImplType(_))
     }
 
