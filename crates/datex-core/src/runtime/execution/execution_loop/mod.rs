@@ -1766,7 +1766,7 @@ fn create_new_reference_from_value(
     ref_mutability: ReferenceMutability,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
     let memory = &mut runtime.shared_references_cache_refcell().borrow_mut();
-
+    
     if let Some(reference) = memory.get_reference(pointer_address) {
         return Ok(reference.clone());
     }
@@ -1786,7 +1786,7 @@ fn create_new_reference_from_value(
             )?;
 
             // Note: safe because we checked if the address already exists in memory before
-            let reference = unsafe {
+            let mut reference = unsafe {
                 ReferencedSharedContainer::try_new_remote_from_base_container(
                     base,
                     remote_address.clone(),

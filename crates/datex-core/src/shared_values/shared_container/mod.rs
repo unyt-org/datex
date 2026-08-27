@@ -439,6 +439,26 @@ impl SharedContainer {
     pub fn notify_borrow_dropped(&self) {
         // TODO: this could be used in the future to trigger queued updates only after a borrow was dropped
     }
+
+    /// Marks the shared container as uninitialized.
+    pub(crate) fn mark_uninitialized(&mut self) {
+        match self {
+            SharedContainer::Owned(owned) => owned.mark_uninitialized(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.mark_uninitialized()
+            }
+        }
+    }
+
+    /// Unmarks the shared container as uninitialized.
+    pub(crate) fn unset_uninitialized(&mut self) {
+        match self {
+            SharedContainer::Owned(owned) => owned.unset_uninitialized(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.unset_uninitialized()
+            }
+        }
+    }
 }
 
 /// Custom clone implementation for [SharedContainer].

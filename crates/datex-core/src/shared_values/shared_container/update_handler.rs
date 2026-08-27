@@ -24,6 +24,9 @@ impl UpdateHandler for SharedContainer {
             .base_shared_container_mut()
             .try_handle_update(operation, path)?;
 
+        // since we have assigned a new value to the shared container, we must unset the uninitialized flag
+        self.unset_uninitialized();
+
         // call observers
         for observer in observers {
             observer(&update_clone);

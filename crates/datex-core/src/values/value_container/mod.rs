@@ -271,12 +271,12 @@ impl ValueContainer {
         }
     }
 
-    /// Returns true if the underlaying value is uninitialized (recursive).
+    /// Returns true if the underlying value is uninitialized (recursive).
     pub fn is_uninitialized(&self) -> bool {
         match self {
             ValueContainer::Local(value) => value.is_uninitialized(),
             ValueContainer::Shared(shared) => {
-                shared.value_container().is_uninitialized()
+                shared.is_uninitialized()
             }
         }
     }
