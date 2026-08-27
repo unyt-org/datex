@@ -25,11 +25,11 @@ use crate::{
         expressions::{
             BinaryOperation, CallableDeclaration, CloneExpression,
             DatexExpression, DatexExpressionData, DeriveRef, DeriveSharedRef,
-            EntityDeclarationExpression, PropertyAssignment, RemoteExecution,
-            RequestSharedRef, Statements, TypeDeclarationExpression, Unbox,
-            UnboxAssignment, ValueAccessType, VariableAccess,
-            VariableAssignment, VariableDeclaration, VariableKind,
-            VariantAccess,
+            EntityDeclarationExpression, PropertyAccess, PropertyAssignment,
+            RemoteExecution, RequestSharedRef, Statements,
+            TypeDeclarationExpression, Unbox, UnboxAssignment, ValueAccessType,
+            VariableAccess, VariableAssignment, VariableDeclaration,
+            VariableKind, VariantAccess,
         },
         resolved_variable::ResolvedVariable,
         spanned::Spanned,
@@ -235,7 +235,7 @@ impl<'a> Precompiler<'a> {
         if options.detailed_errors {
             let type_res = infer_expression_type_detailed_errors(
                 &mut rich_ast,
-                &self.runtime.shared_references_cache().borrow(),
+                &self.runtime.shared_references_cache_refcell().borrow(),
             );
 
             // append type errors to collected_errors if any
@@ -736,20 +736,28 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         create_ref.walk_children(self)?;
 
-        match create_ref.expression.data_mut() {
-            // for &(x.y), access to x should be a borrow access
-            DatexExpressionData::PropertyAccess(property_access) => {
-                if let DatexExpressionData::VariableAccess(variable_access) =
-                    property_access.base.data_mut()
-                {
-                    variable_access.access_type = ValueAccessType::Borrow;
-                }
-            }
-            // for &x, access to x should be a borrow access
-            DatexExpressionData::VariableAccess(variable_access) => {
-                variable_access.access_type = ValueAccessType::Borrow;
-            }
-            _ => {}
+        // for &x, access to x should be a borrow access
+        if let DatexExpressionData::VariableAccess(variable_access) =
+            create_ref.expression.data_mut()
+        {
+            variable_access.access_type = ValueAccessType::Borrow;
+        }
+
+        Ok(VisitAction::AbortRecursion)
+    }
+
+    fn visit_property_access(
+        &mut self,
+        property_access: &mut PropertyAccess,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        // if lhs is variable, access it as Borrow
+        property_access.walk_children(self)?;
+
+        if let DatexExpressionData::VariableAccess(variable_access) =
+            property_access.base.data_mut()
+        {
+            variable_access.access_type = ValueAccessType::Borrow;
         }
 
         Ok(VisitAction::AbortRecursion)
@@ -1070,18 +1078,14 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         call: &mut InterfaceMethodCall,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
-        self.visit_datex_expression(&mut call.target)?;
+        call.walk_children(self)?;
 
-        if let DatexExpressionData::VariableAccess(VariableAccess {
-            access_type,
-            ..
-        }) = call.target.data_mut()
+        if let DatexExpressionData::VariableAccess(variable_access) =
+            call.target.data_mut()
         {
-            *access_type = ValueAccessType::Borrow
+            variable_access.access_type = ValueAccessType::Borrow;
         };
-        for arg in &mut call.arguments {
-            self.visit_datex_expression(arg)?;
-        }
+
         Ok(VisitAction::AbortRecursion)
     }
 
@@ -1198,11 +1202,11 @@ mod tests {
             expressions::{
                 BinaryOperation, CallableDeclaration, CallableSignature,
                 CreateShared, DatexExpression, DatexExpressionData, DeriveRef,
-                DeriveSharedRef, EntityDeclarationExpression, Map,
-                PropertyAccess, PropertyAssignment, RemoteExecution,
-                Statements, TypeDeclarationExpression, Unbox, ValueAccessType,
-                VariableAccess, VariableDeclaration, VariableKind,
-                VariantAccess,
+                DeriveSharedRef, EntityDeclarationExpression,
+                InterfaceMethodCall, Map, PropertyAccess, PropertyAssignment,
+                RemoteExecution, Statements, TypeDeclarationExpression, Unbox,
+                ValueAccessType, VariableAccess, VariableDeclaration,
+                VariableKind, VariantAccess,
             },
             resolved_variable::ResolvedVariable,
             spanned::Spanned,
@@ -1391,16 +1395,14 @@ mod tests {
         assert_matches!(
             result,
             Ok(RichAst {
-                ast:
-                    DatexExpression {
-                        data:
-                            box DatexExpressionData::ResolveCoreLibId(
-                                CoreLibId::Type(CoreLibTypeId::Base(
-                                    CoreLibBaseTypeId::Boolean,
-                                )),
-                            ),
-                        ..
-                    },
+                ast: DatexExpression {
+                    data: DatexExpressionData::ResolveCoreLibId(
+                        CoreLibId::Type(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Boolean,
+                        )),
+                    ),
+                    ..
+                },
                 ..
             })
         );
@@ -1408,16 +1410,14 @@ mod tests {
         assert_matches!(
             result,
             Ok(RichAst {
-                ast:
-                    DatexExpression {
-                        data:
-                            box DatexExpressionData::ResolveCoreLibId(
-                                CoreLibId::Type(CoreLibTypeId::Base(
-                                    CoreLibBaseTypeId::Integer,
-                                )),
-                            ),
-                        ..
-                    },
+                ast: DatexExpression {
+                    data: DatexExpressionData::ResolveCoreLibId(
+                        CoreLibId::Type(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Integer,
+                        )),
+                    ),
+                    ..
+                },
                 ..
             })
         );
@@ -2594,6 +2594,33 @@ mod tests {
                 })
                 .with_default_span(),
             ]))
+        );
+    }
+
+    #[test]
+    fn interface_method_call() {
+        let result = parse_and_precompile("var x = 0; x->test()").unwrap();
+
+        let statements =
+            if let DatexExpressionData::Statements(stmts) = result.ast.data() {
+                stmts
+            } else {
+                core::panic!("Expected statements");
+            };
+
+        assert_eq!(
+            *statements.statements.get(1).unwrap(),
+            DatexExpressionData::InterfaceMethodCall(InterfaceMethodCall {
+                target: (DatexExpressionData::VariableAccess(VariableAccess {
+                    id: 0,
+                    name: "x".to_string(),
+                    access_type: ValueAccessType::Borrow,
+                })
+                .with_default_span()),
+                method_name: "test".to_string(),
+                arguments: vec![],
+            })
+            .with_default_span()
         );
     }
 

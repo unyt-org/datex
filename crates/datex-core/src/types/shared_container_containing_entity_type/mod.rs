@@ -1,3 +1,7 @@
+#[cfg(feature = "decompiler")]
+mod to_type_expression_data;
+mod value_access;
+
 use crate::{
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -9,6 +13,8 @@ use crate::{
         entities::entity_type_definition::EntityTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+        r#type::Type,
+        type_definition::TypeDefinition,
     },
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
@@ -126,7 +132,12 @@ impl TypeSuperset<SharedContainerContainingEntityType>
 }
 
 impl TypeSatisfiesValueContainer for SharedContainerContainingEntityType {
-    fn satisfies_value_container(&self, _value: &ValueContainer) -> bool {
-        todo!()
+    fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
+        match value.actual_type().deref() {
+            TypeDefinition::Box(Type::Entity(entity)) => {
+                self.is_superset_of(entity)
+            }
+            _ => false,
+        }
     }
 }

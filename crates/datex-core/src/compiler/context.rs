@@ -1,23 +1,27 @@
 use crate::{
     ast::type_expressions::TypeExpression,
+    compiler::scope::CompilationScope,
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{
             CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
-        to_instructions::ToInstructions,
+        shared_value_tracking::SharedValueTracking,
+        to_instructions::{SharedValueTrackingProvider, ToInstructions},
         type_compiler::append_type_instruction,
         value_compiler::append_instruction_code,
     },
     global::stack_index::StackIndex,
-    instruction::instruction_codes::InstructionCode,
+    instruction::{
+        instruction_codes::InstructionCode, type_instruction::TypeInstruction,
+    },
     prelude::*,
     runtime::execution::context::ExecutionMode,
     utils::buffers::append_u32,
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Cursor, meta::WriteEndian};
-
+use core::cell::RefCell;
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext<'a> {
     pub core_context: CoreCompilationContext<'a>,
@@ -26,6 +30,7 @@ pub struct CompilationContext<'a> {
     /// this flag is set to true if any non-static value is encountered
     pub has_non_static_value: bool,
     pub execution_mode: ExecutionMode,
+    pub scope: CompilationScope,
 }
 
 impl<'a> CompilationContext<'a> {
@@ -43,6 +48,7 @@ impl<'a> CompilationContext<'a> {
             inserted_values,
             has_non_static_value: false,
             execution_mode,
+            scope: CompilationScope::new(ExecutionMode::default()),
         }
     }
 
@@ -89,8 +95,8 @@ impl<'a> CompilationContext<'a> {
         type_expression: &TypeExpression,
     ) {
         let instructions = type_expression
-            .to_instructions(Some(&mut self.core_context.shared_value_tracking))
-            .collect::<Vec<_>>();
+            .to_instructions(self)
+            .collect::<Vec<TypeInstruction>>();
         for instruction in instructions {
             append_type_instruction(self.cursor(), instruction);
         }
@@ -99,5 +105,13 @@ impl<'a> CompilationContext<'a> {
     #[deprecated(note = "use write() instead")]
     pub fn append_instruction_code(&mut self, code: InstructionCode) {
         append_instruction_code(self.cursor(), code);
+    }
+}
+
+impl<'ctx> SharedValueTrackingProvider<'ctx> for CompilationContext<'ctx> {
+    fn shared_value_tracking<'a>(
+        &'a self,
+    ) -> Option<&'a RefCell<SharedValueTracking<'ctx>>> {
+        Some(&self.core_context.shared_value_tracking)
     }
 }

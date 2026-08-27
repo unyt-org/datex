@@ -6,6 +6,7 @@ use crate::{
 };
 pub mod equality;
 pub mod serde_dif;
+mod to_instructions;
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
     value_updates::update_handler::{
@@ -21,8 +22,11 @@ use core::{
 
 mod child_iterator;
 pub mod local_child_path_resolver;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 pub mod update_handler;
 pub mod updates;
+mod value_access;
 
 #[derive(Debug, Default)]
 pub struct List {

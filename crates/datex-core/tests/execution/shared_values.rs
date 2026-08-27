@@ -32,6 +32,7 @@ fn injected_value_reference() {
 
 #[test]
 fn injected_value_owned() {
+    flexi_logger::init();
     let provider = &mut SelfOwnedPointerAddressProvider::default();
     let input = ValueContainer::Shared(
         SharedContainer::new_owned_with_inferred_allowed_type(

@@ -24,8 +24,10 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
+    values::core_values::native::DatexNative,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
+
 pub mod callable;
 pub mod collection;
 pub mod impl_type;
@@ -92,9 +94,12 @@ pub enum TypeDefinition {
 impl TypeDefinition {
     /// Returns true if the type definition is a structural type (e.g. a collection, literal, or shared type).
     pub fn is_structural(&self) -> bool {
-        !matches!(self, TypeDefinition::CoreType(_)
-            | TypeDefinition::Box(box Type::Entity(_))
-            | TypeDefinition::ImplType(_))
+        !matches!(
+            self,
+            TypeDefinition::CoreType(_)
+                | TypeDefinition::Box(Type::Entity(_))
+                | TypeDefinition::ImplType(_)
+        )
     }
 
     pub fn is_tagged(&self) -> bool {
@@ -268,6 +273,8 @@ impl Display for TypeDefinition {
 pub mod equality;
 pub mod intersection;
 mod serde_dif;
+#[cfg(feature = "decompiler")]
+mod to_type_expression_data;
 pub mod union;
 
 impl TypeDefinition {
@@ -358,6 +365,7 @@ impl TypeDefinition {
             TypeDefinition::Callable(_) => {
                 Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Callable))
             }
+            TypeDefinition::CoreType(id) => Some(*id),
             _ => None,
         }
     }

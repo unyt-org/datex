@@ -109,11 +109,16 @@ use core::{cell::RefCell, ops::DerefMut};
 mod collected_execution_result;
 use crate::{
     instruction::instruction_data::{CallMethodData, CallableSignatureData},
+    runtime::execution::macros::interrupt_with_borrowed_args_and_maybe_result,
+    traits::apply::{ApplyArgument, into_apply_arguments_with_stack_indices},
     types::type_definition::callable::CallableTypeDefinition,
     value_updates::update_data::{
         DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
     },
-    values::core_values::callable::DatexBytecodeCallable,
+    values::{
+        borrowed_value_container::BorrowedValueContainer,
+        core_values::callable::DatexBytecodeCallable,
+    },
 };
 use collected_execution_result::CollectedExecutionResult;
 
@@ -147,7 +152,7 @@ pub fn execution_loop(
                 Err(err) => {
                     match err {
                         ExecutionError::DXBParserError(
-                            box DXBParserError::ExpectingMoreInstructions(_),
+                            DXBParserError::ExpectingMoreInstructions(_),
                         ) => {
                             yield Err(
                                 ExecutionError::IntermediateResultWithState(
@@ -310,6 +315,8 @@ pub gen fn inner_execution_loop(
 
                             // null
                             RegularInstruction::Null => Some(ValueContainer::from(Value::null()).into()),
+
+                            RegularInstruction::Uninitialized => Some(ValueContainer::from(Value::unitialized()).into()),
 
                             // text
                             RegularInstruction::ShortText(ShortTextData(text)) => {
@@ -839,7 +846,7 @@ pub gen fn inner_execution_loop(
                                             regular_instruction,
                                         ),
                                         value_container, // TODO #646: is unary operation supposed to take ownership?
-                                        state.runtime.shared_references_cache(),
+                                        state.runtime.shared_references_cache_refcell(),
                                     )?;
                                     RuntimeValue::ValueContainer(
                                         res
@@ -1075,8 +1082,11 @@ pub gen fn inner_execution_loop(
                                         let collapsed_value = target.collapsed_value();
                                         collapsed_value.borrow().try_get_property(
                                             &property_name,
-                                        ).map(|v| v.into())
-                                            .map_err(ExecutionError::access_error)? // FIXME: no clone?
+                                            state.runtime.shared_references_cache_mut().deref_mut(),
+                                        )
+                                            .map(BorrowedValueContainer::try_clone_to_value_container)  // FIXME: no clone?
+                                            .map_err(ExecutionError::access_error)?
+                                            .map_err(|_| ExecutionError::UnclonableValue)?
                                     };
 
                                     res.into()
@@ -1091,10 +1101,13 @@ pub gen fn inner_execution_loop(
 
                                     let value_container = target.as_value_container(&state.stack)?;
                                     let collapsed_value = value_container.collapsed_value();
-                                    let res = collapsed_value.borrow().try_get_property(
-                                        property_index,
-                                    ).map(ValueContainer::from)
-                                        .map_err(ExecutionError::access_error)?; // FIXME: no clone?
+                                    let res = collapsed_value.borrow()
+                                        .try_get_property(
+                                            property_index, state.runtime.shared_references_cache_mut().deref_mut()
+                                        )
+                                        .map(BorrowedValueContainer::try_clone_to_value_container) // FIXME: no clone?
+                                        .map_err(ExecutionError::access_error)?
+                                        .map_err(|_| ExecutionError::UnclonableValue)?;
                                     res.into()
                                 }
 
@@ -1106,8 +1119,11 @@ pub gen fn inner_execution_loop(
 
                                     let value_container = target.as_value_container(&state.stack)?;
                                     let collapsed_value = value_container.collapsed_value();
-                                    let res = collapsed_value.borrow().try_get_property(&key).map(ValueContainer::from)
-                                        .map_err(ExecutionError::access_error)?; // FIXME: no clone?
+                                    let res = collapsed_value.borrow()
+                                        .try_get_property(&key, state.runtime.shared_references_cache_mut().deref_mut())
+                                        .map(BorrowedValueContainer::try_clone_to_value_container)  // FIXME: no clone?
+                                        .map_err(ExecutionError::access_error)?
+                                        .map_err(|_| ExecutionError::UnclonableValue)?;
 
                                     res.into()
                                 }
@@ -1291,27 +1307,43 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::Apply(ApplyData { .. }) => {
-                                    let mut args = collected_results.try_collect_value_containers(&mut state)?;
+                                    let mut args = collected_results.try_collect_runtime_values()?;
                                     // last argument is the callee
                                     let callee = args.remove(args.len() - 1);
 
                                     // special handling for panic function - abort execution
-                                    if let ValueContainer::Local(Value { inner: CoreValue::Callable(Callable { body: CallableBody::CoreStub(CoreStub::Panic), .. }), .. }) = callee
+                                    if let RuntimeValue::ValueContainer(ValueContainer::Local(Value { inner: CoreValue::Callable(Callable { body: CallableBody::CoreStub(CoreStub::Panic), .. }), .. })) = &callee
                                     {
                                         // assert for now that single string arg
-                                        let error: String = args.remove(0).try_into_value().unwrap();
+                                        let error = args
+                                            .remove(0)
+                                            .into_value_container(&mut state)?
+                                            .try_into_value::<String>()
+                                            .ok_or_else(|| ExecutionError::InvalidProgram(Box::new(InvalidProgramError::InvalidType)))?;
                                         return yield Err(ExecutionError::Unspecified(error));
                                     }
 
-                                    interrupt_with_maybe_value!(
+                                    let (callee, _callee_stack_index) = callee.into_value_container_with_previous_stack_index(&mut state)?;
+                                    let (args, borrowed_args_stack_indices) = state.stack.take_runtime_values_with_stack_indices(args)?;
+
+                                    let (result, borrowed_args) = interrupt_with_borrowed_args_and_maybe_result!(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::Apply(
-                                                callee, args
+                                                callee,
+                                                into_apply_arguments_with_stack_indices(
+                                                    args,
+                                                    &borrowed_args_stack_indices,
+                                                )
                                             )
                                         )
-                                    )
-                                        .map(|val| {
+                                    );
+
+                                    // put the borrowed args back on the stack
+                                    state.stack.restore_stack_values(borrowed_args, borrowed_args_stack_indices)?;
+
+
+                                    result.map(|val| {
                                             RuntimeValue::ValueContainer(val)
                                         })
                                         .into()
@@ -1329,21 +1361,46 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::CallMethod(CallMethodData {method_name, ..}) => {
                                     let method_name = method_name.0;
 
-                                    let mut args = collected_results.try_collect_value_containers(&mut state)?;
-                                    // last argument is the callee
-                                    let callee = args.remove(args.len() - 1);
+                                    let callee = collected_results.try_pop_runtime_value()?;
+                                    let args = collected_results.try_collect_runtime_values()?;
 
-                                    interrupt_with_maybe_value!(
+                                    let (callee, callee_stack_index) = callee.into_value_container_with_previous_stack_index(&mut state)?;
+                                    let (args, borrowed_args_stack_indices) = state.stack.take_runtime_values_with_stack_indices(args)?;
+
+                                    let (val, borrowed_args) = interrupt_with_borrowed_args_and_maybe_result!(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::CallMethod(
-                                                callee, method_name, args
+                                                ApplyArgument {
+                                                    value: callee,
+                                                    passed_as_ref: callee_stack_index.is_some(),
+                                                },
+                                                method_name,
+                                                into_apply_arguments_with_stack_indices(
+                                                    args,
+                                                    &borrowed_args_stack_indices,
+                                                )
                                             )
                                         )
-                                    )
-                                        .map(|val| {
-                                            RuntimeValue::ValueContainer(val)
-                                        })
+                                    );
+
+                                    let mut borrowed_args_iter = borrowed_args.into_iter();
+
+                                    // put the callee back on the stack if it was borrowed
+                                    if let Some(callee_stack_index) = callee_stack_index {
+                                        let borrowed_callee = borrowed_args_iter.next().unwrap();
+                                        state.stack.set_stack_value(callee_stack_index, borrowed_callee)?;
+                                    }
+
+                                    let borrowed_args = borrowed_args_iter.collect::<Vec<_>>();
+
+                                    // put the borrowed args back on the stack
+                                    state.stack.restore_stack_values(borrowed_args, borrowed_args_stack_indices)?;
+
+
+                                    val.map(|val| {
+                                        RuntimeValue::ValueContainer(val)
+                                    })
                                         .into()
                                 }
 
@@ -1366,7 +1423,7 @@ pub gen fn inner_execution_loop(
                                             )
                                         } else {
                                             match collected_result {
-                                                Some(CollectedExecutionResult::Value(box val)) => val.into(),
+                                                Some(CollectedExecutionResult::Value(val)) => (*val).into(),
                                                 None => {
                                                     // if no last result, it might have been moved to the active value, try to get back
                                                     let active_value = interrupt_with_maybe_value!(interrupt_provider, ExecutionInterrupt::TakeActiveValue);
@@ -1572,9 +1629,9 @@ pub gen fn inner_execution_loop(
                                             match collected_result {
                                                 Some(
                                                     CollectedExecutionResult::Value(
-                                                        box val,
+                                                        val,
                                                     ),
-                                                ) => val.into(),
+                                                ) => (*val).into(),
                                                 None => {
                                                     CollectedExecutionResult::value(
                                                         None,
@@ -1708,7 +1765,7 @@ fn create_new_reference_from_value(
     container_mutability: SharedContainerMutability,
     ref_mutability: ReferenceMutability,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
-    let memory = &mut runtime.shared_references_cache().borrow_mut();
+    let memory = &mut runtime.shared_references_cache_refcell().borrow_mut();
 
     if let Some(reference) = memory.get_reference(pointer_address) {
         return Ok(reference.clone());
@@ -1767,7 +1824,7 @@ fn resolve_cache_value(
     else {
         if let Some(reference) = state
             .runtime
-            .shared_references_cache()
+            .shared_references_cache_refcell()
             .borrow()
             .get_reference(pointer_address)
         {

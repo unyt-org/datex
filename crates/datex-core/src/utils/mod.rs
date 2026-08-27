@@ -5,6 +5,8 @@ pub mod async_iterators;
 pub mod buffers;
 pub mod color;
 pub mod freemap;
+pub mod goat;
+pub mod goat_mut;
 pub mod maybe_action;
 pub mod maybe_async;
 pub mod serde_serialize_seed;

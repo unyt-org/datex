@@ -7,6 +7,7 @@ use quote::{ToTokens, quote};
 use syn::ItemImpl;
 
 pub fn generate_impl_glue_code(
+    _args: Option<TokenStream>,
     input: TokenStream,
     item: &ItemImpl,
 ) -> TokenStream {

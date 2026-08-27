@@ -17,7 +17,7 @@ use crate::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         RemotePointerAddress, SelfOwnedPointerAddress, SharedContainer,
     },
-    traits::apply::Apply,
+    traits::apply::{Apply, ApplyArgument},
     types::{
         entities::entity_impls::EntityImplMethod, r#type::Type,
         type_definition::TypeDefinition,
@@ -118,9 +118,10 @@ pub fn execute_dxb_sync(
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = callee.try_apply_sync(&runtime, args)?;
-                interrupt_provider
-                    .provide_result(InterruptResult::ResolvedValue(res));
+                let res = callee.try_apply_sync_checked(&runtime, args)?;
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValueAndBorrowedArgs(res),
+                );
             }
             ExternalExecutionInterrupt::CallMethod(
                 callee,
@@ -128,8 +129,8 @@ pub fn execute_dxb_sync(
                 args,
             ) => {
                 let entity_type =
-                    if let TypeDefinition::Box(box Type::Entity(entity_type)) =
-                        callee.actual_type().as_ref()
+                    if let TypeDefinition::Box(Type::Entity(entity_type)) =
+                        callee.value.actual_type().as_ref()
                     {
                         Some(entity_type.clone())
                     } else {
@@ -142,9 +143,11 @@ pub fn execute_dxb_sync(
                         .try_get_method(&method_name)
                 {
                     interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValue(try_call_method_sync(
-                            callee, method, args, &runtime,
-                        )?),
+                        InterruptResult::ResolvedValueAndBorrowedArgs(
+                            try_call_method_sync(
+                                callee, method, args, &runtime,
+                            )?,
+                        ),
                     )
                 } else {
                     return Err(ExecutionError::MethodNotFound(method_name));
@@ -276,9 +279,11 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = callee.try_apply_async(&runtime, args).await?;
-                interrupt_provider
-                    .provide_result(InterruptResult::ResolvedValue(res));
+                let res =
+                    callee.try_apply_async_checked(&runtime, args).await?;
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValueAndBorrowedArgs(res),
+                );
             }
             ExternalExecutionInterrupt::CallMethod(
                 callee,
@@ -286,8 +291,8 @@ pub async fn execute_dxb(
                 args,
             ) => {
                 let entity_type =
-                    if let TypeDefinition::Box(box Type::Entity(entity_type)) =
-                        callee.actual_type().as_ref()
+                    if let TypeDefinition::Box(Type::Entity(entity_type)) =
+                        callee.value.actual_type().as_ref()
                     {
                         Some(entity_type.clone())
                     } else {
@@ -300,7 +305,7 @@ pub async fn execute_dxb(
                         .try_get_method(&method_name)
                 {
                     interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValue(
+                        InterruptResult::ResolvedValueAndBorrowedArgs(
                             try_call_method_async(
                                 callee, method, args, &runtime,
                             )
@@ -318,21 +323,21 @@ pub async fn execute_dxb(
 }
 
 fn try_call_method_sync(
-    callee: ValueContainer,
+    callee: ApplyArgument,
     method: &EntityImplMethod,
-    mut args: Vec<ValueContainer>,
+    mut args: Vec<ApplyArgument>,
     runtime: &Runtime,
-) -> Result<Option<ValueContainer>, ExecutionError> {
+) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    let owner_endpoint = callee.value.owner();
+
     // prepend callee to args
-    args.insert(0, callee.clone());
+    args.insert(0, callee);
 
     // only local calls supported for sync execution
     if !method.call_on_owner
-        || callee
-            .owner()
-            .is_local_or_equals_endpoint(runtime.endpoint())
+        || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
     {
-        let res = method.callable.try_apply_sync(runtime, args)?;
+        let res = method.callable.try_apply_sync_checked(runtime, args)?;
         Ok(res)
     } else {
         Err(ExecutionError::RequiresAsyncExecution)
@@ -340,20 +345,24 @@ fn try_call_method_sync(
 }
 
 async fn try_call_method_async(
-    callee: ValueContainer,
+    callee: ApplyArgument,
     method: &EntityImplMethod,
-    mut args: Vec<ValueContainer>,
+    mut args: Vec<ApplyArgument>,
     runtime: &Runtime,
-) -> Result<Option<ValueContainer>, ExecutionError> {
-    // prepend callee to args
-    args.insert(0, callee.clone());
+) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    let owner_endpoint = callee.value.owner();
 
-    let owner_endpoint = callee.owner();
+    // prepend callee to args
+    args.insert(0, callee);
+
     // call locally
     if !method.call_on_owner
         || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
     {
-        let res = method.callable.try_apply_async(runtime, args).await?;
+        let res = method
+            .callable
+            .try_apply_async_checked(runtime, args)
+            .await?;
         Ok(res)
     }
     // call on owner endpoint
@@ -365,13 +374,18 @@ async fn try_call_method_async(
             )
             .into(),
         ];
-        instructions
-            .extend(args.into_iter().map(InstructionInput::ValueContainer));
+        instructions.extend(
+            args.into_iter()
+                .map(|v| InstructionInput::ValueContainer(v.value)),
+        );
 
         let res = runtime
             .execute_instructions_remote(vec![owner_endpoint], instructions)
             .await?;
-        Ok(res)
+
+        // FIXME: restore borrowed stack values across remote execution.
+        // For now, local borrows are not supported cross endpoint
+        Ok((res, vec![]))
     }
 }
 
@@ -415,7 +429,7 @@ fn get_remote_shared_container_reference(
     _mutability: ReferenceMutability,
 ) -> Result<Option<ReferencedSharedContainer>, ExecutionError> {
     let address_provider = runtime.pointer_address_provider_mut();
-    let memory = runtime.shared_references_cache().borrow();
+    let memory = runtime.shared_references_cache_refcell().borrow();
     let resolved_address = address_provider.normalize_address(address);
     // convert slot to InternalSlot enum
     // TODO #770: resolve from remote, handle mutability
@@ -436,7 +450,7 @@ fn get_local_pointer_value(
 ) -> Option<ReferencedSharedContainer> {
     // convert slot to InternalSlot enum
     runtime
-        .shared_references_cache()
+        .shared_references_cache_refcell()
         .borrow()
         .get_reference(&PointerAddress::SelfOwned(address))
 }

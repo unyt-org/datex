@@ -80,7 +80,14 @@ impl TypeSatisfiesValueContainer for TypeDefinition {
             TypeDefinition::Union(definitions) => definitions
                 .iter()
                 .any(|definition| definition.satisfies_value_container(value)),
-            _ => unimplemented!(),
+            TypeDefinition::CoreType(definition) => {
+                definition.satisfies_value_container(value)
+            }
+            _ => {
+                unimplemented!(
+                    "satisfies_value_container not implemented for {self:?} >= {value:?}"
+                )
+            }
         }
     }
 }

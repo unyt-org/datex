@@ -1,4 +1,6 @@
 mod impls;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 
 use core::assert_matches;
 use datex_core::{

@@ -162,7 +162,7 @@ pub fn runtime_value_to_json_baseline_json_syntax(value: &json_syntax::Value) {
 pub fn runtime_value_to_json_datex(value: &ValueContainer) {
     let pointer_lookup = PointerAvailabilityLookup::default();
     let input = CompileInput::new(&pointer_lookup, &[]);
-    let dxb = compile_value_container(value.clone(), input);
+    let dxb = compile_value_container(value, input);
     let string =
         decompile_body(&dxb.dxb, DecompileOptions::json_compat()).unwrap();
     assert!(!string.is_empty(), "Expected DATEX string to be non-empty");
@@ -171,7 +171,7 @@ pub fn runtime_value_to_json_datex(value: &ValueContainer) {
 pub fn runtime_value_to_dxb(value: &ValueContainer) {
     let pointer_lookup = PointerAvailabilityLookup::default();
     let input = CompileInput::new(&pointer_lookup, &[]);
-    let dxb = compile_value_container(value.clone(), input).dxb;
+    let dxb = compile_value_container(value, input).dxb;
     assert!(!dxb.is_empty(), "Expected DXB to be non-empty");
 }
 

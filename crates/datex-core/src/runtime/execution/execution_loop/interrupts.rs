@@ -9,6 +9,7 @@ use crate::{
     shared_values::{
         ReferenceMutability, RemotePointerAddress, SelfOwnedPointerAddress,
     },
+    traits::apply::ApplyArgument,
     values::core_values::endpoint::Endpoint,
 };
 
@@ -40,14 +41,18 @@ pub enum ExternalExecutionInterrupt {
         endpoint: Endpoint,
         property_name: String,
     },
-    Apply(ValueContainer, Vec<ValueContainer>),
-    CallMethod(ValueContainer, String, Vec<ValueContainer>),
+    Apply(ValueContainer, Vec<ApplyArgument>),
+    CallMethod(ApplyArgument, String, Vec<ApplyArgument>),
 }
 
 #[derive(Debug)]
 pub enum InterruptResult {
+    /// Used to return a single resolved value or None
     ResolvedValue(Option<ValueContainer>),
+    /// Used to return multiple resolved values
     ResolvedValues(Vec<ValueContainer>),
+    /// Used in function calls: returns all borrowed arguments back, as well as an optional result value
+    ResolvedValueAndBorrowedArgs((Option<ValueContainer>, Vec<ValueContainer>)),
 }
 
 #[derive(Debug, Clone)]

@@ -6,30 +6,18 @@ use crate::{
 };
 use datex_macros_internal::{Datex, datex};
 
-#[datex(public = "yy")]
+#[datex(name = "inspector")]
 mod datex_inspector {
     use super::*;
+    use crate::datex_proxy::shared::Shared;
+
     #[derive(Datex, Debug, Clone)]
-    #[datex(public = "xxx")]
     pub struct Inspector {
-        name: String, // TODO: We must make private properties to be ignore by the type definition and only use public ones, otherwise the prop and methods would colide in DATEX
+        name: String, // TODO: distinguish between pub and private entity properties
     }
 
-    #[datex(public)]
+    #[datex]
     impl Inspector {
-        // NOTE: the create function can probably not stay here as a static method,
-        // since the Inspector type is a global shared type of the std lib not bound to a specific endpoint
-        // so it is not possible to define a static method that is called on a specific endpoint,
-        // since the definition of "Inspector" must be exactly the same on every endpoint.
-        /// Creates a new Inspector instance.
-        pub fn create(
-            // TODO
-            // #[runtime] runtime: Runtime,
-            name: String,
-        ) -> crate::datex_proxy::shared::Shared<Inspector> {
-            // TODO: add SharedRef here, caller should not own inspector
-            Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
-        }
         pub fn name_getter(&self) -> String {
             self.name.clone()
         }
@@ -40,16 +28,20 @@ mod datex_inspector {
         // }
     }
 
-    // TODO
-    // #[datex]
-    // pub fn create(name: String) -> Inspector {
-    //     Inspector { name }
-    // }
+    /// Creates a new [Inspector] instance.
+    pub fn create(name: String) -> Shared<Inspector> {
+        // TODO: add SharedRef here, caller should not own inspector
+        Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
+    }
+
+    pub async fn async_test(a: String) -> String {
+        format!("a = {}", a)
+    }
 }
 
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.
 pub fn register_inspector_namespace(runtime: &Runtime) {
-    let mut memory = runtime.shared_references_cache().borrow_mut();
+    let mut memory = runtime.shared_references_cache_refcell().borrow_mut();
     let inspector_type = ValueContainer::from(
         datex_inspector::Inspector::datex_type(&mut memory),
     );
@@ -108,7 +100,7 @@ mod tests {
     #[test]
     fn test_function() {
         let runtime = Runtime::stub();
-        let memory = runtime.shared_references_cache();
+        let memory = runtime.shared_references_cache_refcell();
         // 1 arg
         let func = |x: u8| x + 1;
         let dx_func_1 = ValueContainer::from(native_sync_callable(
@@ -120,6 +112,7 @@ mod tests {
         let res = dx_func_1
             .try_apply_sync(&runtime, vec![4u8.into()])
             .unwrap()
+            .0
             .expect("Function should return a value");
         assert_eq!(res, 5u8.into());
 
@@ -134,6 +127,7 @@ mod tests {
         let res_2 = dx_func_2
             .try_apply_sync(&runtime, vec![3u8.into(), 4u8.into()])
             .unwrap()
+            .0
             .expect("Function should return a value");
         assert_eq!(res_2, 7u8.into());
     }

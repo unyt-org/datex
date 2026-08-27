@@ -1,11 +1,14 @@
 mod common;
 pub mod datex_proxy;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 
 use crate::{
     prelude::*,
     shared_values::{
-        ExternalSharedContainer, PointerAddress, ReferenceMutability,
-        RemotePointerAddress, SharedContainerInner, SharedContainerMutability,
+        ExternalSharedContainer, OwnedSharedContainer, PointerAddress,
+        ReferenceMutability, RemotePointerAddress, SharedContainerInner,
+        SharedContainerMutability,
         base_shared_value_container::{
             BaseSharedValueContainer, observers::ObserverData,
         },
@@ -38,7 +41,7 @@ pub struct ReferencedSharedContainer {
     pub(super) reference_mutability: ReferenceMutability,
     pub(super) container_mutability: SharedContainerMutability,
     /// Field used internally to indicate that this reference should be treated as a move in the context of the compiler
-    pub(super) move_indicator: bool,
+    pub(super) move_indicator: bool, // FIXME must this be omitted on clone?
     /// Observer data (e.g. observer list) for this shared container. Can be borrowed separately from the [SharedContainerInner]
     pub(super) observer_data: Rc<RefCell<ObserverData>>,
 }
@@ -229,6 +232,30 @@ impl ReferencedSharedContainer {
                 ReferenceMutability::Mutable => "'mut ",
             },
         )
+    }
+
+    /// Tries to upgrade this [ReferencedSharedContainer] to an [OwnedSharedContainer].
+    /// If the move indicator is set, the inner value is moved into a new [OwnedSharedContainer] and returned.
+    /// If the move indicator is not set, an [Err] is returned with the original [ReferencedSharedContainer].
+    /// Panics if the move indicator is set but the address is not a [SelfOwnedPointerAddress].
+    ///
+    /// # Safety
+    /// The caller must ensure that no other [OwnedSharedContainer] for the same inner value exists
+    /// if move_indicator is set.
+    pub unsafe fn try_upgrade_to_owned(
+        self,
+    ) -> Result<OwnedSharedContainer, Self> {
+        if self.move_indicator {
+            Ok(unsafe {
+                OwnedSharedContainer::new_unchecked(
+                    self.container_mutability,
+                    self.inner.clone(),
+                    self.observer_data.clone(),
+                )
+            })
+        } else {
+            Err(self)
+        }
     }
 }
 

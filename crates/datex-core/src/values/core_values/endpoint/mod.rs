@@ -2,7 +2,7 @@
 //! An endpoint is a unique identifier for a entity in the DATEX network that can be used to send and receive messages.
 
 use crate::{prelude::*, utils::buffers::buffer_to_hex};
-
+mod to_instructions;
 use crate::crypto::CryptoImpl;
 use binrw::{BinRead, BinWrite, io::Cursor};
 use core::{
@@ -16,6 +16,10 @@ pub mod equality;
 use datex_crypto_facade::crypto::Crypto;
 use hex::decode;
 pub mod serde_dif;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+mod value_access;
+
 #[derive(
     BinWrite, BinRead, Debug, Clone, Copy, Hash, PartialEq, Eq, Default,
 )]

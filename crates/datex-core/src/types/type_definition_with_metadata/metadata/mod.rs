@@ -184,6 +184,11 @@ impl TypeMetadata {
             TypeMetadata::Local { .. } => false,
         }
     }
+
+    /// Whether this is the default metadata without any prefix
+    pub fn is_default_metadata(&self) -> bool {
+        *self == TypeMetadata::default()
+    }
 }
 
 impl TypeMetadata {

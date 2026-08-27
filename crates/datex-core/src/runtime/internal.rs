@@ -209,9 +209,22 @@ impl RuntimeInternal {
         self.synced_values.borrow_mut()
     }
 
-    pub fn shared_references_cache(&self) -> &RefCell<SharedReferencesCache> {
+    pub fn shared_references_cache_refcell(
+        &self,
+    ) -> &RefCell<SharedReferencesCache> {
         &self.shared_references_cache
     }
+
+    pub fn shared_references_cache(&self) -> Ref<'_, SharedReferencesCache> {
+        self.shared_references_cache.borrow()
+    }
+
+    pub fn shared_references_cache_mut(
+        &self,
+    ) -> RefMut<'_, SharedReferencesCache> {
+        self.shared_references_cache.borrow_mut()
+    }
+
     pub fn core_library(&self) -> &CoreLibrary {
         &self.core_library
     }

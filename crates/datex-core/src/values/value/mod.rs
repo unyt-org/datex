@@ -4,10 +4,8 @@ use crate::{
     datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    shared_values::errors::KeyNotFoundError,
-    types::{
-        r#type::Type::{self},
-        type_definition::{TypeDefinition, callable::CallableTypeDefinition},
+    types::type_definition::{
+        TypeDefinition, callable::CallableTypeDefinition,
     },
     utils::sheep::Sheep,
     values::{
@@ -20,21 +18,31 @@ use crate::{
     },
 };
 pub mod apply;
+pub mod borrowed_value;
 mod child_iterator;
 pub mod datex_proxy;
 pub mod equality;
 mod local_child_path_resolver;
 pub mod ops;
 pub mod serde_dif;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 pub mod update_handler;
+mod value_access;
 
 use crate::{
-    datex_proxy::TryToDatexValueError, shared_values::errors::AccessError,
+    datex_proxy::TryToDatexValueError,
+    shared_values::errors::AccessError,
+    traits::value_access::ValueAccess,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
-    values::core_values::endpoint::Endpoint,
+    values::{
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
+        core_values::endpoint::Endpoint,
+    },
 };
 use core::{
-    cell::Ref,
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
@@ -68,27 +76,15 @@ impl<T: Into<CoreValue>> From<T> for Value {
     }
 }
 
-#[derive(Debug)]
-pub enum ValueContainerOrCallable<'a> {
-    Callable(Ref<'a, Callable>),
-    ValueContainer(&'a ValueContainer),
-}
-
-impl<'a> From<ValueContainerOrCallable<'a>> for ValueContainer {
-    fn from(value: ValueContainerOrCallable<'a>) -> Self {
-        match value {
-            ValueContainerOrCallable::Callable(callable) => {
-                ValueContainer::from(callable.clone())
-            }
-            ValueContainerOrCallable::ValueContainer(vc) => vc.clone(),
-        }
-    }
-}
-
 impl Value {
     pub fn null() -> Self {
         CoreValue::Null.into()
     }
+
+    pub fn unitialized() -> Self {
+        CoreValue::Uninitialized.into()
+    }
+
     pub fn new(
         inner: impl Into<CoreValue>,
         custom_type: Option<TypeDefinition>,
@@ -183,7 +179,7 @@ impl Value {
     }
     pub fn unbox(self) -> Result<ValueContainer, Value> {
         match self.inner {
-            CoreValue::Box(box boxed) => Ok(boxed),
+            CoreValue::Box(boxed) => Ok(*boxed),
             _ => Err(self),
         }
     }
@@ -291,79 +287,26 @@ impl Value {
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainerOrCallable<'_>, AccessError> {
-        match self.inner {
-            CoreValue::Map(ref map) => {
-                // If the value is a map, get the property
-                Ok(ValueContainerOrCallable::ValueContainer(map.try_get(key)?))
-            }
-            CoreValue::List(ref list) => {
-                if let Some(index) = key.into().try_as_index() {
-                    Ok(ValueContainerOrCallable::ValueContainer(
-                        list.try_get(index)?,
-                    ))
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            CoreValue::Type(Type::Entity(ref container)) => {
-                if let Some(key) = key.into().try_as_text() {
-                    Ok(ValueContainerOrCallable::Callable(
-                        Ref::filter_map(
-                            container.entity_definition(),
-                            |entity_definition| {
-                                entity_definition.try_get_property(key)
-                            },
-                        )
-                        .map_err(|_| {
-                            AccessError::KeyNotFound(KeyNotFoundError::new(
-                                key.into(),
-                            ))
-                        })?,
-                    ))
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            _ => {
-                // If the value is not an map, we cannot get a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot get property".to_string(),
-                ))
-            }
-        }
+        cache: &mut SharedReferencesCache,
+    ) -> Result<BorrowedValueContainer<'_>, AccessError> {
+        <Self as ValueAccess>::try_get_property(self, key.into(), cache)
     }
 
     pub fn try_get_property_mut<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<&mut ValueContainer, AccessError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                // If the value is a map, get the property
-                Ok(map.try_get_mut(key)?)
-            }
-            CoreValue::List(ref mut list) => {
-                if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_get_mut(index)?)
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            _ => {
-                // If the value is not an map, we cannot get a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot get property".to_string(),
-                ))
-            }
-        }
+        cache: &mut SharedReferencesCache,
+    ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
+        <Self as ValueAccess>::try_get_property_mut(self, key.into(), cache)
     }
 
     /// Takes (removes) a property from the value if applicable (e.g. for map and structs)
     pub fn try_take_property<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
+        _cache: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, AccessError> {
+        // TODO
         match self.inner {
             CoreValue::Map(ref mut map) => {
                 // If the value is a map, get the property

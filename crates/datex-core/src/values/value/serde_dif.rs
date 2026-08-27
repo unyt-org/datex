@@ -1,5 +1,3 @@
-use core::fmt;
-
 use crate::{
     dif::serde_context::SerdeContext,
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
@@ -8,10 +6,15 @@ use crate::{
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
         core_value::{CoreValue, serde_dif::CoreValueVisitor},
-        core_values::{boolean::Boolean, decimal::typed_decimal::TypedDecimal},
+        core_values::{
+            boolean::Boolean, decimal::typed_decimal::TypedDecimal,
+            native::NativeCoreValue,
+        },
         value::Value,
+        value_container::ValueContainer,
     },
 };
+use core::fmt;
 use num::ToPrimitive;
 use serde::{
     Deserializer, Serialize, Serializer,
@@ -222,11 +225,13 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                     serializer,
                     false,
                 ),
-            CoreValue::Box(_inner) => {
-                todo!()
+            CoreValue::Box(inner) => {
+                self.cast::<ValueContainer>().serialize(inner, serializer)
             }
             CoreValue::Uninitialized => panic!("Uninitialized value"),
-            CoreValue::Native(_) => todo!(),
+            CoreValue::Native(native) => {
+                self.cast::<NativeCoreValue>().serialize(native, serializer)
+            }
         }
     }
 }

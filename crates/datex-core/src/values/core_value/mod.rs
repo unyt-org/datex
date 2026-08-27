@@ -42,6 +42,9 @@ mod child_iterator;
 pub mod datex_proxy;
 pub mod equality;
 pub mod ops;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+pub mod try_clone;
 
 #[derive(Default, Clone, Debug, FromCoreValue)]
 pub enum CoreValue {
@@ -230,9 +233,7 @@ impl From<&CoreValue> for CoreLibTypeId {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
             }
             CoreValue::Box(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Box),
-            CoreValue::Native(_native) => {
-                CoreLibTypeId::Base(CoreLibBaseTypeId::Any)
-            }
+            CoreValue::Native(native) => native.core_lib_type_id(),
         }
     }
 }

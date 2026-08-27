@@ -6,6 +6,9 @@ use alloc::boxed::Box;
 use core::fmt;
 mod child_iterator;
 pub mod serde_dif;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+mod value_access;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Range {

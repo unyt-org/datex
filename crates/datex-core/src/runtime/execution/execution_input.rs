@@ -148,12 +148,12 @@ impl ExecutionInput {
 
                 match item {
                     Err(ExecutionError::IntermediateResultWithState(
-                        box intermediate_result,
+                        intermediate_result,
                         _,
                     )) => {
                         yield Err(
                             ExecutionError::intermediate_result_with_state(
-                                intermediate_result,
+                                *intermediate_result,
                                 Some(loop_state),
                             ),
                         );

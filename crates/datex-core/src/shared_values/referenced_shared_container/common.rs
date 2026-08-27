@@ -69,7 +69,11 @@ impl SharedContainerCommon for ReferencedSharedContainer {
     }
 
     fn ownership(&self) -> SharedContainerOwnership {
-        SharedContainerOwnership::Referenced(self.reference_mutability())
+        if self.move_indicator {
+            SharedContainerOwnership::Owned
+        } else {
+            SharedContainerOwnership::Referenced(self.reference_mutability())
+        }
     }
 
     fn observer_data(&self) -> Ref<'_, ObserverData> {

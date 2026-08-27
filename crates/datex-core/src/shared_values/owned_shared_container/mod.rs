@@ -1,6 +1,8 @@
 mod clone_unsafe;
 mod common;
 pub mod datex_proxy;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 
 use crate::{
     prelude::*,
@@ -101,6 +103,23 @@ impl OwnedSharedContainer {
                 address,
             )
         })
+    }
+
+    /// Creates a new [OwnedSharedContainer] from parts.
+    ///
+    /// # Safety
+    /// This function should only be called if you can guarantee that
+    /// no other [OwnedSharedContainer] exist that are using the same inner value.
+    pub unsafe fn new_unchecked(
+        container_mutability: SharedContainerMutability,
+        inner: Rc<RefCell<SharedContainerInner>>,
+        observer_data: Rc<RefCell<ObserverData>>,
+    ) -> Self {
+        OwnedSharedContainer {
+            inner,
+            container_mutability,
+            observer_data,
+        }
     }
 
     /// Get a [Ref] to the inner [SelfOwnedSharedContainer].

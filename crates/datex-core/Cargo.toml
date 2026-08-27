@@ -283,7 +283,7 @@ parser = ["dep:logos", "dep:stacker"]
 
 compiler = ["ast", "parser", "dep:ariadne", "dep:pretty"]
 
-decompiler = ["ast"]
+decompiler = ["ast", "datex-macros-internal/decompiler"]
 
 disassembler = []
 

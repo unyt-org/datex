@@ -23,7 +23,10 @@ use core::{
 mod child_iterator;
 pub mod local_child_path_resolver;
 pub mod serde_dif;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 pub mod updates;
+mod value_access;
 
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,

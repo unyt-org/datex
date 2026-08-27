@@ -7,6 +7,7 @@ use crate::{
         error::NumberParseError,
     },
 };
+mod to_instructions;
 
 use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
 use binrw::{BinRead, BinWrite};
@@ -20,7 +21,11 @@ use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 pub mod equality;
 pub mod primitive;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 pub mod update_handler;
+mod value_access;
+
 /// The decimal type variants to be used as a inline
 /// definition in DATEX (such as 42.4f32 or -42.4f32).
 /// Note that changing the enum variants will change
@@ -214,6 +219,38 @@ impl TypedDecimal {
             TypedDecimal::F32(value) => value.into_inner() as f64,
             TypedDecimal::F64(value) => value.into_inner(),
             TypedDecimal::Decimal(value) => value.into_f64(),
+        }
+    }
+
+    /// Tries to borrow the inner f32 value if the TypedDecimal is of variant F32.
+    pub fn borrow_as_f32(&self) -> Option<&f32> {
+        match self {
+            TypedDecimal::F32(value) => Some(value.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// Tries to borrow the inner f32 value if the TypedDecimal is of variant F32.
+    pub fn borrow_mut_as_f32(&mut self) -> Option<&mut f32> {
+        match self {
+            TypedDecimal::F32(value) => Some(value.as_mut()),
+            _ => None,
+        }
+    }
+
+    /// Tries to borrow the inner f64 value if the TypedDecimal is of variant F64.
+    pub fn borrow_as_f64(&self) -> Option<&f64> {
+        match self {
+            TypedDecimal::F64(value) => Some(value.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// Tries to borrow the inner f64 value if the TypedDecimal is of variant F64.
+    pub fn borrow_mut_as_f64(&mut self) -> Option<&mut f64> {
+        match self {
+            TypedDecimal::F64(value) => Some(value.as_mut()),
+            _ => None,
         }
     }
 

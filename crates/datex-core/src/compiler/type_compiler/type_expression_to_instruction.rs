@@ -1,19 +1,21 @@
 use crate::{
     ast::type_expressions::{TypeExpression, TypeExpressionData},
-    core_compiler::{
-        shared_value_tracking::SharedValueTracking,
-        to_instructions::ToInstructions,
+    core_compiler::to_instructions::{
+        SharedValueTrackingProvider, ToInstructions,
     },
     instruction::type_instruction::TypeInstruction,
     prelude::*,
     types::literal_type_definition::LiteralTypeDefinition,
 };
-impl ToInstructions for TypeExpression {
+impl<'ctx, T> ToInstructions<'ctx, T> for TypeExpression
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = TypeInstruction;
-    fn to_instructions<'a>(
-        &'a self,
-        mut shared_value_tracking: Option<&'a mut SharedValueTracking>,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
+    fn to_instructions(
+        &self,
+        ctx: &mut T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self.data() {
                 TypeExpressionData::Integer(integer) => {
@@ -36,17 +38,13 @@ impl ToInstructions for TypeExpression {
                 }
                 TypeExpressionData::Range(range) => {
                     yield TypeInstruction::Range;
-                    for instr in range
-                        .start
-                        .to_instructions(shared_value_tracking.as_deref_mut())
-                        .collect::<Vec<_>>()
+                    for instr in
+                        range.start.to_instructions(ctx).collect::<Vec<_>>()
                     {
                         yield instr;
                     }
-                    for instr in range
-                        .end
-                        .to_instructions(shared_value_tracking.as_deref_mut())
-                        .collect::<Vec<_>>()
+                    for instr in
+                        range.end.to_instructions(ctx).collect::<Vec<_>>()
                     {
                         yield instr;
                     }

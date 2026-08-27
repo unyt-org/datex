@@ -1,13 +1,16 @@
+use core::cell::RefCell;
+
 use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
         shared_value_tracking::SharedValueTracking,
-        to_instructions::ToInstructions,
+        to_instructions::{SharedValueTrackingProvider, ToInstructions},
         type_compiler::append_type_instruction,
-        value_compiler::{append_shared_container_from_stack, append_value},
-        value_visitor::{ParentContext, ValueVisitor},
+        value_compiler::{append_shared_container_from_preamble, append_value},
+        value_visitor::ValueVisitor,
     },
+    instruction::type_instruction::TypeInstruction,
     prelude::*,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     shared_values::SharedContainer,
@@ -29,6 +32,29 @@ pub struct DXBWithSharedValues {
 impl DXBWithSharedValues {
     /// Create a new [DXBWithSharedValues] with the provided DXB bytecode and shared values.
     pub fn new(dxb: Vec<u8>, shared_values: Vec<SharedContainer>) -> Self {
+        DXBWithSharedValues { dxb, shared_values }
+    }
+
+    /// Create a new [DXBWithSharedValues] with the provided DXB bytecode and shared values.
+    /// Tries to upgrade referenced shared containers to owned containers if possible.
+    ///
+    /// # Safety
+    /// The caller must ensure for all shared_values that no other [OwnedSharedContainer] for the same
+    /// inner value exists if move_indicator of the [ReferencedSharedContainer] is set.
+    pub unsafe fn new_with_upgraded_owned_containers(
+        dxb: Vec<u8>,
+        shared_values: Vec<SharedContainer>,
+    ) -> Self {
+        // Force convert referenced containers with move_indicator flag
+        // to OwnedSharedContainer.
+        let shared_values = shared_values
+            .into_iter()
+            .map(|shared_container| {
+                unsafe { shared_container.try_upgrade_to_owned() }
+                    .map(SharedContainer::Owned)
+                    .unwrap_or_else(SharedContainer::Referenced)
+            })
+            .collect();
         DXBWithSharedValues { dxb, shared_values }
     }
 
@@ -68,7 +94,7 @@ pub(crate) unsafe fn default_compile_input<'a>() -> CompileInput<'a> {
 #[derive(Debug)]
 pub struct CoreCompilationContext<'a> {
     pub cursor: ByteCursor,
-    pub shared_value_tracking: SharedValueTracking<'a>,
+    pub shared_value_tracking: RefCell<SharedValueTracking<'a>>,
     pub input: CompileInput<'a>,
 }
 
@@ -87,10 +113,10 @@ impl<'a> CoreCompilationContext<'a> {
     ) -> CoreCompilationContext<'a> {
         CoreCompilationContext {
             cursor: Cursor::new(buffer),
-            shared_value_tracking: SharedValueTracking::new(
+            shared_value_tracking: RefCell::new(SharedValueTracking::new(
                 input.pointer_lookup,
                 input.receivers,
-            ),
+            )),
             input,
         }
     }
@@ -111,13 +137,18 @@ impl<'a> CoreCompilationContext<'a> {
     /// Finalizes the compilation context by appending a preamble with the injected shared values,
     /// and returns the final byte buffer and the list of shared values that were moved or referenced during compilation
     pub fn into_dxb_with_shared_values(self) -> DXBWithSharedValues {
-        let tracked_values = self.shared_value_tracking.into_tracked_values();
+        let tracked_values = self.shared_value_tracking;
+        let inner = tracked_values.into_inner().into_tracked_values();
         let (combined_buffer, top_level_values) =
-            append_injected_values_preamble(
-                tracked_values,
-                self.cursor.into_inner(),
-            );
-        DXBWithSharedValues::new(combined_buffer, top_level_values)
+            append_injected_values_preamble(inner, self.cursor.into_inner());
+        // SAFETY: it is assumed that the tracked values from the shared value tracking were
+        // moved inside the compilation and are no longer accessible from the outside
+        unsafe {
+            DXBWithSharedValues::new_with_upgraded_owned_containers(
+                combined_buffer,
+                top_level_values,
+            )
+        }
     }
 }
 
@@ -131,28 +162,30 @@ impl ValueVisitor for CoreCompilationContext<'_> {
     /// Appends a value container.
     /// For local values, the value is just serialized
     /// For shared values, the container is registered in the context shared value tracking
-    fn visit_value_container(
-        &mut self,
-        value_container: ValueContainer,
-        parent_context: Option<ParentContext>,
-    ) {
+    fn visit_value_container(&mut self, value_container: &ValueContainer) {
         // TODO can we pass value container by reference?
         match value_container {
-            ValueContainer::Local(value) => {
-                append_value(self, value, parent_context)
-            }
+            ValueContainer::Local(value) => append_value(self, value),
             ValueContainer::Shared(reference) => {
-                append_shared_container_from_stack(self, reference);
+                append_shared_container_from_preamble(self, reference);
             }
         }
     }
 
-    fn visit_type(&mut self, ty: Type) {
-        let instructions = ty
-            .to_instructions(Some(&mut self.shared_value_tracking))
-            .collect::<Vec<_>>();
+    fn visit_type(&mut self, ty: &Type) {
+        let instructions =
+            ty.to_instructions(self).collect::<Vec<TypeInstruction>>();
+
         for instruction in instructions {
             append_type_instruction(self.cursor_mut(), instruction);
         }
+    }
+}
+
+impl<'a> SharedValueTrackingProvider<'a> for CoreCompilationContext<'a> {
+    fn shared_value_tracking<'b>(
+        &'b self,
+    ) -> Option<&'b RefCell<SharedValueTracking<'a>>> {
+        Some(&self.shared_value_tracking)
     }
 }

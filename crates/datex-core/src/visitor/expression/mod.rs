@@ -89,7 +89,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::Integer(i) => {
                 self.visit_integer(i, &expr.span)
             }
-            DatexExpressionData::DateTime(dt) => {
+            DatexExpressionData::Instant(dt) => {
                 self.visit_datetime(dt, &expr.span)
             }
             DatexExpressionData::Range(range) => {

@@ -33,6 +33,7 @@ pub enum InvalidProgramError {
     ExpectedTypeInstruction,
     InvalidCoreLibId(CoreLibIdIndex),
     InvalidInstructionFormat,
+    InvalidType,
 }
 
 impl Display for InvalidProgramError {
@@ -70,6 +71,9 @@ impl Display for InvalidProgramError {
             }
             InvalidProgramError::InvalidInstructionFormat => {
                 core::write!(f, "Invalid instruction format")
+            }
+            InvalidProgramError::InvalidType => {
+                core::write!(f, "Invalid type")
             }
         }
     }
@@ -114,6 +118,8 @@ pub enum ExecutionError {
     UnauthorizedMove,
     InvalidMove,
     MoveToMultipleEndpoints,
+    UnclonableValue, // happens for native rust structs that don't implement clone. FIXME: this should not happen in execution loop
+    StackRestoreMismatch,
 }
 impl ExecutionError {
     pub fn intermediate_result_with_state(
@@ -323,6 +329,9 @@ impl Display for ExecutionError {
             ExecutionError::MoveToMultipleEndpoints => {
                 core::write!(f, "Illegal move to multiple endpoints")
             }
+            ExecutionError::UnclonableValue => {
+                core::write!(f, "Tried to clone an unclonable value")
+            }
             ExecutionError::ExpectedSharedValue => {
                 core::write!(
                     f,
@@ -367,6 +376,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::Unspecified(msg) => {
                 core::write!(f, "Unspecified error: {msg}")
+            }
+            ExecutionError::StackRestoreMismatch => {
+                core::write!(f, "Stack restore mismatch")
             }
         }
     }

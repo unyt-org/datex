@@ -5,6 +5,7 @@ use crate::{
     types::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
     },
+    utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
         core_values::{
@@ -18,7 +19,10 @@ use crate::{
             range::Range,
             text::Text,
         },
-        value::Value,
+        value::{
+            Value,
+            borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
+        },
     },
 };
 
@@ -39,6 +43,26 @@ macro_rules! impl_try_from_core_value {
                     match value {
                         CoreValue::$variant(v) => Ok(v),
                         _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
+                    }
+                }
+            }
+
+            impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, $type> {
+                type Error = TryFromDatexValueError;
+                fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
+                    match value {
+                        BorrowedCoreValue::$variant(v) => Ok(v),
+                        _ => Err(TryFromDatexValueError(format!("Cannot cast BorrowedCoreValue to {}, expected BorrowedCoreValue::{}", stringify!($type), stringify!($variant)))),
+                    }
+                }
+            }
+
+            impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, $type> {
+                type Error = TryFromDatexValueError;
+                fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
+                    match value {
+                        BorrowedCoreValueMut::$variant(v) => Ok(v),
+                        _ => Err(TryFromDatexValueError(format!("Cannot cast BorrowedCoreValueMut to {}, expected BorrowedCoreValueMut::{}", stringify!($type), stringify!($variant)))),
                     }
                 }
             }

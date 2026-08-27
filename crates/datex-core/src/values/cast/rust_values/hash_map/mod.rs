@@ -1,5 +1,12 @@
 //! Implements [DatexValueProxy] for [HashMap<K, V>] where K: [DatexValueProxy] + Eq + Hash and V: [DatexValueProxy].
+
+mod as_borrowed;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+mod value_access;
+
 use crate::{
+    collections::HashMap,
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
     types::{
@@ -15,8 +22,9 @@ use crate::{
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::TypeDefinition,
+    values::core_values::native::DatexNative,
 };
-use core::hash::Hash;
+use core::{any::Any, hash::Hash};
 
 impl<
     K: DatexValueContainerProxy + Eq + Hash + 'static,
@@ -103,6 +111,26 @@ where
             ))
             .into(),
         )
+    }
+}
+
+// TODO: clean up traits
+impl<K, V> DatexNative for HashMap<K, V>
+where
+    K: DatexNative + DatexProxyType + DatexValueProxy + Eq + Hash,
+    V: DatexNative + DatexProxyType + DatexValueProxy,
+{
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+    fn boxed_to_datex_native_value(
+        self: Box<Self>,
+        cache: &mut SharedReferencesCache,
+    ) -> Value {
+        Value::native_boxed(self, cache)
     }
 }
 

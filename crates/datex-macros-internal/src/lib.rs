@@ -1,6 +1,6 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
-use crate::datex_proxy::generate_impl_glue_code;
+use crate::datex_proxy::generate_item_glue_code;
 use proc_macro::TokenStream;
 use syn::{Item, parse_macro_input};
 
@@ -119,22 +119,9 @@ pub fn datex_derive(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn datex(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn datex(args: TokenStream, input: TokenStream) -> TokenStream {
     let input_clone = input.clone();
     let item = parse_macro_input!(input_clone as Item);
 
-    match &item {
-        Item::Impl(item_impl) => {
-            generate_impl_glue_code(input.into(), item_impl).into()
-        }
-        Item::Mod(item_mod) => {
-            datex_proxy::generate_mod_glue_code(input.into(), item_mod).into()
-        }
-        e => {
-            panic!(
-                "The #[datex] attribute can not be applied to this item: {:?}.",
-                e
-            );
-        }
-    }
+    generate_item_glue_code(Some(args.into()), input.into(), item).into()
 }

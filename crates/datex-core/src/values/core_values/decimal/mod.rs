@@ -2,6 +2,7 @@ use core::result::Result;
 pub mod rational;
 pub mod typed_decimal;
 use crate::prelude::*;
+mod to_instructions;
 
 use crate::values::core_values::{
     decimal::typed_decimal::TypedDecimal, error::NumberParseError,
@@ -18,7 +19,11 @@ use serde::{Deserialize, Serialize};
 pub mod binrw;
 pub mod ops;
 pub mod primitive;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 pub mod update_handler;
+mod value_access;
+
 pub const DECIMAL_NAN: &str = "nan";
 pub const DECIMAL_INFINITY: &str = "infinity";
 pub const DECIMAL_NEG_INFINITY: &str = "-infinity";

@@ -5,7 +5,15 @@ pub mod debug;
 use crate::disassembler::InnerInstructions;
 use crate::{
     dxb_parser::body::DXBParserError,
-    global::{root_properties::RootProperty, stack_index::StackIndex},
+    global::{
+        operators::{
+            ArithmeticUnaryOperator, BinaryOperator, BitwiseUnaryOperator,
+            ComparisonOperator, SharedValueUnaryOperator, UnaryOperator,
+            binary::{ArithmeticOperator, RangeOperator},
+        },
+        root_properties::RootProperty,
+        stack_index::StackIndex,
+    },
     instruction::{
         NextExpectedInstructions,
         instruction_codes::InstructionCode,
@@ -23,7 +31,8 @@ use crate::{
     libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
     shared_values::{
-        PointerAddress, RemotePointerAddress, SelfOwnedPointerAddress,
+        PointerAddress, ReferenceMutability, RemotePointerAddress,
+        SelfOwnedPointerAddress,
     },
     values::core_values::{
         Instant,
@@ -271,6 +280,79 @@ impl RegularInstruction {
     pub fn divide() -> Self {
         RegularInstruction::Divide
     }
+    pub fn unary_operation(operator: UnaryOperator) -> Self {
+        match operator {
+            UnaryOperator::Arithmetic(op) => match op {
+                ArithmeticUnaryOperator::Plus => RegularInstruction::UnaryPlus,
+                ArithmeticUnaryOperator::Minus => {
+                    RegularInstruction::UnaryMinus
+                }
+                ArithmeticUnaryOperator::Decrement => {
+                    RegularInstruction::Decrement
+                }
+                ArithmeticUnaryOperator::Increment => {
+                    RegularInstruction::Increment
+                }
+            },
+            UnaryOperator::Bitwise(op) => match op {
+                BitwiseUnaryOperator::Not => RegularInstruction::BitwiseNot,
+            },
+            UnaryOperator::Reference(op) => match op {
+                SharedValueUnaryOperator::Unbox => RegularInstruction::Unbox,
+            },
+            UnaryOperator::Logical(_) => {
+                todo!("Logical unary operators not implemented yet")
+            }
+        }
+    }
+    pub fn binary_operation(operator: BinaryOperator) -> Self {
+        match operator {
+            BinaryOperator::Arithmetic(op) => match op {
+                ArithmeticOperator::Add => RegularInstruction::Add,
+                ArithmeticOperator::Subtract => RegularInstruction::Subtract,
+                ArithmeticOperator::Multiply => RegularInstruction::Multiply,
+                ArithmeticOperator::Divide => RegularInstruction::Divide,
+                ArithmeticOperator::Modulo => {
+                    todo!("Modulo binary operator not implemented yet")
+                }
+                ArithmeticOperator::Power => {
+                    todo!("Power binary operator not implemented yet")
+                }
+            },
+            BinaryOperator::Bitwise(_) => {
+                todo!("Bitwise binary operators not implemented yet")
+            }
+            BinaryOperator::Logical(_) => {
+                todo!("Logical binary operators not implemented yet")
+            }
+            BinaryOperator::Range(op) => match op {
+                RangeOperator::Inclusive => RegularInstruction::Range,
+                RangeOperator::Exclusive => {
+                    todo!("Exclusive range operator not implemented yet")
+                }
+            },
+        }
+    }
+
+    pub fn comparison_operation(operator: ComparisonOperator) -> Self {
+        match operator {
+            ComparisonOperator::Is => RegularInstruction::Is,
+            ComparisonOperator::Matches => RegularInstruction::Matches,
+            ComparisonOperator::StructuralEqual => {
+                RegularInstruction::StructuralEqual
+            }
+            ComparisonOperator::NotStructuralEqual => {
+                RegularInstruction::NotStructuralEqual
+            }
+            ComparisonOperator::Equal => RegularInstruction::Equal,
+            ComparisonOperator::NotEqual => RegularInstruction::NotEqual,
+            ComparisonOperator::LessThan => todo!(),
+            ComparisonOperator::GreaterThan => todo!(),
+            ComparisonOperator::LessThanOrEqual => todo!(),
+            ComparisonOperator::GreaterThanOrEqual => todo!(),
+        }
+    }
+
     pub fn unary_plus() -> Self {
         RegularInstruction::UnaryPlus
     }
@@ -415,10 +497,32 @@ impl RegularInstruction {
     pub fn boxed_value() -> Self {
         RegularInstruction::BoxedValue
     }
+
+    pub fn get_shared_ref(
+        address: PointerAddress,
+        mutability: &ReferenceMutability,
+    ) -> Self {
+        match address {
+            PointerAddress::SelfOwned(local_address) => {
+                RegularInstruction::get_local_shared_ref(local_address)
+            }
+            PointerAddress::Remote(address) => match mutability {
+                ReferenceMutability::Immutable => {
+                    RegularInstruction::request_remote_shared_ref(address)
+                }
+                ReferenceMutability::Mutable => {
+                    RegularInstruction::request_remote_shared_ref_mut(address)
+                }
+            },
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Instruction)]
 pub enum RegularInstruction {
+    #[magic(InstructionCode::UNINITIALIZED)]
+    Uninitialized,
+
     // signed integers
     #[magic(InstructionCode::INT_8)]
     Int8(Int8Data),

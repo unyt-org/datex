@@ -16,7 +16,8 @@ crate-type = ["rlib"]
 quote = { version = "1.0" }
 syn = { version = "2.0", features = ["full"] }
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
-datex-core = { path = "../datex-core", version = "0.0.13", features = [
+datex-core = { path = "../datex-core", version = "0.0.13", default-features = false, features = [
     "target_native",
     "compiler",
+    "decompiler", # FIXME: this is required, otherwise, e.g. datex-native does not compile, but it should not be required for this crate. Theres some weird cross dependency macro stuff going on
 ] }

@@ -1,15 +1,24 @@
-use crate::prelude::*;
-use core::{
-    any::Any,
-    fmt::{Debug, Formatter},
-};
-
 use crate::{
     datex_proxy::ToDatexNativeValueContainer,
+    prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     values::{value::Value, value_container::ValueContainer},
 };
+use core::{
+    any::Any,
+    fmt::{Debug, Formatter},
+    ops::Deref,
+};
 mod datex_native_trait;
+mod serde_dif;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+mod value_access;
+
+use crate::{
+    libs::core::type_id::CoreLibTypeId, traits::try_clone::TryClone,
+    values::core_value::CoreValue,
+};
 pub use datex_native_trait::*;
 
 impl<T: DatexNative> ToDatexNativeValueContainer for T {
@@ -23,6 +32,12 @@ impl<T: DatexNative> ToDatexNativeValueContainer for T {
 
 pub struct NativeCoreValue {
     pub value: Box<dyn DatexNative + 'static>,
+}
+
+impl TryClone for NativeCoreValue {
+    fn try_clone(&self) -> Result<CoreValue, ()> {
+        self.value.deref().try_clone()
+    }
 }
 
 impl NativeCoreValue {
@@ -51,11 +66,33 @@ impl NativeCoreValue {
     ) -> Value {
         self.value.boxed_to_datex_native_value(cache)
     }
+
+    pub fn core_lib_type_id(&self) -> CoreLibTypeId {
+        self.value.core_lib_type_id()
+    }
+
+    /// Attempt to downcast the native value to a specific type.
+    /// Returns `Some(&T)` if the downcast is successful, or `None` if it fails.
+    pub fn try_as<T: 'static>(&self) -> Option<&T> {
+        self.value.as_any().downcast_ref::<T>()
+    }
+
+    /// Attempt to downcast the native value to a specific type.
+    /// Returns `Some(&mut T)` if the downcast is successful, or `None` if it fails.
+    pub fn try_into_value<T: 'static>(self) -> Option<T> {
+        match self.into_any().downcast::<T>() {
+            Ok(boxed) => Some(*boxed),
+            Err(_original) => None,
+        }
+    }
 }
 
 impl Clone for NativeCoreValue {
     fn clone(&self) -> Self {
-        todo!()
+        match self.try_clone().unwrap() {
+            CoreValue::Native(n) => n,
+            _ => unreachable!(),
+        }
     }
 }
 

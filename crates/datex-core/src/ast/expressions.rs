@@ -35,7 +35,10 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{fmt::Display, ops, ops::Neg};
+use core::{
+    fmt::Display,
+    ops::{self, Neg},
+};
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -122,7 +125,7 @@ pub enum DatexExpressionData {
     Integer(Integer),
 
     /// DateTime, e.g. 2026-04-13T18:28:09.415Z (stored as Instant)
-    DateTime(Instant),
+    Instant(Instant),
 
     Range(RangeDeclaration),
 
@@ -499,6 +502,7 @@ pub struct Statements {
     pub is_terminated: bool,
     pub unbounded: Option<UnboundedStatement>,
 }
+
 impl Statements {
     pub fn empty() -> Self {
         Statements {
@@ -595,9 +599,25 @@ impl List {
     }
 }
 
+impl FromIterator<DatexExpression> for List {
+    fn from_iter<T: IntoIterator<Item = DatexExpression>>(iter: T) -> Self {
+        let items = iter.into_iter().collect();
+        List { items }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Map {
     pub entries: Vec<(DatexExpression, DatexExpression)>,
+}
+
+impl FromIterator<(DatexExpression, DatexExpression)> for Map {
+    fn from_iter<T: IntoIterator<Item = (DatexExpression, DatexExpression)>>(
+        iter: T,
+    ) -> Self {
+        let entries = iter.into_iter().collect();
+        Map { entries }
+    }
 }
 
 impl Map {

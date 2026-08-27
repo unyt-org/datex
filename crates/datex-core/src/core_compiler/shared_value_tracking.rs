@@ -18,10 +18,12 @@ pub enum TrackedValueMetadata {
         index: StackIndex,
         /// if the pointer of this container is already known for to be available on all receivers
         is_known: bool,
+        is_self_referencing: bool,
     },
     Child {
         /// if the pointer of this container is already known for to be available on all receivers
         is_known: bool,
+        is_self_referencing: bool,
     },
 }
 
@@ -30,6 +32,18 @@ impl TrackedValueMetadata {
         match self {
             TrackedValueMetadata::Root { is_known, .. } => *is_known,
             TrackedValueMetadata::Child { is_known, .. } => *is_known,
+        }
+    }
+    pub fn is_self_referencing(&self) -> bool {
+        match self {
+            TrackedValueMetadata::Root {
+                is_self_referencing,
+                ..
+            } => *is_self_referencing,
+            TrackedValueMetadata::Child {
+                is_self_referencing,
+                ..
+            } => *is_self_referencing,
         }
     }
 }
@@ -106,25 +120,30 @@ impl<'a> SharedValueTracking<'a> {
     /// Registers a new shared value. Returns a stack index that can be used to access this value
     pub fn register_shared_value(
         &mut self,
-        shared_container: SharedContainer,
+        shared_container: &SharedContainer,
     ) -> StackIndex {
-        let shared_container_clone = shared_container.clone();
-
         self.register_shared_value_with_parents(
-            shared_container,
+            shared_container.clone_with_move_indicator_if_owned(),
             &mut HashSet::new(),
         );
 
         // ensure tracked value is a top level tracked value with stack index
-        match self.tracked_values.get(&shared_container_clone).unwrap() {
-            TrackedValueMetadata::Child { is_known, .. } => {
+        match self.tracked_values.get(shared_container).unwrap() {
+            TrackedValueMetadata::Child {
+                is_known,
+                is_self_referencing,
+                ..
+            } => {
+                let is_self_referencing = *is_self_referencing;
                 let is_known = *is_known;
                 let index = self.get_next_stack_index();
-                let tracked_value = self
-                    .tracked_values
-                    .get_mut(&shared_container_clone)
-                    .unwrap();
-                *tracked_value = TrackedValueMetadata::Root { index, is_known };
+                let tracked_value =
+                    self.tracked_values.get_mut(shared_container).unwrap();
+                *tracked_value = TrackedValueMetadata::Root {
+                    index,
+                    is_known,
+                    is_self_referencing,
+                };
                 index
             }
             // already a top level value, do nothing
@@ -152,14 +171,19 @@ impl<'a> SharedValueTracking<'a> {
             let parent_moved = container.treat_as_move();
             let container_clone = container.clone();
 
-            self.tracked_values
-                .insert(container, TrackedValueMetadata::Child { is_known });
+            let is_self_referencing = !parents.insert(container_clone.clone());
+
+            self.tracked_values.insert(
+                container,
+                TrackedValueMetadata::Child {
+                    is_known,
+                    is_self_referencing,
+                },
+            );
 
             // If the address is not already being visited, we want to register all children
             // with the whole tree of their direct and indirect parents
-            if parents.insert(container_clone.clone())
-                && (!is_known || parent_moved)
-            {
+            if !is_self_referencing && (!is_known || parent_moved) {
                 let mut inner_container = container_clone.value_container_mut();
                 match inner_container.deref_mut() {
                     ValueContainer::Shared(inner_shared) => {
@@ -321,7 +345,7 @@ mod tests {
 
         let mut tracking = tracking();
 
-        let index = tracking.register_shared_value(container.clone());
+        let index = tracking.register_shared_value(&container);
 
         assert_eq!(index, StackIndex(0));
         assert_eq!(tracking.tracked_values.len(), 1);
@@ -339,8 +363,8 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let first_index = tracking.register_shared_value(container.clone());
-        let second_index = tracking.register_shared_value(container.clone());
+        let first_index = tracking.register_shared_value(&container);
+        let second_index = tracking.register_shared_value(&container);
         assert_eq!(first_index, StackIndex(0));
         assert_eq!(second_index, StackIndex(0));
         assert_eq!(tracking.tracked_values.len(), 1);
@@ -367,8 +391,8 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let first_index = tracking.register_shared_value(first.clone());
-        let second_index = tracking.register_shared_value(second.clone());
+        let first_index = tracking.register_shared_value(&first);
+        let second_index = tracking.register_shared_value(&second);
 
         assert_eq!(first_index, StackIndex(0));
         assert_eq!(second_index, StackIndex(1));
@@ -398,7 +422,7 @@ mod tests {
         );
 
         let mut tracking = tracking();
-        let parent_index = tracking.register_shared_value(parent.clone());
+        let parent_index = tracking.register_shared_value(&parent);
 
         assert_eq!(parent_index, StackIndex(0));
         assert_eq!(tracking.tracked_values.len(), 2);
@@ -429,7 +453,7 @@ mod tests {
         let parent_clone = parent.clone();
 
         let mut tracking = tracking();
-        let parent_index = tracking.register_shared_value(parent);
+        let parent_index = tracking.register_shared_value(&parent);
 
         assert_eq!(parent_index, StackIndex(0));
         assert_eq!(tracking.tracked_values.len(), 2);
@@ -458,8 +482,8 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let parent_index = tracking.register_shared_value(parent.clone());
-        let child_index = tracking.register_shared_value(child.clone());
+        let parent_index = tracking.register_shared_value(&parent);
+        let child_index = tracking.register_shared_value(&child);
 
         assert_eq!(parent_index, StackIndex(0));
         assert_eq!(child_index, StackIndex(1));
@@ -497,10 +521,9 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let first_parent_index =
-            tracking.register_shared_value(first_parent.clone());
+        let first_parent_index = tracking.register_shared_value(&first_parent);
         let second_parent_index =
-            tracking.register_shared_value(second_parent.clone());
+            tracking.register_shared_value(&second_parent);
 
         assert_eq!(first_parent_index, StackIndex(0));
         assert_eq!(second_parent_index, StackIndex(1));
@@ -532,7 +555,7 @@ mod tests {
                 List::from(vec![ValueContainer::Shared(parent.clone())]).into();
         }
 
-        let parent_index = tracking.register_shared_value(parent.clone());
+        let parent_index = tracking.register_shared_value(&parent);
 
         assert_eq!(parent_index, StackIndex(0));
         assert_eq!(tracking.tracked_values.len(), 1);

@@ -39,7 +39,7 @@ impl
         result: CollectedExecutionResult,
     ) -> Option<Option<RuntimeValue>> {
         match result {
-            CollectedExecutionResult::Value(box val) => Some(val),
+            CollectedExecutionResult::Value(val) => Some(*val),
             _ => None,
         }
     }
@@ -58,7 +58,7 @@ impl
         result: CollectedExecutionResult,
     ) -> Option<(MapKey, ValueContainer)> {
         match result {
-            CollectedExecutionResult::KeyValuePair(box (key, value)) => {
+            CollectedExecutionResult::KeyValuePair(deref!((key, value))) => {
                 Some((key, value))
             }
             _ => None,
@@ -76,6 +76,19 @@ impl CollectedResults<CollectedExecutionResult> {
         let mut expressions = Vec::with_capacity(count);
         for _ in 0..count {
             expressions.push(self.try_pop_value_container(state)?);
+        }
+        expressions.reverse();
+        Ok(expressions)
+    }
+
+    /// Collect multiple owned runtime values.
+    pub fn try_collect_runtime_values(
+        mut self,
+    ) -> Result<Vec<RuntimeValue>, ExecutionError> {
+        let count = self.len();
+        let mut expressions = Vec::with_capacity(count);
+        for _ in 0..count {
+            expressions.push(self.try_pop_runtime_value()?);
         }
         expressions.reverse();
         Ok(expressions)

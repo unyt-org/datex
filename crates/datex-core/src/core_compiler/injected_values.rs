@@ -47,7 +47,7 @@ pub fn compile_injected_values(
             &injected_values,
         )?;
 
-        compile_injected_values_with_context(&mut context, injected_values);
+        compile_injected_values_with_context(&mut context, &injected_values);
 
         let DXBWithSharedValues {
             dxb: preambles_dxb,
@@ -66,10 +66,7 @@ pub fn compile_injected_values(
         cursor.write_all(&preambles_dxb).unwrap();
         cursor.write_all(&instruction_block_data.body).unwrap();
 
-        Ok(DXBWithSharedValues {
-            dxb: cursor.into_inner(),
-            shared_values,
-        })
+        Ok(DXBWithSharedValues::new(cursor.into_inner(), shared_values))
     }
 }
 
@@ -130,7 +127,7 @@ fn validate_injected_value_declaration_for_values(
 /// The caller must ensure that minimum a single injected value is provided, as this function assumes that the injected values are not empty.
 fn compile_injected_values_with_context(
     compilation_context: &mut CoreCompilationContext,
-    injected_values: Vec<ValueContainer>,
+    injected_values: &[ValueContainer],
 ) {
     if injected_values.is_empty() {
         unreachable!(); // injected values should not be empty, this function should only be called if there are injected values
@@ -139,7 +136,7 @@ fn compile_injected_values_with_context(
         .write(RegularInstruction::list(injected_values.len() as u32));
 
     for value_container in injected_values {
-        compilation_context.visit_value_container(value_container, None);
+        compilation_context.visit_value_container(value_container);
     }
 }
 
@@ -352,23 +349,21 @@ mod tests {
                         RegularInstruction::statements_with_children(false, instructions!(
                             RegularInstruction::PushToStack,
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                                address: owned_address_2,
-                                ref_mutability: ReferenceMutability::Mutable,
-                                container_mutability: SharedContainerMutability::Mutable
-                            }),
-                            RegularInstruction::Int32(Int32Data(100)),
-
-                            RegularInstruction::PushToStack,
-                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: owned_address_1,
                                 ref_mutability: ReferenceMutability::Immutable,
                                 container_mutability: SharedContainerMutability::Immutable
                             }),
                             RegularInstruction::Int32(Int32Data(42)),
-
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                                address: owned_address_2,
+                                ref_mutability: ReferenceMutability::Mutable,
+                                container_mutability: SharedContainerMutability::Mutable
+                            }),
+                            RegularInstruction::Int32(Int32Data(100)),
                             RegularInstruction::list_with_children(instructions!(
-                                RegularInstruction::TakeStackValue(StackIndex(1)),
                                 RegularInstruction::TakeStackValue(StackIndex(0)),
+                                RegularInstruction::TakeStackValue(StackIndex(1)),
                             )),
                         )),
 
@@ -440,8 +435,6 @@ mod tests {
                                         }
                                     ),
                                     RegularInstruction::Int32(Int32Data(42)),
-                                    RegularInstruction::PushToStack,
-                                    RegularInstruction::GetStackValueSharedRef(StackIndex(0)),
                                     RegularInstruction::list_with_children(
                                         instructions!(
                                             RegularInstruction::TakeStackValue(
@@ -537,14 +530,6 @@ mod tests {
                         RegularInstruction::PushListToStack,
                         RegularInstruction::statements_with_children(false, instructions!(
                             RegularInstruction::PushToStack,
-                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-                                address: shared_value2_address,
-                                ref_mutability: ReferenceMutability::Immutable,
-                                container_mutability: SharedContainerMutability::Immutable
-                            }),
-                            RegularInstruction::Int32(Int32Data(100)),
-
-                            RegularInstruction::PushToStack,
                             RegularInstruction::MoveWithValue(MoveWithValue {
                                 mutability: SharedContainerMutability::Immutable,
                                 previous_address: shared_value1_address
@@ -552,11 +537,16 @@ mod tests {
                             RegularInstruction::Int32(Int32Data(42)),
 
                             RegularInstruction::PushToStack,
-                            RegularInstruction::GetStackValueSharedRef(StackIndex(1)),
+                            RegularInstruction::SharedRefWithValue(SharedRefWithValue {
+                                address: shared_value2_address,
+                                ref_mutability: ReferenceMutability::Immutable,
+                                container_mutability: SharedContainerMutability::Immutable
+                            }),
+                            RegularInstruction::Int32(Int32Data(100)),
 
                             RegularInstruction::list_with_children(instructions!(
-                                RegularInstruction::TakeStackValue(StackIndex(1)),
                                 RegularInstruction::TakeStackValue(StackIndex(0)),
+                                RegularInstruction::TakeStackValue(StackIndex(1)),
                             )),
                         )),
 

@@ -24,12 +24,10 @@ use crate::{
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{CompileInput, DXBWithSharedValues},
+        to_instructions::ToInstructions,
         value_compiler::{
-            append_boolean, append_decimal, append_encoded_integer,
-            append_float_as_i16, append_float_as_i32, append_get_shared_ref,
-            append_instant, append_key_string,
-            append_shared_container_from_stack, append_typed_decimal,
-            append_value,
+            append_get_shared_ref, append_key_string,
+            append_shared_container_from_preamble, append_value,
         },
     },
     global::{
@@ -66,8 +64,7 @@ use crate::{
     time::Instant as TimingInstant,
     utils::buffers::{append_u8, append_u32},
     values::{
-        core_values::{decimal::Decimal, endpoint::Endpoint},
-        value_container::ValueContainer,
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
 use binrw::io::Write;
@@ -80,6 +77,7 @@ use precompiler::{
 };
 
 pub mod context;
+pub mod datex_expression_to_instruction;
 pub mod error;
 pub mod metadata;
 pub mod precompiler;
@@ -533,84 +531,40 @@ pub fn compile_rich_ast(
     rich_ast: RichAst,
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
+    let org = core::mem::replace(&mut compilation_context.scope, scope);
     compile_expression(
         compilation_context,
         rich_ast,
         CompileMetadata::outer(),
-        scope,
-    )
+    )?;
+    let result_scope = core::mem::replace(&mut compilation_context.scope, org);
+    Ok(result_scope)
 }
 
 fn compile_expression(
     compilation_context: &mut CompilationContext,
     rich_ast: RichAst,
     meta: CompileMetadata,
-    mut scope: CompilationScope,
-) -> Result<CompilationScope, CompilerError> {
+) -> Result<(), CompilerError> {
     let metadata = rich_ast.metadata;
     let ast = rich_ast.ast;
 
-    let DatexExpression { data, span, ty } = ast;
+    let DatexExpression {
+        data,
+        span: _,
+        ty: _,
+    } = ast;
     match *data {
-        DatexExpressionData::Integer(int) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::Integer(int));
-        }
-        DatexExpressionData::TypedInteger(typed_int) => {
-            append_encoded_integer(compilation_context.cursor(), &typed_int);
-        }
-        DatexExpressionData::DateTime(instant) => {
-            append_instant(compilation_context.cursor(), &instant);
-        }
-        DatexExpressionData::Decimal(decimal) => match &decimal {
-            Decimal::Finite(big_decimal) if big_decimal.is_integer() => {
-                if let Some(int) = big_decimal.to_i16() {
-                    append_float_as_i16(compilation_context.cursor(), int);
-                } else if let Some(int) = big_decimal.to_i32() {
-                    append_float_as_i32(compilation_context.cursor(), int);
-                } else {
-                    append_decimal(compilation_context.cursor(), &decimal);
-                }
-            }
-            _ => {
-                append_decimal(compilation_context.cursor(), &decimal);
-            }
-        },
-        DatexExpressionData::TypedDecimal(typed_decimal) => {
-            append_typed_decimal(
-                &mut compilation_context.core_context,
-                &typed_decimal,
-            );
-        }
-        DatexExpressionData::Text(text) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::text(text.0));
-        }
-        DatexExpressionData::Boolean(boolean) => {
-            append_boolean(compilation_context.cursor(), boolean.0);
-        }
-        DatexExpressionData::Endpoint(endpoint) => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::endpoint(endpoint));
-        }
-        DatexExpressionData::Null => {
-            compilation_context
-                .core_context
-                .write(RegularInstruction::null());
-        }
+        // TODO remove all the instructions and switch to [ToInstruction] trait, fix scopes
         DatexExpressionData::List(list) => {
             compilation_context
                 .core_context
                 .write(RegularInstruction::list(list.items.len() as u32));
             for item in list.items {
-                scope = compile_expression(
+                compile_expression(
                     compilation_context,
                     RichAst::new(item, &metadata),
                     CompileMetadata::default(),
-                    scope,
                 )?;
             }
         }
@@ -635,12 +589,11 @@ fn compile_expression(
                 }
             }
             for (key, value) in map.entries {
-                scope = compile_key_value_entry(
+                compile_key_value_entry(
                     compilation_context,
                     key,
                     value,
                     &metadata,
-                    scope,
                 )?;
             }
         }
@@ -653,7 +606,7 @@ fn compile_expression(
             if let Some(value_container) = placeholder.take() {
                 // TODO: validate in precompiler that the value container is actually a shared value
 
-                match value_container {
+                match &value_container {
                     ValueContainer::Local(value) => match placeholder_type {
                         ValueAccessType::SharedRef
                         | ValueAccessType::SharedRefMut => {
@@ -665,21 +618,18 @@ fn compile_expression(
                             append_value(
                                 compilation_context.core_context(),
                                 value,
-                                None,
                             );
                         }
                         ValueAccessType::Clone => {
                             append_value(
                                 compilation_context.core_context(),
                                 value,
-                                None,
                             );
                         }
                         ValueAccessType::Borrow => {
                             append_value(
                                 compilation_context.core_context(),
                                 value,
-                                None,
                             );
                         }
                     },
@@ -689,23 +639,23 @@ fn compile_expression(
                                 let shared_container_mut_ref = shared_container
                                     .try_derive_mutable_reference()
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
-                                append_shared_container_from_stack(
+                                append_shared_container_from_preamble(
                                     compilation_context.core_context(),
-                                    shared_container_mut_ref.into(),
+                                    &shared_container_mut_ref.into(),
                                 );
                             }
                             ValueAccessType::SharedRef => {
-                                append_shared_container_from_stack(
+                                append_shared_container_from_preamble(
                                     compilation_context.core_context(),
-                                    shared_container.derive_immutable_reference().into(),
+                                        &shared_container.derive_immutable_reference().into(),
                                 )
                             },
                             ValueAccessType::MoveOrCopy => {
                                 match shared_container {
                                     SharedContainer::Owned(shared_container) => {
-                                        append_shared_container_from_stack(
+                                        append_shared_container_from_preamble(
                                             compilation_context.core_context(),
-                                            shared_container.into(),
+                                            &shared_container.clone_with_move_indicator().into(),
                                         );
                                     }
                                     _ => return Err(CompilerError::InvalidConversionFromRefToOwnedValue),
@@ -717,22 +667,21 @@ fn compile_expression(
                                     ValueContainer::Local(value) => {
                                         append_value(
                                             compilation_context.core_context(),
-                                            value,
-                                            None,
+                                            &value,
                                         );
                                     }
                                     ValueContainer::Shared(shared_container) => {
-                                        append_shared_container_from_stack(
+                                        append_shared_container_from_preamble(
                                             compilation_context.core_context(),
-                                            shared_container,
+                                            &shared_container.clone(), // FIXME: Do we need to derive ref here, and what mutability ?
                                         )
                                     }
                                 }
                             },
                             ValueAccessType::Borrow => {
-                                append_shared_container_from_stack(
+                                append_shared_container_from_preamble(
                                     compilation_context.core_context(),
-                                    shared_container.derive_reference_with_max_mutability().into(),
+                                    &shared_container.derive_reference_with_max_mutability().into(),
                                 );
                             }
                         };
@@ -761,21 +710,20 @@ fn compile_expression(
             // if single statement and not terminated, just compile the expression
             // (not for unbounded execution mode)
             if unbounded.is_none() && statements.len() == 1 && !is_terminated {
-                scope = compile_expression(
+                compile_expression(
                     compilation_context,
                     RichAst::new(statements.remove(0), &metadata),
                     CompileMetadata::default(),
-                    scope,
                 )?;
             } else {
                 let is_outer_context = meta.is_outer_context();
 
-                // if not outer context, new scope
-                let mut child_scope = if is_outer_context {
-                    scope
-                } else {
-                    scope.push()
-                };
+                // Enter a child scope for nested contexts.
+                if !is_outer_context {
+                    let parent_scope =
+                        core::mem::take(&mut compilation_context.scope);
+                    compilation_context.scope = parent_scope.push();
+                }
 
                 if let Some(UnboundedStatement { is_first, .. }) = unbounded {
                     // if this is the first section of an unbounded statements block, mark as unbounded
@@ -795,20 +743,21 @@ fn compile_expression(
                 }
 
                 for statement in statements.into_iter() {
-                    child_scope = compile_expression(
+                    compile_expression(
                         compilation_context,
                         RichAst::new(statement, &metadata),
                         CompileMetadata::default(),
-                        child_scope,
                     )?;
                 }
-                if !meta.is_outer_context() {
-                    // set parent scope
-                    scope = child_scope
+
+                // Restore the parent scope after compiling the child context.
+                if !is_outer_context {
+                    let child_scope =
+                        core::mem::take(&mut compilation_context.scope);
+
+                    compilation_context.scope = child_scope
                         .pop()
                         .ok_or(CompilerError::ScopePopError)?;
-                } else {
-                    scope = child_scope;
                 }
 
                 // if this is the last section of an unbounded statements block, add closing instruction
@@ -818,6 +767,7 @@ fn compile_expression(
                     compilation_context.append_instruction_code(
                         InstructionCode::UNBOUNDED_STATEMENTS_END,
                     );
+
                     // append termination flag
                     append_u8(
                         compilation_context.cursor(),
@@ -834,11 +784,10 @@ fn compile_expression(
         }) => {
             compilation_context
                 .append_instruction_code(InstructionCode::from(&operator));
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(expression, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -853,17 +802,15 @@ fn compile_expression(
             // append binary code for operation if not already current binary operator
             compilation_context
                 .append_instruction_code(InstructionCode::from(&operator));
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(left, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(right, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -877,17 +824,15 @@ fn compile_expression(
             // append binary code for operation if not already current binary operator
             compilation_context
                 .append_instruction_code(InstructionCode::from(&operator));
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(left, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(right, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -907,20 +852,18 @@ fn compile_expression(
 
             // compile arguments
             for argument in apply.arguments.iter() {
-                scope = compile_expression(
+                compile_expression(
                     compilation_context,
                     RichAst::new(argument.clone(), &metadata),
                     CompileMetadata::default(),
-                    scope,
                 )?;
             }
 
             // compile function expression
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(apply.base, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -940,11 +883,10 @@ fn compile_expression(
                         ));
                     }
 
-                    scope = compile_expression(
+                    compile_expression(
                         compilation_context,
                         RichAst::new(call.arguments.remove(0), &metadata),
                         CompileMetadata::default(),
-                        scope,
                     )?;
                 }
                 "clear" => {
@@ -972,11 +914,10 @@ fn compile_expression(
                         .write(RegularInstruction::splice_dynamic());
 
                     for argument in call.arguments.drain(..) {
-                        scope = compile_expression(
+                        compile_expression(
                             compilation_context,
                             RichAst::new(argument, &metadata),
                             CompileMetadata::default(),
-                            scope,
                         )?;
                     }
                 }
@@ -991,22 +932,20 @@ fn compile_expression(
                     );
 
                     for argument in call.arguments.drain(..) {
-                        scope = compile_expression(
+                        compile_expression(
                             compilation_context,
                             RichAst::new(argument, &metadata),
                             CompileMetadata::default(),
-                            scope,
                         )?;
                     }
                 }
             }
 
             // compile target expression
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(call.target, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -1026,20 +965,18 @@ fn compile_expression(
                     compile_index_property_access(compilation_context, index)
                 }
                 _ => {
-                    scope = compile_dynamic_property_access(
+                    compile_dynamic_property_access(
                         compilation_context,
                         property_access.property,
-                        scope,
                     )?;
                 }
             }
 
             // compile base expression
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(property_access.base, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -1075,28 +1012,25 @@ fn compile_expression(
                     )
                 }
                 _ => {
-                    scope = compile_dynamic_property_assignment(
+                    compile_dynamic_property_assignment(
                         compilation_context,
                         property,
-                        scope,
                     )?;
                 }
             }
 
             // compile assigned expression
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(assigned_expression, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
 
             // compile base expression
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(base, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -1115,14 +1049,13 @@ fn compile_expression(
             compilation_context
                 .append_instruction_code(InstructionCode::PUSH_TO_STACK);
             // compile expression
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(value, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
 
-            let stack_index = scope.get_next_stack_index();
+            let stack_index = compilation_context.scope.get_next_stack_index();
 
             let variable_model =
                 VariableModel::infer_from_ast_metadata_and_type(
@@ -1142,7 +1075,7 @@ fn compile_expression(
                 }
             };
 
-            scope.register_variable_slot(variable);
+            compilation_context.scope.register_variable_slot(variable);
         }
 
         DatexExpressionData::RequestSharedRef(shared_reference) => {
@@ -1163,7 +1096,8 @@ fn compile_expression(
         }) => {
             compilation_context.mark_has_non_static_value();
             // get variable slot address
-            let (stack_index, kind) = scope
+            let (stack_index, kind) = compilation_context
+                .scope
                 .resolve_variable_name(&name, None)
                 .map_err(|_| {
                     CompilerError::AssignmentToExternalVariable(name.clone())
@@ -1189,11 +1123,10 @@ fn compile_expression(
                     );
 
                     // compile expression
-                    scope = compile_expression(
+                    compile_expression(
                         compilation_context,
                         RichAst::new(expression, &metadata),
                         CompileMetadata::default(),
-                        scope,
                     )?;
                 }
                 Some(operator) => {
@@ -1218,11 +1151,10 @@ fn compile_expression(
                         operator,
                     ) {
                         // compile expression
-                        scope = compile_expression(
+                        compile_expression(
                             compilation_context,
                             RichAst::new(expression, &metadata),
                             CompileMetadata::default(),
-                            scope,
                         )?;
 
                         compilation_context.write(
@@ -1259,19 +1191,17 @@ fn compile_expression(
             };
 
             // compile assigned expression
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(assigned_expression, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
 
             // compile unbox expression
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(unbox_expression, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -1318,7 +1248,8 @@ fn compile_expression(
             };
 
             // get variable slot address
-            let (stack_index, ..) = scope
+            let (stack_index, ..) = compilation_context
+                .scope
                 .resolve_variable_name_with_slot_type(&name, slot_type)
                 .ok_or_else(|| {
                     CompilerError::UndeclaredVariable(name.clone())
@@ -1339,14 +1270,13 @@ fn compile_expression(
             let (instruction_block_data, new_scope) =
                 compile_child_realm_instructions(
                     compilation_context,
-                    scope,
                     ast,
                     injected_variable_count.unwrap(), // must be set by precompiler
                     &metadata,
                     vec![],
                 )?;
 
-            scope = new_scope;
+            compilation_context.scope = new_scope;
 
             // insert remote execution instruction
             compilation_context.write(RegularInstruction::remote_execution(
@@ -1354,11 +1284,10 @@ fn compile_expression(
             ));
 
             // insert compiled caller expression
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(caller, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -1384,11 +1313,10 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
             // TODO #764: handle lifetimes, mutability, correctly (in precompiler)
             // TODO #765: handle move/clone
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(create_ref.expression, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -1405,11 +1333,10 @@ fn compile_expression(
                     }
                 },
             );
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(create_shared_ref.expression, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
         // shared values
@@ -1425,11 +1352,10 @@ fn compile_expression(
                     InstructionCode::CREATE_SHARED_MUT
                 }
             });
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(create_shared.expression, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -1441,28 +1367,25 @@ fn compile_expression(
         DatexExpressionData::Range(range_dec) => {
             compilation_context.append_instruction_code(InstructionCode::RANGE);
 
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(range_dec.start, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(range_dec.end, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
         DatexExpressionData::Unbox(unbox) => {
             compilation_context.mark_has_non_static_value();
             compilation_context.append_instruction_code(InstructionCode::UNBOX);
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(unbox.expression, &metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
 
@@ -1475,11 +1398,10 @@ fn compile_expression(
 
             // append expression
             if let Some(inner_expression) = tag_expression.expression {
-                scope = compile_expression(
+                compile_expression(
                     compilation_context,
                     RichAst::new(inner_expression, &metadata),
                     CompileMetadata::default(),
-                    scope,
                 )?;
             }
         }
@@ -1498,11 +1420,12 @@ fn compile_expression(
                     compilation_context.execution_mode,
                     input.clone(),
                 );
+                ctx.scope = compilation_context.scope.clone();
+
                 compile_expression(
                     &mut ctx,
                     RichAst::new(condition, &metadata),
                     CompileMetadata::default(),
-                    scope.clone(),
                 )?;
                 let DXBWithSharedValues {
                     dxb,
@@ -1518,11 +1441,11 @@ fn compile_expression(
                     compilation_context.execution_mode,
                     input.clone(),
                 );
+                ctx.scope = compilation_context.scope.clone();
                 compile_expression(
                     &mut ctx,
                     RichAst::new(then_branch, &metadata),
                     CompileMetadata::default(),
-                    scope.clone(),
                 )?;
                 let DXBWithSharedValues {
                     dxb,
@@ -1539,11 +1462,11 @@ fn compile_expression(
                         compilation_context.execution_mode,
                         input,
                     );
+                    ctx.scope = compilation_context.scope.clone();
                     compile_expression(
                         &mut ctx,
                         RichAst::new(else_expr, &metadata),
                         CompileMetadata::default(),
-                        scope.clone(),
                     )?;
                     let DXBWithSharedValues {
                         dxb,
@@ -1616,14 +1539,13 @@ fn compile_expression(
             let (instruction_block_data, new_scope) =
                 compile_child_realm_instructions(
                     compilation_context,
-                    scope,
                     body,
                     injected_variable_count.unwrap(), // must be set by precompiler
                     &metadata,
                     variables,
                 )?;
 
-            scope = new_scope;
+            compilation_context.scope = new_scope;
 
             compilation_context.write(RegularInstruction::CallableDeclaration(
                 CallableDeclarationData {
@@ -1667,19 +1589,21 @@ fn compile_expression(
             }
         }
 
-        _ => {
-            log::error!("Unhandled expression in compiler: {:?}", data);
-            let ast = DatexExpression { data, span, ty };
-            return Err(CompilerError::UnexpectedTerm(Box::new(ast)));
+        data => {
+            let expressions = data
+                .to_instructions(compilation_context)
+                .collect::<Vec<_>>();
+            for instruction in expressions {
+                compilation_context.write(instruction);
+            }
         }
     }
 
-    Ok(scope)
+    Ok(())
 }
 
 fn compile_child_realm_instructions(
     compilation_context: &mut CompilationContext,
-    scope: CompilationScope,
     ast: DatexExpression,
     injected_variable_count: u32,
     metadata: &Rc<RefCell<AstMetadata>>,
@@ -1700,7 +1624,7 @@ fn compile_child_realm_instructions(
     let injected_values_offset = StackIndex(existing_variables.len() as u32);
 
     let mut child_scope = CompilationScope::new_with_external_parent_scope(
-        scope,
+        compilation_context.scope.clone(),
         stack_index_offset,
         injected_values_offset,
     );
@@ -1762,33 +1686,30 @@ fn compile_key_value_entry(
     key: DatexExpression,
     value: DatexExpression,
     metadata: &Rc<RefCell<AstMetadata>>,
-    mut scope: CompilationScope,
-) -> Result<CompilationScope, CompilerError> {
+) -> Result<(), CompilerError> {
     match *key.data {
         // text -> insert key string
         DatexExpressionData::Text(text) => {
-            append_key_string(compilation_context.core_context(), text.0);
+            append_key_string(compilation_context.core_context(), &text.0);
         }
         // other -> insert key as dynamic
         _ => {
             compilation_context
                 .append_instruction_code(InstructionCode::KEY_VALUE_DYNAMIC);
-            scope = compile_expression(
+            compile_expression(
                 compilation_context,
                 RichAst::new(key, metadata),
                 CompileMetadata::default(),
-                scope,
             )?;
         }
     };
     // insert value
-    scope = compile_expression(
+    compile_expression(
         compilation_context,
         RichAst::new(value, metadata),
         CompileMetadata::default(),
-        scope,
     )?;
-    Ok(scope)
+    Ok(())
 }
 
 fn compile_text_property_access(
@@ -1827,8 +1748,7 @@ fn compile_index_property_assignment(
 fn compile_dynamic_property_access(
     compilation_context: &mut CompilationContext,
     key_expression: DatexExpression,
-    scope: CompilationScope,
-) -> Result<CompilationScope, CompilerError> {
+) -> Result<(), CompilerError> {
     compilation_context
         .append_instruction_code(InstructionCode::GET_ENTRY_DYNAMIC);
     // compile key expression
@@ -1839,15 +1759,13 @@ fn compile_dynamic_property_access(
             &Rc::new(RefCell::new(AstMetadata::default())),
         ),
         CompileMetadata::default(),
-        scope,
     )
 }
 
 fn compile_dynamic_property_assignment(
     compilation_context: &mut CompilationContext,
     key_expression: DatexExpression,
-    scope: CompilationScope,
-) -> Result<CompilationScope, CompilerError> {
+) -> Result<(), CompilerError> {
     compilation_context
         .append_instruction_code(InstructionCode::SET_ENTRY_DYNAMIC);
     // compile key expression
@@ -1858,7 +1776,6 @@ fn compile_dynamic_property_assignment(
             &Rc::new(RefCell::new(AstMetadata::default())),
         ),
         CompileMetadata::default(),
-        scope,
     )
 }
 

@@ -21,7 +21,7 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
-    traits::apply::{Apply, ApplyError},
+    traits::apply::{Apply, ApplyArgument, ApplyError},
     types::type_definition::{
         TypeDefinition, callable::CallableTypeDefinition,
     },
@@ -90,13 +90,23 @@ impl DIFInterface {
     }
 
     /// Executes an apply operation, applying the `value` to the `callee`.
-    pub fn apply(
+    pub fn apply_sync(
         &self,
         runtime: &Runtime,
         callee: ValueContainer,
-        value: Vec<ValueContainer>,
-    ) -> Result<Option<ValueContainer>, ApplyError> {
-        callee.try_apply_sync(runtime, value)
+        value: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
+        callee.try_apply_sync_checked(runtime, value)
+    }
+
+    /// Executes an async apply operation, applying the `value` to the `callee`.
+    pub async fn apply_async(
+        &self,
+        runtime: &Runtime,
+        callee: ValueContainer,
+        value: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
+        callee.try_apply_async_checked(runtime, value).await
     }
 
     /// Creates a new owned local pointer and stores it in memory.

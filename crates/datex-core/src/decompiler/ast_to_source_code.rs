@@ -246,10 +246,12 @@ impl AstToSourceCodeConverter {
             TypeExpressionData::IdentifierWithPointerAddress(
                 IdentifierWithPointerAddress {
                     name,
-                    pointer_address,
+                    pointer_address: _,
                 },
             ) => {
-                format!("{}{}", name, pointer_address)
+                // TODO: also print pointer address in debug mode
+                // format!("{}{}", name, pointer_address)
+                name.clone()
             }
             TypeExpressionData::VariableAccess(VariableAccess {
                 name, ..
@@ -545,7 +547,7 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::Noop => "".to_string(),
             DatexExpressionData::Integer(i) => i.to_string(),
-            DatexExpressionData::DateTime(instant) => instant.to_iso_string(),
+            DatexExpressionData::Instant(instant) => instant.to_iso_string(),
             DatexExpressionData::Range(RangeDeclaration { start, end }) => {
                 let left_code = self.format_child(start);
                 let right_code = self.format_child(end);

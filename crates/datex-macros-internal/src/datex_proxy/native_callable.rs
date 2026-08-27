@@ -45,7 +45,7 @@ pub fn generate_native_callable(
 
     let return_type = match &sig.output {
         syn::ReturnType::Default => None,
-        syn::ReturnType::Type(_, box Type::Tuple(tuple))
+        syn::ReturnType::Type(_, Type::Tuple(tuple))
             if tuple.elems.is_empty() =>
         {
             None
@@ -75,8 +75,15 @@ pub fn generate_native_callable(
 
     for param in &sig.inputs {
         match param {
-            syn::FnArg::Receiver(_) => {
-                // todo
+            syn::FnArg::Receiver(_ty) => {
+                let ty =
+                    self_ty.expect("Self type must be provided for methods");
+                parameter_defs.push(quote! {
+                    (
+                        Some("self".to_string()),
+                        <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache)
+                    )
+                });
             }
             syn::FnArg::Typed(pat_type) => {
                 let name = match &*pat_type.pat {
@@ -109,7 +116,10 @@ pub fn generate_native_callable(
     });
 
     let mut call_argument_inits = Vec::new();
+    let mut call_argument_accesses = Vec::new();
     let mut call_arguments = Vec::new();
+    let mut call_argument_collections = Vec::new();
+
     for (index, param) in sig.inputs.iter().enumerate() {
         let ty = match param {
             syn::FnArg::Receiver(_receiver) => self_ty.unwrap().clone(),
@@ -117,6 +127,10 @@ pub fn generate_native_callable(
                 replace_self_type(&pat_type.ty, self_ty)
             }
         };
+        let var_ident_container = syn::Ident::new(
+            &format!("arg_container_{}", index),
+            proc_macro2::Span::call_site(),
+        );
         let var_ident = syn::Ident::new(
             &format!("arg_{}", index),
             proc_macro2::Span::call_site(),
@@ -127,43 +141,55 @@ pub fn generate_native_callable(
                 matches!(&*pat_type.ty, Type::Reference(_type_reference))
             }
         };
+        call_argument_inits.push(quote! {
+            let mut #var_ident_container = val_iter.next().unwrap();
+        });
 
         // distinguish between move, & and &mut
-        call_argument_inits.push(
+        call_argument_accesses.push(
             // handle & and &mut
             if is_borrowed {
                 quote! {
-                    let value = &mut vals.pop().unwrap();
-                    let mut value_sheep = value.value_container_mut(); // collapse potential Shared to inner ValueContainer
+                    let mut value_sheep = (&mut #var_ident_container.value).value_container_mut(); // collapse potential Shared to inner ValueContainer
                     // try to get stored native value from the value container
-                    let #var_ident = if let Some(mut inner) = <#ty as DatexValueContainerProxyDeserialize>::try_borrow_native_from_value_container(core::ops::DerefMut::deref_mut(&mut value_sheep)) {
+                    let #var_ident = if let Some(mut inner) = <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_borrow_native_from_value_container(core::ops::DerefMut::deref_mut(&mut value_sheep)) {
                         inner
                     } else {
                         // fallback: convert from DATEX value to native value
-                        &mut (<#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(value_sheep.clone()).unwrap())
+                        &mut (<#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_from_value_container(value_sheep.clone()).unwrap())
                     };
                 }
             }
             // handle move
             else {
                 quote! {
-                    let value = vals.pop().unwrap();
                     // try to get stored native value from the value container
-                    let #var_ident = match <#ty as DatexValueContainerProxyDeserialize>::try_native_from_value_container(value) {
+                    let #var_ident = match <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_native_from_value_container(#var_ident_container.value) {
                         Ok(inner) => inner,
-                        Err(box value) => {
+                        Err(value) => {
                             // fallback: convert from DATEX value to native value
-                            <#ty as DatexValueContainerProxyDeserialize>::try_from_value_container(value.clone()).unwrap()
+                            <#ty as #datex_core_crate_name::datex_proxy::DatexValueContainerProxyDeserialize>::try_from_value_container((*value).clone()).unwrap()
                         }
                     };
                 }
             }
         );
         call_arguments.push(quote! { #var_ident });
+
+        call_argument_collections.push(
+            // borrowed values are collected and returned back
+            if is_borrowed {
+                quote! { if #var_ident_container.passed_as_ref { Some(#var_ident_container.value) } else { None } }
+            }
+            // moved values can no longer be accessed, so we return None
+            else {
+                quote! { None }
+            }
+        );
     }
 
     // reverse the call_arguments initialization, but keep usage in the original order
-    call_argument_inits.reverse();
+    call_argument_accesses.reverse();
 
     let method_path = if let Some(self_ty) = self_ty {
         quote! { #self_ty::#method_ident }
@@ -171,16 +197,26 @@ pub fn generate_native_callable(
         quote! { #method_ident }
     };
 
+    let original_method_call = if is_async {
+        quote! { #method_path(#(#call_arguments),*).await }
+    } else {
+        quote! { #method_path(#(#call_arguments),*) }
+    };
+
     let method_call_body = quote! {{
-        #(#call_argument_inits)*
-        #method_path(#(#call_arguments),*)
+        #(#call_argument_accesses)*
+        #original_method_call
     }};
 
     // with return type, wrap in Some, otherwise return None
-    let method_call = if return_type.is_some() {
+    let method_call_conversion = if return_type.is_some() {
         // Note: since the borrowed cache is no longer accessible inside the function body,
         // the return type is fetched during creation and stored in the closure context.
         quote! {{
+            let mut val_iter = vals.into_iter();
+
+            #(#call_argument_inits)*
+
             let mut result_value = #datex_core_crate_name::datex_proxy::ToDatexNativeValueContainer::boxed_to_datex_native_value_container(
                 #method_call_body,
                 &mut #datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache::default(), // empty placeholder cache to satisfy the trait bound, FIXME: better solution
@@ -189,23 +225,27 @@ pub fn generate_native_callable(
             // set the correct type for the result value container
             match &mut result_value {
                 ValueContainer::Local(value) => {
-                   value.custom_type = Some(return_type.clone().into())
+                   value.custom_type = Some(return_type.into())
                 }
                 ValueContainer::Shared(_) => {} // shared container must already have an assigned type since it already contained a full ValueContainer
             }
-            Some(result_value)
+            (Some(result_value), vec![#(#call_argument_collections),*].into_iter().filter_map(|v| v).collect())
         }}
     } else {
         quote! {{
+            let mut val_iter = vals.into_iter();
+
+            #(#call_argument_inits)*
+
             #method_call_body;
-            None
+            (None, vec![#(#call_argument_collections),*].into_iter().filter_map(|v| v).collect())
         }}
     };
 
     let kind = if has_mutable_inputs {
-        quote! { CallableKind::Procedure }
+        quote! {  #datex_core_crate_name::types::type_definition::callable::CallableKind::Procedure }
     } else {
-        quote! { CallableKind::Function }
+        quote! {  #datex_core_crate_name::types::type_definition::callable::CallableKind::Function }
     };
 
     let return_type_init = match return_type {
@@ -214,7 +254,25 @@ pub fn generate_native_callable(
                 let return_type = <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache);
             }
         }
-        None => quote! {},
+        None => quote! {
+            let return_type = ();
+        },
+    };
+
+    let body = if is_async {
+        quote! {
+            #datex_core_crate_name::values::core_values::callable::CallableBody::native_async(move |mut vals| {
+                let return_type = return_type.clone();
+                alloc::boxed::Box::pin(async move {Ok(#method_call_conversion)})
+            })
+        }
+    } else {
+        quote! {
+            #datex_core_crate_name::values::core_values::callable::CallableBody::native_sync(move |mut vals| {
+                let return_type = return_type.clone();
+                Ok(#method_call_conversion)
+            })
+        }
     };
 
     quote! {{
@@ -231,7 +289,7 @@ pub fn generate_native_callable(
                 return_type: #return_type_tokens,
                 yeet_type: #yeet_type_tokens,
             },
-            body: #datex_core_crate_name::values::core_values::callable::CallableBody::native_sync(move |mut vals| {Ok(#method_call)}),
+            body: #body,
             creator: Default::default(),
         }
     }}

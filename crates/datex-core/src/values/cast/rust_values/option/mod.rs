@@ -4,6 +4,11 @@
 //! `Option<T>` in DATEX, where `None` is represented as a tagged type with the tag "None(null)", and `Some(T)` is represented as a tagged type with the tag "Some" and
 //! an inner type of `T`.
 
+mod as_borrowed;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+mod value_access;
+
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
@@ -13,8 +18,9 @@ use crate::{
         r#type::Type,
         type_definition::{TypeDefinition, union::UnionTypeDefinition},
     },
-    values::value::Value,
+    values::{core_values::native::DatexNative, value::Value},
 };
+use core::any::Any;
 
 impl<T: DatexValueProxy> DatexValueProxy for Option<T> {}
 impl<T: DatexValueProxyInfallibleSerialize> DatexValueProxyInfallibleSerialize
@@ -95,6 +101,24 @@ where
             ))
             .into(),
         )
+    }
+}
+
+// TODO: clean up traits
+impl<T: DatexNative + DatexProxyType + DatexValueProxy> DatexNative
+    for Option<T>
+{
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+    fn boxed_to_datex_native_value(
+        self: Box<Self>,
+        cache: &mut SharedReferencesCache,
+    ) -> Value {
+        Value::native_boxed(self, cache)
     }
 }
 
