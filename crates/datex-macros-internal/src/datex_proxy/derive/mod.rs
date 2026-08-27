@@ -1,3 +1,7 @@
+pub mod data;
+pub mod generator;
+pub mod parser;
+
 use crate::utils::{get_datex_core_crate_name, get_project_relative_file_path};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
