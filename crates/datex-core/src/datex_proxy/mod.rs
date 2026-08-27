@@ -79,6 +79,7 @@ impl From<ScriptExecutionError> for DeserializationError {
 
 /// Base DATEX value Proxy trait - converts to and from [ValueContainer]
 /// Must implement [DatexValueContainerProxyDeserialize] and [DatexValueContainerProxySerialize]
+#[deprecated( note = "will be replaced with ToInstructions / serde dif traits")]
 pub trait DatexValueContainerProxy:
     Sized
     + DatexValueContainerProxyDeserialize
@@ -107,6 +108,7 @@ pub trait DatexProxyType {
 }
 
 /// Conversion from a [ValueContainer] to a rust value
+#[deprecated( note = "will be replaced with ToInstructions / serde dif traits")]
 pub trait DatexValueContainerProxyDeserialize: Sized {
     /// Try to deserialize the given [ValueContainer] into Self.
     fn try_from_value_container(
@@ -237,6 +239,7 @@ pub trait DatexValueContainerProxyDeserialize: Sized {
 }
 
 /// Conversion from a [Value] to a rust value
+#[deprecated( note = "will be replaced with ToInstructions / serde dif traits")]
 pub trait DatexValueProxyDeserialize {
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError>
     where
@@ -256,6 +259,7 @@ pub trait DatexValueProxyDeserialize {
 }
 
 /// Conversion from a rust value to a [ValueContainer]. Might fail if serde values are serialized.
+#[deprecated( note = "will be replaced with ToInstructions / serde dif traits")]
 pub trait DatexValueContainerProxySerialize {
     fn try_boxed_to_value_container(
         self: Box<Self>,
@@ -291,6 +295,7 @@ pub trait DatexValueContainerProxySerialize {
 }
 
 /// Conversion from a rust value to a [Value]. Might fail if serde values are serialized.
+#[deprecated( note = "will be replaced with ToInstructions / serde dif traits")]
 pub trait DatexValueProxySerialize {
     fn try_boxed_to_value(
         self: Box<Self>,
@@ -319,6 +324,7 @@ pub trait DatexValueProxySerialize {
 
 /// Infallible conversion from a rust value to a [ValueContainer].
 /// Only works if no serde values are serialized.
+#[deprecated( note = "will be replaced with ToInstructions / serde dif traits")]
 pub trait DatexValueContainerProxyInfallibleSerialize {
     fn boxed_to_value_container(
         self: Box<Self>,
@@ -361,6 +367,7 @@ pub trait DatexValueContainerProxyInfallibleSerialize {
 
 /// Infallible conversion from a rust value to a [Value].
 /// Only works if no serde values are serialized.
+#[deprecated( note = "will be replaced with ToInstructions / serde dif traits")]
 pub trait DatexValueProxyInfallibleSerialize {
     fn boxed_to_value(
         self: Box<Self>,
