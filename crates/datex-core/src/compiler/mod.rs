@@ -26,11 +26,8 @@ use crate::{
         core_compilation_context::{CompileInput, DXBWithSharedValues},
         to_instructions::ToInstructions,
         value_compiler::{
-            append_boolean, append_decimal, append_encoded_integer,
-            append_float_as_i16, append_float_as_i32, append_get_shared_ref,
-            append_instant, append_key_string,
-            append_shared_container_from_preamble, append_typed_decimal,
-            append_value,
+            append_get_shared_ref, append_key_string,
+            append_shared_container_from_preamble, append_value,
         },
     },
     global::{
@@ -67,8 +64,7 @@ use crate::{
     time::Instant as TimingInstant,
     utils::buffers::{append_u8, append_u32},
     values::{
-        core_values::{decimal::Decimal, endpoint::Endpoint},
-        value_container::ValueContainer,
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
 use binrw::io::Write;
@@ -553,7 +549,11 @@ fn compile_expression(
     let metadata = rich_ast.metadata;
     let ast = rich_ast.ast;
 
-    let DatexExpression { data, span, ty } = ast;
+    let DatexExpression {
+        data,
+        span: _,
+        ty: _,
+    } = ast;
     match *data {
         // TODO remove all the instructions and switch to [ToInstruction] trait, fix scopes
         DatexExpressionData::List(list) => {

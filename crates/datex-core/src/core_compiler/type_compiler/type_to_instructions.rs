@@ -1,8 +1,6 @@
 use crate::{
-    core_compiler::{
-        to_instructions::{
-            SharedValueTrackingProvider, ToInstructions,
-        },
+    core_compiler::to_instructions::{
+        SharedValueTrackingProvider, ToInstructions,
     },
     instruction::type_instruction::TypeInstruction,
     prelude::*,

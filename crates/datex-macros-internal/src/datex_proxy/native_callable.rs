@@ -75,7 +75,7 @@ pub fn generate_native_callable(
 
     for param in &sig.inputs {
         match param {
-            syn::FnArg::Receiver(ty) => {
+            syn::FnArg::Receiver(_ty) => {
                 let ty =
                     self_ty.expect("Self type must be provided for methods");
                 parameter_defs.push(quote! {

@@ -18,9 +18,8 @@ use crate::{
 };
 use core::{
     cell::{Ref, RefMut},
-    fmt::{Debug, Formatter},
+    fmt::Debug,
 };
-use log::info;
 
 pub trait AsBorrowed<'a> {
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a>;

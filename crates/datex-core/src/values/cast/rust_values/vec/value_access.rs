@@ -49,8 +49,8 @@ where
 
     fn try_get_property_mut(
         &mut self,
-        key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        _key: BorrowedValueKey,
+        _cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         todo!()
     }

@@ -5,19 +5,13 @@ use crate::{
         spanned::Spanned,
         type_expressions::TypeExpression,
     },
-    core_compiler::{
-        shared_value_tracking::SharedValueTracking,
-        to_instructions::{InstructionContext, ToInstructions},
-    },
     global::{
         operators::{
             ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
             UnaryOperator, modification::ModificationOperator,
         },
-        root_properties::RootProperty,
         stack_index::StackIndex,
     },
-    instruction::regular_instruction::RegularInstruction,
     libs::core::core_lib_id::CoreLibId,
     shared_values::{
         PointerAddress, ReferenceMutability, SelfOwnedPointerAddress,
@@ -44,7 +38,6 @@ use crate::{
 use core::{
     fmt::Display,
     ops::{self, Neg},
-    str::FromStr,
 };
 
 #[derive(Clone, Debug)]

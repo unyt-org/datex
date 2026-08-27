@@ -22,14 +22,10 @@ use core::any::Any;
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    traits::try_clone::TryClone,
     types::type_definition::TypeDefinition,
-    values::{
-        borrowed_value_container::{
-            AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
-            BorrowedValueContainerMut,
-        },
-        core_value::CoreValue,
+    values::borrowed_value_container::{
+        AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
+        BorrowedValueContainerMut,
     },
 };
 

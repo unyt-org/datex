@@ -1,7 +1,7 @@
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    shared_values::errors::{AccessError, KeyNotFoundError},
+    shared_values::errors::AccessError,
     traits::value_access::ValueAccess,
     types::r#type::Type,
     values::{

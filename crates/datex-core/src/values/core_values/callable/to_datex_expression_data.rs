@@ -4,7 +4,6 @@ use crate::{
             CallableDeclaration, CallableSignature, DatexExpressionData,
         },
         spanned::Spanned,
-        type_expressions::TypeExpressionData,
     },
     decompiler::ast_from_bytecode::ast_from_bytecode,
     prelude::*,

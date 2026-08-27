@@ -12,8 +12,8 @@ use crate::{
 impl ValueAccess for EntityTypeDefinition {
     fn try_get_property(
         &self,
-        key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        _key: BorrowedValueKey,
+        _cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         todo!()
     }

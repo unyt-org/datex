@@ -262,7 +262,7 @@ impl RuntimeExecutionStack {
     pub fn take_runtime_values_with_stack_indices(
         &mut self,
         values: Vec<RuntimeValue>,
-    ) -> Result<(Vec<(ValueContainer)>, Vec<Option<StackIndex>>), ExecutionError>
+    ) -> Result<(Vec<ValueContainer>, Vec<Option<StackIndex>>), ExecutionError>
     {
         let mut stack_indices = Vec::new();
         let mut resolved_values = Vec::new();
@@ -289,11 +289,7 @@ impl RuntimeExecutionStack {
         values: Vec<ValueContainer>,
         stack_indices: Vec<Option<StackIndex>>,
     ) -> Result<(), ExecutionError> {
-        for x in stack_indices
-            .into_iter()
-            .filter_map(|i| i)
-            .zip_longest(values)
-        {
+        for x in stack_indices.into_iter().flatten().zip_longest(values) {
             match x {
                 EitherOrBoth::Both(previous, next) => {
                     // If a stack index is available, and the value for the reserved stack index is available, restore the value to the stack at the given index.

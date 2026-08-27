@@ -13,7 +13,6 @@ use crate::{
 use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
 use crate::{
-    traits::try_clone::TryClone,
     types::r#type::Type,
     values::{
         core_values::{

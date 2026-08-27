@@ -6,7 +6,7 @@ use crate::{
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
+        value_container::value_key::BorrowedValueKey,
     },
 };
 
@@ -16,8 +16,8 @@ pub trait ValueAccess {
     /// This method returns a [BorrowedValueContainer] which can be either a [ValueContainer] or a [Callable] value.
     fn try_get_property(
         &self,
-        key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        _key: BorrowedValueKey,
+        _cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         Err(AccessError::InvalidOperation(
             "Cannot get property".to_string(),
@@ -27,8 +27,8 @@ pub trait ValueAccess {
     /// Gets a mutable reference to a property on the value if applicable (e.g. for map and structs)
     fn try_get_property_mut(
         &mut self,
-        key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        _key: BorrowedValueKey,
+        _cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         Err(AccessError::InvalidOperation(
             "Cannot get property".to_string(),

@@ -8,12 +8,10 @@ use crate::{
         shared_value_tracking::{
             SharedValueTracking, TrackedValueCollection, TrackedValueMetadata,
         },
-        to_instructions::{
-            SharedValueTrackingProvider, ToInstructions,
-        },
+        to_instructions::{SharedValueTrackingProvider, ToInstructions},
         type_compiler::append_type_instruction,
         value_compiler::append_value,
-        value_visitor::{ValueVisitor},
+        value_visitor::ValueVisitor,
     },
     global::stack_index::StackIndex,
     instruction::{
@@ -23,13 +21,12 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        OwnedSharedContainer, PointerAddress, ReferenceMutability,
-        ReferencedSharedContainer, SelfOwnedPointerAddress, SharedContainer,
-        SharedContainerMutability, SharedContainerOwnership,
-        traits::SharedContainerCommon,
+        PointerAddress, ReferenceMutability, ReferencedSharedContainer,
+        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
+        SharedContainerOwnership, traits::SharedContainerCommon,
     },
     types::r#type::Type,
-    values::value_container::{ValueContainer},
+    values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Write};
 
@@ -54,9 +51,7 @@ impl ValueVisitor for PreambleContext<'_> {
         match value_container {
             ValueContainer::Local(value) => append_value(self, value),
             ValueContainer::Shared(shared_container) => {
-                match self
-                    .self_referencing_containers
-                    .get_mut(shared_container)
+                match self.self_referencing_containers.get_mut(shared_container)
                 {
                     // not self referencing
                     None => {
@@ -289,8 +284,7 @@ fn append_uninitialized_shared_container(
                     },
                     None,
                 )
-            }
-            else if !metadata.is_known() {
+            } else if !metadata.is_known() {
                 append_referenced_shared_container_with_value(
                     context,
                     referenced_container,

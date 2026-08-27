@@ -65,11 +65,8 @@ pub fn compile_injected_values(
 
         cursor.write_all(&preambles_dxb).unwrap();
         cursor.write_all(&instruction_block_data.body).unwrap();
-        
-        Ok(DXBWithSharedValues::new(
-            cursor.into_inner(),
-            shared_values,
-        ))
+
+        Ok(DXBWithSharedValues::new(cursor.into_inner(), shared_values))
     }
 }
 
@@ -350,7 +347,6 @@ mod tests {
                         // injected values preamble
                         RegularInstruction::PushListToStack,
                         RegularInstruction::statements_with_children(false, instructions!(
-                            
                             RegularInstruction::PushToStack,
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: owned_address_1,
@@ -358,7 +354,6 @@ mod tests {
                                 container_mutability: SharedContainerMutability::Immutable
                             }),
                             RegularInstruction::Int32(Int32Data(42)),
-                            
                             RegularInstruction::PushToStack,
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                                 address: owned_address_2,
@@ -366,7 +361,6 @@ mod tests {
                                 container_mutability: SharedContainerMutability::Mutable
                             }),
                             RegularInstruction::Int32(Int32Data(100)),
-
                             RegularInstruction::list_with_children(instructions!(
                                 RegularInstruction::TakeStackValue(StackIndex(0)),
                                 RegularInstruction::TakeStackValue(StackIndex(1)),

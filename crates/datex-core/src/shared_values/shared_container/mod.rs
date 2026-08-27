@@ -371,16 +371,14 @@ impl SharedContainer {
     /// # Safety
     /// The caller must ensure that no other [OwnedSharedContainer] for the same inner value exists
     /// if move_indicator of the [ReferencedSharedContainer] is set.
-    pub unsafe fn try_upgrade_to_owned(self) -> Result<OwnedSharedContainer, ReferencedSharedContainer> {
+    pub unsafe fn try_upgrade_to_owned(
+        self,
+    ) -> Result<OwnedSharedContainer, ReferencedSharedContainer> {
         match self {
-            SharedContainer::Referenced(referenced_container) => {
-                unsafe {
-                    referenced_container.try_upgrade_to_owned()
-                }
-            }
-            SharedContainer::Owned(owned_container) => {
-                Ok(owned_container)
-            }
+            SharedContainer::Referenced(referenced_container) => unsafe {
+                referenced_container.try_upgrade_to_owned()
+            },
+            SharedContainer::Owned(owned_container) => Ok(owned_container),
         }
     }
 

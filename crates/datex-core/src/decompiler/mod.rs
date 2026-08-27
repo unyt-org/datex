@@ -5,10 +5,7 @@ mod options;
 pub use options::*;
 
 use crate::{
-    ast::{
-        expressions::{DatexExpression, DatexExpressionData},
-        spanned::Spanned,
-    },
+    ast::{expressions::DatexExpression, spanned::Spanned},
     decompiler::ast_to_source_code::AstToSourceCodeConverter,
     prelude::*,
 };

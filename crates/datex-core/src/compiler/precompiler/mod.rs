@@ -749,7 +749,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
     fn visit_property_access(
         &mut self,
         property_access: &mut PropertyAccess,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         // if lhs is variable, access it as Borrow
         property_access.walk_children(self)?;
@@ -1395,16 +1395,14 @@ mod tests {
         assert_matches!(
             result,
             Ok(RichAst {
-                ast:
-                    DatexExpression {
-                        data:
-                            DatexExpressionData::ResolveCoreLibId(
-                                CoreLibId::Type(CoreLibTypeId::Base(
-                                    CoreLibBaseTypeId::Boolean,
-                                )),
-                            ),
-                        ..
-                    },
+                ast: DatexExpression {
+                    data: DatexExpressionData::ResolveCoreLibId(
+                        CoreLibId::Type(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Boolean,
+                        )),
+                    ),
+                    ..
+                },
                 ..
             })
         );
@@ -1412,16 +1410,14 @@ mod tests {
         assert_matches!(
             result,
             Ok(RichAst {
-                ast:
-                    DatexExpression {
-                        data:
-                            DatexExpressionData::ResolveCoreLibId(
-                                CoreLibId::Type(CoreLibTypeId::Base(
-                                    CoreLibBaseTypeId::Integer,
-                                )),
-                            ),
-                        ..
-                    },
+                ast: DatexExpression {
+                    data: DatexExpressionData::ResolveCoreLibId(
+                        CoreLibId::Type(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Integer,
+                        )),
+                    ),
+                    ..
+                },
                 ..
             })
         );

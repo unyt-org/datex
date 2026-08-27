@@ -111,7 +111,7 @@ impl CoreLibraryValues {
         let mut output = String::new();
 
         // if first argument is a string value, print it directly
-        let value_args = if let Some(ValueContainer::Local(Value {
+        let _value_args = if let Some(ValueContainer::Local(Value {
             inner: CoreValue::Text(text),
             ..
         })) = args.first().map(|v| &v.value)

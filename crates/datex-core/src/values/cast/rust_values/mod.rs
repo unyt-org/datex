@@ -33,9 +33,7 @@ use crate::{
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    traits::try_clone::TryClone,
     types::type_definition::TypeDefinition,
-    utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         borrowed_value_container::{
             AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
@@ -45,7 +43,6 @@ use crate::{
             decimal::typed_decimal::DecimalTypeVariant,
             integer::typed_integer::IntegerTypeVariant,
         },
-        value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
 

@@ -3154,20 +3154,16 @@ fn negation() {
         expr,
         DatexExpressionData::UnaryOperation(UnaryOperation {
             operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
-            expression:
-                DatexExpression {
-                    data:
-                        DatexExpressionData::UnaryOperation(UnaryOperation {
-                            operator:
-                                UnaryOperator::Logical(LogicalUnaryOperator::Not),
-                            expression:
-                                DatexExpression {
-                                    data: DatexExpressionData::List(_),
-                                    ..
-                                },
-                        }),
-                    ..
-                },
+            expression: DatexExpression {
+                data: DatexExpressionData::UnaryOperation(UnaryOperation {
+                    operator: UnaryOperator::Logical(LogicalUnaryOperator::Not),
+                    expression: DatexExpression {
+                        data: DatexExpressionData::List(_),
+                        ..
+                    },
+                }),
+                ..
+            },
         })
     );
 }

@@ -652,8 +652,8 @@ fn derive_enum(
             from_datex_fields,
             datex_type,
             field_names,
-            to_datex_expression_data_fields,
-            try_get_properties,
+            to_datex_expression_data_fields: _,
+            try_get_properties: _,
         } = derive_fields(&variant.fields, context);
 
         // if any variant is fallible, mark as fallible

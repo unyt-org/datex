@@ -2,7 +2,6 @@ use crate::{
     dxb_parser::instruction_collector::{
         CollectedResults, CollectionResultsPopper,
     },
-    global::stack_index::StackIndex,
     prelude::*,
     runtime::execution::{
         ExecutionError, InvalidProgramError,

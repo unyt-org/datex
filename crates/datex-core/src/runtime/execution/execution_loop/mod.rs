@@ -1323,10 +1323,10 @@ pub gen fn inner_execution_loop(
                                         return yield Err(ExecutionError::Unspecified(error));
                                     }
 
-                                    let (callee, callee_stack_index) = callee.into_value_container_with_previous_stack_index(&mut state)?;
+                                    let (callee, _callee_stack_index) = callee.into_value_container_with_previous_stack_index(&mut state)?;
                                     let (args, borrowed_args_stack_indices) = state.stack.take_runtime_values_with_stack_indices(args)?;
 
-                                    let (result, mut borrowed_args) = interrupt_with_borrowed_args_and_maybe_result!(
+                                    let (result, borrowed_args) = interrupt_with_borrowed_args_and_maybe_result!(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::Apply(
@@ -1367,7 +1367,7 @@ pub gen fn inner_execution_loop(
                                     let (callee, callee_stack_index) = callee.into_value_container_with_previous_stack_index(&mut state)?;
                                     let (args, borrowed_args_stack_indices) = state.stack.take_runtime_values_with_stack_indices(args)?;
 
-                                    let (val, mut borrowed_args) = interrupt_with_borrowed_args_and_maybe_result!(
+                                    let (val, borrowed_args) = interrupt_with_borrowed_args_and_maybe_result!(
                                         interrupt_provider,
                                         ExecutionInterrupt::External(
                                             ExternalExecutionInterrupt::CallMethod(

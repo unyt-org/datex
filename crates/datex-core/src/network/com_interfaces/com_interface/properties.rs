@@ -117,10 +117,7 @@ impl ReconnectionConfig {
         };
         let now = now_ms();
         let elapsed = Duration::from_millis(now - close_timestamp);
-        if elapsed < *timeout {
-            return false;
-        }
-        true
+        elapsed >= *timeout
     }
 
     pub fn get_timeout(&self) -> Option<Duration> {

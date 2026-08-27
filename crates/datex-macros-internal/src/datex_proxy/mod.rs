@@ -20,7 +20,7 @@ pub fn generate_item_glue_code(
             generate_impl_glue_code(args, input, item_impl)
         }
         Item::Mod(item_mod) => generate_mod_glue_code(args, item_mod),
-        Item::Fn(item_fn) => {
+        Item::Fn(_item_fn) => {
             todo!("Implement glue code generation for functions");
         }
         e => {

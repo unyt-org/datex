@@ -4,7 +4,7 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
-use syn::{Item, ItemMod, LitStr, parse::Parse, parse_macro_input};
+use syn::{Item, ItemMod, LitStr, parse::Parse};
 
 struct ModuleAttributes {
     name: Option<String>,
@@ -62,10 +62,8 @@ pub fn generate_mod_glue_code(
     let ident = &item.ident;
 
     // map items to their token streams
-    let datex_items: Vec<TokenStream> = items
-        .iter()
-        .filter_map(|item| map_to_datex_item(item))
-        .collect();
+    let datex_items: Vec<TokenStream> =
+        items.iter().filter_map(map_to_datex_item).collect();
 
     quote! {
         #(#attrs)*

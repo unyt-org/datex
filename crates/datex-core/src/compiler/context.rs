@@ -7,9 +7,7 @@ use crate::{
             CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
         shared_value_tracking::SharedValueTracking,
-        to_instructions::{
-            InstructionContext, SharedValueTrackingProvider, ToInstructions,
-        },
+        to_instructions::{SharedValueTrackingProvider, ToInstructions},
         type_compiler::append_type_instruction,
         value_compiler::append_instruction_code,
     },
@@ -92,8 +90,8 @@ impl<'a> CompilationContext<'a> {
     }
 
     /// Converts a [TypeExpression] to [TypeInstruction]s and appends them to the current buffer.
-    pub fn append_compiled_type_expression<'b>(
-        &'b mut self,
+    pub fn append_compiled_type_expression(
+        &mut self,
         type_expression: &TypeExpression,
     ) {
         let instructions = type_expression

@@ -246,7 +246,7 @@ impl AstToSourceCodeConverter {
             TypeExpressionData::IdentifierWithPointerAddress(
                 IdentifierWithPointerAddress {
                     name,
-                    pointer_address,
+                    pointer_address: _,
                 },
             ) => {
                 // TODO: also print pointer address in debug mode

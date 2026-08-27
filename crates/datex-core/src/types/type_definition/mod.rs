@@ -94,9 +94,12 @@ pub enum TypeDefinition {
 impl TypeDefinition {
     /// Returns true if the type definition is a structural type (e.g. a collection, literal, or shared type).
     pub fn is_structural(&self) -> bool {
-        !matches!(self, TypeDefinition::CoreType(_)
-            | TypeDefinition::Box(Type::Entity(_))
-            | TypeDefinition::ImplType(_))
+        !matches!(
+            self,
+            TypeDefinition::CoreType(_)
+                | TypeDefinition::Box(Type::Entity(_))
+                | TypeDefinition::ImplType(_)
+        )
     }
 
     pub fn is_tagged(&self) -> bool {

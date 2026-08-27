@@ -5,7 +5,6 @@ use crate::{
     utils::{goat::Goat, goat_mut::GoatMut},
     values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
 };
-use num_traits::ToPrimitive;
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {

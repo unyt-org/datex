@@ -20,7 +20,7 @@ where
 {
     fn try_get_property(
         &self,
-        key: BorrowedValueKey,
+        _key: BorrowedValueKey,
         _cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         todo!()
@@ -28,7 +28,7 @@ where
 
     fn try_get_property_mut(
         &mut self,
-        key: BorrowedValueKey,
+        _key: BorrowedValueKey,
         _cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         todo!()

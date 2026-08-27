@@ -5,7 +5,7 @@ use crate::{
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    traits::{try_clone::TryClone, value_access::ValueAccess},
+    traits::value_access::ValueAccess,
     types::r#type::Type,
     values::{
         borrowed_value_container::{
@@ -41,13 +41,13 @@ impl ValueAccess for Duration {}
 impl DatexValueProxySerialize for Duration {
     fn try_boxed_to_value(
         self: Box<Self>,
-        context: &mut SharedReferencesCache,
+        _context: &mut SharedReferencesCache,
     ) -> Result<Value, TryToDatexValueError> {
         todo!()
     }
 }
 impl DatexProxyType for Duration {
-    fn datex_type(context: &mut SharedReferencesCache) -> Type {
+    fn datex_type(_context: &mut SharedReferencesCache) -> Type {
         Type::core(CoreLibBaseTypeId::Any)
     }
 }

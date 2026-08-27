@@ -5,17 +5,14 @@ use crate::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
         shared_value_tracking::SharedValueTracking,
-        to_instructions::{
-            InstructionContext, SharedValueTrackingProvider, ToInstructions,
-        },
+        to_instructions::{SharedValueTrackingProvider, ToInstructions},
         type_compiler::append_type_instruction,
         value_compiler::{append_shared_container_from_preamble, append_value},
+        value_visitor::ValueVisitor,
     },
     instruction::type_instruction::TypeInstruction,
     prelude::*,
-    runtime::{
-        pointer_availability_lookup::PointerAvailabilityLookup,
-    },
+    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     shared_values::SharedContainer,
     types::r#type::Type,
     values::{
@@ -23,7 +20,6 @@ use crate::{
     },
 };
 use binrw::io::Cursor;
-use crate::core_compiler::value_visitor::ValueVisitor;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 
@@ -45,18 +41,19 @@ impl DXBWithSharedValues {
     /// # Safety
     /// The caller must ensure for all shared_values that no other [OwnedSharedContainer] for the same
     /// inner value exists if move_indicator of the [ReferencedSharedContainer] is set.
-    pub unsafe fn new_with_upgraded_owned_containers(dxb: Vec<u8>, shared_values: Vec<SharedContainer>) -> Self {
+    pub unsafe fn new_with_upgraded_owned_containers(
+        dxb: Vec<u8>,
+        shared_values: Vec<SharedContainer>,
+    ) -> Self {
         // Force convert referenced containers with move_indicator flag
         // to OwnedSharedContainer.
         let shared_values = shared_values
             .into_iter()
-            .map(|shared_container|
-                unsafe {
-                    shared_container.try_upgrade_to_owned()
-                }
+            .map(|shared_container| {
+                unsafe { shared_container.try_upgrade_to_owned() }
                     .map(SharedContainer::Owned)
                     .unwrap_or_else(SharedContainer::Referenced)
-            )
+            })
             .collect();
         DXBWithSharedValues { dxb, shared_values }
     }
@@ -147,7 +144,10 @@ impl<'a> CoreCompilationContext<'a> {
         // SAFETY: it is assumed that the tracked values from the shared value tracking were
         // moved inside the compilation and are no longer accessible from the outside
         unsafe {
-            DXBWithSharedValues::new_with_upgraded_owned_containers(combined_buffer, top_level_values)
+            DXBWithSharedValues::new_with_upgraded_owned_containers(
+                combined_buffer,
+                top_level_values,
+            )
         }
     }
 }

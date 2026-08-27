@@ -137,10 +137,8 @@ impl<'a> SharedValueTracking<'a> {
                 let is_self_referencing = *is_self_referencing;
                 let is_known = *is_known;
                 let index = self.get_next_stack_index();
-                let tracked_value = self
-                    .tracked_values
-                    .get_mut(shared_container)
-                    .unwrap();
+                let tracked_value =
+                    self.tracked_values.get_mut(shared_container).unwrap();
                 *tracked_value = TrackedValueMetadata::Root {
                     index,
                     is_known,

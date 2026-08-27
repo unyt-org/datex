@@ -7,8 +7,8 @@ use crate::{
     prelude::*,
     shared_values::{
         ExternalSharedContainer, OwnedSharedContainer, PointerAddress,
-        ReferenceMutability, RemotePointerAddress, SelfOwnedSharedContainer,
-        SharedContainerInner, SharedContainerMutability,
+        ReferenceMutability, RemotePointerAddress, SharedContainerInner,
+        SharedContainerMutability,
         base_shared_value_container::{
             BaseSharedValueContainer, observers::ObserverData,
         },
@@ -242,7 +242,9 @@ impl ReferencedSharedContainer {
     /// # Safety
     /// The caller must ensure that no other [OwnedSharedContainer] for the same inner value exists
     /// if move_indicator is set.
-    pub unsafe fn try_upgrade_to_owned(self) -> Result<OwnedSharedContainer, Self> {
+    pub unsafe fn try_upgrade_to_owned(
+        self,
+    ) -> Result<OwnedSharedContainer, Self> {
         if self.move_indicator {
             Ok(unsafe {
                 OwnedSharedContainer::new_unchecked(

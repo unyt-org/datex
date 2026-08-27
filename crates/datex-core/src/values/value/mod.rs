@@ -4,10 +4,8 @@ use crate::{
     datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    shared_values::errors::KeyNotFoundError,
-    types::{
-        r#type::Type::{self},
-        type_definition::{TypeDefinition, callable::CallableTypeDefinition},
+    types::type_definition::{
+        TypeDefinition, callable::CallableTypeDefinition,
     },
     utils::sheep::Sheep,
     values::{
@@ -42,11 +40,9 @@ use crate::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
         core_values::endpoint::Endpoint,
-        value::borrowed_value::{BorrowedValue, BorrowedValueMut},
     },
 };
 use core::{
-    cell::Ref,
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
@@ -308,7 +304,7 @@ impl Value {
     pub fn try_take_property<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
-        cache: &mut SharedReferencesCache,
+        _cache: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, AccessError> {
         // TODO
         match self.inner {

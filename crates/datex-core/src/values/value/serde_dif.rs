@@ -14,7 +14,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{fmt, ops::Deref};
+use core::fmt;
 use num::ToPrimitive;
 use serde::{
     Deserializer, Serialize, Serializer,

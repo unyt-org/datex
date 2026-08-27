@@ -16,7 +16,7 @@ use crate::{
             integer::{Integer, typed_integer::TypedInteger},
             list::List,
             map::Map,
-            native::{DatexNative, NativeCoreValue},
+            native::DatexNative,
             range::Range,
             text::Text,
         },
@@ -25,10 +25,9 @@ use crate::{
     },
 };
 use core::{
-    fmt::{Debug, Pointer},
+    fmt::Debug,
     ops::{Deref, DerefMut},
 };
-use log::info;
 
 /// Similar to [Value], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.

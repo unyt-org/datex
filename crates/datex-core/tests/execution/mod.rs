@@ -1,9 +1,9 @@
-use log::info;
 use datex_core::{
     compile,
     compiler::{CompileOptions, compile_template, scope::CompilationScope},
     disassembler::{
-        options::DisassemblerOptions, print_disassembled_with_options,
+        get_disassembled_with_options, options::DisassemblerOptions,
+        print_disassembled_with_options,
     },
     runtime::{
         Runtime,
@@ -20,7 +20,7 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
-use datex_core::disassembler::{get_disassembled_with_options};
+use log::info;
 
 pub mod local_values;
 pub mod shared_values;
@@ -84,7 +84,6 @@ fn compile_and_execute_multiple(
     ))
     .unwrap()
     .unwrap();
-
 
     let list: List = result
         .try_into_value()

@@ -1,17 +1,12 @@
 use crate::{
     ast::type_expressions::{TypeExpression, TypeExpressionData},
-    compiler::context::CompilationContext,
-    core_compiler::{
-        shared_value_tracking::SharedValueTracking,
-        to_instructions::{
-            InstructionContext, SharedValueTrackingProvider, ToInstructions,
-        },
+    core_compiler::to_instructions::{
+        SharedValueTrackingProvider, ToInstructions,
     },
     instruction::type_instruction::TypeInstruction,
     prelude::*,
     types::literal_type_definition::LiteralTypeDefinition,
 };
-use core::cell::RefCell;
 impl<'ctx, T> ToInstructions<'ctx, T> for TypeExpression
 where
     T: SharedValueTrackingProvider<'ctx>,

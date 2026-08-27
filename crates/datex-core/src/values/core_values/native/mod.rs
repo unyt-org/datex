@@ -82,7 +82,7 @@ impl NativeCoreValue {
     pub fn try_into_value<T: 'static>(self) -> Option<T> {
         match self.into_any().downcast::<T>() {
             Ok(boxed) => Some(*boxed),
-            Err(original) => None,
+            Err(_original) => None,
         }
     }
 }

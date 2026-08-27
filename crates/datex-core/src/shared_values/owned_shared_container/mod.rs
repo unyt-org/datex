@@ -106,7 +106,7 @@ impl OwnedSharedContainer {
     }
 
     /// Creates a new [OwnedSharedContainer] from parts.
-    /// 
+    ///
     /// # Safety
     /// This function should only be called if you can guarantee that
     /// no other [OwnedSharedContainer] exist that are using the same inner value.

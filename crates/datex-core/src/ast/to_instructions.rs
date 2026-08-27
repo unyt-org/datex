@@ -6,16 +6,15 @@ use crate::{
         RangeDeclaration, RequestSharedRef, RootPropertyAccess, TagExpression,
         UnaryOperation, Unbox, UnboxAssignment,
     },
-    compiler::context::CompilationContext,
     core_compiler::to_instructions::{
-        InstructionContext, SharedValueTrackingProvider, ToInstructions,
+        SharedValueTrackingProvider, ToInstructions,
     },
     global::{operators::ModificationOperator, root_properties::RootProperty},
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
     shared_values::{ReferenceMutability, SharedContainerMutability},
 };
-use core::{cell::RefCell, str::FromStr};
+use core::str::FromStr;
 
 impl<'ctx, T> ToInstructions<'ctx, T> for DatexExpressionData
 where
@@ -202,7 +201,7 @@ where
 
                 DatexExpressionData::TypeExpression(type_expression) => {
                     yield RegularInstruction::TypeExpression;
-                    for instruction in type_expression.to_instructions(ctx) {
+                    for _instruction in type_expression.to_instructions(ctx) {
                         todo!(
                             "Transparent yield of typeinstructions over egular instructions"
                         ); //yield instruction;
@@ -234,36 +233,36 @@ where
                 }
 
                 DatexExpressionData::CallableDeclaration(
-                    callable_declaration,
+                    _callable_declaration,
                 ) => {
                     todo!("Need context and scope data and stuff");
                 }
 
-                DatexExpressionData::Conditional(conditional) => {
+                DatexExpressionData::Conditional(_conditional) => {
                     todo!(
                         "Need actual byte positions and not instruction counts for jumps"
                     );
                 }
-                DatexExpressionData::RemoteExecution(remote_execution) => {
+                DatexExpressionData::RemoteExecution(_remote_execution) => {
                     todo!("Need context and scope data and stuff");
                 }
 
                 DatexExpressionData::VariableDeclaration(
-                    variable_declaration,
+                    _variable_declaration,
                 ) => {
                     todo!("Need context and scope data and stuff");
                 }
-                DatexExpressionData::Statements(statements) => {
+                DatexExpressionData::Statements(_statements) => {
                     todo!("Need context and scope data and stuff");
                 }
 
                 DatexExpressionData::VariableAssignment(
-                    variable_assignment,
+                    _variable_assignment,
                 ) => {
                     todo!("Need context and scope data and stuff");
                 }
 
-                DatexExpressionData::VariableAccess(variable_access) => {
+                DatexExpressionData::VariableAccess(_variable_access) => {
                     todo!("Need context and scope data and stuff");
                 }
 
@@ -559,7 +558,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &mut T,
+        _ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             // NOTE: might already be handled in type compilation
@@ -576,7 +575,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &mut T,
+        _ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(core::iter::once(RegularInstruction::get_shared_ref(
             self.address.clone(),
@@ -681,7 +680,7 @@ where
 
     fn to_instructions(
         &self,
-        ctx: &mut T,
+        _ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             let root_property = RootProperty::from_str(&self.property_name)

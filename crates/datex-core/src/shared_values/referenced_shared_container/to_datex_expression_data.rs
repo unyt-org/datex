@@ -14,7 +14,7 @@ impl ToDatexExpressionData for ReferencedSharedContainer {
         } else {
             DatexExpressionData::CreateShared(CreateShared {
                 mutability: self.container_mutability(),
-                expression: (&*self.value_container())
+                expression: (*self.value_container())
                     .to_datex_expression_data()
                     .with_default_span(),
             })

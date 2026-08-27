@@ -325,9 +325,7 @@ pub trait UpdateHandlerImpl: UpdateCallbackDataAccess {
             UpdateOperation::Decrement(data) => {
                 into_update_result(self.try_decrement(*data))
             }
-            UpdateOperation::Replace(_data) => {
-                Err(UpdateError::InvalidUpdate)
-            }
+            UpdateOperation::Replace(_data) => Err(UpdateError::InvalidUpdate),
         }?;
 
         // trigger callback

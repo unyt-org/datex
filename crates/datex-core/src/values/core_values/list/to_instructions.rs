@@ -1,9 +1,6 @@
 use crate::{
-    core_compiler::{
-        shared_value_tracking::SharedValueTracking,
-        to_instructions::{
-            InstructionContext, SharedValueTrackingProvider, ToInstructions,
-        },
+    core_compiler::to_instructions::{
+        SharedValueTrackingProvider, ToInstructions,
     },
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
@@ -17,11 +14,11 @@ where
     type InstructionType = RegularInstruction;
     fn to_instructions(
         &self,
-        ctx: &mut T,
+        _ctx: &mut T,
     ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             yield RegularInstruction::list(self.items.len() as u32);
-            for item in &self.items {
+            for _item in &self.items {
                 todo!("Implement instruction generation for value container");
                 // for instruction in item.to_instructions(ctx) {
                 //     yield instruction;

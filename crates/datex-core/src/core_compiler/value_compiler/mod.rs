@@ -27,8 +27,8 @@ use binrw::{
 };
 
 use crate::{
-    core_compiler::{
-        core_compilation_context::{ByteCursor, CoreCompilationContext},
+    core_compiler::core_compilation_context::{
+        ByteCursor, CoreCompilationContext,
     },
     instruction::{
         Instruction,
@@ -53,10 +53,7 @@ use crate::{
         type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
-    values::{
-        core_values::callable::CallableBody,
-        value_container::value_key::ValueKey,
-    },
+    values::core_values::callable::CallableBody,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -271,15 +268,15 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             }
             // add rest parameter type
             if let Some((_, param)) = &callable.signature.rest_parameter {
-                context.visit_type(&param);
+                context.visit_type(param);
             }
             // add return type
             if let Some(ty) = &callable.signature.return_type {
-                context.visit_type(*&ty);
+                context.visit_type(ty);
             }
             // add yield type
             if let Some(ty) = &callable.signature.yeet_type {
-                context.visit_type(*&ty);
+                context.visit_type(ty);
             }
 
             for value in injected_values {
@@ -294,17 +291,17 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             context.write(RegularInstruction::integer(integer.clone()));
         }
         CoreValue::TypedInteger(integer) => {
-            append_encoded_integer(context.cursor_mut(), &integer)
+            append_encoded_integer(context.cursor_mut(), integer)
         }
 
         CoreValue::Endpoint(endpoint) => {
             context.write(RegularInstruction::endpoint(endpoint.clone()));
         }
         CoreValue::Decimal(decimal) => {
-            append_decimal(context.cursor_mut(), &decimal)
+            append_decimal(context.cursor_mut(), decimal)
         }
         CoreValue::TypedDecimal(val) => {
-            append_encoded_decimal(context.cursor_mut(), &val)
+            append_encoded_decimal(context.cursor_mut(), val)
         }
         CoreValue::Boolean(val) => append_boolean(context.cursor_mut(), val.0),
         CoreValue::Null => context.write(RegularInstruction::null()),
@@ -315,8 +312,8 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
             // if list size < 256, use SHORT_LIST
             context.write(RegularInstruction::list(val.len()));
 
-            for (index, item) in val.into_iter().enumerate() {
-                context.visit_value_container(&item);
+            for item in val.into_iter() {
+                context.visit_value_container(item);
             }
         }
         CoreValue::Map(val) => {
@@ -325,7 +322,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
                 append_key_value_pair(
                     context,
                     &ValueContainer::from(key),
-                    &value,
+                    value,
                 );
             }
         }
@@ -339,7 +336,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
         }
         CoreValue::Box(inner) => {
             context.write(RegularInstruction::boxed_value());
-            context.visit_value_container(&inner);
+            context.visit_value_container(inner);
         }
         CoreValue::Uninitialized => {
             panic!("Tried to compile uninitialized value")

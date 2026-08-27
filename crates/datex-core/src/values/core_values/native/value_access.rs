@@ -24,7 +24,7 @@ impl ValueAccess for NativeCoreValue {
         &mut self,
         key: BorrowedValueKey,
         cache: &mut SharedReferencesCache,
-    ) -> Result<BorrowedValueContainerMut, AccessError> {
+    ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         self.value.try_get_property_mut(key, cache)
     }
 }
