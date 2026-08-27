@@ -95,6 +95,7 @@ pub struct DeriveData {
 }
 
 /// Derive implementation for the [Datex] derive macro.
+#[deprecated(note = "Use new parser/generator")]
 pub fn derive(input: DeriveInput) -> TokenStream {
     let top_level_attributes = parse_top_level_attributes(&input.attrs);
 
