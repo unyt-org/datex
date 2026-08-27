@@ -645,6 +645,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::info;
+    use crate::shared_values::traits::SharedContainerCommon;
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -974,7 +975,8 @@ mod tests {
                 .unwrap(),
             TrackedValueMetadata::Root {
                 index: StackIndex(0),
-                ..
+                is_self_referencing: false,
+                is_known: false,
             }
         );
 
@@ -1047,7 +1049,7 @@ mod tests {
             TrackedValueMetadata::Root {
                 index: StackIndex(0),
                 is_known: false,
-                ..
+                is_self_referencing: false,
             }
         );
 
@@ -1128,7 +1130,8 @@ mod tests {
                 .unwrap(),
             TrackedValueMetadata::Root {
                 index: StackIndex(0),
-                ..
+                is_known: false,
+                is_self_referencing: false,
             }
         );
         assert_matches!(
@@ -1140,7 +1143,8 @@ mod tests {
                 .unwrap(),
             TrackedValueMetadata::Root {
                 index: StackIndex(1),
-                ..
+                is_known: false,
+                is_self_referencing: false,
             }
         );
 
@@ -1190,6 +1194,97 @@ mod tests {
                         RegularInstruction::TakeStackValue(StackIndex(0)),
                         RegularInstruction::TakeStackValue(StackIndex(1)),
                     )),
+                )
+            ),)
+        );
+    }
+
+    #[test]
+    fn self_referencing_shared_container() {
+        let mut provider = SelfOwnedPointerAddressProvider::default();
+        let shared = SharedContainer::new_owned_with_inferred_allowed_type(
+            List::default(),
+            SharedContainerMutability::Mutable,
+            &mut provider,
+        );
+
+        // *x = ['mut x]
+        {
+            let mut shared_vale_container = shared.value_container_mut();
+            let list = shared_vale_container.try_as_mut::<List>().unwrap();
+            list.push(ValueContainer::Shared(shared.clone()));
+        }
+
+        let shared_clone = shared.clone();
+        
+        let shared_owned_address = match shared.pointer_address() {
+            PointerAddress::SelfOwned(owned) => owned,
+            _ => unreachable!(),
+        };
+
+        let mut context = core_compilation_context();
+        context.visit_value_container(&ValueContainer::Shared(shared));
+
+        assert_matches!(
+            context
+                .shared_value_tracking
+                .borrow()
+                .tracked_values
+                .get(&shared_clone)
+                .unwrap(),
+            TrackedValueMetadata::Root {
+                index: StackIndex(0),
+                is_known: false,
+                is_self_referencing: true,
+            }
+        );
+        
+        let dxb = context.into_dxb_with_shared_values().dxb;
+        
+        assert_instructions_equal!(
+            &dxb,
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            // x = shared nut [[UNINITIALIZED]]
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability:
+                                    SharedContainerMutability::Mutable,
+                                previous_address: shared_owned_address,
+                            }).with_children(instructions!(
+                                RegularInstruction::Uninitialized
+                            )),
+                            // *x = ['mut x]
+                            RegularInstruction::SetSharedContainerValue.with_children(
+                                instructions!(
+                                    RegularInstruction::list_with_children(
+                                        instructions!(
+                                            RegularInstruction::GetStackValueSharedRefMut(
+                                                StackIndex(0)
+                                            ),
+                                        )
+                                    ),
+                                    RegularInstruction::BorrowStackValue(
+                                        StackIndex(0)
+                                    )
+                                )
+                            ),
+                            // [x]
+                            RegularInstruction::list_with_children(
+                                instructions!(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    ),
+                                )
+                            )
+                        )
+                    ),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
                 )
             ),)
         );
