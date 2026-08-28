@@ -168,7 +168,7 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
                     datex_name =
                         Some(parse_string_attribute(&name_value, "name"));
                 }
-                _ => {
+                meta => {
                     panic!("Invalid #[datex(...)] attribute: {meta:?}")
                 }
             }

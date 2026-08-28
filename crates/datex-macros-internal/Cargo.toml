@@ -14,11 +14,10 @@ proc-macro = true
 
 [dependencies]
 quote = "1.0"
-syn = { version = "2.0", features = ["full"] }
+syn = { version = "3.0.4", features = ["full", "fold", "extra-traits"] }
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
 proc-macro-crate = "3.5.0"
 pathdiff = "0.2.3"
-
 
 [features]
 decompiler = []

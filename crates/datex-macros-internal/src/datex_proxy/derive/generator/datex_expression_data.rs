@@ -158,5 +158,9 @@ fn generate_datex_enum_fields(enum_ty: &[EnumVariant]) -> TokenStream {
         }
     });
 
-    todo!()
+    quote! {
+        match self {
+            #(#arms),*
+        }
+    }
 }

@@ -6,7 +6,7 @@ use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Serialize, Deserialize)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub struct SerialClientInterfaceSetupData {
     pub port_name: Option<String>,
     pub baud_rate: u32,
