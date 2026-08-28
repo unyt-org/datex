@@ -1,19 +1,22 @@
 use std::{path::PathBuf, str::FromStr};
 
-use crate::datex_proxy::{
-    data::{
-        EnumVariant, Field, Fields, NamedField, Structure, StructureData,
-        TypeKind,
+use crate::{
+    datex_proxy::{
+        data::{
+            EnumVariant, Field, Fields, NamedField, Structure, StructureData,
+            TypeKind,
+        },
+        generator::{
+            datex_expression_data::generate_datex_expression_data,
+            datex_native::generate_datex_native,
+            datex_proxy_type::generate_datex_proxy_types,
+        },
     },
-    generator::{
-        datex_expression_data::generate_datex_expression_data,
-        datex_native::generate_datex_native,
-        datex_proxy_type::generate_datex_proxy_types,
-    },
+    utils::get_datex_core_crate_name,
 };
-use proc_macro::Span;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
+use syn::PathSegment;
 
 mod datex_expression_data;
 mod datex_native;
@@ -29,8 +32,16 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
         }
         _ => quote! {},
     };
+    let datex_core_crate_name =
+        if structure_data.attributes.force_datex_core_namespace {
+            PathSegment::from(Ident::new("datex_core", Span::call_site()))
+                .into()
+        } else {
+            get_datex_core_crate_name()
+        };
+
     quote! {
-        use #crate::preludes::derive::*;
+        use #datex_core_crate_name::preludes::derive::*;
         #datex_native
 
         #datex_types

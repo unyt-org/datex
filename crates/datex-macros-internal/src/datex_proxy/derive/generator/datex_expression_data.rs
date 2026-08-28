@@ -1,6 +1,5 @@
 use crate::datex_proxy::data::{
     EnumVariant, Field, Fields, NamedField, Structure, StructureData,
-    ToDatexExpressionData,
 };
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
@@ -15,7 +14,7 @@ pub fn generate_datex_expression_data(
         ident, generics, ..
     } = structure_data;
 
-    let datex_expression_data = match structure_data.structure {
+    let datex_expression_data = match &structure_data.structure {
         Structure::Enum(variants) => generate_datex_enum_fields(&variants),
         Structure::Struct(fields) => {
             generate_datex_expression_data_for_struct(&fields)
@@ -32,11 +31,15 @@ pub fn generate_datex_expression_data(
 }
 
 fn generate_datex_expression_data_for_struct(fields: &Fields) -> TokenStream {
-    let field_assignments = fields.field_idents().iter().map(|ident| {
-        quote! {
-            let #ident = self.#ident;
-        }
-    });
+    let field_assignments = fields
+        .field_idents()
+        .iter()
+        .map(|ident| {
+            quote! {
+                let #ident = self.#ident;
+            }
+        })
+        .collect::<Vec<_>>();
     let fields = generate_datex_expression_data_fields(fields);
     quote! {{
         #(#field_assignments)*
@@ -105,7 +108,7 @@ fn named_field_to_expression_data(field: &NamedField) -> TokenStream {
     let id = Ident::new(&field.name, Span::call_site());
     let expression_data =
         field_to_expression_data(&field.field, quote! { #id });
-    let name = field.name;
+    let name = field.name.clone();
     quote! {
         (
             DatexExpressionData::Text(Text(#name.to_string())).with_default_span(),
@@ -122,7 +125,7 @@ fn generate_datex_enum_fields(enum_ty: &[EnumVariant]) -> TokenStream {
         let variant_fields =
             generate_datex_expression_data_fields(&variant.fields);
         let field_idents = variant.fields.field_idents();
-        match variant.fields {
+        match &variant.fields {
             Fields::Named(fields) => {
                 quote! {
                     #variant_ident { #(#field_idents),* } => {
