@@ -12,7 +12,7 @@ use crate::{
         SharedValueTrackingProvider, ToInstructions,
     },
     global::{operators::ModificationOperator, root_properties::RootProperty},
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::regular_instruction::RegularInstruction,
     prelude::*,
     shared_values::{ReferenceMutability, SharedContainerMutability},
 };
