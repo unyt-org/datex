@@ -136,9 +136,11 @@ pub fn generate_native_callable(
             proc_macro2::Span::call_site(),
         );
         let is_borrowed = match param {
-            syn::FnArg::Receiver(receiver) => receiver.reference.is_some(),
+            syn::FnArg::Receiver(receiver) => {
+                matches!(receiver.kind, syn::ReceiverKind::Reference(..))
+            }
             syn::FnArg::Typed(pat_type) => {
-                matches!(&*pat_type.ty, Type::Reference(_type_reference))
+                matches!(&*pat_type.ty, Type::Reference(..))
             }
         };
         call_argument_inits.push(quote! {

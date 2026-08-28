@@ -40,12 +40,13 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
             get_datex_core_crate_name()
         };
 
-    quote! {
+    let output = quote! {{
         use #datex_core_crate_name::preludes::derive::*;
         #datex_native
-
         #datex_types
-
         #datex_expression_data
-    }
+    }};
+    println!("Generated code for {}:\n{}", structure_data.ident, output);
+
+    output
 }
