@@ -7,7 +7,8 @@ use crate::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
     },
     prelude::*,
-    types::nominal_type_definition::NominalTypeDefinition,
+    types::entities::entity_type_definition::EntityTypeDefinition,
+    values::core_values::native::{DatexNative, NativeCoreValue},
 };
 use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
@@ -34,11 +35,21 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::fmt::{Display, Formatter};
-pub mod ops;
+use binrw::error::CustomError;
+use core::fmt::{Debug, Display, Formatter};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
+mod child_iterator;
+pub mod datex_proxy;
+pub mod equality;
+pub mod ops;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+pub mod try_clone;
+
+#[derive(Default, Clone, Debug, FromCoreValue)]
 pub enum CoreValue {
+    #[default]
+    Uninitialized,
     Null,
     Boolean(Boolean),
     Integer(Integer),
@@ -50,13 +61,14 @@ pub enum CoreValue {
     List(List),
     Map(Map),
     Type(Type),
-    NominalTypeDefinition(NominalTypeDefinition),
+    EntityTypeDefinition(EntityTypeDefinition),
     Callable(Callable),
     Range(Range),
+    /// Used for nested values, e.g. #Tagged (shared 42)
+    Box(Box<ValueContainer>),
+    /// Native rust value with DATEX representation
+    Native(NativeCoreValue),
 }
-mod child_iterator;
-pub mod datex_proxy;
-pub mod equality;
 
 impl From<&str> for CoreValue {
     fn from(value: &str) -> Self {
@@ -214,9 +226,14 @@ impl From<&CoreValue> for CoreLibTypeId {
             CoreValue::Range(_) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Range)
             }
-            CoreValue::NominalTypeDefinition(_nominal_type) => {
+            CoreValue::EntityTypeDefinition(_nominal_type) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never) // TODO: what is the type of nominal type? do we even need to handle this?
             }
+            CoreValue::Uninitialized => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
+            }
+            CoreValue::Box(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Box),
+            CoreValue::Native(native) => native.core_lib_type_id(),
         }
     }
 }
@@ -227,6 +244,14 @@ impl CoreValue {
         CoreValue: From<T>,
     {
         value.into()
+    }
+
+    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
+    pub fn native(value: impl DatexNative) -> CoreValue {
+        CoreValue::Native(NativeCoreValue::new(value))
+    }
+    pub fn native_boxed(value: Box<dyn DatexNative>) -> CoreValue {
+        CoreValue::Native(NativeCoreValue { value })
     }
 
     /// Check if the CoreValue is a combined value type (List, Map)
@@ -274,6 +299,36 @@ impl CoreValue {
         match self {
             CoreValue::Text(text) => text.clone(),
             _ => Text(self.to_string()),
+        }
+    }
+
+    /// Tries to downcast the CoreValue to a native value of type T.
+    /// This method will return Some(Box<T>) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native<T: DatexNative>(self) -> Option<Box<T>> {
+        if let CoreValue::Native(native_value) = self {
+            native_value.into_any().downcast::<T>().ok()
+        } else {
+            None
+        }
+    }
+
+    /// Tries to downcast the CoreValue to a reference of a native value of type T.
+    /// This method will return Some(&T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native_ref<T: DatexNative>(&self) -> Option<&T> {
+        if let CoreValue::Native(native_value) = self {
+            native_value.as_any().downcast_ref::<T>()
+        } else {
+            None
+        }
+    }
+
+    /// Tries to downcast the CoreValue to a mutable reference of a native value of type T.
+    /// This method will return Some(&mut T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native_mut<T: DatexNative>(&mut self) -> Option<&mut T> {
+        if let CoreValue::Native(native_value) = self {
+            native_value.as_any_mut().downcast_mut::<T>()
+        } else {
+            None
         }
     }
 
@@ -455,8 +510,13 @@ impl Display for CoreValue {
             CoreValue::Decimal(decimal) => write!(f, "{decimal}"),
             CoreValue::List(list) => write!(f, "{list}"),
             CoreValue::Callable(_callable) => write!(f, "[[ callable ]]"),
-            CoreValue::NominalTypeDefinition(container) => {
+            CoreValue::EntityTypeDefinition(container) => {
                 write!(f, "{container}")
+            }
+            CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
+            CoreValue::Box(inner) => write!(f, "({})", inner),
+            CoreValue::Native(_native) => {
+                write!(f, "[[ native value ]]")
             }
         }
     }
@@ -481,7 +541,6 @@ mod tests {
     fn addition() {
         let a = CoreValue::from(42i32);
         let b = CoreValue::from(11i32);
-        let c = CoreValue::from("11");
 
         let a_plus_b = (a.clone() + b.clone()).unwrap();
         assert_eq!(a_plus_b.clone(), CoreValue::from(53));
@@ -506,5 +565,10 @@ mod tests {
             .to_string(),
             "11..13"
         );
+    }
+
+    #[test]
+    pub fn native_values() {
+        let native_string = CoreValue::native("Hello DATEX".to_string());
     }
 }

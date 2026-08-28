@@ -1,104 +1,49 @@
 use crate::{
-    global::protocol_structures::instruction_data::StackIndex,
+    global::stack_index::StackIndex,
     prelude::*,
     random::RandomState,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
-    shared_values::{
-        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
-        SelfOwnedPointerAddress, SharedContainer,
-    },
+    shared_values::{SharedContainer, traits::SharedContainerCommon},
     traits::child_iterator::ChildIterator,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
+use core::ops::DerefMut;
 use indexmap::IndexMap;
 
 #[derive(Debug)]
-pub enum TrackedReference {
+pub enum TrackedValueMetadata {
     Root {
-        container: ReferencedSharedContainer,
         index: StackIndex,
         /// if the pointer of this container is already known for to be available on all receivers
         is_known: bool,
+        is_self_referencing: bool,
     },
     Child {
-        container: ReferencedSharedContainer,
         /// if the pointer of this container is already known for to be available on all receivers
         is_known: bool,
+        is_self_referencing: bool,
     },
 }
 
-impl TrackedReference {
+impl TrackedValueMetadata {
     pub fn is_known(&self) -> bool {
         match self {
-            TrackedReference::Root { is_known, .. } => *is_known,
-            TrackedReference::Child { is_known, .. } => *is_known,
+            TrackedValueMetadata::Root { is_known, .. } => *is_known,
+            TrackedValueMetadata::Child { is_known, .. } => *is_known,
         }
     }
-    fn update_container(&mut self, container: ReferencedSharedContainer) {
+    pub fn is_self_referencing(&self) -> bool {
         match self {
-            TrackedReference::Root {
-                container: existing,
+            TrackedValueMetadata::Root {
+                is_self_referencing,
                 ..
-            } => {
-                if container.reference_mutability()
-                    > existing.reference_mutability()
-                {
-                    *existing = container;
-                }
-            }
-            TrackedReference::Child {
-                container: existing,
+            } => *is_self_referencing,
+            TrackedValueMetadata::Child {
+                is_self_referencing,
                 ..
-            } => {
-                if container.reference_mutability()
-                    > existing.reference_mutability()
-                {
-                    *existing = container;
-                }
-            }
-        }
-    }
-
-    pub fn container(&self) -> &ReferencedSharedContainer {
-        match self {
-            TrackedReference::Root { container, .. } => container,
-            TrackedReference::Child { container, .. } => container,
-        }
-    }
-
-    pub fn into_container(self) -> ReferencedSharedContainer {
-        match self {
-            TrackedReference::Root { container, .. } => container,
-            TrackedReference::Child { container, .. } => container,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum TrackedOwned {
-    Root {
-        container: OwnedSharedContainer,
-        index: StackIndex,
-    },
-    Child {
-        container: OwnedSharedContainer,
-    },
-}
-
-impl TrackedOwned {
-    pub fn container(&self) -> &OwnedSharedContainer {
-        match self {
-            TrackedOwned::Root { container, .. } => container,
-            TrackedOwned::Child { container } => container,
-        }
-    }
-
-    pub fn into_container(self) -> OwnedSharedContainer {
-        match self {
-            TrackedOwned::Root { container, .. } => container,
-            TrackedOwned::Child { container } => container,
+            } => *is_self_referencing,
         }
     }
 }
@@ -107,10 +52,8 @@ impl TrackedOwned {
 #[derive(Debug)]
 pub struct SharedValueTracking<'a> {
     /// shared values that were injected in the compiler
-    pub referenced_values:
-        IndexMap<PointerAddress, TrackedReference, RandomState>,
-    pub owned_values:
-        IndexMap<SelfOwnedPointerAddress, TrackedOwned, RandomState>,
+    pub tracked_values:
+        IndexMap<SharedContainer, TrackedValueMetadata, RandomState>,
     pub current_stack_index: StackIndex,
     pub pointer_availability_lookup: &'a PointerAvailabilityLookup,
     pub receivers: &'a [Endpoint],
@@ -125,8 +68,7 @@ pub(crate) unsafe fn default_tracking<'a>() -> SharedValueTracking<'a> {
 
 #[derive(Debug, Default)]
 pub struct TrackedValueCollection {
-    pub tracked_owned_values: Vec<TrackedOwned>,
-    pub tracked_referenced_values: Vec<TrackedReference>,
+    pub tracked_values: Vec<(SharedContainer, TrackedValueMetadata)>,
     pub root_count: usize,
 }
 
@@ -142,8 +84,7 @@ impl<'a> SharedValueTracking<'a> {
         receivers: &'a [Endpoint],
     ) -> SharedValueTracking<'a> {
         SharedValueTracking {
-            referenced_values: IndexMap::default(),
-            owned_values: IndexMap::default(),
+            tracked_values: IndexMap::default(),
             current_stack_index: StackIndex(0),
             pointer_availability_lookup,
             receivers,
@@ -156,140 +97,150 @@ impl<'a> SharedValueTracking<'a> {
         stack_index
     }
 
+    /// Updates the tracked value for a shared container if the new container has higher ownership than the existing one
+    /// Returns the passed container if it was not yet in the tracked values
+    fn update_container_ownership_if_exists(
+        &mut self,
+        container: SharedContainer,
+    ) -> Option<SharedContainer> {
+        if let Some((existing, _)) =
+            self.tracked_values.get_key_value(&container)
+        {
+            if container.ownership() > existing.ownership() {
+                let index =
+                    self.tracked_values.get_index_of(&container).unwrap();
+                self.tracked_values.replace_index(index, container).unwrap();
+            }
+            None
+        } else {
+            Some(container)
+        }
+    }
+
     /// Registers a new shared value. Returns a stack index that can be used to access this value
     pub fn register_shared_value(
         &mut self,
-        shared_container: SharedContainer,
+        shared_container: &SharedContainer,
     ) -> StackIndex {
-        let address = shared_container.pointer_address();
+        self.register_shared_value_with_parents(
+            shared_container.clone_with_move_indicator_if_owned(),
+            &mut HashSet::new(),
+        );
 
-        match shared_container {
-            SharedContainer::Owned(owned) => {
-                let address = owned.pointer_address().clone();
+        // ensure tracked value is a top level tracked value with stack index
+        match self.tracked_values.get(shared_container).unwrap() {
+            TrackedValueMetadata::Child {
+                is_known,
+                is_self_referencing,
+                ..
+            } => {
+                let is_self_referencing = *is_self_referencing;
+                let is_known = *is_known;
+                let index = self.get_next_stack_index();
                 let tracked_value =
-                    self.register_owned_shared_value_with_parents(owned);
-
-                // ensure tracked value is a top level tracked value with stack index
-                match tracked_value {
-                    TrackedOwned::Child { container, .. } => {
-                        // SAFETY: We can clone the owned container since th original
-                        // tracked value containing it is overridden by the newly inserted value
-                        let container_clone =
-                            unsafe { container.clone_unsafe() };
-                        let index = self.get_next_stack_index();
-                        self.owned_values.insert(
-                            address,
-                            TrackedOwned::Root {
-                                container: container_clone,
-                                index,
-                            },
-                        );
-                        index
-                    }
-                    // already a top level value, do nothing
-                    TrackedOwned::Root { index, .. } => *index,
-                }
+                    self.tracked_values.get_mut(shared_container).unwrap();
+                *tracked_value = TrackedValueMetadata::Root {
+                    index,
+                    is_known,
+                    is_self_referencing,
+                };
+                index
             }
-            SharedContainer::Referenced(referenced) => {
-                self.register_referenced_shared_value_with_parents(
-                    referenced,
-                    &mut HashSet::new(),
-                );
-                let tracked_value =
-                    self.referenced_values.get_mut(&address).unwrap();
-
-                // ensure tracked value is a top level tracked value with stack index
-                match tracked_value {
-                    TrackedReference::Child {
-                        container,
-                        is_known,
-                        ..
-                    } => {
-                        let container_clone = container.clone();
-                        let is_known = *is_known;
-                        let index = self.get_next_stack_index();
-                        self.referenced_values.insert(
-                            address,
-                            TrackedReference::Root {
-                                container: container_clone,
-                                index,
-                                is_known,
-                            },
-                        );
-                        index
-                    }
-                    // already a top level value, do nothing
-                    TrackedReference::Root { index, .. } => *index,
-                }
-            }
+            // already a top level value, do nothing
+            TrackedValueMetadata::Root { index, .. } => *index,
         }
     }
-    fn register_owned_shared_value_with_parents(
-        &mut self,
-        owned_container: OwnedSharedContainer,
-    ) -> &mut TrackedOwned {
-        // if not already registered as owned, add
-        let address = owned_container.pointer_address().clone();
-        self.owned_values
-            .entry(address)
-            .or_insert(TrackedOwned::Child {
-                container: owned_container,
-            })
-    }
 
-    fn register_referenced_shared_value_with_parents(
+    fn register_shared_value_with_parents(
         &mut self,
-        referenced_container: ReferencedSharedContainer,
-        parents: &mut HashSet<PointerAddress>,
+        shared_container: SharedContainer,
+        parents: &mut HashSet<SharedContainer>,
     ) {
-        let address = referenced_container.pointer_address();
-
         // already registered as referenced, update the container mutability if needed
-        if let Some(existing) = self.referenced_values.get_mut(&address) {
-            existing.update_container(referenced_container);
-        } else {
+        if let Some(container) =
+            self.update_container_ownership_if_exists(shared_container)
+        {
             let is_known = !self.receivers.is_empty()
                 && self
                     .pointer_availability_lookup
-                    .is_available_for_all_endpoints(self.receivers, &address);
+                    .is_available_for_all_endpoints(
+                        self.receivers,
+                        &container.pointer_address(),
+                    );
 
-            // store container in referenced_values
-            self.referenced_values.insert(
-                address.clone(),
-                TrackedReference::Child {
-                    container: referenced_container.clone(),
+            let parent_moved = container.treat_as_move();
+            let container_clone = container.clone();
+
+            let is_self_referencing = !parents.insert(container_clone.clone());
+
+            self.tracked_values.insert(
+                container,
+                TrackedValueMetadata::Child {
                     is_known,
+                    is_self_referencing,
                 },
             );
 
             // If the address is not already being visited, we want to register all children
             // with the whole tree of their direct and indirect parents
-            if parents.insert(address.clone()) && !is_known {
-                referenced_container.value_container().with_collapsed_value(|value| {
-                    for child in value.iter_children() {
-                        if let ValueContainer::Shared(child) = child {
-                            self.register_referenced_shared_value_with_parents(
-                                // Note we can convert to a ref here since the parent
-                                // was already a ref, so the child can never be owned
-                                child.derive_reference_with_max_mutability(),
-                                parents,
-                            );
+            if !is_self_referencing && (!is_known || parent_moved) {
+                let mut inner_container = container_clone.value_container_mut();
+                match inner_container.deref_mut() {
+                    ValueContainer::Shared(inner_shared) => {
+                        self.register_child(
+                            parent_moved,
+                            inner_shared,
+                            parents,
+                        );
+                    }
+                    _ => {
+                        let mut value = inner_container.collapsed_value_mut();
+                        for child in value.borrow_mut().iter_children_mut() {
+                            if let ValueContainer::Shared(child) = child {
+                                self.register_child(
+                                    parent_moved,
+                                    child,
+                                    parents,
+                                );
+                            }
                         }
                     }
-                });
-                parents.remove(&address);
+                }
+
+                parents.remove(&container_clone);
             }
+        }
+    }
+
+    fn register_child(
+        &mut self,
+        parent_moved: bool,
+        child: &mut SharedContainer,
+        parents: &mut HashSet<SharedContainer>,
+    ) {
+        // If the parent is moved and the child is owned, we must also move the child
+        // if parent is not moved, the child is also not moved, even if it is owned by the parent
+        if parent_moved {
+            self.register_shared_value_with_parents(
+                // Note we can convert to a ref here since the parent
+                // was already a ref, so the child can never be owned
+                child.downgrade_to_reference(),
+                parents,
+            );
+        } else {
+            self.register_shared_value_with_parents(
+                // Note we can convert to a ref here since the parent
+                // was already a ref, so the child can never be owned
+                child.clone(),
+                parents,
+            );
         }
     }
 
     /// Extracts all registered owned and referenced shared values
     pub fn into_tracked_values(self) -> TrackedValueCollection {
         TrackedValueCollection {
-            tracked_owned_values: self.owned_values.into_values().collect(),
-            tracked_referenced_values: self
-                .referenced_values
-                .into_values()
-                .collect(),
+            tracked_values: self.tracked_values.into_iter().collect(),
             root_count: self.current_stack_index.0 as usize,
         }
     }
@@ -297,8 +248,12 @@ impl<'a> SharedValueTracking<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
+        core_compiler::shared_value_tracking::{
+            SharedValueTracking, TrackedValueMetadata, default_tracking,
+        },
+        global::stack_index::StackIndex,
+        prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             PointerAddress, ReferenceMutability, SharedContainer,
@@ -306,6 +261,7 @@ mod tests {
         },
         values::{core_values::list::List, value_container::ValueContainer},
     };
+    use core::assert_matches;
 
     fn owned_shared(
         address_provider: &mut SelfOwnedPointerAddressProvider,
@@ -335,12 +291,10 @@ mod tests {
     fn tracked_value<'a>(
         tracking: &'a SharedValueTracking,
         container: &SharedContainer,
-    ) -> &'a TrackedReference {
-        let address = container.pointer_address();
-
+    ) -> &'a TrackedValueMetadata {
         tracking
-            .referenced_values
-            .get(&address)
+            .tracked_values
+            .get(container)
             .expect("expected shared value to be tracked")
     }
 
@@ -350,18 +304,10 @@ mod tests {
         expected_index: StackIndex,
     ) {
         match tracked_value(tracking, container) {
-            TrackedReference::Root {
-                container: tracked_container,
-                index,
-                ..
-            } => {
+            TrackedValueMetadata::Root { index, .. } => {
                 assert_eq!(*index, expected_index);
-                assert_eq!(
-                    tracked_container.pointer_address(),
-                    container.pointer_address(),
-                );
             }
-            TrackedReference::Child { .. } => {
+            TrackedValueMetadata::Child { .. } => {
                 panic!("expected top-level tracked value")
             }
         }
@@ -371,20 +317,10 @@ mod tests {
         tracking: &SharedValueTracking,
         container: &SharedContainer,
     ) {
-        match tracked_value(tracking, container) {
-            TrackedReference::Child {
-                container: tracked_container,
-                ..
-            } => {
-                assert_eq!(
-                    tracked_container.pointer_address(),
-                    container.pointer_address(),
-                );
-            }
-            _ => {
-                panic!("expected child tracked value")
-            }
-        }
+        assert_matches!(
+            tracked_value(tracking, container),
+            &TrackedValueMetadata::Child { .. }
+        );
     }
 
     fn tracking() -> SharedValueTracking<'static> {
@@ -394,7 +330,7 @@ mod tests {
     #[test]
     fn index_start_at_one() {
         let tracking = tracking();
-        assert_eq!(tracking.referenced_values.len(), 0);
+        assert_eq!(tracking.tracked_values.len(), 0);
         assert_eq!(tracking.current_stack_index, StackIndex(0));
     }
 
@@ -407,13 +343,12 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let lookup = &PointerAvailabilityLookup::default();
         let mut tracking = tracking();
 
-        let index = tracking.register_shared_value(container.clone());
+        let index = tracking.register_shared_value(&container);
 
         assert_eq!(index, StackIndex(0));
-        assert_eq!(tracking.referenced_values.len(), 1);
+        assert_eq!(tracking.tracked_values.len(), 1);
 
         assert_top_level(&tracking, &container, StackIndex(0));
     }
@@ -428,11 +363,11 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let first_index = tracking.register_shared_value(container.clone());
-        let second_index = tracking.register_shared_value(container.clone());
+        let first_index = tracking.register_shared_value(&container);
+        let second_index = tracking.register_shared_value(&container);
         assert_eq!(first_index, StackIndex(0));
         assert_eq!(second_index, StackIndex(0));
-        assert_eq!(tracking.referenced_values.len(), 1);
+        assert_eq!(tracking.tracked_values.len(), 1);
 
         assert_top_level(&tracking, &container, StackIndex(0));
     }
@@ -456,19 +391,19 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let first_index = tracking.register_shared_value(first.clone());
-        let second_index = tracking.register_shared_value(second.clone());
+        let first_index = tracking.register_shared_value(&first);
+        let second_index = tracking.register_shared_value(&second);
 
         assert_eq!(first_index, StackIndex(0));
         assert_eq!(second_index, StackIndex(1));
-        assert_eq!(tracking.referenced_values.len(), 2);
+        assert_eq!(tracking.tracked_values.len(), 2);
 
         assert_top_level(&tracking, &first, StackIndex(0));
         assert_top_level(&tracking, &second, StackIndex(1));
     }
 
     #[test]
-    fn direct_shared_child() {
+    fn direct_shared_child_list() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
         // child
@@ -487,13 +422,44 @@ mod tests {
         );
 
         let mut tracking = tracking();
-        let parent_index = tracking.register_shared_value(parent.clone());
+        let parent_index = tracking.register_shared_value(&parent);
 
         assert_eq!(parent_index, StackIndex(0));
-        assert_eq!(tracking.referenced_values.len(), 2);
+        assert_eq!(tracking.tracked_values.len(), 2);
 
         assert_top_level(&tracking, &parent, StackIndex(0));
         assert_child(&tracking, &child);
+    }
+
+    #[test]
+    fn direct_shared_child() {
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+
+        // child
+        let (child, _) = owned_shared(
+            address_provider,
+            42,
+            SharedContainerMutability::Immutable,
+        );
+
+        let child_clone = child.clone();
+
+        // parent = shared child
+        let (parent, _) = owned_shared(
+            address_provider,
+            ValueContainer::Shared(child),
+            SharedContainerMutability::Immutable,
+        );
+        let parent_clone = parent.clone();
+
+        let mut tracking = tracking();
+        let parent_index = tracking.register_shared_value(&parent);
+
+        assert_eq!(parent_index, StackIndex(0));
+        assert_eq!(tracking.tracked_values.len(), 2);
+
+        assert_top_level(&tracking, &parent_clone, StackIndex(0));
+        assert_child(&tracking, &child_clone);
     }
 
     #[test]
@@ -516,12 +482,12 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let parent_index = tracking.register_shared_value(parent.clone());
-        let child_index = tracking.register_shared_value(child.clone());
+        let parent_index = tracking.register_shared_value(&parent);
+        let child_index = tracking.register_shared_value(&child);
 
         assert_eq!(parent_index, StackIndex(0));
         assert_eq!(child_index, StackIndex(1));
-        assert_eq!(tracking.referenced_values.len(), 2);
+        assert_eq!(tracking.tracked_values.len(), 2);
 
         assert_top_level(&tracking, &parent, StackIndex(0));
         assert_top_level(&tracking, &child, StackIndex(1));
@@ -555,14 +521,13 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
 
-        let first_parent_index =
-            tracking.register_shared_value(first_parent.clone());
+        let first_parent_index = tracking.register_shared_value(&first_parent);
         let second_parent_index =
-            tracking.register_shared_value(second_parent.clone());
+            tracking.register_shared_value(&second_parent);
 
         assert_eq!(first_parent_index, StackIndex(0));
         assert_eq!(second_parent_index, StackIndex(1));
-        assert_eq!(tracking.referenced_values.len(), 3);
+        assert_eq!(tracking.tracked_values.len(), 3);
 
         assert_top_level(&tracking, &first_parent, StackIndex(0));
         assert_top_level(&tracking, &second_parent, StackIndex(1));
@@ -582,18 +547,18 @@ mod tests {
         );
         let parent = referenced_shared(&parent, ReferenceMutability::Immutable);
 
-        parent
-            .value_container_mut()
-            .with_collapsed_value_mut(|value| {
-                value.inner =
-                    List::from(vec![ValueContainer::Shared(parent.clone())])
-                        .into();
-            });
+        {
+            let mut collapsed = parent.collapsed_value_mut();
+            let mut value = collapsed.borrow_mut();
 
-        let parent_index = tracking.register_shared_value(parent.clone());
+            value.inner =
+                List::from(vec![ValueContainer::Shared(parent.clone())]).into();
+        }
+
+        let parent_index = tracking.register_shared_value(&parent);
 
         assert_eq!(parent_index, StackIndex(0));
-        assert_eq!(tracking.referenced_values.len(), 1);
+        assert_eq!(tracking.tracked_values.len(), 1);
 
         assert_top_level(&tracking, &parent, StackIndex(0));
     }

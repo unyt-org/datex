@@ -1,22 +1,20 @@
 //! This module contains the decompiler for DATEX, which converts DXB bytecode back into a human-readable string representation of the original DATEX source code.
-mod ast_from_bytecode;
-mod ast_from_value_container;
+pub mod ast_from_bytecode;
 mod ast_to_source_code;
 mod options;
 pub use options::*;
 
 use crate::{
-    ast::{
-        expressions::{DatexExpression, DatexExpressionData},
-        spanned::Spanned,
-    },
+    ast::{expressions::DatexExpression, spanned::Spanned},
     decompiler::ast_to_source_code::AstToSourceCodeConverter,
     prelude::*,
 };
 
 use crate::{
     decompiler::ast_from_bytecode::ast_from_bytecode,
-    dxb_parser::body::DXBParserError, values::value_container::ValueContainer,
+    dxb_parser::body::DXBParserError,
+    traits::to_datex_expression_data::ToDatexExpressionData,
+    values::value_container::ValueContainer,
 };
 #[cfg(feature = "syntax_highlighting_legacy")]
 use syntect::{
@@ -40,7 +38,7 @@ pub fn decompile_value(
     value: &ValueContainer,
     options: DecompileOptions,
 ) -> String {
-    let ast = DatexExpressionData::from(value).with_default_span();
+    let ast = value.to_datex_expression_data().with_default_span();
     format_ast(ast, options)
 }
 

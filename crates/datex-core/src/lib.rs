@@ -5,7 +5,7 @@
 #![feature(async_iterator)]
 #![feature(type_alias_impl_trait)]
 #![feature(trait_alias)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(if_let_guard)]
 #![feature(try_trait_v2)]
 // #![allow(unused_parens)]
@@ -20,8 +20,18 @@
 #![feature(custom_test_frameworks)]
 #![feature(specialization)]
 #![feature(const_default)]
+#![feature(custom_inner_attributes)]
+#![feature(decl_macro)]
+#![feature(try_blocks)]
+#![rustfmt::skip::macros(assert_regular_instructions_equal)]
+#![feature(arbitrary_self_types)]
+#![feature(vec_try_remove)]
 extern crate alloc;
 extern crate num_integer;
+
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -38,6 +48,7 @@ pub mod decompiler;
 #[cfg(feature = "compiler")]
 pub mod fmt;
 pub mod global;
+pub mod instruction;
 pub mod libs;
 #[cfg(all(feature = "lsp", feature = "std"))]
 pub mod lsp;
@@ -69,23 +80,38 @@ pub use datex_macros_internal as macros;
 extern crate core;
 
 pub mod datex_registry;
+pub mod inspector;
+
 pub use inventory;
 
 /// HashMap and HashSet that work in both std and no_std environments.
 pub mod collections {
-    #[cfg(feature = "std")]
-    pub use std::collections::{HashMap, HashSet, hash_map, hash_set};
-
-    #[cfg(not(feature = "std"))]
-    pub use hashbrown::{HashMap, HashSet, hash_map, hash_set};
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "std")] {
+            pub use std::collections::{HashMap, HashSet, hash_map, hash_set};
+            pub use std::collections::hash_map::DefaultHasher;
+            pub fn default_hasher() -> DefaultHasher {
+                DefaultHasher::new()
+            }
+        } else {
+            use core::hash::BuildHasher;
+            pub use hashbrown::{HashMap, HashSet, hash_map, hash_set, DefaultHashBuilder, DefaultHasher};
+            pub fn default_hasher() -> DefaultHasher {
+                DefaultHashBuilder::default().build_hasher()
+            }
+        }
+    }
 }
 
 /// Reexport of Mutex that works in both std and no_std environments.
 pub mod std_sync {
-    #[cfg(not(feature = "std"))]
-    pub use spin::Mutex;
-    #[cfg(feature = "std")]
-    pub use std::sync::Mutex;
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "std")] {
+            pub use std::sync::Mutex;
+        } else {
+            pub use spin::Mutex;
+        }
+    }
 }
 
 /// Crypto implementations selection based on target architecture and features.
@@ -104,7 +130,6 @@ pub mod crypto {
 }
 
 pub mod time {
-
     mod system_time {
         cfg_if::cfg_if! {
             if #[cfg(feature = "target_wasm")] {
@@ -146,8 +171,11 @@ pub mod time {
 }
 
 pub mod random {
-    #[cfg(not(feature = "std"))]
-    pub use foldhash::fast::RandomState;
-    #[cfg(feature = "std")]
-    pub use std::hash::RandomState;
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "std")] {
+            pub use std::hash::RandomState;
+        } else {
+            pub use foldhash::fast::RandomState;
+        }
+    }
 }

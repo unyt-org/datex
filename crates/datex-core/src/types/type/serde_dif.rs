@@ -4,7 +4,7 @@ use crate::{
     prelude::*,
     shared_values::SharedContainer,
     types::{
-        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         r#type::Type,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
@@ -32,7 +32,9 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
         S: Serializer,
     {
         match value {
-            Type::Alias(type_definition) => match type_definition.definition {
+            Type::Definition(type_definition) => match type_definition
+                .definition
+            {
                 TypeDefinition::CoreType(_core)
                     if type_definition.metadata == TypeMetadata::default() =>
                 {
@@ -43,7 +45,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
                     .cast::<TypeDefinitionWithMetadata>()
                     .serialize(type_definition, serializer),
             },
-            Type::Nominal(shared_container_containing_nominal_type) => {
+            Type::Entity(shared_container_containing_nominal_type) => {
                 self.cast::<SharedContainer>().serialize(
                     shared_container_containing_nominal_type.deref(),
                     serializer,
@@ -83,20 +85,17 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
         let definition = seq
             .next_element_seed(self.cast::<TypeDefinition>())?
             .ok_or_else(|| serde::de::Error::custom("missing definition"))?;
-        Ok(Type::Alias(TypeDefinitionWithMetadata {
-            metadata,
-            definition,
-
-            reference_name: None,
-        }))
+        Ok(Type::Definition(TypeDefinitionWithMetadata::new(
+            definition, metadata,
+        )))
     }
 
     fn visit_str<E>(mut self, v: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        Ok(Type::Nominal(unsafe {
-            SharedContainerContainingNominalType::new_unchecked(
+        Ok(Type::Entity(unsafe {
+            SharedContainerContainingEntityType::new_unchecked(
                 self.cast::<SharedContainer>()
                     .deserialize(v.into_deserializer())?,
             )
@@ -113,7 +112,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
     where
         E: serde::de::Error,
     {
-        Ok(Type::Alias(
+        Ok(Type::Definition(
             TypeDefinition::core(
                 CoreLibTypeId::try_from(CoreLibIdIndex(v)).map_err(|_| {
                     serde::de::Error::custom(format!(

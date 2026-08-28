@@ -9,13 +9,13 @@ pub struct MapTypeDefinition(pub Vec<(Type, Type)>);
 
 impl Default for MapTypeDefinition {
     fn default() -> Self {
-        Self::new()
+        Self::new(Vec::new())
     }
 }
 
 impl MapTypeDefinition {
-    pub fn new() -> Self {
-        Self(Vec::new())
+    pub fn new(vec: Vec<(Type, Type)>) -> Self {
+        Self(vec)
     }
 }
 

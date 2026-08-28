@@ -1,14 +1,15 @@
 use crate::collections::HashMap;
 
 use crate::{
-    prelude::*, shared_values::PointerAddress,
+    prelude::*,
+    shared_values::{PointerAddress, ReferencedSharedContainer},
     values::core_values::endpoint::Endpoint,
 };
 
 #[derive(Debug, Clone, Default)]
 pub struct PointerAvailabilityLookup {
     local_endpoint: Endpoint,
-    lookup: HashMap<Endpoint, Vec<PointerAddress>>,
+    lookup: HashMap<Endpoint, Vec<ReferencedSharedContainer>>,
 }
 
 impl PointerAvailabilityLookup {
@@ -23,12 +24,8 @@ impl PointerAvailabilityLookup {
         endpoint: &Endpoint,
         pointer_address: &PointerAddress,
     ) -> bool {
-        if endpoint.is_local_or_equals_endpoint(&self.local_endpoint)
-            && matches!(pointer_address, PointerAddress::SelfOwned(_))
-        {
-            return true;
-        }
-        false // TODO
+        endpoint.is_local_or_equals_endpoint(&self.local_endpoint)
+            && matches!(pointer_address, PointerAddress::SelfOwned(_)) // TODO
     }
     pub fn is_available_for_all_endpoints(
         &self,

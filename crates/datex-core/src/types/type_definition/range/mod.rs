@@ -9,6 +9,14 @@ pub struct RangeTypeDefinition {
     pub end: Box<Type>,
     // TODO inclusive / exclusive
 }
+impl RangeTypeDefinition {
+    pub fn new(start: Type, end: Type) -> Self {
+        Self {
+            start: Box::new(start),
+            end: Box::new(end),
+        }
+    }
+}
 
 impl Display for RangeTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

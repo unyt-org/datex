@@ -121,7 +121,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, MapTypeDefinition> {
     where
         A: serde::de::SeqAccess<'de>,
     {
-        let mut result = MapTypeDefinition::new();
+        let mut result = MapTypeDefinition::default();
 
         while let Some((key, value)) =
             seq.next_element_seed(self.cast::<(Type, Type)>())?

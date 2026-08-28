@@ -45,7 +45,7 @@ impl<'a> Formatter<'a> {
         }
 
         // handle Statements expression specially
-        if let DatexExpressionData::Statements(statements) = &expression.data {
+        if let DatexExpressionData::Statements(statements) = expression.data() {
             return
                 // brackets definitely needed because multiple statements or terminated
                 if statements.statements.len() > 1 || statements.is_terminated {
@@ -86,7 +86,6 @@ impl<'a> Formatter<'a> {
                 ArithmeticOperator::Add => (10, Assoc::Left, true), // + is associative
                 ArithmeticOperator::Subtract => (10, Assoc::Left, false), // - is not associative
                 ArithmeticOperator::Power => (30, Assoc::Right, false),
-                _ => (10, Assoc::Left, false),
             },
             BinaryOperator::Logical(lop) => match lop {
                 LogicalOperator::And => (5, Assoc::Left, false),
@@ -127,7 +126,7 @@ impl<'a> Formatter<'a> {
 
     // precedence of an expression (used for children that are not binary/comparison)
     fn expression_precedence(&self, expression: &DatexExpression) -> u8 {
-        match &expression.data {
+        match expression.data() {
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator,
                 ..
@@ -178,7 +177,8 @@ impl<'a> Formatter<'a> {
         // and whether that operator is associative (so we can drop parens for same-op associative cases).
 
         // check if same operator and is associative
-        let same_op_and_assoc = match (&child.data, &parent_context.operation) {
+        let same_op_and_assoc = match (child.data(), &parent_context.operation)
+        {
             (
                 DatexExpressionData::BinaryOperation(BinaryOperation {
                     operator,

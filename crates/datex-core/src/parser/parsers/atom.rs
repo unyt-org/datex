@@ -6,7 +6,7 @@ use crate::{
         },
         spanned::Spanned,
     },
-    global::protocol_structures::instruction_data::StackIndex,
+    global::stack_index::StackIndex,
     parser::{
         Parser, SpannedParserError,
         errors::ParserError,
@@ -20,6 +20,7 @@ use crate::{
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
+        time::Instant,
     },
 };
 use core::str::FromStr;
@@ -76,6 +77,10 @@ impl Parser {
 
             Token::FractionLiteral(fraction) => {
                 self.parse_fraction_literal(fraction)?
+            }
+
+            Token::IsoDateTime(iso_string) => {
+                self.parse_iso_datetime(iso_string)?
             }
 
             _ => {
@@ -338,6 +343,15 @@ impl Parser {
             }),
         }
     }
+
+    pub(crate) fn parse_iso_datetime(
+        &mut self,
+        iso_string: String,
+    ) -> Result<DatexExpression, SpannedParserError> {
+        let span = self.advance()?.span.clone();
+        let instant = Instant::instant_from_iso(&iso_string);
+        Ok(DatexExpressionData::Instant(instant).with_span(span))
+    }
 }
 
 #[cfg(test)]
@@ -346,13 +360,13 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                CloneExpression, DatexExpressionData, GetSharedRef,
+                CloneExpression, DatexExpressionData, DeriveSharedRef,
                 RootPropertyAccess, Statements, TagExpression, ValueAccessType,
             },
             spanned::Spanned,
             type_expressions::{TypeExpressionData, Union},
         },
-        global::protocol_structures::instruction_data::StackIndex,
+        global::stack_index::StackIndex,
         parser::{
             errors::ParserError,
             parser_result::ParserResult,
@@ -374,27 +388,27 @@ mod tests {
     #[test]
     fn parse_boolean_true() {
         let expr = parse("true");
-        assert_eq!(expr.data, DatexExpressionData::Boolean(true.into()));
+        assert_eq!(expr.data(), &DatexExpressionData::Boolean(true.into()));
     }
 
     #[test]
     fn parse_boolean_false() {
         let expr = parse("false");
-        assert_eq!(expr.data, DatexExpressionData::Boolean(false.into()));
+        assert_eq!(expr.data(), &DatexExpressionData::Boolean(false.into()));
     }
 
     #[test]
     fn parse_null() {
         let expr = parse("null");
-        assert_eq!(expr.data, DatexExpressionData::Null);
+        assert_eq!(expr.data(), &DatexExpressionData::Null);
     }
 
     #[test]
     fn parse_identifier() {
         let expr = parse("myVar");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Identifier("myVar".to_string())
+            expr.data(),
+            &DatexExpressionData::Identifier("myVar".to_string())
         );
     }
 
@@ -402,29 +416,32 @@ mod tests {
     fn parse_string_literal() {
         let expr = parse("\"Hello, World!\"");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Text("Hello, World!".into())
+            expr.data(),
+            &DatexExpressionData::Text("Hello, World!".into())
         );
     }
 
     #[test]
     fn parse_infinity() {
         let expr = parse("infinity");
-        assert_eq!(expr.data, DatexExpressionData::Decimal(Decimal::Infinity));
+        assert_eq!(
+            expr.data(),
+            &DatexExpressionData::Decimal(Decimal::Infinity)
+        );
     }
 
     #[test]
     fn parse_nan() {
         let expr = parse("nan");
-        assert_eq!(expr.data, DatexExpressionData::Decimal(Decimal::Nan));
+        assert_eq!(expr.data(), &DatexExpressionData::Decimal(Decimal::Nan));
     }
 
     #[test]
     fn parse_endpoint() {
         let expr = parse("@example");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Endpoint(Endpoint::new("@example"))
+            expr.data(),
+            &DatexExpressionData::Endpoint(Endpoint::new("@example"))
         );
     }
 
@@ -449,8 +466,8 @@ mod tests {
         let errors = result.errors().unwrap();
 
         assert_eq!(
-            ast.data,
-            DatexExpressionData::Statements(Statements {
+            ast.data(),
+            &DatexExpressionData::Statements(Statements {
                 statements: vec![
                     DatexExpressionData::Recover.with_default_span(),
                     DatexExpressionData::Boolean(true.into())
@@ -473,15 +490,18 @@ mod tests {
     #[test]
     fn parse_stack_index() {
         let expr = parse("\\42");
-        assert_eq!(expr.data, DatexExpressionData::StackIndex(StackIndex(42)));
+        assert_eq!(
+            expr.data(),
+            &DatexExpressionData::StackIndex(StackIndex(42))
+        );
     }
 
     #[test]
     fn parse_root_property_access() {
         let expr = parse("$.myProperty");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+            expr.data(),
+            &DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
                 property_name: "myProperty".to_string()
             })
         );
@@ -491,8 +511,8 @@ mod tests {
     fn parse_placeholder() {
         let expr = parse("?");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+            expr.data(),
+            &DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
         );
     }
 
@@ -500,14 +520,12 @@ mod tests {
     fn parse_placeholder_shared_ref() {
         let expr = parse("'?");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::GetSharedRef(GetSharedRef {
-                expression: Box::new(
-                    DatexExpressionData::Placeholder(
-                        ValueAccessType::MoveOrCopy
-                    )
-                    .with_default_span()
-                ),
+            expr.data(),
+            &DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
+                expression: (DatexExpressionData::Placeholder(
+                    ValueAccessType::MoveOrCopy
+                )
+                .with_default_span()),
                 mutability: ReferenceMutability::Immutable,
             })
         );
@@ -517,14 +535,12 @@ mod tests {
     fn parse_placeholder_shared_ref_mut() {
         let expr = parse("'mut ?");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::GetSharedRef(GetSharedRef {
-                expression: Box::new(
-                    DatexExpressionData::Placeholder(
-                        ValueAccessType::MoveOrCopy
-                    )
-                    .with_default_span()
-                ),
+            expr.data(),
+            &DatexExpressionData::DeriveSharedRef(DeriveSharedRef {
+                expression: (DatexExpressionData::Placeholder(
+                    ValueAccessType::MoveOrCopy
+                )
+                .with_default_span()),
                 mutability: ReferenceMutability::Mutable,
             })
         );
@@ -534,14 +550,12 @@ mod tests {
     fn parse_clone() {
         let expr = parse("clone ?");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Clone(CloneExpression {
-                expression: Box::new(
-                    DatexExpressionData::Placeholder(
-                        ValueAccessType::MoveOrCopy
-                    )
-                    .with_default_span()
+            expr.data(),
+            &DatexExpressionData::Clone(CloneExpression {
+                expression: (DatexExpressionData::Placeholder(
+                    ValueAccessType::MoveOrCopy
                 )
+                .with_default_span())
             })
         );
     }
@@ -549,54 +563,54 @@ mod tests {
     #[test]
     fn parse_integer_literal() {
         let expr = parse("12345");
-        assert_eq!(expr.data, DatexExpressionData::Integer(12345.into()));
+        assert_eq!(expr.data(), &DatexExpressionData::Integer(12345.into()));
     }
 
     #[test]
     fn parse_integer_literal_with_underscores() {
         let expr = parse("12_345_678");
-        assert_eq!(expr.data, DatexExpressionData::Integer(12345678.into()));
+        assert_eq!(expr.data(), &DatexExpressionData::Integer(12345678.into()));
     }
 
     #[test]
     fn parse_negative_integer_literal() {
         let expr = parse("-6789");
-        assert_eq!(expr.data, DatexExpressionData::Integer((-6789).into()));
+        assert_eq!(expr.data(), &DatexExpressionData::Integer((-6789).into()));
     }
 
     #[test]
     fn parse_typed_integer_literal() {
         let expr = parse("12345i32");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::TypedInteger(TypedInteger::I32(12345))
+            expr.data(),
+            &DatexExpressionData::TypedInteger(TypedInteger::I32(12345))
         );
     }
 
     #[test]
     fn parse_hex_integer_literal() {
         let expr = parse("0x1A3F");
-        assert_eq!(expr.data, DatexExpressionData::Integer(0x1A3F.into()));
+        assert_eq!(expr.data(), &DatexExpressionData::Integer(0x1A3F.into()));
     }
 
     #[test]
     fn parse_binary_integer_literal() {
         let expr = parse("0b1101");
-        assert_eq!(expr.data, DatexExpressionData::Integer(0b1101.into()));
+        assert_eq!(expr.data(), &DatexExpressionData::Integer(0b1101.into()));
     }
 
     #[test]
     fn parse_octal_integer_literal() {
         let expr = parse("0o755");
-        assert_eq!(expr.data, DatexExpressionData::Integer(0o755.into()));
+        assert_eq!(expr.data(), &DatexExpressionData::Integer(0o755.into()));
     }
 
     #[test]
     fn parse_typed_hex_integer_literal() {
         let expr = parse("0xFFu8");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::TypedInteger(TypedInteger::U8(0xFF))
+            expr.data(),
+            &DatexExpressionData::TypedInteger(TypedInteger::U8(0xFF))
         );
     }
 
@@ -604,8 +618,8 @@ mod tests {
     fn parse_typed_binary_integer_literal() {
         let expr = parse("0b1010i16");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::TypedInteger(TypedInteger::I16(0b1010))
+            expr.data(),
+            &DatexExpressionData::TypedInteger(TypedInteger::I16(0b1010))
         );
     }
 
@@ -613,8 +627,8 @@ mod tests {
     fn parse_typed_octal_integer_literal() {
         let expr = parse("0o77u32");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::TypedInteger(TypedInteger::U32(0o77))
+            expr.data(),
+            &DatexExpressionData::TypedInteger(TypedInteger::U32(0o77))
         );
     }
 
@@ -622,8 +636,8 @@ mod tests {
     fn parse_decimal_literal() {
         let expr = parse("123.456");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Decimal(
+            expr.data(),
+            &DatexExpressionData::Decimal(
                 Decimal::try_from_string("123.456").unwrap()
             )
         );
@@ -633,8 +647,8 @@ mod tests {
     fn parse_typed_decimal_literal() {
         let expr = parse("78.9f32");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::TypedDecimal(TypedDecimal::F32(78.9.into()))
+            expr.data(),
+            &DatexExpressionData::TypedDecimal(TypedDecimal::F32(78.9.into()))
         );
     }
 
@@ -642,8 +656,8 @@ mod tests {
     fn parse_negative_decimal_literal() {
         let expr = parse("-0.001");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Decimal(
+            expr.data(),
+            &DatexExpressionData::Decimal(
                 Decimal::try_from_string("-0.001").unwrap()
             )
         );
@@ -653,8 +667,8 @@ mod tests {
     fn parse_decimal_literal_exponent() {
         let expr = parse("1.23e4");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Decimal(
+            expr.data(),
+            &DatexExpressionData::Decimal(
                 Decimal::try_from_string("1.23e4").unwrap()
             )
         );
@@ -664,8 +678,8 @@ mod tests {
     fn parse_typed_decimal_literal_exponent() {
         let expr = parse("5.67e-8f64");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::TypedDecimal(TypedDecimal::F64(
+            expr.data(),
+            &DatexExpressionData::TypedDecimal(TypedDecimal::F64(
                 5.67e-8.into()
             ))
         );
@@ -675,8 +689,8 @@ mod tests {
     fn parse_int_decimal_literal_exponent() {
         let expr = parse("42e2");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Decimal(
+            expr.data(),
+            &DatexExpressionData::Decimal(
                 Decimal::try_from_string("42e2").unwrap()
             )
         );
@@ -686,8 +700,8 @@ mod tests {
     fn parse_typed_int_decimal_literal_exponent() {
         let expr = parse("100e3_f32");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::TypedDecimal(TypedDecimal::F32(100e3.into()))
+            expr.data(),
+            &DatexExpressionData::TypedDecimal(TypedDecimal::F32(100e3.into()))
         );
     }
 
@@ -695,8 +709,8 @@ mod tests {
     fn parse_fraction_literal() {
         let expr = parse("3/4");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Decimal(
+            expr.data(),
+            &DatexExpressionData::Decimal(
                 Decimal::try_from_string("3/4").unwrap()
             )
         );
@@ -706,8 +720,8 @@ mod tests {
     fn parse_fraction_literal_with_underscores() {
         let expr = parse("1_000/2_500");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Decimal(
+            expr.data(),
+            &DatexExpressionData::Decimal(
                 Decimal::try_from_string("1000/2500").unwrap()
             )
         );
@@ -717,9 +731,60 @@ mod tests {
     fn parse_negative_fraction_literal_with_underscores() {
         let expr = parse("-7_500/2_500");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::Decimal(
+            expr.data(),
+            &DatexExpressionData::Decimal(
                 Decimal::try_from_string("-7500/2500").unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn parse_iso_datetime_with_millis() {
+        let expr = parse("2026-04-13T18:28:09.415Z");
+        assert_eq!(
+            expr.data(),
+            &DatexExpressionData::Instant(
+                crate::values::core_values::time::Instant::instant_from_iso(
+                    "2026-04-13T18:28:09.415Z"
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn parse_iso_datetime_without_millis() {
+        let expr = parse("2026-04-13T18:28:09Z");
+        assert_eq!(
+            expr.data(),
+            &DatexExpressionData::Instant(
+                crate::values::core_values::time::Instant::instant_from_iso(
+                    "2026-04-13T18:28:09Z"
+                )
+            )
+        );
+    }
+
+    #[test]
+    #[ignore = "Does panic"]
+    fn parse_iso_datetime_without_seconds() {
+        let expr = parse("2026-04-13T18:28Z");
+        assert_eq!(
+            expr.data(),
+            &DatexExpressionData::Instant(
+                crate::values::core_values::time::Instant::instant_from_iso(
+                    "2026-04-13T18:28Z"
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn parse_iso_datetime_epoch() {
+        let expr = parse("1970-01-01T00:00:00.000Z");
+        assert_eq!(
+            expr.data(),
+            &DatexExpressionData::Instant(
+                crate::values::core_values::time::Instant(0)
             )
         );
     }
@@ -728,8 +793,8 @@ mod tests {
     fn parse_type_expression() {
         let expr = parse("type<1 | 2>");
         assert_eq!(
-            expr.data,
-            DatexExpressionData::TypeExpression(
+            expr.data(),
+            &DatexExpressionData::TypeExpression(
                 TypeExpressionData::Union(Union(vec![
                     TypeExpressionData::Integer(1.into()).with_default_span(),
                     TypeExpressionData::Integer(2.into()).with_default_span()

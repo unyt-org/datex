@@ -8,8 +8,8 @@ use crate::{
     prelude::*,
     shared_values::{
         ReferenceMutability, RemotePointerAddress, SelfOwnedPointerAddress,
-        SharedContainerMutability,
     },
+    traits::apply::ApplyArgument,
     values::core_values::endpoint::Endpoint,
 };
 
@@ -17,6 +17,7 @@ use crate::{
 pub enum ExecutionInterrupt {
     // used for intermediate results in unbounded scopes
     SetActiveValue(Option<ValueContainer>),
+    TakeActiveValue,
     /// yields an external interrupt to be handled by the execution loop caller (for I/O operations, pointer resolution, remote execution, etc.)
     External(ExternalExecutionInterrupt),
 }
@@ -31,17 +32,27 @@ pub enum ExternalExecutionInterrupt {
         input: DXBWithSharedValues,
         receivers: Vec<Endpoint>,
     },
-    Apply(ValueContainer, Vec<ValueContainer>),
-    /// Request to move a list of pointers from the current caller endpoint to the local endpoint
-    RequestMove(Vec<(SharedContainerMutability, SelfOwnedPointerAddress)>),
-    /// Move a list of pointers from the local endpoint to the caller
-    Move(Vec<(SelfOwnedPointerAddress, SelfOwnedPointerAddress)>),
+    SetEndpointProperty {
+        endpoint: Endpoint,
+        property_name: String,
+        value: ValueContainer,
+    },
+    GetEndpointProperty {
+        endpoint: Endpoint,
+        property_name: String,
+    },
+    Apply(ValueContainer, Vec<ApplyArgument>),
+    CallMethod(ApplyArgument, String, Vec<ApplyArgument>),
 }
 
 #[derive(Debug)]
 pub enum InterruptResult {
+    /// Used to return a single resolved value or None
     ResolvedValue(Option<ValueContainer>),
+    /// Used to return multiple resolved values
     ResolvedValues(Vec<ValueContainer>),
+    /// Used in function calls: returns all borrowed arguments back, as well as an optional result value
+    ResolvedValueAndBorrowedArgs((Option<ValueContainer>, Vec<ValueContainer>)),
 }
 
 #[derive(Debug, Clone)]

@@ -32,6 +32,8 @@ pub enum ParserError {
     InvalidTypeVariantAccess,
     // used in internal parser logic to indicate a failed parse attempt that lead to a rollback
     CouldNotMatchGenericParams,
+
+    ExpressionNestingTooDeep,
 }
 
 #[derive(Debug)]
@@ -44,6 +46,32 @@ pub struct DetailedParserErrorsWithAst {
 pub struct SpannedParserError {
     pub error: ParserError,
     pub span: Range<usize>,
+}
+
+impl SpannedParserError {
+    pub fn new(error: ParserError, span: Range<usize>) -> Self {
+        Self { error, span }
+    }
+    pub fn with_span(mut self, span: Range<usize>) -> Self {
+        self.span = span;
+        self
+    }
+
+    /// If the error is an UnexpectedToken, update the expected tokens to the provided list.
+    pub fn with_expected_tokens(mut self, expected: Vec<Token>) -> Self {
+        if let ParserError::UnexpectedToken {
+            found: _,
+            expected: old,
+        } = &mut self.error
+        {
+            for token in expected {
+                if !old.contains(&token) {
+                    old.push(token);
+                }
+            }
+        }
+        self
+    }
 }
 
 impl ErrorCollector<SpannedParserError> for Vec<SpannedParserError> {

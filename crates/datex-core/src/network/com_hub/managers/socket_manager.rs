@@ -10,7 +10,7 @@ use crate::{
 use core::cell::{Ref, RefCell, RefMut};
 use datex_macros_internal::Datex;
 use futures::channel::oneshot;
-use futures_util::{FutureExt, future::join_all};
+use futures_util::future::join_all;
 use itertools::Itertools;
 use log::{debug, error, info};
 
@@ -32,8 +32,8 @@ pub struct EndpointIterateOptions<'a> {
     pub exclude_sockets: &'a [ComInterfaceSocketUUID],
 }
 
-#[derive(Debug, Clone, Datex)]
-
+#[derive(Datex, Debug, Clone)]
+#[datex(structural_recursive)]
 pub struct DynamicEndpointProperties {
     pub known_since: u64,
     pub distance: i8,
@@ -708,7 +708,7 @@ impl ComInterfaceSocketManager {
         // TODO #187: do we need the block here for additional information (match conditions),
         // otherwise receivers are enough
         local_endpoint: &Endpoint,
-        receiver_endpoints: &Vec<Endpoint>,
+        receiver_endpoints: &[Endpoint],
         mut exclude_sockets: Vec<ComInterfaceSocketUUID>,
     ) -> Option<Vec<(Option<ComInterfaceSocketUUID>, Vec<Endpoint>)>> {
         if !receiver_endpoints.is_empty() {

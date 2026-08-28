@@ -8,13 +8,14 @@ use crate::{
     global::{
         operators::{
             ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
-            UnaryOperator, assignment::AssignmentOperator,
+            UnaryOperator, modification::ModificationOperator,
         },
-        protocol_structures::instruction_data::StackIndex,
+        stack_index::StackIndex,
     },
     libs::core::core_lib_id::CoreLibId,
     shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainerMutability,
+        PointerAddress, ReferenceMutability, SelfOwnedPointerAddress,
+        SharedContainerMutability,
     },
     types::{
         r#type::Type, type_definition::callable::CallableKind,
@@ -23,7 +24,7 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
-            self,
+            self, Instant,
             boolean::Boolean,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
@@ -34,38 +35,54 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{fmt::Display, ops, ops::Neg};
+use core::{
+    fmt::Display,
+    ops::{self, Neg},
+};
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
 pub struct DatexExpression {
-    pub data: DatexExpressionData,
+    pub data: Box<DatexExpressionData>,
     pub span: ops::Range<usize>,
     pub ty: Option<Type>,
 }
 impl Default for DatexExpression {
     fn default() -> Self {
         DatexExpression {
-            data: DatexExpressionData::Statements(Statements {
+            data: Box::new(DatexExpressionData::Statements(Statements {
                 statements: Vec::new(),
                 is_terminated: false,
                 unbounded: None,
-            }),
+            })),
             span: 0..0,
             ty: None,
         }
     }
 }
 impl DatexExpression {
-    pub fn new(
-        data: DatexExpressionData,
-        span: core::ops::Range<usize>,
-    ) -> Self {
+    pub fn new(data: DatexExpressionData, span: ops::Range<usize>) -> Self {
         DatexExpression {
-            data,
+            data: Box::new(data),
             span,
             ty: None,
         }
+    }
+
+    pub fn data(&self) -> &DatexExpressionData {
+        &self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut DatexExpressionData {
+        &mut self.data
+    }
+
+    pub fn span(&self) -> &ops::Range<usize> {
+        &self.span
+    }
+
+    pub fn ty(&self) -> Option<&Type> {
+        self.ty.as_ref()
     }
 }
 
@@ -90,6 +107,10 @@ pub enum DatexExpressionData {
 
     /// null
     Null,
+
+    /// (...)
+    OmitRecursive,
+
     /// Boolean (true or false)
     Boolean(Boolean),
     /// Text, e.g "Hello, world!"
@@ -102,6 +123,9 @@ pub enum DatexExpressionData {
 
     /// Integer, e.g 123456789123456789
     Integer(Integer),
+
+    /// DateTime, e.g. 2026-04-13T18:28:09.415Z (stored as Instant)
+    Instant(Instant),
 
     Range(RangeDeclaration),
 
@@ -121,6 +145,9 @@ pub enum DatexExpressionData {
     Statements(Statements),
     /// reference access to shared value, e.g. '$ABC / 'mut $ABC
     RequestSharedRef(RequestSharedRef),
+
+    /// move a shared value, e.g. $ABC
+    MoveSharedValue(SelfOwnedPointerAddress),
 
     ResolveCoreLibId(CoreLibId),
 
@@ -142,21 +169,24 @@ pub enum DatexExpressionData {
     // This would remove the ability to have recursive type
     // definitions.
     /// Type declaration, e.g. type MyType = { x: 42, y: "John" };
-    TypeDeclaration(TypeDeclaration),
+    TypeDeclaration(TypeDeclarationExpression),
+
+    /// Entity declaration, e.g. entity MyEntity = { x: 42, y: "John" };
+    EntityDeclaration(EntityDeclarationExpression),
 
     /// Type expression, e.g. type(1 | 2)
     TypeExpression(TypeExpression),
 
     /// callable (function/procedure) declaration, e.g. function my_function() -> type ( ... )
-    CallableDeclaration(Box<CallableDeclaration>),
+    CallableDeclaration(CallableDeclaration),
 
     /// Create a new shared container
     CreateShared(CreateShared),
     /// Create a new reference
-    GetRef(GetRef),
+    DeriveRef(DeriveRef),
 
-    /// Get a new shared reference
-    GetSharedRef(GetSharedRef),
+    /// Derive a new shared reference
+    DeriveSharedRef(DeriveSharedRef),
 
     /// Creates a new mutable value
     CreateMut(CreateMut),
@@ -176,8 +206,11 @@ pub enum DatexExpressionData {
     /// Property access on the root, e.g. $.print
     RootPropertyAccess(RootPropertyAccess),
 
-    /// Slot assignment
-    SlotAssignment(StackAssignment),
+    /// Stack assignment e.g. {0} = ...
+    StackAssignment(StackAssignment),
+
+    /// Push list to stack, e.g. {...} = ...
+    StackListAssignment(StackListAssignment),
 
     /// Binary operation, e.g. x + y
     BinaryOperation(BinaryOperation),
@@ -198,6 +231,9 @@ pub enum DatexExpressionData {
     /// Apply a value to another value, e.g. function call or type cast
     Apply(Apply),
 
+    /// Call an interface method, e.g. obj->method()
+    InterfaceMethodCall(InterfaceMethodCall),
+
     /// Apply a property access to an argument
     PropertyAccess(PropertyAccess),
 
@@ -212,15 +248,34 @@ pub enum DatexExpressionData {
 
     /// Variant access, e.g. integer/u8
     VariantAccess(VariantAccess),
+
+    EntityValue(EntityValueExpression),
 }
 
 impl Spanned for DatexExpressionData {
     type Output = DatexExpression;
 
-    fn with_span<T: Into<core::ops::Range<usize>>>(
-        self,
-        span: T,
-    ) -> Self::Output {
+    fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
+        DatexExpression {
+            data: Box::new(self),
+            span: span.into(),
+            ty: None,
+        }
+    }
+
+    fn with_default_span(self) -> Self::Output {
+        DatexExpression {
+            data: Box::new(self),
+            span: (0..0),
+            ty: None,
+        }
+    }
+}
+
+impl Spanned for Box<DatexExpressionData> {
+    type Output = DatexExpression;
+
+    fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
         DatexExpression {
             data: self,
             span: span.into(),
@@ -247,7 +302,7 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                 operator,
                 expression,
             }) => {
-                let value = ValueContainer::try_from(&expression.data)?;
+                let value = ValueContainer::try_from(expression.data())?;
                 match value {
                     ValueContainer::Local(Value {
                         inner: CoreValue::Integer(_) | CoreValue::Decimal(_),
@@ -280,7 +335,7 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                 let entries = list
                     .items
                     .iter()
-                    .map(|e| ValueContainer::try_from(&e.data))
+                    .map(|e| ValueContainer::try_from(e.data()))
                     .collect::<Result<Vec<ValueContainer>, ()>>()?;
                 ValueContainer::from(core_values::list::List::from(entries))
             }
@@ -289,8 +344,8 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     .entries
                     .iter()
                     .map(|(k, v)| {
-                        let key = ValueContainer::try_from(&k.data)?;
-                        let value = ValueContainer::try_from(&v.data)?;
+                        let key = ValueContainer::try_from(k.data())?;
+                        let value = ValueContainer::try_from(v.data())?;
                         Ok((key, value))
                     })
                     .collect::<Result<Vec<(ValueContainer, ValueContainer)>, ()>>()?;
@@ -304,91 +359,68 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
 #[derive(Clone, Debug, PartialEq)]
 pub struct BinaryOperation {
     pub operator: BinaryOperator,
-    pub left: Box<DatexExpression>,
-    pub right: Box<DatexExpression>,
+    pub left: DatexExpression,
+    pub right: DatexExpression,
     pub ty: Option<Type>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RangeDeclaration {
-    pub start: Box<DatexExpression>,
-    pub end: Box<DatexExpression>,
+    pub start: DatexExpression,
+    pub end: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ComparisonOperation {
     pub operator: ComparisonOperator,
-    pub left: Box<DatexExpression>,
-    pub right: Box<DatexExpression>,
+    pub left: DatexExpression,
+    pub right: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboxAssignment {
-    pub operator: Option<AssignmentOperator>,
-    pub unbox_expression: Box<DatexExpression>,
-    pub assigned_expression: Box<DatexExpression>,
+    pub operator: Option<ModificationOperator>,
+    pub unbox_expression: DatexExpression,
+    pub assigned_expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboxSlotAssignment {
-    pub operator: Option<AssignmentOperator>,
+    pub operator: Option<ModificationOperator>,
     pub stack_index: StackIndex,
-    pub assigned_expression: Box<DatexExpression>,
+    pub assigned_expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PropertyAssignment {
-    pub operator: Option<AssignmentOperator>,
-    pub base: Box<DatexExpression>,
-    pub property: Box<DatexExpression>,
-    pub assigned_expression: Box<DatexExpression>,
+    pub operator: Option<ModificationOperator>,
+    pub base: DatexExpression,
+    pub property: DatexExpression,
+    pub assigned_expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Conditional {
-    pub condition: Box<DatexExpression>,
-    pub then_branch: Box<DatexExpression>,
-    pub else_branch: Option<Box<DatexExpression>>,
+    pub condition: DatexExpression,
+    pub then_branch: DatexExpression,
+    pub else_branch: Option<DatexExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum TypeDeclarationKind {
-    Nominal,
-    Alias,
-}
-impl Display for TypeDeclarationKind {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            TypeDeclarationKind::Nominal => core::write!(f, "type"),
-            TypeDeclarationKind::Alias => core::write!(f, "typealias"),
-        }
-    }
-}
-impl TypeDeclarationKind {
-    pub fn is_nominal(&self) -> bool {
-        matches!(self, TypeDeclarationKind::Nominal)
-    }
-    pub fn is_alias(&self) -> bool {
-        matches!(self, TypeDeclarationKind::Alias)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct TypeDeclaration {
+pub struct TypeDeclarationExpression {
     pub id: Option<VariableId>,
     pub name: String, // TODO #614: separate variant from name
     pub definition: TypeExpression,
     pub hoisted: bool,
-    pub kind: TypeDeclarationKind,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnaryOperation {
     pub operator: UnaryOperator,
-    pub expression: Box<DatexExpression>,
+    pub expression: DatexExpression,
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, Hash, Eq)]
 pub enum ValueAccessType {
     /// 'mut x
     SharedRefMut,
@@ -413,26 +445,47 @@ impl From<&ReferenceMutability> for ValueAccessType {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Apply {
-    pub base: Box<DatexExpression>,
+    pub base: DatexExpression,
     pub arguments: Vec<DatexExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct InterfaceMethodCall {
+    pub target: DatexExpression,
+    pub method_name: String,
+    pub arguments: Vec<DatexExpression>,
+}
+
+impl InterfaceMethodCall {
+    pub fn new(
+        target: DatexExpression,
+        method_name: String,
+        arguments: Vec<DatexExpression>,
+    ) -> Self {
+        InterfaceMethodCall {
+            target,
+            method_name,
+            arguments,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct PropertyAccess {
-    pub base: Box<DatexExpression>,
-    pub property: Box<DatexExpression>,
+    pub base: DatexExpression,
+    pub property: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct GenericInstantiation {
-    pub base: Box<DatexExpression>,
+    pub base: DatexExpression,
     pub generic_arguments: Vec<TypeExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RemoteExecution {
-    pub left: Box<DatexExpression>,
-    pub right: Box<DatexExpression>,
+    pub left: DatexExpression,
+    pub right: DatexExpression,
     /// internal metadata set by precompiler, indicates how many variables from parent scope are accessed inside the remote execution
     pub injected_variable_count: Option<u32>,
 }
@@ -449,6 +502,7 @@ pub struct Statements {
     pub is_terminated: bool,
     pub unbounded: Option<UnboundedStatement>,
 }
+
 impl Statements {
     pub fn empty() -> Self {
         Statements {
@@ -479,20 +533,28 @@ pub struct VariableDeclaration {
     pub kind: VariableKind,
     pub name: String,
     pub type_annotation: Option<TypeExpression>,
-    pub init_expression: Box<DatexExpression>,
+    pub init_expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct VariableAssignment {
     pub id: Option<VariableId>,
     pub name: String,
-    pub operator: Option<AssignmentOperator>,
-    pub expression: Box<DatexExpression>,
+    pub operator: Option<ModificationOperator>,
+    pub expression: DatexExpression,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct EntityDeclarationExpression {
+    pub id: Option<VariableId>,
+    pub name: String,
+    pub definition: TypeExpression,
+    pub hoisted: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompileExpression {
-    pub expression: Box<DatexExpression>,
+    pub expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -510,14 +572,20 @@ pub struct RequestSharedRef {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CallableDeclaration {
+    pub signature: CallableSignature,
+    pub body: DatexExpression,
+    pub injected_variable_count: Option<u32>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CallableSignature {
     pub name: Option<String>,
     pub kind: CallableKind,
+    pub requires_async: bool,
     pub parameters: Vec<(String, TypeExpression)>,
     pub rest_parameter: Option<(String, TypeExpression)>,
     pub return_type: Option<TypeExpression>,
     pub yeet_type: Option<TypeExpression>,
-    pub body: Box<DatexExpression>,
-    pub injected_variable_count: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -531,9 +599,25 @@ impl List {
     }
 }
 
+impl FromIterator<DatexExpression> for List {
+    fn from_iter<T: IntoIterator<Item = DatexExpression>>(iter: T) -> Self {
+        let items = iter.into_iter().collect();
+        List { items }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Map {
     pub entries: Vec<(DatexExpression, DatexExpression)>,
+}
+
+impl FromIterator<(DatexExpression, DatexExpression)> for Map {
+    fn from_iter<T: IntoIterator<Item = (DatexExpression, DatexExpression)>>(
+        iter: T,
+    ) -> Self {
+        let entries = iter.into_iter().collect();
+        Map { entries }
+    }
 }
 
 impl Map {
@@ -560,7 +644,7 @@ impl Display for VariableKind {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TagExpression {
     pub tag: String,
-    pub expression: Option<Box<DatexExpression>>,
+    pub expression: Option<DatexExpression>,
 }
 
 impl Display for TagExpression {
@@ -577,9 +661,12 @@ pub struct RootPropertyAccess {
 #[derive(Clone, Debug, PartialEq)]
 pub struct StackAssignment {
     pub index: StackIndex,
-    pub expression: Box<DatexExpression>,
-    // TODO: operator for stack assignment, e.g. \\1 += 2
-    // pub operator: Option<AssignmentOperator>,
+    pub expression: DatexExpression,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StackListAssignment {
+    pub expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -590,34 +677,41 @@ pub struct VariantAccess {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct EntityValueExpression {
+    pub entity_name: String,
+    pub entity_address: Option<PointerAddress>,
+    pub value: DatexExpression,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct Unbox {
-    pub expression: Box<DatexExpression>,
+    pub expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CloneExpression {
-    pub expression: Box<DatexExpression>,
+    pub expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct GetRef {
+pub struct DeriveRef {
     pub mutability: LocalReferenceMutability,
-    pub expression: Box<DatexExpression>,
+    pub expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateShared {
     pub mutability: SharedContainerMutability,
-    pub expression: Box<DatexExpression>,
+    pub expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct GetSharedRef {
+pub struct DeriveSharedRef {
     pub mutability: ReferenceMutability,
-    pub expression: Box<DatexExpression>,
+    pub expression: DatexExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateMut {
-    pub expression: Box<DatexExpression>,
+    pub expression: DatexExpression,
 }

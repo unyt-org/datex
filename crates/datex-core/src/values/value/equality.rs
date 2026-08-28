@@ -1,3 +1,5 @@
+use core::hash::{Hash, Hasher};
+
 use crate::{
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     values::value::Value,
@@ -16,5 +18,20 @@ impl StructuralEq for Value {
 impl ValueEq for Value {
     fn value_eq(&self, other: &Self) -> bool {
         self == other
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+            && self.actual_type().as_ref() == other.actual_type().as_ref()
+    }
+}
+
+impl Eq for Value {}
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.inner.hash(state);
+        self.actual_type().hash(state);
     }
 }

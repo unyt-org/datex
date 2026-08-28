@@ -1,8 +1,8 @@
 use crate::{
     types::{
+        traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
         r#type::Type,
         type_definition::TypeDefinition,
-        type_match::{TypeSatisfiesValueContainer, TypeSuperset},
     },
     values::value_container::ValueContainer,
 };
@@ -11,7 +11,7 @@ impl TypeSuperset<Type> for TypeDefinition {
     fn is_superset_of(&self, other: &Type) -> bool {
         match self {
             TypeDefinition::Union(union) => union.is_superset_of(other),
-            TypeDefinition::Nested(nested) => nested.is_superset_of(other),
+            TypeDefinition::Box(nested) => nested.is_superset_of(other),
             // TODO
             // TypeDefinition::Intersection(intersection) => intersection.is_superset_of(other),
             _ => false,
@@ -39,6 +39,12 @@ impl TypeSuperset<TypeDefinition> for TypeDefinition {
                 TypeDefinition::CoreType(self_core),
                 TypeDefinition::CoreType(other_core),
             ) => self_core.is_superset_of(other_core),
+
+            // union supersets, e.g. 1|2|3 >= 1|2
+            (
+                TypeDefinition::ImplType(self_impl),
+                TypeDefinition::ImplType(other_impl),
+            ) => self_impl.is_superset_of(other_impl),
 
             // union superset with any TypeDefinition, e.g. 1|2 >= 1
             (TypeDefinition::Union(self_union), other) => {
@@ -74,7 +80,14 @@ impl TypeSatisfiesValueContainer for TypeDefinition {
             TypeDefinition::Union(definitions) => definitions
                 .iter()
                 .any(|definition| definition.satisfies_value_container(value)),
-            _ => unimplemented!(),
+            TypeDefinition::CoreType(definition) => {
+                definition.satisfies_value_container(value)
+            }
+            _ => {
+                unimplemented!(
+                    "satisfies_value_container not implemented for {self:?} >= {value:?}"
+                )
+            }
         }
     }
 }

@@ -6,7 +6,9 @@ use crate::runtime::execution::ExecutionError;
 pub enum CallableError {
     InvalidSignature,
     RuntimeOnlyCallable,
+    HiddenCallable,
     ExecutionError(ExecutionError),
+    LostBorrowedArguments { expected: usize, actual: usize },
 }
 impl Display for CallableError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -21,6 +23,19 @@ impl Display for CallableError {
                 write!(
                     f,
                     "This callable can only be called inside a runtime context"
+                )
+            }
+            CallableError::HiddenCallable => {
+                write!(
+                    f,
+                    "This callable is hidden and cannot be called directly"
+                )
+            }
+            CallableError::LostBorrowedArguments { expected, actual } => {
+                write!(
+                    f,
+                    "Lost borrowed arguments: expected {}, but got {}",
+                    expected, actual
                 )
             }
         }

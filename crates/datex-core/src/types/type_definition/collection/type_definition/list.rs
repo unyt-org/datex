@@ -14,6 +14,11 @@ impl Display for ListCollectionTypeDefinition {
         core::write!(f, "[{}]", self.0)
     }
 }
+impl ListCollectionTypeDefinition {
+    pub fn new(item: Type) -> Self {
+        Self(Box::new(item))
+    }
+}
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, ListCollectionTypeDefinition> {
     type Value = ListCollectionTypeDefinition;
 

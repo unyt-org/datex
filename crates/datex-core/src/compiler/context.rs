@@ -1,22 +1,27 @@
 use crate::{
+    ast::type_expressions::TypeExpression,
+    compiler::scope::CompilationScope,
     core_compiler::{
         buffer_provider::BufferProvider,
         core_compilation_context::{
             CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
+        shared_value_tracking::SharedValueTracking,
+        to_instructions::{SharedValueTrackingProvider, ToInstructions},
+        type_compiler::append_type_instruction,
         value_compiler::append_instruction_code,
     },
-    global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::instruction_data::StackIndex,
+    global::stack_index::StackIndex,
+    instruction::{
+        instruction_codes::InstructionCode, type_instruction::TypeInstruction,
     },
     prelude::*,
     runtime::execution::context::ExecutionMode,
     utils::buffers::append_u32,
     values::value_container::ValueContainer,
 };
-use binrw::io::Cursor;
-
+use binrw::{BinWrite, io::Cursor, meta::WriteEndian};
+use core::cell::RefCell;
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext<'a> {
     pub core_context: CoreCompilationContext<'a>,
@@ -25,28 +30,11 @@ pub struct CompilationContext<'a> {
     /// this flag is set to true if any non-static value is encountered
     pub has_non_static_value: bool,
     pub execution_mode: ExecutionMode,
+    pub scope: CompilationScope,
 }
 
 impl<'a> CompilationContext<'a> {
-    const MAX_INT_32: i64 = 2_147_483_647;
-    const MIN_INT_32: i64 = -2_147_483_648;
-
-    const MAX_INT_8: i64 = 127;
-    const MIN_INT_8: i64 = -128;
-
-    const MAX_INT_16: i64 = 32_767;
-    const MIN_INT_16: i64 = -32_768;
-
-    const MAX_UINT_16: i64 = 65_535;
-
-    const INT_8_BYTES: u8 = 1;
-    const INT_16_BYTES: u8 = 2;
     const INT_32_BYTES: u8 = 4;
-    const INT_64_BYTES: u8 = 8;
-    const INT_128_BYTES: u8 = 16;
-
-    const FLOAT_32_BYTES: u8 = 4;
-    const FLOAT_64_BYTES: u8 = 8;
 
     pub fn new(
         buffer: Vec<u8>,
@@ -60,6 +48,7 @@ impl<'a> CompilationContext<'a> {
             inserted_values,
             has_non_static_value: false,
             execution_mode,
+            scope: CompilationScope::new(ExecutionMode::default()),
         }
     }
 
@@ -93,7 +82,36 @@ impl<'a> CompilationContext<'a> {
         self.has_non_static_value = true;
     }
 
+    pub fn write<T: BinWrite + WriteEndian>(&mut self, value: T)
+    where
+        for<'b> <T as binrw::BinWrite>::Args<'b>: core::default::Default,
+    {
+        self.core_context.write(value);
+    }
+
+    /// Converts a [TypeExpression] to [TypeInstruction]s and appends them to the current buffer.
+    pub fn append_compiled_type_expression(
+        &mut self,
+        type_expression: &TypeExpression,
+    ) {
+        let instructions = type_expression
+            .to_instructions(self)
+            .collect::<Vec<TypeInstruction>>();
+        for instruction in instructions {
+            append_type_instruction(self.cursor(), instruction);
+        }
+    }
+
+    #[deprecated(note = "use write() instead")]
     pub fn append_instruction_code(&mut self, code: InstructionCode) {
         append_instruction_code(self.cursor(), code);
+    }
+}
+
+impl<'ctx> SharedValueTrackingProvider<'ctx> for CompilationContext<'ctx> {
+    fn shared_value_tracking<'a>(
+        &'a self,
+    ) -> Option<&'a RefCell<SharedValueTracking<'ctx>>> {
+        Some(&self.core_context.shared_value_tracking)
     }
 }

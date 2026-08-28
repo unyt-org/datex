@@ -7,8 +7,8 @@ pub mod serde_dif;
 pub struct UnionTypeDefinition(pub Vec<Type>);
 
 impl UnionTypeDefinition {
-    pub fn new() -> Self {
-        Self(Vec::new())
+    pub fn new(vec: Vec<Type>) -> Self {
+        Self(vec)
     }
 }
 

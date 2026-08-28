@@ -14,6 +14,14 @@ pub struct ListSliceCollectionTypeDefinition {
     pub item_type: Box<Type>,
     pub size: usize,
 }
+impl ListSliceCollectionTypeDefinition {
+    pub fn new(item_type: Type, size: usize) -> Self {
+        Self {
+            item_type: Box::new(item_type),
+            size,
+        }
+    }
+}
 impl Display for ListSliceCollectionTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(f, "[{}; {}]", self.item_type, self.size)

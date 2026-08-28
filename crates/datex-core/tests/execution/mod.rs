@@ -2,7 +2,8 @@ use datex_core::{
     compile,
     compiler::{CompileOptions, compile_template, scope::CompilationScope},
     disassembler::{
-        options::DisassemblerOptions, print_disassembled_with_options,
+        get_disassembled_with_options, options::DisassemblerOptions,
+        print_disassembled_with_options,
     },
     runtime::{
         Runtime,
@@ -19,10 +20,12 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
+use log::info;
 
 pub mod local_values;
 pub mod shared_values;
 
+pub mod types;
 /// Compiles and executes a script that takes a single value input.
 /// Compiles local values and owned shared values as "?", and shared references as "'?" or "'mut ?" depending on their mutability.
 pub fn compile_and_execute(input: ValueContainer) -> ValueContainer {

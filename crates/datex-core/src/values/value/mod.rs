@@ -1,38 +1,69 @@
 //! This module contains the implementation of the [Value] struct, which represents a value in the DATEX type system.
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
+    datex_proxy::DatexProxyType,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::{
         TypeDefinition, callable::CallableTypeDefinition,
     },
+    utils::sheep::Sheep,
     values::{
         core_value::CoreValue,
         core_values::{
             callable::{Callable, CallableBody},
-            integer::typed_integer::TypedInteger,
+            native::DatexNative,
         },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 pub mod apply;
+pub mod borrowed_value;
 mod child_iterator;
 pub mod datex_proxy;
 pub mod equality;
+mod local_child_path_resolver;
 pub mod ops;
 pub mod serde_dif;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
 pub mod update_handler;
+mod value_access;
 
-use crate::shared_values::errors::AccessError;
+use crate::{
+    datex_proxy::TryToDatexValueError,
+    shared_values::errors::AccessError,
+    traits::value_access::ValueAccess,
+    value_updates::update_handler::InternalMutabilityUpdateHandler,
+    values::{
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
+        core_values::endpoint::Endpoint,
+    },
+};
 use core::{
-    fmt::{Display, Formatter},
+    fmt::{Debug, Display, Formatter},
     result::Result,
 };
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Debug)]
 pub struct Value {
+    /// The inner representation of the value, which is a [CoreValue].
     pub inner: CoreValue,
-    // actual type of the value - if [None], use default type for given value
+    /// actual type of the value - if [None], use default type for given value
     pub custom_type: Option<TypeDefinition>,
+}
+
+/// The Value clone does copy the value and custom type,
+/// but removed the observer
+impl Clone for Value {
+    fn clone(&self) -> Self {
+        Value {
+            inner: self.inner.clone(),
+            custom_type: self.custom_type.clone(),
+        }
+    }
 }
 
 impl<T: Into<CoreValue>> From<T> for Value {
@@ -49,6 +80,109 @@ impl Value {
     pub fn null() -> Self {
         CoreValue::Null.into()
     }
+
+    pub fn unitialized() -> Self {
+        CoreValue::Uninitialized.into()
+    }
+
+    pub fn new(
+        inner: impl Into<CoreValue>,
+        custom_type: Option<TypeDefinition>,
+    ) -> Self {
+        Value {
+            inner: inner.into(),
+            custom_type,
+        }
+    }
+
+    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
+    pub fn native_boxed<T: DatexNative + DatexProxyType>(
+        value: Box<T>,
+        context: &mut SharedReferencesCache,
+    ) -> Value {
+        Value::new(
+            CoreValue::native_boxed(value),
+            Some(T::datex_type(context).convert_to_definition()),
+        )
+    }
+
+    pub fn native<T: DatexNative + DatexProxyType>(
+        value: T,
+        context: &mut SharedReferencesCache,
+    ) -> Value {
+        Value::new(
+            CoreValue::native(value),
+            Some(T::datex_type(context).convert_to_definition()),
+        )
+    }
+
+    pub fn custom_type(&self) -> Option<&TypeDefinition> {
+        self.custom_type.as_ref()
+    }
+    pub fn into_inner(self) -> CoreValue {
+        self.inner
+    }
+    pub fn is_uninitialized(&self) -> bool {
+        matches!(&self.inner, CoreValue::Uninitialized)
+    }
+
+    /// Collapses the inner [CoreValue] of the [Value] to a DATEX value if it is a [CoreValue::Native].
+    pub fn into_non_native(
+        self,
+        cache: &mut SharedReferencesCache,
+    ) -> Result<Value, TryToDatexValueError> {
+        match self.inner {
+            CoreValue::Native(native) => {
+                Ok(native.value.try_boxed_to_value(cache)?)
+            }
+            _ => Ok(self),
+        }
+    }
+
+    /// Returns the inner [CoreValue] of the [Value].
+    /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
+    pub fn into_inner_non_native(
+        self,
+        cache: &mut SharedReferencesCache,
+    ) -> Result<CoreValue, TryToDatexValueError> {
+        self.into_non_native(cache).map(|v| v.inner)
+    }
+
+    /// Returns a reference to the inner [CoreValue] of the [Value].
+    /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
+    pub fn inner_non_native(
+        &self,
+        _cache: &mut SharedReferencesCache,
+    ) -> Result<Cow<'_, CoreValue>, TryToDatexValueError> {
+        Ok(Cow::Borrowed(&self.inner)) // workaround
+        // TODO: implement try_borrowed_boxed_to_value
+        // match &self.inner {
+        //     CoreValue::Native(native) => Ok(
+        //         Cow::Owned(native.value.try_boxed_to_value(cache)?.inner)
+        //     ),
+        //     _ => Ok(Cow::Borrowed(&self.inner)),
+        // }
+    }
+
+    /// Strips any local observers from the given value container.
+    /// This method should be called when a value is moved from its [SharedContainer] parent.
+    pub fn without_local_observers(mut self) -> Value {
+        self.set_update_callback_data(None);
+        self
+    }
+
+    /// Creates a new Value representing a boxed value.
+    /// This can be used to wrap a [ValueContainer] directly into a local [Value],
+    /// e.g. for #Tagged(shared X) or (X | null) | null
+    pub fn boxed(value: impl Into<ValueContainer>) -> Self {
+        Value::from(CoreValue::Box(Box::new(value.into())))
+    }
+    pub fn unbox(self) -> Result<ValueContainer, Value> {
+        match self.inner {
+            CoreValue::Box(boxed) => Ok(*boxed),
+            _ => Err(self),
+        }
+    }
 }
 
 impl Value {
@@ -56,35 +190,21 @@ impl Value {
         name: Option<String>,
         signature: CallableTypeDefinition,
         body: CallableBody,
+        creator: Endpoint,
     ) -> Self {
         Value {
             inner: CoreValue::Callable(Callable {
                 name,
                 signature: signature.clone(),
                 body,
+                creator,
             }),
             custom_type: Some(TypeDefinition::callable(signature)),
         }
     }
 
-    #[deprecated]
     pub fn is_null(&self) -> bool {
         core::matches!(self.inner, CoreValue::Null)
-    }
-    #[deprecated]
-    pub fn is_text(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Text(_))
-    }
-    #[deprecated]
-    pub fn is_integer_i8(&self) -> bool {
-        core::matches!(
-            &self.inner,
-            CoreValue::TypedInteger(TypedInteger::I8(_))
-        )
-    }
-    #[deprecated]
-    pub fn is_map(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Map(_))
     }
 
     /// Tries to get a borrow of the current value as the specified type.
@@ -117,10 +237,10 @@ impl Value {
     /// This will return false for an integer value if the actual type is one of the following:
     /// * an ImplType<integer, x>
     /// * a new nominal type containing an integer
-    /// TODO #604: this does not match all cases of default types from the point of view of the compiler -
-    /// integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
-    /// the variant must be included in the compiler output - so we need to handle theses cases as well.
-    /// Generally speaking, all variants except the few integer variants should never be considered default types.
+    ///   TODO #604: this does not match all cases of default types from the point of view of the compiler -
+    ///   integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
+    ///   the variant must be included in the compiler output - so we need to handle theses cases as well.
+    ///   Generally speaking, all variants except the few integer variants should never be considered default types.
     pub fn has_default_type(&self) -> bool {
         match &self.custom_type {
             None => true,
@@ -132,52 +252,61 @@ impl Value {
     }
 
     /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type(&self) -> TypeDefinition {
+    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
         match &self.custom_type {
-            Some(actual_type) => actual_type.clone(),
-            None => TypeDefinition::CoreType(self.default_core_type()),
+            Some(actual_type) => Sheep::Borrowed(actual_type),
+            None => {
+                Sheep::Owned(TypeDefinition::CoreType(self.default_core_type()))
+            }
         }
+    }
+
+    /// Returns true if the value is of structual type.
+    pub fn has_structural_type(&self) -> bool {
+        self.actual_type().is_structural()
+    }
+
+    /// Returns true if the value is of tagged type.
+    pub fn has_tagged_type(&self) -> bool {
+        self.actual_type().is_tagged()
+    }
+
+    /// Returns true if the value needs to be casted to its actual type.
+    /// This allows us to strip away the type cast on compilation, as not required.
+    pub fn needs_type_cast(&self) -> bool {
+        if self.has_default_type() {
+            return false;
+        }
+        if self.has_structural_type() && !self.has_tagged_type() {
+            return false;
+        }
+        true
     }
 
     /// Gets a property on the value if applicable (e.g. for map and structs)
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<ValueContainer, AccessError> {
-        match self.inner {
-            CoreValue::Map(ref map) => {
-                // If the value is a map, get the property
-                Ok(map.get(key)?.clone())
-            }
-            CoreValue::List(ref list) => {
-                if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_get(index)?.clone())
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            CoreValue::Text(ref text) => {
-                if let Some(index) = key.into().try_as_index() {
-                    let char = text.char_at(index)?;
-                    Ok(ValueContainer::from(char.to_string()))
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            _ => {
-                // If the value is not an map, we cannot get a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot get property".to_string(),
-                ))
-            }
-        }
+        cache: &mut SharedReferencesCache,
+    ) -> Result<BorrowedValueContainer<'_>, AccessError> {
+        <Self as ValueAccess>::try_get_property(self, key.into(), cache)
+    }
+
+    pub fn try_get_property_mut<'a>(
+        &mut self,
+        key: impl Into<BorrowedValueKey<'a>>,
+        cache: &mut SharedReferencesCache,
+    ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
+        <Self as ValueAccess>::try_get_property_mut(self, key.into(), cache)
     }
 
     /// Takes (removes) a property from the value if applicable (e.g. for map and structs)
     pub fn try_take_property<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
+        _cache: &mut SharedReferencesCache,
     ) -> Result<ValueContainer, AccessError> {
+        // TODO
         match self.inner {
             CoreValue::Map(ref mut map) => {
                 // If the value is a map, get the property
@@ -185,7 +314,7 @@ impl Value {
             }
             CoreValue::List(ref mut list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    Ok(list.delete(index)?)
+                    Ok(list.try_delete(index)?)
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
@@ -219,7 +348,7 @@ impl Value {
             }
             CoreValue::List(ref mut list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    list.delete(index)?;
+                    list.try_delete(index)?;
                     Ok(())
                 } else {
                     Err(AccessError::InvalidIndexKey)
@@ -315,17 +444,17 @@ where
 mod tests {
     use super::*;
     use crate::{
-        assert_structural_eq, datex_list,
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
+        traits::structural_eq::assert_structural_eq,
         types::{r#type::Type, type_definition::impl_type::ImplTypeDefinition},
         values::core_values::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
-            list::List,
+            list::{List, datex_list},
         },
     };
-    use core::str::FromStr;
+    use core::{assert_matches, str::FromStr};
     use log::info;
 
     #[test]
@@ -441,14 +570,17 @@ mod tests {
         let a = Value::from("Hello ");
         let b = Value::from(42i8);
 
-        assert!(a.is_text());
-        assert!(b.is_integer_i8());
+        assert!(matches!(a.inner, CoreValue::Text(_)));
+        assert!(matches!(
+            b.inner,
+            CoreValue::TypedInteger(TypedInteger::I8(_))
+        ));
 
         let a_plus_b = (a.clone() + b.clone()).unwrap();
         let b_plus_a = (b.clone() + a.clone()).unwrap();
 
-        assert!(a_plus_b.is_text());
-        assert!(b_plus_a.is_text());
+        assert!(matches!(a_plus_b.inner, CoreValue::Text(_)));
+        assert!(matches!(b_plus_a.inner, CoreValue::Text(_)));
 
         assert_eq!(a_plus_b, Value::from("Hello 42"));
         assert_eq!(b_plus_a, Value::from("42Hello "));
@@ -461,7 +593,9 @@ mod tests {
     fn structural_equality() {
         let a = Value::from(42_i8);
         let b = Value::from(42_i32);
-        assert!(a.is_integer_i8());
+        assert_matches!(a.inner, CoreValue::TypedInteger(TypedInteger::I8(_)));
+        assert_matches!(b.inner, CoreValue::TypedInteger(TypedInteger::I32(_)));
+        assert_ne!(a, b);
 
         assert_structural_eq!(a, b);
 

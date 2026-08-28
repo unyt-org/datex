@@ -6,7 +6,9 @@ use crate::{
     prelude::*,
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
+        traits::SharedContainerCommon,
     },
+    traits::clone_unsafe::CloneUnsafe,
     utils::serde_serialize_seed::SerializeSeed,
 };
 use alloc::format;
@@ -48,7 +50,7 @@ impl<'ctx> SerdeContext<'ctx, SharedContainer> {
 
             SharedContainerOwnership::Referenced(
                 ReferenceMutability::Mutable,
-            ) => "'mut ",
+            ) => "'mut",
 
             SharedContainerOwnership::Owned => "",
         };
@@ -239,9 +241,7 @@ mod tests {
 
         assert_matches!(
             cache.try_take_owned_shared_container(&ptr_address),
-            Err(CacheValueRetrievalError::ValueNotFoundInCache(
-                ValueNotFoundInCacheError
-            ))
+            Err(CacheValueRetrievalError::ValueNotFoundInCache(_))
         );
     }
 }

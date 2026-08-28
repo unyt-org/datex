@@ -9,9 +9,9 @@ pub mod type_expression;
 /// Actions that can be taken when visiting an expression
 pub enum VisitAction<T: Sized> {
     /// Continue visiting child nodes
-    VisitChildren,
+    ContinueRecursion,
     /// Skip visiting child nodes
-    SkipChildren,
+    AbortRecursion,
     /// Replace the current node with a new one, skipping child nodes
     Replace(T),
     /// Recurse into child nodes, then replace the current node with a new one
@@ -31,8 +31,8 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, DatexExpression, DatexExpressionData, GetRef,
-                Statements, ValueAccessType, VariableAccess,
+                BinaryOperation, DatexExpression, DatexExpressionData,
+                DeriveRef, Statements, ValueAccessType, VariableAccess,
             },
             type_expressions::{TypeExpression, TypeExpressionData},
         },
@@ -50,10 +50,6 @@ mod tests {
     };
     use core::ops::Range;
 
-    pub struct MyAstTypeExpressionError {
-        message: String,
-    }
-
     #[derive(Debug)]
     pub struct MyAstExpressionError {
         message: String,
@@ -68,9 +64,9 @@ mod tests {
 
     struct MyAst;
     impl TypeExpressionVisitor<MyAstExpressionError> for MyAst {
-        fn visit_literal_type(
+        fn visit_type_identifier(
             &mut self,
-            literal: &mut String,
+            _literal: &mut String,
             span: &Range<usize>,
         ) -> TypeExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::Replace(TypeExpression::new(
@@ -99,10 +95,10 @@ mod tests {
         }
         fn visit_get_ref(
             &mut self,
-            create_ref: &mut GetRef,
-            span: &Range<usize>,
+            _create_ref: &mut DeriveRef,
+            _span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
-            Ok(VisitAction::VisitChildren)
+            Ok(VisitAction::ContinueRecursion)
         }
 
         fn visit_identifier(
@@ -111,11 +107,13 @@ mod tests {
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::Replace(DatexExpression {
-                data: DatexExpressionData::VariableAccess(VariableAccess {
-                    id: 0,
-                    name: identifier.clone(),
-                    access_type: ValueAccessType::MoveOrCopy,
-                }),
+                data: Box::new(DatexExpressionData::VariableAccess(
+                    VariableAccess {
+                        id: 0,
+                        name: identifier.clone(),
+                        access_type: ValueAccessType::MoveOrCopy,
+                    },
+                )),
                 span: span.clone(),
                 ty: None,
             }))
@@ -123,8 +121,8 @@ mod tests {
 
         fn visit_boolean(
             &mut self,
-            boolean: &mut Boolean,
-            span: &Range<usize>,
+            _boolean: &mut Boolean,
+            _span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Err(MyAstExpressionError::new("Booleans are not allowed"))
         }
@@ -151,36 +149,40 @@ mod tests {
     #[test]
     fn test() {
         let mut ast = DatexExpression {
-            data: DatexExpressionData::Statements(Statements {
+            data: Box::new(DatexExpressionData::Statements(Statements {
                 statements: vec![DatexExpression {
-                    data: DatexExpressionData::BinaryOperation(
+                    data: Box::new(DatexExpressionData::BinaryOperation(
                         BinaryOperation {
                             operator: BinaryOperator::Arithmetic(
                                 ArithmeticOperator::Add,
                             ),
-                            left: Box::new(DatexExpression {
-                                data: DatexExpressionData::Identifier(
-                                    "x".to_string(),
+                            left: (DatexExpression {
+                                data: Box::new(
+                                    DatexExpressionData::Identifier(
+                                        "x".to_string(),
+                                    ),
                                 ),
                                 span: 0..1,
                                 ty: None,
                             }),
-                            right: Box::new(DatexExpression {
-                                data: DatexExpressionData::Identifier(
-                                    "y".to_string(),
+                            right: (DatexExpression {
+                                data: Box::new(
+                                    DatexExpressionData::Identifier(
+                                        "y".to_string(),
+                                    ),
                                 ),
                                 span: 2..3,
                                 ty: None,
                             }),
                             ty: None,
                         },
-                    ),
+                    )),
                     span: 0..3,
                     ty: None,
                 }],
                 is_terminated: true,
                 unbounded: None,
-            }),
+            })),
             span: 1..2,
             ty: None,
         };

@@ -1,45 +1,50 @@
 use crate::{
     ast::type_expressions::{TypeExpression, TypeExpressionData},
-    core_compiler::{
-        shared_value_tracking::SharedValueTracking,
-        to_instructions::ToInstructions,
+    core_compiler::to_instructions::{
+        SharedValueTrackingProvider, ToInstructions,
     },
-    global::protocol_structures::type_instructions::TypeInstruction,
+    instruction::type_instruction::TypeInstruction,
     prelude::*,
     types::literal_type_definition::LiteralTypeDefinition,
 };
-impl<'a> ToInstructions<'a> for TypeExpression {
+impl<'ctx, T> ToInstructions<'ctx, T> for TypeExpression
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = TypeInstruction;
     fn to_instructions(
-        &'a self,
-        shared_value_tracking: &'a mut SharedValueTracking,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
-        Box::new(gen {
-            match &self.data {
+        &self,
+        ctx: &mut T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+        Box::new(gen move {
+            match self.data() {
                 TypeExpressionData::Integer(integer) => {
-                    yield TypeInstruction::TypeDefinitionLiteral(
+                    yield TypeInstruction::Literal(
                         LiteralTypeDefinition::Integer(integer.clone()),
                     )
                 }
                 TypeExpressionData::Text(text) => {
-                    yield TypeInstruction::TypeDefinitionLiteral(
-                        LiteralTypeDefinition::Text(text.clone()),
-                    )
+                    yield TypeInstruction::Literal(LiteralTypeDefinition::Text(
+                        text.clone(),
+                    ))
                 }
                 TypeExpressionData::Boolean(boolean) => {
-                    yield TypeInstruction::TypeDefinitionLiteral(
+                    yield TypeInstruction::Literal(
                         LiteralTypeDefinition::Boolean(boolean.clone()),
                     )
                 }
+                TypeExpressionData::GetCoreLibType(core_lib_id) => {
+                    yield TypeInstruction::CoreType(*core_lib_id)
+                }
                 TypeExpressionData::Range(range) => {
-                    yield TypeInstruction::TypeDefinitionRange;
+                    yield TypeInstruction::Range;
                     for instr in
-                        range.start.to_instructions(shared_value_tracking)
+                        range.start.to_instructions(ctx).collect::<Vec<_>>()
                     {
                         yield instr;
                     }
                     for instr in
-                        range.end.to_instructions(shared_value_tracking)
+                        range.end.to_instructions(ctx).collect::<Vec<_>>()
                     {
                         yield instr;
                     }

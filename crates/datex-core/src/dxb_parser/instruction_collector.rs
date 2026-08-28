@@ -1,15 +1,16 @@
 use crate::{
-    global::protocol_structures::{
-        instruction_data::StackIndex,
-        instructions::{Instruction, NextExpectedInstructions},
-        regular_instructions::RegularInstruction,
-        type_instructions::TypeInstruction,
+    global::stack_index::StackIndex,
+    instruction::{
+        Instruction, NextExpectedInstructions,
+        regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     prelude::*,
 };
+use core::fmt::Debug;
 
 pub trait CollectionResultsPopper<
-    Result,
+    Result: Debug,
     Val,
     Key,
     KeyVal,
@@ -17,46 +18,56 @@ pub trait CollectionResultsPopper<
     TypeDefinition,
 >: GetResults<Result> + Sized
 {
-    fn try_extract_type_definition_result(
-        result: Result,
-    ) -> Option<TypeDefinition>;
-    fn try_extract_value_result(result: Result) -> Option<Val>;
-    fn try_extract_type_result(result: Result) -> Option<Type>;
-    fn try_extract_key_value_pair_result(
-        result: Result,
-    ) -> Option<(Key, KeyVal)>;
+    fn try_extract_value(result: Result) -> Option<Val>;
+    fn try_extract_type(result: Result) -> Option<Type>;
+    fn try_extract_type_definition(result: Result) -> Option<TypeDefinition>;
+    fn try_extract_key_value_pair(result: Result) -> Option<(Key, KeyVal)>;
 
-    fn try_pop_value_result(&mut self) -> Option<Val> {
+    fn try_pop_value(&mut self) -> Option<Val> {
         let result = self.pop()?;
-        Self::try_extract_value_result(result)
+        Self::try_extract_value(result)
     }
-    fn try_pop_type_result(&mut self) -> Option<Type> {
+    fn try_pop_type(&mut self) -> Option<Type> {
         let result = self.pop()?;
-        Self::try_extract_type_result(result)
+        Self::try_extract_type(result)
     }
-    fn try_pop_key_value_pair_result(&mut self) -> Option<(Key, KeyVal)> {
+    fn try_pop_type_definition(&mut self) -> Option<TypeDefinition> {
         let result = self.pop()?;
-        Self::try_extract_key_value_pair_result(result)
+        Self::try_extract_type_definition(result)
+    }
+    fn try_pop_key_value_pair(&mut self) -> Option<(Key, KeyVal)> {
+        let result = self.pop()?;
+        Self::try_extract_key_value_pair(result)
+    }
+    fn pop_values(&mut self, count: u32) -> Vec<Val> {
+        let mut values = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            values.push(self.pop_value());
+        }
+        values.reverse();
+        values
     }
 
-    fn pop_type_definition_result(&mut self) -> TypeDefinition {
-        self.try_pop_type_definition_result()
+    fn pop_types(&mut self, count: u32) -> Vec<Type> {
+        let mut types = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            types.push(self.pop_type());
+        }
+        types.reverse();
+        types
+    }
+    fn pop_value(&mut self) -> Val {
+        self.try_pop_value().expect("Expected value result")
+    }
+    fn pop_type(&mut self) -> Type {
+        self.try_pop_type().expect("Expected type result")
+    }
+    fn pop_type_definition(&mut self) -> TypeDefinition {
+        self.try_pop_type_definition()
             .expect("Expected type definition result")
     }
-    fn try_pop_type_definition_result(&mut self) -> Option<TypeDefinition> {
-        let result = self.pop()?;
-        Self::try_extract_type_definition_result(result)
-    }
-
-    fn pop_value_result(&mut self) -> Val {
-        self.try_pop_value_result().expect("Expected value result")
-    }
-    fn pop_type_result(&mut self) -> Type {
-        self.try_pop_type_result()
-            .expect("Expected type definition result")
-    }
-    fn pop_key_value_pair_result(&mut self) -> (Key, KeyVal) {
-        self.try_pop_key_value_pair_result()
+    fn pop_key_value_pair(&mut self) -> (Key, KeyVal) {
+        self.try_pop_key_value_pair()
             .expect("Expected key-value pair result")
     }
 
@@ -82,7 +93,7 @@ pub trait CollectionResultsPopper<
         let count = self.len();
         let mut expressions = Vec::with_capacity(count);
         for _ in 0..count {
-            expressions.push(self.pop_value_result());
+            expressions.push(self.pop_value());
         }
         expressions.reverse();
         expressions
@@ -94,7 +105,7 @@ pub trait CollectionResultsPopper<
         let count = self.len();
         let mut expression_pairs = Vec::with_capacity(count);
         for _ in 0..count {
-            let pair = self.pop_key_value_pair_result();
+            let pair = self.pop_key_value_pair();
             expression_pairs.push(pair);
         }
         expression_pairs.reverse();
@@ -107,7 +118,7 @@ pub trait CollectionResultsPopper<
         let count = self.len();
         let mut type_expressions = Vec::with_capacity(count);
         for _ in 0..count {
-            type_expressions.push(self.pop_type_result());
+            type_expressions.push(self.pop_type());
         }
         type_expressions.reverse();
         type_expressions
@@ -127,7 +138,7 @@ impl<T> Default for CollectedResults<T> {
     }
 }
 
-pub(crate) trait GetResults<T> {
+pub trait GetResults<T> {
     fn get_results(&self) -> &Vec<T>;
     fn get_results_mut(&mut self) -> &mut Vec<T>;
 }
@@ -407,6 +418,10 @@ impl<T> InstructionCollector<T> {
         self.result_collectors.last()
     }
 
+    pub fn last_mut(&mut self) -> Option<&mut ResultCollector<T>> {
+        self.result_collectors.last_mut()
+    }
+
     pub fn take_root_result(&mut self) -> Option<T> {
         self.root_result.take()
     }
@@ -460,9 +475,10 @@ impl<T> InstructionCollector<T> {
                 regular_count,
                 type_count,
             ) => {
+                let total_count = regular_count + type_count;
                 self.collect_full(
                     Instruction::Regular(regular_instruction),
-                    regular_count + type_count,
+                    total_count,
                 );
                 None
             }

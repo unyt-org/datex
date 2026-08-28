@@ -1,26 +1,26 @@
 use crate::{
-    core_compiler::{
-        shared_value_tracking::SharedValueTracking,
-        to_instructions::ToInstructions,
+    core_compiler::to_instructions::{
+        SharedValueTrackingProvider, ToInstructions,
     },
-    global::protocol_structures::type_instructions::TypeInstruction,
+    instruction::type_instruction::TypeInstruction,
     prelude::*,
     types::r#type::Type,
 };
-impl<'a> ToInstructions<'a> for Type {
+impl<'ctx, T> ToInstructions<'ctx, T> for Type
+where
+    T: SharedValueTrackingProvider<'ctx>,
+{
     type InstructionType = TypeInstruction;
 
     fn to_instructions(
-        &'a self,
-        shared_value_tracking: &'a mut SharedValueTracking,
-    ) -> Box<impl Iterator<Item = Self::InstructionType> + 'a> {
+        &self,
+        ctx: &mut T,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
         Box::new(gen move {
             match self {
-                Type::Nominal(_) => unreachable!(),
-                Type::Alias(def) => {
-                    for instruction in
-                        def.to_instructions(shared_value_tracking)
-                    {
+                Type::Entity(_) => unreachable!(),
+                Type::Definition(def) => {
+                    for instruction in def.to_instructions(ctx) {
                         yield instruction;
                     }
                 }

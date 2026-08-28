@@ -1,12 +1,14 @@
 //! This module contains the implementation of the [Text] struct, which represents a string value in the type system.
 use crate::{
-    global::protocol_structures::instruction_data::TextData, prelude::*,
+    instruction::instruction_data::TextData, prelude::*,
     shared_values::errors::IndexOutOfBoundsError,
 };
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 pub mod equality;
+mod to_instructions;
+
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,
 )]
@@ -16,6 +18,10 @@ pub struct Text(
     pub String,
 );
 pub mod ops;
+#[cfg(feature = "decompiler")]
+mod to_datex_expression_data;
+mod value_access;
+
 impl Display for Text {
     // TODO #319: escape string content
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -24,6 +30,9 @@ impl Display for Text {
 }
 
 impl Text {
+    pub fn new<S: Into<String>>(s: S) -> Self {
+        Text(s.into())
+    }
     pub fn len(&self) -> usize {
         self.0.len()
     }

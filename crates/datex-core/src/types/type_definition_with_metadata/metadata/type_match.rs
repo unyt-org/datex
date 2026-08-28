@@ -1,7 +1,7 @@
 use crate::types::type_definition_with_metadata::metadata::TypeMetadata;
 
 use crate::{
-    types::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+    types::traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
     values::value_container::ValueContainer,
 };
 

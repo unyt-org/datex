@@ -1,7 +1,10 @@
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
     collections::HashMap,
-    core_compiler::core_compilation_context::DXBWithSharedValues,
+    core_compiler::{
+        InstructionInput, core_compilation_context::DXBWithSharedValues,
+        core_compile,
+    },
     dif::dif_interface::DIFInterface,
     disassembler::{
         options::DisassemblerOptions, print_disassembled_with_options,
@@ -24,11 +27,12 @@ use crate::{
         com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData,
     },
     prelude::*,
+    random::RandomState,
     runtime::{
         Runtime, RuntimeConfig, RuntimeConfigInterface,
         cache::shared_references_cache::SharedReferencesCache,
         execution::{
-            ExecutionError, InvalidProgramError,
+            ExecutionError,
             context::{
                 ExecutionContext, ExecutionMode, RemoteExecutionContext,
                 ScriptExecutionError,
@@ -37,26 +41,25 @@ use crate::{
         },
         pointer_address_provider::SelfOwnedPointerAddressProvider,
         pointer_availability_lookup::PointerAvailabilityLookup,
-        request_move::compile_request_move,
+        remote_value_sync::{
+            SubscriberError, synced_value_data::SyncedValueData,
+        },
     },
     shared_values::{
-        OwnedSharedContainer, PointerAddress, RemotePointerAddress,
-        SelfOwnedPointerAddress, SharedContainer, SharedContainerMutability,
-        base_shared_value_container::observers::TransceiverId,
+        SharedContainer, base_shared_value_container::observers::TransceiverId,
     },
     time::Instant,
     utils::task_manager::TaskManager,
     values::{
-        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
-        value_container::ValueContainer,
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
 use alloc::rc::Rc;
 use core::{
     cell::{Ref, RefCell, RefMut},
     pin::Pin,
-    slice,
 };
+use indexmap::IndexMap;
 use log::{debug, error, info};
 
 #[derive(Debug)]
@@ -66,13 +69,16 @@ pub struct RuntimeInternal {
 
     core_library: CoreLibrary,
 
-    memory: RefCell<SharedReferencesCache>,
+    shared_references_cache: RefCell<SharedReferencesCache>,
     pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     com_hub: Rc<ComHub>,
     config: RuntimeConfig,
 
+    /// Public endpoint interface properties
+    endpoint_properties: RefCell<IndexMap<String, ValueContainer, RandomState>>,
+
     /// counter to keep track of transceiver ids
-    transceiver_counter: RefCell<u32>,
+    transceiver_counter: RefCell<u8>,
 
     task_manager: TaskManager,
 
@@ -83,15 +89,9 @@ pub struct RuntimeInternal {
     execution_contexts:
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
 
-    /// list of currently owned shared values that were approved to be transfered to another endpoint
-    moving_pointers: RefCell<
-        HashMap<
-            Endpoint,
-            HashMap<SelfOwnedPointerAddress, OwnedSharedContainer>,
-        >,
-    >,
-
     pointer_availability_lookup: RefCell<PointerAvailabilityLookup>,
+
+    synced_values: RefCell<SyncedValueData>,
 }
 
 macro_rules! get_execution_context {
@@ -121,7 +121,7 @@ impl From<Rc<RuntimeInternal>> for Runtime {
 impl RuntimeInternal {
     pub(crate) fn new(
         endpoint: Endpoint,
-        memory: RefCell<SharedReferencesCache>,
+        shared_references_cache: RefCell<SharedReferencesCache>,
         pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
         config: RuntimeConfig,
         com_hub: Rc<ComHub>,
@@ -133,17 +133,18 @@ impl RuntimeInternal {
         RuntimeInternal {
             version: env!("CARGO_PKG_VERSION").to_string(),
             endpoint,
-            memory,
+            shared_references_cache,
             pointer_address_provider,
             config,
             com_hub,
             task_manager,
+            endpoint_properties: RefCell::new(IndexMap::default()),
             core_library: CoreLibrary::default(),
             incoming_sections_receiver: RefCell::new(
                 incoming_sections_receiver,
             ),
+            synced_values: RefCell::new(SyncedValueData::default()),
             execution_contexts: RefCell::new(HashMap::new()),
-            moving_pointers: RefCell::new(HashMap::new()),
             transceiver_counter: RefCell::new(0),
             pointer_availability_lookup: RefCell::new(
                 pointer_availability_lookup,
@@ -162,6 +163,35 @@ impl RuntimeInternal {
     pub fn endpoint(&self) -> &Endpoint {
         &self.endpoint
     }
+    pub fn endpoint_properties(
+        &self,
+    ) -> Ref<'_, IndexMap<String, ValueContainer, RandomState>> {
+        self.endpoint_properties.borrow()
+    }
+    pub fn endpoint_properties_mut(
+        &self,
+    ) -> RefMut<'_, IndexMap<String, ValueContainer, RandomState>> {
+        self.endpoint_properties.borrow_mut()
+    }
+    pub fn get_endpoint_property_by_name(
+        &'_ self,
+        key: &str,
+    ) -> Option<Ref<'_, ValueContainer>> {
+        Ref::filter_map(self.endpoint_properties.borrow(), |props| {
+            props.get(key)
+        })
+        .ok()
+    }
+    pub fn get_endpoint_property_by_name_mut(
+        &'_ self,
+        key: &str,
+    ) -> Option<RefMut<'_, ValueContainer>> {
+        RefMut::filter_map(self.endpoint_properties.borrow_mut(), |props| {
+            props.get_mut(key)
+        })
+        .ok()
+    }
+
     pub fn pointer_availability_lookup(
         &self,
     ) -> Ref<'_, PointerAvailabilityLookup> {
@@ -172,17 +202,37 @@ impl RuntimeInternal {
     ) -> RefMut<'_, PointerAvailabilityLookup> {
         self.pointer_availability_lookup.borrow_mut()
     }
-    pub fn memory(&self) -> &RefCell<SharedReferencesCache> {
-        &self.memory
+    pub fn synced_values(&self) -> Ref<'_, SyncedValueData> {
+        self.synced_values.borrow()
     }
+    pub fn synced_values_mut(&self) -> RefMut<'_, SyncedValueData> {
+        self.synced_values.borrow_mut()
+    }
+
+    pub fn shared_references_cache_refcell(
+        &self,
+    ) -> &RefCell<SharedReferencesCache> {
+        &self.shared_references_cache
+    }
+
+    pub fn shared_references_cache(&self) -> Ref<'_, SharedReferencesCache> {
+        self.shared_references_cache.borrow()
+    }
+
+    pub fn shared_references_cache_mut(
+        &self,
+    ) -> RefMut<'_, SharedReferencesCache> {
+        self.shared_references_cache.borrow_mut()
+    }
+
     pub fn core_library(&self) -> &CoreLibrary {
         &self.core_library
     }
 
-    pub fn pointer_address_provider(
+    pub fn pointer_address_provider_mut(
         &self,
-    ) -> &RefCell<SelfOwnedPointerAddressProvider> {
-        &self.pointer_address_provider
+    ) -> RefMut<'_, SelfOwnedPointerAddressProvider> {
+        self.pointer_address_provider.borrow_mut()
     }
     pub fn incoming_sections_receiver_mut(
         &self,
@@ -293,6 +343,7 @@ impl RuntimeInternal {
         let result = RuntimeInternal::execute_dxb(
             self,
             dxb,
+            None,
             Some(execution_context),
             true,
         )
@@ -330,6 +381,7 @@ impl RuntimeInternal {
         let result = RuntimeInternal::execute_dxb_sync(
             self,
             dxb,
+            None,
             Some(execution_context),
             true,
         )
@@ -344,6 +396,7 @@ impl RuntimeInternal {
     pub fn execute_dxb<'a>(
         self: Rc<RuntimeInternal>,
         input: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<&'a mut ExecutionContext>,
         _end_execution: bool,
     ) -> Pin<
@@ -359,10 +412,16 @@ impl RuntimeInternal {
             );
             match execution_context {
                 ExecutionContext::Remote(context) => {
+                    // initial stack values are not (yet) supported for remote execution
+                    if initial_stack_values.is_some() {
+                        return Err(ExecutionError::InvalidExecutionState);
+                    }
                     RuntimeInternal::execute_remote(self, context, input).await
                 }
                 ExecutionContext::Local(_) => {
-                    execution_context.execute_dxb(input).await
+                    execution_context
+                        .execute_dxb(input, initial_stack_values)
+                        .await
                 }
             }
         })
@@ -371,6 +430,7 @@ impl RuntimeInternal {
     pub fn execute_dxb_sync(
         self: Rc<RuntimeInternal>,
         dxb: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<&mut ExecutionContext>,
         _end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
@@ -381,7 +441,7 @@ impl RuntimeInternal {
                 Err(ExecutionError::RequiresAsyncExecution)
             }
             ExecutionContext::Local(_) => {
-                execution_context.execute_dxb_sync(dxb)
+                execution_context.execute_dxb_sync(dxb, initial_stack_values)
             }
         }
     }
@@ -414,7 +474,7 @@ impl RuntimeInternal {
 
     pub async fn execute_remote(
         self: Rc<RuntimeInternal>,
-        remote_execution_context: &mut RemoteExecutionContext,
+        remote_execution_context: &RemoteExecutionContext,
         input: DXBWithSharedValues,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let routing_header: RoutingHeader = RoutingHeader::default()
@@ -422,14 +482,16 @@ impl RuntimeInternal {
             .to_owned();
 
         // get existing context_id for context, or create a new one
-        let context_id =
-            remote_execution_context.context_id.unwrap_or_else(|| {
+        let context_id = {
+            let mut context_ref =
+                remote_execution_context.context_id.borrow_mut();
+            context_ref.unwrap_or_else(|| {
+                let id = self.com_hub.block_handler.get_new_context_id();
                 // if the context_id is not set, we create a new one
-                remote_execution_context.context_id =
-                    Some(self.com_hub.block_handler.get_new_context_id());
-                remote_execution_context.context_id.unwrap()
-            });
-
+                *context_ref = Some(id);
+                id
+            })
+        };
         let block_header = BlockHeader {
             context_id,
             ..BlockHeader::default()
@@ -443,8 +505,17 @@ impl RuntimeInternal {
             input.dxb,
         );
 
-        block
-            .set_receivers(slice::from_ref(&remote_execution_context.endpoint));
+        block.set_receivers(remote_execution_context.endpoints());
+        // TODO: ensure in remote_execution_context that endpoints are never empty
+        unsafe {
+            self.clone().register_shared_containers_for_endpoints(
+                &(remote_execution_context
+                    .endpoints()
+                    .iter()
+                    .collect::<Vec<_>>()),
+                input.shared_values,
+            )?;
+        }
 
         let response = self
             .com_hub
@@ -453,13 +524,29 @@ impl RuntimeInternal {
             .remove(0)?;
         let incoming_section = response.take_incoming_section();
 
-        RuntimeInternal::execute_incoming_section(
-            self,
-            incoming_section,
-            Some(input.shared_values),
-        )
-        .await
-        .0
+        // TODO: do we need to pass input.shared_values here to execution?
+        RuntimeInternal::execute_incoming_section(self, incoming_section, None)
+            .await
+            .0
+    }
+
+    pub async fn execute_instructions_remote(
+        self: Rc<RuntimeInternal>,
+        endpoints: Vec<Endpoint>,
+        instructions_input: Vec<InstructionInput>,
+    ) -> Result<Option<ValueContainer>, ExecutionError> {
+        let dxb = core_compile(
+            &self.pointer_availability_lookup(),
+            &endpoints,
+            instructions_input,
+        );
+
+        let remote_execution_context = RemoteExecutionContext::new(
+            endpoints,
+            ExecutionMode::Static,
+            Runtime::from(self.clone()),
+        );
+        self.execute_remote(&remote_execution_context, dxb).await
     }
 
     pub(crate) async fn execute_incoming_section(
@@ -555,6 +642,7 @@ impl RuntimeInternal {
         RuntimeInternal::execute_dxb(
             self,
             DXBWithSharedValues::new(dxb, shared_values.unwrap_or_default()),
+            None,
             Some(execution_context),
             end_execution,
         )
@@ -563,7 +651,7 @@ impl RuntimeInternal {
 
     /// Registers a list of shared containers for a single endpoint.
     pub fn register_shared_containers_for_single_endpoint(
-        &self,
+        self: Rc<Self>,
         endpoint: &Endpoint,
         shared_containers: Vec<SharedContainer>,
     ) {
@@ -576,164 +664,49 @@ impl RuntimeInternal {
         }
     }
 
-    /// Registers a list of shared containers for a list of endpoints.
+    /// Registers a list of shared containers for a list of endpoints to subscribe.
+    /// Note: only self owned pointers are registered, others are skipped
+    ///
+    /// # Safety
     /// The caller must ensure that endpoints is not empty.
     pub unsafe fn register_shared_containers_for_endpoints(
-        &self,
+        self: Rc<Self>,
         endpoints: &[&Endpoint],
         shared_containers: Vec<SharedContainer>,
-    ) -> Result<(), ()> {
+    ) -> Result<(), SubscriberError> {
         if endpoints.is_empty() {
             panic!("endpoints must not be empty");
         }
 
         for shared_container in shared_containers {
-            match shared_container {
-                SharedContainer::Owned(owned_shared_container) => {
-                    if endpoints.len() == 1 {
-                        self.add_moving_shared_container(
-                            endpoints[0].clone(),
-                            owned_shared_container,
-                        );
-                    } else {
-                        return Err(());
+            // subscribe (remote) endpoints to own container
+            if shared_container.is_self_owned() {
+                for endpoint in endpoints {
+                    // SAFETY: We checked that the shared container is self-owned
+                    unsafe {
+                        self.clone()
+                            .subscribe_endpoint_to_owned_value(
+                                &shared_container,
+                                endpoint,
+                                shared_container
+                                    .derive_reference_with_max_mutability()
+                                    .reference_mutability(),
+                            )
+                            .map_err(SubscriberError::Observer)?
                     }
-                }
-                SharedContainer::Referenced(_referenced_shared_container) => {
-                    // TODO: Subscribe
+                    // also store the subscribed pointer in cache so that we can handle incoming
+                    // pointer updates from the subscribers
+                    self.shared_references_cache
+                        .borrow_mut()
+                        .register_owned_shared_container(
+                            &shared_container
+                                .derive_reference_with_max_mutability(),
+                        );
                 }
             }
         }
 
         Ok(())
-    }
-
-    /// Request to move a list of external pointers from an endpoint to the local endpoint
-    /// This only works if the local endpoint has the permission to move the pointers, either because
-    /// it was allowed via a PERFORM_MOVE from the remote endpoint, or because the local endpoint has
-    /// extended permissions
-    pub(crate) async fn request_pointer_move(
-        self: Rc<RuntimeInternal>,
-        from_endpoint: &Endpoint,
-        pointers: Vec<(SharedContainerMutability, SelfOwnedPointerAddress)>,
-    ) -> Result<Vec<OwnedSharedContainer>, ExecutionError> {
-        let pointer_mapping = pointers
-            .into_iter()
-            .map(|original| {
-                (
-                    original,
-                    self.pointer_address_provider
-                        .borrow_mut()
-                        .get_new_self_owned_address(),
-                )
-            })
-            .collect::<Vec<_>>();
-        let body = compile_request_move(
-            pointer_mapping
-                .iter()
-                .map(|((_, original), new)| (original.clone(), new.clone()))
-                .collect::<Vec<_>>(),
-        );
-        let moved_values = self
-            .clone()
-            .execute_dxb(
-                DXBWithSharedValues::new(body, vec![]),
-                Some(&mut ExecutionContext::Remote(
-                    RemoteExecutionContext::new(
-                        from_endpoint.clone(),
-                        ExecutionMode::Static,
-                        Runtime::from(self),
-                    ),
-                )),
-                true,
-            )
-            .await?;
-
-        // moved values should be list
-        match moved_values {
-            Some(ValueContainer::Local(Value {
-                inner: CoreValue::List(list),
-                ..
-            })) => {
-                let pointer_values = list.into_vec();
-                let owned_values = pointer_values.into_iter()
-                    .zip(pointer_mapping)
-                    .map(|(value, ((mutability, _), new_address))| {
-                        // SAFETY: we got the new address from the pointer address provider above, is ensured to be unique
-                        unsafe {
-                            // TODO: also pass type information
-                            OwnedSharedContainer::new_with_inferred_allowed_type_unsafe(
-                                value,
-                                mutability,
-                                new_address,
-                            )
-                        }
-                }).collect::<Vec<_>>();
-                Ok(owned_values)
-            }
-            _ => Err(ExecutionError::InvalidProgram(
-                InvalidProgramError::ExpectedValue,
-            )),
-        }
-    }
-
-    /// Adds a pointer that is approved for move to a specific endpoint
-    /// Returns an error if any moving shared container is not an owned pointer
-    pub(crate) fn add_moving_shared_container(
-        &self,
-        new_owner: Endpoint,
-        moving_owned_container: OwnedSharedContainer,
-    ) {
-        let address = moving_owned_container.pointer_address().clone();
-
-        self.moving_pointers
-            .borrow_mut()
-            .entry(new_owner)
-            .or_default()
-            .insert(address, moving_owned_container);
-    }
-
-    pub(crate) fn handle_pointer_move_to_remote(
-        self: Rc<RuntimeInternal>,
-        from_endpoint: &Endpoint,
-        pointer_mapping: Vec<(
-            SelfOwnedPointerAddress,
-            SelfOwnedPointerAddress,
-        )>,
-        memory: &SharedReferencesCache,
-    ) -> Result<Vec<ValueContainer>, ExecutionError> {
-        let mut pointer_borrow = self.moving_pointers.borrow_mut();
-        let moving_pointers = pointer_borrow
-            .get_mut(from_endpoint)
-            .ok_or(ExecutionError::UnauthorizedMove)?;
-
-        let values = pointer_mapping
-            .into_iter()
-            .map(|(original_address, new)| {
-                let new_address =
-                    RemotePointerAddress::for_endpoint(from_endpoint, &new);
-                let shared_container = moving_pointers
-                    .remove(&original_address)
-                    .ok_or(ExecutionError::UnauthorizedMove)?;
-
-                let value = shared_container.value_container().clone();
-
-                // make sure external pointer does not already exist in memory
-                if memory
-                    .has_reference(&PointerAddress::Remote(new_address.clone()))
-                {
-                    return Err(ExecutionError::InvalidMove);
-                } else {
-                    // Note: safe because we checked before if address is already in memory
-                    unsafe {
-                        shared_container.move_to_remote(new_address, memory);
-                    }
-                }
-
-                Ok(value)
-            })
-            .collect::<Result<Vec<_>, ExecutionError>>()?;
-        Ok(values)
     }
 
     pub fn get_env(&self) -> HashMap<String, String> {
@@ -742,8 +715,9 @@ impl RuntimeInternal {
 
     /// Creates a new [DIFInterface] with a unique transceiver id and the runtime's pointer address provider
     pub fn create_dif_interface(&self) -> DIFInterface {
-        let id = TransceiverId(*self.transceiver_counter.borrow());
-        self.transceiver_counter.replace(id.0 + 1);
+        let count = *self.transceiver_counter.borrow();
+        let id = TransceiverId::Dif(count);
+        self.transceiver_counter.replace(count + 1);
         DIFInterface::new(id, self.pointer_address_provider.clone())
     }
 }

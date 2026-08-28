@@ -16,6 +16,12 @@ impl Deref for SharedContainerContainingType {
     }
 }
 
+impl From<SharedContainerContainingType> for SharedContainer {
+    fn from(value: SharedContainerContainingType) -> Self {
+        value.0
+    }
+}
+
 impl SharedContainerContainingType {
     /// Creates a new [SharedContainerContainingType] from a [SharedContainer] without checking the constraint.
     /// # Safety
@@ -31,9 +37,30 @@ impl SharedContainerContainingType {
         &self,
         f: impl FnOnce(&Type) -> R,
     ) -> R {
-        self.0.with_collapsed_value(|value| match &value.inner {
-            CoreValue::Type(ty) => f(ty),
-            _ => unreachable!("The constraint for SharedContainerContainingType guarantees that the inner value is always a CoreValue::Type")
-        })
+        let val = self.0.collapsed_value();
+        let val_sheep = val.borrow();
+        let ty = match &val_sheep.inner {
+            CoreValue::Type(ty) => ty,
+            _ => unreachable!(
+                "The constraint for SharedContainerContainingType guarantees that the inner value is always a CoreValue::Type"
+            ),
+        };
+        f(ty)
+    }
+}
+
+impl TryFrom<SharedContainer> for SharedContainerContainingType {
+    type Error = ();
+
+    fn try_from(value: SharedContainer) -> Result<Self, Self::Error> {
+        let is_type = {
+            let val = value.collapsed_value();
+            matches!(&val.borrow().inner, CoreValue::Type(_))
+        };
+        if is_type {
+            Ok(SharedContainerContainingType(value))
+        } else {
+            Err(())
+        }
     }
 }

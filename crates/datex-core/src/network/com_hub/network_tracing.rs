@@ -45,7 +45,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-
+#[datex(structural_recursive)]
 pub struct NetworkTraceHopSocket {
     pub interface_type: String,
     pub interface_name: Option<String>,
@@ -76,7 +76,7 @@ impl NetworkTraceHopSocket {
     Clone,
     strum_macros::Display,
 )]
-
+#[datex(structural_recursive)]
 pub enum NetworkTraceHopDirection {
     Outgoing,
     Incoming,
@@ -84,7 +84,7 @@ pub enum NetworkTraceHopDirection {
 
 #[serde_as]
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-
+#[datex(structural_recursive)]
 pub struct NetworkTraceHop {
     pub endpoint: Endpoint,
     pub distance: i8,
@@ -96,7 +96,7 @@ pub struct NetworkTraceHop {
 
 #[serde_as]
 #[derive(Datex, Debug, Clone, Deserialize, Serialize)]
-
+#[datex(structural_recursive)]
 pub struct NetworkTraceResult {
     pub sender: Endpoint,
     pub receiver: Endpoint,
@@ -511,7 +511,7 @@ impl ComHub {
         );
 
         // resend trace block
-        self.redirect_block(block, original_socket, forked).await;
+        let _ = self.redirect_block(block, original_socket, forked).await; // FIXME result handling
 
         Some(())
     }
@@ -620,7 +620,7 @@ impl ComHub {
         // convert hops to DATEX
         let hops_datex = hops
             .into_iter()
-            .map(|hop| hop.to_value_container())
+            .map(|hop| hop.to_value_container_without_cache())
             .collect::<Vec<ValueContainer>>();
 
         let pointer_lookup = PointerAvailabilityLookup::default();
@@ -661,7 +661,7 @@ pub mod tests {
     #[tokio::test]
     #[timeout(1000)]
     async fn create_network_trace() {
-        run_with_coupled_com_hubs(async move |a, b| {
+        run_with_coupled_com_hubs(async move |a, _b| {
             // send trace from A to B
             let network_trace =
                 a.com_hub.record_trace(TEST_ENDPOINT_B.clone()).await;

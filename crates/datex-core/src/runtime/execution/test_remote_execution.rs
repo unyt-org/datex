@@ -8,17 +8,33 @@ use crate::{
     },
     shared_values::{
         PointerAddress, SharedContainer, SharedContainerMutability,
+        base_shared_value_container::observers::TransceiverId,
+        traits::SharedContainerCommon,
+    },
+    task::sleep,
+    value_updates::{
+        update_data::{ReplaceUpdateData, Update, UpdateOperation},
+        update_handler::UpdateHandler,
     },
     values::{
-        core_values::{endpoint::Endpoint, integer::Integer, list::List},
+        core_values::{
+            endpoint::Endpoint, integer::Integer, list::List, time::Instant,
+        },
         value_container::ValueContainer,
     },
 };
-use core::assert_matches;
-use log::info;
+use core::{
+    assert_matches,
+    ops::{Deref, DerefMut},
+    time::Duration,
+};
+use tokio::task::yield_now;
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn basic_remote_execution() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
@@ -33,7 +49,7 @@ pub async fn basic_remote_execution() {
 
             // create an execution context for @test_b
             let mut remote_execution_context =
-                ExecutionContext::remote_unbounded(endpoint_b, runtime_b);
+                ExecutionContext::remote_unbounded(vec![endpoint_b], runtime_b);
 
             // execute script remotely on @test_b
             let result = runtime_a
@@ -57,7 +73,10 @@ pub async fn basic_remote_execution() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn remote_execution_persistent_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -68,7 +87,7 @@ pub async fn remote_execution_persistent_context() {
         async |runtime_a, runtime_b| {
             // create an execution context for @test_b
             let mut remote_execution_context =
-                ExecutionContext::remote_unbounded(endpoint_b, runtime_b);
+                ExecutionContext::remote_unbounded(vec![endpoint_b], runtime_b);
 
             // execute script remotely on @test_b
             let result = runtime_a
@@ -97,7 +116,10 @@ pub async fn remote_execution_persistent_context() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn remote_inline() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -127,7 +149,10 @@ pub async fn remote_inline() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn remote_inline_implicit_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -148,7 +173,10 @@ pub async fn remote_inline_implicit_context() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn remote_shared_value_inject_move() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
@@ -172,7 +200,10 @@ pub async fn remote_shared_value_inject_move() {
 }
 
 #[tokio::test]
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 pub async fn remote_shared_value_inject_ref() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
@@ -228,7 +259,10 @@ pub async fn remote_shared_value_inject_ref() {
     .await;
 }
 
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 #[test_case::test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
 #[test_case::test_case("shared mut", SharedContainerMutability::Mutable ; "mutable")]
 #[tokio::test]
@@ -277,7 +311,10 @@ pub async fn remote_shared_value_return(
     .await;
 }
 
-#[cfg(feature = "compiler")]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
 #[test_case::test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
 #[test_case::test_case("shared mut", SharedContainerMutability::Mutable; "mutable")]
 #[tokio::test]
@@ -327,6 +364,253 @@ pub async fn remote_shared_roundtrip_move(
             } else {
                 panic!("Expected SharedContainer");
             }
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
+pub async fn test_remote_datetime_literal() {
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, _runtime_b| {
+            let mut execution_context = ExecutionContext::local(
+                ExecutionMode::unbounded(),
+                runtime_a.clone(),
+                ExecutionCallerMetadata::local_default(),
+            );
+
+            let result = runtime_a
+                .execute(
+                    "@test_b :: 2026-04-13T18:28:09.415Z",
+                    &[],
+                    Some(&mut execution_context),
+                )
+                .await
+                .unwrap()
+                .unwrap();
+
+            let expected =
+                Instant::instant_from_iso("2026-04-13T18:28:09.415Z");
+            assert_eq!(result, ValueContainer::from(Integer::new(expected.0)));
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
+pub async fn test_remote_datetime_arithmetic() {
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, _runtime_b| {
+            let mut execution_context = ExecutionContext::local(
+                ExecutionMode::unbounded(),
+                runtime_a.clone(),
+                ExecutionCallerMetadata::local_default(),
+            );
+
+            let result = runtime_a
+                .execute(
+                    "@test_b :: 2026-04-13T18:28:09.415Z + 1000",
+                    &[],
+                    Some(&mut execution_context),
+                )
+                .await
+                .unwrap()
+                .unwrap();
+
+            let expected =
+                Instant::instant_from_iso("2026-04-13T18:28:10.415Z");
+            assert_eq!(result, ValueContainer::from(Integer::new(expected.0)));
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
+pub async fn test_remote_endpoint_property() {
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    flexi_logger::init();
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, runtime_b| {
+            let mut execution_context = ExecutionContext::local(
+                ExecutionMode::unbounded(),
+                runtime_a.clone(),
+                ExecutionCallerMetadata::local_default(),
+            );
+
+            // set property
+            runtime_a
+                .execute(
+                    "@test_b.example = 42",
+                    &[],
+                    Some(&mut execution_context),
+                )
+                .await
+                .unwrap();
+
+            let example_on_b =
+                runtime_b.get_endpoint_property_by_name("example").unwrap();
+            assert_eq!(*example_on_b, ValueContainer::from(Integer::from(42)));
+
+            // get property
+            let result = runtime_a
+                .execute("@test_b.example", &[], Some(&mut execution_context))
+                .await
+                .unwrap()
+                .unwrap();
+
+            assert_eq!(result, ValueContainer::from(Integer::from(42)));
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[cfg(all(
+    feature = "compiler",
+    any(feature = "crypto_enabled", feature = "allow_unsigned_blocks")
+))]
+pub async fn test_remote_sync() {
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    flexi_logger::init();
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, runtime_b| {
+            use crate::value_updates::update_data::UpdateData;
+
+            let mut execution_context = ExecutionContext::local(
+                ExecutionMode::unbounded(),
+                runtime_a.clone(),
+                ExecutionCallerMetadata::local_default(),
+            );
+
+            let mut shared_value_on_a =
+                SharedContainer::new_owned_with_inferred_allowed_type(
+                    42,
+                    SharedContainerMutability::Mutable,
+                    runtime_a.pointer_address_provider_mut().deref_mut(),
+                );
+
+            let reference =
+                ValueContainer::Shared(SharedContainer::Referenced(
+                    shared_value_on_a.derive_reference_with_max_mutability(),
+                ));
+
+            let result = runtime_a
+                .execute(
+                    "@test_b :: (@@local.a = 'mut ?; @@local.a)",
+                    core::slice::from_ref(&reference),
+                    Some(&mut execution_context),
+                )
+                .await
+                .unwrap()
+                .unwrap();
+
+            assert_eq!(
+                match result {
+                    ValueContainer::Shared(shared) => shared,
+                    _ => unreachable!(),
+                },
+                shared_value_on_a
+            );
+
+            // trigger update a -> b
+            shared_value_on_a
+                .try_handle_update(Update::new(
+                    TransceiverId::Local,
+                    UpdateData::new(UpdateOperation::replace(
+                        ValueContainer::from(100),
+                    )),
+                ))
+                .unwrap();
+
+            // wait for update sync
+            yield_now().await;
+            yield_now().await;
+
+            {
+                let mut shared_value_on_b =
+                    runtime_b.get_endpoint_property_by_name_mut("a").unwrap();
+                let shared_value_on_b =
+                    shared_value_on_b.shared_unchecked_mut();
+                // same pointer addresses
+                assert_eq!(
+                    shared_value_on_b
+                        .pointer_address()
+                        .normalize_for_local(&endpoint_a),
+                    shared_value_on_a.pointer_address()
+                );
+                // not the same RCs
+                assert_ne!(shared_value_on_b, &shared_value_on_a);
+
+                // same values after sync
+                assert_eq!(
+                    *shared_value_on_a.value_container(),
+                    ValueContainer::from(100)
+                );
+                assert_eq!(
+                    *shared_value_on_b.value_container(),
+                    *shared_value_on_a.value_container()
+                );
+
+                // trigger update b -> a
+                shared_value_on_b
+                    .try_handle_update(Update::new(
+                        TransceiverId::Local,
+                        UpdateData::new(UpdateOperation::replace(
+                            ValueContainer::from(200),
+                        )),
+                    ))
+                    .unwrap();
+            }
+
+            // wait for update sync
+            yield_now().await;
+            yield_now().await;
+            yield_now().await;
+
+            assert_eq!(
+                *runtime_b
+                    .get_endpoint_property_by_name("a")
+                    .unwrap()
+                    .maybe_shared()
+                    .unwrap()
+                    .value_container(),
+                ValueContainer::from(200)
+            );
+
+            assert_eq!(
+                *shared_value_on_a.value_container(),
+                ValueContainer::from(200)
+            );
         },
     )
     .await;

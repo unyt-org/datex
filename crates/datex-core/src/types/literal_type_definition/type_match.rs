@@ -1,7 +1,7 @@
 use crate::{
     types::{
         literal_type_definition::LiteralTypeDefinition,
-        type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+        traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
     },
     values::{
         core_values::{
@@ -55,7 +55,7 @@ mod tests {
     use crate::{
         types::{
             literal_type_definition::LiteralTypeDefinition,
-            type_match::TypeSatisfiesValueContainer,
+            traits::type_match::TypeSatisfiesValueContainer,
         },
         values::core_values::integer::Integer,
     };

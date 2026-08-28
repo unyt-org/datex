@@ -1,9 +1,13 @@
+#![feature(deref_patterns)]
+
+use crate::datex_proxy::generate_item_glue_code;
 use proc_macro::TokenStream;
-use syn::parse_macro_input;
+use syn::{Item, parse_macro_input};
 
 mod bitfield_macros;
 mod core_lib;
 mod datex_proxy;
+mod magic_rw;
 mod utils;
 mod value_macros;
 
@@ -24,6 +28,34 @@ pub fn derive_bitfield_serde(input: TokenStream) -> TokenStream {
 pub fn core_lib_string(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     core_lib::derive_core_string(input).into()
+}
+
+/// This derive macro generates implementations of the Instruction trait for a struct or enum,
+/// allowing it to be used as a DATEX instruction and converted from and to a Value
+/// Usage:
+/// ```txt
+/// # use datex_macros_internal::Instruction;
+///
+/// #[repr(u8)]
+/// enum Map {
+///     A = 0,
+///     B = 1,
+///     C = 2,
+/// }
+///
+/// #[repr(u8)]
+/// #[derive(Instruction)]
+/// enum MyInstruction {
+///     #[magic(Map::A)]
+///     Field1,
+///     #[magic(Map::B)]
+///     Field2,
+/// }
+/// ```
+#[proc_macro_derive(Instruction, attributes(magic, instruction))]
+pub fn derive_instruction(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+    magic_rw::derive_instruction(input)
 }
 
 /// This derive macro generates implementations of the DatexValueContainerProxy trait for a struct or enum,
@@ -84,4 +116,12 @@ pub fn core_lib_string(input: TokenStream) -> TokenStream {
 pub fn datex_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     datex_proxy::derive(input).into()
+}
+
+#[proc_macro_attribute]
+pub fn datex(args: TokenStream, input: TokenStream) -> TokenStream {
+    let input_clone = input.clone();
+    let item = parse_macro_input!(input_clone as Item);
+
+    generate_item_glue_code(Some(args.into()), input.into(), item).into()
 }

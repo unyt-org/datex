@@ -1,8 +1,8 @@
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     types::{
+        traits::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
         type_definition::TypeDefinition,
-        type_match::{TypeSatisfiesValueContainer, TypeSuperset},
     },
     values::value_container::ValueContainer,
 };
@@ -38,7 +38,12 @@ impl TypeSuperset<TypeDefinition> for CoreLibTypeId {
 }
 
 impl TypeSatisfiesValueContainer for CoreLibTypeId {
-    fn satisfies_value_container(&self, _value: &ValueContainer) -> bool {
-        todo!()
+    fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
+        // TODO: better way to get core lib type id for value here?
+        value.actual_type().core_lib_type_id().is_some_and(
+            |value_core_lib_type_id| {
+                self.is_superset_of(&value_core_lib_type_id)
+            },
+        )
     }
 }

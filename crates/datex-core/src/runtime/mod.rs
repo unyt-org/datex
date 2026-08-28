@@ -6,23 +6,31 @@ use crate::{
 };
 
 use crate::prelude::*;
-use core::{fmt::Debug, ops::Deref, result::Result};
+use core::{
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+    result::Result,
+};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
+pub mod cache;
 mod config;
 pub mod execution;
 mod incoming_sections;
 mod internal;
-pub mod pointer_availability_lookup;
-mod runner;
-
-pub mod cache;
+mod logger;
 pub mod pointer_address_provider;
-mod request_move;
+pub mod pointer_availability_lookup;
+pub mod remote_value_sync;
+mod runner;
 #[cfg(test)]
 pub mod test_utils;
 
+use crate::{
+    core_compiler::InstructionInput, datex_registry::get_all_modules,
+    values::core_values::endpoint::Endpoint,
+};
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
@@ -44,9 +52,23 @@ impl Deref for Runtime {
 /// around RuntimeInternal
 impl Runtime {
     pub(crate) fn new(runtime_internal: RuntimeInternal) -> Runtime {
-        Runtime {
+        let runtime = Runtime {
             internal: Rc::new(runtime_internal),
-        }
+        };
+        // register all registered rust modules as datex endpoint properties
+        get_all_modules(runtime.shared_references_cache_mut().deref_mut())
+            .into_iter()
+            .for_each(|(name, value)| {
+                runtime.register_endpoint_property(&name, value.into());
+            });
+
+        runtime
+    }
+
+    fn register_endpoint_property(&self, name: &str, value: ValueContainer) {
+        self.internal
+            .endpoint_properties_mut()
+            .insert(name.to_string(), value);
     }
 
     pub fn stub() -> Runtime {
@@ -91,12 +113,14 @@ impl Runtime {
     pub async fn execute_dxb<'a>(
         &'a self,
         input: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<&'a mut ExecutionContext>,
         end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb(
             self.internal(),
             input,
+            initial_stack_values,
             execution_context,
             end_execution,
         )
@@ -106,18 +130,20 @@ impl Runtime {
     pub fn execute_dxb_sync(
         &self,
         input: DXBWithSharedValues,
+        initial_stack_values: Option<Vec<ValueContainer>>,
         execution_context: Option<&mut ExecutionContext>,
         end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeInternal::execute_dxb_sync(
             self.internal(),
             input,
+            initial_stack_values,
             execution_context,
             end_execution,
         )
     }
 
-    async fn execute_remote(
+    pub async fn execute_remote(
         &self,
         remote_execution_context: &mut RemoteExecutionContext,
         input: DXBWithSharedValues,
@@ -126,6 +152,19 @@ impl Runtime {
             self.internal(),
             remote_execution_context,
             input,
+        )
+        .await
+    }
+
+    pub async fn execute_instructions_remote(
+        &self,
+        endpoints: Vec<Endpoint>,
+        instructions_input: Vec<InstructionInput>,
+    ) -> Result<Option<ValueContainer>, ExecutionError> {
+        RuntimeInternal::execute_instructions_remote(
+            self.internal(),
+            endpoints,
+            instructions_input,
         )
         .await
     }

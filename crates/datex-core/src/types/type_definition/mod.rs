@@ -24,8 +24,10 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
+    values::core_values::native::DatexNative,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
+
 pub mod callable;
 pub mod collection;
 pub mod impl_type;
@@ -54,12 +56,12 @@ pub enum TypeDefinition {
     /// e.g. [integer], [integer; 5], Map<string, integer>
     Collection(CollectionTypeDefinition),
 
-    /// typealias A = {b: B} // $A
-    /// typealias B = {a: $A}
+    /// type A = {b: B} // $A
+    /// type B = {a: $A}
     Shared(SharedContainerContainingType), // integer
 
-    /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X)
-    Nested(Box<Type>),
+    /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X or (integer | null) | null)
+    Box(Box<Type>),
 
     /// a callable type definition (signature)
     Callable(CallableTypeDefinition),
@@ -87,6 +89,28 @@ pub enum TypeDefinition {
 
     // core types ("nominal")
     CoreType(CoreLibTypeId), // -> $123
+}
+
+impl TypeDefinition {
+    /// Returns true if the type definition is a structural type (e.g. a collection, literal, or shared type).
+    pub fn is_structural(&self) -> bool {
+        !matches!(
+            self,
+            TypeDefinition::CoreType(_)
+                | TypeDefinition::Box(Type::Entity(_))
+                | TypeDefinition::ImplType(_)
+        )
+    }
+
+    pub fn is_tagged(&self) -> bool {
+        matches!(self, TypeDefinition::TaggedType(_))
+    }
+    pub fn try_unbox(&self) -> Option<&Type> {
+        match self {
+            TypeDefinition::Box(boxed) => Some(boxed),
+            _ => None,
+        }
+    }
 }
 
 impl Hash for TypeDefinition {
@@ -128,18 +152,18 @@ impl Hash for TypeDefinition {
             }
             TypeDefinition::Callable(callable) => {
                 callable.kind.hash(state);
-                for (name, ty) in callable.parameter_types.iter() {
+                for (name, ty) in callable.parameters.iter() {
                     name.hash(state);
                     ty.hash(state);
                 }
-                callable.rest_parameter_type.hash(state);
+                callable.rest_parameter.hash(state);
                 callable.return_type.hash(state);
                 callable.yeet_type.hash(state);
             }
             TypeDefinition::ImplType(definition) => {
                 definition.hash(state);
             }
-            TypeDefinition::Nested(ty) => {
+            TypeDefinition::Box(ty) => {
                 ty.hash(state);
             }
             TypeDefinition::CoreType(core) => {
@@ -198,7 +222,7 @@ impl Display for TypeDefinition {
             }
             TypeDefinition::Callable(callable) => {
                 let mut params_code: Vec<String> = callable
-                    .parameter_types
+                    .parameters
                     .iter()
                     .map(|(param_name, param_type)| match param_name {
                         Some(name) => format!("{}: {}", name, param_type),
@@ -206,8 +230,7 @@ impl Display for TypeDefinition {
                     })
                     .collect();
                 // handle rest parameter
-                if let Some((param_name, param_type)) =
-                    &callable.rest_parameter_type
+                if let Some((param_name, param_type)) = &callable.rest_parameter
                 {
                     params_code.push(match param_name {
                         Some(name) => format!("...{}: {}", name, param_type),
@@ -234,7 +257,7 @@ impl Display for TypeDefinition {
                     yeet_type_code
                 )
             }
-            TypeDefinition::Nested(ty) => {
+            TypeDefinition::Box(ty) => {
                 write!(f, "{}", ty)
             }
             TypeDefinition::CoreType(core) => {
@@ -250,11 +273,16 @@ impl Display for TypeDefinition {
 pub mod equality;
 pub mod intersection;
 mod serde_dif;
+#[cfg(feature = "decompiler")]
+mod to_type_expression_data;
 pub mod union;
 
 impl TypeDefinition {
     pub const UNIT: TypeDefinition =
         TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit));
+
+    pub const NULL: TypeDefinition =
+        TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Null));
 
     /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
     pub fn with_collapsed<R>(&self, f: impl FnOnce(&TypeDefinition) -> R) -> R {
@@ -337,7 +365,17 @@ impl TypeDefinition {
             TypeDefinition::Callable(_) => {
                 Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Callable))
             }
+            TypeDefinition::CoreType(id) => Some(*id),
             _ => None,
+        }
+    }
+
+    /// Convert this type definition into a [Type] by wrapping it in a [Type::Definition] variant.
+    /// If the type definition is a [TypeDefinition::Container] variant, it will be unwrapped and returned as the inner [Type].
+    pub fn convert_to_type(self) -> Type {
+        match self {
+            TypeDefinition::Box(ty) => *ty,
+            _ => Type::Definition(self.into()),
         }
     }
 }
@@ -364,20 +402,39 @@ impl TypeDefinition {
 
 impl From<TypeDefinition> for TypeDefinitionWithMetadata {
     fn from(structural_definition: TypeDefinition) -> Self {
-        TypeDefinitionWithMetadata {
-            definition: structural_definition,
-            metadata: TypeMetadata::default(),
-            reference_name: None,
+        TypeDefinitionWithMetadata::new(
+            structural_definition,
+            TypeMetadata::default(),
+        )
+    }
+}
+
+impl From<Type> for TypeDefinitionWithMetadata {
+    fn from(ty: Type) -> Self {
+        match ty {
+            Type::Definition(definition) => definition,
+            _ => ty.convert_to_definition().into(),
+        }
+    }
+}
+impl From<Type> for TypeDefinition {
+    fn from(ty: Type) -> Self {
+        match ty {
+            Type::Definition(definition)
+                if definition.has_default_metadata() =>
+            {
+                definition.definition
+            }
+            _ => ty.convert_to_definition(),
         }
     }
 }
 
 impl From<LiteralTypeDefinition> for TypeDefinitionWithMetadata {
     fn from(literal_definition: LiteralTypeDefinition) -> Self {
-        TypeDefinitionWithMetadata {
-            definition: literal_definition.into(),
-            metadata: TypeMetadata::default(),
-            reference_name: None,
-        }
+        TypeDefinitionWithMetadata::new(
+            literal_definition.into(),
+            TypeMetadata::default(),
+        )
     }
 }

@@ -1,6 +1,5 @@
-use crate::global::{
-    instruction_codes::InstructionCode,
-    protocol_structures::regular_instructions::RegularInstruction,
+use crate::instruction::{
+    instruction_codes::InstructionCode, regular_instruction::RegularInstruction,
 };
 use core::fmt::{Display, Formatter};
 

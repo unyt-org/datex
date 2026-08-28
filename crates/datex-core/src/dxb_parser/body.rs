@@ -1,23 +1,28 @@
-use crate::{
-    dxb_parser::next_instructions_stack::{
-        NextInstructionType, NextInstructionsStack,
-        NotInUnboundedRegularScopeError,
-    },
-    runtime::execution::macros::yield_unwrap,
+use crate::dxb_parser::next_instructions_stack::{
+    NextInstructionType, NextInstructionsStack, NotInUnboundedRegularScopeError,
 };
 
 use crate::{
-    global::protocol_structures::{
-        instructions::{Instruction, NestedInstructionResolutionStrategy},
-        regular_instructions::RegularInstruction,
-        type_instructions::TypeInstruction,
+    instruction::{
+        Instruction, NestedInstructionResolutionStrategy,
+        regular_instruction::RegularInstruction,
+        type_instruction::TypeInstruction,
     },
     libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
 };
 use alloc::string::FromUtf8Error;
 use binrw::{BinRead, io::Cursor};
-use core::{cell::RefCell, fmt, fmt::Display, result::Result};
+use core::{
+    cell::RefCell,
+    fmt,
+    fmt::Display,
+    ops::{Deref, Range},
+    result::Result,
+};
+
+// This is needed to place correct Offsets for Jumps in Conditions
+pub type SeekRequest = Rc<RefCell<Option<i32>>>;
 
 #[derive(Debug)]
 pub enum DXBParserError {
@@ -26,7 +31,7 @@ pub enum DXBParserError {
     FailedToReadInstructionCode,
     InvalidInstructionCode(u8),
     /// Returned when the end of the DXB body is reached, but further instructions are expected.
-    ExpectingMoreInstructions,
+    ExpectingMoreInstructions(NextInstructionsStack),
     UnexpectedBytesAfterEndOfInstructions,
     FmtError(fmt::Error),
     BinRwError(binrw::Error),
@@ -56,9 +61,9 @@ impl PartialEq for DXBParserError {
                 DXBParserError::InvalidInstructionCode(b),
             ) => a == b,
             (
-                DXBParserError::ExpectingMoreInstructions,
-                DXBParserError::ExpectingMoreInstructions,
-            ) => true,
+                DXBParserError::ExpectingMoreInstructions(a),
+                DXBParserError::ExpectingMoreInstructions(b),
+            ) => a == b,
             (
                 DXBParserError::UnexpectedBytesAfterEndOfInstructions,
                 DXBParserError::UnexpectedBytesAfterEndOfInstructions,
@@ -134,8 +139,8 @@ impl Display for DXBParserError {
             DXBParserError::FromUtf8Error(err) => {
                 core::write!(f, "UTF-8 conversion error: {err}")
             }
-            DXBParserError::ExpectingMoreInstructions => {
-                core::write!(f, "Expecting more instructions")
+            DXBParserError::ExpectingMoreInstructions(stack) => {
+                core::write!(f, "Expecting more instructions: {stack}")
             }
             DXBParserError::UnexpectedBytesAfterEndOfInstructions => {
                 core::write!(f, "Unexpected bytes after end of instructions")
@@ -150,121 +155,169 @@ impl Display for DXBParserError {
     }
 }
 
-// TODO #676: we must ensure while an execution for a block runs, no other executions run using the same next_instructions_stack - maybe also find a solution without Rc<RefCell>
+/// If the "disassembler" feature is enabled, this struct includes a `span` field
+/// that represents the range of bytes in the DXB body that correspond to this instruction.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "disassembler", derive(serde::Serialize))]
+pub struct InstructionWithSpan {
+    pub instruction: Instruction,
+    #[cfg(feature = "disassembler")]
+    pub span: Range<usize>,
+}
+
+impl PartialEq for InstructionWithSpan {
+    fn eq(&self, other: &Self) -> bool {
+        // always ignore the span when comparing for equality, as it is only relevant for debugging
+        self.instruction == other.instruction
+    }
+}
+
+impl Deref for InstructionWithSpan {
+    type Target = Instruction;
+
+    fn deref(&self) -> &Self::Target {
+        &self.instruction
+    }
+}
+
+impl From<Instruction> for InstructionWithSpan {
+    fn from(value: Instruction) -> Self {
+        InstructionWithSpan {
+            instruction: value,
+            #[cfg(feature = "disassembler")]
+            span: 0..0, // default span, can be updated later
+        }
+    }
+}
+
+impl From<InstructionWithSpan> for Instruction {
+    fn from(value: InstructionWithSpan) -> Self {
+        value.instruction
+    }
+}
+
 pub fn iterate_instructions(
     dxb_body_ref: Rc<RefCell<Vec<u8>>>,
     nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
-) -> impl Iterator<Item = Result<Instruction, DXBParserError>> {
-    gen move {
-        // create a stack to track next instructions
-        let mut next_instructions_stack = NextInstructionsStack::default();
+) -> impl Iterator<Item = Result<InstructionWithSpan, DXBParserError>> {
+    iterate_instructions_with_seek(
+        dxb_body_ref,
+        nested_instruction_resolution_strategy,
+        None,
+    )
+}
 
-        // get reader for dxb_body
-        let mut dxb_body = core::mem::take(&mut *dxb_body_ref.borrow_mut());
-        let mut len = dxb_body.len();
-        let mut reader = Cursor::new(dxb_body);
+pub gen fn iterate_instructions_with_seek(
+    dxb_body_ref: Rc<RefCell<Vec<u8>>>,
+    nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
+    seek_request: Option<Rc<RefCell<Option<i32>>>>,
+) -> Result<InstructionWithSpan, DXBParserError> {
+    let mut next_instructions_stack = NextInstructionsStack::default();
 
-        loop {
-            // if cursor is at the end, check if more instructions are expected, else end iteration
-            if reader.position() as usize >= len {
-                // indicates that more instructions need to be read
-                if !next_instructions_stack.is_end() {
-                    yield Err(DXBParserError::ExpectingMoreInstructions);
-                    // assume that more instructions are loaded into dxb_body externally after this yield
-                    // so we just reload the dxb_body from the Rc<RefCell>
-                    dxb_body = core::mem::take(&mut *dxb_body_ref.borrow_mut());
-                    len = dxb_body.len();
-                    reader = Cursor::new(dxb_body);
-                    continue;
-                }
-                return;
+    let mut dxb_body = core::mem::take(&mut *dxb_body_ref.borrow_mut());
+    let mut len = dxb_body.len();
+    let mut reader = Cursor::new(dxb_body);
+
+    loop {
+        // check for pending seek request
+        if let Some(seek_request) = seek_request.as_ref()
+            && let Some(seek_offset) = seek_request.borrow_mut().take()
+        {
+            let new_pos = reader.position() as i64 + seek_offset as i64;
+            reader.set_position(new_pos.max(0) as u64);
+            continue;
+        }
+
+        if reader.position() as usize >= len {
+            if !next_instructions_stack.is_end() {
+                yield Err(DXBParserError::ExpectingMoreInstructions(
+                    next_instructions_stack.clone(),
+                ));
+
+                dxb_body = core::mem::take(&mut *dxb_body_ref.borrow_mut());
+                len = dxb_body.len();
+                reader = Cursor::new(dxb_body);
+
+                continue;
             }
 
-            let next_instruction_type = next_instructions_stack.pop();
+            return;
+        }
 
-            // parse instruction based on its type
-            let instruction = match next_instruction_type {
+        let previous_position = reader.position() as usize;
+
+        let next_instruction_type = next_instructions_stack.pop();
+
+        let instruction_result: Result<Instruction, DXBParserError> = try {
+            match next_instruction_type {
                 NextInstructionType::End => {
-                    // if cursor
                     if len > reader.position() as usize {
-                        yield Err(DXBParserError::UnexpectedBytesAfterEndOfInstructions);
+                        yield Err(
+                            DXBParserError::
+                                UnexpectedBytesAfterEndOfInstructions,
+                        );
                     }
-                    return
-                }, // end of instructions
+
+                    return;
+                }
 
                 NextInstructionType::Regular => {
-                    let instruction = yield_unwrap!(RegularInstruction::read(&mut reader));
-                    let instruction = if let RegularInstruction::RemoteExecution(instruction_block_data) = instruction {
-                        match nested_instruction_resolution_strategy {
-                            #[cfg(feature = "disassembler")]
-                            NestedInstructionResolutionStrategy::ResolveNestedScopesFlat | NestedInstructionResolutionStrategy::ResolveNestedScopesTree => {
-                                use crate::global::protocol_structures::instruction_data::{InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree};
+                    let instruction = RegularInstruction::read(&mut reader)
+                        .map_err(DXBParserError::BinRwError)?;
 
-                                let (inner_instructions, err) = crate::disassembler::disassemble_body(
-                                    &instruction_block_data.body,
-                                    nested_instruction_resolution_strategy
-                                );
-
-                                if let Some(err) = err {
-                                    return yield Err(err);
-                                }
-                                if nested_instruction_resolution_strategy == NestedInstructionResolutionStrategy::ResolveNestedScopesFlat {
-                                    RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
-                                        length: instruction_block_data.length,
-                                        injected_variable_count: instruction_block_data.injected_value_count,
-                                        injected_values: instruction_block_data.injected_values,
-                                        body: inner_instructions.flatten(),
-                                    })
-                                }
-                                else {
-                                    RegularInstruction::_RemoteExecutionDebugTree(InstructionBlockDataDebugTree {
-                                        length: instruction_block_data.length,
-                                        injected_variable_count: instruction_block_data.injected_value_count,
-                                        injected_values: instruction_block_data.injected_values,
-                                        body: inner_instructions,
-                                    })
-                                }
-                            }
-                            _ => RegularInstruction::RemoteExecution(instruction_block_data)
-                        }
-                    }
-                    else {
-                        instruction
+                    let instruction = cfg_select! {
+                        feature = "disassembler" => instruction
+                            .convert_to_nested(
+                                nested_instruction_resolution_strategy,
+                            )?,
+                        _ => instruction,
                     };
 
+                    next_instructions_stack
+                        .handle_next_expected_instructions(
+                            instruction.get_next_expected_instructions(),
+                        )
+                        .map_err(|_| {
+                            DXBParserError::NotInUnboundedRegularScopeError
+                        })?;
 
-                    yield_unwrap!(next_instructions_stack.handle_next_expected_instructions(
-                        instruction.get_next_expected_instructions()
-                    ));
-
-                    instruction
+                    instruction.into()
                 }
-                .into(),
 
                 NextInstructionType::Type => {
-                    let instruction = yield_unwrap!(TypeInstruction::read(&mut reader));
+                    let instruction = TypeInstruction::read(&mut reader)
+                        .map_err(DXBParserError::BinRwError)?;
 
-                    yield_unwrap!(next_instructions_stack.handle_next_expected_instructions(
-                        instruction.get_next_expected_instructions()
-                    ));
+                    next_instructions_stack
+                        .handle_next_expected_instructions(
+                            instruction.get_next_expected_instructions(),
+                        )
+                        .map_err(|_| {
+                            DXBParserError::NotInUnboundedRegularScopeError
+                        })?;
 
-                    instruction
+                    instruction.into()
                 }
-                .into(),
-            };
+            }
+        };
 
-            yield Ok(instruction);
-        }
+        let instruction = match instruction_result {
+            Ok(instruction) => InstructionWithSpan {
+                instruction,
+                #[cfg(feature = "disassembler")]
+                span: (previous_position)..(reader.position() as usize),
+            },
+            Err(error) => return yield Err(error),
+        };
+
+        yield Ok(instruction);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::instruction_data::UInt8Data,
-    };
+    use crate::instruction::instruction_codes::InstructionCode;
     use core::assert_matches;
 
     fn iterate_dxb(
@@ -274,6 +327,7 @@ mod tests {
             Rc::new(RefCell::new(data)),
             NestedInstructionResolutionStrategy::default(),
         )
+        .map(|instruction_with_span| instruction_with_span.map(|i| i.into()))
     }
 
     #[test]
@@ -281,10 +335,7 @@ mod tests {
         let data = vec![0xFF]; // Invalid instruction code
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
-        assert_matches!(
-            result,
-            Err(err @ DXBParserError::BinRwError(_)) if err.to_string().contains("invalid instruction code")
-        );
+        assert_matches!(result, Err(DXBParserError::BinRwError(_)));
     }
 
     #[test]
@@ -292,7 +343,10 @@ mod tests {
         let data = vec![]; // Empty data
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
-        assert_matches!(result, Err(DXBParserError::ExpectingMoreInstructions));
+        assert_matches!(
+            result,
+            Err(DXBParserError::ExpectingMoreInstructions(_))
+        );
     }
 
     #[test]
@@ -300,9 +354,9 @@ mod tests {
         let data = vec![InstructionCode::UINT_8 as u8, 42];
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
-        match result {
-            Ok(Instruction::Regular(RegularInstruction::UInt8(value))) => {
-                assert_eq!(value.0, 42);
+        match result.expect("Expected a valid instruction") {
+            Instruction::Regular(instr) => {
+                assert_eq!(instr, RegularInstruction::uint8(42));
             }
             _ => panic!("Expected UINT_8 instruction"),
         }
@@ -318,10 +372,16 @@ mod tests {
             vec![InstructionCode::SHORT_TEXT as u8, text_bytes.len() as u8];
         data.extend_from_slice(text_bytes);
         let mut iterator = iterate_dxb(data);
-        let result = iterator.next().unwrap();
+        let result = iterator
+            .next()
+            .unwrap()
+            .expect("Expected a valid instruction");
         match result {
-            Ok(Instruction::Regular(RegularInstruction::ShortText(value))) => {
-                assert_eq!(value.0, "Hello");
+            Instruction::Regular(instr) => {
+                assert_eq!(
+                    instr,
+                    RegularInstruction::short_text("Hello".to_string())
+                );
             }
             _ => panic!("Expected SHORT_TEXT instruction"),
         }
@@ -342,24 +402,20 @@ mod tests {
         ];
         let mut iterator = iterate_dxb(data);
         // first instruction should be ADD
-        assert!(matches!(
+        assert_eq!(
             iterator.next().unwrap(),
-            Ok(Instruction::Regular(RegularInstruction::Add))
-        ));
+            Ok(Instruction::Regular(RegularInstruction::add()))
+        );
         // next instruction should be first UINT_8
-        assert!(matches!(
+        assert_eq!(
             iterator.next().unwrap(),
-            Ok(Instruction::Regular(RegularInstruction::UInt8(UInt8Data(
-                10
-            ))))
-        ));
+            Ok(Instruction::Regular(RegularInstruction::uint8(10)))
+        );
         // next instruction should be second UINT_8
-        assert!(matches!(
+        assert_eq!(
             iterator.next().unwrap(),
-            Ok(Instruction::Regular(RegularInstruction::UInt8(UInt8Data(
-                20
-            ))))
-        ));
+            Ok(Instruction::Regular(RegularInstruction::uint8(20)))
+        );
         // ensure no more instructions
         assert!(iterator.next().is_none());
     }
@@ -382,15 +438,15 @@ mod tests {
         );
         // first instruction should be LIST
         let result = iterator.next().unwrap();
-        assert!(matches!(
-            result,
-            Ok(Instruction::Regular(RegularInstruction::List(_)))
-        ));
+        assert_eq!(
+            result.map(|i| Instruction::from(i)),
+            Ok(Instruction::Regular(RegularInstruction::list_default(2)))
+        );
         // next instruction should error expecting more instructions
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Err(DXBParserError::ExpectingMoreInstructions)
+            Err(DXBParserError::ExpectingMoreInstructions(_))
         ));
 
         // now provide more data for the two elements
@@ -405,16 +461,16 @@ mod tests {
 
         // next instruction should be first UINT_8
         let result = iterator.next().unwrap();
-        assert!(matches!(
-            result,
-            Ok(Instruction::Regular(RegularInstruction::UInt8(_)))
-        ));
+        assert_eq!(
+            result.map(|i| Instruction::from(i)),
+            Ok(Instruction::Regular(RegularInstruction::uint8(10)))
+        );
         // next instruction should be second UINT_8
         let result = iterator.next().unwrap();
-        assert!(matches!(
-            result,
-            Ok(Instruction::Regular(RegularInstruction::UInt8(_)))
-        ));
+        assert_eq!(
+            result.map(|i| Instruction::from(i)),
+            Ok(Instruction::Regular(RegularInstruction::uint8(20)))
+        );
         // ensure no more instructions
         assert!(iterator.next().is_none());
     }
@@ -429,17 +485,15 @@ mod tests {
         );
         // first instruction should be UNBOUNDED_STATEMENTS
         let result = iterator.next().unwrap();
-        assert!(matches!(
-            result,
-            Ok(Instruction::Regular(
-                RegularInstruction::UnboundedStatements
-            ))
-        ));
+        assert_eq!(
+            Instruction::from(result.unwrap()),
+            Instruction::Regular(RegularInstruction::unbounded_statements())
+        );
         // next instruction should error expecting more instructions
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Err(DXBParserError::ExpectingMoreInstructions)
+            Err(DXBParserError::ExpectingMoreInstructions(_))
         ));
 
         // now provide more data for the statements
@@ -454,18 +508,18 @@ mod tests {
 
         // next instruction should be first UINT_8
         let result = iterator.next().unwrap();
-        assert!(matches!(
-            result,
-            Ok(Instruction::Regular(RegularInstruction::UInt8(_)))
-        ));
+        assert_eq!(
+            Instruction::from(result.unwrap()),
+            Instruction::Regular(RegularInstruction::uint8(42))
+        );
         // next instruction should be UNBOUNDED_STATEMENTS_END
         let result = iterator.next().unwrap();
-        assert!(matches!(
-            result,
-            Ok(Instruction::Regular(
-                RegularInstruction::UnboundedStatementsEnd(_)
+        assert_eq!(
+            Instruction::from(result.unwrap()),
+            Instruction::Regular(RegularInstruction::unbounded_statements_end(
+                false
             ))
-        ));
+        );
         // ensure no more instructions
         assert!(iterator.next().is_none());
     }

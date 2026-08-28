@@ -25,8 +25,9 @@ pub mod value_id;
 
 use crate::{
     prelude::*,
+    traits::apply::{ApplyArgument, get_borrowed_apply_argument_values},
     types::{r#type::Type, type_definition::callable::CallableKind},
-    values::core_values::callable::CoreStub,
+    values::core_values::{callable::CoreStub, endpoint::Endpoint},
 };
 use indexmap::IndexMap;
 use log::info;
@@ -45,29 +46,33 @@ impl Default for CoreLibraryValues {
                 Some("print".to_string()),
                 CallableTypeDefinition {
                     kind: CallableKind::Function,
-                    parameter_types: vec![],
-                    rest_parameter_type: Some((
+                    requires_async: false,
+                    parameters: vec![],
+                    rest_parameter: Some((
                         Some("values".to_string()),
-                        Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
+                        Box::new(Type::core(CoreLibBaseTypeId::Any)),
                     )),
                     return_type: None,
                     yeet_type: None,
                 },
-                CallableBody::Native(Self::print_impl),
+                CallableBody::native_sync(Self::print_impl),
+                Endpoint::LOCAL,
             ),
             panic: Value::callable(
                 Some("panic".to_string()),
                 CallableTypeDefinition {
                     kind: CallableKind::Function,
-                    parameter_types: vec![],
-                    rest_parameter_type: Some((
+                    requires_async: false,
+                    parameters: vec![],
+                    rest_parameter: Some((
                         Some("values".to_string()),
-                        Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
+                        Box::new(Type::core(CoreLibBaseTypeId::Any)),
                     )),
                     return_type: None,
                     yeet_type: None,
                 },
                 CallableBody::CoreStub(CoreStub::Panic),
+                Endpoint::LOCAL,
             ),
         }
     }
@@ -98,33 +103,35 @@ impl CoreLibraryValues {
     }
 
     fn print_impl(
-        mut args: &[ValueContainer],
-    ) -> Result<Option<ValueContainer>, CallableError> {
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>
+    {
         // TODO #680: add I/O abstraction layer / interface
 
         let mut output = String::new();
 
         // if first argument is a string value, print it directly
-        if let Some(ValueContainer::Local(Value {
+        let _value_args = if let Some(ValueContainer::Local(Value {
             inner: CoreValue::Text(text),
             ..
-        })) = args.first()
+        })) = args.first().map(|v| &v.value)
         {
             output.push_str(&text.0);
-            // remove first argument from args
-            args = &args[1..];
-            // if there are still arguments, add a space
-            if !args.is_empty() {
+            // if there are still values after the string, add a space
+            if args.len() > 1 {
                 output.push(' ');
             }
-        }
+            &args[1..]
+        } else {
+            &args
+        };
 
         #[cfg(feature = "decompiler")]
         let args_string = args
             .iter()
             .map(|v| {
                 crate::decompiler::decompile_value(
-                    v,
+                    &v.value,
                     crate::decompiler::DecompileOptions::colorized(),
                 )
             })
@@ -133,7 +140,7 @@ impl CoreLibraryValues {
         #[cfg(not(feature = "decompiler"))]
         let args_string = args
             .iter()
-            .map(|v| v.to_string())
+            .map(|v| v.value.to_string())
             .collect::<Vec<_>>()
             .join(" ");
         output.push_str(&args_string);
@@ -141,7 +148,9 @@ impl CoreLibraryValues {
         #[cfg(feature = "std")]
         println!("[PRINT] {}", output);
         info!("[PRINT] {}", output);
-        Ok(None)
+
+        // return all borrowed args
+        Ok((None, get_borrowed_apply_argument_values(args)))
     }
 }
 
