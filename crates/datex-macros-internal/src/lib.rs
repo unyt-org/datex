@@ -1,6 +1,6 @@
 #![feature(deref_patterns)]
 
-use crate::datex_proxy::generate_item_glue_code;
+use crate::datex_proxy::{generate_item_glue_code, generator, parser};
 use proc_macro::TokenStream;
 use syn::{Item, parse_macro_input};
 
@@ -115,7 +115,9 @@ pub fn derive_instruction(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(Datex, attributes(datex))]
 pub fn datex_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
-    datex_proxy::derive(input).into()
+    let data = parser::parse_structure_data(input);
+    generator::generate_derive_code(data).into()
+    //datex_proxy::derive(input).into()
 }
 
 #[proc_macro_attribute]

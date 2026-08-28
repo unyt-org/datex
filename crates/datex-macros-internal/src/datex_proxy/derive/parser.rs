@@ -1,12 +1,36 @@
-use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token};
-use syn::punctuated::Punctuated;
-use crate::datex_proxy::data::{EnumVariant, Field, FieldAttributes, Fields, NamedField, NamedFieldAttributes, SerdeMode, Structure, StructureAttributes, StructureData, TypeKind};
+use crate::datex_proxy::data::{
+    EnumVariant, Field, FieldAttributes, Fields, NamedField,
+    NamedFieldAttributes, SerdeMode, Structure, StructureAttributes,
+    StructureData, TypeKind,
+};
+use syn::{
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token,
+    punctuated::Punctuated,
+};
+
+fn get_derive_module_path() -> Vec<String> {
+    let root_path = PathBuf::from_str(
+        &env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into()),
+    )
+    .unwrap();
+    let call_site = PathBuf::from(Span::call_site().file());
+
+    if call_site.is_relative() {
+        return call_site
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+    }
+    call_site.strip_prefix(&root_path).unwrap_or_else(|_x| {
+        panic!(
+            "Failed to get project relative file path. Call site: {:?}, Root path: {:?}",
+            call_site, root_path
+        )
+    }).to_path_buf().iter().map(|p| p.to_string_lossy().to_string()).collect::<Vec<_>>()
+}
 
 /// Parses the structure data from the provided [DeriveInput].
-pub fn parse_structure_data(
-    input: DeriveInput,
-) -> StructureData {
-
+pub fn parse_structure_data(input: DeriveInput) -> StructureData {
     let ident = input.ident;
     let generics = input.generics;
     let attributes = parse_structure_attributes(&input.attrs);
@@ -16,15 +40,16 @@ pub fn parse_structure_data(
         Data::Struct(data_struct) => {
             Structure::Struct(parse_struct(data_struct))
         }
-        Data::Enum(data_enum) => {
-            Structure::Enum(parse_enum(data_enum))
-        }
+        Data::Enum(data_enum) => Structure::Enum(parse_enum(data_enum)),
         Data::Union(_) => {
-            unimplemented!("Union types are not supported for DATEX derive macros.")
+            unimplemented!(
+                "Union types are not supported for DATEX derive macros."
+            )
         }
     };
 
     StructureData {
+        namespace: get_derive_module_path(),
         ident,
         generics,
         attributes,
@@ -33,18 +58,14 @@ pub fn parse_structure_data(
 }
 
 /// Parses a rust struct into the internal [Fields] representation.
-fn parse_struct(
-    data_struct: DataStruct,
-) -> Fields {
+fn parse_struct(data_struct: DataStruct) -> Fields {
     parse_fields(data_struct.fields)
 }
 
-
 /// Parses a rust enum into the internal [Vec<EnumVariant>] representation.
-fn parse_enum(
-    data_enum: DataEnum,
-) -> Vec<EnumVariant> {
-    data_enum.variants
+fn parse_enum(data_enum: DataEnum) -> Vec<EnumVariant> {
+    data_enum
+        .variants
         .into_iter()
         .map(|variant| {
             let name = variant.ident.to_string();
@@ -59,15 +80,16 @@ fn parse_fields(fields: syn::Fields) -> Fields {
     if fields.is_empty() {
         return Fields::Unit;
     }
-    
+
     let has_named_fields = fields.iter().any(|field| field.ident.is_some());
-    
+
     if has_named_fields {
         Fields::Named(
             fields
                 .into_iter()
                 .map(|field| {
-                    let (attributes, named_attributes) = parse_named_field_attributes(&field.attrs);
+                    let (attributes, named_attributes) =
+                        parse_named_field_attributes(&field.attrs);
                     NamedField {
                         name: field.ident.unwrap().to_string(),
                         field: Field {
@@ -80,25 +102,20 @@ fn parse_fields(fields: syn::Fields) -> Fields {
                 .collect(),
         )
     } else {
-        let mut fields_list = 
-            fields
-                .into_iter()
-                .map(|field| {
-                    Field {
-                        ty: field.ty,
-                        attributes: parse_field_attributes(&field.attrs),
-                    }
-                })
-                .collect::<Vec<_>>();
+        let mut fields_list = fields
+            .into_iter()
+            .map(|field| Field {
+                ty: field.ty,
+                attributes: parse_field_attributes(&field.attrs),
+            })
+            .collect::<Vec<_>>();
         if fields_list.len() == 1 {
             Fields::Transparent(fields_list.remove(0))
-        }
-        else {
+        } else {
             Fields::Unnamed(fields_list)
         }
     }
 }
-
 
 /// Parses the [StructureAttributes] from the provided list of [Attribute]s.
 fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
@@ -124,10 +141,10 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
         for meta in nested {
             match meta {
                 Meta::Path(path)
-                if path.is_ident("_force_datex_core_namespace") =>
-                    {
-                        force_datex_core_namespace = true;
-                    }
+                    if path.is_ident("_force_datex_core_namespace") =>
+                {
+                    force_datex_core_namespace = true;
+                }
                 Meta::Path(path) if path.is_ident("export") => {
                     export = true;
                 }
@@ -141,14 +158,14 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
                 }
 
                 Meta::NameValue(name_value)
-                if name_value.path.is_ident("name") =>
-                    {
-                        if datex_name.is_some() {
-                            panic!("datex(name = ...) must only be specified once");
-                        }
-                        datex_name =
-                            Some(parse_string_attribute(&name_value, "name"));
+                    if name_value.path.is_ident("name") =>
+                {
+                    if datex_name.is_some() {
+                        panic!("datex(name = ...) must only be specified once");
                     }
+                    datex_name =
+                        Some(parse_string_attribute(&name_value, "name"));
+                }
                 _ => {
                     panic!("Invalid #[datex(...)] attribute: {meta:?}")
                 }
@@ -166,7 +183,9 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
     }
 }
 
-fn parse_named_field_attributes(attrs: &[Attribute]) -> (FieldAttributes, NamedFieldAttributes) {
+fn parse_named_field_attributes(
+    attrs: &[Attribute],
+) -> (FieldAttributes, NamedFieldAttributes) {
     parse_all_field_attributes(attrs, true)
 }
 
@@ -174,7 +193,10 @@ fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
     parse_all_field_attributes(attrs, false).0
 }
 
-fn parse_all_field_attributes(attrs: &[Attribute], parse_named_attributes: bool) -> (FieldAttributes, NamedFieldAttributes) {
+fn parse_all_field_attributes(
+    attrs: &[Attribute],
+    parse_named_attributes: bool,
+) -> (FieldAttributes, NamedFieldAttributes) {
     let mut field_attributes = FieldAttributes {
         serde_mode: SerdeMode::None,
     };
@@ -186,7 +208,9 @@ fn parse_all_field_attributes(attrs: &[Attribute], parse_named_attributes: bool)
 
     let check_named_attribute_allowed = |name: &str| {
         if !parse_named_attributes {
-            panic!("The attribute datex({name}) is only allowed on named fields");
+            panic!(
+                "The attribute datex({name}) is only allowed on named fields"
+            );
         }
     };
 
@@ -204,14 +228,20 @@ fn parse_all_field_attributes(attrs: &[Attribute], parse_named_attributes: bool)
                 match nested {
                     Meta::Path(path) => {
                         if path.is_ident("serde") {
-                            if matches!(field_attributes.serde_mode, SerdeMode::Infallible) {
+                            if matches!(
+                                field_attributes.serde_mode,
+                                SerdeMode::Infallible
+                            ) {
                                 panic!(
                                     "Cannot use both datex(serde) and datex(serde_infallible)"
                                 );
                             }
                             field_attributes.serde_mode = SerdeMode::Fallible;
                         } else if path.is_ident("serde_infallible") {
-                            if matches!(field_attributes.serde_mode, SerdeMode::Fallible) {
+                            if matches!(
+                                field_attributes.serde_mode,
+                                SerdeMode::Fallible
+                            ) {
                                 panic!(
                                     "Cannot use both datex(serde) and datex(serde_infallible)"
                                 );
@@ -263,7 +293,6 @@ fn parse_all_field_attributes(attrs: &[Attribute], parse_named_attributes: bool)
     (field_attributes, named_field_attributes)
 }
 
-
 fn parse_string_attribute(
     name_value: &syn::MetaNameValue,
     attribute_name: &str,
@@ -278,7 +307,6 @@ fn parse_string_attribute(
         _ => panic!("datex({attribute_name} = ...) must be a string literal"),
     }
 }
-
 
 fn parse_doc_comments(attrs: &[Attribute]) -> Option<String> {
     let docs = attrs

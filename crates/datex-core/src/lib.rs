@@ -29,6 +29,9 @@
 extern crate alloc;
 extern crate num_integer;
 
+#[doc(hidden)]
+pub mod preludes;
+
 #[doc = include_str!("../README.md")]
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
