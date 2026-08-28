@@ -1,4 +1,4 @@
-use proc_macro2::Ident;
+use proc_macro2::{Ident, Span};
 use syn::{Generics, Type};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -45,7 +45,7 @@ pub struct StructureAttributes {
 
     /// When set to true, the struct/enum will map to a DATEX structural type instead of a nominal entity type.
     pub type_kind: TypeKind,
-    
+
     /// If the decorated struct or enum should be exported to the Datex registry.
     /// `#[datex(export)]`
     pub export: bool,
@@ -93,6 +93,26 @@ pub enum Fields {
     Unit,
 }
 
+impl Fields {
+    pub fn field_idents(&self) -> Vec<Ident> {
+        match self {
+            Fields::Named(fields) => fields
+                .iter()
+                .map(|f| Ident::new(&f.name, Span::call_site()))
+                .collect(),
+            Fields::Unnamed(fields) => fields
+                .iter()
+                .enumerate()
+                .map(|(i, _)| Ident::new(&format!("_{}", i), Span::call_site()))
+                .collect(),
+            Fields::Transparent(_) => {
+                vec![Ident::new("_0", Span::call_site())]
+            }
+            Fields::Unit => vec![],
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct EnumVariant {
     pub name: String,
@@ -106,9 +126,9 @@ pub enum Structure {
     Struct(Fields),
 }
 
-
 #[derive(Debug, PartialEq)]
 pub struct StructureData {
+    pub namespace: Vec<String>,
     pub ident: Ident,
     pub generics: Generics,
     pub attributes: StructureAttributes,
