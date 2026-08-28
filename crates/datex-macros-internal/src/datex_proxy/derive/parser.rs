@@ -3,6 +3,8 @@ use crate::datex_proxy::data::{
     NamedFieldAttributes, SerdeMode, Structure, StructureAttributes,
     StructureData, TypeKind,
 };
+use proc_macro2::Span;
+use std::{env, path::PathBuf, str::FromStr};
 use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token,
     punctuated::Punctuated,

@@ -1,3 +1,11 @@
+use proc_macro2::TokenStream;
+use quote::quote;
+
+use crate::datex_proxy::data::{
+    EnumVariant, Field, Fields, NamedField, SerdeMode, Structure,
+    StructureData, TypeKind,
+};
+
 /// Generates the [DatexProxyType] implementation for the given structure data.
 /// Returns a TokenStream of the implementation.
 pub fn generate_datex_proxy_types(
@@ -10,7 +18,11 @@ pub fn generate_datex_proxy_types(
         attributes,
         ..
     } = structure_data;
-
+    let datex_name = structure_data
+        .attributes
+        .datex_name
+        .clone()
+        .unwrap_or(structure_data.ident.to_string());
     if matches!(attributes.type_kind, TypeKind::Structural) {
         quote! {
             #[automatically_derived]
@@ -94,7 +106,7 @@ fn field_to_definition(field: &Field) -> TokenStream {
 /// Generates a type definition for a named field. Returns a TokenStream with a tuple of name and [TypeDefinition].
 fn named_field_to_definition(field: &NamedField) -> TokenStream {
     let field_definition = field_to_definition(&field.field);
-    let name = field.name;
+    let name = field.name.clone();
     quote! {
         (#name.to_string(), #field_definition)
     }
@@ -139,6 +151,11 @@ fn generate_type(structure_data: &StructureData) -> TokenStream {
             structure_data.namespace.join("::"),
             structure_data.ident
         );
+        let name = structure_data
+            .attributes
+            .datex_name
+            .clone()
+            .unwrap_or(structure_data.ident.to_string());
         quote! {{
             let address = unsafe {
                 SelfOwnedPointerAddress::new_static_from_name(
