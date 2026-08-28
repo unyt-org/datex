@@ -3,14 +3,16 @@ use crate::{
         Apply, BinaryOperation, ComparisonOperation, CreateShared,
         DatexExpressionData, DeriveRef, DeriveSharedRef, GenericInstantiation,
         InterfaceMethodCall, List, Map, PropertyAccess, PropertyAssignment,
-        RangeDeclaration, RequestSharedRef, RootPropertyAccess, TagExpression,
-        UnaryOperation, Unbox, UnboxAssignment,
+        RangeDeclaration, RequestSharedRef, RootPropertyAccess, Statements,
+        TagExpression, UnaryOperation, UnboundedStatement, Unbox,
+        UnboxAssignment,
     },
+    compiler::context::CompilationContext,
     core_compiler::to_instructions::{
         SharedValueTrackingProvider, ToInstructions,
     },
     global::{operators::ModificationOperator, root_properties::RootProperty},
-    instruction::regular_instruction::RegularInstruction,
+    instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
     shared_values::{ReferenceMutability, SharedContainerMutability},
 };
@@ -798,6 +800,79 @@ where
             }
             for instruction in self.right.to_instructions(ctx) {
                 yield instruction;
+            }
+        })
+    }
+}
+
+impl<'ctx> ToInstructions<'ctx, CompilationContext<'ctx>> for Statements {
+    type InstructionType = RegularInstruction;
+    fn to_instructions(
+        &self,
+        ctx: &mut CompilationContext,
+    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+        Box::new(gen move {
+            ctx.mark_has_non_static_value();
+            // if single statement and not terminated, just compile the expression
+            // (not for unbounded execution mode)
+            if self.unbounded.is_none()
+                && self.statements.len() == 1
+                && !self.is_terminated
+            {
+                for instruction in
+                    self.statements.first().unwrap().to_instructions(ctx)
+                {
+                    yield instruction;
+                }
+            } else {
+                let is_outer_context = true; //ctx.meta.is_outer_context(); FIXME
+
+                // Enter a child scope for nested contexts.
+                if !is_outer_context {
+                    let parent_scope = core::mem::take(&mut ctx.scope);
+                    ctx.scope = parent_scope.push();
+                }
+
+                if let Some(UnboundedStatement { is_first, .. }) =
+                    self.unbounded
+                {
+                    // if this is the first section of an unbounded statements block, mark as unbounded
+                    if is_first {
+                        yield RegularInstruction::unbounded_statements();
+                    }
+                    // if not first, don't insert any instruction code
+                }
+                // otherwise, statements with fixed length
+                else {
+                    yield RegularInstruction::statements(
+                        self.statements.len() as u32,
+                        self.is_terminated,
+                    );
+                }
+
+                for statement in self.statements.iter() {
+                    for instruction in statement.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+
+                // Restore the parent scope after compiling the child context.
+                if !is_outer_context {
+                    let child_scope = core::mem::take(&mut ctx.scope);
+
+                    ctx.scope = child_scope
+                        .pop()
+                        .expect("Failed to restore parent scope after compiling child context");
+                }
+
+                // if this is the last section of an unbounded statements block, add closing instruction
+                if let Some(UnboundedStatement { is_last: true, .. }) =
+                    self.unbounded
+                {
+                    yield RegularInstruction::unbounded_statements_end(
+                        self.is_terminated,
+                    );
+                }
             }
         })
     }
