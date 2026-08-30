@@ -3,12 +3,12 @@ use crate::preludes::derive::{SharedReferencesCache};
 use crate::traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts};
 
 impl<T: IntoParts> IntoParts for Box<T> {
-    fn into_parts(self, cache: &mut SharedReferencesCache) -> Option<Parts> where Self: Sized {
+    fn into_parts<'a>(self, cache: &'a mut SharedReferencesCache) -> Option<Parts<'a>> where Self: Sized + 'a {
         let inner = *self;
         inner.into_parts(cache)
     }
 
-    fn as_parts(&self, cache: &mut SharedReferencesCache) -> Option<BorrowedParts> {
+    fn as_parts<'a>(&'a self, cache: &'a mut SharedReferencesCache) -> Option<BorrowedParts<'a>> {
         self.deref().as_parts(cache)
     }
 }

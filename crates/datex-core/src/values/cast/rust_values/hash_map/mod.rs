@@ -6,6 +6,7 @@ mod value_access;
 pub mod get_datex_type;
 mod datex_native;
 mod datex_native_structural;
+mod convert_parts;
 
 use crate::{
     collections::HashMap,
