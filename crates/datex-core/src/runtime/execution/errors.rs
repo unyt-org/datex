@@ -106,6 +106,7 @@ pub enum ExecutionError {
     InvalidSharedValueType,
     ExpectedSharedValue,
     ExpectedLocalValue,
+    ExpectedEntityValue,
     ExpectedOwnedSharedValue,
     MutableReferenceToNonMutableValue,
     AssignmentError(Box<AssignmentError>),
@@ -342,6 +343,12 @@ impl Display for ExecutionError {
                 core::write!(
                     f,
                     "Expected a local value, but got a shared value"
+                )
+            }
+            ExecutionError::ExpectedEntityValue => {
+                core::write!(
+                    f,
+                    "Expected an entity value, but got a non-entity value"
                 )
             }
             ExecutionError::ExpectedOwnedSharedValue => {

@@ -45,9 +45,12 @@ use crate::{
         },
     },
 };
+use crate::traits::convert_parts::{FromParts, IntoParts};
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 use crate::traits::get_datex_type::GetDatexType;
+use crate::traits::value_access::ValueAccess;
+use crate::types::entity_type::EntityType;
 
 /// Implements [DatexNative] and associated traits for Rust core types.
 macro_rules! implement_rust_native_traits {
@@ -95,8 +98,25 @@ macro_rules! implement_rust_native_traits {
         //     }
         // }
 
+        impl DatexNative for $type {
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+
+            fn entity_type(&self, _cache: &mut SharedReferencesCache) -> Option<EntityType> {
+                None
+            }
+        }
+
+        impl FromParts for $type {}
+        impl IntoParts for $type {}
+
         impl DatexNativeOnlyStructural for $type {}
-        
+
         impl GetCoreLibTypeId for $type {
             fn core_lib_type_id(&self) -> CoreLibTypeId {
                 $dx_type.into()
@@ -104,19 +124,8 @@ macro_rules! implement_rust_native_traits {
         }
 
         impl GetDatexType for $type {
-            fn datex_type(_context: &mut SharedReferencesCache) -> Type {
+            fn datex_type(_cache: &mut SharedReferencesCache) -> Type {
                 Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
-            }
-        }
-
-        impl<'a> AsBorrowed<'a> for $type {
-            fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
-                BorrowedValueContainer::native_borrowed_only_structural(self)
-            }
-        }
-        impl<'a> AsBorrowedMut<'a> for $type {
-            fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
-                BorrowedValueContainerMut::native_borrowed_only_structural(self)
             }
         }
     };

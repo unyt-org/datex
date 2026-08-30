@@ -186,7 +186,7 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
+    pub fn actual_type(&self) -> TypeDefinition {
         match self {
             ValueContainer::Local(local) => local.actual_type(),
             ValueContainer::Shared(shared) => shared.actual_type(),
@@ -197,7 +197,7 @@ impl ValueContainer {
     pub fn actual_container_type(&self) -> TypeDefinitionWithMetadata {
         match self {
             ValueContainer::Local(value) => TypeDefinitionWithMetadata::new(
-                value.actual_type().into_owned(),
+                value.actual_type(),
                 TypeMetadata::default(),
             ),
             ValueContainer::Shared(shared) => {
@@ -218,7 +218,7 @@ impl ValueContainer {
     /// For shared values, returns the allowed type of the value container
     pub fn allowed_or_actual_type(&self) -> Sheep<'_, TypeDefinition> {
         match self {
-            ValueContainer::Local(value) => value.actual_type(),
+            ValueContainer::Local(value) => Sheep::Owned(value.actual_type()),
             ValueContainer::Shared(shared) => Sheep::Ref(shared.allowed_type()),
         }
     }

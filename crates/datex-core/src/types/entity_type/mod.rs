@@ -21,6 +21,7 @@ use crate::{
     },
 };
 use core::{cell::Ref, ops::Deref};
+use crate::values::value::value_classification::ValueClassification;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct EntityType(SharedContainer);
@@ -133,8 +134,8 @@ impl TypeSuperset<EntityType>
 
 impl TypeSatisfiesValueContainer for EntityType {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
-        match value.actual_type().deref() {
-            TypeDefinition::Box(Type::Entity(entity)) => {
+        match &value.collapsed_value().borrow().classification {
+            ValueClassification::Entity(entity) => {
                 self.is_superset_of(entity)
             }
             _ => false,

@@ -29,6 +29,7 @@ mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;
 pub mod value_classification;
+mod datex_native;
 
 use crate::{
     datex_proxy::TryToDatexValueError,
@@ -48,6 +49,7 @@ use core::{
 };
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::types::entity_type::EntityType;
+use crate::types::r#type::Type;
 use crate::values::value::value_classification::ValueClassification;
 
 #[derive(Debug)]
@@ -240,24 +242,14 @@ impl Value {
         T::try_from(self.inner).ok()
     }
 
-    /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
-        match &self.classification.entity_type {
-            Some(actual_type) => Sheep::Borrowed(actual_type),
-            None => {
-                Sheep::Owned(TypeDefinition::CoreType(self.default_core_type()))
-            }
+    /// Returns the actual current [TypeDefinition] of the value
+    pub fn actual_type(&self) -> TypeDefinition {
+        match &self.classification {
+            ValueClassification::Entity(entity_type) => TypeDefinition::Box(Box::new(Type::Entity(entity_type.clone()))),
+            ValueClassification::Tag { tag, .. } => todo!(),
+            ValueClassification::Impls(impls) => todo!(),
+            ValueClassification::None => TypeDefinition::CoreType(self.default_core_type()),
         }
-    }
-
-    /// Returns true if the value is of structual type.
-    pub fn has_structural_type(&self) -> bool {
-        self.actual_type().is_structural()
-    }
-
-    /// Returns true if the value is of tagged type.
-    pub fn has_tagged_type(&self) -> bool {
-        self.actual_type().is_tagged()
     }
 
     /// Gets a property on the value if applicable (e.g. for map and structs)
