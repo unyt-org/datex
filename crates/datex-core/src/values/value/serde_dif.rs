@@ -21,6 +21,7 @@ use serde::{
     de::{DeserializeSeed, Error as DeError, Visitor},
     ser::SerializeTuple,
 };
+use crate::values::value::value_classification::ValueClassification;
 
 impl<'ctx> SerdeContext<'ctx, Value> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -36,7 +37,7 @@ impl<'ctx> SerdeContext<'ctx, Value> {
         &mut self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
-        custom_type: &Option<TypeDefinition>,
+        classification: &ValueClassification,
         serializer: Se,
         direct: bool,
     ) -> Result<Se::Ok, Se::Error>
@@ -44,16 +45,16 @@ impl<'ctx> SerdeContext<'ctx, Value> {
         T: Serialize + ?Sized,
         Se: Serializer,
     {
-        if direct && custom_type.is_none() {
+        if direct && classification.is_none() {
             return inner.serialize(serializer);
         }
 
         let index = CoreLibIdIndex::from(core_lib_type_id);
         let mut tuple = serializer
-            .serialize_tuple(if custom_type.is_some() { 3 } else { 2 })?;
+            .serialize_tuple(if classification.is_some() { 3 } else { 2 })?;
         tuple.serialize_element(&index.to_u16())?;
         tuple.serialize_element(inner)?;
-        if let Some(custom_type) = custom_type {
+        if let Some(custom_type) = classification {
             // [id, value, custom_type]
             tuple.serialize_element(&ValueWithSeed::new(
                 custom_type,
@@ -69,7 +70,7 @@ impl<'ctx> SerdeContext<'ctx, Value> {
         &mut self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
-        custom_type: &Option<TypeDefinition>,
+        classification: &ValueClassification,
         serializer: Se,
         direct: bool,
     ) -> Result<Se::Ok, Se::Error>
@@ -78,18 +79,18 @@ impl<'ctx> SerdeContext<'ctx, Value> {
         Se: Serializer,
         for<'a> SerdeContext<'a, T>: SerializeSeed<Value = T>,
     {
-        if direct && custom_type.is_none() {
+        if direct && classification.is_none() {
             return self.cast::<T>().serialize(inner, serializer);
         }
         let index = CoreLibIdIndex::from(core_lib_type_id);
         let mut tuple = serializer
-            .serialize_tuple(if custom_type.is_some() { 3 } else { 2 })?;
+            .serialize_tuple(if classification.is_some() { 3 } else { 2 })?;
         tuple.serialize_element(&index.to_u16())?;
         tuple.serialize_element(&ValueWithSeed::new(
             inner,
             &mut self.cast::<T>(),
         ))?;
-        if let Some(custom_type) = custom_type {
+        if let Some(custom_type) = classification {
             // [id, value, custom_type]
             tuple.serialize_element(&ValueWithSeed::new(
                 custom_type,
@@ -120,21 +121,21 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             CoreValue::Boolean(b) => self.serialize_with_core_type(
                 b,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 true,
             ),
             CoreValue::Text(s) => self.serialize_with_core_type(
                 s,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 true,
             ),
             CoreValue::Null => self.serialize_with_core_type(
                 &(),
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 true,
             ),
@@ -142,7 +143,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 .serialize_with_core_type(
                     &dec,
                     core_lib_type,
-                    &value.entity_type,
+                    value.classification(),
                     serializer,
                     dec.is_finite(),
                 ),
@@ -151,35 +152,35 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             CoreValue::Endpoint(endpoint) => self.serialize_with_core_type(
                 endpoint,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 false,
             ),
             CoreValue::Decimal(d) => self.serialize_with_core_type(
                 d,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 false,
             ),
             CoreValue::Integer(i) => self.serialize_with_core_type(
                 i,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 false,
             ),
             CoreValue::TypedInteger(ti) => self.serialize_with_core_type(
                 ti,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 false,
             ),
             CoreValue::TypedDecimal(td) => self.serialize_with_core_type(
                 td,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 false,
             ),
@@ -188,14 +189,14 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             CoreValue::List(l) => self.serialize_with_core_type_serde(
                 l,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 false,
             ),
             CoreValue::Range(range) => self.serialize_with_core_type_serde(
                 range,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 false,
             ),
@@ -203,14 +204,14 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             CoreValue::Map(map) => self.serialize_with_core_type_serde(
                 map,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 false,
             ),
             CoreValue::Type(ty) => self.serialize_with_core_type_serde(
                 ty,
                 core_lib_type,
-                &value.entity_type,
+                value.classification(),
                 serializer,
                 false,
             ),
@@ -221,7 +222,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 .serialize_with_core_type_serde(
                     callable,
                     core_lib_type,
-                    &value.entity_type,
+                    value.classification(),
                     serializer,
                     false,
                 ),

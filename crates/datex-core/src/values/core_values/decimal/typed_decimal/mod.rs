@@ -19,6 +19,8 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
+
 pub mod equality;
 pub mod primitive;
 #[cfg(feature = "decompiler")]
@@ -26,6 +28,10 @@ mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;
 mod datex_native_only_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod convert_parts;
+mod datex_native;
 
 /// The decimal type variants to be used as a inline
 /// definition in DATEX (such as 42.4f32 or -42.4f32).
@@ -128,7 +134,7 @@ impl Hash for TypedDecimal {
 
 impl From<&TypedDecimal> for CoreLibTypeId {
     fn from(value: &TypedDecimal) -> Self {
-        CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(value.variant()))
+        value.core_lib_type_id()
     }
 }
 

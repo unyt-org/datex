@@ -285,7 +285,7 @@ mod tests {
             .expect("Failed to set existing nested property");
         let prop = nested_map.try_get_property("outer", cache).unwrap();
         let inner_value = prop.try_as::<Map>().unwrap();
-        let inner_value = inner_value.try_get("inner").unwrap().as_borrowed();
+        let inner_value = inner_value.try_get("inner").unwrap().as_borrowed(cache);
         assert_eq!(inner_value.try_as::<i32>().unwrap().deref(), &42);
     }
 

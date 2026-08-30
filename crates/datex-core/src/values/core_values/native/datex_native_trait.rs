@@ -6,11 +6,9 @@ use core::any::Any;
 use crate::traits::convert_parts::{FromParts, IntoParts};
 use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
-use crate::traits::get_datex_type::GetDatexType;
 #[cfg(feature = "decompiler")]
 use crate::traits::to_datex_expression_data::ToDatexExpressionData;
 use crate::types::entity_type::EntityType;
-use crate::types::r#type::Type;
 
 // TODO: better solution than duplicate definition of trait for different feature flags?
 #[cfg(feature = "decompiler")]

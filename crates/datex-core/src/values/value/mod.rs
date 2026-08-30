@@ -146,8 +146,8 @@ impl Value {
         )
     }
 
-    pub fn entity_type(&self) -> Option<&EntityType> {
-        self.classification.entity_type.as_ref()
+    pub fn classification(&self) -> &ValueClassification {
+        &self.classification
     }
     pub fn into_inner(self) -> CoreValue {
         self.inner
@@ -240,19 +240,6 @@ impl Value {
         T::try_from(self.inner).ok()
     }
 
-    /// Returns true if the current Value's actual type is the same as its default type
-    /// E.g. if the type is integer for an Integer value, or integer/u8 for a typed integer value
-    /// This will return false for an integer value if the actual type is one of the following:
-    /// * an ImplType<integer, x>
-    /// * a new nominal type containing an integer
-    ///   TODO #604: this does not match all cases of default types from the point of view of the compiler -
-    ///   integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
-    ///   the variant must be included in the compiler output - so we need to handle theses cases as well.
-    ///   Generally speaking, all variants except the few integer variants should never be considered default types.
-    pub fn has_entity_type(&self) -> bool {
-        self.classification.entity_type.is_some()
-    }
-
     /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
     pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
         match &self.classification.entity_type {
@@ -271,18 +258,6 @@ impl Value {
     /// Returns true if the value is of tagged type.
     pub fn has_tagged_type(&self) -> bool {
         self.actual_type().is_tagged()
-    }
-
-    /// Returns true if the value needs to be casted to its actual type.
-    /// This allows us to strip away the type cast on compilation, as not required.
-    pub fn needs_type_cast(&self) -> bool {
-        if !self.has_entity_type() {
-            return false;
-        }
-        if self.has_structural_type() && !self.has_tagged_type() {
-            return false;
-        }
-        true
     }
 
     /// Gets a property on the value if applicable (e.g. for map and structs)
@@ -610,14 +585,5 @@ mod tests {
             Value::from(42_i8),
             Value::from(Integer::from(42_i8))
         );
-    }
-
-    #[test]
-    fn default_types() {
-        let val = Value::from(Integer::from(42));
-        assert!(!val.has_entity_type());
-
-        let val = Value::from(42i8);
-        assert!(!val.has_entity_type());
     }
 }

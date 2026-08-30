@@ -27,6 +27,9 @@ mod to_datex_expression_data;
 pub mod update_handler;
 pub mod updates;
 mod value_access;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod datex_native;
 
 #[derive(Debug, Default)]
 pub struct List {

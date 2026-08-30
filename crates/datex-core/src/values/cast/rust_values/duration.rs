@@ -7,14 +7,15 @@ use crate::{
     values::{
         borrowed_value_container::{
             AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
-            BorrowedValueContainerMut,
         },
         core_values::native::DatexNative,
-        value::Value,
     },
 };
 use core::{any::Any, time::Duration};
+use crate::preludes::derive::CoreLibTypeId;
+use crate::traits::convert_parts::{FromParts, IntoParts};
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
+use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 use crate::traits::get_datex_type::GetDatexType;
 use crate::types::entity_type::EntityType;
 
@@ -36,12 +37,11 @@ mod to_datex_expression_data {
 }
 
 impl ValueAccess for Duration {}
+impl FromParts for Duration {}
+impl IntoParts for Duration {}
+impl GetCoreLibTypeId for Duration {}
+impl GetDatexType for Duration {}
 
-impl GetDatexType for Duration {
-    fn datex_type(_context: &mut SharedReferencesCache) -> Type {
-        Type::core(CoreLibBaseTypeId::Any)
-    }
-}
 
 impl DatexNative for Duration {
     fn as_any(&self) -> &dyn Any {
@@ -58,14 +58,3 @@ impl DatexNative for Duration {
 }
 
 impl DatexNativeOnlyStructural for Duration {}
-
-impl<'a> AsBorrowed<'a> for Duration {
-    fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
-        BorrowedValueContainer::native_borrowed_only_structural(self)
-    }
-}
-impl<'a> AsBorrowedMut<'a> for Duration {
-    fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
-        BorrowedValueContainerMut::native_borrowed_only_structural(self)
-    }
-}

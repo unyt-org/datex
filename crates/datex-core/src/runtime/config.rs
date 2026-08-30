@@ -183,7 +183,7 @@ pub mod tests {
     #[test]
     fn datex_proxy_runtime_config() {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
-        let value_container = Value::native_only_structural(xconfig);
+        let value_container = Value::native_only_structural(config);
         let parsed_config: RuntimeConfig = value_container.try_into().unwrap();
         assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));
     }

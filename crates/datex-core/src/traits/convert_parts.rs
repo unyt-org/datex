@@ -9,15 +9,12 @@ pub enum Parts<'a> {
     List(Box<dyn Iterator<Item = ValueContainer> + 'a>),
     /// The parts of a map value (a struct with named fields).
     Map(Box<dyn Iterator<Item = (ValueContainer, ValueContainer)> + 'a>),
-    /// A single value (transparent newtype struct).
-    SingleValue(ValueContainer),
 }
 
 /// Represents the different parts of a disassembled borrowed value.
 pub enum BorrowedParts<'a> {
     List(Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>),
     Map(Box<dyn Iterator<Item = (BorrowedValueContainer<'a>, BorrowedValueContainer<'a>)> + 'a>),
-    SingleValue(BorrowedValueContainer<'a>),
 }
 
 /// A trait for types that can be constructed from parts.
@@ -25,14 +22,20 @@ pub trait FromParts {
     /// Tries to construct the implementing type from parts.
     fn try_from_parts(parts: Parts) -> Result<Self, ()>
     where
-        Self: Sized;
+        Self: Sized {
+        Err(())
+    }
 }
 
 /// A trait for types that can be converted into parts.
 pub trait IntoParts {
     /// Converts the implementing type into its parts.
-    fn into_parts(self, cache: &mut SharedReferencesCache) -> Parts;
+    fn into_parts(self, cache: &mut SharedReferencesCache) -> Option<Parts> {
+        None
+    }
 
     /// Converts the implementing type into its borrowed parts.
-    fn as_parts(&self, cache: &mut SharedReferencesCache) -> BorrowedParts;
+    fn as_parts(&self, cache: &mut SharedReferencesCache) -> Option<BorrowedParts> {
+        None
+    }
 }

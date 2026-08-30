@@ -1,5 +1,4 @@
 //! Implements [DatexValueProxy] for [Box<T>] where T: [DatexValueProxy].
-mod as_borrowed;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod get_datex_type;
