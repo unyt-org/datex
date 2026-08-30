@@ -11,6 +11,6 @@ where
     T: DatexNative,
 {
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
-        BorrowedValueContainer::native_borrowed(self)
+        BorrowedValueContainer::native_borrowed_only_structural(self)
     }
 }

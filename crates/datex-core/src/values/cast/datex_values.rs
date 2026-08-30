@@ -50,12 +50,12 @@ macro_rules! impl_datex_direct_via_value_container {
 
         impl<'a> AsBorrowed<'a> for $type {
             fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
-                BorrowedValueContainer::native_borrowed(self)
+                BorrowedValueContainer::native_borrowed_only_structural(self)
             }
         }
         impl<'a> AsBorrowedMut<'a> for $type {
             fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
-                BorrowedValueContainerMut::native_borrowed(self)
+                BorrowedValueContainerMut::native_borrowed_only_structural(self)
             }
         }
     };

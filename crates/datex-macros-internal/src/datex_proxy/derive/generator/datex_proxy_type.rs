@@ -6,7 +6,7 @@ use crate::datex_proxy::data::{
     StructureData, TypeKind,
 };
 
-/// Generates the [DatexProxyType] implementation for the given structure data.
+/// Generates the [GetDatexType] implementation for the given structure data.
 /// Returns a TokenStream of the implementation.
 pub fn generate_datex_proxy_types(
     structure_data: &StructureData,
@@ -26,7 +26,7 @@ pub fn generate_datex_proxy_types(
     if matches!(attributes.type_kind, TypeKind::Structural { .. }) {
         quote! {
             #[automatically_derived]
-            impl #generics DatexProxyType for #ident #generics {
+            impl #generics GetDatexType for #ident #generics {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     cache.resolve_structural_type::<Self, _>(
                         |cache| (#datex_type).with_name(#datex_name)
@@ -37,7 +37,7 @@ pub fn generate_datex_proxy_types(
     } else {
         quote! {
             #[automatically_derived]
-            impl #generics DatexProxyType for #ident #generics {
+            impl #generics GetDatexType for #ident #generics {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     #datex_type
                 }
@@ -91,7 +91,7 @@ fn field_to_definition(field: &Field) -> TokenStream {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                <#field_type as DatexProxyType>::datex_type(cache.into())
+                <#field_type as GetDatexType>::datex_type(cache.into())
             }
         }
         // Cannot infer type

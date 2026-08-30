@@ -28,6 +28,9 @@ use core::{
     fmt::Debug,
     ops::{Deref, DerefMut},
 };
+use std::cell::Ref;
+use crate::network::com_interfaces::default_setup_data::http_common::TLSMode;
+use crate::preludes::derive::{BorrowedValueContainer, SharedReferencesCache};
 
 /// Similar to [Value], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.
@@ -38,6 +41,29 @@ pub struct BorrowedValue<'a> {
 }
 
 impl<'a> BorrowedValue<'a> {
+    /// Creates a new [BorrowedValue] from a reference to a native value.
+    pub fn native_borrowed<T: DatexNative>(
+        val: &'a T,
+        cache: &mut SharedReferencesCache,
+    ) -> Self {
+        BorrowedValue {
+            inner: BorrowedCoreValue::Native(Goat::Borrowed(val)),
+            custom_type: Some(val.value_datex_type(cache).convert_to_definition()),
+        }
+    }
+
+    /// Creates a new [BorrowedValue] from a reference to a native value wrapped in a `Ref`.
+    pub fn native_ref<T: DatexNative>(
+        val: Ref<'a, T>,
+        cache: &mut SharedReferencesCache
+    ) -> Self {
+        let ty = Some(val.value_datex_type(cache).convert_to_definition());
+        BorrowedValue {
+            inner: BorrowedCoreValue::Native(Goat::Ref(val)),
+            custom_type: ty,
+        }
+    }
+
     pub fn try_clone_to_value(self) -> Result<Value, ()>
     where
         CoreValue: Clone,
@@ -198,31 +224,14 @@ impl<'a> From<&'a CoreValue> for BorrowedCoreValue<'a> {
     }
 }
 
-// impl Debug for BorrowedCoreValue<'_> {
-//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-//         write!(f, "{}(", self.as_ref())?;
-//         match self {
-//             BorrowedCoreValue::Uninitialized => Ok(()),
-//             BorrowedCoreValue::Null => Ok(()),
-//             BorrowedCoreValue::Boolean(boolean) => boolean.fmt(f),
-//             BorrowedCoreValue::Integer(integer) => integer.fmt(f),
-//             BorrowedCoreValue::TypedInteger(typed_integer) => typed_integer.fmt(f),
-//             BorrowedCoreValue::Decimal(decimal) => decimal.fmt(f),
-//             BorrowedCoreValue::TypedDecimal(typed_decimal) => typed_decimal.fmt(f),
-//             BorrowedCoreValue::Text(text) => text.fmt(f),
-//             BorrowedCoreValue::Endpoint(endpoint) => endpoint.fmt(f),
-//             BorrowedCoreValue::List(list) => list.fmt(f),
-//             BorrowedCoreValue::Map(map) => map.fmt(f),
-//             BorrowedCoreValue::Type(type_value) => type_value.fmt(f),
-//             BorrowedCoreValue::EntityTypeDefinition(entity_type_definition) => entity_type_definition.fmt(f),
-//             BorrowedCoreValue::Callable(callable) => callable.fmt(f),
-//             BorrowedCoreValue::Range(range) => range.fmt(f),
-//             BorrowedCoreValue::Box(boxed_value) => boxed_value.fmt(f),
-//             BorrowedCoreValue::Native(native) => native.fmt(f),
-//         }?;
-//         write!(f, ")")
-//     }
-// }
+impl<'a> From<BorrowedCoreValue<'a>> for BorrowedValue<'a> {
+    fn from(borrowed_core_value: BorrowedCoreValue<'a>) -> Self {
+        BorrowedValue {
+            inner: borrowed_core_value,
+            custom_type: None,
+        }
+    }
+}
 
 /// Similar to [Value], but contains a [BorrowedCoreValueMut] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed mutable reference to a [CoreValue] variant instead of owning it.

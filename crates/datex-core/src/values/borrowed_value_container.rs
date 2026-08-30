@@ -20,6 +20,7 @@ use core::{
     cell::{Ref, RefMut},
     fmt::Debug,
 };
+use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 
 pub trait AsBorrowed<'a> {
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a>;
@@ -33,7 +34,7 @@ pub enum BorrowedValueContainer<'a> {
 
 impl<'a> BorrowedValueContainer<'a> {
     /// Creates a new `BorrowedValueContainer` from a reference to a native value.
-    pub fn native_borrowed<T: DatexNative>(val: &'a T) -> Self {
+    pub fn native_borrowed_only_structural<T: DatexNativeOnlyStructural>(val: &'a T) -> Self {
         BorrowedValueContainer::Local(BorrowedValue {
             inner: BorrowedCoreValue::Native(Goat::Borrowed(val)),
             custom_type: None,
@@ -41,7 +42,7 @@ impl<'a> BorrowedValueContainer<'a> {
     }
 
     /// Creates a new `BorrowedValueContainer` from a reference to a native value wrapped in a `Ref`.
-    pub fn native_ref<T: DatexNative>(val: Ref<'a, T>) -> Self {
+    pub fn native_ref<T: DatexNativeOnlyStructural>(val: Ref<'a, T>) -> Self {
         BorrowedValueContainer::Local(BorrowedValue {
             inner: BorrowedCoreValue::Native(Goat::Ref(val)),
             custom_type: None,
@@ -87,7 +88,7 @@ pub enum BorrowedValueContainerMut<'a> {
 
 impl<'a> BorrowedValueContainerMut<'a> {
     /// Creates a new `BorrowedValueContainerMut` from a mutable reference to a native value.
-    pub fn native_borrowed<T: DatexNative>(val: &'a mut T) -> Self {
+    pub fn native_borrowed_only_structural<T: DatexNativeOnlyStructural>(val: &'a mut T) -> Self {
         BorrowedValueContainerMut::Local(BorrowedValueMut {
             inner: BorrowedCoreValueMut::Native(GoatMut::Borrowed(val)),
             custom_type: None,
@@ -95,7 +96,7 @@ impl<'a> BorrowedValueContainerMut<'a> {
     }
 
     /// Creates a new `BorrowedValueContainerMut` from a mutable reference to a native value wrapped in a `RefMut`.
-    pub fn native_ref<T: DatexNative>(val: RefMut<'a, T>) -> Self {
+    pub fn native_ref_only_structural<T: DatexNativeOnlyStructural>(val: RefMut<'a, T>) -> Self {
         BorrowedValueContainerMut::Local(BorrowedValueMut {
             inner: BorrowedCoreValueMut::Native(GoatMut::Ref(val)),
             custom_type: None,

@@ -25,6 +25,7 @@ pub mod primitive;
 mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;
+mod datex_native_only_structural;
 
 /// The decimal type variants to be used as a inline
 /// definition in DATEX (such as 42.4f32 or -42.4f32).

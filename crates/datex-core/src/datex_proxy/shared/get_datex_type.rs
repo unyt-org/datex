@@ -13,7 +13,7 @@ where
 {
     fn datex_type(context: &mut SharedReferencesCache) -> Type {
         Type::Definition(TypeDefinitionWithMetadata::new(
-            TypeDefinition::Box(Box::new(T::value_datex_type(context))),
+            TypeDefinition::Box(Box::new(T::datex_type(context))),
             TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Owned,

@@ -21,6 +21,7 @@ pub mod ops;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
+mod datex_native_only_structural;
 
 impl Display for Text {
     // TODO #319: escape string content

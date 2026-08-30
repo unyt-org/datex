@@ -19,7 +19,9 @@ use crate::{
     values::core_value::CoreValue,
 };
 pub use datex_native_trait::*;
+use crate::preludes::derive::BorrowedValueContainer;
 use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::values::value::borrowed_value::BorrowedValue;
 
 impl<T: DatexNative> ConvertValueContainer for T {
     fn to_value_container(
@@ -27,6 +29,10 @@ impl<T: DatexNative> ConvertValueContainer for T {
         cache: &mut SharedReferencesCache,
     ) -> ValueContainer {
         ValueContainer::Local(Value::native(self, cache))
+    }
+
+    fn as_borrowed_value_container<'a>(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a> {
+        BorrowedValueContainer::Local(BorrowedValue::native_borrowed(self, cache))
     }
 
     fn try_from_value_container(value_container: ValueContainer) -> Result<Self, ()>

@@ -1,5 +1,6 @@
-use crate::preludes::derive::{DatexNative, SharedReferencesCache};
+use crate::preludes::derive::{SharedReferencesCache};
 use crate::traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts};
+use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedValue};
 use crate::values::value::Value;
 
 impl<T: IntoParts> IntoParts for Option<T> {
@@ -13,7 +14,7 @@ impl<T: IntoParts> IntoParts for Option<T> {
     fn as_parts(&self, cache: &mut SharedReferencesCache) -> BorrowedParts {
         match self {
             Some(value) => value.as_parts(cache),
-            None => BorrowedParts::SingleValue(Value::null().into()),
+            None => BorrowedParts::SingleValue(BorrowedValue::from(BorrowedCoreValue::Null).into()),
         }
     }
 }
@@ -28,7 +29,7 @@ impl<T: FromParts> FromParts for Option<T> {
             Parts::SingleValue(value) if value.is_null() => {
                 Ok(None)
             }
-            _ => T::try_from_parts(parts)
+            _ => Ok(Some(T::try_from_parts(parts)?)),
         }
     }
 }

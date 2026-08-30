@@ -1,5 +1,3 @@
-//! Implements [DatexValueProxy] for [Vec<T>] where T: [DatexValueProxy].
-
 mod as_borrowed;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
@@ -9,39 +7,28 @@ mod get_core_lib_type_id;
 mod datex_native_only_structural;
 mod convert_parts;
 
-use crate::{
-    datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
-    prelude::*,
-    types::{
-        r#type::Type,
-        type_definition::collection::{
-            CollectionTypeDefinition,
-            type_definition::list::ListCollectionTypeDefinition,
-        },
-    },
-    values::{core_values::list::List, value::Value},
-};
-use core::any::Any;
-
-use crate::{
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-    types::type_definition::TypeDefinition,
-    values::core_values::native::DatexNative,
-};
-
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
-        libs::core::type_id::CoreLibBaseTypeId,
-        values::{
-            core_value::CoreValue, core_values::integer::Integer, value::Value,
-            value_container::ValueContainer,
+        prelude::*,
+        types::{
+            r#type::Type,
+            type_definition::collection::{
+                CollectionTypeDefinition,
+                type_definition::list::ListCollectionTypeDefinition,
+            },
         },
+        values::{core_values::list::List, value::Value},
     };
-    use crate::preludes::derive::SharedReferencesCache;
+
+    use crate::{
+        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        types::type_definition::TypeDefinition,
+    };
+    use crate::preludes::derive::{CoreValue, SharedReferencesCache};
     use crate::traits::get_datex_type::GetDatexType;
+    use crate::values::core_values::integer::Integer;
+    use crate::values::value_container::ValueContainer;
 
     #[test]
     fn to_value() {

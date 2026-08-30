@@ -376,7 +376,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let types_impl = if top_level_attributes.type_kind.is_structural() {
         quote! {
             #[automatically_derived]
-            impl #generics DatexProxyType for #ident #generics {
+            impl #generics GetDatexType for #ident #generics {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     cache.resolve_structural_type::<Self, _>(
                         |cache| (#wrapped_datex_type).with_name(#datex_name)
@@ -387,7 +387,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     } else {
         quote! {
             #[automatically_derived]
-            impl #generics DatexProxyType for #ident #generics {
+            impl #generics GetDatexType for #ident #generics {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     #wrapped_datex_type
                 }
@@ -409,7 +409,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     DatexValueProxyDeserialize,
                     TryToDatexValueError,
                     TryFromDatexValueError,
-                    DatexProxyType,
+                    GetDatexType,
                     serde_compat::{
                         try_serde_to_value_container,
                         try_serde_from_value_container
@@ -1555,7 +1555,7 @@ fn generate_named_field_type_code(
             quote! {
                 (
                     Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.into())).into()),
-                    <#field_type as DatexProxyType>::datex_type(cache.into())
+                    <#field_type as GetDatexType>::datex_type(cache.into())
                 )
             }
         }
@@ -1580,7 +1580,7 @@ fn generate_unnamed_field_type_code(
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                <#field_type as DatexProxyType>::datex_type(cache.into())
+                <#field_type as GetDatexType>::datex_type(cache.into())
             }
         }
         // Cannot infer type

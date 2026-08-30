@@ -4,11 +4,11 @@ use crate::values::value_container::ValueContainer;
 
 /// Represents the different parts of a disassembled value
 /// that can be used to reconstruct the original value.
-pub enum Parts {
+pub enum Parts<'a> {
     /// The parts of a list value (a struct without named fields).
-    List(Box<dyn Iterator<Item = ValueContainer>>),
+    List(Box<dyn Iterator<Item = ValueContainer> + 'a>),
     /// The parts of a map value (a struct with named fields).
-    Map(Box<dyn Iterator<Item = (ValueContainer, ValueContainer)>>),
+    Map(Box<dyn Iterator<Item = (ValueContainer, ValueContainer)> + 'a>),
     /// A single value (transparent newtype struct).
     SingleValue(ValueContainer),
 }
