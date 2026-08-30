@@ -12,9 +12,9 @@ impl FromParts for Value {
 }
 
 impl IntoParts for Value {
-    fn into_parts(self, cache: &mut SharedReferencesCache) -> Option<Parts>
+    fn into_parts<'a>(self, cache: &'a mut SharedReferencesCache) -> Option<Parts<'a>>
     where
-        Self: Sized,
+        Self: Sized + 'a,
     {
         todo!()
     }

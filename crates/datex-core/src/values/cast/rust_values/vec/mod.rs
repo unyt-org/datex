@@ -1,3 +1,7 @@
+use crate::preludes::derive::{CoreValue, DatexNativeStructural, Value};
+use crate::traits::get_datex_type::GetDatexType;
+use crate::values::core_values::native::DatexNativeBase;
+
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
@@ -6,6 +10,7 @@ mod get_core_lib_type_id;
 mod datex_native_structural;
 mod convert_parts;
 pub mod datex_native;
+
 
 #[cfg(test)]
 mod tests {

@@ -1,14 +1,15 @@
 use core::any::Any;
 use core::hash::Hash;
 use crate::collections::HashMap;
-use crate::preludes::derive::{DatexNative, SharedReferencesCache};
+use crate::preludes::derive::{CoreValue, DatexNative, SharedReferencesCache};
 use crate::traits::get_datex_type::GetDatexType;
+use crate::values::core_values::native::DatexNativeBase;
 use crate::values::value::value_classification::ValueClassification;
 
 impl<K, V> DatexNative for HashMap<K, V>
 where
-    K: DatexNative + GetDatexType + Eq + Hash,
-    V: DatexNative + GetDatexType,
+    K: DatexNativeBase + Eq + Hash + 'static,
+    V: DatexNativeBase + 'static,
 {
     fn as_any(&self) -> &dyn Any {
         self
@@ -19,5 +20,16 @@ where
 
     fn classification(&self, cache: &mut SharedReferencesCache) -> ValueClassification {
         ValueClassification::None
+    }
+}
+
+
+impl<K, V> From<HashMap<K, V>> for CoreValue
+where
+    K: DatexNativeBase + Eq + Hash + 'static,
+    V: DatexNativeBase + 'static,
+{
+    fn from(native: HashMap<K, V>) -> Self {
+        CoreValue::native(native)
     }
 }

@@ -1,16 +1,18 @@
 use core::any::Any;
-use crate::preludes::derive::{DatexNative, SharedReferencesCache, Type};
-use crate::traits::get_datex_type::GetDatexType;
-use crate::types::entity_type::EntityType;
-use crate::values::value::value_classification::ValueClassification;
+use crate::preludes::derive::{CoreValue, DatexNative};
+use crate::values::core_values::native::DatexNativeBase;
 
-impl<T: DatexNative + GetDatexType> DatexNative
-for Vec<T>
-{
+impl<T: DatexNativeBase + 'static> DatexNative for Vec<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+}
+
+impl<T: DatexNativeBase + 'static> From<Vec<T>> for CoreValue {
+    fn from(native: Vec<T>) -> Self {
+        CoreValue::native(native)
     }
 }

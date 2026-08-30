@@ -46,6 +46,7 @@ pub mod get_datex_type;
 pub mod error;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod convert_value_container;
 
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {
