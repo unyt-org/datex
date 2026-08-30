@@ -6,6 +6,7 @@ pub mod get_datex_type;
 mod get_core_lib_type_id;
 mod datex_native_only_structural;
 mod convert_parts;
+pub mod datex_native;
 
 #[cfg(test)]
 mod tests {

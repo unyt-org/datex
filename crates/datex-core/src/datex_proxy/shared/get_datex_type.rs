@@ -1,5 +1,5 @@
 use crate::datex_proxy::shared::Shared;
-use crate::preludes::derive::DatexNative;
+use crate::values::core_values::native::DatexNative;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::shared_values::{SharedContainerMutability, SharedContainerOwnership};
 use crate::traits::get_datex_type::GetDatexType;

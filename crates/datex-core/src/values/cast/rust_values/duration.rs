@@ -16,6 +16,7 @@ use crate::{
 use core::{any::Any, time::Duration};
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::get_datex_type::GetDatexType;
+use crate::types::entity_type::EntityType;
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
@@ -51,8 +52,8 @@ impl DatexNative for Duration {
         self
     }
 
-    fn value_datex_type(&self, cache: &mut SharedReferencesCache) -> Type {
-        <Self as GetDatexType>::datex_type(cache)
+    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
+        None
     }
 }
 

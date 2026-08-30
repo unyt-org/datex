@@ -23,35 +23,35 @@ use crate::{
 use core::{cell::Ref, ops::Deref};
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct SharedContainerContainingEntityType(SharedContainer);
+pub struct EntityType(SharedContainer);
 
-impl Deref for SharedContainerContainingEntityType {
+impl Deref for EntityType {
     type Target = SharedContainer;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl From<SharedContainerContainingEntityType> for SharedContainer {
-    fn from(value: SharedContainerContainingEntityType) -> Self {
+impl From<EntityType> for SharedContainer {
+    fn from(value: EntityType) -> Self {
         value.0
     }
 }
 
-impl From<SharedContainerContainingEntityType>
+impl From<EntityType>
     for SharedContainerContainingType
 {
-    fn from(value: SharedContainerContainingEntityType) -> Self {
+    fn from(value: EntityType) -> Self {
         unsafe { SharedContainerContainingType::new_unchecked(value.0) }
     }
 }
 
-impl SharedContainerContainingEntityType {
+impl EntityType {
     pub fn new_from_definition(
         definition: EntityTypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-    ) -> SharedContainerContainingEntityType {
-        SharedContainerContainingEntityType(
+    ) -> EntityType {
+        EntityType(
             SharedContainer::new_owned_with_inferred_allowed_type(
                 CoreValue::EntityTypeDefinition(definition),
                 SharedContainerMutability::Immutable,
@@ -60,21 +60,21 @@ impl SharedContainerContainingEntityType {
         )
     }
 
-    /// Converts the [SharedContainerContainingEntityType] into a [SharedContainer], consuming the wrapper.
+    /// Converts the [EntityType] into a [SharedContainer], consuming the wrapper.
     pub fn to_shared_container(self) -> SharedContainer {
         self.0
     }
 
-    /// Creates a new [SharedContainerContainingEntityType] from a [SharedContainer] without checking the constraint.
+    /// Creates a new [EntityType] from a [SharedContainer] without checking the constraint.
     /// # Safety
-    /// The caller must ensure that the constraint for [SharedContainerContainingEntityType] is satisfied
+    /// The caller must ensure that the constraint for [EntityType] is satisfied
     /// (i.e. the allowed type of the container is a [Type::Nominal])
     pub unsafe fn new_unchecked(container: SharedContainer) -> Self {
-        SharedContainerContainingEntityType(container)
+        EntityType(container)
     }
 
     /// Returns a reference to the inner [EntityTypeDefinition] contained in the [SharedContainer].
-    /// The [SharedContainerContainingEntityType] guarantees that the inner value is always a [CoreValue::EntityTypeDefinition], so this method can never panic.
+    /// The [EntityType] guarantees that the inner value is always a [CoreValue::EntityTypeDefinition], so this method can never panic.
     pub fn entity_definition(&self) -> Ref<'_, EntityTypeDefinition> {
         let val = self.0.value_container();
         Ref::map(val, |v| match v.try_as::<EntityTypeDefinition>() {
@@ -96,7 +96,7 @@ impl SharedContainerContainingEntityType {
     }
 }
 
-impl TryFrom<SharedContainer> for SharedContainerContainingEntityType {
+impl TryFrom<SharedContainer> for EntityType {
     type Error = ();
     fn try_from(value: SharedContainer) -> Result<Self, Self::Error> {
         // container must be immutable and contain nominal type
@@ -109,7 +109,7 @@ impl TryFrom<SharedContainer> for SharedContainerContainingEntityType {
             };
 
             if is_nominal {
-                Ok(SharedContainerContainingEntityType(value))
+                Ok(EntityType(value))
             } else {
                 Err(())
             }
@@ -119,19 +119,19 @@ impl TryFrom<SharedContainer> for SharedContainerContainingEntityType {
     }
 }
 
-impl TypeSuperset<SharedContainerContainingEntityType>
-    for SharedContainerContainingEntityType
+impl TypeSuperset<EntityType>
+    for EntityType
 {
     fn is_superset_of(
         &self,
-        other: &SharedContainerContainingEntityType,
+        other: &EntityType,
     ) -> bool {
         // if it is directly the same nominal type definition
         self.pointer_address() == other.pointer_address()
     }
 }
 
-impl TypeSatisfiesValueContainer for SharedContainerContainingEntityType {
+impl TypeSatisfiesValueContainer for EntityType {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
         match value.actual_type().deref() {
             TypeDefinition::Box(Type::Entity(entity)) => {

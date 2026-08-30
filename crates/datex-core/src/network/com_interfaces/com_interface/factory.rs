@@ -18,7 +18,7 @@ use crate::{
 use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
-use crate::preludes::derive::DatexNative;
+use crate::values::core_values::native::DatexNative;
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 
 pub type NewSocketsIterator = Pin<

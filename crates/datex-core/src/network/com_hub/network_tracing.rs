@@ -39,6 +39,7 @@ use datex_macros_internal::Datex;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
+use crate::traits::convert_value_container::ConvertValueContainer;
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
 #[datex(only_structural)]
@@ -616,7 +617,7 @@ impl ComHub {
         // convert hops to DATEX
         let hops_datex = hops
             .into_iter()
-            .map(|hop| hop.to_value_container_without_cache())
+            .map(|hop| ValueContainer::Local(Value::native_only_structural(hop)))
             .collect::<Vec<ValueContainer>>();
 
         let pointer_lookup = PointerAvailabilityLookup::default();

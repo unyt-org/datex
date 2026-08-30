@@ -1,10 +1,10 @@
 use crate::{
     ast::type_expressions::{IdentifierWithPointerAddress, TypeExpressionData},
     traits::to_type_expression_data::ToTypeExpressionData,
-    types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
+    types::entity_type::EntityType,
 };
 
-impl ToTypeExpressionData for SharedContainerContainingEntityType {
+impl ToTypeExpressionData for EntityType {
     fn to_type_expression_data(&self) -> TypeExpressionData {
         let pointer_address = self.pointer_address();
         TypeExpressionData::IdentifierWithPointerAddress(

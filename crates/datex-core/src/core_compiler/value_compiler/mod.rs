@@ -162,7 +162,7 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
     value: &Value,
 ) {
     // append non-default type information
-    if let Some(custom_type) = &value.custom_type {
+    if let Some(custom_type) = &value.entity_type {
         // special case: tagged value with default type, no type cast needed
         match custom_type {
             // unit tagged value (e.g. #Example)

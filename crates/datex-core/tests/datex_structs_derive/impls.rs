@@ -23,7 +23,7 @@ use datex_core::{
             entity_type_definition::EntityTypeDefinition,
         },
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
+        entity_type::EntityType,
         r#type::Type,
         type_definition::{
             TypeDefinition,
@@ -87,10 +87,10 @@ fn entity_type_definition_from_type(
 fn take_from_cache() {
     let runtime = Runtime::stub();
     let mut memory = runtime.shared_references_cache_mut();
-    let example_type = Example::value_datex_type(memory.deref_mut());
+    let example_type = Example::entity_type(memory.deref_mut());
 
     // when calling the datex_type function multiple times, it should return the same type definition from cache
-    assert_eq!(example_type, Example::value_datex_type(memory.deref_mut()));
+    assert_eq!(example_type, Example::entity_type(memory.deref_mut()));
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn call_instance_method_from_runtime() {
     let example = Example::new(1, 2);
     let example_vc = Value::native(example, cache.deref_mut());
 
-    let example_type = Example::value_datex_type(cache.deref_mut());
+    let example_type = Example::entity_type(cache.deref_mut());
     let set_a = example_type
         .try_get_property("set_a".into(), cache.deref_mut())
         .unwrap();
@@ -155,7 +155,7 @@ async fn call_async_instance_method_from_runtime() {
     );
 
     let example_type =
-        Example::value_datex_type(runtime.shared_references_cache_mut().deref_mut());
+        Example::entity_type(runtime.shared_references_cache_mut().deref_mut());
     let async_test = example_type
         .try_get_property(
             "async_test".into(),
@@ -189,7 +189,7 @@ async fn call_async_instance_method_from_runtime() {
 fn signatures() {
     let runtime = Runtime::stub();
     let mut memory = runtime.shared_references_cache_mut();
-    let example_type = Example::value_datex_type(memory.deref_mut());
+    let example_type = Example::entity_type(memory.deref_mut());
     let type_definition = entity_type_definition_from_type(&example_type);
 
     // call static method by manually extracting it from the type definition

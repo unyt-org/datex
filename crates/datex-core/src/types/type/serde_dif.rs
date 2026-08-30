@@ -4,7 +4,7 @@ use crate::{
     prelude::*,
     shared_values::SharedContainer,
     types::{
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
+        entity_type::EntityType,
         r#type::Type,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
@@ -95,7 +95,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
         E: serde::de::Error,
     {
         Ok(Type::Entity(unsafe {
-            SharedContainerContainingEntityType::new_unchecked(
+            EntityType::new_unchecked(
                 self.cast::<SharedContainer>()
                     .deserialize(v.into_deserializer())?,
             )

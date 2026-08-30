@@ -733,7 +733,7 @@ mod tests {
         if let ValueContainer::Local(value) = result {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(
-                &value.custom_type,
+                &value.entity_type,
                 &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "Example".to_string(),
                     ty: Some(Box::new(Type::Definition(
@@ -762,7 +762,7 @@ mod tests {
                 )]))
             );
             assert_eq!(
-                &value.custom_type,
+                &value.entity_type,
                 &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "Example".to_string(),
                     ty: None,

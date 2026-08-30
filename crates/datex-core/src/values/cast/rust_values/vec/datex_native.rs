@@ -1,14 +1,10 @@
 use core::any::Any;
-use core::hash::Hash;
-use crate::collections::HashMap;
-use crate::preludes::derive::{DatexNative, SharedReferencesCache};
+use crate::preludes::derive::{DatexNative, SharedReferencesCache, Type};
 use crate::traits::get_datex_type::GetDatexType;
 use crate::types::entity_type::EntityType;
 
-impl<K, V> DatexNative for HashMap<K, V>
-where
-    K: DatexNative + GetDatexType + Eq + Hash,
-    V: DatexNative + GetDatexType,
+impl<T: DatexNative + GetDatexType> DatexNative
+for Vec<T>
 {
     fn as_any(&self) -> &dyn Any {
         self

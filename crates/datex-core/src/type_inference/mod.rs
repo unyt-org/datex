@@ -1578,7 +1578,7 @@ mod tests {
             entities::entity_type_definition::EntityTypeDefinition,
             error::TypeError,
             literal_type_definition::LiteralTypeDefinition,
-            shared_container_containing_entity_type::SharedContainerContainingEntityType,
+            entity_type::EntityType,
             shared_container_containing_type::SharedContainerContainingType,
             r#type::Type,
             type_definition::{

@@ -31,13 +31,15 @@ use core::{
 use std::cell::Ref;
 use crate::network::com_interfaces::default_setup_data::http_common::TLSMode;
 use crate::preludes::derive::{BorrowedValueContainer, SharedReferencesCache};
+use crate::shared_values::PointerAddress;
+use crate::values::value::ValueClassification;
 
 /// Similar to [Value], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.
 #[derive(Debug)]
 pub struct BorrowedValue<'a> {
     pub inner: BorrowedCoreValue<'a>,
-    pub custom_type: Option<TypeDefinition>,
+    pub classification: ValueClassification,
 }
 
 impl<'a> BorrowedValue<'a> {
@@ -48,7 +50,7 @@ impl<'a> BorrowedValue<'a> {
     ) -> Self {
         BorrowedValue {
             inner: BorrowedCoreValue::Native(Goat::Borrowed(val)),
-            custom_type: Some(val.value_datex_type(cache).convert_to_definition()),
+            classification: ValueClassification::from(val.entity_type(cache)),
         }
     }
 
@@ -57,10 +59,10 @@ impl<'a> BorrowedValue<'a> {
         val: Ref<'a, T>,
         cache: &mut SharedReferencesCache
     ) -> Self {
-        let ty = Some(val.value_datex_type(cache).convert_to_definition());
+        let entity_type = val.entity_type(cache);
         BorrowedValue {
             inner: BorrowedCoreValue::Native(Goat::Ref(val)),
-            custom_type: ty,
+            classification: ValueClassification::from(entity_type),
         }
     }
 
@@ -70,7 +72,7 @@ impl<'a> BorrowedValue<'a> {
     {
         Ok(Value {
             inner: self.inner.try_clone_to_core_value()?,
-            custom_type: self.custom_type,
+            classification: self.classification.clone(),
         })
     }
 }
@@ -79,7 +81,7 @@ impl<'a> From<&'a Value> for BorrowedValue<'a> {
     fn from(value: &'a Value) -> Self {
         BorrowedValue {
             inner: BorrowedCoreValue::from(&value.inner),
-            custom_type: value.custom_type.clone(),
+            classification: value.classification.clone(),
         }
     }
 }
@@ -228,7 +230,7 @@ impl<'a> From<BorrowedCoreValue<'a>> for BorrowedValue<'a> {
     fn from(borrowed_core_value: BorrowedCoreValue<'a>) -> Self {
         BorrowedValue {
             inner: borrowed_core_value,
-            custom_type: None,
+            classification: ValueClassification::None,
         }
     }
 }
@@ -237,13 +239,13 @@ impl<'a> From<BorrowedCoreValue<'a>> for BorrowedValue<'a> {
 /// It is used to represent a potentially borrowed mutable reference to a [CoreValue] variant instead of owning it.
 pub struct BorrowedValueMut<'a> {
     pub(crate) inner: BorrowedCoreValueMut<'a>,
-    pub(crate) custom_type: Option<TypeDefinition>,
+    pub(crate) classification: ValueClassification,
 }
 impl<'a> From<&'a mut Value> for BorrowedValueMut<'a> {
     fn from(value: &'a mut Value) -> Self {
         BorrowedValueMut {
             inner: BorrowedCoreValueMut::from(&mut value.inner),
-            custom_type: value.custom_type.clone(),
+            classification: value.classification.clone(),
         }
     }
 }
