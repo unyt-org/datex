@@ -23,7 +23,7 @@ pub fn get_root_property(
             ValueContainer::from(Map::from(runtime.internal.get_env()))
         }
         RootProperty::CONFIG => {
-            ValueContainer::Local(Value::native_only_structural(
+            ValueContainer::Local(Value::native_structural(
                 runtime_state.runtime.config().clone(),
             ))
         }

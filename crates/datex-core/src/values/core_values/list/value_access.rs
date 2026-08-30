@@ -16,10 +16,10 @@ impl ValueAccess for List {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        _cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         if let Some(index) = key.try_as_index() {
-            Ok(self.try_get(index)?.as_borrowed(cache))
+            Ok(self.try_get(index)?.into())
         } else {
             Err(AccessError::InvalidIndexKey)
         }
@@ -28,10 +28,10 @@ impl ValueAccess for List {
     fn try_get_property_mut(
         &mut self,
         key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        _cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         if let Some(index) = key.try_as_index() {
-            Ok(self.try_get_mut(index)?.as_borrowed_mut(cache))
+            Ok(self.try_get_mut(index)?.into())
         } else {
             Err(AccessError::InvalidIndexKey)
         }

@@ -5,7 +5,7 @@ use crate::{
     values::{core_values::endpoint::Endpoint, value::Value},
 };
 use datex_macros_internal::Datex;
-use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
+use crate::traits::datex_native_structural::DatexNativeStructural;
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -22,14 +22,14 @@ pub struct RuntimeConfigInterface {
 }
 
 impl RuntimeConfigInterface {
-    pub fn new<T: DatexNativeOnlyStructural>(
+    pub fn new<T: DatexNativeStructural>(
         interface_type: &str,
         setup_data: T,
     ) -> Result<RuntimeConfigInterface, String> {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            config: Value::native_only_structural(setup_data),
+            config: Value::native_structural(setup_data),
         })
     }
 
@@ -62,13 +62,13 @@ impl RuntimeConfig {
         }
     }
 
-    pub fn add_interface<T: DatexNativeOnlyStructural>(
+    pub fn add_interface<T: DatexNativeStructural>(
         &mut self,
         interface_type: String,
         config: T,
         priority: InterfacePriority,
     ) {
-        let config = Value::native_only_structural(config);
+        let config = Value::native_structural(config);
         let interface = RuntimeConfigInterface {
             interface_type,
             config,
@@ -174,7 +174,7 @@ pub mod tests {
             42
         );
 
-        let value_container =  Value::native_only_structural(config_interface);
+        let value_container =  Value::native_structural(config_interface);
         let parsed_config_interface: RuntimeConfigInterface =
             value_container.try_into().unwrap();
         assert_eq!(parsed_config_interface.interface_type, "test");
@@ -183,7 +183,7 @@ pub mod tests {
     #[test]
     fn datex_proxy_runtime_config() {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
-        let value_container = Value::native_only_structural(config);
+        let value_container = Value::native_structural(config);
         let parsed_config: RuntimeConfig = value_container.try_into().unwrap();
         assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));
     }

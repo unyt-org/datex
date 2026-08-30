@@ -43,7 +43,7 @@ mod tests {
     fn to_value() {
         let mut map = HashMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
-        let value: Value = Value::native_only_structural(map);
+        let value: Value = Value::native_structural(map);
         assert_eq!(
             value.inner,
             CoreValue::Map(Map::from_iter(vec![(

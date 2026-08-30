@@ -37,7 +37,7 @@ mod tests {
     fn endpoint_boxed() {
         let endpoint = Endpoint::new("@jonas");
         let boxed_endpoint = Box::new(endpoint.clone());
-        let value: Value = Value::native_only_structural(boxed_endpoint);
+        let value: Value = Value::native_structural(boxed_endpoint);
         assert!(matches!(
             value.inner,
             CoreValue::Endpoint(ref e) if e == &endpoint
@@ -48,7 +48,7 @@ mod tests {
     fn try_from_value_boxed() {
         // endpoint boxed
         let endpoint = Endpoint::new("@jonas");
-        let value: Value = Value::native_only_structural(Box::new(endpoint.clone()));
+        let value: Value = Value::native_structural(Box::new(endpoint.clone()));
         let boxed_endpoint: Box<Endpoint> = value.try_into_value().unwrap();
         assert_eq!(*boxed_endpoint, endpoint);
 

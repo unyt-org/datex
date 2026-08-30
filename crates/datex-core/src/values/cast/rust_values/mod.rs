@@ -387,7 +387,7 @@ mod tests {
     #[test]
     fn try_without_context() {
         // core rust types like String should be convertible to value without cache
-        let res = Value::native_only_structural("test".to_string());
+        let res = Value::native_structural("test".to_string());
         let res = CoreValue::from("test");
         let res = Value::from("test");
     }
@@ -419,7 +419,7 @@ mod tests {
     #[test]
     fn try_boxed_to_value() {
         let value = Box::new(true);
-        let result = Value::native_only_structural_boxed(value);
+        let result = Value::native_structural_boxed(value);
         assert_eq!(
             result,
             Value::from(CoreValue::Boolean(Boolean(true)))
