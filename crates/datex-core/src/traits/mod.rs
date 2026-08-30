@@ -19,3 +19,4 @@ pub mod get_datex_type;
 pub mod convert_value_container;
 pub mod get_core_lib_type_id;
 pub mod datex_native_only_structural;
+pub mod datex_native_structural;

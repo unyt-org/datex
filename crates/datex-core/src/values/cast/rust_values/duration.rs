@@ -15,9 +15,11 @@ use core::{any::Any, time::Duration};
 use crate::preludes::derive::CoreLibTypeId;
 use crate::traits::convert_parts::{FromParts, IntoParts};
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
+use crate::traits::datex_native_structural::DatexNativeStructural;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 use crate::traits::get_datex_type::GetDatexType;
 use crate::types::entity_type::EntityType;
+use crate::values::value::value_classification::ValueClassification;
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
@@ -51,10 +53,7 @@ impl DatexNative for Duration {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-
-    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
-        None
-    }
 }
 
+impl DatexNativeStructural for Duration {}
 impl DatexNativeOnlyStructural for Duration {}

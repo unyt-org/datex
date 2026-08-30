@@ -12,7 +12,7 @@ pub mod ops;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
-mod datex_native_only_structural;
+mod datex_native_structural;
 pub mod datex_native;
 pub mod get_core_lib_type_id;
 pub mod convert_parts;

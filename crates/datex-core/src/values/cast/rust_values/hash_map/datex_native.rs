@@ -3,7 +3,7 @@ use core::hash::Hash;
 use crate::collections::HashMap;
 use crate::preludes::derive::{DatexNative, SharedReferencesCache};
 use crate::traits::get_datex_type::GetDatexType;
-use crate::types::entity_type::EntityType;
+use crate::values::value::value_classification::ValueClassification;
 
 impl<K, V> DatexNative for HashMap<K, V>
 where
@@ -17,7 +17,7 @@ where
         self
     }
 
-    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
-        None
+    fn classification(&self, cache: &mut SharedReferencesCache) -> ValueClassification {
+        ValueClassification::None
     }
 }

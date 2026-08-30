@@ -16,6 +16,7 @@ pub use crate::{
         errors::{AccessError, KeyNotFoundError},
     },
     traits::value_access::ValueAccess,
+    traits::datex_native_structural::DatexNativeStructural,
     traits::datex_native_only_structural::DatexNativeOnlyStructural,
     types::{
         entities::entity_type_definition::EntityTypeDefinition,

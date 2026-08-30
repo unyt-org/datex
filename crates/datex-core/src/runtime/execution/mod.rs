@@ -516,7 +516,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
-    use crate::values::value::value_classification::ValueClassification;
+    use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -742,10 +742,10 @@ mod tests {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(
                 value.classification(),
-                &ValueClassification::Tag {
+                &ValueClassification::Tag(ValueTag {
                     tag: "Example".to_string(),
                     is_empty: true
-                }
+                })
             )
         } else {
             panic!("Result should be Local value");
@@ -766,10 +766,10 @@ mod tests {
             );
             assert_eq!(
                 value.classification(),
-                &ValueClassification::Tag {
+                &ValueClassification::Tag(ValueTag {
                     tag: "Example".to_string(),
                     is_empty: false
-                }
+                })
             )
         } else {
             panic!("Result should be Local value");

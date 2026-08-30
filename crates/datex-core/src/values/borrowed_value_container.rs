@@ -21,6 +21,7 @@ use core::{
 };
 use crate::preludes::derive::SharedReferencesCache;
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
+use crate::traits::datex_native_structural::DatexNativeStructural;
 
 pub trait AsBorrowed<'a> {
     fn as_borrowed(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a>;
@@ -54,8 +55,8 @@ impl<'a> BorrowedValueContainer<'a> {
 
     
     /// Creates a new `BorrowedValueContainer` from a reference to a native value.
-    pub fn native_borrowed_only_structural<T: DatexNativeOnlyStructural>(val: impl Into<Goat<'a, T>>) -> Self {
-        BorrowedValueContainer::Local(BorrowedValue::native_borrowed_only_structural(val))
+    pub fn native_borrowed_structural<T: DatexNativeStructural>(val: impl Into<Goat<'a, T>>) -> Self {
+        BorrowedValueContainer::Local(BorrowedValue::native_borrowed_structural(val))
     }
 
     /// Tries to get an immutable reference to the value as a specified type.
@@ -115,8 +116,8 @@ impl<'a> BorrowedValueContainerMut<'a> {
 
 
     /// Creates a new `BorrowedValueContainer` from a reference to a native value.
-    pub fn native_borrowed_only_structural<T: DatexNativeOnlyStructural>(val: impl Into<GoatMut<'a, T>>) -> Self {
-        BorrowedValueContainerMut::Local(BorrowedValueMut::native_borrowed_only_structural(val))
+    pub fn native_borrowed_structural<T: DatexNativeStructural>(val: impl Into<GoatMut<'a, T>>) -> Self {
+        BorrowedValueContainerMut::Local(BorrowedValueMut::native_borrowed_structural(val))
     }
 
     /// Tries to get an immutable reference to the value as a specified type.

@@ -1,6 +1,5 @@
 use core::any::Any;
 use crate::preludes::derive::{DatexNative, SharedReferencesCache};
-use crate::types::entity_type::EntityType;
 use crate::values::core_values::endpoint::Endpoint;
 
 impl DatexNative for Endpoint {
@@ -10,9 +9,5 @@ impl DatexNative for Endpoint {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-
-    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
-        None
     }
 }
