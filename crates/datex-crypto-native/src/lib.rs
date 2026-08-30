@@ -1,5 +1,5 @@
 use datex_crypto_facade::{
-    crypto::{AsyncCryptoResult, Crypto},
+    crypto::{AsyncCryptoResult, Crypto, CryptoSync, CryptoVault},
     error::{
         AesCtrError, BackendError, Ed25519GenError, Ed25519SignError,
         Ed25519VerifyError, HkdfError, KeyUnwrapError, KeyWrapError,
@@ -26,6 +26,132 @@ pub struct ReadmeDoctests;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CryptoNative;
+impl CryptoSync for CryptoNative {
+    fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
+        let key = PKey::generate_ed25519()
+            .map_err(|_| BackendError::Unavailable("openssl ed25519 gen"))?;
+
+        let public_key: [u8; 32] = key
+            .raw_public_key()
+            .map_err(|_| BackendError::Unavailable("ed25519 pub der"))?
+            .try_into()
+            .map_err(|_| BackendError::Unavailable("ed25519 pub key length"))?;
+        let private_key: [u8; 32] = key
+            .raw_private_key()
+            .map_err(|_| BackendError::Unavailable("ed25519 priv pkcs8"))?
+            .try_into()
+            .map_err(|_| {
+                BackendError::Unavailable("ed25519 priv key length")
+            })?;
+
+        Ok((public_key, private_key))
+    } // Generate encryption keypair
+    fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError> {
+        let key = PKey::generate_x25519()
+            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?;
+
+        let public_key: [u8; 32] = key
+            .raw_public_key()
+            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?
+            .try_into()
+            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?;
+        let private_key: [u8; 32] = key
+            .raw_private_key()
+            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?
+            .try_into()
+            .map_err(|_| BackendError::Unavailable("openssl x25519 gen"))?;
+        Ok((public_key, private_key))
+    }
+    // Derive shared secret on x255109
+    fn derive_x25519_cheat(
+        pri_key: &[u8; 32],
+        peer_raw: &[u8; 32],
+    ) -> Result<[u8; 32], BackendError> {
+        let my_priv = PKey::private_key_from_raw_bytes(pri_key, Id::X25519)
+            .map_err(|_| BackendError::Unavailable("x25519 derive cheat"))?;
+        let peer_pub = PKey::public_key_from_raw_bytes(peer_raw, Id::X25519)
+            .map_err(|_| BackendError::Unavailable("x25519 derive cheat"))?;
+
+        let mut deriver = Deriver::new(&my_priv)
+            .map_err(|_| BackendError::Unavailable("x25519 deriver"))?;
+        deriver
+            .set_peer(&peer_pub)
+            .map_err(|_| BackendError::Unavailable("x25519 set_peer"))?;
+
+        let shared = deriver
+            .derive_to_vec()
+            .map_err(|_| BackendError::Unavailable("x25519 derive"))?;
+
+        if shared.len() != 32 {
+            return Err(BackendError::Unavailable("x25519 shared len"));
+        }
+
+        let mut out = [0u8; 32];
+        out.copy_from_slice(&shared);
+        Ok(out)
+    }
+
+    fn hkdf_cheat(ikm: &[u8], salt: &[u8]) -> Result<[u8; 32], BackendError> {
+        let info = b"";
+        let mut ctx = PkeyCtx::new_id(Id::HKDF)
+            .map_err(|_| BackendError::Unavailable("openssl hkdf ctx"))?;
+        ctx.derive_init()
+            .map_err(|_| BackendError::Unavailable("openssl hkdf init"))?;
+        ctx.set_hkdf_mode(HkdfMode::EXTRACT_THEN_EXPAND)
+            .map_err(|_| BackendError::Unavailable("openssl hkdf mode"))?;
+        ctx.set_hkdf_md(Md::sha256())
+            .map_err(|_| BackendError::Unavailable("openssl hkdf md"))?;
+        ctx.set_hkdf_salt(salt)
+            .map_err(|_| BackendError::Unavailable("openssl hkdf salt"))?;
+        ctx.set_hkdf_key(ikm)
+            .map_err(|_| BackendError::Unavailable("openssl hkdf key"))?;
+        ctx.add_hkdf_info(info)
+            .map_err(|_| BackendError::Unavailable("openssl hkdf info"))?;
+
+        let mut okm = [0u8; 32];
+        ctx.derive(Some(&mut okm))
+            .map_err(|_| BackendError::Unavailable("openssl hkdf derive"))?;
+        Ok(okm)
+    }
+
+    fn aes_cheat(
+        key: &[u8; 32],
+        iv: &[u8; 16],
+        data: &[u8],
+    ) -> Result<Vec<u8>, BackendError> {
+        let cipher = Cipher::aes_256_ctr();
+        let mut crypter = Crypter::new(cipher, Mode::Decrypt, key, Some(iv))
+            .map_err(|_| BackendError::Unavailable("openssl aes-ctr"))?;
+
+        let mut out = vec![0u8; data.len() + cipher.block_size()];
+        let mut count = crypter
+            .update(data, &mut out)
+            .map_err(|_| BackendError::Unavailable("aes-ctr update"))?;
+
+        count += crypter
+            .finalize(&mut out[count..])
+            .map_err(|_| BackendError::Unavailable("aes-ctr finalize"))?;
+
+        out.truncate(count);
+        Ok(out)
+    }
+
+    fn aes_kw_wrap_cheat(
+        kek_bytes: &[u8; 32],
+        rb: &[u8; 32],
+    ) -> Result<[u8; 40], BackendError> {
+        // Key encryption key
+        let kek = AesKey::new_encrypt(kek_bytes)
+            .map_err(|_| BackendError::Unavailable("openssl aes-kw"))?;
+
+        // Key wrap
+        let mut wrapped = [0u8; 40];
+        let _length = wrap_key(&kek, None, &mut wrapped, rb);
+
+        Ok(wrapped)
+    }
+}
+
 impl Crypto for CryptoNative {
     fn create_uuid() -> String {
         Uuid::new_v4().to_string()
@@ -102,7 +228,7 @@ impl Crypto for CryptoNative {
 
     // EdDSA keygen
     fn gen_ed25519<'a>()
-    -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError> {
         Box::pin(async move {
             let key = PKey::generate_ed25519().map_err(|_| {
                 Ed25519GenError::Backend(BackendError::Unavailable(
@@ -110,17 +236,32 @@ impl Crypto for CryptoNative {
                 ))
             })?;
 
-            // Keep your DER/PKCS8 formats (portable).
-            let public_key = key.public_key_to_der().map_err(|_| {
-                Ed25519GenError::Backend(BackendError::Unavailable(
-                    "ed25519 pub der",
-                ))
-            })?;
-            let private_key = key.private_key_to_pkcs8().map_err(|_| {
-                Ed25519GenError::Backend(BackendError::Unavailable(
-                    "ed25519 priv pkcs8",
-                ))
-            })?;
+            let public_key: [u8; 32] = key
+                .raw_public_key()
+                .map_err(|_| {
+                    Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 pub der",
+                    ))
+                })?
+                .try_into()
+                .map_err(|_| {
+                    Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 pub key length",
+                    ))
+                })?;
+            let private_key: [u8; 32] = key
+                .raw_private_key()
+                .map_err(|_| {
+                    Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 priv pkcs8",
+                    ))
+                })?
+                .try_into()
+                .map_err(|_| {
+                    Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 priv key length",
+                    ))
+                })?;
 
             Ok((public_key, private_key))
         })
@@ -132,8 +273,9 @@ impl Crypto for CryptoNative {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
-            let sig_key = PKey::private_key_from_pkcs8(pri_key)
-                .map_err(|_| Ed25519SignError::InvalidPrivateKey)?;
+            let sig_key =
+                PKey::private_key_from_raw_bytes(pri_key, Id::ED25519)
+                    .map_err(|_| Ed25519SignError::InvalidPrivateKey)?;
 
             let mut signer =
                 Signer::new_without_digest(&sig_key).map_err(|_| {
@@ -166,8 +308,9 @@ impl Crypto for CryptoNative {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
         Box::pin(async move {
-            let public_key = PKey::public_key_from_der(pub_key)
-                .map_err(|_| Ed25519VerifyError::InvalidPublicKey)?;
+            let public_key =
+                PKey::public_key_from_raw_bytes(pub_key, Id::ED25519)
+                    .map_err(|_| Ed25519VerifyError::InvalidPublicKey)?;
 
             // OpenSSL expects signature to be exactly 64 bytes for Ed25519.
             if sig.len() != 64 {
@@ -304,7 +447,7 @@ impl Crypto for CryptoNative {
 
     // Generate encryption keypair
     fn gen_x25519<'a>()
-    -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError> {
         Box::pin(async move {
             let key = PKey::generate_x25519().map_err(|_| {
                 X25519GenError::Backend(BackendError::Unavailable(
@@ -312,8 +455,8 @@ impl Crypto for CryptoNative {
                 ))
             })?;
 
-            let public_key: [u8; 44] = key
-                .public_key_to_der()
+            let public_key: [u8; 32] = key
+                .raw_public_key()
                 .map_err(|_| {
                     X25519GenError::Backend(BackendError::Unavailable(
                         "openssl x25519 gen",
@@ -325,8 +468,8 @@ impl Crypto for CryptoNative {
                         "openssl x25519 gen",
                     ))
                 })?;
-            let private_key: [u8; 48] = key
-                .private_key_to_pkcs8()
+            let private_key: [u8; 32] = key
+                .raw_private_key()
                 .map_err(|_| {
                     X25519GenError::Backend(BackendError::Unavailable(
                         "openssl x25519 gen",
@@ -344,14 +487,15 @@ impl Crypto for CryptoNative {
 
     // Derive shared secret on x255109
     fn derive_x25519<'a>(
-        pri_key: &'a [u8; 48],
-        peer_raw: &'a [u8; 44],
+        pri_key: &'a [u8; 32],
+        peer_raw: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         Box::pin(async move {
-            let my_priv = PKey::private_key_from_pkcs8(pri_key)
+            let my_priv = PKey::private_key_from_raw_bytes(pri_key, Id::X25519)
                 .map_err(|_| X25519DeriveError::InvalidPrivateKey)?;
-            let peer_pub = PKey::public_key_from_der(peer_raw)
-                .map_err(|_| X25519DeriveError::InvalidPeerPublicKey)?;
+            let peer_pub =
+                PKey::public_key_from_raw_bytes(peer_raw, Id::X25519)
+                    .map_err(|_| X25519DeriveError::InvalidPeerPublicKey)?;
 
             let mut deriver = Deriver::new(&my_priv).map_err(|_| {
                 X25519DeriveError::Backend(BackendError::Unavailable(
@@ -385,11 +529,12 @@ impl Crypto for CryptoNative {
 
 #[cfg(test)]
 mod tests {
-    use super::CryptoNative;
+    use super::{CryptoNative, CryptoSync, CryptoVault};
     use datex_crypto_facade::{
         crypto::Crypto,
         error::{Ed25519VerifyError, KeyUnwrapError, X25519DeriveError},
     };
+
     #[test]
     fn uuid() {
         let uuid1 = CryptoNative::create_uuid();
@@ -554,7 +699,7 @@ mod tests {
         let (_pub, pri) = CryptoNative::gen_x25519().await.expect("gen");
 
         // peer key with wrong bytes should error
-        let bad_peer = [0u8; 44]; // not a valid DER public key usually, but your impl uses raw_bytes
+        let bad_peer = [0u8; 32];
         let err = CryptoNative::derive_x25519(&pri, &bad_peer)
             .await
             .unwrap_err();

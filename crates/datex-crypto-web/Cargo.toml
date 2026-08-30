@@ -17,6 +17,19 @@ crate-type = ["rlib"]
 datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.3" }
 wasm-bindgen = { version = "=0.2.123", features = [] }
 wasm-bindgen-futures = "0.4.61"
+# sync crypto workarounds
+aes = { version = "0.8.4", default-features = false }
+aes-kw = { version = "0.2.1", default-features = false }
+ctr = { version = "0.9.2", default-features = false }
+hkdf = { version = "0.12", default-features = false }
+sha2 = { version = "0.10", default-features = false }
+# ECC and (key)formatting
+pkcs8 = {version = "0.10", features = ["alloc", "pem"], default-features = false }
+der = { version = "0.7", default-features = false }
+ed25519-dalek = {version = "2.2", default-features = false }
+x25519-dalek = {version = "2.0", features = ["static_secrets"], default-features = false }
+spki = { version = "0.7", default-features = false }
+
 [dependencies.web-sys]
 version = "0.3.100"
 features = [

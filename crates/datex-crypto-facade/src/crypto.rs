@@ -7,6 +7,35 @@ use crate::error::*;
 pub type AsyncCryptoResult<'a, T, E> =
     Pin<Box<dyn Future<Output = Result<T, E>> + 'a>>;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct CryptoVault {
+    // 25519 static keys
+    pub pri_sig_key: [u8; 32],
+    pub pub_sig_key: [u8; 32],
+    pub pri_cry_key: [u8; 32],
+    pub pub_cry_key: [u8; 32],
+}
+
+impl CryptoVault {
+    pub fn new_empty() -> Self {
+        CryptoVault {
+            pri_sig_key: [0u8; 32],
+            pub_sig_key: [0u8; 32],
+            pri_cry_key: [0u8; 32],
+            pub_cry_key: [0u8; 32],
+        }
+    }
+
+    pub fn set_sig_keys(&mut self, pri_key: [u8; 32], pub_key: [u8; 32]) {
+        self.pri_sig_key = pri_key;
+        self.pub_sig_key = pub_key;
+    }
+    pub fn set_cry_keys(&mut self, pri_key: [u8; 32], pub_key: [u8; 32]) {
+        self.pri_cry_key = pri_key;
+        self.pub_cry_key = pub_key;
+    }
+}
+
 pub trait Crypto: Send + Sync {
     /// Generate a new UUID (version 4). Returns the UUID as a string.
     fn create_uuid() -> String;
@@ -58,7 +87,7 @@ pub trait Crypto: Send + Sync {
 
     /// Generate a new Ed25519 key pair. Returns the public and private keys.
     fn gen_ed25519<'a>()
-    -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError>;
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError>;
 
     type Ed25519SignError: core::fmt::Debug + Send + Sync + 'static =
         crate::error::Ed25519SignError;
@@ -125,7 +154,7 @@ pub trait Crypto: Send + Sync {
 
     /// Generate a new X25519 key pair. Returns the public key as a base58 string and the private key as bytes.
     fn gen_x25519<'a>()
-    -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError>;
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError>;
 
     type X25519DeriveError: core::fmt::Debug + Send + Sync + 'static =
         crate::error::X25519DeriveError;
@@ -133,8 +162,8 @@ pub trait Crypto: Send + Sync {
     /// Derive a shared secret using the X25519 key agreement protocol with the given private key and peer's public key.
     /// Returns the derived 32-byte shared secret.
     fn derive_x25519<'a>(
-        pri_key: &'a [u8; 48],
-        peer_pub: &'a [u8; 44],
+        pri_key: &'a [u8; 32],
+        peer_pub: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError>;
 
     // Base58
@@ -149,6 +178,29 @@ pub trait Crypto: Send + Sync {
             .into_vec()
             .map_err(|_| B58DecodeError::InvalidBase58)
     }
+}
+
+pub trait CryptoSync: Send + Sync {
+    type CryptoSyncError: core::fmt::Debug + Send + Sync + 'static =
+        crate::error::CryptoSyncError;
+
+    fn gen_ed25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError>;
+    fn gen_x25519_cheat() -> Result<([u8; 32], [u8; 32]), BackendError>;
+    fn derive_x25519_cheat(
+        pri_key: &[u8; 32],
+        peer_raw: &[u8; 32],
+    ) -> Result<[u8; 32], BackendError>;
+    fn hkdf_cheat(ikm: &[u8], salt: &[u8]) -> Result<[u8; 32], BackendError>;
+    fn aes_cheat(
+        key: &[u8; 32],
+        iv: &[u8; 16],
+        data: &[u8],
+    ) -> Result<Vec<u8>, BackendError>;
+
+    fn aes_kw_wrap_cheat(
+        kek_bytes: &[u8; 32],
+        rb: &[u8; 32],
+    ) -> Result<[u8; 40], BackendError>;
 }
 
 #[cfg(test)]
@@ -182,7 +234,7 @@ mod tests {
         }
 
         fn gen_ed25519<'a>()
-        -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError>
+        -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError>
         {
             unimplemented!()
         }
@@ -233,14 +285,14 @@ mod tests {
         }
 
         fn gen_x25519<'a>()
-        -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError>
+        -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError>
         {
             unimplemented!()
         }
 
         fn derive_x25519<'a>(
-            _pri_key: &'a [u8; 48],
-            _peer_pub: &'a [u8; 44],
+            _pri_key: &'a [u8; 32],
+            _peer_pub: &'a [u8; 32],
         ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
             unimplemented!()
         }

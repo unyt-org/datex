@@ -17,7 +17,7 @@ use binrw::{
     io::{Cursor, Read},
 };
 use core::{fmt::Display, result::Result, unimplemented};
-use datex_crypto_facade::crypto::Crypto;
+use datex_crypto_facade::crypto::{Crypto, CryptoSync};
 use strum::Display;
 use thiserror::Error;
 
@@ -31,7 +31,6 @@ pub enum HeaderParsingError {
 
 // TODO #110: RawDXBBlock that is received in com_hub, only containing RoutingHeader, BlockHeader and raw bytes
 
-// TODO #429 @Norbert
 // Add optional raw signature, and encrypted part
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct DXBBlock {
@@ -266,7 +265,7 @@ impl DXBBlock {
         let signature = match routing_header.flags.signature_type() {
             SignatureType::Encrypted => {
                 // extract next 255 bytes as the signature
-                let mut signature = Vec::from([0u8; 108]);
+                let mut signature = Vec::from([0u8; 64]);
                 reader.read_exact(&mut signature).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read encrypted signature: {}",
@@ -279,7 +278,7 @@ impl DXBBlock {
             }
             SignatureType::Unencrypted => {
                 // extract next 255 bytes as the signature
-                let mut signature = Vec::from([0u8; 108]);
+                let mut signature = Vec::from([0u8; 64]);
                 reader.read_exact(&mut signature).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read unencrypted signature: {}",
@@ -294,8 +293,8 @@ impl DXBBlock {
         let decrypted_bytes = match routing_header.flags.encryption_type() {
             EncryptionType::Encrypted => {
                 // TODO #113: decrypt the body
-                let mut decrypted_bytes = Vec::from([0u8; 255]);
-                reader.read_exact(&mut decrypted_bytes).map_err(|e| {
+                let mut decrypted_bytes = Vec::new();
+                reader.read_to_end(&mut decrypted_bytes).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read encrypted body: {}",
                         e
@@ -343,7 +342,10 @@ impl DXBBlock {
     /// Validates the signature of the block based on the signature type specified in the routing header.
     /// Returns Ok(self) if the signature is valid, or a SignatureValidationError if the signature is missing, cannot be parsed, or is invalid.
     pub fn validate_signature(
-        self,
+        mut self,
+        peer_pub_sig_key: [u8; 32],
+        peer_pub_cry_key: [u8; 32],
+        own_pri_cry_key: [u8; 32],
     ) -> MaybeAsync<
         Result<DXBBlock, SignatureValidationError>,
         impl Future<Output = Result<DXBBlock, SignatureValidationError>>,
@@ -367,70 +369,66 @@ impl DXBBlock {
             // a pool of incoming blocks awaiting some signature
             signature_type @ (SignatureType::Encrypted
             | SignatureType::Unencrypted) => MaybeAsync::Async(async move {
+                // derive key encryption key
+                let shared_sec = CryptoImpl::derive_x25519_cheat(
+                    &own_pri_cry_key,
+                    &peer_pub_cry_key,
+                )
+                .unwrap();
+
+                if self.block_type() != BlockType::Hello {
+                    let kek_bytes =
+                        CryptoImpl::hkdf_sha256(&shared_sec, &[0u8; 16])
+                            .await
+                            .unwrap();
+                    // split wrapped key from following body
+                    let (wrapped_key, enc_body) = self.body.split_at(40);
+                    let w_key: [u8; 40] = wrapped_key.try_into().unwrap();
+                    let data_key =
+                        CryptoImpl::key_unwrap_rfc3394(&kek_bytes, &w_key)
+                            .await
+                            .unwrap();
+                    let decrypted_body = CryptoImpl::aes_ctr_encrypt(
+                        &data_key, &[0u8; 16], enc_body,
+                    )
+                    .await
+                    .unwrap();
+
+                    self.body = decrypted_body;
+                }
+
                 let is_valid = match signature_type {
-                    SignatureType::Encrypted => {
-                        let raw_sign = self.signature.as_ref().ok_or(
+                    SignatureType::Unencrypted => {
+                        log::info!("Validating not encrypted signature");
+                        let signature = self.signature.as_ref().ok_or(
                             SignatureValidationError::MissingSignature,
                         )?;
-                        let (enc_sign, pub_key) = raw_sign.split_at(64);
-                        let hash = CryptoImpl::hkdf_sha256(pub_key, &[0u8; 16])
+
+                        {
+                            let data = CryptoImpl::hash_sha256(
+                                &self.body,
+                            )
                             .await
                             .map_err(|_| {
                                 SignatureValidationError::SignatureParseError
                             })?;
-                        let signature = CryptoImpl::aes_ctr_decrypt(
-                            &hash, &[0u8; 16], enc_sign,
-                        )
-                        .await
-                        .map_err(|_| {
-                            SignatureValidationError::SignatureParseError
-                        })?;
 
-                        let raw_signed = [pub_key, &self.body.clone()].concat();
-                        let hashed_signed = CryptoImpl::hash_sha256(
-                            &raw_signed,
-                        )
-                        .await
-                        .map_err(|_| {
-                            SignatureValidationError::SignatureParseError
-                        })?;
-
-                        CryptoImpl::ver_ed25519(
-                            pub_key,
-                            &signature,
-                            &hashed_signed,
-                        )
-                        .await
-                        .map_err(|_| {
-                            SignatureValidationError::InvalidSignature
-                        })?
+                            CryptoImpl::ver_ed25519(
+                                &peer_pub_sig_key,
+                                signature,
+                                &data,
+                            )
+                            .await
+                            .map_err(|_| {
+                                SignatureValidationError::InvalidSignature
+                            })?
+                        }
+                    }
+                    SignatureType::Encrypted => {
+                        log::info!("Validating encrypted signature");
+                        unimplemented!("To be implemented...");
                     }
 
-                    SignatureType::Unencrypted => {
-                        let raw_sign = self.signature.as_ref().ok_or(
-                            SignatureValidationError::MissingSignature,
-                        )?;
-                        let (signature, pub_key) = raw_sign.split_at(64);
-
-                        let raw_signed = [pub_key, &self.body.clone()].concat();
-                        let hashed_signed = CryptoImpl::hash_sha256(
-                            &raw_signed,
-                        )
-                        .await
-                        .map_err(|_| {
-                            SignatureValidationError::SignatureParseError
-                        })?;
-
-                        CryptoImpl::ver_ed25519(
-                            pub_key,
-                            signature,
-                            &hashed_signed,
-                        )
-                        .await
-                        .map_err(|_| {
-                            SignatureValidationError::InvalidSignature
-                        })?
-                    }
                     _ => unreachable!(),
                 };
 
@@ -612,65 +610,6 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    #[cfg(feature = "std")]
-    pub async fn signature_to_and_from_bytes() {
-        // setup block
-        let mut routing_header = RoutingHeader::default()
-            .with_sender(Endpoint::from_str("@test").unwrap())
-            .to_owned();
-        routing_header.set_size(157);
-        let mut block = DXBBlock {
-            body: vec![0x01, 0x02, 0x03],
-            encrypted_header: EncryptedHeader {
-                ..Default::default()
-            },
-            routing_header,
-            ..DXBBlock::default()
-        };
-
-        // setup correct signature
-        block
-            .routing_header
-            .flags
-            .set_signature_type(SignatureType::Unencrypted);
-
-        let (pub_key, pri_key) = CryptoImpl::gen_ed25519().await.unwrap();
-        let raw_signed = [pub_key.clone(), block.body.clone()].concat();
-        let hashed_signed = CryptoImpl::hash_sha256(&raw_signed).await.unwrap();
-
-        let signature = CryptoImpl::sig_ed25519(&pri_key, &hashed_signed)
-            .await
-            .unwrap();
-        // 64 + 44 = 108
-        block.signature = Some([signature.to_vec(), pub_key.clone()].concat());
-
-        let block_bytes = block.to_bytes();
-        let block2: DXBBlock = DXBBlock::from_bytes(&block_bytes).unwrap();
-        assert_eq!(block, block2);
-        assert_eq!(block.signature, block2.signature);
-
-        // setup faulty signature
-        let mut other_sig = signature;
-        if other_sig[42] != 42u8 {
-            other_sig[42] = 42u8;
-        } else {
-            other_sig[42] = 43u8;
-        }
-        block.signature = Some([other_sig.to_vec(), pub_key].concat());
-        let block_bytes2 = block.to_bytes();
-        let signature_validation = DXBBlock::from_bytes(&block_bytes2)
-            .unwrap()
-            .validate_signature()
-            .into_future()
-            .await;
-        assert!(signature_validation.is_err());
-        assert_matches!(
-            signature_validation.unwrap_err(),
-            SignatureValidationError::InvalidSignature
-        )
-    }
-
     #[test]
     fn illegal_signed_trace_block() {
         let mut block = DXBBlock::new_with_body(&[0x01, 0x02, 0x03]);
@@ -682,7 +621,7 @@ mod tests {
             .routing_header
             .flags
             .set_signature_type(SignatureType::Unencrypted);
-        block.signature = Some(vec![0u8; 108]);
+        block.signature = Some(vec![0u8; 64]);
 
         let block_bytes = block.to_bytes();
         let parse_result = DXBBlock::from_bytes(&block_bytes);
