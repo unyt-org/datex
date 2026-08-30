@@ -21,7 +21,7 @@ impl BaseSharedValueContainer {
         if let UpdateOperation::Replace(replace) = operation {
             if !self
                 .allowed_type()
-                .is_superset_of(replace.value.actual_type().as_ref())
+                .is_superset_of(&replace.value.actual_type())
             {
                 // FIXE type check
 

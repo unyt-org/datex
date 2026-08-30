@@ -402,14 +402,14 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
             ))
         })?;
 
-        let custom_type: Option<TypeDefinition> =
-            seq.next_element_seed(self.cast::<TypeDefinition>()).map_err(|err| {
+        let classification: Option<ValueClassification> =
+            seq.next_element_seed(self.cast::<ValueClassification>()).map_err(|err| {
                 serde::de::Error::custom(format!(
                     "error deserializing custom type definition for core value: {err}"
                 ))
             })?;
 
-        Ok(Value::new(inner, custom_type))
+        Ok(Value::new(inner, classification))
     }
 }
 

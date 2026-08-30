@@ -39,11 +39,11 @@ impl TypeSuperset<TypeDefinition> for CoreLibTypeId {
 
 impl TypeSatisfiesValueContainer for CoreLibTypeId {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
-        // TODO: better way to get core lib type id for value here?
-        value.actual_type().core_lib_type_id().is_some_and(
-            |value_core_lib_type_id| {
-                self.is_superset_of(&value_core_lib_type_id)
-            },
-        )
+        match value {
+            ValueContainer::Local(local_value) => {
+                self.is_superset_of(&local_value.core_type())
+            }
+            ValueContainer::Shared(shared_value) => false
+        }
     }
 }

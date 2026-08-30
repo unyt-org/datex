@@ -12,6 +12,7 @@ mod value_access;
 mod get_core_lib_type_id;
 mod get_datex_type;
 mod datex_native;
+pub mod convert_parts;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Range {

@@ -30,7 +30,7 @@ pub trait FromParts {
 /// A trait for types that can be converted into parts.
 pub trait IntoParts {
     /// Converts the implementing type into its parts.
-    fn into_parts(self, cache: &mut SharedReferencesCache) -> Option<Parts> {
+    fn into_parts(self, cache: &mut SharedReferencesCache) -> Option<Parts> where Self: Sized {
         None
     }
 

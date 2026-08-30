@@ -2,7 +2,11 @@
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod get_datex_type;
-
+mod datex_native_only_structural;
+mod datex_native;
+mod convert_parts;
+mod get_core_lib_type_id;
+mod value_access;
 
 #[cfg(test)]
 mod tests {
@@ -22,7 +26,7 @@ mod tests {
         // if impl_datex_direct_via_value_container would be not implemented, for Value it definitely is (user defined types)
         let value: Value = Integer::from(42).into();
         let boxed_integer = Box::new(value);
-        let value: Value = Value::native_only_structural(boxed_integer);
+        let value: Value = Value::native(boxed_integer, &mut SharedReferencesCache::default());
         assert!(matches!(
             value.inner,
             CoreValue::Integer(ref i) if i == &Integer::from(42)
