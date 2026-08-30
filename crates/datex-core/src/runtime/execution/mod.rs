@@ -509,6 +509,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
+    use crate::values::value::value_classification::ValueClassification;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -733,16 +734,11 @@ mod tests {
         if let ValueContainer::Local(value) = result {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(
-                &value.entity_type,
-                &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                value.classification(),
+                &ValueClassification::Tag {
                     tag: "Example".to_string(),
-                    ty: Some(Box::new(Type::Definition(
-                        TypeDefinition::CoreType(
-                            CoreLibBaseTypeId::Unit.into()
-                        )
-                        .into()
-                    ))),
-                }))
+                    is_empty: true
+                }
             )
         } else {
             panic!("Result should be Local value");
@@ -762,11 +758,11 @@ mod tests {
                 )]))
             );
             assert_eq!(
-                &value.entity_type,
-                &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                value.classification(),
+                &ValueClassification::Tag {
                     tag: "Example".to_string(),
-                    ty: None,
-                }))
+                    is_empty: false
+                }
             )
         } else {
             panic!("Result should be Local value");

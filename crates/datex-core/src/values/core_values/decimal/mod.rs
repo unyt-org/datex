@@ -24,6 +24,10 @@ mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;
 mod datex_native_only_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod datex_native;
+mod convert_parts;
 
 pub const DECIMAL_NAN: &str = "nan";
 pub const DECIMAL_INFINITY: &str = "infinity";

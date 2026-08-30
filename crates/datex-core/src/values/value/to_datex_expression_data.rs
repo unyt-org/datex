@@ -34,7 +34,7 @@ fn classification_expression(
             })
         }
         ValueClassification::Entity(entity_type) => {
-            let name = entity_type.entity_definition().name;
+            let name = entity_type.entity_definition().name.clone();
             DatexExpressionData::EntityValue(EntityValueExpression {
                 entity_name: name,
                 entity_address: Some(entity_type.pointer_address()),

@@ -18,6 +18,10 @@ mod serde_dif;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
+mod datex_native;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod convert_parts;
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 

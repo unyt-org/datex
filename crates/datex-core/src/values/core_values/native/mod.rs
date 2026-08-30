@@ -13,6 +13,8 @@ mod serde_dif;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
+mod get_core_lib_type_id;
+mod get_datex_type;
 
 use crate::{
     libs::core::type_id::CoreLibTypeId, traits::try_clone::TryClone,

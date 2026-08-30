@@ -13,6 +13,10 @@ pub mod ops;
 mod to_datex_expression_data;
 mod value_access;
 mod datex_native_only_structural;
+pub mod datex_native;
+pub mod get_core_lib_type_id;
+pub mod convert_parts;
+pub mod get_datex_type;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,

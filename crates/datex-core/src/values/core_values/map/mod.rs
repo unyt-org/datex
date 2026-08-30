@@ -27,6 +27,9 @@ pub mod serde_dif;
 mod to_datex_expression_data;
 pub mod updates;
 mod value_access;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod datex_native;
 
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,

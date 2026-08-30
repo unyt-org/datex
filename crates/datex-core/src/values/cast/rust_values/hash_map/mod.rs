@@ -1,6 +1,5 @@
 //! Implements [DatexValueProxy] for [HashMap<K, V>] where K: [DatexValueProxy] + Eq + Hash and V: [DatexValueProxy].
 
-mod as_borrowed;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;

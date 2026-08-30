@@ -1,4 +1,3 @@
-mod as_borrowed;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;

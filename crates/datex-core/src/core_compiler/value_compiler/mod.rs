@@ -55,6 +55,7 @@ use crate::{
     },
     values::core_values::callable::CallableBody,
 };
+use crate::values::value::value_classification::ValueClassification;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -161,39 +162,31 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
     context: &mut T,
     value: &Value,
 ) {
-    // append non-default type information
-    if let Some(custom_type) = &value.entity_type {
-        // special case: tagged value with default type, no type cast needed
-        match custom_type {
-            // unit tagged value (e.g. #Example)
-            TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty:
-                    Some(Type::Definition(TypeDefinitionWithMetadata {
-                        definition:
-                            TypeDefinition::CoreType(CoreLibTypeId::Base(
-                                CoreLibBaseTypeId::Unit,
-                            )),
-                        ..
-                    })),
-                tag,
-            }) => {
-                context
-                    .write(RegularInstruction::tagged_value(tag.clone(), true));
-                return; // early return, don't append null value; TODO: assert that value is actually null?
-            }
-            // tagged value with actual value (e.g. #Example(null))
-            TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: Option::None,
-                tag,
-            }) => {
-                context.write(RegularInstruction::tagged_value(
-                    tag.clone(),
-                    false,
-                ));
-            }
-            _ => append_type_cast(context, custom_type),
+    // append classified type information
+    match &value.classification {
+        // unit tagged value (e.g. #Example)
+        ValueClassification::Tag {
+            tag,
+            is_empty,
+        } => {
+            context
+                .write(RegularInstruction::tagged_value(tag.clone(), *is_empty));
+            if *is_empty {return}; // early return, don't append null value; TODO: assert that value is actually null?
+        }
+        // entity value
+        ValueClassification::Entity(entity_type) => {
+            context.write(RegularInstruction::EntityValue(entity_type.pointer_address()));
+        }
+        // impls value
+        ValueClassification::Impls(impls) => {
+            todo!("Compiling values with Impls classification is not yet implemented");
+        }
+        // no classification, just append the value
+        ValueClassification::None => {
+
         }
     }
+
     let _: () = match &value.inner {
         CoreValue::Type(ty) => {
             if let Some(core_id) = ty.try_as_core_lib_type() {
@@ -365,16 +358,6 @@ pub fn append_apply<T: BufferProvider + ValueVisitor>(
         context.visit_value_container(&arg);
     }
     context.write(callee);
-}
-
-pub fn append_type_cast<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
-    ty: &TypeDefinition,
-) {
-    context.write(RegularInstruction::typed_value());
-
-    // append type
-    context.visit_type(&Type::from(ty.clone()));
 }
 
 /// Appends a boolean value using the TRUE or FALSE instruction
@@ -646,6 +629,7 @@ mod tests {
     use core::assert_matches;
     use log::info;
     use crate::shared_values::traits::SharedContainerCommon;
+    use crate::values::value::value_classification::ValueClassification;
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -665,15 +649,7 @@ mod tests {
     fn compile_tagged_empty_value() {
         let value = Value::new(
             CoreValue::Null,
-            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: Some(Box::new(Type::Definition(
-                    TypeDefinition::CoreType(CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Unit,
-                    ))
-                    .into(),
-                ))),
-                tag: "Example".to_string(),
-            })),
+            ValueClassification::Tag {tag: "Example".to_string(), is_empty: true},
         );
 
         compile_value_assert_instructions(
@@ -689,10 +665,7 @@ mod tests {
     fn compile_tagged_value() {
         let value = Value::new(
             CoreValue::Null,
-            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: None,
-                tag: "Example".to_string(),
-            })),
+            ValueClassification::Tag {tag: "Example".to_string(), is_empty: false},
         );
 
         compile_value_assert_instructions(
@@ -1216,7 +1189,7 @@ mod tests {
         }
 
         let shared_clone = shared.clone();
-        
+
         let shared_owned_address = match shared.pointer_address() {
             PointerAddress::SelfOwned(owned) => owned,
             _ => unreachable!(),
@@ -1238,9 +1211,9 @@ mod tests {
                 is_self_referencing: true,
             }
         );
-        
+
         let dxb = context.into_dxb_with_shared_values().dxb;
-        
+
         assert_instructions_equal!(
             &dxb,
             (RegularInstruction::statements_with_children(

@@ -20,11 +20,17 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
+
 pub mod primitive;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
 mod datex_native_only_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod convert_parts;
+mod datex_native;
 
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).
@@ -114,7 +120,7 @@ impl Serialize for TypedInteger {
 
 impl From<&TypedInteger> for CoreLibTypeId {
     fn from(value: &TypedInteger) -> Self {
-        CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(value.variant()))
+        value.core_lib_type_id()
     }
 }
 
