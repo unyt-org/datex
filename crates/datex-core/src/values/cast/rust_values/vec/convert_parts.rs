@@ -1,14 +1,14 @@
-use crate::preludes::derive::{BorrowedValueContainer, SharedReferencesCache};
+use crate::preludes::derive::{SharedReferencesCache};
 use crate::traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts};
 use crate::traits::convert_value_container::ConvertValueContainer;
 
 impl<T: ConvertValueContainer> IntoParts for Vec<T> {
-    fn into_parts<'a>(self, cache: &'a mut SharedReferencesCache) -> Parts<'a> {
-        Parts::List(Box::new(self.into_iter().map(move |item| item.to_value_container(cache))))
+    fn into_parts<'a>(self, cache: &'a mut SharedReferencesCache) -> Option<Parts<'a>> where Self: 'a, {
+        Some(Parts::List(Box::new(self.into_iter().map(move |item| item.to_value_container(cache)))))
     }
 
-    fn as_parts<'a>(&'a self, cache: &'a mut SharedReferencesCache) -> BorrowedParts<'a> {
-        BorrowedParts::List(Box::new(self.iter().map(|item| item.as_borrowed_value_container(cache))))
+    fn as_parts<'a>(&'a self, cache: &'a mut SharedReferencesCache) -> Option<BorrowedParts<'a>> {
+        Some(BorrowedParts::List(Box::new(self.iter().map(|item| item.as_borrowed_value_container(cache)))))
     }
 }
 
