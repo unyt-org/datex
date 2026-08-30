@@ -8,10 +8,22 @@ use crate::traits::convert_parts::{FromParts, IntoParts};
 use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::traits::datex_native_structural::DatexNativeStructural;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
+use crate::traits::get_datex_type::GetDatexType;
 #[cfg(feature = "decompiler")]
 use crate::traits::to_datex_expression_data::ToDatexExpressionData;
 use crate::types::entity_type::EntityType;
 use crate::values::value::value_classification::{ValueClassification, ValueTag};
+
+
+#[cfg(feature = "decompiler")]
+pub trait DatexNativeBase: ConvertValueContainer + GetDatexType + ToDatexExpressionData {}
+#[cfg(feature = "decompiler")]
+impl <T> DatexNativeBase for T where T: ConvertValueContainer + GetDatexType + ToDatexExpressionData {}
+
+#[cfg(not(feature = "decompiler"))]
+pub trait DatexNativeBase: ConvertValueContainer + GetDatexType {}
+#[cfg(not(feature = "decompiler"))]
+impl <T> DatexNativeBase for T where T: ConvertValueContainer + GetDatexType {}
 
 // TODO: better solution than duplicate definition of trait for different feature flags?
 #[cfg(feature = "decompiler")]
@@ -35,7 +47,7 @@ pub trait DatexNative:
     fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
         None
     }
-    
+
     /// Returns a [ValueTag] if the value has a tag.
     /// The default implementation returns None, indicating that the value does not have a tag.
     fn tag(&self) -> Option<ValueTag> {

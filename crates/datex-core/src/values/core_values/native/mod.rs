@@ -33,7 +33,7 @@ impl<T: DatexNative> ConvertValueContainer for T {
         ValueContainer::Local(Value::native(self, cache))
     }
 
-    fn as_borrowed_value_container<'a>(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a> {
+    fn as_borrowed_value_container(&self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer {
         BorrowedValueContainer::Local(BorrowedValue::native_borrowed(self, cache))
     }
 

@@ -12,11 +12,12 @@ use crate::{
     },
 };
 use core::hash::Hash;
+use crate::traits::convert_value_container::ConvertValueContainer;
 
 impl<K, V> ValueAccess for HashMap<K, V>
 where
-    K: DatexNative + Eq + Hash,
-    V: DatexNative,
+    K: ConvertValueContainer + Eq + Hash,
+    V: ConvertValueContainer,
 {
     fn try_get_property(
         &self,

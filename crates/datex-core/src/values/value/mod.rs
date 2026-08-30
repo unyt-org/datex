@@ -127,7 +127,7 @@ impl Value {
             classification,
         )
     }
-    
+
     /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
     /// Since types might be needed to get resolved for entity values, the cache is required.
     pub fn native_dyn(
