@@ -4,7 +4,6 @@
 use crate::{
     ast::expressions::InterfaceMethodCall, collections::HashSet,
     type_inference::infer_expression_type_detailed_errors,
-    types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
     values::core_value::CoreValue,
 };
 
@@ -71,6 +70,7 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
+use crate::types::entity_type::EntityType;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -318,7 +318,7 @@ impl<'a> Precompiler<'a> {
         // the inner value will be replaced, once the type declaration is fully visited in
         // during the type inference (visit_type_declaration in type_inference::type_inference_visitor)
         let type_def = Type::Entity(unsafe {
-            SharedContainerContainingEntityType::new_unchecked(
+            EntityType::new_unchecked(
                 SharedContainer::new_owned_with_inferred_allowed_type(
                     CoreValue::EntityTypeDefinition(EntityTypeDefinition::new(
                         TypeDefinition::core(CoreLibBaseTypeId::Any),

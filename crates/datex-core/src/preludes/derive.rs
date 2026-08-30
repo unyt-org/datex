@@ -16,10 +16,10 @@ pub use crate::{
         errors::{AccessError, KeyNotFoundError},
     },
     traits::value_access::ValueAccess,
+    traits::datex_native_only_structural::DatexNativeOnlyStructural,
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
         r#type::Type,
         type_definition::{
             TypeDefinition, list::ListTypeDefinition, map::MapTypeDefinition,

@@ -42,7 +42,7 @@ mod datex_inspector {
 pub fn register_inspector_namespace(runtime: &Runtime) {
     let mut memory = runtime.shared_references_cache_refcell().borrow_mut();
     let inspector_type = ValueContainer::from(
-        datex_inspector::Inspector::value_datex_type(&mut memory),
+        datex_inspector::Inspector::entity_type(&mut memory),
     );
 
     runtime

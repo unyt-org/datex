@@ -141,7 +141,7 @@ mod tests {
         let ser =
             val.to_datex_native_value(&mut SharedReferencesCache::default());
         assert_eq!(
-            ser.custom_type().expect("custom type should be present"),
+            ser.entity_type().expect("custom type should be present"),
             &TypeDefinition::core(CoreLibBaseTypeId::Text),
         );
         assert_eq!(

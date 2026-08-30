@@ -1,6 +1,8 @@
 use core::any::Any;
-use crate::preludes::derive::{DatexNative, SharedReferencesCache, Type};
 use crate::traits::get_datex_type::GetDatexType;
+use crate::types::entity_type::EntityType;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::values::core_values::native::DatexNative;
 
 impl<T: DatexNative + GetDatexType> DatexNative
 for Option<T>
@@ -12,7 +14,7 @@ for Option<T>
         self
     }
 
-    fn value_datex_type(&self, cache: &mut SharedReferencesCache) -> Type {
-        <Self as GetDatexType>::datex_type(cache)
+    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
+        None
     }
 }

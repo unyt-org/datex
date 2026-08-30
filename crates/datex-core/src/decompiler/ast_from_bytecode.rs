@@ -54,6 +54,7 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
+use crate::ast::expressions::EntityValueExpression;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -398,7 +399,7 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::SetSharedContainerValue
                         | RegularInstruction::Unbox
                         | RegularInstruction::SharedRefWithValue(_)
-                        | RegularInstruction::TypedValue
+                        | RegularInstruction::EntityValue(_)
                         | RegularInstruction::Increment
                         | RegularInstruction::Decrement
                         | RegularInstruction::MoveWithValue(_)
@@ -725,19 +726,13 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::TypedValue => {
+                            RegularInstruction::EntityValue(address) => {
                                 let expr = collected_results.pop_value();
-                                let expr_type =
-                                    collected_results.pop_type();
-                                DatexExpressionData::Apply(Apply {
-                                    base: (
-                                        DatexExpressionData::TypeExpression(
-                                            expr_type,
-                                        )
-                                            .with_default_span()
-                                    ),
-                                    arguments: vec![expr],
-                                })
+                                DatexExpressionData::EntityValue(EntityValueExpression {
+                                    entity_name: address.to_string(), // TODO: resolve human readable name?
+                                    entity_address: Some(address),
+                                    value: expr,
+                                })  
                                     .with_default_span()
                                     .into()
                             }

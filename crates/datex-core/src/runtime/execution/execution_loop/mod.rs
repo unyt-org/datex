@@ -121,6 +121,8 @@ use crate::{
     },
 };
 use collected_execution_result::CollectedExecutionResult;
+use crate::types::entity_type::EntityType;
+use crate::values::value::value_classification::ValueClassification;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -316,7 +318,7 @@ pub gen fn inner_execution_loop(
                             // null
                             RegularInstruction::Null => Some(ValueContainer::from(Value::null()).into()),
 
-                            RegularInstruction::Uninitialized => Some(ValueContainer::from(Value::unitialized()).into()),
+                            RegularInstruction::Uninitialized => Some(ValueContainer::from(Value::uninitialized()).into()),
 
                             // text
                             RegularInstruction::ShortText(ShortTextData(text)) => {
@@ -424,10 +426,12 @@ pub gen fn inner_execution_loop(
                             }
 
                             RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
-                                Some(RuntimeValue::ValueContainer(ValueContainer::Local(Value::new(CoreValue::Null, Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                                    tag,
-                                    ty: Some(Box::new(TypeDefinition::CoreType(CoreLibBaseTypeId::Unit.into()).into())),
-                                }))))))
+                                Some(RuntimeValue::ValueContainer(
+                                    ValueContainer::Local(Value::new(CoreValue::Null, ValueClassification::Tag {
+                                        tag,
+                                        is_empty: true,
+                                    }))
+                                ))
                             }
 
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
@@ -484,7 +488,7 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::Decrement |
                             RegularInstruction::SetSharedContainerValue |
                             RegularInstruction::Unbox |
-                            RegularInstruction::TypedValue |
+                            RegularInstruction::EntityValue(_) |
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::MoveWithValue(_) |
                             RegularInstruction::SharedRefWithValue(_) |
@@ -676,9 +680,9 @@ pub gen fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::TaggedValue(TaggedValue {
-                                                                    tag: ShortTextData(tag),
-                                                                    is_empty
-                                                                }) => {
+                                    tag: ShortTextData(tag),
+                                    is_empty
+                                }) => {
                                     assert!(!is_empty);
                                     let value_container = collected_results.try_pop_value_container(&mut state)?;
                                     create_tagged_value_container(
@@ -857,19 +861,24 @@ pub gen fn inner_execution_loop(
                                     let value_container = expression.into_value_container(&mut state)?;
                                     ValueContainer::from(Value::boxed(value_container)).into()
                                 }
-                                RegularInstruction::TypedValue => {
+                                RegularInstruction::EntityValue(address) => {
                                     let mut value_container = collected_results
                                         .try_pop_value_container(&mut state)?;
-                                    let ty =
-                                        collected_results.pop_type();
+
+                                    let container = resolve_cache_value(
+                                        &mut state,
+                                        &address,
+                                        SharedContainerOwnership::Owned,
+                                    )?;
+                                    // try to convert to EntityType
+                                    let entity_type = EntityType::try_from(container)
+                                        .map_err(|_| ExecutionError::invalid_program(InvalidProgramError::InvalidType))?;
 
                                     match &mut value_container {
                                         ValueContainer::Local(value) => {
-                                            value.custom_type = Some(ty.convert_to_definition());
+                                            value.classification = ValueClassification::Entity(entity_type);
                                         }
-                                        _ => panic!(
-                                            "Expected ValueContainer::Value for type casting"
-                                        ),
+                                        _ => return yield Err(ExecutionError::invalid_program(InvalidProgramError::InvalidType)),
                                     }
                                     RuntimeValue::ValueContainer(
                                         value_container,
@@ -919,7 +928,7 @@ pub gen fn inner_execution_loop(
                                         )).map_err(|e| e.into())?;
 
                                     // create new list from result values
-                                    ValueContainer::from(res_values).into()
+                                    ValueContainer::from(List::new(res_values)).into()
                                 }
 
                                 RegularInstruction::SpliceDynamic => {
@@ -962,7 +971,7 @@ pub gen fn inner_execution_loop(
                                         )).map_err(|e| e.into())?;
 
                                     // create new list from result values
-                                    ValueContainer::from(res_values).into()
+                                    ValueContainer::from(List::new(res_values)).into()
                                 }
 
                                 RegularInstruction::Clear => {
@@ -1766,7 +1775,7 @@ fn create_new_reference_from_value(
     ref_mutability: ReferenceMutability,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
     let memory = &mut runtime.shared_references_cache_refcell().borrow_mut();
-    
+
     if let Some(reference) = memory.get_reference(pointer_address) {
         return Ok(reference.clone());
     }

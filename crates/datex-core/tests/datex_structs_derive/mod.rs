@@ -215,7 +215,7 @@ fn enum_to_value() {
 
     assert_structural_eq!(variant_a, Value::null());
     assert_eq!(
-        variant_a.custom_type,
+        variant_a.entity_type,
         Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantA".to_string(),
             ty: None
@@ -228,7 +228,7 @@ fn enum_to_value() {
         Value::from(vec![Value::from(1u8), Value::from(2u8)])
     );
     assert_eq!(
-        variant_b.custom_type,
+        variant_b.entity_type,
         Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantB".to_string(),
             ty: None,
@@ -248,7 +248,7 @@ fn enum_to_value() {
         ]))
     );
     assert_eq!(
-        variant_c.custom_type,
+        variant_c.entity_type,
         Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantC".to_string(),
             ty: None,
@@ -258,7 +258,7 @@ fn enum_to_value() {
     let variant_d: Value = ExampleEnum::VariantD(1).into();
     assert_structural_eq!(variant_d, Value::from(1u8));
     assert_eq!(
-        variant_d.custom_type,
+        variant_d.entity_type,
         Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantD".to_string(),
             ty: None,

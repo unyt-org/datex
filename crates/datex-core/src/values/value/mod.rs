@@ -28,6 +28,7 @@ pub mod serde_dif;
 mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;
+pub mod value_classification;
 
 use crate::{
     datex_proxy::TryToDatexValueError,
@@ -46,23 +47,22 @@ use core::{
     result::Result,
 };
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
-use crate::traits::get_datex_type::GetDatexType;
+use crate::types::entity_type::EntityType;
+use crate::values::value::value_classification::ValueClassification;
 
 #[derive(Debug)]
 pub struct Value {
     /// The inner representation of the value, which is a [CoreValue].
     pub inner: CoreValue,
-    /// actual type of the value - if [None], use default type for given value
-    pub custom_type: Option<TypeDefinition>,
+    /// additional extensions for the value, including its entity type, impls, and tag
+    pub classification: ValueClassification,
 }
 
-/// The Value clone does copy the value and custom type,
-/// but removed the observer
 impl Clone for Value {
     fn clone(&self) -> Self {
         Value {
             inner: self.inner.clone(),
-            custom_type: self.custom_type.clone(),
+            classification: self.classification.clone(),
         }
     }
 }
@@ -72,7 +72,7 @@ impl<T: Into<CoreValue>> From<T> for Value {
         let inner = inner.into();
         Value {
             inner,
-            custom_type: None,
+            classification: ValueClassification::default(),
         }
     }
 }
@@ -82,17 +82,17 @@ impl Value {
         CoreValue::Null.into()
     }
 
-    pub fn unitialized() -> Self {
+    pub fn uninitialized() -> Self {
         CoreValue::Uninitialized.into()
     }
 
     pub fn new(
         inner: impl Into<CoreValue>,
-        custom_type: Option<TypeDefinition>,
+        classification: impl Into<ValueClassification>,
     ) -> Self {
         Value {
             inner: inner.into(),
-            custom_type,
+            classification: classification.into()
         }
     }
 
@@ -102,10 +102,10 @@ impl Value {
         value: Box<T>,
         cache: &mut SharedReferencesCache,
     ) -> Value {
-        let ty = value.value_datex_type(cache).convert_to_definition();
+        let ty = value.entity_type(cache);
         Value::new(
             CoreValue::native_boxed(value),
-            Some(ty),
+            ty,
         )
     }
 
@@ -115,10 +115,10 @@ impl Value {
         value: T,
         cache: &mut SharedReferencesCache,
     ) -> Value {
-        let ty = value.value_datex_type(cache).convert_to_definition();
+        let ty = value.entity_type(cache);
         Value::new(
             CoreValue::native(value),
-            Some(ty),
+            ty,
         )
     }
 
@@ -146,36 +146,14 @@ impl Value {
         )
     }
 
-    pub fn custom_type(&self) -> Option<&TypeDefinition> {
-        self.custom_type.as_ref()
+    pub fn entity_type(&self) -> Option<&EntityType> {
+        self.classification.entity_type.as_ref()
     }
     pub fn into_inner(self) -> CoreValue {
         self.inner
     }
     pub fn is_uninitialized(&self) -> bool {
         matches!(&self.inner, CoreValue::Uninitialized)
-    }
-
-    /// Collapses the inner [CoreValue] of the [Value] to a DATEX value if it is a [CoreValue::Native].
-    pub fn into_non_native(
-        self,
-        cache: &mut SharedReferencesCache,
-    ) -> Result<Value, TryToDatexValueError> {
-        match self.inner {
-            CoreValue::Native(native) => {
-                Ok(native.value.try_boxed_to_value(cache)?)
-            }
-            _ => Ok(self),
-        }
-    }
-
-    /// Returns the inner [CoreValue] of the [Value].
-    /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
-    pub fn into_inner_non_native(
-        self,
-        cache: &mut SharedReferencesCache,
-    ) -> Result<CoreValue, TryToDatexValueError> {
-        self.into_non_native(cache).map(|v| v.inner)
     }
 
     /// Returns a reference to the inner [CoreValue] of the [Value].
@@ -222,15 +200,15 @@ impl Value {
         body: CallableBody,
         creator: Endpoint,
     ) -> Self {
-        Value {
-            inner: CoreValue::Callable(Callable {
+        Value::new(
+            CoreValue::Callable(Callable {
                 name,
-                signature: signature.clone(),
+                signature,
                 body,
                 creator,
             }),
-            custom_type: Some(TypeDefinition::callable(signature)),
-        }
+            None,
+        )
     }
 
     pub fn is_null(&self) -> bool {
@@ -271,19 +249,13 @@ impl Value {
     ///   integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
     ///   the variant must be included in the compiler output - so we need to handle theses cases as well.
     ///   Generally speaking, all variants except the few integer variants should never be considered default types.
-    pub fn has_default_type(&self) -> bool {
-        match &self.custom_type {
-            None => true,
-            Some(TypeDefinition::CoreType(core_type)) => {
-                core_type == &self.default_core_type()
-            }
-            Some(_) => false,
-        }
+    pub fn has_entity_type(&self) -> bool {
+        self.classification.entity_type.is_some()
     }
 
     /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
     pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
-        match &self.custom_type {
+        match &self.classification.entity_type {
             Some(actual_type) => Sheep::Borrowed(actual_type),
             None => {
                 Sheep::Owned(TypeDefinition::CoreType(self.default_core_type()))
@@ -304,7 +276,7 @@ impl Value {
     /// Returns true if the value needs to be casted to its actual type.
     /// This allows us to strip away the type cast on compilation, as not required.
     pub fn needs_type_cast(&self) -> bool {
-        if self.has_default_type() {
+        if !self.has_entity_type() {
             return false;
         }
         if self.has_structural_type() && !self.has_tagged_type() {
@@ -643,30 +615,9 @@ mod tests {
     #[test]
     fn default_types() {
         let val = Value::from(Integer::from(42));
-        assert!(val.has_default_type());
+        assert!(!val.has_entity_type());
 
         let val = Value::from(42i8);
-        assert!(val.has_default_type());
-
-        let val = Value {
-            inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(TypeDefinition::CoreType(
-                CoreLibBaseTypeId::Integer.into(),
-            )),
-        };
-
-        assert!(val.has_default_type());
-
-        let val = Value {
-            inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(TypeDefinition::ImplType(
-                ImplTypeDefinition::new(
-                    Type::core(CoreLibBaseTypeId::Integer),
-                    vec![],
-                ),
-            )),
-        };
-
-        assert!(!val.has_default_type());
+        assert!(!val.has_entity_type());
     }
 }

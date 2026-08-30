@@ -8,7 +8,7 @@ use crate::{
     },
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
+        entity_type::EntityType,
         r#type::Type,
     },
     values::{
@@ -18,8 +18,8 @@ use crate::{
 use core::{any::TypeId, fmt::Display, ops::Deref};
 
 pub enum SharedTypeReservation {
-    Existing(SharedContainerContainingEntityType),
-    New(SharedContainerContainingEntityType),
+    Existing(EntityType),
+    New(EntityType),
 }
 
 #[derive(Debug, Default)]
@@ -153,11 +153,11 @@ impl SharedReferencesCache {
     }
 
     /// Tries to get a shared container containing an EntityTypeDefinition from the cache for the given SelfOwnedPointerAddress.
-    /// Returns the [SharedContainerContainingEntityType] if found, or None if not found
+    /// Returns the [EntityType] if found, or None if not found
     pub fn try_get_shared_type(
         &mut self,
         address: SelfOwnedPointerAddress,
-    ) -> Option<SharedContainerContainingEntityType> {
+    ) -> Option<EntityType> {
         // return existing type container stored in cache
         if let Some(value) = self
             .get_owned_reference(&PointerAddress::SelfOwned(address.clone()))
@@ -176,7 +176,7 @@ impl SharedReferencesCache {
             }
             // SAFETY: We have checked that the value is a SharedContainer containing an EntityTypeDefinition.
             unsafe {
-                Some(SharedContainerContainingEntityType::new_unchecked(
+                Some(EntityType::new_unchecked(
                     SharedContainer::Referenced(value.clone()),
                 ))
             }
@@ -185,7 +185,7 @@ impl SharedReferencesCache {
         }
     }
 
-    /// Registers a new shared container type in the cache for the given address and returns the registered container as a [SharedContainerContainingEntityType].
+    /// Registers a new shared container type in the cache for the given address and returns the registered container as a [EntityType].
     ///
     /// # Safety
     /// The caller must ensure that the address is not used anywhere else.
@@ -193,10 +193,10 @@ impl SharedReferencesCache {
         &mut self,
         address: SelfOwnedPointerAddress,
         entity_type_definition: EntityTypeDefinition,
-    ) -> SharedContainerContainingEntityType {
+    ) -> EntityType {
         // create new shared container
         let shared_type_container = unsafe {
-            SharedContainerContainingEntityType::new_unchecked(
+            EntityType::new_unchecked(
                 SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
                     CoreValue::EntityTypeDefinition(entity_type_definition),
                     SharedContainerMutability::Immutable,
@@ -227,7 +227,7 @@ impl SharedReferencesCache {
             .get_owned_reference(&PointerAddress::SelfOwned(address.clone()))
         {
             return SharedTypeReservation::Existing(unsafe {
-                SharedContainerContainingEntityType::new_unchecked(
+                EntityType::new_unchecked(
                     SharedContainer::Referenced(existing.clone()),
                 )
             });
@@ -245,7 +245,7 @@ impl SharedReferencesCache {
         // NOTE: this treats shared_container as if it already contains a type value.
         // So accessing it as a type before finish_shared_type is called will panic.
         SharedTypeReservation::New(unsafe {
-            SharedContainerContainingEntityType::new_unchecked(shared_container)
+            EntityType::new_unchecked(shared_container)
         })
     }
 

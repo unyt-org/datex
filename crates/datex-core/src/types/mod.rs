@@ -2,7 +2,7 @@
 pub mod entities;
 pub mod error;
 pub mod literal_type_definition;
-pub mod shared_container_containing_entity_type;
+pub mod entity_type;
 pub mod shared_container_containing_type;
 pub mod traits;
 pub mod r#type;

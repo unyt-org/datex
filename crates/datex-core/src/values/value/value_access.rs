@@ -18,6 +18,7 @@ use crate::{
     },
 };
 use core::cell::Ref;
+use crate::values::value::value_classification::ValueClassification;
 
 impl ValueAccess for Value {
     fn try_get_property(
@@ -45,7 +46,7 @@ impl ValueAccess for Value {
                         inner: BorrowedCoreValue::Callable(Goat::Ref(
                             reference,
                         )),
-                        custom_type: None,
+                        classification: ValueClassification::None,
                     }))
                 } else {
                     Err(AccessError::InvalidIndexKey)

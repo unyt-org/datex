@@ -21,6 +21,7 @@ use core::{
     fmt::Debug,
 };
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
+use crate::values::value::value_classification::ValueClassification;
 
 pub trait AsBorrowed<'a> {
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a>;
@@ -37,7 +38,7 @@ impl<'a> BorrowedValueContainer<'a> {
     pub fn native_borrowed_only_structural<T: DatexNativeOnlyStructural>(val: &'a T) -> Self {
         BorrowedValueContainer::Local(BorrowedValue {
             inner: BorrowedCoreValue::Native(Goat::Borrowed(val)),
-            custom_type: None,
+            classification: ValueClassification::None,
         })
     }
 
@@ -45,7 +46,7 @@ impl<'a> BorrowedValueContainer<'a> {
     pub fn native_ref<T: DatexNativeOnlyStructural>(val: Ref<'a, T>) -> Self {
         BorrowedValueContainer::Local(BorrowedValue {
             inner: BorrowedCoreValue::Native(Goat::Ref(val)),
-            custom_type: None,
+            classification: ValueClassification::None,
         })
     }
 
@@ -91,7 +92,7 @@ impl<'a> BorrowedValueContainerMut<'a> {
     pub fn native_borrowed_only_structural<T: DatexNativeOnlyStructural>(val: &'a mut T) -> Self {
         BorrowedValueContainerMut::Local(BorrowedValueMut {
             inner: BorrowedCoreValueMut::Native(GoatMut::Borrowed(val)),
-            custom_type: None,
+            classification: ValueClassification::None,
         })
     }
 
@@ -99,7 +100,7 @@ impl<'a> BorrowedValueContainerMut<'a> {
     pub fn native_ref_only_structural<T: DatexNativeOnlyStructural>(val: RefMut<'a, T>) -> Self {
         BorrowedValueContainerMut::Local(BorrowedValueMut {
             inner: BorrowedCoreValueMut::Native(GoatMut::Ref(val)),
-            custom_type: None,
+            classification: ValueClassification::None,
         })
     }
 

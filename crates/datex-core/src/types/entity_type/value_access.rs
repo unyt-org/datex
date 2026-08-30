@@ -2,7 +2,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::{AccessError, KeyNotFoundError},
     traits::value_access::ValueAccess,
-    types::shared_container_containing_entity_type::SharedContainerContainingEntityType,
+    types::entity_type::EntityType,
     values::{
         borrowed_value_container::BorrowedValueContainer,
         value::borrowed_value::{BorrowedCoreValue, BorrowedValue},
@@ -10,8 +10,9 @@ use crate::{
     },
 };
 use core::cell::Ref;
+use crate::values::value::value_classification::ValueClassification;
 
-impl ValueAccess for SharedContainerContainingEntityType {
+impl ValueAccess for EntityType {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
@@ -27,7 +28,7 @@ impl ValueAccess for SharedContainerContainingEntityType {
             })?;
             Ok(BorrowedValueContainer::Local(BorrowedValue {
                 inner: BorrowedCoreValue::Callable(callable_ref.into()),
-                custom_type: None,
+                classification: ValueClassification::None,
             }))
         } else {
             Err(AccessError::InvalidIndexKey)

@@ -1,8 +1,9 @@
 use core::any::Any;
 use core::hash::Hash;
 use crate::collections::HashMap;
-use crate::preludes::derive::{DatexNative, SharedReferencesCache, Type};
+use crate::preludes::derive::{DatexNative, SharedReferencesCache};
 use crate::traits::get_datex_type::GetDatexType;
+use crate::types::entity_type::EntityType;
 
 impl<K, V> DatexNative for HashMap<K, V>
 where
@@ -16,7 +17,7 @@ where
         self
     }
 
-    fn value_datex_type(&self, cache: &mut SharedReferencesCache) -> Type {
-        <Self as GetDatexType>::datex_type(cache)
+    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
+        None
     }
 }

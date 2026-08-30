@@ -120,8 +120,8 @@ pub enum InstructionCode {
 
     UNBOX, // *x
 
-    /// type byte codes --> switch to Type Space
-    TYPED_VALUE,
+    /// value with entity classification
+    ENTITY_VALUE,
     TYPE_EXPRESSION, // type()
 
     // ...
