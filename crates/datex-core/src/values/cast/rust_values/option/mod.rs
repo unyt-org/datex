@@ -24,19 +24,19 @@ mod tests {
         let some_option: Option<Integer> = Some(Integer::new(1));
         let none_option: Option<Integer> = None;
 
-        let some_value: Value = Value::native_only_structural(some_option);
-        let none_value: Value = Value::native_only_structural(none_option);
+        let some_value: Value = Value::native_structural(some_option);
+        let none_value: Value = Value::native_structural(none_option);
 
         assert_eq!(
             some_value,
-            Value::boxed(Value::native_only_structural(Integer::new(1)))
+            Value::boxed(Value::native_structural(Integer::new(1)))
         );
         assert_eq!(none_value, Value::boxed(Value::null()));
     }
 
     #[test]
     fn from_value() {
-        let some_value = Value::boxed(Value::native_only_structural(Integer::new(1)));
+        let some_value = Value::boxed(Value::native_structural(Integer::new(1)));
         let some_option: Option<Integer> = some_value.try_into().unwrap();
         assert_eq!(some_option, Some(Integer::new(1)));
 

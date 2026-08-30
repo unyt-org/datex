@@ -4,14 +4,14 @@ use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedValue};
 use crate::values::value::Value;
 
 impl<T: IntoParts> IntoParts for Option<T> {
-    fn into_parts(self, cache: &mut SharedReferencesCache) -> Option<Parts> {
+    fn into_parts<'a>(self, cache: &'a mut SharedReferencesCache) -> Option<Parts> where Self: 'a {
         match self {
             Some(value) => value.into_parts(cache),
             None => None,
         }
     }
 
-    fn as_parts(&self, cache: &mut SharedReferencesCache) -> Option<BorrowedParts> {
+    fn as_parts<'a>(&'a self, cache: &'a mut SharedReferencesCache) -> Option<BorrowedParts<'a>> {
         match self {
             Some(value) => value.as_parts(cache),
             None => None,

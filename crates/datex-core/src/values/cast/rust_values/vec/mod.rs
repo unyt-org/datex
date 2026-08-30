@@ -33,7 +33,7 @@ mod tests {
     #[test]
     fn to_value() {
         let vec = vec![Integer::new(1), Integer::new(2), Integer::new(3)];
-        let value: Value = Value::native_only_structural(vec);
+        let value: Value = Value::native_structural(vec);
         assert!(matches!(
             value.inner,
             CoreValue::List(ref l) if l == &List::from(vec![ValueContainer::from(Integer::new(1)), ValueContainer::from(Integer::new(2)), ValueContainer::from(Integer::new(3))])

@@ -49,7 +49,7 @@ use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
-use crate::preludes::derive::TaggedTypeDefinition;
+use crate::preludes::derive::{DatexNativeStructural, TaggedTypeDefinition};
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::types::entity_type::EntityType;
 use crate::types::r#type::Type;
@@ -141,10 +141,10 @@ impl Value {
         )
     }
 
-    /// Creates a new CoreValue from a native value that implements the [DatexNativeOnlyStructural] trait.
+    /// Creates a new CoreValue from a native value that implements the [DatexNativeStructural] trait.
     /// Since the type is required to be completely structural without any entity references,
     /// no cache is needed to resolve types.
-    pub fn native_only_structural<T: DatexNativeOnlyStructural>(
+    pub fn native_structural<T: DatexNativeStructural>(
         value: T,
     ) -> Value {
         let classification = value.classification_without_cache();
@@ -154,10 +154,10 @@ impl Value {
         )
     }
 
-    /// Creates a new CoreValue from a native value that implements the [DatexNativeOnlyStructural] trait.
+    /// Creates a new CoreValue from a native value that implements the [DatexNativeStructural] trait.
     /// Since the type is required to be completely structural without any entity references,
     /// no cache is needed to resolve types.
-    pub fn native_only_structural_boxed<T: DatexNativeOnlyStructural>(
+    pub fn native_structural_boxed<T: DatexNativeStructural>(
         value: Box<T>,
     ) -> Value {
         let classification = value.classification_without_cache();

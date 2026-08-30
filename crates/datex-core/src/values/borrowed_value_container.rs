@@ -20,8 +20,8 @@ use core::{
     fmt::Debug,
 };
 use crate::preludes::derive::SharedReferencesCache;
-use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::datex_native_structural::DatexNativeStructural;
+use crate::values::core_values::map::BorrowedMapKey;
 
 pub trait AsBorrowed<'a> {
     fn as_borrowed(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a>;
@@ -53,7 +53,7 @@ impl<'a> BorrowedValueContainer<'a> {
         BorrowedValueContainer::Local(BorrowedValue::native_borrowed(val, cache))
     }
 
-    
+
     /// Creates a new `BorrowedValueContainer` from a reference to a native value.
     pub fn native_borrowed_structural<T: DatexNativeStructural>(val: impl Into<Goat<'a, T>>) -> Self {
         BorrowedValueContainer::Local(BorrowedValue::native_borrowed_structural(val))
@@ -180,16 +180,37 @@ impl<'a> AsBorrowed<'a> for Value {
     }
 }
 
-impl<'a> AsBorrowed<'a> for ValueContainer {
-    fn as_borrowed(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a> {
-        match self {
+impl<'a> From<&'a ValueContainer> for BorrowedValueContainer<'a> {
+    fn from(value_container: &'a ValueContainer) -> Self {
+        match value_container {
             ValueContainer::Shared(shared_container) => {
-                shared_container.as_borrowed(cache)
+                BorrowedValueContainer::Shared(shared_container.clone())
             }
-            ValueContainer::Local(local_value) => local_value.as_borrowed(cache),
+            ValueContainer::Local(local_value) => BorrowedValueContainer::Local(BorrowedValue::from(local_value)),
         }
     }
 }
+
+impl<'a> From<&'a mut ValueContainer> for BorrowedValueContainerMut<'a> {
+    fn from(value_container: &'a mut ValueContainer) -> Self {
+        match value_container {
+            ValueContainer::Shared(shared_container) => {
+                BorrowedValueContainerMut::Shared(shared_container.clone())
+            }
+            ValueContainer::Local(local_value) => BorrowedValueContainerMut::Local(BorrowedValueMut::from(local_value)),
+        }
+    }
+}
+
+impl<'a> From<BorrowedMapKey<'a>> for BorrowedValueContainer<'a> {
+    fn from(borrowed_map_key: BorrowedMapKey<'a>) -> Self {
+        match borrowed_map_key {
+            BorrowedMapKey::Text(text) => todo!(),// BorrowedValueContainer::Local(BorrowedValue::native_borrowed_structural(text)),
+            BorrowedMapKey::Value(value) => BorrowedValueContainer::from(value)
+        }
+    }
+}
+
 
 impl<'a> From<BorrowedValueMut<'a>> for BorrowedValueContainerMut<'a> {
     fn from(borrowed_value: BorrowedValueMut<'a>) -> Self {

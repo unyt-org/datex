@@ -7,7 +7,7 @@ use crate::{
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 use url::Url;
-use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
+use crate::traits::datex_native_structural::DatexNativeStructural;
 
 #[derive(Debug)]
 pub enum URLError {
@@ -58,7 +58,7 @@ pub fn parse_url(address: &str) -> Result<Url, URLError> {
 }
 
 /// Generates the setup data for client interfaces based on the server's accept addresses.
-pub fn get_clients_setup_data<T: DatexNativeOnlyStructural>(
+pub fn get_clients_setup_data<T: DatexNativeStructural>(
     accept_addresses: Option<Vec<AcceptAddress>>,
     protocols: (String, String),
     interface_type: String,

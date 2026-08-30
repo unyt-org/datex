@@ -617,7 +617,7 @@ impl ComHub {
         // convert hops to DATEX
         let hops_datex = hops
             .into_iter()
-            .map(|hop| ValueContainer::Local(Value::native_only_structural(hop)))
+            .map(|hop| ValueContainer::Local(Value::native_structural(hop)))
             .collect::<Vec<ValueContainer>>();
 
         let pointer_lookup = PointerAvailabilityLookup::default();
