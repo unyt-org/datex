@@ -5,7 +5,7 @@ use crate::{
     },
 };
 use crate::datex_proxy::shared::Shared;
-use crate::preludes::derive::DatexNative;
+use crate::preludes::derive::{BorrowedValueContainer, DatexNative};
 use crate::traits::convert_value_container::ConvertValueContainer;
 
 impl<T> ConvertValueContainer for Shared<T> 
@@ -16,6 +16,10 @@ where T: ConvertValueContainer + DatexNative
         _cache: &mut SharedReferencesCache,
     ) -> ValueContainer {
         ValueContainer::Shared(self.container)
+    }
+
+    fn as_borrowed_value_container<'a>(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a> {
+        BorrowedValueContainer::Shared(self.container.clone())
     }
 
     fn try_from_value_container(value_container: ValueContainer) -> Result<Self, ()>

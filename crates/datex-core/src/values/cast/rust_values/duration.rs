@@ -14,6 +14,7 @@ use crate::{
     },
 };
 use core::{any::Any, time::Duration};
+use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::get_datex_type::GetDatexType;
 
 #[cfg(feature = "decompiler")]
@@ -51,17 +52,19 @@ impl DatexNative for Duration {
     }
 
     fn value_datex_type(&self, cache: &mut SharedReferencesCache) -> Type {
-        Self::value_datex_type(cache)
+        <Self as GetDatexType>::datex_type(cache)
     }
 }
 
+impl DatexNativeOnlyStructural for Duration {}
+
 impl<'a> AsBorrowed<'a> for Duration {
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
-        BorrowedValueContainer::native_borrowed(self)
+        BorrowedValueContainer::native_borrowed_only_structural(self)
     }
 }
 impl<'a> AsBorrowedMut<'a> for Duration {
     fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
-        BorrowedValueContainerMut::native_borrowed(self)
+        BorrowedValueContainerMut::native_borrowed_only_structural(self)
     }
 }

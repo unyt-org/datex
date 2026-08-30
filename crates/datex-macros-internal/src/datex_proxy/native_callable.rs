@@ -60,13 +60,13 @@ pub fn generate_native_callable(
 
     let return_type_tokens = match return_type {
         Some(ref ty) => {
-            quote! { Some(Box::new(<#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache))) }
+            quote! { Some(Box::new(<#ty as #datex_core_crate_name::traits::get_datex_type::GetDatexType>::datex_type(cache))) }
         }
         None => quote! { None },
     };
     let yeet_type_tokens = match yeet_type {
         Some(ref ty) => {
-            quote! { Some(Box::new(<#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache))) }
+            quote! { Some(Box::new(<#ty as #datex_core_crate_name::traits::get_datex_type::GetDatexType>::datex_type(cache))) }
         }
         None => quote! { None },
     };
@@ -81,7 +81,7 @@ pub fn generate_native_callable(
                 parameter_defs.push(quote! {
                     (
                         Some("self".to_string()),
-                        <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache)
+                        <#ty as #datex_core_crate_name::traits::get_datex_type::GetDatexType>::datex_type(cache)
                     )
                 });
             }
@@ -97,7 +97,7 @@ pub fn generate_native_callable(
                 parameter_defs.push(quote! {
                     (
                         Some(#name.to_string()),
-                        <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache)
+                        <#ty as #datex_core_crate_name::traits::get_datex_type::GetDatexType>::datex_type(cache)
                     )
                 });
             }
@@ -219,7 +219,7 @@ pub fn generate_native_callable(
 
             #(#call_argument_inits)*
 
-            let mut result_value = #datex_core_crate_name::datex_proxy::ToDatexNativeValueContainer::boxed_to_datex_native_value_container(
+            let mut result_value = #datex_core_crate_name::traits::convert_value_container::ConvertValueContainer::to_value_container(
                 #method_call_body,
                 &mut #datex_core_crate_name::runtime::cache::shared_references_cache::SharedReferencesCache::default(), // empty placeholder cache to satisfy the trait bound, FIXME: better solution
             );
@@ -253,7 +253,7 @@ pub fn generate_native_callable(
     let return_type_init = match return_type {
         Some(ref ty) => {
             quote! {
-                let return_type = <#ty as #datex_core_crate_name::datex_proxy::DatexProxyType>::datex_type(cache);
+                let return_type = <#ty as #datex_core_crate_name::traits::get_datex_type::GetDatexType>::datex_type(cache);
             }
         }
         None => quote! {

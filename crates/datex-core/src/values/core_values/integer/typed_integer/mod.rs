@@ -24,6 +24,7 @@ pub mod primitive;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
+mod datex_native_only_structural;
 
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).

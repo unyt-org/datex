@@ -45,6 +45,7 @@ use crate::{
         },
     },
 };
+use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 use crate::traits::get_datex_type::GetDatexType;
 
@@ -94,6 +95,8 @@ macro_rules! implement_rust_native_traits {
         //     }
         // }
 
+        impl DatexNativeOnlyStructural for $type {}
+        
         impl GetCoreLibTypeId for $type {
             fn core_lib_type_id(&self) -> CoreLibTypeId {
                 $dx_type.into()
@@ -108,12 +111,12 @@ macro_rules! implement_rust_native_traits {
 
         impl<'a> AsBorrowed<'a> for $type {
             fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
-                BorrowedValueContainer::native_borrowed(self)
+                BorrowedValueContainer::native_borrowed_only_structural(self)
             }
         }
         impl<'a> AsBorrowedMut<'a> for $type {
             fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
-                BorrowedValueContainerMut::native_borrowed(self)
+                BorrowedValueContainerMut::native_borrowed_only_structural(self)
             }
         }
     };

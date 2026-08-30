@@ -4,6 +4,9 @@ mod as_borrowed;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
+pub mod get_datex_type;
+mod datex_native;
+mod datex_native_only_structural;
 
 use crate::{
     collections::HashMap,
@@ -26,110 +29,9 @@ use crate::{
 };
 use core::{any::Any, hash::Hash};
 
-impl<
-    K: DatexValueContainerProxy + Eq + Hash + 'static,
-    V: DatexValueContainerProxy + 'static,
-> DatexValueProxy for HashMap<K, V>
-{
-}
-
-impl<
-    K: DatexValueContainerProxyDeserialize + Eq + Hash + 'static,
-    V: DatexValueContainerProxyDeserialize + 'static,
-> DatexValueProxyDeserialize for HashMap<K, V>
-{
-    fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
-        match Map::try_from(value) {
-            Ok(map) => map
-                .into_iter()
-                .map(|(k, v)| {
-                    let key = K::try_from_value_container(k.into())?;
-                    let value = V::try_from_value_container(v)?;
-                    Ok((key, value))
-                })
-                .collect::<Result<HashMap<K, V>, _>>(),
-            Err(e) => Err(e),
-        }
-    }
-}
-
-impl<
-    K: DatexValueContainerProxySerialize + Eq + Hash,
-    V: DatexValueContainerProxySerialize,
-> DatexValueProxySerialize for HashMap<K, V>
-{
-    fn try_boxed_to_value(
-        self: Box<Self>,
-        context: &mut SharedReferencesCache,
-    ) -> Result<Value, TryToDatexValueError> {
-        let map = self
-            .into_iter()
-            .map(|(k, v)| {
-                let key = Box::new(k).try_boxed_to_value_container(context)?;
-                let value =
-                    Box::new(v).try_boxed_to_value_container(context)?;
-                Ok((key, value))
-            })
-            .collect::<Result<Map, _>>()?;
-        Ok(Value::from(map))
-    }
-}
-
-impl<
-    K: DatexValueContainerProxyInfallibleSerialize + Eq + Hash,
-    V: DatexValueContainerProxyInfallibleSerialize,
-> DatexValueProxyInfallibleSerialize for HashMap<K, V>
-{
-    fn boxed_to_value(
-        self: Box<Self>,
-        context: &mut SharedReferencesCache,
-    ) -> Value {
-        let map = self
-            .into_iter()
-            .map(|(k, v)| {
-                let key = Box::new(k).boxed_to_value_container(context);
-                let value = Box::new(v).boxed_to_value_container(context);
-                (key, value)
-            })
-            .collect::<Map>();
-        Value::from(map)
-    }
-}
-
-impl<K, V> GetDatexType for HashMap<K, V>
-where
-    K: GetDatexType + Eq + Hash,
-    V: GetDatexType,
-{
-    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
-        Type::Definition(
-            TypeDefinition::Collection(CollectionTypeDefinition::Map(
-                MapCollectionTypeDefinition::new(
-                    K::value_datex_type(memory),
-                    V::value_datex_type(memory),
-                ),
-            ))
-            .into(),
-        )
-    }
-}
-
-// TODO: clean up traits
-impl<K, V> DatexNative for HashMap<K, V>
-where
-    K: DatexNative + GetDatexType + DatexValueProxy + Eq + Hash,
-    V: DatexNative + GetDatexType + DatexValueProxy,
-{
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::traits::get_datex_type::GetDatexType;
     use super::*;
     use crate::values::{
         core_value::CoreValue,
@@ -141,7 +43,7 @@ mod tests {
     fn to_value() {
         let mut map = HashMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
-        let value: Value = map.to_value_without_cache();
+        let value: Value = Value::native_only_structural(map);
         assert_eq!(
             value.inner,
             CoreValue::Map(Map::from_iter(vec![(
@@ -160,9 +62,8 @@ mod tests {
             Value::from(Integer::from(1)),
             Value::from(Endpoint::new("@jonas")),
         );
-        let value: Value = map.clone().to_value_without_cache();
-        let map_from_value =
-            HashMap::<Value, Value>::try_from_value(value).unwrap();
+        let value: Value = Value::native_only_structural(map.clone());
+        let map_from_value: HashMap<Value, Value> = value.try_into_value().unwrap();
         assert_eq!(map, map_from_value);
 
         // map with [ValueContainer], [ValueContainer] as key and value
@@ -171,7 +72,7 @@ mod tests {
             ValueContainer::from(Integer::from(1)),
             ValueContainer::from(Endpoint::new("@jonas")),
         );
-        let value: Value = map.clone().to_value_without_cache();
+        let value: Value = Value::native_only_structural(map.clone());
         let map_from_value =
             HashMap::<ValueContainer, ValueContainer>::try_from_value(value)
                 .unwrap();
@@ -180,7 +81,7 @@ mod tests {
         // map with [Integer, Endpoint] as key and value
         let mut map = HashMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
-        let value: Value = map.clone().to_value_without_cache();
+        let value: Value = Value::native_only_structural(map.clone());
         let map_from_value =
             HashMap::<Integer, Endpoint>::try_from_value(value).unwrap();
         assert_eq!(map, map_from_value);
@@ -188,14 +89,14 @@ mod tests {
 
     #[test]
     fn datex_type() {
-        let map_type = HashMap::<Integer, Endpoint>::datex_type_without_cache();
+        let map_type = HashMap::<Integer, Endpoint>::datex_type(&mut SharedReferencesCache::default());
         map_type.with_collapsed_type_definition(|d| {
             assert_eq!(
                 d,
                 &TypeDefinition::Collection(CollectionTypeDefinition::Map(
                     MapCollectionTypeDefinition::new(
-                        Integer::datex_type_without_cache(),
-                        Endpoint::datex_type_without_cache(),
+                        Integer::datex_type(&mut SharedReferencesCache::default()),
+                        Endpoint::datex_type(&mut SharedReferencesCache::default()),
                     )
                 ))
             )

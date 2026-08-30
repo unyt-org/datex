@@ -29,7 +29,7 @@ where
                     Ok(BorrowedValue {
                         inner: BorrowedCoreValue::Native(Goat::Borrowed(value)),
                         custom_type: Some(
-                            T::value_datex_type(cache).convert_to_definition(),
+                            self.value_datex_type(cache).convert_to_definition(),
                         ),
                     }
                     .into())

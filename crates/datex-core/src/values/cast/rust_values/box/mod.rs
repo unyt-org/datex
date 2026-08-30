@@ -2,83 +2,28 @@
 mod as_borrowed;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
+mod get_datex_type;
 
-use crate::{
-    datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
-    prelude::*,
-    runtime::cache::shared_references_cache::SharedReferencesCache,
-    types::r#type::Type,
-    values::value::Value,
-};
-
-impl<T> DatexValueProxy for Box<T> where T: DatexValueProxy {}
-
-impl<T> DatexValueProxySerialize for Box<T>
-where
-    T: DatexValueProxySerialize,
-{
-    fn try_boxed_to_value(
-        self: Box<Self>,
-        context: &mut SharedReferencesCache,
-    ) -> Result<Value, TryToDatexValueError> {
-        (*self).try_boxed_to_value(context)
-    }
-}
-
-impl<T> DatexValueProxyInfallibleSerialize for Box<T>
-where
-    T: DatexValueProxyInfallibleSerialize,
-{
-    fn boxed_to_value(
-        self: Box<Self>,
-        context: &mut SharedReferencesCache,
-    ) -> Value {
-        (*self).boxed_to_value(context)
-    }
-}
-// FIXME do we want to allow ValueContainer directly to be boxed, or should DatexValueProxyDeserialize be enought?
-// We at least would avoid the Umweg over ValueContainer, but we would be able to fullfill `let boxed_value_container: Result<Box<ValueContainer>, _> = Box::try_from_value_container(value_container)`
-// impl<T> DatexValueProxyDeserialize for Box<T>
-// where
-//     T: DatexValueProxyDeserialize,
-// {
-//     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
-//         Ok(Box::new(T::try_from_value(value)?))
-//     }
-// }
-impl<T> DatexValueProxyDeserialize for Box<T>
-where
-    T: DatexValueContainerProxyDeserialize,
-{
-    fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
-        T::try_from_value_container(value.into()).map(Box::new)
-    }
-}
-
-impl<T> GetDatexType for Box<T>
-where
-    T: GetDatexType,
-{
-    fn datex_type(memory: &mut SharedReferencesCache) -> Type {
-        T::value_datex_type(memory)
-    }
-}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::{
+        prelude::*,
+        values::value::Value,
+    };
+    use crate::preludes::derive::SharedReferencesCache;
+    use crate::traits::get_datex_type::GetDatexType;
     use crate::values::{
         core_value::CoreValue,
         core_values::{endpoint::Endpoint, integer::Integer},
-        value::Value,
         value_container::ValueContainer,
     };
     #[test]
     fn boxed_integer() {
-        // if impl_datex_direct_via_value_container would be not implemented, for Value it defintely is (user defined types)
+        // if impl_datex_direct_via_value_container would be not implemented, for Value it definitely is (user defined types)
         let value: Value = Integer::from(42).into();
         let boxed_integer = Box::new(value);
-        let value: Value = boxed_integer.to_value_without_cache();
+        let value: Value = Value::native_only_structural(boxed_integer);
         assert!(matches!(
             value.inner,
             CoreValue::Integer(ref i) if i == &Integer::from(42)
@@ -89,7 +34,7 @@ mod tests {
     fn endpoint_boxed() {
         let endpoint = Endpoint::new("@jonas");
         let boxed_endpoint = Box::new(endpoint.clone());
-        let value: Value = boxed_endpoint.to_value_without_cache();
+        let value: Value = Value::native_only_structural(boxed_endpoint);
         assert!(matches!(
             value.inner,
             CoreValue::Endpoint(ref e) if e == &endpoint
@@ -100,33 +45,28 @@ mod tests {
     fn try_from_value_boxed() {
         // endpoint boxed
         let endpoint = Endpoint::new("@jonas");
-        let value: Value = endpoint.clone().to_value_without_cache();
-        let boxed_endpoint: Result<Box<Endpoint>, _> =
-            Box::try_from_value(value);
-        assert!(boxed_endpoint.is_ok());
-        assert_eq!(*boxed_endpoint.unwrap(), endpoint);
+        let value: Value = Value::native_only_structural(Box::new(endpoint.clone()));
+        let boxed_endpoint: Box<Endpoint> = value.try_into_value().unwrap();
+        assert_eq!(*boxed_endpoint, endpoint);
 
         // value boxed
         let value: Value = Integer::from(42).into();
-        let boxed_integer: Result<Box<Value>, _> = Box::try_from_value(value);
-        assert!(boxed_integer.is_ok());
+        let boxed_integer: Box<Value> = value.try_into_value().unwrap();
         assert!(matches!(
-            *boxed_integer.unwrap(),
+            *boxed_integer,
             Value { inner: CoreValue::Integer(ref i), .. } if i == &Integer::from(42)
         ));
 
         // value container boxed
         let value_container: ValueContainer = Integer::from(42).into();
-        let boxed_value_container: Result<Box<ValueContainer>, _> =
-            Box::try_from_value_container(value_container.clone());
-        assert!(boxed_value_container.is_ok());
-        assert_eq!(*boxed_value_container.unwrap(), value_container);
+        let boxed_value_container: Box<ValueContainer> = value_container.try_into_value().unwrap();
+        assert_eq!(*boxed_value_container, value_container);
     }
 
     #[test]
     fn datex_type() {
-        let boxed_type = Box::<Endpoint>::datex_type_without_cache();
-        let endpoint_type = Endpoint::datex_type_without_cache();
+        let boxed_type = Box::<Endpoint>::datex_type(&mut SharedReferencesCache::default());
+        let endpoint_type = Endpoint::datex_type(&mut SharedReferencesCache::default());
         assert_eq!(boxed_type, endpoint_type);
     }
 }
