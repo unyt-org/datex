@@ -8,7 +8,7 @@ use crate::{
     traits::to_datex_expression_data::ToDatexExpressionData,
     values::value::Value,
 };
-use crate::values::value::value_classification::ValueClassification;
+use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 impl ToDatexExpressionData for Value {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
@@ -23,7 +23,7 @@ fn classification_expression(
 ) -> DatexExpressionData {
     match classification {
         ValueClassification::None => expression,
-        ValueClassification::Tag { tag, is_empty } => {
+        ValueClassification::Tag(ValueTag { tag, is_empty }) => {
             DatexExpressionData::Tag(TagExpression {
                 tag: tag.clone(),
                 expression: if !is_empty {

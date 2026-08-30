@@ -1,8 +1,7 @@
-use crate::values::core_values::native::DatexNative;
+use crate::traits::datex_native_structural::DatexNativeStructural;
 
-/// Marker trait indicating that this value can be converted to a DATEX [Value]
-/// without a cache since no entity type references must be resolved.
+/// Marker trait indicating that this value and any of its sub-values do not have an entity type.
 /// This guarantees that [DatexNative::entity_type] will always return None for this value.
-pub trait DatexNativeOnlyStructural: DatexNative {
+pub trait DatexNativeOnlyStructural: DatexNativeStructural {
 
 }

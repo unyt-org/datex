@@ -1,7 +1,14 @@
 use crate::shared_values::PointerAddress;
 use crate::types::entity_type::EntityType;
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct ValueTag {
+    pub(crate) tag: String,
+    /// if set to true, the inner value is expected to be null but treated as non-existing (#Example instead of #Example(null))
+    pub(crate) is_empty: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub enum ValueClassification {
     #[default]
     None,
@@ -10,11 +17,7 @@ pub enum ValueClassification {
     /// list of impls that are associated with the value (e.g. null + $1234 + $5678)
     Impls(Vec<PointerAddress>),
     /// a tagged value, e.g. #Tagged(42)
-    Tag {
-        tag: String,
-        /// if set to true, the inner value is expected to be null but treated as non-existing (#Example instead of #Example(null))
-        is_empty: bool,
-    },
+    Tag(ValueTag)
 }
 
 impl From<EntityType> for ValueClassification {
@@ -40,9 +43,6 @@ impl From<Vec<PointerAddress>> for ValueClassification {
 
 impl From<String> for ValueClassification {
     fn from(tag: String) -> Self {
-        ValueClassification::Tag {
-            tag,
-            is_empty: true,
-        }
+        ValueClassification::Tag(ValueTag { tag, is_empty: false })
     }
 }

@@ -1,9 +1,7 @@
 use crate::{
     prelude::*,
-    traits::try_clone::TryClone,
     types::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
-        type_definition::TypeDefinition,
     },
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
@@ -32,6 +30,7 @@ use core::cell::{Ref, RefMut};
 use crate::network::com_interfaces::default_setup_data::http_common::TLSMode;
 use crate::preludes::derive::{BorrowedValueContainer, DatexNativeOnlyStructural, SharedReferencesCache};
 use crate::shared_values::PointerAddress;
+use crate::traits::datex_native_structural::DatexNativeStructural;
 use crate::values::value::ValueClassification;
 
 /// Similar to [Value], but contains a [BorrowedCoreValue] instead of a [CoreValue].
@@ -72,22 +71,25 @@ impl<'a> BorrowedValue<'a> {
         val: impl Into<Goat<'a, T>>,
         cache: &mut SharedReferencesCache,
     ) -> Self {
-        let val = into_dyn_goat(val.into());
-        let entity_type = val.entity_type(cache);
+        let val = val.into();
+        let classification = val.classification(cache);
+        let val = into_dyn_goat(val);
         BorrowedValue {
             inner: BorrowedCoreValue::Native(val),
-            classification: ValueClassification::from(entity_type),
+            classification,
         }
     }
 
     /// Creates a new [BorrowedValue] from a reference to a native value.
-    pub fn native_borrowed_only_structural<T: DatexNativeOnlyStructural>(
+    pub fn native_borrowed_structural<T: DatexNativeStructural>(
         val: impl Into<Goat<'a, T>>
     ) -> Self {
-        let val = into_dyn_goat(val.into());
+        let val = val.into();
+        let classification = val.classification_without_cache();
+        let val = into_dyn_goat(val);
         BorrowedValue {
             inner: BorrowedCoreValue::Native(val),
-            classification: ValueClassification::None,
+            classification,
         }
     }
 
@@ -273,22 +275,25 @@ impl<'a> BorrowedValueMut<'a> {
         val: impl Into<GoatMut<'a, T>>,
         cache: &mut SharedReferencesCache,
     ) -> Self {
-        let val = into_dyn_goat_mut(val.into());
-        let entity_type = val.entity_type(cache);
+        let val = val.into();
+        let classification= val.classification(cache);
+        let val = into_dyn_goat_mut(val);
         BorrowedValueMut {
             inner: BorrowedCoreValueMut::Native(val),
-            classification: ValueClassification::from(entity_type),
+            classification,
         }
     }
 
     /// Creates a new [BorrowedValueMut] from a reference to a native value.
-    pub fn native_borrowed_only_structural<T: DatexNativeOnlyStructural>(
+    pub fn native_borrowed_structural<T: DatexNativeStructural>(
         val: impl Into<GoatMut<'a, T>>
     ) -> Self {
-        let val = into_dyn_goat_mut(val.into());
+        let val = val.into();
+        let classification = val.classification_without_cache();
+        let val = into_dyn_goat_mut(val);
         BorrowedValueMut {
             inner: BorrowedCoreValueMut::Native(val),
-            classification: ValueClassification::None,
+            classification,
         }
     }
 }

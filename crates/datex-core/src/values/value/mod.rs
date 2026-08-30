@@ -30,6 +30,8 @@ pub mod update_handler;
 mod value_access;
 pub mod value_classification;
 mod datex_native;
+pub mod convert_parts;
+pub mod get_core_lib_type_id;
 
 use crate::{
     datex_proxy::TryToDatexValueError,
@@ -47,10 +49,11 @@ use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
+use crate::preludes::derive::TaggedTypeDefinition;
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::types::entity_type::EntityType;
 use crate::types::r#type::Type;
-use crate::values::value::value_classification::ValueClassification;
+use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 #[derive(Debug)]
 pub struct Value {
@@ -99,28 +102,42 @@ impl Value {
     }
 
     /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
-    /// Since types might be needed to get resolved for entity values, the cache is required:
-    pub fn native_boxed<T: DatexNative>(
-        value: Box<T>,
-        cache: &mut SharedReferencesCache,
-    ) -> Value {
-        let ty = value.entity_type(cache);
-        Value::new(
-            CoreValue::native_boxed(value),
-            ty,
-        )
-    }
-
-    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
-    /// Since types might be needed to get resolved for entity values, the cache is required:
+    /// Since types might be needed to get resolved for entity values, the cache is required.
     pub fn native<T: DatexNative>(
         value: T,
         cache: &mut SharedReferencesCache,
     ) -> Value {
-        let ty = value.entity_type(cache);
+        let classification = value.classification(cache);
         Value::new(
             CoreValue::native(value),
-            ty,
+            classification,
+        )
+    }
+
+
+    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
+    /// Since types might be needed to get resolved for entity values, the cache is required.
+    pub fn native_boxed<T: DatexNative>(
+        value: Box<T>,
+        cache: &mut SharedReferencesCache,
+    ) -> Value {
+        let classification = value.classification(cache);
+        Value::new(
+            CoreValue::native_boxed(value),
+            classification,
+        )
+    }
+    
+    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
+    /// Since types might be needed to get resolved for entity values, the cache is required.
+    pub fn native_dyn(
+        value: Box<dyn DatexNative>,
+        cache: &mut SharedReferencesCache,
+    ) -> Value {
+        let classification = value.classification(cache);
+        Value::new(
+            CoreValue::native_boxed(value),
+            classification,
         )
     }
 
@@ -130,9 +147,10 @@ impl Value {
     pub fn native_only_structural<T: DatexNativeOnlyStructural>(
         value: T,
     ) -> Value {
+        let classification = value.classification_without_cache();
         Value::new(
             CoreValue::native(value),
-            None,
+            classification,
         )
     }
 
@@ -142,9 +160,10 @@ impl Value {
     pub fn native_only_structural_boxed<T: DatexNativeOnlyStructural>(
         value: Box<T>,
     ) -> Value {
+        let classification = value.classification_without_cache();
         Value::new(
             CoreValue::native_boxed(value),
-            None,
+            classification,
         )
     }
 
@@ -246,7 +265,14 @@ impl Value {
     pub fn actual_type(&self) -> TypeDefinition {
         match &self.classification {
             ValueClassification::Entity(entity_type) => TypeDefinition::Box(Box::new(Type::Entity(entity_type.clone()))),
-            ValueClassification::Tag { tag, .. } => todo!(),
+            ValueClassification::Tag(ValueTag {tag, is_empty}) => TypeDefinition::TaggedType(TaggedTypeDefinition {
+                tag: tag.clone(),
+                ty: if *is_empty {
+                   None
+                } else {
+                    Some(Box::new(Type::core(self.default_core_type())))
+                }
+            }),
             ValueClassification::Impls(impls) => todo!(),
             ValueClassification::None => TypeDefinition::CoreType(self.default_core_type()),
         }

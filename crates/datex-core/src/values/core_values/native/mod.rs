@@ -89,7 +89,7 @@ impl NativeCoreValue {
         self,
         cache: &mut SharedReferencesCache,
     ) -> Value {
-        self.value.boxed_to_core_value(cache)
+        Value::native_dyn(self.value, cache)
     }
 
     pub fn core_lib_type_id(&self) -> CoreLibTypeId {
@@ -130,21 +130,21 @@ impl Debug for NativeCoreValue {
 #[cfg(test)]
 mod tests {
     use crate::{
-        libs::core::type_id::CoreLibBaseTypeId,
         runtime::cache::shared_references_cache::SharedReferencesCache,
-        types::type_definition::TypeDefinition,
         values::{core_value::CoreValue, core_values::native::NativeCoreValue},
     };
 
     use crate::prelude::*;
+    use crate::values::value::value_classification::ValueClassification;
+
     #[test]
     fn serde() {
         let val = NativeCoreValue::new("xx".to_string());
         let ser =
             val.to_datex_native_value(&mut SharedReferencesCache::default());
         assert_eq!(
-            ser.entity_type().expect("custom type should be present"),
-            &TypeDefinition::core(CoreLibBaseTypeId::Text),
+            ser.classification(),
+            &ValueClassification::None,
         );
         assert_eq!(
             ser.inner,

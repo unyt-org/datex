@@ -13,10 +13,11 @@ use crate::{
         value_container::value_key::BorrowedValueKey,
     },
 };
+use crate::traits::get_datex_type::GetDatexType;
 
 impl<T> ValueAccess for Vec<T>
 where
-    T: DatexNative,
+    T: DatexNative + GetDatexType,
 {
     fn try_get_property(
         &self,
@@ -28,9 +29,7 @@ where
                 if let Some(value) = self.get(index as usize) {
                     Ok(BorrowedValue {
                         inner: BorrowedCoreValue::Native(Goat::Borrowed(value)),
-                        custom_type: Some(
-                            self.entity_type(cache).convert_to_definition(),
-                        ),
+                        classification: self.classification(cache),
                     }
                     .into())
                 } else {

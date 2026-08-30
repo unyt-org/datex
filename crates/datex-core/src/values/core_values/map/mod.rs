@@ -30,6 +30,7 @@ mod value_access;
 mod get_core_lib_type_id;
 mod get_datex_type;
 mod datex_native;
+mod datex_native_structural;
 
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,

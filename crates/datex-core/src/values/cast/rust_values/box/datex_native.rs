@@ -2,6 +2,7 @@ use core::any::Any;
 use crate::preludes::derive::{DatexNative, SharedReferencesCache, Type};
 use crate::traits::get_datex_type::GetDatexType;
 use crate::types::entity_type::EntityType;
+use crate::values::value::value_classification::ValueClassification;
 
 impl<T: DatexNative + GetDatexType> DatexNative
 for Box<T>
@@ -13,7 +14,7 @@ for Box<T>
         self
     }
 
-    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
-        None
+    fn classification(&self, cache: &mut SharedReferencesCache) -> ValueClassification {
+        ValueClassification::None
     }
 }

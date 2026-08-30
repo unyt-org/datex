@@ -265,11 +265,6 @@ impl CoreValue {
     pub fn default_core_type(&self) -> CoreLibTypeId {
         CoreLibTypeId::from(self)
     }
-    
-    /// Get the core type of the CoreValue type definition.
-    pub fn core_type(&self) -> CoreLibTypeId {
-        self.into()
-    }
 
     /// Tries to get a borrow of the current value as the specified type.
     /// Does not perform any type conversion.

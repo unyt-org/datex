@@ -1,5 +1,4 @@
 use core::any::Any;
-use crate::types::entity_type::EntityType;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::values::core_values::native::DatexNative;
 use crate::values::value::Value;
@@ -14,10 +13,7 @@ impl DatexNative for Value
         self
     }
 
-    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
-        match &self.classification {
-            ValueClassification::Entity(entity_type) => Some(entity_type.clone()),
-            _ => None,
-        }
+    fn classification(&self, cache: &mut SharedReferencesCache) -> ValueClassification {
+        self.classification.clone()
     }
 }

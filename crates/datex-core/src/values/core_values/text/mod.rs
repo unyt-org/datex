@@ -21,7 +21,7 @@ pub mod ops;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 mod value_access;
-mod datex_native_only_structural;
+mod datex_native_structural;
 mod get_core_lib_type_id;
 mod convert_parts;
 mod get_datex_type;

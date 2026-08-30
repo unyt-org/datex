@@ -47,6 +47,7 @@ use crate::{
 };
 use crate::traits::convert_parts::{FromParts, IntoParts};
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
+use crate::traits::datex_native_structural::DatexNativeStructural;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 use crate::traits::get_datex_type::GetDatexType;
 use crate::traits::value_access::ValueAccess;
@@ -106,15 +107,12 @@ macro_rules! implement_rust_native_traits {
             fn as_any_mut(&mut self) -> &mut dyn Any {
                 self
             }
-
-            fn entity_type(&self, _cache: &mut SharedReferencesCache) -> Option<EntityType> {
-                None
-            }
         }
 
         impl FromParts for $type {}
         impl IntoParts for $type {}
 
+        impl DatexNativeStructural for $type {}
         impl DatexNativeOnlyStructural for $type {}
 
         impl GetCoreLibTypeId for $type {
@@ -389,7 +387,7 @@ mod tests {
     #[test]
     fn try_without_context() {
         // core rust types like String should be convertible to value without cache
-        let res = Value::native_only_structural("test");
+        let res = Value::native_only_structural("test".to_string());
         let res = CoreValue::from("test");
         let res = Value::from("test");
     }

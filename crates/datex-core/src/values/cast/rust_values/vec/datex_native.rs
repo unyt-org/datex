@@ -2,6 +2,7 @@ use core::any::Any;
 use crate::preludes::derive::{DatexNative, SharedReferencesCache, Type};
 use crate::traits::get_datex_type::GetDatexType;
 use crate::types::entity_type::EntityType;
+use crate::values::value::value_classification::ValueClassification;
 
 impl<T: DatexNative + GetDatexType> DatexNative
 for Vec<T>
@@ -11,9 +12,5 @@ for Vec<T>
     }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-
-    fn entity_type(&self, cache: &mut SharedReferencesCache) -> Option<EntityType> {
-        None
     }
 }

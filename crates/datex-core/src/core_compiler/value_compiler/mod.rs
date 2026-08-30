@@ -55,7 +55,7 @@ use crate::{
     },
     values::core_values::callable::CallableBody,
 };
-use crate::values::value::value_classification::ValueClassification;
+use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -165,10 +165,10 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
     // append classified type information
     match &value.classification {
         // unit tagged value (e.g. #Example)
-        ValueClassification::Tag {
-            tag,
-            is_empty,
-        } => {
+        ValueClassification::Tag(ValueTag {
+           tag,
+           is_empty, 
+        }) => {
             context
                 .write(RegularInstruction::tagged_value(tag.clone(), *is_empty));
             if *is_empty {return}; // early return, don't append null value; TODO: assert that value is actually null?
@@ -629,7 +629,7 @@ mod tests {
     use core::assert_matches;
     use log::info;
     use crate::shared_values::traits::SharedContainerCommon;
-    use crate::values::value::value_classification::ValueClassification;
+    use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -649,7 +649,7 @@ mod tests {
     fn compile_tagged_empty_value() {
         let value = Value::new(
             CoreValue::Null,
-            ValueClassification::Tag {tag: "Example".to_string(), is_empty: true},
+            ValueClassification::Tag(ValueTag {tag: "Example".to_string(), is_empty: true}),
         );
 
         compile_value_assert_instructions(
@@ -665,7 +665,7 @@ mod tests {
     fn compile_tagged_value() {
         let value = Value::new(
             CoreValue::Null,
-            ValueClassification::Tag {tag: "Example".to_string(), is_empty: false},
+            ValueClassification::Tag(ValueTag {tag: "Example".to_string(), is_empty: false}),
         );
 
         compile_value_assert_instructions(

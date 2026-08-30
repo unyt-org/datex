@@ -6,6 +6,7 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 
 /// Type superset of core lib types, e.g. integer >= integer/u8
 impl TypeSuperset<CoreLibTypeId> for CoreLibTypeId {
@@ -41,7 +42,7 @@ impl TypeSatisfiesValueContainer for CoreLibTypeId {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
         match value {
             ValueContainer::Local(local_value) => {
-                self.is_superset_of(&local_value.core_type())
+                self.is_superset_of(&local_value.core_lib_type_id())
             }
             ValueContainer::Shared(shared_value) => false
         }
