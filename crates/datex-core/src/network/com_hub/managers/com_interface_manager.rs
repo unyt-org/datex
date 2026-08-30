@@ -386,9 +386,9 @@ impl ComInterfaceManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use super::*;
     use crate::{
-        datex_proxy::DatexValueProxyInfallibleSerialize,
         network::com_interfaces::com_interface::factory::{
             SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
         },
@@ -398,7 +398,7 @@ mod tests {
     use datex_macros_internal::Datex;
 
     #[derive(Datex)]
-    #[datex(structural)]
+    #[datex(only_structural)]
     struct MockSetupData {
         name: String,
     }
@@ -469,7 +469,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface_sync(
                 "mock",
-                setup_data.to_value_without_cache(),
+                Value::native(setup_data, &mut SharedReferencesCache::default()),
                 InterfacePriority::None,
             )
             .unwrap();
@@ -507,7 +507,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                setup_data.to_value_without_cache(),
+                Value::native(setup_data, &mut SharedReferencesCache::default()),
                 InterfacePriority::None,
             )
             .await
@@ -542,7 +542,7 @@ mod tests {
             Rc::new(|setup_data: Value| {
                 Box::pin(async move {
                     let setup =
-                        MockSetupData::try_from(Value::from(setup_data))
+                        setup_data.try_into_value::<MockSetupData>()
                             .unwrap();
                     setup.create_interface()
                 })
@@ -555,7 +555,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                setup_data.to_value_without_cache(),
+                Value::native(setup_data, &mut SharedReferencesCache::default()),
                 InterfacePriority::None,
             )
             .await

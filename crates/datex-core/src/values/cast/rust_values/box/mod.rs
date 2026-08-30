@@ -55,12 +55,12 @@ where
     }
 }
 
-impl<T> DatexProxyType for Box<T>
+impl<T> GetDatexType for Box<T>
 where
-    T: DatexProxyType,
+    T: GetDatexType,
 {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
-        T::datex_type(memory)
+        T::value_datex_type(memory)
     }
 }
 

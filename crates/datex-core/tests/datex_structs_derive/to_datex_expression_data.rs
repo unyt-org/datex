@@ -11,21 +11,21 @@ use datex_core::{
 use datex_macros_internal::Datex;
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(structural)]
+#[datex(only_structural)]
 struct TestStruct {
     pub field1: i32,
     pub field2: String,
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(structural)]
+#[datex(only_structural)]
 struct TestStructWithValue {
     pub field1: i32,
     pub field2: Value,
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(structural)]
+#[datex(only_structural)]
 struct TestStructNested {
     pub nested: TestStruct,
     pub field3: String,

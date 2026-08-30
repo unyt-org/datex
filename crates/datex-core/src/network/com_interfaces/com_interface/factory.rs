@@ -1,7 +1,6 @@
 pub use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
-    datex_proxy::DatexValueProxyDeserialize,
     global::dxb_block::DXBBlock,
     network::{
         com_hub::errors::ComInterfaceCreateError,
@@ -19,6 +18,8 @@ use crate::{
 use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
+use crate::preludes::derive::DatexNative;
+use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
@@ -416,7 +417,7 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 /// }
 pub trait ComInterfaceSyncFactory
 where
-    Self: DatexValueProxyDeserialize + Sized,
+    Self: DatexNative + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
@@ -424,8 +425,8 @@ where
     fn factory(
         setup_data: Value,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        let setup_data = Self::try_from_value(setup_data)
-            .map_err(ComInterfaceCreateError::SetupDataParseError)?;
+        let setup_data = setup_data.try_into_value()
+            .ok_or(ComInterfaceCreateError::SetupDataParseError)?;
         Self::create_interface(setup_data)
     }
 
@@ -475,15 +476,15 @@ where
 /// }
 pub trait ComInterfaceAsyncFactory
 where
-    Self: DatexValueProxyDeserialize + Sized,
+    Self: DatexNative + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
     /// The setup data is passed as a ValueContainer and has to be downcasted
     fn factory(setup_data: Value) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            let setup_data = Self::try_from_value(setup_data)
-                .map_err(ComInterfaceCreateError::SetupDataParseError)?;
+            let setup_data = setup_data.try_into_value()
+                .ok_or(ComInterfaceCreateError::SetupDataParseError)?;
             Self::create_interface(setup_data).await
         })
     }

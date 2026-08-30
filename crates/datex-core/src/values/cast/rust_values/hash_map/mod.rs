@@ -96,17 +96,17 @@ impl<
     }
 }
 
-impl<K, V> DatexProxyType for HashMap<K, V>
+impl<K, V> GetDatexType for HashMap<K, V>
 where
-    K: DatexProxyType + Eq + Hash,
-    V: DatexProxyType,
+    K: GetDatexType + Eq + Hash,
+    V: GetDatexType,
 {
     fn datex_type(memory: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::Collection(CollectionTypeDefinition::Map(
                 MapCollectionTypeDefinition::new(
-                    K::datex_type(memory),
-                    V::datex_type(memory),
+                    K::value_datex_type(memory),
+                    V::value_datex_type(memory),
                 ),
             ))
             .into(),
@@ -117,20 +117,14 @@ where
 // TODO: clean up traits
 impl<K, V> DatexNative for HashMap<K, V>
 where
-    K: DatexNative + DatexProxyType + DatexValueProxy + Eq + Hash,
-    V: DatexNative + DatexProxyType + DatexValueProxy,
+    K: DatexNative + GetDatexType + DatexValueProxy + Eq + Hash,
+    V: DatexNative + GetDatexType + DatexValueProxy,
 {
     fn as_any(&self) -> &dyn Any {
         self
     }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-    fn boxed_to_datex_native_value(
-        self: Box<Self>,
-        cache: &mut SharedReferencesCache,
-    ) -> Value {
-        Value::native_boxed(self, cache)
     }
 }
 

@@ -1,7 +1,7 @@
-pub mod datex_proxy;
+pub mod get_datex_type;
+pub mod to_datex_native_value_container;
 
 use crate::{
-    datex_proxy::{TryFromDatexValueError, TryToDatexValueError},
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
@@ -20,6 +20,7 @@ use core::{
     cell::{Ref, RefMut},
     ops::Deref,
 };
+use crate::datex_proxy::{TryFromDatexValueError, TryToDatexValueError};
 
 pub struct Shared<T: DatexNative + ?Sized> {
     container: SharedContainer,

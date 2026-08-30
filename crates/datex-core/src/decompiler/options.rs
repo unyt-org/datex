@@ -1,7 +1,7 @@
 use datex_macros_internal::Datex;
 
 #[derive(Datex, Debug, Clone, Default)]
-#[datex(structural)]
+#[datex(only_structural)]
 pub struct DecompileOptions {
     pub formatting_options: FormattingOptions,
     /// display slots with generated variable names
@@ -54,7 +54,7 @@ impl DecompileOptions {
 }
 
 #[derive(Datex, Clone, Debug, Copy, Default)]
-#[datex(structural)]
+#[datex(only_structural)]
 pub enum IndentType {
     #[default]
     Spaces,
@@ -62,7 +62,7 @@ pub enum IndentType {
 }
 
 #[derive(Datex, Debug, Clone, Default)]
-#[datex(structural)]
+#[datex(only_structural)]
 pub enum FormattingMode {
     /// compact formatting, no unnecessary spaces or newlines
     #[default]
@@ -95,7 +95,7 @@ impl FormattingMode {
 }
 
 #[derive(Datex, Debug, Clone, Default)]
-#[datex(structural)]
+#[datex(only_structural)]
 pub struct FormattingOptions {
     pub mode: FormattingMode,
     pub json_compat: bool,

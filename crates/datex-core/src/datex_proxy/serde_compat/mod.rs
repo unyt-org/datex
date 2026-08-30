@@ -1,11 +1,12 @@
 use crate::{
-    datex_proxy::{TryFromDatexValueError, TryToDatexValueError},
     prelude::*,
     values::{value::Value, value_container::ValueContainer},
 };
 use serde::{Deserialize, Serialize};
+use crate::datex_proxy::{TryFromDatexValueError, TryToDatexValueError};
 
 mod serde_mapping;
+
 
 /// Converts a [Serialize] value into a [ValueContainer] by first converting it to a [serde_val::Value] and then deserializing it into a [ValueContainer].
 pub fn try_serde_to_value_container<T: Serialize>(

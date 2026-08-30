@@ -1,13 +1,13 @@
 use core::fmt::Display;
 
 use crate::{
-    datex_proxy::DatexValueProxySerialize,
     network::com_hub::errors::ComInterfaceCreateError, prelude::*,
     runtime::RuntimeConfigInterface,
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 use url::Url;
+use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 
 #[derive(Debug)]
 pub enum URLError {
@@ -26,7 +26,7 @@ impl Display for URLError {
 }
 
 #[derive(Datex, Debug, Serialize, Deserialize, Clone)]
-#[datex(structural)]
+#[datex(only_structural)]
 pub enum TLSMode {
     /// The TLS certificate is handled externally (e.g., by a reverse proxy or load balancer).
     HandledExternally,
@@ -38,7 +38,7 @@ pub enum TLSMode {
 }
 
 #[derive(Datex, Debug, Serialize, Deserialize, Clone)]
-#[datex(structural)]
+#[datex(only_structural)]
 pub struct AcceptAddress {
     address: String,
     tls_mode: Option<TLSMode>,
@@ -58,7 +58,7 @@ pub fn parse_url(address: &str) -> Result<Url, URLError> {
 }
 
 /// Generates the setup data for client interfaces based on the server's accept addresses.
-pub fn get_clients_setup_data<T: DatexValueProxySerialize>(
+pub fn get_clients_setup_data<T: DatexNativeOnlyStructural>(
     accept_addresses: Option<Vec<AcceptAddress>>,
     protocols: (String, String),
     interface_type: String,

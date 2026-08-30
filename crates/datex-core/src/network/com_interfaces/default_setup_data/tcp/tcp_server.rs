@@ -7,7 +7,7 @@ use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Serialize, Deserialize, Default)]
-#[datex(structural)]
+#[datex(only_structural)]
 pub struct TCPServerInterfaceSetupData {
     pub port: u16,
     pub host: Option<String>,
