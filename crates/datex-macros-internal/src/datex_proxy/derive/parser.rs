@@ -152,7 +152,11 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
                 }
 
                 Meta::Path(path) if path.is_ident("structural") => {
-                    type_kind = TypeKind::Structural;
+                    type_kind = TypeKind::Structural { only_structural: false };
+                }
+                
+                Meta::Path(path) if path.is_ident("only_structural") => {
+                    type_kind = TypeKind::Structural { only_structural: true };
                 }
 
                 Meta::Path(path) if path.is_ident("no_deserialize") => {

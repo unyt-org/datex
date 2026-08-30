@@ -1,5 +1,4 @@
 use crate::{
-    datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::{AccessError, IndexOutOfBoundsError},
@@ -17,7 +16,7 @@ use crate::{
 
 impl<T> ValueAccess for Vec<T>
 where
-    T: DatexNative + DatexProxyType,
+    T: DatexNative,
 {
     fn try_get_property(
         &self,
@@ -30,7 +29,7 @@ where
                     Ok(BorrowedValue {
                         inner: BorrowedCoreValue::Native(Goat::Borrowed(value)),
                         custom_type: Some(
-                            T::datex_type(cache).convert_to_definition(),
+                            T::value_datex_type(cache).convert_to_definition(),
                         ),
                     }
                     .into())

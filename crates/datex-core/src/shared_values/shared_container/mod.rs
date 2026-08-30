@@ -492,7 +492,7 @@ impl Display for SharedContainer {
 
 pub mod clone_unsafe;
 mod common;
-pub mod datex_proxy;
+pub mod get_datex_type;
 pub mod equality;
 pub mod update_handler;
 

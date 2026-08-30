@@ -1,11 +1,6 @@
 pub use crate::{
     datex_proxy::{
-        DatexProxyType, DatexValueContainerProxy,
-        DatexValueContainerProxyDeserialize,
-        DatexValueContainerProxyInfallibleSerialize,
-        DatexValueContainerProxySerialize, DatexValueProxy,
-        DatexValueProxyDeserialize, DatexValueProxyInfallibleSerialize,
-        DatexValueProxySerialize, TryFromDatexValueError, TryToDatexValueError,
+        TryFromDatexValueError, TryToDatexValueError,
         serde_compat::{
             try_serde_from_value_container, try_serde_to_value_container,
         },

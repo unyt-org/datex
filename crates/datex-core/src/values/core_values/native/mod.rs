@@ -1,5 +1,4 @@
 use crate::{
-    datex_proxy::ToDatexNativeValueContainer,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     values::{value::Value, value_container::ValueContainer},
@@ -20,13 +19,31 @@ use crate::{
     values::core_value::CoreValue,
 };
 pub use datex_native_trait::*;
+use crate::traits::convert_value_container::ConvertValueContainer;
 
-impl<T: DatexNative> ToDatexNativeValueContainer for T {
-    fn boxed_to_datex_native_value_container(
+impl<T: DatexNative> ConvertValueContainer for T {
+    fn to_value_container(
         self,
         cache: &mut SharedReferencesCache,
     ) -> ValueContainer {
-        ValueContainer::Local(Box::new(self).boxed_to_datex_native_value(cache))
+        ValueContainer::Local(Value::native(self, cache))
+    }
+
+    fn try_from_value_container(value_container: ValueContainer) -> Result<Self, ()>
+    where
+        Self: Sized
+    {
+        match value_container {
+            ValueContainer::Local(value) => {
+                match value.inner {
+                    CoreValue::Native(native_value) => {
+                        native_value.try_into_value().ok_or(()) // TODO: is this correct?
+                    }
+                    _ => Err(()),
+                }
+            }
+            _ => Err(()),
+        }
     }
 }
 
@@ -64,7 +81,7 @@ impl NativeCoreValue {
         self,
         cache: &mut SharedReferencesCache,
     ) -> Value {
-        self.value.boxed_to_datex_native_value(cache)
+        self.value.boxed_to_core_value(cache)
     }
 
     pub fn core_lib_type_id(&self) -> CoreLibTypeId {

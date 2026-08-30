@@ -1,8 +1,7 @@
 //! Implements [DatexValueProxy] for [CoreValue](crate::values::core_values) implementation. That allows to convert e.g. [Endpoint] to [Value] and back.
-//! Also implements [DatexProxyType] to provide the correct [Type] for each implementation.
+//! Also implements [GetDatexType] to provide the correct [Type] for each implementation.
 
 use crate::{
-    datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     types::{
@@ -28,45 +27,24 @@ use crate::{
         BorrowedValueContainerMut,
     },
 };
+use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
+use crate::traits::get_datex_type::GetDatexType;
 
 /// Implements [DatexValueProxy] for a [CoreValue](crate::values::core_values) implementation.
 /// This allows to convert e.g. [Endpoint] to [ValueContainer] and back.
-/// Also implements [DatexProxyType] to provide the correct [Type] for each implementation.
+/// Also implements [GetDatexType] to provide the correct [Type] for each implementation.
 /// The `gen` param defines, for which concrete context to impl the serialization traits.
 macro_rules! impl_datex_direct_via_value_container {
     ($type:ty, $dx_type:expr) => {
-        impl DatexValueProxy for $type {}
-
-        impl DatexValueProxyInfallibleSerialize for $type {
-            fn boxed_to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Value {
-               Value::from(*self)
-            }
-        }
-        impl DatexValueProxySerialize for $type {
-            fn try_boxed_to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-                Ok(Value::from(*self))
-            }
-        }
-        impl DatexValueProxyDeserialize for $type {
-            fn try_from_value(
-                value: Value,
-            ) -> Result<Self, TryFromDatexValueError> {
-               value.try_into().map_err(|_| TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local with inner type {}", stringify!($type), stringify!($type))))
-            }
-        }
-
-        impl DatexNative for $type {
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
-            fn as_any_mut(&mut self) -> &mut dyn Any {
-                self
-            }
-            fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
-                Value::native_boxed(self, cache)
-            }
+        impl GetCoreLibTypeId for $type {
             fn core_lib_type_id(&self) -> CoreLibTypeId {
                 $dx_type.into()
+            }
+        }
+        
+        impl GetDatexType for $type {
+            fn datex_type(_context: &mut SharedReferencesCache) -> Type {
+                Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
 
@@ -78,12 +56,6 @@ macro_rules! impl_datex_direct_via_value_container {
         impl<'a> AsBorrowedMut<'a> for $type {
             fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
                 BorrowedValueContainerMut::native_borrowed(self)
-            }
-        }
-
-        impl DatexProxyType for $type {
-            fn datex_type(_context: &mut SharedReferencesCache) -> Type {
-                Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
     };
@@ -108,9 +80,6 @@ impl_datex_direct_via_value_container!(Boolean, CoreLibBaseTypeId::Boolean);
 #[cfg(test)]
 mod tests {
     use crate::{
-        datex_proxy::{
-            DatexValueProxyDeserialize, DatexValueProxyInfallibleSerialize,
-        },
         values::{
             core_value::CoreValue, core_values::endpoint::Endpoint,
             value::Value,
@@ -120,7 +89,7 @@ mod tests {
     #[test]
     fn to_value() {
         let endpoint = Endpoint::new("@jonas");
-        let value: Value = endpoint.clone().to_value_without_cache();
+        let value = Value::native_only_structural(endpoint.clone());
         assert!(matches!(
             value.inner,
             CoreValue::Endpoint(ref e) if e == &endpoint
@@ -130,7 +99,7 @@ mod tests {
     #[test]
     fn try_boxed_to_value() {
         let endpoint = Endpoint::new("@jonas");
-        let value: Value = endpoint.clone().to_value_without_cache();
+        let value = Value::native_only_structural(endpoint.clone());
         assert!(matches!(
             value.inner,
             CoreValue::Endpoint(ref e) if e == &endpoint
@@ -140,9 +109,8 @@ mod tests {
     #[test]
     fn try_from_value() {
         let endpoint = Endpoint::new("@jonas");
-        let value: Value = endpoint.clone().to_value_without_cache();
-        let result: Result<Endpoint, _> = Endpoint::try_from_value(value);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), endpoint);
+        let value = Value::native_only_structural(endpoint.clone());
+        let result: Endpoint = value.try_into().unwrap();
+        assert_eq!(result, endpoint);
     }
 }

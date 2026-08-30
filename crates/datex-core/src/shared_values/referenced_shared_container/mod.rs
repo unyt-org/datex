@@ -1,5 +1,5 @@
 mod common;
-pub mod datex_proxy;
+pub mod get_datex_type;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 

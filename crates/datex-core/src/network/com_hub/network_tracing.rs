@@ -32,10 +32,6 @@ use crate::{
 
 use crate::{
     core_compiler::value_compiler::compile_value,
-    datex_proxy::{
-        DatexValueContainerProxyDeserialize,
-        DatexValueContainerProxyInfallibleSerialize,
-    },
     prelude::*,
     runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
 };
@@ -45,7 +41,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-#[datex(structural)]
+#[datex(only_structural)]
 pub struct NetworkTraceHopSocket {
     pub interface_type: String,
     pub interface_name: Option<String>,
@@ -76,7 +72,7 @@ impl NetworkTraceHopSocket {
     Clone,
     strum_macros::Display,
 )]
-#[datex(structural)]
+#[datex(only_structural)]
 pub enum NetworkTraceHopDirection {
     Outgoing,
     Incoming,
@@ -84,7 +80,7 @@ pub enum NetworkTraceHopDirection {
 
 #[serde_as]
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-#[datex(structural)]
+#[datex(only_structural)]
 pub struct NetworkTraceHop {
     pub endpoint: Endpoint,
     pub distance: i8,
@@ -96,7 +92,7 @@ pub struct NetworkTraceHop {
 
 #[serde_as]
 #[derive(Datex, Debug, Clone, Deserialize, Serialize)]
-#[datex(structural)]
+#[datex(only_structural)]
 pub struct NetworkTraceResult {
     pub sender: Endpoint,
     pub receiver: Endpoint,

@@ -23,7 +23,7 @@ pub fn generate_datex_proxy_types(
         .datex_name
         .clone()
         .unwrap_or(structure_data.ident.to_string());
-    if matches!(attributes.type_kind, TypeKind::Structural) {
+    if matches!(attributes.type_kind, TypeKind::Structural { .. }) {
         quote! {
             #[automatically_derived]
             impl #generics DatexProxyType for #ident #generics {
@@ -138,7 +138,7 @@ fn generate_type(structure_data: &StructureData) -> TokenStream {
         Structure::Enum(enum_val) => generate_datex_enum_type(enum_val),
         Structure::Struct(fields) => generate_datex_type_definition(fields),
     };
-    if structure_data.attributes.type_kind == TypeKind::Structural {
+    if let TypeKind::Structural { .. } = structure_data.attributes.type_kind {
         quote! {
             Type::Definition(
                 #type_definition.into()

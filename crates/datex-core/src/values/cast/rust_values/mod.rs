@@ -45,89 +45,64 @@ use crate::{
         },
     },
 };
+use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
+use crate::traits::get_datex_type::GetDatexType;
 
-/// Implements [TryFrom] and [TryInto] for Rust core types to and from DATEX [CoreValue], [Value] and [ValueContainer] types.
-/// Also implements [DatexValueProxy] for Rust core types to provide the correct [Type] for each implementation.
+/// Implements [DatexNative] and associated traits for Rust core types.
 macro_rules! implement_rust_native_traits {
     ($type:ty, $dx_type:expr, {$($core_match:tt)*}, {$($core_ref_match:tt)*}) => {
-        impl TryFrom<CoreValue> for $type {
-            type Error = TryFromDatexValueError;
+        // impl TryFrom<CoreValue> for $type {
+        //     type Error = TryFromDatexValueError;
+        //
+        //     fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+        //        match value {
+        //             $($core_match)*
+        //             CoreValue::Native(native) => native.try_into_value().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast native value to {}", stringify!($type)))),
+        //             _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}", stringify!($type)))),
+        //        }
+        //     }
+        // }
+        //
+        // impl<'a> TryFrom<&'a CoreValue> for &'a $type {
+        //     type Error = TryFromDatexValueError;
+        //
+        //     fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
+        //        match value {
+        //             $($core_ref_match)*
+        //             CoreValue::Native(native) => native.try_as().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast native value to {}", stringify!($type)))),
+        //             _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}", stringify!($type)))),
+        //        }
+        //     }
+        // }
+        //
+        // impl TryFrom<Value> for $type {
+        //     type Error = TryFromDatexValueError;
+        //
+        //     fn try_from(value: Value) -> Result<Self, Self::Error> {
+        //         value.inner.try_into()
+        //     }
+        // }
+        //
+        // impl TryFrom<ValueContainer> for $type {
+        //     type Error = TryFromDatexValueError;
+        //
+        //     fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
+        //         match value {
+        //             ValueContainer::Local(value) => value.try_into(),
+        //             _ => Err(TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local", stringify!($type)))),
+        //         }
+        //     }
+        // }
 
-            fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
-               match value {
-                    $($core_match)*
-                    CoreValue::Native(native) => native.try_into_value().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast native value to {}", stringify!($type)))),
-                    _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}", stringify!($type)))),
-               }
-            }
-        }
-
-        impl<'a> TryFrom<&'a CoreValue> for &'a $type {
-            type Error = TryFromDatexValueError;
-
-            fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
-               match value {
-                    $($core_ref_match)*
-                    CoreValue::Native(native) => native.try_as().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast native value to {}", stringify!($type)))),
-                    _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}", stringify!($type)))),
-               }
-            }
-        }
-
-        impl TryFrom<Value> for $type {
-            type Error = TryFromDatexValueError;
-
-            fn try_from(value: Value) -> Result<Self, Self::Error> {
-                value.inner.try_into()
-            }
-        }
-
-        impl TryFrom<ValueContainer> for $type {
-            type Error = TryFromDatexValueError;
-
-            fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
-                match value {
-                    ValueContainer::Local(value) => value.try_into(),
-                    _ => Err(TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local", stringify!($type)))),
-                }
-            }
-        }
-
-        // specialized unit impl:
-        impl DatexValueProxy for $type {}
-
-        impl DatexValueProxyInfallibleSerialize for $type {
-            fn boxed_to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Value {
-               Value::from(*self)
-            }
-        }
-        impl DatexValueProxySerialize for $type {
-            fn try_boxed_to_value(self: Box<Self>, _context: &mut SharedReferencesCache) -> Result<Value, TryToDatexValueError> {
-                Ok(Value::from(*self))
-            }
-        }
-
-        // deserialize
-        impl DatexValueProxyDeserialize for $type {
-            fn try_from_value(
-                value: Value,
-            ) -> Result<Self, TryFromDatexValueError> {
-                value.try_into()
-            }
-        }
-
-        impl DatexNative for $type {
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
-            fn as_any_mut(&mut self) -> &mut dyn Any {
-                self
-            }
-            fn boxed_to_datex_native_value(self: Box<Self>, cache: &mut SharedReferencesCache) -> Value {
-                Value::native_boxed(self, cache)
-            }
+        impl GetCoreLibTypeId for $type {
             fn core_lib_type_id(&self) -> CoreLibTypeId {
                 $dx_type.into()
+            }
+        }
+
+        impl GetDatexType for $type {
+            fn datex_type(_context: &mut SharedReferencesCache) -> Type {
+                Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
 
@@ -139,12 +114,6 @@ macro_rules! implement_rust_native_traits {
         impl<'a> AsBorrowedMut<'a> for $type {
             fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
                 BorrowedValueContainerMut::native_borrowed(self)
-            }
-        }
-
-        impl DatexProxyType for $type {
-            fn datex_type(_context: &mut SharedReferencesCache) -> Type {
-                Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
             }
         }
     };
@@ -375,7 +344,7 @@ impl<'a> TryFrom<&'a ValueContainer> for &'a str {
         }
     }
 }
-impl DatexProxyType for &str {
+impl GetDatexType for &str {
     fn datex_type(_context: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
@@ -383,7 +352,7 @@ impl DatexProxyType for &str {
     }
 }
 
-impl DatexProxyType for str {
+impl GetDatexType for str {
     fn datex_type(_context: &mut SharedReferencesCache) -> Type {
         Type::Definition(
             TypeDefinition::CoreType(CoreLibBaseTypeId::Text.into()).into(),
@@ -396,7 +365,6 @@ mod tests {
     use super::*;
     use crate::{
         datex_proxy::{
-            DatexValueProxyInfallibleSerialize, DatexValueProxySerialize,
             TryFromDatexValueError, TryToDatexValueError,
         },
         values::{
@@ -408,8 +376,10 @@ mod tests {
 
     #[test]
     fn try_without_context() {
-        // these rust types should have the to_value_container_without_cache
-        "test".to_string().to_value_container_without_cache();
+        // core rust types like String should be convertible to value without cache
+        let res = Value::native_only_structural("test");
+        let res = CoreValue::from("test");
+        let res = Value::from("test");
     }
 
     #[test]
@@ -432,18 +402,16 @@ mod tests {
     #[test]
     fn to_value() {
         let value = true;
-        let result: Value = value.to_value_without_cache();
+        let result: Value = Value::from(value);
         assert_eq!(result, Value::from(CoreValue::Boolean(Boolean(true))));
     }
 
     #[test]
     fn try_boxed_to_value() {
         let value = Box::new(true);
-        let result: Result<Value, TryToDatexValueError> =
-            value.try_boxed_to_value(&mut SharedReferencesCache::default());
-        assert!(result.is_ok());
+        let result = Value::native_only_structural_boxed(value);
         assert_eq!(
-            result.unwrap(),
+            result,
             Value::from(CoreValue::Boolean(Boolean(true)))
         );
     }

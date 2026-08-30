@@ -1,5 +1,4 @@
 use crate::{
-    datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::{apply::ApplyArgument, callable::IntoDatexCallable},
@@ -10,6 +9,7 @@ use crate::{
     },
 };
 use core::{fmt::Debug, hash::Hash, pin::Pin};
+use crate::traits::get_datex_type::GetDatexType;
 
 pub mod apply;
 pub mod equality;
@@ -186,7 +186,7 @@ pub fn native_sync_callable<F, Args, R>(
 ) -> Callable
 where
     F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
-    R: DatexProxyType + TryInto<ValueContainer> + 'static,
+    R: GetDatexType + TryInto<ValueContainer> + 'static,
     <R as TryInto<ValueContainer>>::Error: Debug,
 {
     let parameters = F::parameters(context);
@@ -219,7 +219,7 @@ pub fn native_async_callable<F, Args, R>(
 ) -> Callable
 where
     F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
-    R: DatexProxyType + TryInto<ValueContainer> + 'static,
+    R: GetDatexType + TryInto<ValueContainer> + 'static,
     <R as TryInto<ValueContainer>>::Error: Debug,
 {
     let parameters = F::parameters(context);

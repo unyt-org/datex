@@ -1,7 +1,4 @@
 use crate::{
-    datex_proxy::{
-        DatexProxyType, DatexValueProxySerialize, TryToDatexValueError,
-    },
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -17,6 +14,7 @@ use crate::{
     },
 };
 use core::{any::Any, time::Duration};
+use crate::traits::get_datex_type::GetDatexType;
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
@@ -37,16 +35,7 @@ mod to_datex_expression_data {
 
 impl ValueAccess for Duration {}
 
-// Note: implemented manually here until amounts are implemented
-impl DatexValueProxySerialize for Duration {
-    fn try_boxed_to_value(
-        self: Box<Self>,
-        _context: &mut SharedReferencesCache,
-    ) -> Result<Value, TryToDatexValueError> {
-        todo!()
-    }
-}
-impl DatexProxyType for Duration {
+impl GetDatexType for Duration {
     fn datex_type(_context: &mut SharedReferencesCache) -> Type {
         Type::core(CoreLibBaseTypeId::Any)
     }
@@ -61,11 +50,8 @@ impl DatexNative for Duration {
         self
     }
 
-    fn boxed_to_datex_native_value(
-        self: Box<Self>,
-        cache: &mut SharedReferencesCache,
-    ) -> Value {
-        Value::native_boxed(self, cache)
+    fn value_datex_type(&self, cache: &mut SharedReferencesCache) -> Type {
+        Self::value_datex_type(cache)
     }
 }
 

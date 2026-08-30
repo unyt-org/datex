@@ -1,5 +1,4 @@
 use crate::{
-    datex_proxy::DatexValueProxy,
     prelude::*,
     values::{
         borrowed_value_container::{AsBorrowed, BorrowedValueContainer},
@@ -9,7 +8,7 @@ use crate::{
 
 impl<'a, T> AsBorrowed<'a> for Vec<T>
 where
-    T: DatexNative + DatexValueProxy,
+    T: DatexNative,
 {
     fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
         BorrowedValueContainer::native_borrowed(self)

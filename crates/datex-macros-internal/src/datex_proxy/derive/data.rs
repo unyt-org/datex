@@ -4,7 +4,7 @@ use syn::{Generics, Type};
 #[derive(Debug, PartialEq, Eq)]
 pub enum TypeKind {
     Entity,
-    Structural,
+    Structural { only_structural: bool },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

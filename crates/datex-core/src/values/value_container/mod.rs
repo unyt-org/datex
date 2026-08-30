@@ -1,7 +1,7 @@
 //! This module contains the implementation of the [ValueContainer] enum, which represents a container for values in the DATEX type system.
 //! A [ValueContainer] can either be a local value, which directly contains a [Value], or a shared value, which contains a reference to a [SharedContainer].
 use crate::{
-    datex_proxy::DatexValueContainerProxy, utils::sheep::Sheep,
+    utils::sheep::Sheep,
     values::value_container::value_key::BorrowedValueKey,
 };
 pub mod equality;
@@ -42,7 +42,7 @@ use core::{
     ops::FnOnce,
 };
 
-pub mod datex_proxy;
+pub mod get_datex_type;
 pub mod error;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;

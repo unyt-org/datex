@@ -1,7 +1,6 @@
 //! This module contains the implementation of the [Value] struct, which represents a value in the DATEX type system.
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
-    datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::{
@@ -20,7 +19,7 @@ use crate::{
 pub mod apply;
 pub mod borrowed_value;
 mod child_iterator;
-pub mod datex_proxy;
+pub mod get_datex_type;
 pub mod equality;
 mod local_child_path_resolver;
 pub mod ops;
@@ -46,6 +45,8 @@ use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
+use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
+use crate::traits::get_datex_type::GetDatexType;
 
 #[derive(Debug)]
 pub struct Value {
@@ -96,23 +97,52 @@ impl Value {
     }
 
     /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
-    pub fn native_boxed<T: DatexNative + DatexProxyType>(
+    /// Since types might be needed to get resolved for entity values, the cache is required:
+    pub fn native_boxed<T: DatexNative>(
         value: Box<T>,
-        context: &mut SharedReferencesCache,
+        cache: &mut SharedReferencesCache,
     ) -> Value {
+        let ty = value.value_datex_type(cache).convert_to_definition();
         Value::new(
             CoreValue::native_boxed(value),
-            Some(T::datex_type(context).convert_to_definition()),
+            Some(ty),
         )
     }
 
-    pub fn native<T: DatexNative + DatexProxyType>(
+    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
+    /// Since types might be needed to get resolved for entity values, the cache is required:
+    pub fn native<T: DatexNative>(
         value: T,
-        context: &mut SharedReferencesCache,
+        cache: &mut SharedReferencesCache,
+    ) -> Value {
+        let ty = value.value_datex_type(cache).convert_to_definition();
+        Value::new(
+            CoreValue::native(value),
+            Some(ty),
+        )
+    }
+
+    /// Creates a new CoreValue from a native value that implements the [DatexNativeOnlyStructural] trait.
+    /// Since the type is required to be completely structural without any entity references,
+    /// no cache is needed to resolve types.
+    pub fn native_only_structural<T: DatexNativeOnlyStructural>(
+        value: T,
     ) -> Value {
         Value::new(
             CoreValue::native(value),
-            Some(T::datex_type(context).convert_to_definition()),
+            None,
+        )
+    }
+
+    /// Creates a new CoreValue from a native value that implements the [DatexNativeOnlyStructural] trait.
+    /// Since the type is required to be completely structural without any entity references,
+    /// no cache is needed to resolve types.
+    pub fn native_only_structural_boxed<T: DatexNativeOnlyStructural>(
+        value: Box<T>,
+    ) -> Value {
+        Value::new(
+            CoreValue::native_boxed(value),
+            None,
         )
     }
 
