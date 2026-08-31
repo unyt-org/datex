@@ -3,9 +3,9 @@ use crate::types::entity_type::EntityType;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct ValueTag {
-    pub(crate) tag: String,
+    pub tag: String,
     /// if set to true, the inner value is expected to be null but treated as non-existing (#Example instead of #Example(null))
-    pub(crate) is_empty: bool,
+    pub is_empty: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]

@@ -420,18 +420,6 @@ impl Display for Value {
     }
 }
 
-impl<T> From<Option<T>> for Value
-where
-    T: Into<Value>,
-{
-    fn from(opt: Option<T>) -> Self {
-        match opt {
-            Some(v) => v.into(),
-            None => Value::null(),
-        }
-    }
-}
-
 #[cfg(test)]
 /// Tests for the Value struct and its methods.
 /// This module contains unit tests for the Value struct, including its methods and operations.

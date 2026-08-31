@@ -37,6 +37,7 @@ use crate::{
 };
 use binrw::error::CustomError;
 use core::fmt::{Debug, Display, Formatter};
+use crate::preludes::derive::DatexNativeStructural;
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 
 mod child_iterator;
@@ -70,8 +71,8 @@ pub enum CoreValue {
     Native(NativeCoreValue),
 }
 
-/// Implementation that allows direct conversion from any type that implements the [DatexNativeOnlyStructural] trait into a [CoreValue].
-default impl<T: DatexNativeOnlyStructural> From<T> for CoreValue {
+/// Implementation that allows direct conversion from any type that implements the [DatexNativeStructural] trait into a [CoreValue].
+impl<T: DatexNativeStructural> From<T> for CoreValue {
     fn from(value: T) -> Self {
         CoreValue::native(value)
     }

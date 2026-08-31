@@ -10,9 +10,3 @@ impl<T: DatexNativeBase + 'static> DatexNative for Vec<T> {
         self
     }
 }
-
-impl<T: DatexNativeBase + 'static> From<Vec<T>> for CoreValue {
-    fn from(native: Vec<T>) -> Self {
-        CoreValue::native(native)
-    }
-}
