@@ -51,7 +51,7 @@ impl<'ctx> SerdeContext<'ctx, Value> {
 
         let index = CoreLibIdIndex::from(core_lib_type_id);
         let mut tuple = serializer
-            .serialize_tuple(if classification.is_some() { 3 } else { 2 })?;
+            .serialize_tuple(if classification.is_none() { 2 } else { 3 })?;
         tuple.serialize_element(&index.to_u16())?;
         tuple.serialize_element(inner)?;
         if let Some(custom_type) = classification {

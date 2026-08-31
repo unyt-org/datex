@@ -20,6 +20,13 @@ pub enum ValueClassification {
     Tag(ValueTag)
 }
 
+impl ValueClassification {
+    pub fn is_none(&self) -> bool {
+        matches!(self, ValueClassification::None)
+    }
+}
+
+
 impl From<EntityType> for ValueClassification {
     fn from(entity_type: EntityType) -> Self {
         ValueClassification::Entity(entity_type)
