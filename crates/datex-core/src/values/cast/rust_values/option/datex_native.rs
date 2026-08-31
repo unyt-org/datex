@@ -1,6 +1,5 @@
 use core::any::Any;
 use crate::traits::get_datex_type::GetDatexType;
-use crate::types::entity_type::EntityType;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::values::core_values::native::DatexNative;
 use crate::values::value::value_classification::ValueClassification;
@@ -16,6 +15,9 @@ for Option<T>
     }
 
     fn classification(&self, cache: &mut SharedReferencesCache) -> ValueClassification {
-        ValueClassification::None
+        match self {
+            Some(value) => value.classification(cache),
+            None => ValueClassification::None,
+        }
     }
 }

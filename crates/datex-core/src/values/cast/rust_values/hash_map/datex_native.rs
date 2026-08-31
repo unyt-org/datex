@@ -22,14 +22,3 @@ where
         ValueClassification::None
     }
 }
-
-
-impl<K, V> From<HashMap<K, V>> for CoreValue
-where
-    K: DatexNativeBase + Eq + Hash + 'static,
-    V: DatexNativeBase + 'static,
-{
-    fn from(native: HashMap<K, V>) -> Self {
-        CoreValue::native(native)
-    }
-}

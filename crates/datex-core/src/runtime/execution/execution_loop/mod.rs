@@ -122,7 +122,7 @@ use crate::{
 };
 use collected_execution_result::CollectedExecutionResult;
 use crate::types::entity_type::EntityType;
-use crate::values::value::value_classification::ValueClassification;
+use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -427,10 +427,10 @@ pub gen fn inner_execution_loop(
 
                             RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
                                 Some(RuntimeValue::ValueContainer(
-                                    ValueContainer::Local(Value::new(CoreValue::Null, ValueClassification::Tag {
+                                    ValueContainer::Local(Value::new(CoreValue::Null, ValueClassification::Tag(ValueTag {
                                         tag,
                                         is_empty: true,
-                                    }))
+                                    })))
                                 ))
                             }
 

@@ -4,7 +4,6 @@ mod to_datex_expression_data;
 
 use core::assert_matches;
 use datex_core::{
-    datex_proxy::{GetDatexType, DatexValueContainerProxy},
     prelude::*,
     values::{
         core_values::{endpoint::Endpoint, map::Map},
@@ -13,6 +12,7 @@ use datex_core::{
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
+use datex_core::traits::get_datex_type::GetDatexType;
 
 #[derive(Datex, Debug)]
 #[datex(only_structural)]
@@ -51,12 +51,9 @@ struct ExampleNewType(Example);
 
 fn assert_round_trip<T>(value: T)
 where
-    T: DatexValueContainerProxy + PartialEq + std::fmt::Debug + Clone,
+    T: DatexNative + PartialEq + std::fmt::Debug + Clone,
 {
-    let value_container = value
-        .clone()
-        .try_to_value_container_without_cache()
-        .unwrap();
+    let value_container = ValueContainer::from(value.clone());
     let deserialized_value =
         T::try_from_value_container(value_container).unwrap();
     assert_eq!(value, deserialized_value);
@@ -87,6 +84,8 @@ use datex_core::{
     },
 };
 use test_case::test_case;
+use datex_core::preludes::derive::DatexNative;
+use datex_core::values::value::value_classification::{ValueClassification, ValueTag};
 
 #[test_case(
     Example {
@@ -110,7 +109,7 @@ use test_case::test_case;
 ]) ; "map of primitives")]
 fn round_trip_struct<T>(structure: T)
 where
-    T: DatexValueContainerProxy + PartialEq + std::fmt::Debug + Clone,
+    T: DatexNative + PartialEq + std::fmt::Debug + Clone,
 {
     assert_round_trip(structure);
 }
@@ -215,11 +214,8 @@ fn enum_to_value() {
 
     assert_structural_eq!(variant_a, Value::null());
     assert_eq!(
-        variant_a.entity_type,
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-            tag: "VariantA".to_string(),
-            ty: None
-        }))
+        variant_a.classification(),
+        &ValueClassification::Tag(ValueTag {tag: "VariantA".to_string(), is_empty: true})
     );
 
     let variant_b: Value = ExampleEnum::VariantB(1, 2).into();
@@ -228,11 +224,8 @@ fn enum_to_value() {
         Value::from(vec![Value::from(1u8), Value::from(2u8)])
     );
     assert_eq!(
-        variant_b.entity_type,
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-            tag: "VariantB".to_string(),
-            ty: None,
-        }))
+        variant_b.classification(),
+        &ValueClassification::Tag(ValueTag {tag: "VariantB".to_string(), is_empty: false})
     );
 
     let variant_c: Value = ExampleEnum::VariantC {
@@ -248,21 +241,15 @@ fn enum_to_value() {
         ]))
     );
     assert_eq!(
-        variant_c.entity_type,
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-            tag: "VariantC".to_string(),
-            ty: None,
-        }))
+        variant_c.classification(),
+        &ValueClassification::Tag(ValueTag {tag: "VariantC".to_string(), is_empty: false})
     );
 
     let variant_d: Value = ExampleEnum::VariantD(1).into();
     assert_structural_eq!(variant_d, Value::from(1u8));
     assert_eq!(
-        variant_d.entity_type,
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-            tag: "VariantD".to_string(),
-            ty: None,
-        }))
+        variant_d.classification(),
+        &ValueClassification::Tag(ValueTag {tag: "VariantD".to_string(), is_empty: false})
     );
 }
 
@@ -584,7 +571,7 @@ fn struct_with_owned_shared_value_container() {
 
 #[test]
 fn get_datex_type_from_struct() {
-    let dx_type = Example::datex_type_without_cache();
+    let dx_type = Example::datex_type(&mut SharedReferencesCache::default());
 
     assert_eq!(
         dx_type,
@@ -643,7 +630,7 @@ fn get_datex_type_from_struct() {
 
 #[test]
 fn get_datex_type_from_enum() {
-    let dx_type = ExampleEnum::datex_type_without_cache();
+    let dx_type = ExampleEnum::datex_type(&mut SharedReferencesCache::default());
 
     assert_eq!(
         dx_type,
@@ -747,7 +734,7 @@ fn recursive_struct() {
         next: Option<Box<Node>>,
     }
     let cache = &mut SharedReferencesCache::default();
-    let ty = Node::value_datex_type(cache);
+    let ty = Node::datex_type(cache);
     ty.with_collapsed_type_definition(|ty_def| match ty_def {
         TypeDefinition::Map(map) => {
             let next_type = map
@@ -788,8 +775,8 @@ fn mutual_recursion_structural_containing_entity() {
     }
     let cache = &mut SharedReferencesCache::default();
 
-    let ty_a = A::value_datex_type(cache);
-    let ty_b = B::value_datex_type(cache);
+    let ty_a = A::datex_type(cache);
+    let ty_b = B::datex_type(cache);
 
     ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
         TypeDefinition::Map(map) => {
@@ -819,8 +806,8 @@ fn mutual_recursion_entity_containing_structural() {
     }
     let cache = &mut SharedReferencesCache::default();
 
-    let ty_a = A::value_datex_type(cache);
-    let ty_b = B::value_datex_type(cache);
+    let ty_a = A::datex_type(cache);
+    let ty_b = B::datex_type(cache);
 
     ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
         TypeDefinition::Map(map) => {
@@ -849,8 +836,8 @@ fn mutual_recursion_entity() {
     }
     let cache = &mut SharedReferencesCache::default();
 
-    let ty_a = A::value_datex_type(cache);
-    let ty_b = B::value_datex_type(cache);
+    let ty_a = A::datex_type(cache);
+    let ty_b = B::datex_type(cache);
 
     ty_a.with_collapsed_type_definition(|ty_def| match ty_def {
         TypeDefinition::Map(map) => {
@@ -880,8 +867,8 @@ fn mutual_recursion_panic_with_structural() {
         a: Box<A>,
     }
     let cache = &mut SharedReferencesCache::default();
-    let _ = A::value_datex_type(cache);
-    let _ = B::value_datex_type(cache);
+    let _ = A::datex_type(cache);
+    let _ = B::datex_type(cache);
 }
 
 #[test_case(None ; "none")]
