@@ -32,7 +32,7 @@ mod tests {
     fn try_from_value() {
         let endpoint = Endpoint::new("@jonas");
         let value = Value::native_structural(endpoint.clone());
-        let result: Endpoint = value.try_into().unwrap();
+        let result = value.try_into_value::<Endpoint>().unwrap();
         assert_eq!(result, endpoint);
     }
 }

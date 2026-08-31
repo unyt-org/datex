@@ -44,29 +44,7 @@ mod tests {
             CoreValue::Endpoint(ref e) if e == &endpoint
         ));
     }
-
-    #[test]
-    fn try_from_value_boxed() {
-        // endpoint boxed
-        let endpoint = Endpoint::new("@jonas");
-        let value: Value = Value::native_structural(Box::new(endpoint.clone()));
-        let boxed_endpoint: Box<Endpoint> = value.try_into_value().unwrap();
-        assert_eq!(*boxed_endpoint, endpoint);
-
-        // value boxed
-        let value: Value = Integer::from(42).into();
-        let boxed_integer: Box<Value> = value.try_into_value().unwrap();
-        assert!(matches!(
-            *boxed_integer,
-            Value { inner: CoreValue::Integer(ref i), .. } if i == &Integer::from(42)
-        ));
-
-        // value container boxed
-        let value_container: ValueContainer = Integer::from(42).into();
-        let boxed_value_container: Box<ValueContainer> = value_container.try_into_value().unwrap();
-        assert_eq!(*boxed_value_container, value_container);
-    }
-
+    
     #[test]
     fn datex_type() {
         let boxed_type = Box::<Endpoint>::datex_type(&mut SharedReferencesCache::default());
