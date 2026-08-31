@@ -45,60 +45,18 @@ use crate::{
         },
     },
 };
+use crate::traits::classification::Classification;
 use crate::traits::convert_parts::{FromParts, IntoParts};
+use crate::traits::has_classification::HasClassification;
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::datex_native_structural::DatexNativeStructural;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 use crate::traits::get_datex_type::GetDatexType;
 use crate::traits::value_access::ValueAccess;
-use crate::types::entity_type::EntityType;
 
 /// Implements [DatexNative] and associated traits for Rust core types.
 macro_rules! implement_rust_native_traits {
     ($type:ty, $dx_type:expr, {$($core_match:tt)*}, {$($core_ref_match:tt)*}) => {
-        // impl TryFrom<CoreValue> for $type {
-        //     type Error = TryFromDatexValueError;
-        //
-        //     fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
-        //        match value {
-        //             $($core_match)*
-        //             CoreValue::Native(native) => native.try_into_value().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast native value to {}", stringify!($type)))),
-        //             _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}", stringify!($type)))),
-        //        }
-        //     }
-        // }
-        //
-        // impl<'a> TryFrom<&'a CoreValue> for &'a $type {
-        //     type Error = TryFromDatexValueError;
-        //
-        //     fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
-        //        match value {
-        //             $($core_ref_match)*
-        //             CoreValue::Native(native) => native.try_as().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast native value to {}", stringify!($type)))),
-        //             _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}", stringify!($type)))),
-        //        }
-        //     }
-        // }
-        //
-        // impl TryFrom<Value> for $type {
-        //     type Error = TryFromDatexValueError;
-        //
-        //     fn try_from(value: Value) -> Result<Self, Self::Error> {
-        //         value.inner.try_into()
-        //     }
-        // }
-        //
-        // impl TryFrom<ValueContainer> for $type {
-        //     type Error = TryFromDatexValueError;
-        //
-        //     fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
-        //         match value {
-        //             ValueContainer::Local(value) => value.try_into(),
-        //             _ => Err(TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local", stringify!($type)))),
-        //         }
-        //     }
-        // }
-
         impl DatexNative for $type {
             fn as_any(&self) -> &dyn Any {
                 self
@@ -108,6 +66,9 @@ macro_rules! implement_rust_native_traits {
                 self
             }
         }
+
+        impl Classification for $type {}
+        impl HasClassification for $type {}
 
         impl FromParts for $type {}
         impl IntoParts for $type {}
@@ -188,6 +149,18 @@ implement_rust_native_traits!(
         CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value),
     }
 );
+implement_rust_native_traits!(
+    u128,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U128),
+    {
+        CoreValue::TypedInteger(TypedInteger::U128(value)) => Ok(value),
+        CoreValue::TypedInteger(value) => value.to_u128().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u128, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_u128().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u128, value is not an integer", value))),
+    },
+    {
+        CoreValue::TypedInteger(TypedInteger::U128(value)) => Ok(value),
+    }
+);
 
 // usize depending on platform
 #[cfg(target_pointer_width = "32")]
@@ -259,6 +232,18 @@ implement_rust_native_traits!(
     },
     {
         CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value),
+    }
+);
+implement_rust_native_traits!(
+    i128,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::I128),
+    {
+        CoreValue::TypedInteger(TypedInteger::I128(value)) => Ok(value),
+        CoreValue::TypedInteger(value) => value.to_i128().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i128, value is not an integer", value))),
+        CoreValue::TypedDecimal(value) => value.to_i128().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i128, value is not an integer", value))),
+    },
+    {
+        CoreValue::TypedInteger(TypedInteger::I128(value)) => Ok(value),
     }
 );
 
@@ -395,7 +380,7 @@ mod tests {
     #[test]
     fn try_from_core_value() {
         let value = CoreValue::Text(Text("Hello, World!".to_string()));
-        let result: Result<String, TryFromDatexValueError> = value.try_into();
+        let result: Result<String, ()> = value.try_into();
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "Hello, World!");
     }
@@ -404,8 +389,8 @@ mod tests {
     fn try_from_value() {
         let value =
             Value::from(CoreValue::Text(Text("Hello, World!".to_string())));
-        let result: Result<String, TryFromDatexValueError> = value.try_into();
-        assert!(result.is_ok());
+        let result = value.try_into_value::<String>();
+        assert!(result.is_some());
         assert_eq!(result.unwrap(), "Hello, World!");
     }
 

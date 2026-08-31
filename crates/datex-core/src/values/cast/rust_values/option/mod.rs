@@ -6,6 +6,7 @@ pub mod convert_parts;
 pub mod get_core_lib_type_id;
 pub mod datex_native_structural;
 pub mod datex_native;
+pub mod classification;
 
 #[cfg(test)]
 mod tests {
@@ -37,11 +38,11 @@ mod tests {
     #[test]
     fn from_value() {
         let some_value = Value::boxed(Value::native_structural(Integer::new(1)));
-        let some_option: Option<Integer> = some_value.try_into().unwrap();
+        let some_option = some_value.try_into_value::<Option<Integer>>().unwrap();
         assert_eq!(some_option, Some(Integer::new(1)));
 
         let none_value: Value = Value::boxed(Value::null());
-        let none_option: Option<Integer> = none_value.try_into().unwrap();
+        let none_option = none_value.try_into_value::<Option<Integer>>().unwrap();
         assert_eq!(none_option, None);
     }
     #[test]

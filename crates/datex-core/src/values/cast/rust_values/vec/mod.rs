@@ -10,7 +10,8 @@ mod get_core_lib_type_id;
 mod datex_native_structural;
 mod convert_parts;
 pub mod datex_native;
-
+mod try_from_core_value;
+pub mod classification;
 
 #[cfg(test)]
 mod tests {

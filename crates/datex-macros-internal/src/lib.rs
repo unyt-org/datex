@@ -9,13 +9,6 @@ mod core_lib;
 mod datex_proxy;
 mod magic_rw;
 mod utils;
-mod value_macros;
-
-#[proc_macro_derive(FromCoreValue)]
-pub fn from_core_value_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as syn::DeriveInput);
-    value_macros::from_core_value_derive_impl(input).into()
-}
 
 /// Unused and incomplete
 #[proc_macro_derive(BitfieldSerde)]

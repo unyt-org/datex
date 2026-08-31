@@ -10,7 +10,6 @@ use crate::{
     types::entities::entity_type_definition::EntityTypeDefinition,
     values::core_values::native::{DatexNative, NativeCoreValue},
 };
-use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
 use crate::{
     types::r#type::Type,
@@ -47,7 +46,7 @@ pub mod ops;
 mod to_datex_expression_data;
 pub mod try_clone;
 
-#[derive(Default, Clone, Debug, FromCoreValue)]
+#[derive(Default, Clone, Debug)]
 pub enum CoreValue {
     #[default]
     Uninitialized,
@@ -83,11 +82,6 @@ impl From<&str> for CoreValue {
         CoreValue::Text(value.into())
     }
 }
-impl From<String> for CoreValue {
-    fn from(value: String) -> Self {
-        CoreValue::Text(Text(value))
-    }
-}
 
 impl<T> FromIterator<T> for CoreValue
 where
@@ -95,101 +89,6 @@ where
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         CoreValue::List(List::new(iter.into_iter().map(Into::into).collect()))
-    }
-}
-
-impl From<bool> for CoreValue {
-    fn from(value: bool) -> Self {
-        CoreValue::Boolean(value.into())
-    }
-}
-
-impl From<i8> for CoreValue {
-    fn from(value: i8) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i16> for CoreValue {
-    fn from(value: i16) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i32> for CoreValue {
-    fn from(value: i32) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i64> for CoreValue {
-    fn from(value: i64) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i128> for CoreValue {
-    fn from(value: i128) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-
-impl From<u8> for CoreValue {
-    fn from(value: u8) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u16> for CoreValue {
-    fn from(value: u16) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u32> for CoreValue {
-    fn from(value: u32) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u64> for CoreValue {
-    fn from(value: u64) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u128> for CoreValue {
-    fn from(value: u128) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-
-impl From<f32> for CoreValue {
-    fn from(value: f32) -> Self {
-        CoreValue::TypedDecimal(value.into())
-    }
-}
-impl From<f64> for CoreValue {
-    fn from(value: f64) -> Self {
-        CoreValue::TypedDecimal(value.into())
-    }
-}
-
-impl From<usize> for CoreValue {
-    fn from(value: usize) -> Self {
-        #[cfg(target_pointer_width = "64")]
-        {
-            CoreValue::TypedInteger((value as u64).into())
-        }
-        #[cfg(target_pointer_width = "32")]
-        {
-            CoreValue::TypedInteger((value as u32).into())
-        }
-    }
-}
-
-impl From<isize> for CoreValue {
-    fn from(value: isize) -> Self {
-        #[cfg(target_pointer_width = "64")]
-        {
-            CoreValue::TypedInteger((value as i64).into())
-        }
-        #[cfg(target_pointer_width = "32")]
-        {
-            CoreValue::TypedInteger((value as i32).into())
-        }
     }
 }
 

@@ -1,8 +1,7 @@
 use core::any::Any;
-use crate::preludes::derive::{DatexNative, SharedReferencesCache};
-use crate::types::entity_type::EntityType;
+use crate::preludes::derive::{DatexNative};
+use crate::traits::has_classification::HasClassification;
 use crate::values::core_values::callable::Callable;
-use crate::values::value::value_classification::ValueClassification;
 
 impl DatexNative for Callable {
     fn as_any(&self) -> &dyn Any {

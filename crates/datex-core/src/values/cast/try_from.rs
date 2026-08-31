@@ -30,16 +30,29 @@ use crate::{
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
         $(
-            impl TryFrom<Value> for $type {
-                type Error = TryFromDatexValueError;
-                fn try_from(value: Value) -> Result<Self, Self::Error> {
-                    value.inner.try_into()
-                }
-            }
-
             impl TryFrom<CoreValue> for $type {
                 type Error = TryFromDatexValueError;
                 fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+                    match value {
+                        CoreValue::$variant(v) => Ok(v),
+                        _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
+                    }
+                }
+            }
+
+            impl<'a> TryFrom<&'a CoreValue> for &'a $type {
+                type Error = TryFromDatexValueError;
+                fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
+                    match value {
+                        CoreValue::$variant(v) => Ok(v),
+                        _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
+                    }
+                }
+            }
+
+            impl<'a> TryFrom<&'a mut CoreValue> for &'a mut $type {
+                type Error = TryFromDatexValueError;
+                fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
                     match value {
                         CoreValue::$variant(v) => Ok(v),
                         _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
@@ -67,25 +80,6 @@ macro_rules! impl_try_from_core_value {
                 }
             }
 
-            impl<'a> TryFrom<&'a CoreValue> for &'a $type {
-                type Error = TryFromDatexValueError;
-                fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
-                    match value {
-                        CoreValue::$variant(v) => Ok(v),
-                        _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
-                    }
-                }
-            }
-
-            impl<'a> TryFrom<&'a mut CoreValue> for &'a mut $type {
-                type Error = TryFromDatexValueError;
-                fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
-                    match value {
-                        CoreValue::$variant(v) => Ok(v),
-                        _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
-                    }
-                }
-            }
         )*
     };
 }
@@ -160,7 +154,7 @@ mod tests {
     #[test]
     fn try_from_value() {
         let value = Value::from(CoreValue::Integer(Integer::new(42)));
-        let int: Integer = value.try_into().unwrap();
+        let int: Integer = value.try_into_value().unwrap();
         assert_eq!(int, Integer::new(42));
     }
 }

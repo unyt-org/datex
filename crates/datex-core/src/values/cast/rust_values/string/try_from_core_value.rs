@@ -1,0 +1,80 @@
+use crate::preludes::derive::Text;
+use crate::utils::goat::Goat;
+use crate::utils::goat_mut::GoatMut;
+use crate::values::core_value::CoreValue;
+use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+
+impl TryFrom<CoreValue> for String {
+    type Error = ();
+    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+        match value {
+            CoreValue::Text(Text(string)) => Ok(string),
+            CoreValue::Native(native) => native.try_into_value().ok_or(()),
+            _ => Err(()),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a CoreValue> for &'a String {
+    type Error = ();
+    fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
+        match value {
+            CoreValue::Text(Text(string)) => Ok(string),
+            CoreValue::Native(native) => native.try_as().ok_or(()),
+            _ => Err(()),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a mut CoreValue> for &'a mut String {
+    type Error = ();
+    fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
+        match value {
+            CoreValue::Text(Text(string)) => Ok(string),
+            CoreValue::Native(native) => native.try_as_mut().ok_or(()),
+            _ => Err(()),
+        }
+    }
+}
+
+impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, String> {
+    type Error = ();
+    fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
+        match value {
+            BorrowedCoreValue::Text(v) => Ok(v.map(|v| &v.0)),
+            BorrowedCoreValue::Native(native) => native.filter_map(|v| v.as_any().downcast_ref::<String>()).ok_or(()),
+            _ => Err(()),
+        }
+    }
+}
+
+impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, String> {
+    type Error = ();
+    fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
+        match value {
+            BorrowedCoreValueMut::Text(v) => Ok(v.map(|v| &mut v.0)),
+            BorrowedCoreValueMut::Native(native) => native.filter_map(|v| v.as_any_mut().downcast_mut::<String>()).ok_or(()),
+            _ => Err(()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::values::core_value::CoreValue;
+    use crate::values::core_values::boolean::Boolean;
+
+    #[test]
+    fn try_string_from_core_value() {
+        let mut core_value = CoreValue::Text(Text("Hello, World!".to_string()));
+        let result = core_value.try_as::<String>();
+        assert_eq!(*result.unwrap(), "Hello, World!");
+        
+        let result_mut = core_value.try_as_mut::<String>();
+        assert_eq!(*result_mut.unwrap(), "Hello, World!");
+        
+        let result_into: Result<String, ()> = core_value.try_into();
+        assert_eq!(result_into.unwrap(), "Hello, World!");
+    }
+}

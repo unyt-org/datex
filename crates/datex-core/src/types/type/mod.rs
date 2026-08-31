@@ -348,6 +348,10 @@ mod to_datex_expression_data;
 #[cfg(feature = "decompiler")]
 mod to_type_expression_data;
 mod value_access;
+mod datex_native;
+mod datex_native_structural;
+mod convert_parts;
+mod get_core_lib_type_id;
 
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

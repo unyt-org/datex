@@ -17,6 +17,7 @@ pub mod datex_native;
 pub mod get_core_lib_type_id;
 pub mod convert_parts;
 pub mod get_datex_type;
+mod classification;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,

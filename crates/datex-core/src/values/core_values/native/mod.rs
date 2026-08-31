@@ -101,6 +101,12 @@ impl NativeCoreValue {
     pub fn try_as<T: 'static>(&self) -> Option<&T> {
         self.value.as_any().downcast_ref::<T>()
     }
+    
+    /// Attempt to downcast the native value to a specific type.
+    /// Returns `Some(&mut T)` if the downcast is successful, or `None` if it fails.
+    pub fn try_as_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        self.value.as_any_mut().downcast_mut::<T>()
+    }
 
     /// Attempt to downcast the native value to a specific type.
     /// Returns `Some(&mut T)` if the downcast is successful, or `None` if it fails.

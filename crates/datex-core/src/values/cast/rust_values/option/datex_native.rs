@@ -1,10 +1,7 @@
 use core::any::Any;
-use crate::traits::get_datex_type::GetDatexType;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::values::core_values::native::DatexNative;
-use crate::values::value::value_classification::ValueClassification;
+use crate::values::core_values::native::{DatexNative, DatexNativeBase};
 
-impl<T: DatexNative + GetDatexType> DatexNative
+impl<T: DatexNativeBase + 'static> DatexNative
 for Option<T>
 {
     fn as_any(&self) -> &dyn Any {
@@ -12,12 +9,5 @@ for Option<T>
     }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-
-    fn classification(&self, cache: &mut SharedReferencesCache) -> ValueClassification {
-        match self {
-            Some(value) => value.classification(cache),
-            None => ValueClassification::None,
-        }
     }
 }

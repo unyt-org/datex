@@ -31,6 +31,7 @@ mod get_core_lib_type_id;
 mod get_datex_type;
 mod convert_parts;
 mod datex_native;
+mod classification;
 
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).

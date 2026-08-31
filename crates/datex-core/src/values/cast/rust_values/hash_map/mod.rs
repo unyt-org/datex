@@ -8,6 +8,8 @@ mod datex_native;
 mod datex_native_structural;
 mod convert_parts;
 mod get_core_lib_type_id;
+mod try_from_core_value;
+pub mod classification;
 
 use crate::{
     collections::HashMap,

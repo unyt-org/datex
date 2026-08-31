@@ -290,15 +290,6 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             }
 
             #[automatically_derived]
-            impl #generics TryFrom<Value> for #ident #generics {
-                type Error = TryFromDatexValueError;
-
-                fn try_from(value: Value) -> Result<Self, Self::Error> {
-                    Ok(#from_datex_fields_inner)
-                }
-            }
-
-            #[automatically_derived]
             impl #generics TryFrom<ValueContainer> for #ident #generics {
                 type Error = TryFromDatexValueError;
 
