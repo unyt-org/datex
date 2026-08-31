@@ -1,3 +1,7 @@
+pub mod serde_dif;
+
+use serde::{Deserialize, Serialize};
+use strum_macros::AsRefStr;
 use crate::shared_values::PointerAddress;
 use crate::types::entity_type::EntityType;
 
@@ -8,7 +12,7 @@ pub struct ValueTag {
     pub is_empty: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash, AsRefStr)]
 pub enum ValueClassification {
     #[default]
     None,

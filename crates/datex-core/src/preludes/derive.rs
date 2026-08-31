@@ -1,3 +1,4 @@
+#[doc(hidden)]
 pub use crate::{
     datex_proxy::{
         TryFromDatexValueError, TryToDatexValueError,
