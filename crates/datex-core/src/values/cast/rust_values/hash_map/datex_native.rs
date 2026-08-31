@@ -1,8 +1,7 @@
 use core::any::Any;
 use core::hash::Hash;
 use crate::collections::HashMap;
-use crate::preludes::derive::{CoreValue, DatexNative, SharedReferencesCache};
-use crate::traits::get_datex_type::GetDatexType;
+use crate::preludes::derive::{CoreValue, DatexNative, SharedReferencesCache, Type};
 use crate::values::core_values::native::DatexNativeBase;
 use crate::values::value::value_classification::ValueClassification;
 
@@ -16,9 +15,5 @@ where
     }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-
-    fn classification(&self, cache: &mut SharedReferencesCache) -> ValueClassification {
-        ValueClassification::None
     }
 }

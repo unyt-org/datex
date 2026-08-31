@@ -32,6 +32,7 @@ pub mod value_classification;
 mod datex_native;
 pub mod convert_parts;
 pub mod get_core_lib_type_id;
+pub mod classification;
 
 use crate::{
     datex_proxy::TryToDatexValueError,
@@ -51,6 +52,7 @@ use core::{
 };
 use crate::preludes::derive::{DatexNativeStructural, TaggedTypeDefinition};
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
+use crate::traits::has_classification::HasClassification;
 use crate::types::entity_type::EntityType;
 use crate::types::r#type::Type;
 use crate::values::value::value_classification::{ValueClassification, ValueTag};
@@ -240,25 +242,48 @@ impl Value {
     /// Does not perform any type conversion.
     pub fn try_as<'a, T: 'a>(&'a self) -> Option<&'a T>
     where
+        T: HasClassification,
         &'a T: TryFrom<&'a CoreValue>,
     {
-        <&T>::try_from(&self.inner).ok()
+        // if the target type has no classification, i.e. is structural
+        // but the value has a classification, we cannot convert it into the target type
+        if !T::has_classification() && !self.classification().is_none() {
+            None
+        }
+        else {
+            <&T>::try_from(&self.inner).ok()
+        }
     }
 
     pub fn try_as_mut<'a, T: 'a>(&'a mut self) -> Option<&'a mut T>
     where
+        T: HasClassification,
         &'a mut T: TryFrom<&'a mut CoreValue>,
     {
-        <&mut T>::try_from(&mut self.inner).ok()
+        // if the target type has no classification, i.e. is structural
+        // but the value has a classification, we cannot convert it into the target type
+        if !T::has_classification() && !self.classification().is_none() {
+            None
+        }
+        else {
+            <&mut T>::try_from(&mut self.inner).ok()
+        }
     }
 
     /// Tries to convert the current value into the specific specified type.
     /// Does not perform any type conversion.
     pub fn try_into_value<T>(self) -> Option<T>
     where
-        T: TryFrom<CoreValue>,
+        T: TryFrom<CoreValue> + HasClassification,
     {
-        T::try_from(self.inner).ok()
+        // if the target type has no classification, i.e. is structural
+        // but the value has a classification, we cannot convert it into the target type
+        if !T::has_classification() && !self.classification().is_none() {
+            None
+        }
+        else {
+            T::try_from(self.inner).ok()
+        }
     }
 
     /// Returns the actual current [TypeDefinition] of the value
@@ -419,6 +444,7 @@ impl Display for Value {
         core::write!(f, "{}", self.inner)
     }
 }
+
 
 #[cfg(test)]
 /// Tests for the Value struct and its methods.

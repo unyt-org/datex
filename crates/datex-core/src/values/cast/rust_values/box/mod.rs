@@ -7,6 +7,7 @@ mod datex_native;
 mod convert_parts;
 mod get_core_lib_type_id;
 mod value_access;
+pub mod classification;
 
 #[cfg(test)]
 mod tests {

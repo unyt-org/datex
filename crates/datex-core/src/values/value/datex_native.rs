@@ -12,8 +12,4 @@ impl DatexNative for Value
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-
-    fn classification(&self, cache: &mut SharedReferencesCache) -> ValueClassification {
-        self.classification.clone()
-    }
 }

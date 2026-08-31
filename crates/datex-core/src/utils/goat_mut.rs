@@ -10,7 +10,7 @@ pub enum GoatMut<'a, T: ?Sized> {
     Borrowed(&'a mut T),
 }
 
-impl<'a, T> GoatMut<'a, T> {
+impl<'a, T: ?Sized> GoatMut<'a, T> {
     /// equivalent to [RefMut::map] function
     pub fn map<U: ?Sized, F>(self, f: F) -> GoatMut<'a, U>
     where

@@ -28,6 +28,7 @@ mod get_core_lib_type_id;
 mod get_datex_type;
 mod datex_native;
 mod convert_parts;
+mod classification;
 
 pub const DECIMAL_NAN: &str = "nan";
 pub const DECIMAL_INFINITY: &str = "infinity";

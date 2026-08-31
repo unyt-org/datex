@@ -1,3 +1,6 @@
+pub mod classification;
+pub mod datex_native;
+
 use crate::{
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
@@ -11,15 +14,13 @@ use crate::{
         core_values::native::DatexNative,
     },
 };
-use core::{any::Any, time::Duration};
+use core::{time::Duration};
 use crate::preludes::derive::CoreLibTypeId;
 use crate::traits::convert_parts::{FromParts, IntoParts};
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::datex_native_structural::DatexNativeStructural;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 use crate::traits::get_datex_type::GetDatexType;
-use crate::types::entity_type::EntityType;
-use crate::values::value::value_classification::ValueClassification;
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
@@ -43,17 +44,6 @@ impl FromParts for Duration {}
 impl IntoParts for Duration {}
 impl GetCoreLibTypeId for Duration {}
 impl GetDatexType for Duration {}
-
-
-impl DatexNative for Duration {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
 
 impl DatexNativeStructural for Duration {}
 impl DatexNativeOnlyStructural for Duration {}

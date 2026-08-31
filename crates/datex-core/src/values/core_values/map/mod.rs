@@ -32,6 +32,7 @@ mod get_datex_type;
 mod datex_native;
 mod datex_native_structural;
 mod convert_parts;
+pub mod classification;
 
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
