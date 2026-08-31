@@ -54,11 +54,11 @@ impl<'ctx> SerdeContext<'ctx, Value> {
             .serialize_tuple(if classification.is_none() { 2 } else { 3 })?;
         tuple.serialize_element(&index.to_u16())?;
         tuple.serialize_element(inner)?;
-        if let Some(custom_type) = classification {
-            // [id, value, custom_type]
+        if !classification.is_none() {
+            // [id, value, classification]
             tuple.serialize_element(&ValueWithSeed::new(
-                custom_type,
-                &mut self.cast::<TypeDefinition>(),
+                classification,
+                &mut self.cast::<ValueClassification>(),
             ))?;
         } else {
             // [id, value]
@@ -84,17 +84,17 @@ impl<'ctx> SerdeContext<'ctx, Value> {
         }
         let index = CoreLibIdIndex::from(core_lib_type_id);
         let mut tuple = serializer
-            .serialize_tuple(if classification.is_some() { 3 } else { 2 })?;
+            .serialize_tuple(if classification.is_none() { 2 } else { 3 })?;
         tuple.serialize_element(&index.to_u16())?;
         tuple.serialize_element(&ValueWithSeed::new(
             inner,
             &mut self.cast::<T>(),
         ))?;
-        if let Some(custom_type) = classification {
-            // [id, value, custom_type]
+        if !classification.is_none() {
+            // [id, value, classification]
             tuple.serialize_element(&ValueWithSeed::new(
-                custom_type,
-                &mut self.cast::<TypeDefinition>(),
+                classification,
+                &mut self.cast::<ValueClassification>(),
             ))?;
         } else {
             // [id, value]
@@ -402,12 +402,12 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
             ))
         })?;
 
-        let classification: Option<ValueClassification> =
+        let classification: ValueClassification =
             seq.next_element_seed(self.cast::<ValueClassification>()).map_err(|err| {
                 serde::de::Error::custom(format!(
                     "error deserializing custom type definition for core value: {err}"
                 ))
-            })?;
+            })?.unwrap_or_default();
 
         Ok(Value::new(inner, classification))
     }
