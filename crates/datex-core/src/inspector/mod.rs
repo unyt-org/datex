@@ -7,8 +7,9 @@ use datex_macros_internal::{Datex, datex};
 
 #[datex(name = "inspector")]
 mod datex_inspector {
-    use super::*;
     use crate::datex_proxy::shared::Shared;
+    use crate::datex_proxy::shared::to_shared::ToShared;
+    use super::*;
 
     #[derive(Datex, Debug, Clone)]
     pub struct Inspector {
@@ -30,7 +31,10 @@ mod datex_inspector {
     /// Creates a new [Inspector] instance.
     pub fn create(name: String) -> Shared<Inspector> {
         // TODO: add SharedRef here, caller should not own inspector
-        Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
+        Inspector { name }.shared(
+            &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default(),
+            &mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(),
+        )
     }
 
     pub async fn async_test(a: String) -> String {
