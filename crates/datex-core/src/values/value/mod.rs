@@ -33,6 +33,8 @@ mod datex_native;
 pub mod convert_parts;
 pub mod get_core_lib_type_id;
 pub mod classification;
+mod try_from_core_value;
+pub mod convert_value_container;
 
 use crate::{
     datex_proxy::TryToDatexValueError,
@@ -51,6 +53,7 @@ use core::{
     result::Result,
 };
 use crate::preludes::derive::{DatexNativeStructural, TaggedTypeDefinition};
+use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::has_classification::HasClassification;
 use crate::types::entity_type::EntityType;
@@ -260,6 +263,7 @@ impl Value {
         T: HasClassification,
         &'a mut T: TryFrom<&'a mut CoreValue>,
     {
+        // TODO: also use derive from ConvertValueContainer
         // if the target type has no classification, i.e. is structural
         // but the value has a classification, we cannot convert it into the target type
         if !T::has_classification() && !self.classification().is_none() {
@@ -274,16 +278,9 @@ impl Value {
     /// Does not perform any type conversion.
     pub fn try_into_value<T>(self) -> Option<T>
     where
-        T: TryFrom<CoreValue> + HasClassification,
+        T: ConvertValueContainer,
     {
-        // if the target type has no classification, i.e. is structural
-        // but the value has a classification, we cannot convert it into the target type
-        if !T::has_classification() && !self.classification().is_none() {
-            None
-        }
-        else {
-            T::try_from(self.inner).ok()
-        }
+        T::try_from_value_container(ValueContainer::Local(self)).ok()
     }
 
     /// Returns the actual current [TypeDefinition] of the value

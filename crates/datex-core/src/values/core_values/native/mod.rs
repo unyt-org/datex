@@ -21,11 +21,11 @@ use crate::{
     values::core_value::CoreValue,
 };
 pub use datex_native_trait::*;
-use crate::preludes::derive::BorrowedValueContainer;
+use crate::preludes::derive::{BorrowedValueContainer, HasClassification};
 use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::values::value::borrowed_value::BorrowedValue;
 
-impl<T: DatexNative> ConvertValueContainer for T {
+impl<T: DatexNative + TryFrom<CoreValue> + HasClassification> ConvertValueContainer for T {
     fn to_value_container(
         self,
         cache: &mut SharedReferencesCache,
@@ -43,11 +43,13 @@ impl<T: DatexNative> ConvertValueContainer for T {
     {
         match value_container {
             ValueContainer::Local(value) => {
-                match value.inner {
-                    CoreValue::Native(native_value) => {
-                        native_value.try_into_value().ok_or(()) // TODO: is this correct?
-                    }
-                    _ => Err(()),
+                // if the target type has no classification, i.e. is structural
+                // but the value has a classification, we cannot convert it into the target type
+                if !T::has_classification() && !value.classification().is_none() {
+                    Err(())
+                }
+                else {
+                    Self::try_from(value.inner).map_err(|_| ())
                 }
             }
             _ => Err(()),
