@@ -6,9 +6,25 @@ use crate::datex_proxy::data::{
     StructureData, TypeKind,
 };
 
+
+pub fn generate_core_lib_type_id(
+    structure_data: &StructureData
+) -> TokenStream {
+    let StructureData {
+        ident,
+        generics,
+        ..
+    } = structure_data;
+    
+    quote! {
+        #[automatically_derived]
+        impl #generics GetCoreLibTypeId for #ident #generics {}
+    }
+}
+
 /// Generates the [GetDatexType] implementation for the given structure data.
 /// Returns a TokenStream of the implementation.
-pub fn generate_datex_proxy_types(
+pub fn generate_datex_type(
     structure_data: &StructureData,
 ) -> TokenStream {
     let datex_type = generate_type(structure_data);

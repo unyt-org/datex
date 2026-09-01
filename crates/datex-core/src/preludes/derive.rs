@@ -19,6 +19,12 @@ pub use crate::{
     traits::value_access::ValueAccess,
     traits::datex_native_structural::DatexNativeStructural,
     traits::datex_native_only_structural::DatexNativeOnlyStructural,
+    traits::has_classification::HasClassification,
+    traits::classification::Classification,
+    traits::get_datex_type::GetDatexType,
+    traits::get_core_lib_type_id::GetCoreLibTypeId,
+    traits::convert_parts::FromParts,
+    traits::convert_parts::IntoParts,
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
@@ -38,10 +44,12 @@ pub use crate::{
         value::Value,
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
+    utils::{goat::Goat, goat_mut::GoatMut},
+    values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
 };
 
 #[cfg(feature = "decompiler")]
-use crate::{
+pub use crate::{
     ast,
     ast::{
         expressions::DatexExpressionData, expressions::Statements,
