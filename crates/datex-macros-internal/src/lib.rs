@@ -110,7 +110,6 @@ pub fn datex_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     let data = parser::parse_structure_data(input);
     generator::generate_derive_code(data).into()
-    //datex_proxy::derive(input).into()
 }
 
 #[proc_macro_attribute]

@@ -1,15 +1,14 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{str::FromStr};
 
 use crate::{
     datex_proxy::{
         data::{
-            EnumVariant, Field, Fields, NamedField, Structure, StructureData,
-            TypeKind,
+            StructureData,
         },
         generator::{
             datex_expression_data::generate_datex_expression_data,
             datex_native::generate_datex_native,
-            datex_proxy_type::generate_datex_proxy_types,
+            datex_type::generate_datex_type,
         },
     },
     utils::get_datex_core_crate_name,
@@ -17,15 +16,31 @@ use crate::{
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::PathSegment;
+use crate::datex_proxy::generator::classification::generate_classification;
+use crate::datex_proxy::generator::convert_parts::generate_convert_parts;
+use crate::datex_proxy::generator::datex_type::generate_core_lib_type_id;
+use crate::datex_proxy::generator::try_from_core_value::generate_try_from_core_value;
+use crate::datex_proxy::generator::value_access::generate_value_access;
 
 mod datex_expression_data;
 mod datex_native;
-mod datex_proxy_type;
+mod datex_type;
+mod convert_parts;
+pub mod value_access;
+pub mod try_from_core_value;
+pub mod classification;
 
 /// Generates the code for the derive macro based on the provided structure data.
 pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
+    // generate trait impls
     let datex_native = generate_datex_native(&structure_data);
-    let datex_types = generate_datex_proxy_types(&structure_data);
+    let convert_parts = generate_convert_parts(&structure_data);
+    let datex_type = generate_datex_type(&structure_data);
+    let core_lib_type_id = generate_core_lib_type_id(&structure_data);
+    let try_from_core_value = generate_try_from_core_value(&structure_data);
+    let classification = generate_classification(&structure_data);
+    let value_access = generate_value_access(&structure_data);
+
     let datex_expression_data = cfg_select! {
         feature = "decompiler" => {
             generate_datex_expression_data(&structure_data)
@@ -40,13 +55,17 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
             get_datex_core_crate_name()
         };
 
-    let output = quote! {{
-        use #datex_core_crate_name::preludes::derive::*;
-        #datex_native
-        #datex_types
-        #datex_expression_data
-    }};
-    println!("Generated code for {}:\n{}", structure_data.ident, output);
-
-    output
+    quote! {
+        const _: () = {
+            use #datex_core_crate_name::preludes::derive::*;
+            #datex_native
+            #convert_parts
+            #datex_type
+            #core_lib_type_id
+            #try_from_core_value
+            #classification
+            #value_access
+            #datex_expression_data
+        };
+    }
 }

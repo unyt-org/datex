@@ -387,7 +387,7 @@ impl ComInterfaceManager {
 #[cfg(test)]
 mod tests {
     use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use super::*;
+    use super::*;
     use crate::{
         network::com_interfaces::com_interface::factory::{
             SendCallback, SendSuccess, SocketConfiguration, SocketProperties,

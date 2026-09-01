@@ -22,24 +22,9 @@ pub fn generate_datex_native(structure_data: &StructureData) -> TokenStream {
             fn as_any_mut(&mut self) -> &mut dyn Any {
                 self
             }
-            // TODO: classification
         }
 
         #native_only_structural_impl
-
-        #[automatically_derived]
-        impl<'a> AsBorrowed<'a> for #ident #generics { // FIXME: generics
-            fn as_borrowed(&'a self) -> BorrowedValueContainer<'a> {
-                BorrowedValueContainer::native_borrowed(self)
-            }
-        }
-
-        #[automatically_derived]
-        impl<'a> AsBorrowedMut<'a> for #ident #generics { // FIXME: generics
-            fn as_borrowed_mut(&'a mut self) -> BorrowedValueContainerMut<'a> {
-                BorrowedValueContainerMut::native_borrowed(self)
-            }
-        }
     }
 }
 
