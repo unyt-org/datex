@@ -15,9 +15,9 @@ pub fn generate_datex_expression_data(
     } = structure_data;
 
     let datex_expression_data = match &structure_data.structure {
-        Structure::Enum(variants) => generate_datex_enum_fields(&variants),
+        Structure::Enum(variants) => generate_datex_enum_fields(variants),
         Structure::Struct(fields) => {
-            generate_datex_expression_data_for_struct(&fields)
+            generate_datex_expression_data_for_struct(fields)
         }
     };
 
@@ -36,7 +36,7 @@ fn generate_datex_expression_data_for_struct(fields: &Fields) -> TokenStream {
         .iter()
         .map(|ident| {
             quote! {
-                let #ident = self.#ident;
+                let #ident = &self.#ident;
             }
         })
         .collect::<Vec<_>>();
@@ -56,7 +56,7 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
         Fields::Named(fields) => {
             let field_expressions = fields
                 .iter()
-                .map(|f| named_field_to_expression_data(f))
+                .map(named_field_to_expression_data)
                 .collect::<Vec<_>>();
             quote! {
                 DatexExpressionData::Map(ast::expressions::Map::new(
@@ -121,21 +121,20 @@ fn named_field_to_expression_data(field: &NamedField) -> TokenStream {
 fn generate_datex_enum_fields(enum_ty: &[EnumVariant]) -> TokenStream {
     let arms = enum_ty.iter().map(|variant| {
         let variant_ident = Ident::new(&variant.name, Span::call_site());
-        let variant_name = &variant.name;
         let variant_fields =
             generate_datex_expression_data_fields(&variant.fields);
         let field_idents = variant.fields.field_idents();
         match &variant.fields {
             Fields::Named(fields) => {
                 quote! {
-                    #variant_ident { #(#field_idents),* } => {
+                    Self::#variant_ident { #(#field_idents),* } => {
                         #variant_fields
                     }
                 }
             }
             Fields::Unnamed(fields) => {
                 quote! {
-                    #variant_ident(#(#field_idents),*) => {
+                    Self::#variant_ident(#(#field_idents),*) => {
                         #variant_fields
                     }
                 }
@@ -143,14 +142,14 @@ fn generate_datex_enum_fields(enum_ty: &[EnumVariant]) -> TokenStream {
             Fields::Transparent(field) => {
                 let first_field_ident = field_idents.first().unwrap();
                 quote! {
-                    #variant_ident(#first_field_ident) => {
+                    Self::#variant_ident(#first_field_ident) => {
                         #variant_fields
                     }
                 }
             }
             Fields::Unit => {
                 quote! {
-                    #variant_ident => {
+                    Self::#variant_ident => {
                         #variant_fields
                     }
                 }

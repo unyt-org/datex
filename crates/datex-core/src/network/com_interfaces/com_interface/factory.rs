@@ -18,6 +18,7 @@ use crate::{
 use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
+use crate::preludes::derive::{CoreValue, HasClassification};
 use crate::values::core_values::native::DatexNative;
 
 pub type NewSocketsIterator = Pin<
@@ -416,7 +417,7 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 /// }
 pub trait ComInterfaceSyncFactory
 where
-    Self: DatexNative + Sized,
+    Self: TryFrom<CoreValue> + HasClassification + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
@@ -475,7 +476,7 @@ where
 /// }
 pub trait ComInterfaceAsyncFactory
 where
-    Self: DatexNative + Sized,
+    Self: TryFrom<CoreValue> + HasClassification + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.

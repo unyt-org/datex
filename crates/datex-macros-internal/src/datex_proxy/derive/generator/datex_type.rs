@@ -15,7 +15,7 @@ pub fn generate_core_lib_type_id(
         generics,
         ..
     } = structure_data;
-    
+
     quote! {
         #[automatically_derived]
         impl #generics GetCoreLibTypeId for #ident #generics {}
@@ -71,7 +71,7 @@ fn generate_datex_type_definition(fields: &Fields) -> TokenStream {
         Fields::Named(fields) => {
             let field_types = fields
                 .iter()
-                .map(|f| named_field_to_definition(f))
+                .map(named_field_to_definition)
                 .collect::<Vec<_>>();
             quote! {
                 TypeDefinition::Map(MapTypeDefinition(vec![
@@ -124,22 +124,27 @@ fn named_field_to_definition(field: &NamedField) -> TokenStream {
     let field_definition = field_to_definition(&field.field);
     let name = field.name.clone();
     quote! {
-        (#name.to_string(), #field_definition)
+        (
+            Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#name.into())).into()),
+            #field_definition
+        )
     }
 }
 
 /// Generates a type definition for an enum. Returns a TokenStream of [TypeDefinition].
 fn generate_datex_enum_type(enum_ty: &[EnumVariant]) -> TokenStream {
-    let variants_datex_types = enum_ty.iter().map(|variant| {
-        let name = &variant.name;
-        let type_definition = generate_datex_type_definition(&variant.fields);
-        quote! {
-            Type::Definition(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                tag: #name.to_string(),
-                ty: Some(Box::new(Type::Definition(#type_definition.into()))),
-            }).into())
-        }
-    }); // FIXME do we need collect here?
+    let variants_datex_types = enum_ty
+        .iter()
+        .map(|variant| {
+            let name = &variant.name;
+            let type_definition = generate_datex_type_definition(&variant.fields);
+            quote! {
+                Type::Definition(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: #name.to_string(),
+                    ty: Some(Box::new(Type::Definition(#type_definition.into()))),
+                }).into())
+            }
+        });
 
     quote! {
         TypeDefinition::Union(UnionTypeDefinition(vec![
@@ -172,6 +177,7 @@ fn generate_type(structure_data: &StructureData) -> TokenStream {
             .datex_name
             .clone()
             .unwrap_or(structure_data.ident.to_string());
+        // TODO: move out of macro as utility function
         quote! {{
             let address = unsafe {
                 SelfOwnedPointerAddress::new_static_from_name(
