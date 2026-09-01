@@ -32,7 +32,7 @@ pub enum ComInterfaceCreateError {
     ConnectionError(Option<Box<dyn Display>>),
     InterfaceCreationRequiresAsyncContext,
     InterfaceTypeNotRegistered(String),
-    SetupDataParseError(TryFromDatexValueError),
+    SetupDataParseError,
     InvalidSetupData(String),
     InterfaceAddError(InterfaceAddError),
 }
@@ -73,8 +73,8 @@ impl Display for ComInterfaceCreateError {
             ComInterfaceCreateError::InterfaceTypeNotRegistered(ty) => {
                 write!(f, "Interface type '{}' is not registered", ty)
             }
-            ComInterfaceCreateError::SetupDataParseError(e) => {
-                write!(f, "Could not parse setup data: {}", e.0)
+            ComInterfaceCreateError::SetupDataParseError => {
+                write!(f, "Could not parse setup data")
             }
             ComInterfaceCreateError::InvalidSetupData(details) => {
                 write!(f, "Invalid setup data: {}", details)

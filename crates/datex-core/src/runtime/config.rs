@@ -176,7 +176,7 @@ pub mod tests {
 
         let value_container =  Value::native_structural(config_interface);
         let parsed_config_interface: RuntimeConfigInterface =
-            value_container.try_into().unwrap();
+            value_container.try_into_value().unwrap();
         assert_eq!(parsed_config_interface.interface_type, "test");
     }
 
@@ -184,7 +184,7 @@ pub mod tests {
     fn datex_proxy_runtime_config() {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
         let value_container = Value::native_structural(config);
-        let parsed_config: RuntimeConfig = value_container.try_into().unwrap();
+        let parsed_config: RuntimeConfig = value_container.try_into_value().unwrap();
         assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));
     }
 }
