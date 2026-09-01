@@ -1,4 +1,5 @@
 mod try_from_core_value;
+pub mod try_from_core_value_sized;
 
 use crate::{
     datex_proxy::TryFromDatexValueError,
