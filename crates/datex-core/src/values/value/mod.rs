@@ -33,7 +33,6 @@ mod datex_native;
 pub mod convert_parts;
 pub mod get_core_lib_type_id;
 pub mod classification;
-mod try_from_core_value;
 pub mod convert_value_container;
 
 use crate::{

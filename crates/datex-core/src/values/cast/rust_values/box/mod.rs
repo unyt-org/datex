@@ -8,6 +8,7 @@ mod convert_parts;
 mod get_core_lib_type_id;
 mod value_access;
 pub mod classification;
+mod try_from_core_value;
 
 #[cfg(test)]
 mod tests {
