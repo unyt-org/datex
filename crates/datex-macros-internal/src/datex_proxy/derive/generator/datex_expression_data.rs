@@ -74,7 +74,7 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
                 .collect::<Vec<_>>();
 
             quote! {
-                DatexExpressionData::List(List::new(
+                DatexExpressionData::List(ast::expressions::List::new(
                     vec![
                         #(#field_expressions),*
                     ]

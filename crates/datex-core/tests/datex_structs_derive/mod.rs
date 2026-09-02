@@ -109,7 +109,7 @@ use datex_core::values::value::value_classification::{ValueClassification, Value
 ]) ; "map of primitives")]
 fn round_trip_struct<T>(structure: T)
 where
-    T: DatexNative + PartialEq + std::fmt::Debug + Clone,
+    T: DatexNativeStructural + PartialEq + std::fmt::Debug + Clone,
 {
     assert_round_trip(structure);
 }
