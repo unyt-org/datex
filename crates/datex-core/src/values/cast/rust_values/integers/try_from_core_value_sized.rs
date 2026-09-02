@@ -14,18 +14,15 @@ macro_rules! impl_pointer_sized_core_value_conversions {
             };
 
             impl ConvertCoreValue for $ty {
-                fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
+                fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
                     match value {
                         CoreValue::TypedInteger(TypedInteger::$variant(v)) => Ok(v as $ty),
-                        CoreValue::Native(native) => native.try_into_value().ok_or(()),
-                        _ => Err(()),
+                        CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
+                        _ => Err(value),
                     }
                 }
-            }
 
-            impl<'a> TryFrom<&'a CoreValue> for &'a $ty {
-                type Error = ();
-                fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
+                fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
                     match value {
                         // SAFETY: checked above to have identical size and alignment,
                         // and both are plain integers with no padding or niches.
@@ -36,11 +33,8 @@ macro_rules! impl_pointer_sized_core_value_conversions {
                         _ => Err(()),
                     }
                 }
-            }
 
-            impl<'a> TryFrom<&'a mut CoreValue> for &'a mut $ty {
-                type Error = ();
-                fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
+                fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()> {
                     match value {
                         // SAFETY: as above; every bit pattern is valid for both types,
                         // so writes through the resulting reference are also fine.

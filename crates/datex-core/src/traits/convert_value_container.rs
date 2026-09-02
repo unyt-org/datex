@@ -14,9 +14,19 @@ pub trait ConvertValueContainer {
 
     fn try_from_value_container(
         value_container: ValueContainer,
-    ) -> Result<Self, ()>
+    ) -> Result<Self, ValueContainer>
     where
         Self: Sized;
 
-    // TODO: try_borrow_from_value_container
+    fn try_borrow_from_value_container(
+        value_container: &ValueContainer,
+    ) -> Result<&Self, ()>
+    where
+        Self: Sized;
+
+    fn try_borrow_mut_from_value_container(
+        value_container: &mut ValueContainer,
+    ) -> Result<&mut Self, ()>
+    where
+        Self: Sized;
 }

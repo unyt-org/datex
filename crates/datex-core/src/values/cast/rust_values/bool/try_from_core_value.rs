@@ -6,29 +6,24 @@ use crate::values::core_values::boolean::Boolean;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 impl ConvertCoreValue for bool {
-    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Boolean(Boolean(bool)) => Ok(bool),
-            CoreValue::Native(native) => native.try_into_value().ok_or(()),
-            _ => Err(()),
+            CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
+            _ => Err(value),
         }
     }
-}
 
-impl<'a> TryFrom<&'a CoreValue> for &'a bool {
-    type Error = ();
-    fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
+    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
         match value {
             CoreValue::Boolean(Boolean(bool)) => Ok(bool),
             CoreValue::Native(native) => native.try_as().ok_or(()),
             _ => Err(()),
         }
     }
-}
 
-impl<'a> TryFrom<&'a mut CoreValue> for &'a mut bool {
-    type Error = ();
-    fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
+    fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()>
+    {
         match value {
             CoreValue::Boolean(Boolean(bool)) => Ok(bool),
             CoreValue::Native(native) => native.try_as_mut().ok_or(()),
@@ -36,6 +31,7 @@ impl<'a> TryFrom<&'a mut CoreValue> for &'a mut bool {
         }
     }
 }
+
 
 impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, bool> {
     type Error = ();
@@ -70,10 +66,10 @@ mod tests {
         let mut core_value = CoreValue::Boolean(Boolean(true));
         let result = core_value.try_as::<bool>();
         assert_eq!(*result.unwrap(), true);
-        
+
         let result_mut = core_value.try_as_mut::<bool>();
         assert_eq!(*result_mut.unwrap(), true);
-        
+
         let result_into = core_value.try_into_value::<bool>();
         assert_eq!(result_into.unwrap(), true);
     }

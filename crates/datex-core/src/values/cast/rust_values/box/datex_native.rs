@@ -1,8 +1,8 @@
 use core::any::Any;
-use crate::preludes::derive::{DatexNative, HasClassification};
+use crate::preludes::derive::{DatexNative, StaticClassification};
 use crate::traits::get_datex_type::GetDatexType;
 
-impl<T: DatexNative + GetDatexType + HasClassification> DatexNative
+impl<T: DatexNative + GetDatexType + StaticClassification> DatexNative
 for Box<T>
 {
     fn as_any(&self) -> &dyn Any {

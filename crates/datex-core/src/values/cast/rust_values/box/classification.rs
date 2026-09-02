@@ -1,7 +1,7 @@
 use crate::preludes::derive::{DatexNative, SharedReferencesCache};
 use crate::traits::classification::Classification;
 use crate::traits::get_datex_type::GetDatexType;
-use crate::traits::has_classification::HasClassification;
+use crate::traits::static_classification::StaticClassification;
 use crate::values::value::value_classification::ValueClassification;
 
 impl<T: DatexNative + GetDatexType> Classification
@@ -12,7 +12,7 @@ for Box<T>
     }
 }
 
-impl<T: DatexNative + GetDatexType + HasClassification> HasClassification for Box<T> {
+impl<T: DatexNative + GetDatexType + StaticClassification> StaticClassification for Box<T> {
     fn has_classification() -> bool {
         T::has_classification()
     }

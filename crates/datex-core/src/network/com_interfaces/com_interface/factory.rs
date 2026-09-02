@@ -18,7 +18,8 @@ use crate::{
 use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
-use crate::preludes::derive::{CoreValue, HasClassification};
+use futures_util::TryStreamExt;
+use crate::preludes::derive::{ConvertCoreValue, CoreValue, StaticClassification};
 use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::values::core_values::native::DatexNative;
 
@@ -418,7 +419,7 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 /// }
 pub trait ComInterfaceSyncFactory
 where
-    Self: ConvertValueContainer + Sized,
+    Self: ConvertCoreValue + StaticClassification + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
@@ -427,7 +428,7 @@ where
         setup_data: Value,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         let setup_data = setup_data.try_into_value()
-            .ok_or(ComInterfaceCreateError::SetupDataParseError)?;
+            .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
         Self::create_interface(setup_data)
     }
 
@@ -477,7 +478,7 @@ where
 /// }
 pub trait ComInterfaceAsyncFactory
 where
-    Self: ConvertValueContainer + Sized,
+    Self: ConvertCoreValue + StaticClassification + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
@@ -485,7 +486,7 @@ where
     fn factory(setup_data: Value) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
             let setup_data = setup_data.try_into_value()
-                .ok_or(ComInterfaceCreateError::SetupDataParseError)?;
+                .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
             Self::create_interface(setup_data).await
         })
     }

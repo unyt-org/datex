@@ -65,11 +65,11 @@ impl Apply for Callable {
 impl Apply for NativeCallable {
     fn try_apply_sync(
         &self,
-        _runtime: &Runtime,
+        runtime: &Runtime,
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match self {
-            NativeCallable::Sync(f) => f(args).map_err(|e| e.into()),
+            NativeCallable::Sync(f) => f(args, runtime).map_err(|e| e.into()),
             NativeCallable::Async(_f) => {
                 Err(ApplyError::AsyncCallableRequiresAsyncExecution)
             }
@@ -78,12 +78,12 @@ impl Apply for NativeCallable {
 
     async fn try_apply_async(
         &self,
-        _runtime: &Runtime,
+        runtime: &Runtime,
         args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match self {
-            NativeCallable::Sync(f) => f(args).map_err(|e| e.into()),
-            NativeCallable::Async(f) => f(args).await.map_err(|e| e.into()),
+            NativeCallable::Sync(f) => f(args, runtime).map_err(|e| e.into()),
+            NativeCallable::Async(f) => f(args, runtime).await.map_err(|e| e.into()),
         }
     }
 }

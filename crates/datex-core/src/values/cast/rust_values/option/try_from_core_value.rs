@@ -6,16 +6,24 @@ impl<T> ConvertCoreValue for Option<T>
 where
     T: DatexNativeBase + 'static,
 {
-    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Null => Ok(None),
-            CoreValue::Native(native) => native.try_into_value::<T>().ok_or(()).map(Some),
-            _ => Err(()),
+            CoreValue::Native(native) => native.try_into_value::<T>().map(Some).map_err(CoreValue::Native),
+            _ => Err(value),
         }
+    }
+
+    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
+        Err(())
+    }
+
+    fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()> {
+        Err(())
     }
 }
 
-impl<'a, T> TryFrom<&'a CoreValue> for Option<&'a T> 
+impl<'a, T> TryFrom<&'a CoreValue> for Option<&'a T>
 where
     T: DatexNativeBase + 'static,
 {
@@ -29,7 +37,7 @@ where
     }
 }
 
-impl<'a, T> TryFrom<&'a mut CoreValue> for Option<&'a mut T> 
+impl<'a, T> TryFrom<&'a mut CoreValue> for Option<&'a mut T>
 where
     T: DatexNativeBase + 'static,
 {

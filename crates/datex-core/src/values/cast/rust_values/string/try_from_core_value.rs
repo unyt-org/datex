@@ -6,29 +6,24 @@ use crate::values::core_value::CoreValue;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 impl ConvertCoreValue for String {
-    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Text(Text(string)) => Ok(string),
-            CoreValue::Native(native) => native.try_into_value().ok_or(()),
-            _ => Err(()),
+            CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
+            _ => Err(value),
         }
     }
-}
 
-impl<'a> TryFrom<&'a CoreValue> for &'a String {
-    type Error = ();
-    fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
+    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
         match value {
             CoreValue::Text(Text(string)) => Ok(string),
             CoreValue::Native(native) => native.try_as().ok_or(()),
             _ => Err(()),
         }
     }
-}
 
-impl<'a> TryFrom<&'a mut CoreValue> for &'a mut String {
-    type Error = ();
-    fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
+    fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()>
+    {
         match value {
             CoreValue::Text(Text(string)) => Ok(string),
             CoreValue::Native(native) => native.try_as_mut().ok_or(()),
@@ -36,6 +31,7 @@ impl<'a> TryFrom<&'a mut CoreValue> for &'a mut String {
         }
     }
 }
+
 
 impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, String> {
     type Error = ();

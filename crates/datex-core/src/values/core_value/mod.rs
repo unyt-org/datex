@@ -168,27 +168,27 @@ impl CoreValue {
 
     /// Tries to get a borrow of the current value as the specified type.
     /// Does not perform any type conversion.
-    pub fn try_as<'a, T: 'a>(&'a self) -> Option<&'a T>
+    pub fn try_as<T>(&self) -> Option<&T>
     where
-        &'a T: TryFrom<&'a CoreValue>,
+        T: ConvertCoreValue
     {
-        <&T>::try_from(self).ok()
+        T::try_borrow_from_core_value(self).ok()
     }
 
-    pub fn try_as_mut<'a, T: 'a>(&'a mut self) -> Option<&'a mut T>
+    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
     where
-        &'a mut T: TryFrom<&'a mut CoreValue>,
+        T: ConvertCoreValue
     {
-        <&mut T>::try_from(self).ok()
+        T::try_borrow_mut_from_core_value(self).ok()
     }
 
     /// Tries to convert the current value into the specific specified type.
     /// Does not perform any type conversion.
-    pub fn try_into_value<T>(self) -> Option<T>
+    pub fn try_into_value<T>(self) -> Result<T, CoreValue>
     where
         T: ConvertCoreValue,
     {
-        T::try_from_core_value(self).ok()
+        T::try_from_core_value(self)
     }
 
     /// Casts the value to a [Text] value

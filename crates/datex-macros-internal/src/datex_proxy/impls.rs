@@ -56,21 +56,13 @@ pub fn generate_impl_glue_code(
         #input
 
         const _: () = {
-            use #datex_core_crate_name::{
-                prelude::*,
-                types::type_definition::callable::{CallableKind, CallableTypeDefinition},
-                values::core_values::callable::{Callable, CallableBody, NativeCallable},
-                types::entities::entity_impls::EntityImplMethod,
-                values::core_values::callable::{native_sync_callable, native_async_callable},
-                datex_proxy::DatexValueContainerProxyDeserialize,
-                values::value_container::ValueContainer,
-            };
+            use #datex_core_crate_name::preludes::derive::*;
 
             #datex_core_crate_name::inventory::submit! {
                 #datex_core_crate_name::datex_registry::DatexImplRegistration {
                     namespace: #namespace,
                     name: #name,
-                    create_impl: |cache| #datex_core_crate_name::types::entities::entity_impls::EntityImpl {
+                    create_impl: |cache| EntityImpl {
                         methods: vec![#(#methods),*],
                         static_methods: vec![#(#static_methods),*],
                     },

@@ -1,7 +1,7 @@
 use core::any::Any;
 use crate::preludes::derive::{DatexNative};
 use crate::traits::classification::Classification;
-use crate::traits::has_classification::HasClassification;
+use crate::traits::static_classification::StaticClassification;
 use crate::types::r#type::Type;
 
 impl DatexNative for Type {
@@ -16,4 +16,4 @@ impl DatexNative for Type {
 
 impl Classification for Type {}
 
-impl HasClassification for Type {}
+impl StaticClassification for Type {}

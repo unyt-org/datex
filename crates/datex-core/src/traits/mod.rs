@@ -20,6 +20,6 @@ pub mod convert_value_container;
 pub mod get_core_lib_type_id;
 pub mod datex_native_only_structural;
 pub mod datex_native_structural;
-pub mod has_classification;
+pub mod static_classification;
 pub mod classification;
 pub mod convert_core_value;

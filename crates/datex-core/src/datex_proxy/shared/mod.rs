@@ -108,18 +108,18 @@ impl<T: DatexNative + 'static> Shared<T> {
 }
 
 impl<T: DatexNative + 'static> TryFrom<SharedContainer> for Shared<T> {
-    type Error = TryFromDatexValueError;
+    type Error = ();
     fn try_from(container: SharedContainer) -> Result<Self, Self::Error> {
         // TODO: also check if the type only allows values that are of type T.
         // check if the container contains a local value of type T
         match container.value_container().deref() {
             ValueContainer::Local(value) => {
                 if value.inner.downcast_native_ref::<T>().is_none() {
-                    return Err(TryFromDatexValueError("SharedContainer does not contain the expected native type".to_string()));
+                    return Err(());
                 }
             }
             ValueContainer::Shared(_) => {
-                return Err(TryFromDatexValueError("SharedContainer contains a shared value, expected a local native value".to_string()));
+                return Err(());
             }
         }
         Ok(Self {

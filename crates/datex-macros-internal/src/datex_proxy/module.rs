@@ -68,6 +68,8 @@ pub fn generate_mod_glue_code(
     quote! {
         #(#attrs)*
         #vis mod #ident {
+            use #datex_core_crate_name::preludes::derive::*;
+            
             #(#items)*
 
             #datex_core_crate_name::inventory::submit! {

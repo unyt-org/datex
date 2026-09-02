@@ -1,6 +1,6 @@
 use crate::preludes::derive::Map;
 use crate::traits::classification::Classification;
-use crate::traits::has_classification::HasClassification;
+use crate::traits::static_classification::StaticClassification;
 
 impl Classification for Map {}
-impl HasClassification for Map {}
+impl StaticClassification for Map {}

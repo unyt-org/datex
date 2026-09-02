@@ -8,6 +8,7 @@ use crate::{
     },
 };
 use seq_macro::seq;
+use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::traits::get_datex_type::GetDatexType;
 
 pub trait IntoDatexCallable<Args, R> {
@@ -26,7 +27,7 @@ macro_rules! impl_datex_callable {
             where
                 F: Fn(#(A~N,)*) -> R,
                 #(
-                    A~N: GetDatexType + TryFrom<ValueContainer>,
+                    A~N: GetDatexType + ConvertValueContainer,
                 )*
             {
                 fn parameters(
@@ -49,7 +50,7 @@ macro_rules! impl_datex_callable {
                         let arg~N: A~N = args
                             .next()
                             .unwrap()
-                            .try_into()
+                            .try_into_value()
                             .map_err(|_| CallableError::InvalidSignature)?;
                     )*
                     Ok(self(#(arg~N,)*))
