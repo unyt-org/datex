@@ -1,12 +1,12 @@
 use crate::preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::traits::convert_core_value::ConvertCoreValue;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
 use crate::values::core_value::CoreValue;
 use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
 
-impl TryFrom<CoreValue> for f32 {
-    type Error = ();
-    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+impl ConvertCoreValue for f32 {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
         match value {
             CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(value.0),
             CoreValue::Native(native) => native.try_into_value().ok_or(()),
@@ -43,9 +43,8 @@ impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, f32> {
 
 
 
-impl TryFrom<CoreValue> for f64 {
-    type Error = ();
-    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+impl ConvertCoreValue for f64 {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
         match value {
             CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(value.0),
             CoreValue::Native(native) => native.try_into_value().ok_or(()),

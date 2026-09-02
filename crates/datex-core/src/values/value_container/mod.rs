@@ -41,6 +41,7 @@ use core::{
     hash::{Hash, Hasher},
     ops::FnOnce,
 };
+use crate::traits::convert_value_container::ConvertValueContainer;
 
 pub mod get_datex_type;
 pub mod error;
@@ -158,12 +159,9 @@ impl ValueContainer {
     /// This only works for local values, not for shared values.
     pub fn try_into_value<T>(self) -> Option<T>
     where
-        T: TryFrom<CoreValue>,
+        T: ConvertValueContainer,
     {
-        match self {
-            ValueContainer::Local(value) => value.inner.try_into().ok(),
-            ValueContainer::Shared(_) => None,
-        }
+        T::try_from_value_container(self).ok()
     }
 
     /// Strips any local observers from the given value container.

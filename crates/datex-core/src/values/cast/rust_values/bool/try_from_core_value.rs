@@ -1,12 +1,12 @@
+use crate::traits::convert_core_value::ConvertCoreValue;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
 use crate::values::core_value::CoreValue;
 use crate::values::core_values::boolean::Boolean;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
-impl TryFrom<CoreValue> for bool {
-    type Error = ();
-    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+impl ConvertCoreValue for bool {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
         match value {
             CoreValue::Boolean(Boolean(bool)) => Ok(bool),
             CoreValue::Native(native) => native.try_into_value().ok_or(()),
@@ -74,7 +74,7 @@ mod tests {
         let result_mut = core_value.try_as_mut::<bool>();
         assert_eq!(*result_mut.unwrap(), true);
         
-        let result_into: Result<bool, ()> = core_value.try_into();
+        let result_into = core_value.try_into_value::<bool>();
         assert_eq!(result_into.unwrap(), true);
     }
 }

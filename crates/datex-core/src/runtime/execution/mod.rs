@@ -900,7 +900,7 @@ mod tests {
         let result =
             execute_datex_script_debug_with_result("{x: 1, y: 2, z: 42}");
         let map: CoreValue = result.get_cloned_value().inner;
-        let map: Map = map.try_into().unwrap();
+        let map = map.try_into_value::<Map>().unwrap();
 
         // form and size
         assert_eq!(map.to_string(), "{\"x\": 1, \"y\": 2, \"z\": 42}");
@@ -937,7 +937,7 @@ mod tests {
     fn empty_map() {
         let result = execute_datex_script_debug_with_result("{}");
         let map: CoreValue = result.clone().get_cloned_value().inner;
-        let map: Map = map.try_into().unwrap();
+        let map = map.try_into_value::<Map>().unwrap();
 
         // form and size
         assert_eq!(map.to_string(), "{}");

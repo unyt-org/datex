@@ -1,12 +1,12 @@
+use crate::traits::convert_core_value::ConvertCoreValue;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
 use crate::values::core_value::CoreValue;
 use crate::values::core_values::native::DatexNativeBase;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
-impl<T: DatexNativeBase + 'static> TryFrom<CoreValue> for Vec<T> {
-    type Error = ();
-    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+impl<T: DatexNativeBase + 'static> ConvertCoreValue for Vec<T> {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
         match value {
             CoreValue::Native(native) => native.try_into_value().ok_or(()),
             _ => Err(()),

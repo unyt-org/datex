@@ -1,4 +1,3 @@
-use crate::datex_proxy::shared::Shared;
 use crate::preludes::derive::{SharedReferencesCache, ValueContainer};
 use crate::values::borrowed_value_container::BorrowedValueContainer;
 
@@ -18,4 +17,6 @@ pub trait ConvertValueContainer {
     ) -> Result<Self, ()>
     where
         Self: Sized;
+
+    // TODO: try_borrow_from_value_container
 }

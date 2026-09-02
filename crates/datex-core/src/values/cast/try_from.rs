@@ -25,17 +25,17 @@ use crate::{
         },
     },
 };
+use crate::traits::convert_core_value::ConvertCoreValue;
 
 /// Implements [TryFrom] for each [CoreValue] variant to its corresponding type. This allows to convert e.g. [CoreValue::Integer] to [Integer].
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
         $(
-            impl TryFrom<CoreValue> for $type {
-                type Error = TryFromDatexValueError;
-                fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+            impl ConvertCoreValue for $type {
+                fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
                     match value {
                         CoreValue::$variant(v) => Ok(v),
-                        _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
+                        _ => Err(()),
                     }
                 }
             }
@@ -116,19 +116,19 @@ mod tests {
     #[test]
     fn try_from_core_value() {
         let int_value = CoreValue::Integer(Integer::new(42));
-        let int: Integer = int_value.try_into().unwrap();
+        let int: Integer = int_value.try_into_value().unwrap();
         assert_eq!(int, Integer::new(42));
 
         let text_value = CoreValue::Text(Text::new("Hello, DATEX!"));
-        let text: Text = text_value.try_into().unwrap();
+        let text: Text = text_value.try_into_value().unwrap();
         assert_eq!(text, Text::new("Hello, DATEX!"));
     }
 
     #[test]
     fn try_from_core_value_wrong_type() {
         let int_value = CoreValue::Integer(Integer::new(42));
-        let result: Result<Text, TryFromDatexValueError> = int_value.try_into();
-        assert_matches!(result, Err(TryFromDatexValueError(_)));
+        let result = int_value.try_into_value::<Text>();
+        assert_matches!(result, None);
     }
 
     #[test]

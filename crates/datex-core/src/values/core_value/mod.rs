@@ -36,7 +36,7 @@ use crate::{
 };
 use binrw::error::CustomError;
 use core::fmt::{Debug, Display, Formatter};
-use crate::preludes::derive::DatexNativeStructural;
+use crate::preludes::derive::{ConvertCoreValue, DatexNativeStructural};
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 
 mod child_iterator;
@@ -186,9 +186,9 @@ impl CoreValue {
     /// Does not perform any type conversion.
     pub fn try_into_value<T>(self) -> Option<T>
     where
-        T: TryFrom<CoreValue>,
+        T: ConvertCoreValue,
     {
-        T::try_from(self).ok()
+        T::try_from_core_value(self).ok()
     }
 
     /// Casts the value to a [Text] value

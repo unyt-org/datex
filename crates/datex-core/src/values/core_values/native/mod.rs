@@ -22,10 +22,11 @@ use crate::{
 };
 pub use datex_native_trait::*;
 use crate::preludes::derive::{BorrowedValueContainer, HasClassification};
+use crate::traits::convert_core_value::ConvertCoreValue;
 use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::values::value::borrowed_value::BorrowedValue;
 
-impl<T: DatexNative + TryFrom<CoreValue> + HasClassification> ConvertValueContainer for T {
+impl<T: DatexNative + ConvertCoreValue + HasClassification> ConvertValueContainer for T {
     fn to_value_container(
         self,
         cache: &mut SharedReferencesCache,
@@ -49,7 +50,7 @@ impl<T: DatexNative + TryFrom<CoreValue> + HasClassification> ConvertValueContai
                     Err(())
                 }
                 else {
-                    Self::try_from(value.inner).map_err(|_| ())
+                    Self::try_from_core_value(value.inner).map_err(|_| ())
                 }
             }
             _ => Err(()),

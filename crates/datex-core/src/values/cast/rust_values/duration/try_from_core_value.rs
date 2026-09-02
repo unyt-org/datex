@@ -1,13 +1,13 @@
 use core::time::Duration;
+use crate::traits::convert_core_value::ConvertCoreValue;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
 use crate::values::core_value::CoreValue;
 use crate::values::core_values::boolean::Boolean;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
-impl TryFrom<CoreValue> for Duration {
-    type Error = ();
-    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+impl ConvertCoreValue for Duration {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
         match value {
             CoreValue::Native(native) => native.try_into_value().ok_or(()),
             _ => Err(()),

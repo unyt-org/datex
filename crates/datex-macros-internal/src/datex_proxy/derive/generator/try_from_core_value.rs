@@ -10,9 +10,8 @@ pub fn generate_try_from_core_value(structure_data: &StructureData) -> TokenStre
 
     quote! {
         #[automatically_derived]
-        impl #generics TryFrom<CoreValue> for #ident #generics {
-            type Error = ();
-            fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+        impl #generics ConvertCoreValue for #ident #generics {
+            fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
                 match value {
                     CoreValue::Native(native) => native.try_into_value().ok_or(()),
                     _ => Err(()),
