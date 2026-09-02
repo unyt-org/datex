@@ -15,6 +15,7 @@ use datex_core::{
         apply::{Apply, ApplyArgument},
         try_clone::TryClone,
         value_access::ValueAccess,
+        get_datex_type::GetDatexType,
     },
     types::{
         entities::{
@@ -227,7 +228,7 @@ fn signatures() {
 
     // call method directly on an Example instance via the ValueContainer
     let example_instance = Box::new(Example { a: 1, b: 2 });
-    let example_instance_vc = ValueContainer::from(example_instance);
+    let example_instance_vc = ValueContainer::from(Value::native(example_instance, cache.deref_mut()));
     // TODO: also store type in value container (this will require passing cache to the ValueContainer::from function somehow)
     // Then we can access methods on the type definition here
 
