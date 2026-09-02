@@ -43,6 +43,7 @@ use core::{
     mem,
     ops::Deref,
 };
+use crate::traits::convert_value_container::ConvertValueContainer;
 
 pub mod apply;
 pub mod serde_dif;
@@ -414,8 +415,7 @@ impl SharedContainer {
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
     pub fn try_as<T>(&self) -> Option<Ref<'_, T>>
-    where
-        for<'a> &'a T: TryFrom<&'a CoreValue>,
+    where T: ConvertValueContainer
     {
         Ref::filter_map(self.value_container(), |value| value.try_as::<T>())
             .ok()
@@ -425,8 +425,7 @@ impl SharedContainer {
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
     pub fn try_as_mut<T>(&self) -> Option<SharedMut<'_, T>>
-    where
-        for<'a> &'a mut T: TryFrom<&'a mut CoreValue>,
+    where T: ConvertValueContainer
     {
         RefMut::filter_map(self.value_container_mut(), |value| {
             value.try_as_mut::<T>()

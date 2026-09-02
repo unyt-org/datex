@@ -4,6 +4,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use datex_macros_internal::{Datex, datex};
+use crate::traits::get_datex_type::GetDatexType;
 
 #[datex(name = "inspector")]
 mod datex_inspector {
@@ -15,7 +16,6 @@ mod datex_inspector {
     pub struct Inspector {
         name: String, // TODO: distinguish between pub and private entity properties
     }
-
     #[datex]
     impl Inspector {
         pub fn name_getter(&self) -> String {
@@ -60,7 +60,7 @@ mod tests {
         traits::apply::Apply, types::type_definition::callable::CallableKind,
         values::core_values::callable::native_sync_callable,
     };
-
+    use crate::preludes::derive::CoreValue;
     // FIXME
     // #[test]
     // fn ty() {

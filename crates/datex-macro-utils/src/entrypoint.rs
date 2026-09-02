@@ -3,10 +3,6 @@ use std::path::{Path, PathBuf};
 use crate::get_absolute_file_path;
 use datex_core::{
     compiler::{CompileOptions, compile_template},
-    datex_proxy::{
-        DatexValueContainerProxyDeserialize,
-        DatexValueContainerProxyInfallibleSerialize,
-    },
     runtime::{Runtime, RuntimeConfig},
 };
 use proc_macro2::TokenStream;
@@ -175,7 +171,7 @@ pub fn datex_main_impl_with_config(
         #(#additional_attributes)*
         #(#attrs)*
         #vis #sig {
-            use #core_namespace::{runtime::{RuntimeRunner, RuntimeConfig, Runtime}, datex_proxy::DatexValueContainerProxyDeserialize};
+            use #core_namespace::{runtime::{RuntimeRunner, RuntimeConfig, Runtime}};
 
             #setup
 

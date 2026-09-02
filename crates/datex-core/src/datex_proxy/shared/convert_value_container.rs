@@ -5,8 +5,10 @@ use crate::{
     },
 };
 use crate::datex_proxy::shared::Shared;
-use crate::preludes::derive::{BorrowedValueContainer, DatexNative};
+use crate::preludes::derive::{BorrowedValueContainer, DatexNative, Goat, GoatMut};
 use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::utils::sheep::Sheep;
+use crate::utils::sheep_mut::SheepMut;
 
 impl<T> ConvertValueContainer for Shared<T> 
 where T: ConvertValueContainer + DatexNative
@@ -22,15 +24,30 @@ where T: ConvertValueContainer + DatexNative
         BorrowedValueContainer::Shared(self.container.clone())
     }
 
-    fn try_from_value_container(value_container: ValueContainer) -> Result<Self, ()>
+    fn try_from_value_container(value_container: ValueContainer) -> Result<Self, ValueContainer>
     where
         Self: Sized
     {
         match value_container {
             ValueContainer::Shared(container) => {
-                Shared::try_from(container).map_err(|_| ())
+                // TODO: no clone?
+                Shared::try_from(container.clone()).map_err(|_| ValueContainer::Shared(container))
             }
-            _ => Err(()),
+            _ => Err(value_container),
         }
+    }
+
+    fn try_borrow_from_value_container(value_container: &ValueContainer) -> Result<&Self, ()>
+    where
+        Self: Sized
+    {
+        Err(())
+    }
+
+    fn try_borrow_mut_from_value_container(value_container: &mut ValueContainer) -> Result<&mut Self, ()>
+    where
+        Self: Sized
+    {
+        Err(())
     }
 }

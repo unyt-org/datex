@@ -1,6 +1,6 @@
 use core::any::Any;
 use crate::preludes::derive::{DatexNative};
-use crate::traits::has_classification::HasClassification;
+use crate::traits::static_classification::StaticClassification;
 use crate::values::core_values::boolean::Boolean;
 
 impl DatexNative for Boolean {

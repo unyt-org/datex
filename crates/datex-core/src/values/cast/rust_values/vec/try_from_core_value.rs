@@ -6,33 +6,28 @@ use crate::values::core_values::native::DatexNativeBase;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 impl<T: DatexNativeBase + 'static> ConvertCoreValue for Vec<T> {
-    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
-            CoreValue::Native(native) => native.try_into_value().ok_or(()),
-            _ => Err(()),
+            CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
+            _ => Err(value),
         }
     }
-}
 
-impl<'a, T: DatexNativeBase + 'static> TryFrom<&'a CoreValue> for &'a Vec<T> {
-    type Error = ();
-    fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
+    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
         match value {
             CoreValue::Native(native) => native.try_as().ok_or(()),
             _ => Err(()),
         }
     }
-}
 
-impl<'a, T: DatexNativeBase + 'static> TryFrom<&'a mut CoreValue> for &'a mut Vec<T> {
-    type Error = ();
-    fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
+    fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()> {
         match value {
             CoreValue::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
         }
     }
 }
+
 
 impl<'a, T: DatexNativeBase + 'static> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, Vec<T>> {
     type Error = ();
@@ -70,6 +65,6 @@ mod tests {
         assert!(result_mut.is_some());
         
         let result_into = core_value.try_into_value::<Vec<i32>>();
-        assert!(result_into.is_some());
+        assert!(result_into.is_ok());
     }
 }

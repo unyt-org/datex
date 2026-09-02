@@ -32,6 +32,7 @@ use crate::{
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
+use crate::runtime::Runtime;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {
@@ -104,6 +105,7 @@ impl CoreLibraryValues {
 
     fn print_impl(
         args: Vec<ApplyArgument>,
+        _runtime: &Runtime,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>
     {
         // TODO #680: add I/O abstraction layer / interface

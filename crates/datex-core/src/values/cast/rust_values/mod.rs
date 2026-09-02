@@ -47,7 +47,7 @@ use crate::{
 };
 use crate::traits::classification::Classification;
 use crate::traits::convert_parts::{FromParts, IntoParts};
-use crate::traits::has_classification::HasClassification;
+use crate::traits::static_classification::StaticClassification;
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::datex_native_structural::DatexNativeStructural;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
@@ -68,7 +68,7 @@ macro_rules! implement_rust_native_traits {
         }
 
         impl Classification for $type {}
-        impl HasClassification for $type {}
+        impl StaticClassification for $type {}
 
         impl FromParts for $type {}
         impl IntoParts for $type {}
@@ -389,7 +389,7 @@ mod tests {
         let value =
             Value::from(CoreValue::Text(Text("Hello, World!".to_string())));
         let result = value.try_into_value::<String>();
-        assert!(result.is_some());
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), "Hello, World!");
     }
 

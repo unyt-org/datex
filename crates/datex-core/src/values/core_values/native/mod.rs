@@ -21,12 +21,14 @@ use crate::{
     values::core_value::CoreValue,
 };
 pub use datex_native_trait::*;
-use crate::preludes::derive::{BorrowedValueContainer, HasClassification};
+use crate::preludes::derive::{BorrowedValueContainer, StaticClassification};
 use crate::traits::convert_core_value::ConvertCoreValue;
 use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::utils::sheep::Sheep;
+use crate::utils::sheep_mut::SheepMut;
 use crate::values::value::borrowed_value::BorrowedValue;
 
-impl<T: DatexNative + ConvertCoreValue + HasClassification> ConvertValueContainer for T {
+impl<T: DatexNative + ConvertCoreValue + StaticClassification> ConvertValueContainer for T {
     fn to_value_container(
         self,
         cache: &mut SharedReferencesCache,
@@ -38,25 +40,65 @@ impl<T: DatexNative + ConvertCoreValue + HasClassification> ConvertValueContaine
         BorrowedValueContainer::Local(BorrowedValue::native_borrowed(self, cache))
     }
 
-    fn try_from_value_container(value_container: ValueContainer) -> Result<Self, ()>
+    fn try_from_value_container(value_container: ValueContainer) -> Result<Self, ValueContainer>
     where
         Self: Sized
     {
         match value_container {
             ValueContainer::Local(value) => {
-                // if the target type has no classification, i.e. is structural
-                // but the value has a classification, we cannot convert it into the target type
-                if !T::has_classification() && !value.classification().is_none() {
-                    Err(())
+                match validate_classification::<T>(&value) {
+                    Ok(_) => Self::try_from_core_value(value.inner).map_err(|inner| ValueContainer::Local(Value {inner, classification: value.classification})),
+                    Err(_) => Err(ValueContainer::Local(value)),
                 }
-                else {
-                    Self::try_from_core_value(value.inner).map_err(|_| ())
+            }
+            _ => Err(value_container),
+        }
+    }
+
+    fn try_borrow_from_value_container(value_container: &ValueContainer) -> Result<&Self, ()>
+    where
+        Self: Sized
+    {
+        match value_container {
+            ValueContainer::Local(value) => {
+                match validate_classification::<T>(&value) {
+                    Ok(_) => Ok(Self::try_borrow_from_core_value(&value.inner)?),
+                    Err(_) => Err(()),
+                }
+            }
+            _ => Err(()),
+        }
+    }
+
+    fn try_borrow_mut_from_value_container(value_container: &mut ValueContainer) -> Result<&mut Self, ()>
+    where
+        Self: Sized
+    {
+        match value_container {
+            ValueContainer::Local(value) => {
+                match validate_classification::<T>(&value) {
+                    Ok(_) => Ok(Self::try_borrow_mut_from_core_value(&mut value.inner)?),
+                    Err(_) => Err(()),
                 }
             }
             _ => Err(()),
         }
     }
 }
+
+// if the target type has no classification, i.e. is structural
+// but the value has a classification, we cannot convert it into the target type
+pub fn validate_classification<T>(value: &Value) -> Result<(), ()>
+where
+    T: StaticClassification,
+{
+    if !T::has_classification() && !value.classification().is_none() {
+        Err(())
+    } else {
+        Ok(())
+    }
+}
+
 
 pub struct NativeCoreValue {
     pub value: Box<dyn DatexNative + 'static>,
@@ -104,7 +146,7 @@ impl NativeCoreValue {
     pub fn try_as<T: 'static>(&self) -> Option<&T> {
         self.value.as_any().downcast_ref::<T>()
     }
-    
+
     /// Attempt to downcast the native value to a specific type.
     /// Returns `Some(&mut T)` if the downcast is successful, or `None` if it fails.
     pub fn try_as_mut<T: 'static>(&mut self) -> Option<&mut T> {
@@ -112,11 +154,13 @@ impl NativeCoreValue {
     }
 
     /// Attempt to downcast the native value to a specific type.
-    /// Returns `Some(&mut T)` if the downcast is successful, or `None` if it fails.
-    pub fn try_into_value<T: 'static>(self) -> Option<T> {
-        match self.into_any().downcast::<T>() {
-            Ok(boxed) => Some(*boxed),
-            Err(_original) => None,
+    /// Returns `Ok(T)` if the downcast is successful, or `Err(Self)` if it fails.
+    pub fn try_into_value<T: 'static>(self) -> Result<T, Self> {
+        if self.as_any().is::<T>() {
+            // SAFETY: we just verified the type
+            Ok(*self.into_any().downcast::<T>().unwrap())
+        } else {
+            Err(self)
         }
     }
 }

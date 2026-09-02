@@ -51,12 +51,13 @@ use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
-use crate::preludes::derive::{DatexNativeStructural, TaggedTypeDefinition};
+use crate::preludes::derive::{ConvertCoreValue, DatexNativeStructural, TaggedTypeDefinition};
 use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
-use crate::traits::has_classification::HasClassification;
+use crate::traits::static_classification::StaticClassification;
 use crate::types::entity_type::EntityType;
 use crate::types::r#type::Type;
+use crate::values::core_values::native::validate_classification;
 use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 #[derive(Debug)]
@@ -242,44 +243,36 @@ impl Value {
 
     /// Tries to get a borrow of the current value as the specified type.
     /// Does not perform any type conversion.
-    pub fn try_as<'a, T: 'a>(&'a self) -> Option<&'a T>
+    pub fn try_as<T>(&self) -> Option<&T>
     where
-        T: HasClassification,
-        &'a T: TryFrom<&'a CoreValue>,
+        T: ConvertCoreValue + StaticClassification
     {
-        // if the target type has no classification, i.e. is structural
-        // but the value has a classification, we cannot convert it into the target type
-        if !T::has_classification() && !self.classification().is_none() {
-            None
-        }
-        else {
-            <&T>::try_from(&self.inner).ok()
+        match validate_classification::<T>(self) {
+            Ok(_) => T::try_borrow_from_core_value(&self.inner).ok(),
+            Err(_) => None,
         }
     }
 
-    pub fn try_as_mut<'a, T: 'a>(&'a mut self) -> Option<&'a mut T>
+    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
     where
-        T: HasClassification,
-        &'a mut T: TryFrom<&'a mut CoreValue>,
+        T: ConvertCoreValue + StaticClassification
     {
-        // TODO: also use derive from ConvertValueContainer
-        // if the target type has no classification, i.e. is structural
-        // but the value has a classification, we cannot convert it into the target type
-        if !T::has_classification() && !self.classification().is_none() {
-            None
-        }
-        else {
-            <&mut T>::try_from(&mut self.inner).ok()
+        match validate_classification::<T>(self) {
+            Ok(_) => T::try_borrow_mut_from_core_value(&mut self.inner).ok(),
+            Err(_) => None,
         }
     }
 
     /// Tries to convert the current value into the specific specified type.
     /// Does not perform any type conversion.
-    pub fn try_into_value<T>(self) -> Option<T>
+    pub fn try_into_value<T>(self) -> Result<T, Value>
     where
-        T: ConvertValueContainer,
+        T: ConvertCoreValue + StaticClassification,
     {
-        T::try_from_value_container(ValueContainer::Local(self)).ok()
+        match validate_classification::<T>(&self) {
+            Ok(_) => T::try_from_core_value(self.inner).map_err(|inner| Value {inner, classification: self.classification}),
+            Err(_) => Err(self),
+        }
     }
 
     /// Returns the actual current [TypeDefinition] of the value

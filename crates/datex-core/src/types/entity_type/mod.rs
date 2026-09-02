@@ -79,8 +79,8 @@ impl EntityType {
     /// The [EntityType] guarantees that the inner value is always a [CoreValue::EntityTypeDefinition], so this method can never panic.
     pub fn entity_definition(&self) -> Ref<'_, EntityTypeDefinition> {
         let val = self.0.value_container();
-        Ref::map(val, |v| match v.try_as::<EntityTypeDefinition>() {
-            Some(ty) => ty,
+        Ref::map(val, |v| match v {
+            ValueContainer::Local(Value {inner: CoreValue::EntityTypeDefinition(ty), ..}) => ty,
             _ => unreachable!(
                 "The constraint for SharedContainerContainingEntityType guarantees that the inner value is always a CoreValue::EntityTypeDefinition"
             ),

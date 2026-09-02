@@ -21,7 +21,7 @@ impl<T: ConvertValueContainer> FromParts for Vec<T> {
             Parts::List(list) => {
                 let mut vec = Vec::new();
                 for item in list {
-                    vec.push(T::try_from_value_container(item)?);
+                    vec.push(T::try_from_value_container(item).map_err(|_| ())?);
                 }
                 Ok(vec)
             }

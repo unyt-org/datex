@@ -79,7 +79,7 @@ impl<T: Into<ValueContainer>> TryFrom<Option<T>> for Boolean {
                 let boolean: ValueContainer = v.into();
                 boolean
                     .try_into_value()
-                    .ok_or(ValueError::TypeConversionError)
+                    .map_err(|_| ValueError::TypeConversionError)
             }
             None => Err(ValueError::IsVoid),
         }

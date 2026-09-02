@@ -1,6 +1,6 @@
 use core::any::Any;
 use crate::preludes::derive::{DatexNative};
-use crate::traits::has_classification::HasClassification;
+use crate::traits::static_classification::StaticClassification;
 use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
 
 impl DatexNative for TypedDecimal {

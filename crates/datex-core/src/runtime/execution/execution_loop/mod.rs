@@ -940,24 +940,24 @@ pub gen fn inner_execution_loop(
 
                                     // values must be a list
                                     let values: List = match values.try_into_value() {
-                                        Some(list) => list,
-                                        None => return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList))
+                                        Ok(list) => list,
+                                        Err(_) => return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList))
                                     };
                                     // delete count must be integer
                                     let delete_count: u32 = match delete_count.clone().try_into_value::<Integer>() {
-                                        Some(int) => int.as_wrapped_u32(),
-                                        None => match delete_count.try_into_value::<TypedInteger>() {
-                                            Some(int) => int.as_usize().unwrap() as u32,
-                                            None => return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList)),
+                                        Ok(int) => int.as_wrapped_u32(),
+                                        Err(_) => match delete_count.try_into_value::<TypedInteger>() {
+                                            Ok(int) => int.as_usize().unwrap() as u32,
+                                            Err(_) => return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList)),
                                         }
                                     };
 
                                     // start_index count must be integer
                                     let start_index: u32 = match start_index.clone().try_into_value::<Integer>() {
-                                        Some(int) => int.as_wrapped_u32(),
-                                        None => match start_index.try_into_value::<TypedInteger>() {
-                                            Some(int) => int.as_usize().unwrap() as u32,
-                                            None => return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList)),
+                                        Ok(int) => int.as_wrapped_u32(),
+                                        Err(_) => match start_index.try_into_value::<TypedInteger>() {
+                                            Ok(int) => int.as_usize().unwrap() as u32,
+                                            Err(_) => return yield Err(ExecutionError::invalid_program(InvalidProgramError::ExpectedList)),
                                         }
                                     };
 
@@ -1328,7 +1328,7 @@ pub gen fn inner_execution_loop(
                                             .remove(0)
                                             .into_value_container(&mut state)?
                                             .try_into_value::<String>()
-                                            .ok_or_else(|| ExecutionError::InvalidProgram(Box::new(InvalidProgramError::InvalidType)))?;
+                                            .map_err(|_| ExecutionError::InvalidProgram(Box::new(InvalidProgramError::InvalidType)))?;
                                         return yield Err(ExecutionError::Unspecified(error));
                                     }
 

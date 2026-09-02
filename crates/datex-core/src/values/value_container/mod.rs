@@ -131,37 +131,31 @@ impl ValueContainer {
     /// Tries to get an immutable reference to the value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_as<'a, T>(&'a self) -> Option<&'a T>
+    pub fn try_as<T>(&self) -> Option<&T>
     where
-        &'a T: TryFrom<&'a CoreValue>,
+        T: ConvertValueContainer,
     {
-        match self {
-            ValueContainer::Local(value) => value.inner.try_as(),
-            ValueContainer::Shared(_) => None,
-        }
+        T::try_borrow_from_value_container(self).ok()
     }
 
     /// Tries to get a mutable reference to the value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_as_mut<'a, T>(&'a mut self) -> Option<&'a mut T>
+    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
     where
-        &'a mut T: TryFrom<&'a mut CoreValue>,
+        T: ConvertValueContainer,
     {
-        match self {
-            ValueContainer::Local(value) => value.inner.try_as_mut(),
-            ValueContainer::Shared(_) => None,
-        }
+        T::try_borrow_mut_from_value_container(self).ok()
     }
 
     /// Tries to get the current collapsed value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_into_value<T>(self) -> Option<T>
+    pub fn try_into_value<T>(self) -> Result<T, ValueContainer>
     where
         T: ConvertValueContainer,
     {
-        T::try_from_value_container(self).ok()
+        T::try_from_value_container(self)
     }
 
     /// Strips any local observers from the given value container.

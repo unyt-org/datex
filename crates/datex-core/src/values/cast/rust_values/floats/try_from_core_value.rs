@@ -6,10 +6,26 @@ use crate::values::core_value::CoreValue;
 use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
 
 impl ConvertCoreValue for f32 {
-    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(value.0),
-            CoreValue::Native(native) => native.try_into_value().ok_or(()),
+            CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
+            _ => Err(value),
+        }
+    }
+
+    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
+        match value {
+            CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(&value.0),
+            CoreValue::Native(native) => native.try_as().ok_or(()),
+            _ => Err(()),
+        }
+    }
+
+    fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()> {
+        match value {
+            CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(&mut value.0),
+            CoreValue::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
         }
     }
@@ -44,10 +60,26 @@ impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, f32> {
 
 
 impl ConvertCoreValue for f64 {
-    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(value.0),
-            CoreValue::Native(native) => native.try_into_value().ok_or(()),
+            CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
+            _ => Err(value),
+        }
+    }
+
+    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
+        match value {
+            CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(&value.0),
+            CoreValue::Native(native) => native.try_as().ok_or(()),
+            _ => Err(()),
+        }
+    }
+
+    fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()> {
+        match value {
+            CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(&mut value.0),
+            CoreValue::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
         }
     }

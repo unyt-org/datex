@@ -21,6 +21,7 @@ impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts for HashMap<K
     }
 }
 
+
 impl<K: ConvertValueContainer + Eq + Hash, V: ConvertValueContainer> FromParts for HashMap<K, V> {
     fn try_from_parts(parts: Parts) -> Result<Self, ()>
     where
@@ -30,7 +31,7 @@ impl<K: ConvertValueContainer + Eq + Hash, V: ConvertValueContainer> FromParts f
             Parts::Map(iter) => {
                 let mut map = HashMap::new();
                 for (key, value) in iter {
-                    map.insert(K::try_from_value_container(key)?, V::try_from_value_container(value)?);
+                    map.insert(K::try_from_value_container(key).map_err(|_| ())?, V::try_from_value_container(value).map_err(|_| ())?);
                 }
                 Ok(map)
             }

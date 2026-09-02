@@ -8,27 +8,21 @@ use crate::values::core_values::native::DatexNativeBase;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 impl<K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> ConvertCoreValue for HashMap<K, V> {
-    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
-            CoreValue::Native(native) => native.try_into_value().ok_or(()),
-            _ => Err(()),
+            CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
+            _ => Err(value),
         }
     }
-}
 
-impl<'a, K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> TryFrom<&'a CoreValue> for &'a HashMap<K, V> {
-    type Error = ();
-    fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
+    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
         match value {
             CoreValue::Native(native) => native.try_as().ok_or(()),
             _ => Err(()),
         }
     }
-}
 
-impl<'a, K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> TryFrom<&'a mut CoreValue> for &'a mut HashMap<K, V> {
-    type Error = ();
-    fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
+    fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()> {
         match value {
             CoreValue::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
@@ -71,6 +65,6 @@ mod tests {
         assert!(result_mut.is_some());
         
         let result_into = core_value.try_into_value::<HashMap<i32, i32>>();
-        assert!(result_into.is_some());
+        assert!(result_into.is_ok());
     }
 }
