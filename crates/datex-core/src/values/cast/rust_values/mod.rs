@@ -380,8 +380,7 @@ mod tests {
     #[test]
     fn try_from_core_value() {
         let value = CoreValue::Text(Text("Hello, World!".to_string()));
-        let result: Result<String, ()> = value.try_into();
-        assert!(result.is_ok());
+        let result = value.try_into_value::<String>();
         assert_eq!(result.unwrap(), "Hello, World!");
     }
 

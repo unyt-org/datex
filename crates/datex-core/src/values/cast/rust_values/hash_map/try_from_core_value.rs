@@ -1,14 +1,14 @@
 use core::hash::Hash;
 use crate::collections::HashMap;
+use crate::traits::convert_core_value::ConvertCoreValue;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
 use crate::values::core_value::CoreValue;
 use crate::values::core_values::native::DatexNativeBase;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
-impl<K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> TryFrom<CoreValue> for HashMap<K, V> {
-    type Error = ();
-    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+impl<K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> ConvertCoreValue for HashMap<K, V> {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
         match value {
             CoreValue::Native(native) => native.try_into_value().ok_or(()),
             _ => Err(()),

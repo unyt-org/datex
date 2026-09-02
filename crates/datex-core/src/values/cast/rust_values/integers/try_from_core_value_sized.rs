@@ -1,3 +1,4 @@
+use crate::traits::convert_core_value::ConvertCoreValue;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
 use crate::values::core_value::CoreValue;
@@ -12,9 +13,8 @@ macro_rules! impl_pointer_sized_core_value_conversions {
                 assert!(core::mem::align_of::<$ty>() == core::mem::align_of::<$repr>());
             };
 
-            impl TryFrom<CoreValue> for $ty {
-                type Error = ();
-                fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+            impl ConvertCoreValue for $ty {
+                fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
                     match value {
                         CoreValue::TypedInteger(TypedInteger::$variant(v)) => Ok(v as $ty),
                         CoreValue::Native(native) => native.try_into_value().ok_or(()),

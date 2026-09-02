@@ -1,12 +1,12 @@
 use crate::preludes::derive::Text;
+use crate::traits::convert_core_value::ConvertCoreValue;
 use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
 use crate::values::core_value::CoreValue;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
-impl TryFrom<CoreValue> for String {
-    type Error = ();
-    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+impl ConvertCoreValue for String {
+    fn try_from_core_value(value: CoreValue) -> Result<Self, ()> {
         match value {
             CoreValue::Text(Text(string)) => Ok(string),
             CoreValue::Native(native) => native.try_into_value().ok_or(()),
@@ -74,7 +74,7 @@ mod tests {
         let result_mut = core_value.try_as_mut::<String>();
         assert_eq!(*result_mut.unwrap(), "Hello, World!");
         
-        let result_into: Result<String, ()> = core_value.try_into();
+        let result_into = core_value.try_into_value::<String>();
         assert_eq!(result_into.unwrap(), "Hello, World!");
     }
 }

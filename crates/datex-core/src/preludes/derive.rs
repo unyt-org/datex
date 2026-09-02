@@ -25,6 +25,7 @@ pub use crate::{
     traits::get_core_lib_type_id::GetCoreLibTypeId,
     traits::convert_parts::FromParts,
     traits::convert_parts::IntoParts,
+    traits::convert_core_value::ConvertCoreValue,
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
