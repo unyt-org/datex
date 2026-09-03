@@ -13,7 +13,6 @@ pub mod classification;
 
 use crate::{
     collections::HashMap,
-    datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
     types::{
         r#type::Type,

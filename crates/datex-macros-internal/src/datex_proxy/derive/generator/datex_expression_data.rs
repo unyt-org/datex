@@ -2,7 +2,7 @@ use crate::datex_proxy::data::{
     EnumVariant, Field, Fields, NamedField, Structure, StructureData,
 };
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::Ident;
 
 /// Creates the implementation of the [ToDatexExpressionData] trait for the given structure data.
@@ -32,11 +32,12 @@ pub fn generate_datex_expression_data(
 
 fn generate_datex_expression_data_for_struct(fields: &Fields) -> TokenStream {
     let field_assignments = fields
-        .field_idents()
+        .field_accessors()
         .iter()
-        .map(|ident| {
+        .zip(fields.normalized_field_idents().iter())
+        .map(|(accessor, normalized_ident)| {
             quote! {
-                let #ident = &self.#ident;
+                let #normalized_ident = &self.#accessor;
             }
         })
         .collect::<Vec<_>>();
@@ -70,7 +71,7 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
             let field_expressions = field
                 .iter()
                 .enumerate()
-                .map(|(i, f)| field_to_expression_data(f, quote! { #i }))
+                .map(|(i, f)| field_to_expression_data(f.normalized_ident().into_token_stream()))
                 .collect::<Vec<_>>();
 
             quote! {
@@ -82,7 +83,7 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
             }
         }
         Fields::Transparent(field) => {
-            let first_field = field_to_expression_data(field, quote! { 0 });
+            let first_field = field_to_expression_data(field.normalized_ident().into_token_stream());
             quote! {
                 {
                     *(#first_field.data)
@@ -94,10 +95,8 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
 
 /// Generates a type definition for a single field. Returns a TokenStream of [TypeDefinition].
 fn field_to_expression_data(
-    field: &Field,
     accessor: TokenStream,
 ) -> TokenStream {
-    let field_type = &field.ty;
     quote! {
         #accessor.to_datex_expression_data().with_default_span()
     }
@@ -105,9 +104,9 @@ fn field_to_expression_data(
 
 /// Generates a type definition for a named field. Returns a TokenStream with a tuple of name and [TypeDefinition].
 fn named_field_to_expression_data(field: &NamedField) -> TokenStream {
-    let id = Ident::new(&field.name, Span::call_site());
+    let id = field.normalized_ident().into_token_stream();
     let expression_data =
-        field_to_expression_data(&field.field, quote! { #id });
+        field_to_expression_data(id);
     let name = field.name.clone();
     quote! {
         (
@@ -123,7 +122,7 @@ fn generate_datex_enum_fields(enum_ty: &[EnumVariant]) -> TokenStream {
         let variant_ident = Ident::new(&variant.name, Span::call_site());
         let variant_fields =
             generate_datex_expression_data_fields(&variant.fields);
-        let field_idents = variant.fields.field_idents();
+        let field_idents = variant.fields.normalized_field_idents();
         match &variant.fields {
             Fields::Named(fields) => {
                 quote! {

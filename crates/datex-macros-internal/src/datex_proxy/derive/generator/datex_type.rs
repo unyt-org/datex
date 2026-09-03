@@ -82,7 +82,7 @@ fn generate_datex_type_definition(fields: &Fields) -> TokenStream {
         Fields::Unnamed(field) => {
             let field_types = field
                 .iter()
-                .map(|f| field_to_definition(f))
+                .map(|f| field_to_definition(&f.field))
                 .collect::<Vec<_>>();
 
             quote! {
@@ -92,7 +92,7 @@ fn generate_datex_type_definition(fields: &Fields) -> TokenStream {
             }
         }
         Fields::Transparent(field) => {
-            let first_field = field_to_definition(field);
+            let first_field = field_to_definition(&field.field);
             quote! {
                 #first_field.convert_to_definition()
             }

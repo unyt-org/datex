@@ -33,7 +33,7 @@ pub struct EndpointIterateOptions<'a> {
 }
 
 #[derive(Datex, Debug, Clone)]
-#[datex(only_structural)]
+#[datex(structural)]
 pub struct DynamicEndpointProperties {
     pub known_since: u64,
     pub distance: i8,

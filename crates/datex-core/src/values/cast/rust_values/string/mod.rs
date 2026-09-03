@@ -1,11 +1,8 @@
 mod try_from_core_value;
 
 use crate::{
-    datex_proxy::TryFromDatexValueError,
     prelude::*,
     traits::value_access::ValueAccess,
-    utils::{goat::Goat, goat_mut::GoatMut},
-    values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
 };
 
 #[cfg(feature = "decompiler")]

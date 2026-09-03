@@ -4,13 +4,13 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use crate::datex_proxy::shared::Shared;
+use crate::shared_wrappers::shared::Shared;
 use crate::preludes::derive::{BorrowedValueContainer, DatexNative, Goat, GoatMut};
 use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::utils::sheep::Sheep;
 use crate::utils::sheep_mut::SheepMut;
 
-impl<T> ConvertValueContainer for Shared<T> 
+impl<T> ConvertValueContainer for Shared<T>
 where T: ConvertValueContainer + DatexNative
 {
     fn to_value_container(

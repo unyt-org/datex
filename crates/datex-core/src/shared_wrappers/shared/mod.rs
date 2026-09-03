@@ -21,7 +21,6 @@ use core::{
     cell::{Ref, RefMut},
     ops::Deref,
 };
-use crate::datex_proxy::{TryFromDatexValueError, TryToDatexValueError};
 use crate::values::value::value_classification::ValueClassification;
 
 pub struct Shared<T: DatexNative + ?Sized> {
@@ -70,7 +69,7 @@ impl<T: DatexNative + 'static> Shared<T> {
         value: Box<T>,
         classification: impl Into<ValueClassification>,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-    ) -> Result<Self, TryToDatexValueError> {
+    ) -> Result<Self, ()> {
         let value_container = ValueContainer::from(Value::new(
             CoreValue::native_boxed(value),
             classification.into(),
@@ -132,7 +131,7 @@ impl<T: DatexNative + 'static> TryFrom<SharedContainer> for Shared<T> {
 #[cfg(test)]
 mod test {
     use crate::{
-        datex_proxy::shared::Shared,
+        shared_wrappers::shared::Shared,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{SharedContainer, SharedContainerMutability},
     };

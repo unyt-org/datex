@@ -66,7 +66,6 @@ pub mod type_inference;
 pub mod visitor;
 
 pub mod core_compiler;
-pub mod datex_proxy;
 pub mod dif;
 pub mod disassembler;
 pub mod dxb_parser;
@@ -84,6 +83,8 @@ extern crate core;
 
 pub mod datex_registry;
 pub mod inspector;
+pub mod serde_compat;
+pub mod shared_wrappers;
 
 pub use inventory;
 

@@ -8,8 +8,8 @@ use crate::traits::get_datex_type::GetDatexType;
 
 #[datex(name = "inspector")]
 mod datex_inspector {
-    use crate::datex_proxy::shared::Shared;
-    use crate::datex_proxy::shared::to_shared::ToShared;
+    use crate::shared_wrappers::shared::Shared;
+    use crate::shared_wrappers::shared::to_shared::ToShared;
     use super::*;
 
     #[derive(Datex, Debug, Clone)]

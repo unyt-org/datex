@@ -42,7 +42,7 @@ use serde_with::{DurationMilliSeconds, serde_as};
 use crate::traits::convert_value_container::ConvertValueContainer;
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-#[datex(only_structural)]
+#[datex(structural)]
 pub struct NetworkTraceHopSocket {
     pub interface_type: String,
     pub interface_name: Option<String>,
@@ -73,7 +73,7 @@ impl NetworkTraceHopSocket {
     Clone,
     strum_macros::Display,
 )]
-#[datex(only_structural)]
+#[datex(structural)]
 pub enum NetworkTraceHopDirection {
     Outgoing,
     Incoming,
@@ -81,7 +81,7 @@ pub enum NetworkTraceHopDirection {
 
 #[serde_as]
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-#[datex(only_structural)]
+#[datex(structural)]
 pub struct NetworkTraceHop {
     pub endpoint: Endpoint,
     pub distance: i8,
@@ -93,7 +93,7 @@ pub struct NetworkTraceHop {
 
 #[serde_as]
 #[derive(Datex, Debug, Clone, Deserialize, Serialize)]
-#[datex(only_structural)]
+#[datex(structural)]
 pub struct NetworkTraceResult {
     pub sender: Endpoint,
     pub receiver: Endpoint,
