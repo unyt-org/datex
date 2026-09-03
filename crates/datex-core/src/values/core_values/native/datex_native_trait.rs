@@ -5,6 +5,7 @@ use core::any::Any;
 use crate::traits::classification::Classification;
 use crate::traits::convert_parts::{FromParts, IntoParts};
 use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::traits::datex_hash::DatexHash;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 use crate::traits::get_datex_type::GetDatexType;
 #[cfg(feature = "decompiler")]
@@ -52,6 +53,7 @@ impl <T> DatexNativeBase for T where T:
 pub trait DatexNative:
     Any +
     DynEq +
+    DatexHash +
     FromParts +
     IntoParts +
     GetCoreLibTypeId +
@@ -69,6 +71,7 @@ pub trait DatexNative:
 pub trait DatexNative:
     Any +
     DynEq +
+    DatexHash +
     FromParts +
     IntoParts +
     GetCoreLibTypeId +
