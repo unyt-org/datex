@@ -451,7 +451,7 @@ fn struct_with_serde_infallible_to_value_container() {
     #[datex(structural)]
     struct SerdeDatexExampleInfallible {
         a: u8,
-        #[datex(serde_infallible)]
+        #[datex(serde)]
         serde: SerdeExample,
     }
 

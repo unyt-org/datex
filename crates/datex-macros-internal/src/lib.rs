@@ -101,7 +101,7 @@ pub fn derive_instruction(input: TokenStream) -> TokenStream {
 /// #[derive(Datex)]
 /// struct MyStruct {
 ///     field1: String,
-///     #[datex(serde_infallible)]
+///     #[datex(serde)]
 ///     serde_field: SerdeStruct,
 /// }
 /// ```

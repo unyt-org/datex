@@ -99,7 +99,7 @@ pub struct NetworkTraceResult {
     pub receiver: Endpoint,
     pub hops: Vec<NetworkTraceHop>,
     #[serde_as(as = "DurationMilliSeconds")]
-    #[datex(serde_infallible)]
+    #[datex(serde)]
     pub round_trip_time: Duration,
 }
 

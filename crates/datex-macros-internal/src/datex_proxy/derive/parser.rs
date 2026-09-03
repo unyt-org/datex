@@ -1,4 +1,4 @@
-use crate::datex_proxy::data::{EnumVariant, Field, FieldAttributes, Fields, IndexedField, NamedField, NamedFieldAttributes, SerdeMode, Structure, StructureAttributes, StructureData, TypeKind};
+use crate::datex_proxy::data::{EnumVariant, Field, FieldAttributes, Fields, IndexedField, NamedField, NamedFieldAttributes, FieldMapping, Structure, StructureAttributes, StructureData, TypeKind};
 use proc_macro2::Span;
 use std::{env, path::PathBuf, str::FromStr};
 use syn::{
@@ -215,10 +215,8 @@ fn parse_all_field_attributes(
     is_no_deserialize: bool,
 ) -> Option<(FieldAttributes, NamedFieldAttributes)> {
 
-    let mut skipped = false;
-
     let mut field_attributes = FieldAttributes {
-        serde_mode: SerdeMode::None,
+        field_mapping: FieldMapping::Datex,
     };
     let mut named_field_attributes = NamedFieldAttributes {
         skip_with_default: false,
@@ -233,7 +231,6 @@ fn parse_all_field_attributes(
         }
     };
 
-    // find datex(serde) or datex(serde_infallible) attribute
     for attr in attrs {
         if attr.path().is_ident("datex")
             && let Meta::List(meta_list) = &attr.meta
@@ -247,29 +244,14 @@ fn parse_all_field_attributes(
                 match nested {
                     Meta::Path(path) => {
                         if path.is_ident("serde") {
-                            if matches!(
-                                field_attributes.serde_mode,
-                                SerdeMode::Infallible
-                            ) {
-                                panic!(
-                                    "Cannot use both datex(serde) and datex(serde_infallible)"
-                                );
-                            }
-                            field_attributes.serde_mode = SerdeMode::Fallible;
-                        } else if path.is_ident("serde_infallible") {
-                            if matches!(
-                                field_attributes.serde_mode,
-                                SerdeMode::Fallible
-                            ) {
-                                panic!(
-                                    "Cannot use both datex(serde) and datex(serde_infallible)"
-                                );
-                            }
-                            field_attributes.serde_mode = SerdeMode::Infallible;
+                            field_attributes.field_mapping = FieldMapping::Serde;
                         } else if path.is_ident("default") {
                             check_named_attribute_allowed("default");
                             named_field_attributes.skip_with_default = true;
                         } else if path.is_ident("skip") {
+                            if named_field_attributes.skip_with_default {
+                                panic!("Cannot use both datex(skip) and datex(default)");
+                            }
                             // ignore this field, cannot deserialize from DATEX
                             if !is_no_deserialize {
                                 panic!("Cannot use datex(skip) on a struct or enum that is not marked with datex(no_deserialize)");
@@ -307,11 +289,7 @@ fn parse_all_field_attributes(
             }
         }
     }
-
-    if skipped && named_field_attributes.skip_with_default {
-        panic!("Cannot use both datex(skip) and datex(default)");
-    }
-
+    
     Some((field_attributes, named_field_attributes))
 }
 

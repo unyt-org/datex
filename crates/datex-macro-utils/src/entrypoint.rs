@@ -11,6 +11,7 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
+use datex_core::values::value_container::ValueContainer;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
@@ -200,7 +201,7 @@ pub fn get_config(parsed_attr: &ParsedAttributes) -> Option<RuntimeConfig> {
     // try to get config from config path
     parsed_attr.config.as_ref().map(|path| {
         RuntimeConfig::try_from_dx_file(path, &Runtime::stub()).unwrap_or_else(
-            |err| {
+            |err|  {
                 panic!(
                     "Failed to read config file at {}: {:?}",
                     path.to_str().unwrap_or("<invalid path>"),
@@ -250,7 +251,7 @@ pub fn get_arg_ident_and_type(
 fn compile_datex_config(config: RuntimeConfig) -> Vec<u8> {
     let (dxb, _) = compile_template(
         "?",
-        vec![Some(config.to_value_container_without_cache())],
+        vec![Some(ValueContainer::from(config))],
         CompileOptions::default(),
         // FIXME: stub runtime for now
         Runtime::stub(),

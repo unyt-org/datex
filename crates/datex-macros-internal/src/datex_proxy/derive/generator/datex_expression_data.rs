@@ -1,6 +1,4 @@
-use crate::datex_proxy::data::{
-    EnumVariant, Field, Fields, NamedField, Structure, StructureData,
-};
+use crate::datex_proxy::data::{EnumVariant, Field, FieldMapping, Fields, NamedField, Structure, StructureData};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::Ident;
@@ -71,7 +69,7 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
             let field_expressions = field
                 .iter()
                 .enumerate()
-                .map(|(i, f)| field_to_expression_data(f.normalized_ident().into_token_stream()))
+                .map(|(i, field)| field_to_expression_data(field.normalized_ident().into_token_stream(), &field.field.attributes.field_mapping))
                 .collect::<Vec<_>>();
 
             quote! {
@@ -83,7 +81,7 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
             }
         }
         Fields::Transparent(field) => {
-            let first_field = field_to_expression_data(field.normalized_ident().into_token_stream());
+            let first_field = field_to_expression_data(field.normalized_ident().into_token_stream(), &field.field.attributes.field_mapping);
             quote! {
                 {
                     *(#first_field.data)
@@ -96,9 +94,19 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
 /// Generates a type definition for a single field. Returns a TokenStream of [TypeDefinition].
 fn field_to_expression_data(
     accessor: TokenStream,
+    field_mapping: &FieldMapping
 ) -> TokenStream {
-    quote! {
-        #accessor.to_datex_expression_data().with_default_span()
+    match field_mapping {
+        FieldMapping::Datex => {
+            quote! {
+                #accessor.to_datex_expression_data().with_default_span()
+            }
+        }
+        FieldMapping::Serde => {
+            quote! {
+                serde_to_value_container(#accessor).to_datex_expression_data().with_default_span()
+            }
+        }
     }
 }
 
@@ -106,7 +114,7 @@ fn field_to_expression_data(
 fn named_field_to_expression_data(field: &NamedField) -> TokenStream {
     let id = field.normalized_ident().into_token_stream();
     let expression_data =
-        field_to_expression_data(id);
+        field_to_expression_data(id, &field.field.attributes.field_mapping);
     let name = field.name.clone();
     quote! {
         (

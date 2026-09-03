@@ -1,7 +1,7 @@
 #[doc(hidden)]
 pub use crate::{
     serde_compat::{
-        try_serde_from_value_container, try_serde_to_value_container,
+        try_serde_from_value_container, serde_to_value_container,
     },
     datex_registry::{get_impls, get_impls_for},
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
