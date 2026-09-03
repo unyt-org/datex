@@ -23,7 +23,7 @@ use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 
 pub mod equality;
 pub mod primitive;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;

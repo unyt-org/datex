@@ -45,7 +45,7 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
     let datex_hash = generate_datex_hash(&structure_data);
 
     let datex_expression_data = cfg_select! {
-        feature = "decompiler" => {
+        feature = "ast" => {
             generate_datex_expression_data(&structure_data)
         }
         _ => quote! {},

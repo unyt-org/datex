@@ -62,7 +62,7 @@ impl RuntimeInternal {
                 {
                     #[cfg(feature = "decompiler")]
                     {
-                        crate::decompiler::decompile_value(
+                        crate::decompiler::ast_to_source_code::value_to_source_code(
                             result,
                             crate::decompiler::DecompileOptions::colorized(),
                         )

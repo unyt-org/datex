@@ -46,7 +46,6 @@ pub mod prelude;
 pub mod ast;
 #[cfg(feature = "compiler")]
 pub mod compiler;
-#[cfg(feature = "decompiler")]
 pub mod decompiler;
 #[cfg(feature = "compiler")]
 pub mod fmt;

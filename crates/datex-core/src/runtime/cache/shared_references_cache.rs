@@ -303,7 +303,9 @@ impl SharedReferencesCache {
 impl Display for SharedReferencesCache {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         use crate::decompiler::*;
+        use crate::decompiler::ast_to_source_code::value_to_source_code;
 
+        
         // print owned values
         writeln!(f, "Owned Values:")?;
         for (address, value) in &self.owned_values {
@@ -311,7 +313,7 @@ impl Display for SharedReferencesCache {
                 f,
                 "  {}: {}",
                 address,
-                decompile_value(
+                value_to_source_code(
                     &ValueContainer::Shared(SharedContainer::Referenced(
                         value.clone()
                     )),
@@ -328,7 +330,7 @@ impl Display for SharedReferencesCache {
                     f,
                     "  {}: {}",
                     address,
-                    decompile_value(
+                    value_to_source_code(
                         &ValueContainer::Shared(SharedContainer::Referenced(
                             value
                         )),

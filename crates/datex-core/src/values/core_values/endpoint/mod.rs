@@ -16,7 +16,7 @@ pub mod equality;
 use datex_crypto_facade::crypto::Crypto;
 use hex::decode;
 pub mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
 mod get_core_lib_type_id;

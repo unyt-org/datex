@@ -25,7 +25,7 @@ use crate::traits::datex_native_structural::DatexNativeStructural;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 use crate::traits::get_datex_type::GetDatexType;
 
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data {
     use crate::{
         ast::expressions::DatexExpressionData,

@@ -23,7 +23,7 @@ use strum_macros::{AsRefStr, EnumIter, EnumString};
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 
 pub mod primitive;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
 mod datex_native_structural;

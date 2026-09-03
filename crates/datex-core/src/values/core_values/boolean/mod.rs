@@ -9,7 +9,7 @@ use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 pub mod equality;
 pub mod ops;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
 mod datex_native_structural;

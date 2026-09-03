@@ -1,7 +1,7 @@
 mod clone_unsafe;
 mod common;
 pub mod get_datex_type;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 
 use crate::{
@@ -29,6 +29,7 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
+use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -259,11 +260,14 @@ impl OwnedSharedContainer {
     }
 }
 
-impl Display for OwnedSharedContainer {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.as_self_owned_shared_container().value())
+impl_display_for_datex_value!(
+    OwnedSharedContainer,
+    impl core::fmt::Display for OwnedSharedContainer {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            write!(f, "{}", self.as_self_owned_shared_container().value())
+        }
     }
-}
+);
 
 impl _ExposeRcInternal for OwnedSharedContainer {
     type Shared = SharedContainerInner;

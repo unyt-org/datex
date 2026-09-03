@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 pub mod binrw;
 pub mod ops;
 pub mod primitive;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;

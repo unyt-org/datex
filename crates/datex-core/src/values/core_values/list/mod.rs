@@ -19,10 +19,11 @@ use core::{
     ops::{Index, Range},
     result::Result,
 };
+use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 mod child_iterator;
 pub mod local_child_path_resolver;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod update_handler;
 pub mod updates;
@@ -192,18 +193,21 @@ impl List {
     }
 }
 
-impl Display for List {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        core::write!(f, "[")?;
-        for (i, value) in self.items.iter().enumerate() {
-            if i > 0 {
-                core::write!(f, ", ")?;
+impl_display_for_datex_value!(
+    List,
+    impl core::fmt::Display for List {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            core::write!(f, "[")?;
+            for (i, value) in self.items.iter().enumerate() {
+                if i > 0 {
+                    core::write!(f, ", ")?;
+                }
+                core::write!(f, "{value}")?;
             }
-            core::write!(f, "{value}")?;
+            core::write!(f, "]")
         }
-        core::write!(f, "]")
     }
-}
+);
 
 impl<T> From<Vec<T>> for List
 where

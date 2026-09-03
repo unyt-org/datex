@@ -1,4 +1,4 @@
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_type_expression_data;
 mod value_access;
 pub mod serde_dif;

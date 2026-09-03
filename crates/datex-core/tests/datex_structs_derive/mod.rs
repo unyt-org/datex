@@ -1,5 +1,5 @@
 mod impls;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 
 use core::assert_matches;

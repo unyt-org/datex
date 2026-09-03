@@ -53,7 +53,7 @@ pub use crate::{
     values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
 };
 
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 pub use crate::{
     ast,
     ast::{

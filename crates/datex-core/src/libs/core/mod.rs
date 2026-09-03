@@ -132,7 +132,7 @@ impl CoreLibraryValues {
         let args_string = args
             .iter()
             .map(|v| {
-                crate::decompiler::decompile_value(
+                crate::decompiler::ast_to_source_code::value_to_source_code(
                     &v.value,
                     crate::decompiler::DecompileOptions::colorized(),
                 )

@@ -132,7 +132,7 @@ impl ExecutionContext {
 
         #[cfg(feature = "decompiler")]
         {
-            let decompiled = crate::decompiler::decompile_body(
+            let decompiled = crate::decompiler::dxb_to_source_code::dxb_to_source_code(
                 dxb,
                 crate::decompiler::DecompileOptions::colorized(),
             );

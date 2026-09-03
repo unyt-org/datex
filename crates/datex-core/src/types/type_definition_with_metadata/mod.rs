@@ -4,7 +4,7 @@ use core::{fmt::Display, hash::Hash};
 pub mod metadata;
 pub mod serde_dif;
 pub use metadata::*;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_type_expression_data;
 pub mod type_match;
 
