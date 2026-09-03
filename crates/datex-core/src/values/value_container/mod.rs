@@ -51,6 +51,7 @@ mod convert_value_container;
 pub mod classification;
 pub mod get_core_lib_type_id;
 pub mod convert_parts;
+mod datex_hash;
 
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {

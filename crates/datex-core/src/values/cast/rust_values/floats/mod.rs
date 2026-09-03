@@ -1,4 +1,5 @@
 mod try_from_core_value;
+mod datex_hash;
 
 use crate::{
     prelude::*,

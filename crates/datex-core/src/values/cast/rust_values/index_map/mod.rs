@@ -10,6 +10,7 @@ mod convert_parts;
 mod get_core_lib_type_id;
 mod try_from_core_value;
 pub mod classification;
+mod datex_hash;
 
 use crate::{
     prelude::*,

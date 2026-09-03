@@ -4,6 +4,7 @@ use crate::{
     prelude::*,
     traits::value_access::ValueAccess,
 };
+use crate::traits::datex_hash::impl_datex_hash;
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
@@ -21,3 +22,5 @@ mod to_datex_expression_data {
 }
 
 impl ValueAccess for bool {}
+
+impl_datex_hash!(bool);
