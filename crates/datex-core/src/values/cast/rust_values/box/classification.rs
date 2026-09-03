@@ -3,6 +3,7 @@ use crate::traits::classification::Classification;
 use crate::traits::get_datex_type::GetDatexType;
 use crate::traits::static_classification::StaticClassification;
 use crate::values::value::value_classification::ValueClassification;
+use crate::prelude::*;
 
 impl<T: DatexNative + GetDatexType> Classification
 for Box<T>

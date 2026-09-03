@@ -4,6 +4,7 @@ use crate::utils::goat_mut::GoatMut;
 use crate::values::core_value::CoreValue;
 use crate::values::core_values::native::DatexNativeBase;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::prelude::*;
 
 impl<T: DatexNativeBase + 'static> ConvertCoreValue for Vec<T> {
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {

@@ -5,7 +5,7 @@ use crate::{
 use core::hash::Hash;
 use indexmap::IndexMap;
 
-impl<K, V> ToDatexExpressionData for IndexMap<K, V>
+impl<K, V> ToDatexExpressionData for IndexMap<K, V, RandomState>
 where
     K: ToDatexExpressionData + Eq + Hash,
     V: ToDatexExpressionData,

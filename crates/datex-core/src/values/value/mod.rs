@@ -233,7 +233,7 @@ impl Value {
                 body,
                 creator,
             }),
-            None,
+            ValueClassification::None,
         )
     }
 

@@ -6,6 +6,7 @@ use crate::shared_values::PointerAddress;
 use crate::types::entity_type::EntityType;
 use crate::utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed};
 use crate::values::value::value_classification::{ValueClassification, ValueTag};
+use crate::prelude::*;
 
 /// Serialization for [ValueClassification].
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueClassification> {

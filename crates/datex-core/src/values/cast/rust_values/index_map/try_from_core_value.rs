@@ -6,8 +6,9 @@ use crate::utils::goat_mut::GoatMut;
 use crate::values::core_value::CoreValue;
 use crate::values::core_values::native::DatexNativeBase;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::random::RandomState;
 
-impl<K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> ConvertCoreValue for IndexMap<K, V> {
+impl<K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> ConvertCoreValue for IndexMap<K, V, RandomState> {
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
@@ -30,21 +31,21 @@ impl<K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> Con
     }
 }
 
-impl<'a, K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, IndexMap<K, V>> {
+impl<'a, K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, IndexMap<K, V, RandomState>> {
     type Error = ();
     fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
         match value {
-            BorrowedCoreValue::Native(native) => native.filter_map(|v| v.as_any().downcast_ref::<IndexMap<K, V>>()).ok_or(()),
+            BorrowedCoreValue::Native(native) => native.filter_map(|v| v.as_any().downcast_ref::<IndexMap<K, V, RandomState>>()).ok_or(()),
             _ => Err(()),
         }
     }
 }
 
-impl<'a, K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, IndexMap<K, V>> {
+impl<'a, K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, IndexMap<K, V, RandomState>> {
     type Error = ();
     fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
         match value {
-            BorrowedCoreValueMut::Native(native) => native.filter_map(|v| v.as_any_mut().downcast_mut::<IndexMap<K, V>>()).ok_or(()),
+            BorrowedCoreValueMut::Native(native) => native.filter_map(|v| v.as_any_mut().downcast_mut::<IndexMap<K, V, RandomState>>()).ok_or(()),
             _ => Err(()),
         }
     }

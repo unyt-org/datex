@@ -4,6 +4,7 @@ use crate::utils::goat::Goat;
 use crate::utils::goat_mut::GoatMut;
 use crate::values::core_value::CoreValue;
 use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::prelude::*;
 
 impl ConvertCoreValue for String {
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {

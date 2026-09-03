@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::AsRefStr;
 use crate::shared_values::PointerAddress;
 use crate::types::entity_type::EntityType;
+use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct ValueTag {

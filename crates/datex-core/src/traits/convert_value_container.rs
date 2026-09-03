@@ -1,11 +1,14 @@
+#[cfg(feature = "compiler")]
 use crate::compiler::error::SpannedCompilerError;
 use crate::core_compiler::core_compilation_context::DXBWithSharedValues;
+#[cfg(feature = "parser")]
 use crate::parser::errors::SpannedParserError;
 use crate::preludes::derive::{SharedReferencesCache, ValueContainer};
 use crate::runtime::execution::context::{ScriptExecutionError};
 use crate::runtime::execution::ExecutionError;
 use crate::runtime::Runtime;
 use crate::values::borrowed_value_container::BorrowedValueContainer;
+use crate::prelude::*;
 
 
 #[derive(Debug)]

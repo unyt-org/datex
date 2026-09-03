@@ -1,8 +1,9 @@
 use core::hash::Hasher;
 use indexmap::IndexMap;
 use crate::traits::datex_hash::DatexHash;
+use crate::random::RandomState;
 
-impl<K, V> DatexHash for IndexMap<K, V>
+impl<K, V> DatexHash for IndexMap<K, V, RandomState>
 where
     K: DatexHash,
     V: DatexHash,
