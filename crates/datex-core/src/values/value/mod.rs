@@ -34,6 +34,7 @@ pub mod convert_parts;
 pub mod get_core_lib_type_id;
 pub mod classification;
 pub mod convert_value_container;
+mod datex_hash;
 
 use crate::{
     shared_values::errors::AccessError,

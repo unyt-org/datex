@@ -1,6 +1,5 @@
 use core::any::Any;
 use crate::preludes::derive::{DatexNative};
-use crate::traits::static_classification::StaticClassification;
 use crate::values::core_values::endpoint::Endpoint;
 
 impl DatexNative for Endpoint {

@@ -352,6 +352,7 @@ mod datex_native;
 mod datex_native_structural;
 mod convert_parts;
 mod get_core_lib_type_id;
+mod datex_hash;
 
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

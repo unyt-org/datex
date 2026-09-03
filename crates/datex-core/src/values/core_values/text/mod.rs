@@ -27,6 +27,7 @@ mod convert_parts;
 mod get_datex_type;
 mod datex_native;
 mod classification;
+pub mod datex_hash;
 
 impl Display for Text {
     // TODO #319: escape string content

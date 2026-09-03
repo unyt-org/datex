@@ -33,6 +33,7 @@ mod get_datex_type;
 mod convert_parts;
 mod datex_native;
 mod classification;
+mod datex_hash;
 
 /// The decimal type variants to be used as a inline
 /// definition in DATEX (such as 42.4f32 or -42.4f32).

@@ -25,6 +25,7 @@ mod datex_native_structural;
 mod datex_native;
 mod convert_parts;
 mod classification;
+mod datex_hash;
 
 #[derive(
     BinWrite, BinRead, Debug, Clone, Copy, Hash, PartialEq, Eq, Default,

@@ -15,6 +15,7 @@ mod datex_native;
 pub mod convert_parts;
 mod classification;
 mod datex_native_structural;
+mod datex_hash;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Range {

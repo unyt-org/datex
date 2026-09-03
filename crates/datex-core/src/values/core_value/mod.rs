@@ -45,6 +45,7 @@ pub mod ops;
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
 pub mod try_clone;
+mod datex_hash;
 
 #[derive(Default, Clone, Debug)]
 pub enum CoreValue {

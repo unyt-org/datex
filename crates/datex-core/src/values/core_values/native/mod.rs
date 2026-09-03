@@ -15,6 +15,7 @@ mod to_datex_expression_data;
 mod value_access;
 mod get_core_lib_type_id;
 mod get_datex_type;
+mod datex_hash;
 
 use crate::{
     libs::core::type_id::CoreLibTypeId, traits::try_clone::TryClone,
@@ -24,8 +25,6 @@ pub use datex_native_trait::*;
 use crate::preludes::derive::{BorrowedValueContainer, StaticClassification};
 use crate::traits::convert_core_value::ConvertCoreValue;
 use crate::traits::convert_value_container::ConvertValueContainer;
-use crate::utils::sheep::Sheep;
-use crate::utils::sheep_mut::SheepMut;
 use crate::values::value::borrowed_value::BorrowedValue;
 
 impl<T: DatexNative + ConvertCoreValue + StaticClassification> ConvertValueContainer for T {
