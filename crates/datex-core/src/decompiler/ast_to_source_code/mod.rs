@@ -3,14 +3,11 @@ use crate::decompiler::{DecompileOptions};
 use converter::AstToSourceCodeConverter;
 use crate::ast::spanned::Spanned;
 use apply_syntax_highlighting::apply_syntax_highlighting;
-use crate::preludes::derive::ValueContainer;
 use crate::traits::to_datex_expression_data::ToDatexExpressionData;
 use crate::prelude::*;
-use core::fmt::Display;
-use core::fmt::Formatter;
 
 mod converter;
-mod apply_syntax_highlighting;
+pub mod apply_syntax_highlighting;
 
 /// Decompiles a single DATEX compatible value into a human-readable string representation.
 pub fn value_to_source_code(
