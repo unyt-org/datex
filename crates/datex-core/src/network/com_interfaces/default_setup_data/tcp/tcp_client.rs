@@ -6,7 +6,7 @@ use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Serialize, Deserialize)]
-#[datex(only_structural)]
+#[datex(structural)]
 pub struct TCPClientInterfaceSetupData {
     pub address: String,
 }

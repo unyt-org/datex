@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use datex_core::traits::get_datex_type::GetDatexType;
 
 #[derive(Datex, Debug)]
-#[datex(only_structural)]
+#[datex(structural)]
 enum ExampleEnum {
     VariantA,
     VariantB(u8, u8),
@@ -24,7 +24,7 @@ enum ExampleEnum {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(only_structural)]
+#[datex(structural)]
 struct Example {
     a: u8,
     b: String,
@@ -38,7 +38,7 @@ struct SerdeExample {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(only_structural)]
+#[datex(structural)]
 struct SerdeDatexExample {
     a: u8,
     #[datex(serde)]
@@ -46,7 +46,7 @@ struct SerdeDatexExample {
 }
 
 #[derive(Datex, Debug, PartialEq)]
-#[datex(only_structural)]
+#[datex(structural)]
 struct ExampleNewType(Example);
 
 fn assert_round_trip<T>(value: T)
@@ -138,7 +138,7 @@ fn struct_to_value_container() {
 #[test]
 fn skip() {
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(only_structural, no_deserialize)]
     struct SerdeDatexWithSkip {
         a: u8,
 
@@ -170,7 +170,7 @@ fn skip2() {
         b: String,
     }
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(only_structural, no_deserialize)]
     struct SerdeDatexWithSkip2 {
         a: u8,
         #[datex(skip)]
@@ -192,7 +192,7 @@ fn skip2() {
 #[test]
 fn default() {
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(only_structural, no_deserialize)]
     struct SerdeDatexWithDefault {
         a: u8,
         #[datex(default)]
@@ -448,7 +448,7 @@ fn struct_with_serde_to_value_container() {
 #[test]
 fn struct_with_serde_infallible_to_value_container() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct SerdeDatexExampleInfallible {
         a: u8,
         #[datex(serde_infallible)]
@@ -489,7 +489,7 @@ fn struct_with_value_container() {
     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct ExampleWithValueContainer {
         a: u8,
         val: ValueContainer,
@@ -538,7 +538,7 @@ fn struct_with_owned_shared_value_container() {
     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct ExampleWithOwnedContainer {
         owned: OwnedSharedContainer,
     }
@@ -763,7 +763,7 @@ fn recursive_struct() {
 #[test]
 fn mutual_recursion_structural_containing_entity() {
     #[derive(Datex)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct A {
         b: Box<B>,
     }
@@ -799,7 +799,7 @@ fn mutual_recursion_entity_containing_structural() {
     }
 
     #[derive(Datex)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct B {
         a: Box<A>,
     }
@@ -856,12 +856,12 @@ fn mutual_recursion_entity() {
 #[should_panic(expected = "Can not use recursive structural")]
 fn mutual_recursion_panic_with_structural() {
     #[derive(Datex)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct A {
         b: Box<B>,
     }
     #[derive(Datex)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct B {
         a: Box<A>,
     }
@@ -925,7 +925,7 @@ fn round_trip_boxed_struct() {
 #[test]
 fn struct_with_option() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct ExampleWithOption {
         value: Option<u8>,
     }
@@ -936,7 +936,7 @@ fn struct_with_option() {
 #[test]
 fn struct_with_box() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct ExampleWithBox {
         value: Box<u8>,
     }
@@ -948,7 +948,7 @@ fn struct_with_box() {
 #[test]
 fn struct_with_option_box() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct ExampleWithOptionBox {
         value: Option<Box<u8>>,
     }
@@ -961,7 +961,7 @@ fn struct_with_option_box() {
 #[test]
 fn struct_with_box_option() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct ExampleWithBoxOption {
         value: Box<Option<u8>>,
     }
@@ -976,7 +976,7 @@ fn struct_with_box_option() {
 #[test]
 fn struct_with_nested_option() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct ExampleWithNestedOption {
         value: Option<Option<u8>>,
     }
@@ -1012,7 +1012,7 @@ fn round_trip_enum_with_option_and_box(value: ExampleEnumWithOptionAndBox) {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(only_structural)]
+#[datex(structural)]
 enum ExampleEnumWithOptionAndBox {
     Optional(Option<u8>),
     Boxed(Box<u8>),
@@ -1022,7 +1022,7 @@ enum ExampleEnumWithOptionAndBox {
 #[test]
 fn recursive_struct_round_trip() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(only_structural)]
+    #[datex(structural)]
     struct Node {
         value: u8,
         next: Option<Box<Node>>,

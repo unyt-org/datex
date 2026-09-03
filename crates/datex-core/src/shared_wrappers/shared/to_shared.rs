@@ -1,4 +1,4 @@
-use crate::datex_proxy::shared::Shared;
+use crate::shared_wrappers::shared::Shared;
 use crate::preludes::derive::{DatexNative, SharedReferencesCache};
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::shared_values::{SharedContainer, SharedContainerMutability};

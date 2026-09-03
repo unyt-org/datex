@@ -1,4 +1,6 @@
+use proc_macro2::TokenStream;
 use proc_macro2::{Ident, Span};
+use quote::{quote, ToTokens};
 use syn::{Generics, Type};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -60,6 +62,23 @@ pub struct Field {
 }
 
 #[derive(Debug, PartialEq)]
+/// Represents a field in a struct or enum variant, along with its type and attributes.
+pub struct IndexedField {
+    pub index: usize,
+    pub field: Field,
+}
+
+
+impl IndexedField {
+    pub fn index_accessor(&self) -> syn::Index {
+        syn::Index::from(self.index)
+    }
+    pub fn normalized_ident(&self) -> Ident {
+        Ident::new(&format!("_{}", self.index), Span::call_site())
+    }
+}
+
+#[derive(Debug, PartialEq)]
 /// General attributes that can be applied to any field.
 pub struct FieldAttributes {
     pub serde_mode: SerdeMode,
@@ -68,10 +87,8 @@ pub struct FieldAttributes {
 #[derive(Debug, PartialEq)]
 /// Attributes specific to named fields in structs or enum variants.
 pub struct NamedFieldAttributes {
-    /// If true, this field will be invisible to DATEX.
-    pub skip: bool,
-    /// TODO:
-    pub default: bool,
+    /// Skip the field for DATEX representation, but allow deserialization from DATEX by using the default value for the field.
+    pub skip_with_default: bool,
     /// An optional rename for the field used for the DATEX representation. If not provided, the rust field name will be used.
     pub rename: Option<String>,
 }
@@ -84,30 +101,60 @@ pub struct NamedField {
     pub attributes: NamedFieldAttributes,
 }
 
+impl NamedField {
+    pub fn ident_accessor(&self) -> Ident {
+        Ident::new(&self.name, Span::call_site())
+    }
+    pub fn normalized_ident(&self) -> Ident {
+        self.ident_accessor()
+    }
+}
+
 #[derive(Debug, PartialEq)]
 /// Represents the different kinds of fields a struct or enum variant can have.
 pub enum Fields {
     Named(Vec<NamedField>),
-    Unnamed(Vec<Field>),
-    Transparent(Field),
+    Unnamed(Vec<IndexedField>),
+    Transparent(IndexedField),
     Unit,
 }
 
 impl Fields {
-    pub fn field_idents(&self) -> Vec<Ident> {
+    /// Returns a vector of normalized identifiers for the fields
+    /// that can be used as variable names.
+    /// For named fields, it returns the field names as identifiers.
+    /// For unnamed fields, it returns identifiers like `_0`, `_1`, etc.
+    pub fn normalized_field_idents(&self) -> Vec<Ident> {
         match self {
             Fields::Named(fields) => fields
                 .iter()
-                .map(|f| Ident::new(&f.name, Span::call_site()))
+                .map(|f| f.normalized_ident())
                 .collect(),
             Fields::Unnamed(fields) => fields
                 .iter()
                 .enumerate()
-                .map(|(i, _)| Ident::new(&format!("_{}", i), Span::call_site()))
+                .map(|(_, f)| f.normalized_ident())
                 .collect(),
-            Fields::Transparent(_) => {
-                vec![Ident::new("_0", Span::call_site())]
+            Fields::Transparent(field) => {
+                vec![field.normalized_ident()]
             }
+            Fields::Unit => vec![],
+        }
+    }
+
+    /// Returns a list of all field accessors (field names or indices) as TokenStreams.
+    pub fn field_accessors(&self) -> Vec<TokenStream> {
+        match self {
+            Fields::Named(fields) => fields
+                .iter()
+                .map(|f| f.ident_accessor().into_token_stream())
+                .collect(),
+            Fields::Unnamed(fields) => fields
+                .iter()
+                .enumerate()
+                .map(|(_, f)| f.index_accessor().into_token_stream())
+                .collect(),
+            Fields::Transparent(field) => vec![field.index_accessor().into_token_stream()],
             Fields::Unit => vec![],
         }
     }
@@ -134,5 +181,3 @@ pub struct StructureData {
     pub attributes: StructureAttributes,
     pub structure: Structure,
 }
-
-// TODO: derive is_fallible_serialization from fields

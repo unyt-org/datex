@@ -14,7 +14,6 @@ use core::any::Any;
 use num::ToPrimitive;
 
 use crate::{
-    datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     prelude::*,
     types::r#type::Type,
@@ -105,8 +104,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8),
     {
         CoreValue::TypedInteger(TypedInteger::U8(value)) => Ok(value),
-        CoreValue::TypedInteger(value) => value.to_u8().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u8, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_u8().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u8, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_u8().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_u8().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedInteger(TypedInteger::U8(value)) => Ok(value),
@@ -118,8 +117,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16),
     {
         CoreValue::TypedInteger(TypedInteger::U16(value)) => Ok(value),
-        CoreValue::TypedInteger(value) => value.to_u16().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u16, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_u16().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u16, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_u16().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_u16().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedInteger(TypedInteger::U16(value)) => Ok(value),
@@ -130,8 +129,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U32),
     {
         CoreValue::TypedInteger(TypedInteger::U32(value)) => Ok(value),
-        CoreValue::TypedInteger(value) => value.to_u32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u32, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_u32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u32, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_u32().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_u32().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedInteger(TypedInteger::U32(value)) => Ok(value),
@@ -142,8 +141,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U64),
     {
         CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value),
-        CoreValue::TypedInteger(value) => value.to_u64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u64, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_u64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u64, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_u64().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_u64().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value),
@@ -154,8 +153,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U128),
     {
         CoreValue::TypedInteger(TypedInteger::U128(value)) => Ok(value),
-        CoreValue::TypedInteger(value) => value.to_u128().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u128, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_u128().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to u128, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_u128().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_u128().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedInteger(TypedInteger::U128(value)) => Ok(value),
@@ -169,8 +168,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U32),
     {
         CoreValue::TypedInteger(TypedInteger::U32(value)) => Ok(value as usize),
-        CoreValue::TypedInteger(value) => value.to_u32().map(|v| v as usize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to usize, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_u32().map(|v| v as usize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to usize, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_u32().map(|v| v as usize).ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_u32().map(|v| v as usize).ok_or_else(|| ()),
     },
     {}
 );
@@ -180,8 +179,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U64),
     {
         CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value as usize),
-        CoreValue::TypedInteger(value) => value.to_u64().map(|v| v as usize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to usize, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_u64().map(|v| v as usize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to usize, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_u64().map(|v| v as usize).ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_u64().map(|v| v as usize).ok_or_else(|| ()),
     },
     {}
 );
@@ -191,8 +190,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I8),
     {
         CoreValue::TypedInteger(TypedInteger::I8(value)) => Ok(value),
-        CoreValue::TypedInteger(value) => value.to_i8().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i8, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_i8().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i8, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_i8().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_i8().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedInteger(TypedInteger::I8(value)) => Ok(value),
@@ -203,8 +202,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I16),
     {
         CoreValue::TypedInteger(TypedInteger::I16(value)) => Ok(value),
-        CoreValue::TypedInteger(value) => value.to_i16().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i16, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_i16().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i16, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_i16().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_i16().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedInteger(TypedInteger::I16(value)) => Ok(value),
@@ -215,8 +214,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I32),
     {
         CoreValue::TypedInteger(TypedInteger::I32(value)) => Ok(value),
-        CoreValue::TypedInteger(value) => value.to_i32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i32, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_i32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i32, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_i32().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_i32().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedInteger(TypedInteger::I32(value)) => Ok(value),
@@ -227,8 +226,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I64),
     {
         CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value),
-        CoreValue::TypedInteger(value) => value.to_i64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i64, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_i64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i64, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_i64().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_i64().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value),
@@ -239,8 +238,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I128),
     {
         CoreValue::TypedInteger(TypedInteger::I128(value)) => Ok(value),
-        CoreValue::TypedInteger(value) => value.to_i128().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i128, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_i128().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to i128, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_i128().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_i128().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedInteger(TypedInteger::I128(value)) => Ok(value),
@@ -254,8 +253,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I32),
     {
         CoreValue::TypedInteger(TypedInteger::I32(value)) => Ok(value as isize),
-        CoreValue::TypedInteger(value) => value.to_i32().map(|v| v as isize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to isize, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_i32().map(|v| v as isize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to isize, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_i32().map(|v| v as isize).ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_i32().map(|v| v as isize).ok_or_else(|| ()),
     },
     {}
 );
@@ -265,8 +264,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Integer(IntegerTypeVariant::I64),
     {
         CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value as isize),
-        CoreValue::TypedInteger(value) => value.to_i64().map(|v| v as isize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to isize, value is not an integer", value))),
-        CoreValue::TypedDecimal(value) => value.to_i64().map(|v| v as isize).ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to isize, value is not an integer", value))),
+        CoreValue::TypedInteger(value) => value.to_i64().map(|v| v as isize).ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_i64().map(|v| v as isize).ok_or_else(|| ()),
     },
     {}
 );
@@ -276,8 +275,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F32),
     {
         CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(value.into()),
-        CoreValue::TypedInteger(value) => value.to_f32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to f32, value is not a decimal", value))),
-        CoreValue::TypedDecimal(value) => value.to_f32().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to f32, value is not a decimal", value))),
+        CoreValue::TypedInteger(value) => value.to_f32().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_f32().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(value.as_ref()),
@@ -288,8 +287,8 @@ implement_rust_native_traits!(
     CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F64),
     {
         CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(value.into()),
-        CoreValue::TypedInteger(value) => value.to_f64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to f64, value is not a decimal", value))),
-        CoreValue::TypedDecimal(value) => value.to_f64().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast {} to f64, value is not a decimal", value))),
+        CoreValue::TypedInteger(value) => value.to_f64().ok_or_else(|| ()),
+        CoreValue::TypedDecimal(value) => value.to_f64().ok_or_else(|| ()),
     },
     {
         CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(value.as_ref()),
@@ -308,34 +307,30 @@ implement_rust_native_traits!(
 
 // &str
 impl<'a> TryFrom<&'a CoreValue> for &'a str {
-    type Error = TryFromDatexValueError;
+    type Error = ();
 
     fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
         match value {
             CoreValue::Text(Text(value)) => Ok(value.as_str()),
-            _ => Err(TryFromDatexValueError(
-                "Cannot cast CoreValue to &str".into(),
-            )),
+            _ => Err(()),
         }
     }
 }
 
 impl<'a> TryFrom<&'a Value> for &'a str {
-    type Error = TryFromDatexValueError;
+    type Error = ();
 
     fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
         (&value.inner).try_into()
     }
 }
 impl<'a> TryFrom<&'a ValueContainer> for &'a str {
-    type Error = TryFromDatexValueError;
+    type Error = ();
 
     fn try_from(value: &'a ValueContainer) -> Result<Self, Self::Error> {
         match value {
             ValueContainer::Local(value) => value.try_into(),
-            _ => Err(TryFromDatexValueError(
-                "Cannot cast shared ValueContainer to &str".into(),
-            )),
+            _ => Err(()),
         }
     }
 }
@@ -359,9 +354,6 @@ impl GetDatexType for str {
 mod tests {
     use super::*;
     use crate::{
-        datex_proxy::{
-            TryFromDatexValueError, TryToDatexValueError,
-        },
         values::{
             core_value::CoreValue,
             core_values::{boolean::Boolean, text::Text},

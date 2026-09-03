@@ -1,6 +1,5 @@
 //! Implements [TryFrom] for DATEX [CoreValue] and [Value] types. This allows to convert e.g. [CoreValue::Integer] to [Integer].
 use crate::{
-    datex_proxy::TryFromDatexValueError,
     prelude::*,
     types::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
@@ -55,21 +54,21 @@ macro_rules! impl_try_from_core_value {
             }
 
             impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, $type> {
-                type Error = TryFromDatexValueError;
+                type Error = ();
                 fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
                     match value {
                         BorrowedCoreValue::$variant(v) => Ok(v),
-                        _ => Err(TryFromDatexValueError(format!("Cannot cast BorrowedCoreValue to {}, expected BorrowedCoreValue::{}", stringify!($type), stringify!($variant)))),
+                        _ => Err(()),
                     }
                 }
             }
 
             impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, $type> {
-                type Error = TryFromDatexValueError;
+                type Error = ();
                 fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
                     match value {
                         BorrowedCoreValueMut::$variant(v) => Ok(v),
-                        _ => Err(TryFromDatexValueError(format!("Cannot cast BorrowedCoreValueMut to {}, expected BorrowedCoreValueMut::{}", stringify!($type), stringify!($variant)))),
+                        _ => Err(()),
                     }
                 }
             }
@@ -99,7 +98,6 @@ mod tests {
     use core::assert_matches;
 
     use crate::{
-        datex_proxy::TryFromDatexValueError,
         values::{
             core_value::CoreValue,
             core_values::{integer::Integer, text::Text},

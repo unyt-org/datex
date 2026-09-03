@@ -36,7 +36,6 @@ pub mod classification;
 pub mod convert_value_container;
 
 use crate::{
-    datex_proxy::TryToDatexValueError,
     shared_values::errors::AccessError,
     traits::value_access::ValueAccess,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
@@ -187,7 +186,7 @@ impl Value {
     pub fn inner_non_native(
         &self,
         _cache: &mut SharedReferencesCache,
-    ) -> Result<Cow<'_, CoreValue>, TryToDatexValueError> {
+    ) -> Result<Cow<'_, CoreValue>, ()> {
         Ok(Cow::Borrowed(&self.inner)) // workaround
         // TODO: implement try_borrowed_boxed_to_value
         // match &self.inner {

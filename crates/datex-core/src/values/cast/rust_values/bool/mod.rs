@@ -1,7 +1,6 @@
 pub mod try_from_core_value;
 
 use crate::{
-    datex_proxy::TryFromDatexValueError,
     prelude::*,
     traits::value_access::ValueAccess,
 };

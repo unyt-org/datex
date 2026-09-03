@@ -1,7 +1,6 @@
 use core::fmt::{Debug, Display};
 
 use crate::{
-    datex_proxy::TryFromDatexValueError,
     network::com_interfaces::com_interface::error::ComInterfaceError,
     prelude::*,
 };
