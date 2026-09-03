@@ -1,11 +1,10 @@
 use core::any::Any;
 use core::hash::Hash;
-use crate::collections::HashMap;
+use indexmap::IndexMap;
 use crate::preludes::derive::{CoreValue, DatexNative, SharedReferencesCache, Type};
 use crate::values::core_values::native::DatexNativeBase;
-use crate::values::value::value_classification::ValueClassification;
 
-impl<K, V> DatexNative for HashMap<K, V>
+impl<K, V> DatexNative for IndexMap<K, V>
 where
     K: DatexNativeBase + Eq + Hash + 'static,
     V: DatexNativeBase + 'static,

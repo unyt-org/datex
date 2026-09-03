@@ -4,7 +4,7 @@ mod bool;
 mod r#box;
 mod duration;
 mod floats;
-mod hash_map;
+mod index_map;
 mod integers;
 mod option;
 mod string;

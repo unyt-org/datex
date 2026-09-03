@@ -1,10 +1,10 @@
 use core::hash::Hash;
-use crate::collections::HashMap;
+use indexmap::IndexMap;
 use crate::preludes::derive::{SharedReferencesCache};
 use crate::traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts};
 use crate::traits::convert_value_container::ConvertValueContainer;
 
-impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts for HashMap<K, V> {
+impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts for IndexMap<K, V> {
     fn into_parts<'a>(self, cache: &'a mut SharedReferencesCache) -> Option<Parts<'a>> where Self: 'a, {
         Some(Parts::Map(Box::new(
             self
@@ -22,14 +22,14 @@ impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts for HashMap<K
 }
 
 
-impl<K: ConvertValueContainer + Eq + Hash, V: ConvertValueContainer> FromParts for HashMap<K, V> {
+impl<K: ConvertValueContainer + Eq + Hash, V: ConvertValueContainer> FromParts for IndexMap<K, V> {
     fn try_from_parts(parts: Parts) -> Result<Self, ()>
     where
         Self: Sized
     {
         match parts {
             Parts::Map(iter) => {
-                let mut map = HashMap::new();
+                let mut map = IndexMap::new();
                 for (key, value) in iter {
                     map.insert(K::try_from_value_container(key).map_err(|_| ())?, V::try_from_value_container(value).map_err(|_| ())?);
                 }

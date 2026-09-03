@@ -1,4 +1,4 @@
-//! Implements [DatexValueProxy] for [HashMap<K, V>] where K: [DatexValueProxy] + Eq + Hash and V: [DatexValueProxy].
+//! Implements [DatexValueProxy] for [IndexMap<K, V>] where K: [DatexValueProxy] + Eq + Hash and V: [DatexValueProxy].
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;
@@ -12,7 +12,6 @@ mod try_from_core_value;
 pub mod classification;
 
 use crate::{
-    collections::HashMap,
     prelude::*,
     types::{
         r#type::Type,
@@ -33,6 +32,7 @@ use core::{any::Any, hash::Hash};
 
 #[cfg(test)]
 mod tests {
+    use indexmap::IndexMap;
     use crate::traits::get_datex_type::GetDatexType;
     use super::*;
     use crate::values::{
@@ -43,7 +43,7 @@ mod tests {
     };
     #[test]
     fn to_value() {
-        let mut map = HashMap::new();
+        let mut map = IndexMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
         let value: Value = Value::native_structural(map);
         assert_eq!(
@@ -60,36 +60,36 @@ mod tests {
     fn from_value() {
         let cache = &mut SharedReferencesCache::default();
         // map with [Value], [Value] as key and value
-        let mut map = HashMap::new();
+        let mut map = IndexMap::new();
         map.insert(
             Value::from(Integer::from(1)),
             Value::from(Endpoint::new("@jonas")),
         );
         let value: Value = Value::native(map.clone(), cache);
-        let map_from_value: HashMap<Value, Value> = value.try_into_value().unwrap();
+        let map_from_value: IndexMap<Value, Value> = value.try_into_value().unwrap();
         assert_eq!(map, map_from_value);
 
         // map with [ValueContainer], [ValueContainer] as key and value
-        let mut map = HashMap::new();
+        let mut map = IndexMap::new();
         map.insert(
             ValueContainer::from(Integer::from(1)),
             ValueContainer::from(Endpoint::new("@jonas")),
         );
         let value: Value = Value::native(map.clone(), cache);
-        let map_from_value = value.try_into_value::<HashMap<ValueContainer, ValueContainer>>().unwrap();
+        let map_from_value = value.try_into_value::<IndexMap<ValueContainer, ValueContainer>>().unwrap();
         assert_eq!(map, map_from_value);
 
         // map with [Integer, Endpoint] as key and value
-        let mut map = HashMap::new();
+        let mut map = IndexMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
         let value: Value = Value::native(map.clone(), cache);
-        let map_from_value = value.try_into_value::<HashMap<Integer, Endpoint>>().unwrap();
+        let map_from_value = value.try_into_value::<IndexMap<Integer, Endpoint>>().unwrap();
         assert_eq!(map, map_from_value);
     }
 
     #[test]
     fn datex_type() {
-        let map_type = HashMap::<Integer, Endpoint>::datex_type(&mut SharedReferencesCache::default());
+        let map_type = IndexMap::<Integer, Endpoint>::datex_type(&mut SharedReferencesCache::default());
         map_type.with_collapsed_type_definition(|d| {
             assert_eq!(
                 d,

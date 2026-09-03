@@ -1,11 +1,11 @@
 use crate::{
     ast::{expressions::DatexExpressionData, spanned::Spanned},
-    collections::HashMap,
     traits::to_datex_expression_data::ToDatexExpressionData,
 };
 use core::hash::Hash;
+use indexmap::IndexMap;
 
-impl<K, V> ToDatexExpressionData for HashMap<K, V>
+impl<K, V> ToDatexExpressionData for IndexMap<K, V>
 where
     K: ToDatexExpressionData + Eq + Hash,
     V: ToDatexExpressionData,
