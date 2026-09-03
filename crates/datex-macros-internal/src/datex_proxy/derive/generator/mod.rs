@@ -18,6 +18,7 @@ use quote::quote;
 use syn::PathSegment;
 use crate::datex_proxy::generator::classification::generate_classification;
 use crate::datex_proxy::generator::convert_parts::generate_convert_parts;
+use crate::datex_proxy::generator::datex_hash::generate_datex_hash;
 use crate::datex_proxy::generator::datex_type::generate_core_lib_type_id;
 use crate::datex_proxy::generator::try_from_core_value::generate_try_from_core_value;
 use crate::datex_proxy::generator::value_access::generate_value_access;
@@ -29,6 +30,7 @@ mod convert_parts;
 pub mod value_access;
 pub mod try_from_core_value;
 pub mod classification;
+pub mod datex_hash;
 
 /// Generates the code for the derive macro based on the provided structure data.
 pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
@@ -40,6 +42,7 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
     let try_from_core_value = generate_try_from_core_value(&structure_data);
     let classification = generate_classification(&structure_data);
     let value_access = generate_value_access(&structure_data);
+    let datex_hash = generate_datex_hash(&structure_data);
 
     let datex_expression_data = cfg_select! {
         feature = "decompiler" => {
@@ -65,6 +68,7 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
             #try_from_core_value
             #classification
             #value_access
+            #datex_hash
             #datex_expression_data
         };
     }

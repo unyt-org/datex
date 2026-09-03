@@ -24,6 +24,7 @@ pub use crate::{
     traits::convert_parts::IntoParts,
     traits::convert_core_value::ConvertCoreValue,
     traits::convert_value_container::ConvertValueContainer,
+    traits::datex_hash::DatexHash,
 
     values::core_values::callable::{CallableBody, Callable},
     types::type_definition::callable::{CallableKind, CallableTypeDefinition},

@@ -23,3 +23,4 @@ pub mod datex_native_structural;
 pub mod static_classification;
 pub mod classification;
 pub mod convert_core_value;
+pub mod datex_hash;
