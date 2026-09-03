@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use crate::{
     collections::HashMap,
     network::com_hub::InterfacePriority,
@@ -50,7 +51,7 @@ impl RuntimeConfigInterface {
 pub struct RuntimeConfig {
     pub endpoint: Endpoint,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
-    pub env: Option<HashMap<String, String>>,
+    pub env: Option<IndexMap<String, String>>,
 }
 
 impl RuntimeConfig {
@@ -83,12 +84,12 @@ impl RuntimeConfig {
 
     /// Adds a single environment variable to the runtime's custom environment variables.
     pub fn add_env_var(&mut self, key: String, value: String) {
-        self.env.get_or_insert_with(HashMap::new).insert(key, value);
+        self.env.get_or_insert_with(IndexMap::new).insert(key, value);
     }
 
     /// Adds multiple environment variables to the runtime's custom environment variables.
-    pub fn add_env_vars(&mut self, vars: HashMap<String, String>) {
-        self.env.get_or_insert_with(HashMap::new).extend(vars);
+    pub fn add_env_vars(&mut self, vars: IndexMap<String, String>) {
+        self.env.get_or_insert_with(IndexMap::new).extend(vars);
     }
 
     #[cfg(feature = "target_native")]
@@ -96,7 +97,7 @@ impl RuntimeConfig {
     pub fn load_host_env_vars(&mut self) {
         // add all host environment variables to the runtime's custom environment variables
         for (key, value) in std::env::vars() {
-            self.env.get_or_insert_with(HashMap::new).insert(key, value);
+            self.env.get_or_insert_with(IndexMap::new).insert(key, value);
         }
     }
 
@@ -109,7 +110,7 @@ impl RuntimeConfig {
         let loader1 = dotenvy::from_path_iter(path)?;
         for item in loader1 {
             let (key, val) = item?;
-            self.env.get_or_insert_with(HashMap::new).insert(key, val);
+            self.env.get_or_insert_with(IndexMap::new).insert(key, val);
         }
         Ok(())
     }

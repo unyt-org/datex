@@ -1,11 +1,11 @@
-use crate::collections::HashMap;
 use core::hash::Hash;
+use indexmap::IndexMap;
 use crate::preludes::derive::{SharedReferencesCache, Type, TypeDefinition};
 use crate::traits::get_datex_type::GetDatexType;
 use crate::types::type_definition::collection::CollectionTypeDefinition;
 use crate::types::type_definition::collection::type_definition::map::MapCollectionTypeDefinition;
 
-impl<K, V> GetDatexType for HashMap<K, V>
+impl<K, V> GetDatexType for IndexMap<K, V>
 where
     K: GetDatexType + Eq + Hash,
     V: GetDatexType,

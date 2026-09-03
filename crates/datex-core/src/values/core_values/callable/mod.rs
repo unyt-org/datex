@@ -9,7 +9,7 @@ use crate::{
     },
 };
 use core::{fmt::Debug, hash::Hash, pin::Pin};
-use std::ops::DerefMut;
+use core::ops::DerefMut;
 use crate::runtime::Runtime;
 use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::traits::get_datex_type::GetDatexType;

@@ -515,6 +515,7 @@ mod tests {
         },
     };
     use core::assert_matches;
+    use indexmap::IndexMap;
     use log::{debug, info};
     use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
@@ -1209,7 +1210,7 @@ mod tests {
     async fn env_slot() {
         let res = execute_datex_script_with_runtime(
             RuntimeConfig {
-                env: Some(HashMap::from([(
+                env: Some(IndexMap::from([(
                     "TEST_ENV_VAR".to_string(),
                     "test_value".to_string(),
                 )])),
@@ -1220,8 +1221,8 @@ mod tests {
         .await
         .unwrap();
         assert!(res.is_some());
-        let env = res.unwrap().try_into_value::<Map>().unwrap();
-        assert_eq!(env.try_get("TEST_ENV_VAR"), Ok(&"test_value".into()));
+        let env = res.unwrap().try_into_value::<IndexMap<String, String>>().unwrap();
+        assert_eq!(env.get("TEST_ENV_VAR"), Some(&"test_value".into()));
     }
 
     #[test]

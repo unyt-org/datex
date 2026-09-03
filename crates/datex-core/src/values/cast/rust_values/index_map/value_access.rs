@@ -1,5 +1,4 @@
 use crate::{
-    collections::HashMap,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::AccessError,
     traits::value_access::ValueAccess,
@@ -7,14 +6,14 @@ use crate::{
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
-        core_values::native::DatexNative,
         value_container::value_key::BorrowedValueKey,
     },
 };
 use core::hash::Hash;
+use indexmap::IndexMap;
 use crate::traits::convert_value_container::ConvertValueContainer;
 
-impl<K, V> ValueAccess for HashMap<K, V>
+impl<K, V> ValueAccess for IndexMap<K, V>
 where
     K: ConvertValueContainer + Eq + Hash,
     V: ConvertValueContainer,
