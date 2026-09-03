@@ -8,6 +8,7 @@ pub mod datex_native_structural;
 pub mod datex_native;
 pub mod classification;
 mod try_from_core_value;
+mod datex_hash;
 
 #[cfg(test)]
 mod tests {

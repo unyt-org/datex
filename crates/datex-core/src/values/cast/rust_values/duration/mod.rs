@@ -1,6 +1,7 @@
 pub mod classification;
 pub mod datex_native;
 mod try_from_core_value;
+pub mod datex_hash;
 
 use crate::{
     libs::core::type_id::CoreLibBaseTypeId,
@@ -18,6 +19,7 @@ use crate::{
 use core::{time::Duration};
 use crate::preludes::derive::CoreLibTypeId;
 use crate::traits::convert_parts::{FromParts, IntoParts};
+use crate::traits::datex_hash::impl_datex_hash;
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::datex_native_structural::DatexNativeStructural;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;

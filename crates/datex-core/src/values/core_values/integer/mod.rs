@@ -28,6 +28,7 @@ mod get_datex_type;
 mod datex_native;
 mod convert_parts;
 pub mod classification;
+mod datex_hash;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]
 pub struct Integer(pub BigInt);

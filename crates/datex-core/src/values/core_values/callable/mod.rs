@@ -27,6 +27,7 @@ mod get_datex_type;
 mod convert_parts;
 mod classification;
 mod datex_native_structural;
+mod datex_hash;
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 

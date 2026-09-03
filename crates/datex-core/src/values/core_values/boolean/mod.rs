@@ -18,6 +18,7 @@ pub mod get_core_lib_type_id;
 pub mod convert_parts;
 pub mod get_datex_type;
 mod classification;
+mod datex_hash;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,

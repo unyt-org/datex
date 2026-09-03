@@ -20,6 +20,7 @@ pub trait DatexNativeBase:
     FromParts + 
     Classification +
     GetCoreLibTypeId +
+    DatexHash +
     ToDatexExpressionData {}
 #[cfg(feature = "decompiler")]
 impl <T> DatexNativeBase for T where T: 
@@ -29,6 +30,7 @@ impl <T> DatexNativeBase for T where T:
     FromParts + 
     Classification +
     GetCoreLibTypeId +
+    DatexHash +
     ToDatexExpressionData {}
 
 #[cfg(not(feature = "decompiler"))]
@@ -38,7 +40,9 @@ pub trait DatexNativeBase:
     IntoParts +
     FromParts +
     Classification +
-    GetCoreLibTypeId {}
+    GetCoreLibTypeId +
+    DatexHash
+{}
 #[cfg(not(feature = "decompiler"))]
 impl <T> DatexNativeBase for T where T: 
     ConvertValueContainer +
@@ -46,7 +50,9 @@ impl <T> DatexNativeBase for T where T:
     IntoParts +
     FromParts +
     Classification +
-    GetCoreLibTypeId {}
+    GetCoreLibTypeId +
+    DatexHash
+{}
 
 // TODO: better solution than duplicate definition of trait for different feature flags?
 #[cfg(feature = "decompiler")]

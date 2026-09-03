@@ -33,6 +33,7 @@ mod datex_native;
 mod datex_native_structural;
 mod convert_parts;
 mod classification;
+mod datex_hash;
 
 #[derive(Debug, Default)]
 pub struct List {
