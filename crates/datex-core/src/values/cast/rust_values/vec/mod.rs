@@ -2,7 +2,7 @@ use crate::preludes::derive::{CoreValue, DatexNativeStructural, Value};
 use crate::traits::get_datex_type::GetDatexType;
 use crate::values::core_values::native::DatexNativeBase;
 
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
 pub mod get_datex_type;

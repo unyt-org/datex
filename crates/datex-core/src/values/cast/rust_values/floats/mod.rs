@@ -6,7 +6,7 @@ use crate::{
     traits::value_access::ValueAccess,
 };
 
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data {
     use crate::{
         ast::expressions::DatexExpressionData,

@@ -10,12 +10,13 @@ use core::{
 };
 mod datex_native_trait;
 mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
 mod get_core_lib_type_id;
 mod get_datex_type;
 mod datex_hash;
+pub mod display;
 
 use crate::{
     libs::core::type_id::CoreLibTypeId, traits::try_clone::TryClone,
@@ -175,7 +176,7 @@ impl Clone for NativeCoreValue {
 
 impl Debug for NativeCoreValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "[[ native value ]]")
+        write!(f, "{}", self)
     }
 }
 

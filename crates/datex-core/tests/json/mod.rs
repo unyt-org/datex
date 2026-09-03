@@ -1,9 +1,8 @@
-use alloc::rc::Rc;
 use datex_core::{
     compiler::{CompileOptions, compile_script},
     core_compiler::core_compilation_context::DXBWithSharedValues,
     decompiler::{
-        DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
+        DecompileOptions, FormattingMode, FormattingOptions,
     },
     runtime::{
         Runtime,
@@ -24,6 +23,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use json_syntax::Parse;
 use std::path::PathBuf;
+use datex_core::decompiler::dxb_to_source_code::dxb_to_source_code;
 
 fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
     match json {
@@ -101,7 +101,7 @@ fn get_datex_decompiled_from_json(json_string: &str) -> String {
     let (dxb, _) =
         compile_script(json_string, CompileOptions::default(), runtime)
             .unwrap();
-    let decompiled = decompile_body(
+    let decompiled = dxb_to_source_code(
         &dxb,
         DecompileOptions {
             formatting_options: FormattingOptions {

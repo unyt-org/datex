@@ -1,6 +1,6 @@
 //! Implements [DatexValueProxy] for [IndexMap<K, V, RandomState>] where K: [DatexValueProxy] + Eq + Hash and V: [DatexValueProxy].
 
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
 pub mod get_datex_type;

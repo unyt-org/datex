@@ -44,6 +44,7 @@ use core::{
     ops::Deref,
 };
 use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 pub mod apply;
 pub mod serde_dif;
@@ -478,6 +479,7 @@ impl Clone for SharedContainer {
     }
 }
 
+// TODO: use impl_display_for_datex_value
 impl Display for SharedContainer {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
@@ -488,6 +490,7 @@ impl Display for SharedContainer {
         }
     }
 }
+
 
 pub mod clone_unsafe;
 mod common;

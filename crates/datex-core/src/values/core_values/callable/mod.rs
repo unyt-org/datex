@@ -13,12 +13,13 @@ use core::ops::DerefMut;
 use crate::runtime::Runtime;
 use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::traits::get_datex_type::GetDatexType;
+use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 pub mod apply;
 pub mod equality;
 pub mod error;
 mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
 mod datex_native;
@@ -192,6 +193,16 @@ pub struct Callable {
     pub body: CallableBody,
     pub creator: Endpoint,
 }
+
+impl_display_for_datex_value!(
+    Callable,
+    impl core::fmt::Display for Callable {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            core::write!(f, "[[ callable ]]")
+        }
+    }
+);
+
 
 /// Creates a new [Callable] from a native Rust function or closure
 pub fn native_sync_callable<F, Args, R>(

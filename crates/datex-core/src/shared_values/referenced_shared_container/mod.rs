@@ -1,6 +1,6 @@
 mod common;
 pub mod get_datex_type;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 
 use crate::{
@@ -29,6 +29,7 @@ use core::{
     hash::{Hash, Hasher},
 };
 use crate::shared_values::SharedContainer;
+use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -279,19 +280,24 @@ impl ReferencedSharedContainer {
     }
 }
 
-impl Display for ReferencedSharedContainer {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "{}{}",
-            match self.reference_mutability {
-                ReferenceMutability::Immutable => "'",
-                ReferenceMutability::Mutable => "'mut ",
-            },
-            self.inner().base_shared_container(),
-        )
+impl_display_for_datex_value!(
+    ReferencedSharedContainer,
+    impl core::fmt::Display for ReferencedSharedContainer {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            write!(
+                f,
+                "{}{}",
+                match self.reference_mutability {
+                    ReferenceMutability::Immutable => "'",
+                    ReferenceMutability::Mutable => "'mut ",
+                },
+                self.inner().base_shared_container(),
+            )
+        }
     }
-}
+);
+
+
 
 impl _ExposeRcInternal for ReferencedSharedContainer {
     type Shared = SharedContainerInner;

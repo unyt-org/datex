@@ -8,11 +8,11 @@ use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::traits::datex_hash::DatexHash;
 use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
 use crate::traits::get_datex_type::GetDatexType;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 use crate::traits::to_datex_expression_data::ToDatexExpressionData;
 
 
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 pub trait DatexNativeBase: 
     ConvertValueContainer + 
     GetDatexType + 
@@ -22,7 +22,7 @@ pub trait DatexNativeBase:
     GetCoreLibTypeId +
     DatexHash +
     ToDatexExpressionData {}
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 impl <T> DatexNativeBase for T where T: 
     ConvertValueContainer + 
     GetDatexType + 
@@ -33,7 +33,7 @@ impl <T> DatexNativeBase for T where T:
     DatexHash +
     ToDatexExpressionData {}
 
-#[cfg(not(feature = "decompiler"))]
+#[cfg(not(feature = "ast"))]
 pub trait DatexNativeBase:
     ConvertValueContainer +
     GetDatexType +
@@ -43,7 +43,7 @@ pub trait DatexNativeBase:
     GetCoreLibTypeId +
     DatexHash
 {}
-#[cfg(not(feature = "decompiler"))]
+#[cfg(not(feature = "ast"))]
 impl <T> DatexNativeBase for T where T: 
     ConvertValueContainer +
     GetDatexType +
@@ -55,7 +55,7 @@ impl <T> DatexNativeBase for T where T:
 {}
 
 // TODO: better solution than duplicate definition of trait for different feature flags?
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 pub trait DatexNative:
     Any +
     DynEq +
@@ -73,7 +73,7 @@ pub trait DatexNative:
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-#[cfg(not(feature = "decompiler"))]
+#[cfg(not(feature = "ast"))]
 pub trait DatexNative:
     Any +
     DynEq +

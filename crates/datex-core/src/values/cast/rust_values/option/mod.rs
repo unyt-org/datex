@@ -1,4 +1,4 @@
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
 pub mod get_datex_type;

@@ -247,6 +247,9 @@ enable_deterministic_behavior = []
 # when set, all crypto-related features are enabled
 crypto_enabled = []
 
+# when set, DATEX values can be displayed as human readable strings, e.g. for debugging or logging purposes
+value_display = ["ast"]
+
 # Configuration for std
 std = [
     "dep:internment",
@@ -277,13 +280,13 @@ std = [
 ### compiler-related features #################################################
 
 # ast structures, needed by compiler, decompiler, and lsp
-ast = []
+ast = ["datex-macros-internal/ast"]
 
 parser = ["dep:logos", "dep:stacker"]
 
 compiler = ["ast", "parser", "dep:ariadne", "dep:pretty"]
 
-decompiler = ["ast", "datex-macros-internal/decompiler"]
+decompiler = ["ast"]
 
 disassembler = []
 

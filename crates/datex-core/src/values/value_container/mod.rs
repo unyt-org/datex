@@ -42,10 +42,11 @@ use core::{
     ops::FnOnce,
 };
 use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 pub mod get_datex_type;
 pub mod error;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod convert_value_container;
 pub mod classification;
@@ -319,19 +320,22 @@ impl Hash for ValueContainer {
     }
 }
 
-impl Display for ValueContainer {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            ValueContainer::Local(value) => core::write!(f, "{value}"),
-            // TODO #118: only simple temporary way to distinguish between Value and Pointer
-            ValueContainer::Shared(shared) => {
-                if shared.is_borrowed() {
-                    write!(f, "{}", shared.to_string_omit_content())
-                } else {
-                    let value = shared.collapsed_value();
-                    write!(f, "shared ({})", value.borrow().as_ref())
+impl_display_for_datex_value!(
+    ValueContainer,
+    impl core::fmt::Display for ValueContainer {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            match self {
+                ValueContainer::Local(value) => core::write!(f, "{value}"),
+                // TODO #118: only simple temporary way to distinguish between Value and Pointer
+                ValueContainer::Shared(shared) => {
+                    if shared.is_borrowed() {
+                        write!(f, "{}", shared.to_string_omit_content())
+                    } else {
+                        let value = shared.collapsed_value();
+                        write!(f, "shared ({})", value.borrow().as_ref())
+                    }
                 }
             }
         }
     }
-}
+);

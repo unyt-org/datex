@@ -273,7 +273,7 @@ impl Display for TypeDefinition {
 pub mod equality;
 pub mod intersection;
 mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_type_expression_data;
 pub mod union;
 

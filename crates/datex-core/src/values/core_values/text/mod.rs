@@ -18,7 +18,7 @@ pub struct Text(
     pub String,
 );
 pub mod ops;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
 mod datex_native_structural;

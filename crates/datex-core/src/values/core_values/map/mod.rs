@@ -23,7 +23,7 @@ use core::{
 mod child_iterator;
 pub mod local_child_path_resolver;
 pub mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod updates;
 mod value_access;
@@ -43,6 +43,7 @@ use crate::{
     values::value_container::value_key::ValueKey,
 };
 use indexmap::{IndexMap, map::MutableKeys};
+use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MapEntries {
@@ -634,18 +635,21 @@ impl Iterator for IntoMapIterator {
     }
 }
 
-impl Display for Map {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        core::write!(f, "{{")?;
-        for (i, (key, value)) in self.iter().enumerate() {
-            if i > 0 {
-                core::write!(f, ", ")?;
+impl_display_for_datex_value!(
+    Map,
+    impl core::fmt::Display for Map {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result  {
+            core::write!(f, "{{")?;
+            for (i, (key, value)) in self.iter().enumerate() {
+                if i > 0 {
+                    core::write!(f, ", ")?;
+                }
+                core::write!(f, "{key}: {value}")?;
             }
-            core::write!(f, "{key}: {value}")?;
+            core::write!(f, "}}")
         }
-        core::write!(f, "}}")
     }
-}
+);
 
 impl<K, V> From<HashMap<K, V>> for Map
 where

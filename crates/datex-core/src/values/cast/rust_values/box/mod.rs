@@ -1,5 +1,5 @@
 //! Implements [DatexValueProxy] for [Box<T>] where T: [DatexValueProxy].
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod get_datex_type;
 mod datex_native_structural;

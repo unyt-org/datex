@@ -5,7 +5,6 @@ use crate::{
         },
         spanned::Spanned,
     },
-    decompiler::ast_from_bytecode::ast_from_bytecode,
     prelude::*,
     traits::{
         to_datex_expression_data::ToDatexExpressionData,
@@ -66,12 +65,22 @@ impl ToDatexExpressionData for Callable {
                     DatexExpressionData::NativeImplementationIndicator
                         .with_default_span()
                 }
+                #[cfg(feature = "decompiler")]
                 CallableBody::DatexBytecode(DatexBytecodeCallable {
                     body,
                     ..
-                }) => ast_from_bytecode(body).unwrap_or_else(|_| {
-                    DatexExpressionData::Noop.with_default_span()
-                }), // TODO: handle error?
+                }) => {
+                    use crate::decompiler::dxb_to_source_code::ast_from_bytecode::ast_from_bytecode;
+                    
+                    ast_from_bytecode(body).unwrap_or_else(|_| {
+                        DatexExpressionData::Noop.with_default_span()
+                    })
+                },
+                #[cfg(not(feature = "decompiler"))]
+                CallableBody::DatexBytecode(_) => {
+                    DatexExpressionData::NativeImplementationIndicator
+                        .with_default_span()
+                }
             },
             injected_variable_count: None,
         })

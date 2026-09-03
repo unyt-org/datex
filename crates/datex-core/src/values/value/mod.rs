@@ -24,7 +24,7 @@ pub mod equality;
 mod local_child_path_resolver;
 pub mod ops;
 pub mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;
@@ -57,6 +57,7 @@ use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::static_classification::StaticClassification;
 use crate::types::entity_type::EntityType;
 use crate::types::r#type::Type;
+use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 use crate::values::core_values::native::validate_classification;
 use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
@@ -428,11 +429,14 @@ impl Value {
     }
 }
 
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
-        core::write!(f, "{}", self.inner)
+impl_display_for_datex_value!(
+    Value,
+    impl core::fmt::Display for Value {
+        fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
+            core::write!(f, "{}", self.inner)
+        }
     }
-}
+);
 
 
 #[cfg(test)]

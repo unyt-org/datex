@@ -42,7 +42,7 @@ use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 mod child_iterator;
 pub mod equality;
 pub mod ops;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod try_clone;
 mod datex_hash;
@@ -414,8 +414,8 @@ impl Display for CoreValue {
             }
             CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
             CoreValue::Box(inner) => write!(f, "({})", inner),
-            CoreValue::Native(_native) => {
-                write!(f, "[[ native value ]]")
+            CoreValue::Native(native) => {
+                write!(f, "{native}")
             }
         }
     }

@@ -343,9 +343,9 @@ impl Type {
 
 pub mod equality;
 pub mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_type_expression_data;
 mod value_access;
 mod datex_native;

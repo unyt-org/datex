@@ -4,6 +4,7 @@ use crate::{
 };
 use core::hash::Hash;
 use indexmap::IndexMap;
+use crate::random::RandomState;
 
 impl<K, V> ToDatexExpressionData for IndexMap<K, V, RandomState>
 where
