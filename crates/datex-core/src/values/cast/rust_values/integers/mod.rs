@@ -7,6 +7,7 @@ use crate::{
     utils::{goat::Goat, goat_mut::GoatMut},
     values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
 };
+use crate::traits::datex_hash::impl_datex_hash;
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data {
@@ -123,3 +124,17 @@ impl ValueAccess for i64 {}
 impl ValueAccess for i128 {}
 impl ValueAccess for usize {}
 impl ValueAccess for isize {}
+
+
+impl_datex_hash!(u8);
+impl_datex_hash!(u16);
+impl_datex_hash!(u32);
+impl_datex_hash!(u64);
+impl_datex_hash!(u128);
+impl_datex_hash!(i8);
+impl_datex_hash!(i16);
+impl_datex_hash!(i32);
+impl_datex_hash!(i64);
+impl_datex_hash!(i128);
+impl_datex_hash!(usize);
+impl_datex_hash!(isize);

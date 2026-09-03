@@ -12,6 +12,7 @@ mod convert_parts;
 pub mod datex_native;
 mod try_from_core_value;
 pub mod classification;
+mod datex_hash;
 
 #[cfg(test)]
 mod tests {

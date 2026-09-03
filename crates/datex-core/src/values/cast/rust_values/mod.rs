@@ -46,6 +46,7 @@ use crate::{
 };
 use crate::traits::classification::Classification;
 use crate::traits::convert_parts::{FromParts, IntoParts};
+use crate::traits::datex_hash::impl_datex_hash;
 use crate::traits::static_classification::StaticClassification;
 use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 use crate::traits::datex_native_structural::DatexNativeStructural;

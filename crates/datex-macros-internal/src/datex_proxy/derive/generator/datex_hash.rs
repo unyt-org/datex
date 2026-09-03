@@ -11,7 +11,7 @@ pub fn generate_datex_hash(structure_data: &StructureData) -> TokenStream {
     quote! {
         #[automatically_derived]
         impl #generics DatexHash for #ident #generics {
-            fn datex_hash(&self) -> u64 {
+            fn datex_hash(&self, hasher: &mut dyn core::hash::Hasher) {
                 todo!()
             }
         }
