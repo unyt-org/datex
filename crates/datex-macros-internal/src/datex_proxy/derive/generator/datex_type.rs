@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::datex_proxy::data::{
-    EnumVariant, Field, Fields, NamedField, SerdeMode, Structure,
+    EnumVariant, Field, Fields, NamedField, FieldMapping, Structure,
     StructureData, TypeKind,
 };
 
@@ -103,15 +103,14 @@ fn generate_datex_type_definition(fields: &Fields) -> TokenStream {
 /// Generates a type definition for a single field. Returns a TokenStream of [TypeDefinition].
 fn field_to_definition(field: &Field) -> TokenStream {
     let field_type = &field.ty;
-    match &field.attributes.serde_mode {
-        // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
-        SerdeMode::None => {
+    match &field.attributes.field_mapping {
+        FieldMapping::Datex => {
             quote! {
                 <#field_type as GetDatexType>::datex_type(cache.into())
             }
         }
-        // Cannot infer type
-        SerdeMode::Fallible | SerdeMode::Infallible => {
+        // Cannot infer type for serde fields
+        FieldMapping::Serde => {
             quote! {
                Type::Definition(TypeDefinition::CoreType(CoreLibTypeId::Base(CoreLibBaseTypeId::Any)).into())
             }

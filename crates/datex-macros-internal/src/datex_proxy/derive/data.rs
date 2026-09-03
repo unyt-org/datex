@@ -16,20 +16,13 @@ pub enum Namespace {
     Named(String),
 }
 
-#[derive(Debug, PartialEq)]
-pub enum SerdeMode {
-    /// Serde serializable/deserializable fields are not allowed inside the datex proxy value.
-    /// Since the generated code will not attempt to serialize any fields with serde,
-    /// it will only provide an infallible into method to convert to ValueContainer
-    None,
-    /// Serde serializable/deserializable fields are allowed inside the datex proxy value.
-    /// It is assumed that the serialization might fail, so the generated code will only provide a
-    /// try_into method to convert to ValueContainer
-    Fallible,
-    /// Serde serializable/deserializable fields are allowed inside the datex proxy value.
-    /// The user explicitly guarantees that the serialization will not fail, so the generated code will
-    /// provide an infallible into method to convert to ValueContainer
-    Infallible,
+#[derive(Debug, PartialEq, Default)]
+pub enum FieldMapping {
+    /// The field contains a value that implements [DatexNative] and other traits and can be mapped directly to and from DATEX
+    #[default]
+    Datex,
+    /// The field derives serde Serialize and/or Deserialize and can be mapped to and from DATEX using Serde
+    Serde,
 }
 
 /// Top-level attributes for the Datex derive macro
@@ -81,7 +74,7 @@ impl IndexedField {
 #[derive(Debug, PartialEq)]
 /// General attributes that can be applied to any field.
 pub struct FieldAttributes {
-    pub serde_mode: SerdeMode,
+    pub field_mapping: FieldMapping,
 }
 
 #[derive(Debug, PartialEq)]
