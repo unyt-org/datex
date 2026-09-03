@@ -11,6 +11,7 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
+use datex_core::traits::convert_value_container::ConvertValueContainer;
 use datex_core::values::value_container::ValueContainer;
 
 #[derive(Debug)]

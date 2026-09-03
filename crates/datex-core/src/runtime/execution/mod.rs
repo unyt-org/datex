@@ -19,8 +19,7 @@ use crate::{
     },
     traits::apply::{Apply, ApplyArgument},
     types::{
-        entities::entity_impls::EntityImplMethod, r#type::Type,
-        type_definition::TypeDefinition,
+        entities::entity_impls::EntityImplMethod
     },
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
@@ -1128,7 +1127,7 @@ mod tests {
         let result =
             execute_datex_script_debug_with_result("const x = 'shared 42; x");
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
-            container.container_mutability().clone() == SharedContainerMutability::Immutable &&
+            container.container_mutability() == SharedContainerMutability::Immutable &&
             container.reference_mutability() == ReferenceMutability::Immutable
         );
 
@@ -1140,7 +1139,7 @@ mod tests {
         let result =
             execute_datex_script_debug_with_result("const x = shared 42; x");
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(ref container)) if
-            container.container_mutability().clone() == SharedContainerMutability::Immutable
+            container.container_mutability() == SharedContainerMutability::Immutable
         );
 
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
@@ -1153,7 +1152,7 @@ mod tests {
         );
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(
             ref container @ OwnedSharedContainer { .. }
-        )) if container.container_mutability().clone() == SharedContainerMutability::Mutable);
+        )) if container.container_mutability() == SharedContainerMutability::Mutable);
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
