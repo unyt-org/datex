@@ -6,6 +6,7 @@ use crate::traits::get_datex_type::GetDatexType;
 use crate::types::r#type::Type;
 use crate::types::type_definition::TypeDefinition;
 use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
+use crate::prelude::*;
 
 impl<T> GetDatexType for Shared<T>
 where

@@ -3,8 +3,10 @@ use indexmap::IndexMap;
 use crate::preludes::derive::{SharedReferencesCache};
 use crate::traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts};
 use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::prelude::*;
+use crate::random::RandomState;
 
-impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts for IndexMap<K, V> {
+impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts for IndexMap<K, V, RandomState> {
     fn into_parts<'a>(self, cache: &'a mut SharedReferencesCache) -> Option<Parts<'a>> where Self: 'a, {
         Some(Parts::Map(Box::new(
             self
@@ -22,14 +24,14 @@ impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts for IndexMap<
 }
 
 
-impl<K: ConvertValueContainer + Eq + Hash, V: ConvertValueContainer> FromParts for IndexMap<K, V> {
+impl<K: ConvertValueContainer + Eq + Hash, V: ConvertValueContainer> FromParts for IndexMap<K, V, RandomState> {
     fn try_from_parts(parts: Parts) -> Result<Self, ()>
     where
         Self: Sized
     {
         match parts {
             Parts::Map(iter) => {
-                let mut map = IndexMap::new();
+                let mut map = IndexMap::default();
                 for (key, value) in iter {
                     map.insert(K::try_from_value_container(key).map_err(|_| ())?, V::try_from_value_container(value).map_err(|_| ())?);
                 }

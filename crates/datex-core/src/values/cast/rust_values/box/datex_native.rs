@@ -1,6 +1,7 @@
 use core::any::Any;
 use crate::preludes::derive::{DatexNative, StaticClassification};
 use crate::traits::get_datex_type::GetDatexType;
+use crate::prelude::*;
 
 impl<T: DatexNative + GetDatexType + StaticClassification> DatexNative
 for Box<T>

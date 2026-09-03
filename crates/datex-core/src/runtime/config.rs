@@ -1,3 +1,4 @@
+use crate::random::RandomState;
 use indexmap::IndexMap;
 use crate::{
     collections::HashMap,
@@ -51,7 +52,7 @@ impl RuntimeConfigInterface {
 pub struct RuntimeConfig {
     pub endpoint: Endpoint,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
-    pub env: Option<IndexMap<String, String>>,
+    pub env: Option<IndexMap<String, String, RandomState>>,
 }
 
 impl RuntimeConfig {
@@ -84,12 +85,12 @@ impl RuntimeConfig {
 
     /// Adds a single environment variable to the runtime's custom environment variables.
     pub fn add_env_var(&mut self, key: String, value: String) {
-        self.env.get_or_insert_with(IndexMap::new).insert(key, value);
+        self.env.get_or_insert_with(IndexMap::default).insert(key, value);
     }
 
     /// Adds multiple environment variables to the runtime's custom environment variables.
-    pub fn add_env_vars(&mut self, vars: IndexMap<String, String>) {
-        self.env.get_or_insert_with(IndexMap::new).extend(vars);
+    pub fn add_env_vars(&mut self, vars: IndexMap<String, String, RandomState>) {
+        self.env.get_or_insert_with(IndexMap::default).extend(vars);
     }
 
     #[cfg(feature = "target_native")]

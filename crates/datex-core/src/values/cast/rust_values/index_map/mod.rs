@@ -1,4 +1,4 @@
-//! Implements [DatexValueProxy] for [IndexMap<K, V>] where K: [DatexValueProxy] + Eq + Hash and V: [DatexValueProxy].
+//! Implements [DatexValueProxy] for [IndexMap<K, V, RandomState>] where K: [DatexValueProxy] + Eq + Hash and V: [DatexValueProxy].
 
 #[cfg(feature = "decompiler")]
 mod to_datex_expression_data;

@@ -12,8 +12,9 @@ use crate::{
 use core::hash::Hash;
 use indexmap::IndexMap;
 use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::random::RandomState;
 
-impl<K, V> ValueAccess for IndexMap<K, V>
+impl<K, V> ValueAccess for IndexMap<K, V, RandomState>
 where
     K: ConvertValueContainer + Eq + Hash,
     V: ConvertValueContainer,

@@ -1,6 +1,7 @@
 use crate::preludes::derive::{SharedReferencesCache};
 use crate::traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts};
 use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::prelude::*;
 
 impl<T: ConvertValueContainer> IntoParts for Vec<T> {
     fn into_parts<'a>(self, cache: &'a mut SharedReferencesCache) -> Option<Parts<'a>> where Self: 'a, {

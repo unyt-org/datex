@@ -1,6 +1,7 @@
 use crate::preludes::derive::{SharedReferencesCache};
 use crate::traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts};
 use crate::values::core_values::map::Map;
+use crate::prelude::*;
 
 impl IntoParts for Map {
     fn into_parts<'a>(self, _cache: &'a mut SharedReferencesCache) -> Option<Parts<'a>> where Self: 'a, {
