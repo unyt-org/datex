@@ -7,7 +7,7 @@ use crate::{
         UnaryOperation, Unbox, UnboxAssignment,
     },
     core_compiler::to_instructions::{
-        SharedValueTrackingProvider, ToInstructions,
+        ToInstructions,
     },
     global::{operators::ModificationOperator, root_properties::RootProperty},
     instruction::regular_instruction::RegularInstruction,
@@ -15,20 +15,22 @@ use crate::{
     shared_values::{ReferenceMutability, SharedContainerMutability},
 };
 use core::str::FromStr;
+use crate::core_compiler::value_visitor::ValueVisitor;
+use crate::instruction::Instruction;
 
 impl<'ctx, T> ToInstructions<'ctx, T> for DatexExpressionData
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             match self {
                 DatexExpressionData::Integer(integer) => {
-                    yield RegularInstruction::Integer(integer.clone())
+                    yield RegularInstruction::Integer(integer.clone()).into()
                 }
                 DatexExpressionData::TypedInteger(typed_integer) => {
                     for instruction in typed_integer.to_instructions(ctx) {
@@ -73,7 +75,7 @@ where
                 }
 
                 DatexExpressionData::Null => {
-                    yield RegularInstruction::null();
+                    yield RegularInstruction::null().into();
                 }
 
                 DatexExpressionData::List(list) => {
@@ -200,7 +202,7 @@ where
                 }
 
                 DatexExpressionData::TypeExpression(type_expression) => {
-                    yield RegularInstruction::TypeExpression;
+                    yield RegularInstruction::TypeExpression.into();
                     for _instruction in type_expression.to_instructions(ctx) {
                         todo!(
                             "Transparent yield of typeinstructions over egular instructions"
@@ -229,7 +231,7 @@ where
                 DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
                     yield RegularInstruction::get_core_lib_value(
                         (*core_lib_id).into(),
-                    );
+                    ).into();
                 }
 
                 DatexExpressionData::CallableDeclaration(
@@ -277,16 +279,16 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for RangeDeclaration
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
-            yield RegularInstruction::range();
+            yield RegularInstruction::range().into();
             for instruction in self.start.to_instructions(ctx) {
                 yield instruction;
             }
@@ -299,16 +301,16 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for ComparisonOperation
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
-            yield RegularInstruction::comparison_operation(self.operator);
+            yield RegularInstruction::comparison_operation(self.operator).into();
             for instruction in self.left.to_instructions(ctx) {
                 yield instruction;
             }
@@ -321,26 +323,26 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for UnboxAssignment
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             match self.operator {
                 Some(operator) => match operator {
                     ModificationOperator::AddAssign => {
-                        yield RegularInstruction::increment()
+                        yield RegularInstruction::increment().into()
                     }
                     ModificationOperator::SubtractAssign => {
-                        yield RegularInstruction::decrement()
+                        yield RegularInstruction::decrement().into()
                     }
                     _ => todo!("Generate x = x * z instructions;"),
                 },
-                None => yield RegularInstruction::set_shared_container_value(),
+                None => yield RegularInstruction::set_shared_container_value().into(),
             };
 
             // compile assigned expression
@@ -358,14 +360,14 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for PropertyAssignment
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             let PropertyAssignment {
                 base,
@@ -379,13 +381,13 @@ where
                 DatexExpressionData::Text(key)
                     if key.0.len() <= u8::MAX as usize =>
                 {
-                    yield RegularInstruction::set_entry_text(key.0.clone());
+                    yield RegularInstruction::set_entry_text(key.0.clone()).into();
                 }
 
                 DatexExpressionData::Integer(index)
                     if let Some(index) = index.as_u32() =>
                 {
-                    yield RegularInstruction::set_entry_index(index);
+                    yield RegularInstruction::set_entry_index(index).into();
                 }
 
                 _ => {
@@ -409,16 +411,16 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for UnaryOperation
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
-            yield RegularInstruction::unary_operation(self.operator);
+            yield RegularInstruction::unary_operation(self.operator).into();
             for instruction in self.expression.to_instructions(ctx) {
                 yield instruction;
             }
@@ -428,16 +430,16 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for Apply
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
-            yield RegularInstruction::apply(self.arguments.len() as u8);
+            yield RegularInstruction::apply(self.arguments.len() as u8).into();
             // compile arguments
             for argument in &self.arguments {
                 for instruction in argument.to_instructions(ctx) {
@@ -454,19 +456,19 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for InterfaceMethodCall
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             // TODO: replace with trait impls
             match self.method_name.as_str() {
                 "append" => {
-                    yield RegularInstruction::append_entry();
+                    yield RegularInstruction::append_entry().into();
 
                     for argument in &self.arguments {
                         for instruction in argument.to_instructions(ctx) {
@@ -476,11 +478,11 @@ where
                 }
 
                 "clear" => {
-                    yield RegularInstruction::clear();
+                    yield RegularInstruction::clear().into();
                 }
 
                 "splice" => {
-                    yield RegularInstruction::splice_dynamic();
+                    yield RegularInstruction::splice_dynamic().into();
 
                     for argument in &self.arguments {
                         for instruction in argument.to_instructions(ctx) {
@@ -493,7 +495,7 @@ where
                     yield RegularInstruction::call_method(
                         self.method_name.clone(),
                         self.arguments.len() as u8,
-                    );
+                    ).into();
 
                     for argument in &self.arguments {
                         for instruction in argument.to_instructions(ctx) {
@@ -513,29 +515,29 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for PropertyAccess
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             // depending on the key, handle different property accesses
             match self.property.data() {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.0.len() <= 255 => {
-                    yield RegularInstruction::get_entry_text(key.0.clone());
+                    yield RegularInstruction::get_entry_text(key.0.clone()).into();
                 }
                 // index access if integer fits in u32
                 DatexExpressionData::Integer(index)
                     if let Some(index) = index.as_u32() =>
                 {
-                    yield RegularInstruction::get_entry_index(index);
+                    yield RegularInstruction::get_entry_index(index).into();
                 }
                 _ => {
-                    yield RegularInstruction::get_entry_dynamic();
+                    yield RegularInstruction::get_entry_dynamic().into();
                     for instruction in self.property.to_instructions(ctx) {
                         yield instruction;
                     }
@@ -552,14 +554,14 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for GenericInstantiation
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             // NOTE: might already be handled in type compilation
             todo!()
@@ -569,33 +571,33 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for RequestSharedRef
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(core::iter::once(RegularInstruction::get_shared_ref(
             self.address.clone(),
             &self.mutability,
-        )))
+        ).into()))
     }
 }
 
 impl<'ctx, T> ToInstructions<'ctx, T> for List
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
-            yield RegularInstruction::list(self.items.len() as u32);
+            yield RegularInstruction::list(self.items.len() as u32).into();
             for item in &self.items {
                 for instruction in item.to_instructions(ctx) {
                     yield instruction;
@@ -607,16 +609,16 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for Map
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
-            yield RegularInstruction::map(self.entries.len() as u32);
+            yield RegularInstruction::map(self.entries.len() as u32).into();
             for (key, value) in &self.entries {
                 match &*key.data {
                     // text -> insert key string
@@ -624,15 +626,15 @@ where
                         if text.len() < 256 {
                             yield RegularInstruction::key_value_short_text(
                                 text.0.clone(),
-                            );
+                            ).into();
                         } else {
-                            yield RegularInstruction::key_value_dynamic();
-                            yield RegularInstruction::text(text.0.clone());
+                            yield RegularInstruction::key_value_dynamic().into();
+                            yield RegularInstruction::text(text.0.clone()).into();
                         }
                     }
                     // other -> insert key as dynamic
                     _ => {
-                        yield RegularInstruction::key_value_dynamic();
+                        yield RegularInstruction::key_value_dynamic().into();
                         for instruction in key.to_instructions(ctx) {
                             yield instruction;
                         }
@@ -650,19 +652,19 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for TagExpression
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             yield RegularInstruction::tagged_value(
                 self.tag.clone(),
                 self.expression.is_none(),
-            );
+            ).into();
             if let Some(expression) = &self.expression {
                 for instruction in expression.to_instructions(ctx) {
                     yield instruction;
@@ -674,34 +676,34 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for RootPropertyAccess
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             let root_property = RootProperty::from_str(&self.property_name)
                 .expect("invalid root property name");
-            yield RegularInstruction::get_root_property(root_property);
+            yield RegularInstruction::get_root_property(root_property).into();
         })
     }
 }
 
 impl<'ctx, T> ToInstructions<'ctx, T> for Unbox
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
-            yield RegularInstruction::unbox();
+            yield RegularInstruction::unbox().into();
             for instruction in self.expression.to_instructions(ctx) {
                 yield instruction;
             }
@@ -711,14 +713,14 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for DeriveRef
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             for instruction in self.expression.to_instructions(ctx) {
                 yield instruction;
@@ -729,21 +731,21 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for CreateShared
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             match self.mutability {
                 SharedContainerMutability::Immutable => {
-                    yield RegularInstruction::create_shared();
+                    yield RegularInstruction::create_shared().into();
                 }
                 SharedContainerMutability::Mutable => {
-                    yield RegularInstruction::create_shared_mut();
+                    yield RegularInstruction::create_shared_mut().into();
                 }
             }
 
@@ -756,21 +758,21 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for DeriveSharedRef
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
             match self.mutability {
                 ReferenceMutability::Immutable => {
-                    yield RegularInstruction::derive_shared_reference();
+                    yield RegularInstruction::derive_shared_reference().into();
                 }
                 ReferenceMutability::Mutable => {
-                    yield RegularInstruction::derive_shared_reference_mut();
+                    yield RegularInstruction::derive_shared_reference_mut().into();
                 }
             }
 
@@ -783,16 +785,16 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for BinaryOperation
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
 
     fn to_instructions(
         &self,
         ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(gen move {
-            yield RegularInstruction::binary_operation(self.operator);
+            yield RegularInstruction::binary_operation(self.operator).into();
             for instruction in self.left.to_instructions(ctx) {
                 yield instruction;
             }

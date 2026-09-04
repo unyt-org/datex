@@ -75,6 +75,7 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::instruction::Instruction;
 
 pub mod context;
 pub mod datex_expression_to_instruction;
@@ -1591,10 +1592,17 @@ fn compile_expression(
 
         data => {
             let expressions = data
-                .to_instructions(compilation_context)
+                .to_instructions(&mut compilation_context.core_context)
                 .collect::<Vec<_>>();
             for instruction in expressions {
-                compilation_context.write(instruction);
+                match instruction {
+                    Instruction::Regular(regular_instruction) => {
+                        compilation_context.write(regular_instruction);
+                    }
+                    Instruction::Type(type_instruction) => {
+                        compilation_context.write(type_instruction);
+                    }
+                }
             }
         }
     }
