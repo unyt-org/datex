@@ -11,7 +11,7 @@ use crate::instruction::Instruction;
 
 impl<'ctx, T> ToInstructions<'ctx, T> for Type
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
