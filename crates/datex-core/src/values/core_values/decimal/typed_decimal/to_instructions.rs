@@ -14,11 +14,11 @@ where
     T: ValueVisitor<'ctx>,
 {
 
-    fn to_instructions(
-        &self,
-        _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
-        Box::new(gen move {
+    fn to_instructions<'a>(
+        &'a self,
+        _ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        gen move {
             todo!(
                 "TODO: append type cast with only id (no need to access shared container)"
             );
@@ -34,6 +34,6 @@ where
                     RegularInstruction::decimal_big(val.clone()).into()
                 }
             }
-        })
+        }
     }
 }

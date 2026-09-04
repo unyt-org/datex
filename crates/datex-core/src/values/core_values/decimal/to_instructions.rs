@@ -14,11 +14,11 @@ where
     T: ValueVisitor<'ctx>,
 {
 
-    fn to_instructions(
-        &self,
-        _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
-        Box::new(gen move {
+    fn to_instructions<'a>(
+        &'a self,
+        _ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        gen move {
             match &self {
                 Decimal::Finite(big_decimal) if big_decimal.is_integer() => {
                     if let Some(int) = big_decimal.to_i16() {
@@ -33,6 +33,6 @@ where
                     yield RegularInstruction::decimal(self.clone()).into();
                 }
             }
-        })
+        }
     }
 }

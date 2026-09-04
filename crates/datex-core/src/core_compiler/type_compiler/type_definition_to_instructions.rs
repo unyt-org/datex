@@ -43,11 +43,11 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
-        Box::new(gen move {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        gen move {
             match self {
                 TypeDefinition::ImplType(impl_type_def) => {
                     for instruction in impl_type_def.to_instructions(ctx) {
@@ -131,7 +131,7 @@ where
                     yield TypeInstruction::CoreType(*core_lib_type_id).into();
                 }
             }
-        })
+        }
     }
 }
 
@@ -141,10 +141,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen {
             yield TypeInstruction::DefinitionWithMetadata(self.metadata).into();
             for instruction in self.definition.to_instructions(ctx) {
@@ -159,10 +159,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen {
             yield TypeInstruction::ImplType(ImplTypeData {
                 impl_count: self.impl_markers.len() as u8,
@@ -181,10 +181,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::List(ListData {
                 element_count: self.len() as u32,
@@ -204,10 +204,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::Map(MapData {
                 element_count: self.len() as u32,
@@ -235,10 +235,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::Range.into();
             for instruction in
@@ -260,10 +260,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             match self {
                 CollectionTypeDefinition::List(list) => {
@@ -297,10 +297,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen {
             yield TypeInstruction::ListCollection.into();
             for instruction in self.0.to_instructions(ctx) {
@@ -315,10 +315,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::MapCollection.into();
             for instruction in
@@ -341,10 +341,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::ListSliceCollection(
                 ListSliceCollectionData {
@@ -366,10 +366,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::Intersection(IntersectionData {
                 element_count: self.len() as u32,
@@ -389,10 +389,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::Callable(CallableSignatureData {
                 name: ShortTextData::new("".to_string()),
@@ -451,10 +451,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::Union(UnionData {
                 element_count: self.len() as u32,
@@ -474,10 +474,10 @@ where
 {
 
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::TaggedType(TaggedTypeData::new(
                 self.tag.clone(),

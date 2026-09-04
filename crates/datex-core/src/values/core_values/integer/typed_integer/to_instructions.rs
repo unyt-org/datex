@@ -14,10 +14,10 @@ where
     T: ValueVisitor<'ctx>,
 {
 
-    fn to_instructions(
-        &self,
-        _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
+    fn to_instructions<'a>(
+        &'a self,
+        _ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield match self {
                 TypedInteger::I8(val) => RegularInstruction::int8(*val).into(),
