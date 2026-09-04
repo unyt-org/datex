@@ -39,7 +39,7 @@ use crate::instruction::Instruction;
 
 impl<'ctx, T> ToInstructions<'ctx, T> for TypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -137,7 +137,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for TypeDefinitionWithMetadata
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -155,7 +155,7 @@ where
 }
 impl<'ctx, T> ToInstructions<'ctx, T> for ImplTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -177,7 +177,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for ListTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -200,7 +200,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for MapTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -231,7 +231,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for RangeTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -256,7 +256,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for CollectionTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -293,7 +293,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for ListCollectionTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -311,7 +311,7 @@ where
 }
 impl<'ctx, T> ToInstructions<'ctx, T> for MapCollectionTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -337,7 +337,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for ListSliceCollectionTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -362,7 +362,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for IntersectionTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -385,7 +385,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for CallableTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -447,7 +447,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for UnionTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -470,7 +470,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for TaggedTypeDefinition
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 

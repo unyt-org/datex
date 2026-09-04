@@ -22,7 +22,7 @@ use crate::instruction::Instruction;
 
 impl<'ctx, T> ToInstructions<'ctx, T> for DatexExpressionData
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
     fn to_instructions<'a>(
@@ -281,7 +281,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for RangeDeclaration
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -303,7 +303,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for ComparisonOperation
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -325,7 +325,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for UnboxAssignment
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -362,7 +362,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for PropertyAssignment
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -413,7 +413,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for UnaryOperation
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -432,7 +432,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for Apply
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -458,7 +458,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for InterfaceMethodCall
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -517,7 +517,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for PropertyAccess
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -556,7 +556,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for GenericInstantiation
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -573,7 +573,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for RequestSharedRef
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -590,7 +590,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for List
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -611,7 +611,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for Map
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -654,7 +654,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for TagExpression
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -678,7 +678,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for RootPropertyAccess
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -696,7 +696,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for Unbox
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -715,7 +715,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for DeriveRef
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -733,7 +733,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for CreateShared
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -760,7 +760,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for DeriveSharedRef
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
@@ -787,7 +787,7 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for BinaryOperation
 where
-    T: ValueVisitor<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
 
 
