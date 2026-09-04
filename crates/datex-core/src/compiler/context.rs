@@ -7,7 +7,7 @@ use crate::{
             CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
         shared_value_tracking::SharedValueTracking,
-        to_instructions::{SharedValueTrackingProvider, ToInstructions},
+        to_instructions::{ToInstructions},
         type_compiler::append_type_instruction,
         value_compiler::append_instruction_code,
     },
@@ -22,6 +22,10 @@ use crate::{
 };
 use binrw::{BinWrite, io::Cursor, meta::WriteEndian};
 use core::cell::RefCell;
+use crate::core_compiler::value_compiler::append_instruction;
+use crate::core_compiler::value_visitor::ValueVisitor;
+use crate::instruction::Instruction;
+
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext<'a> {
     pub core_context: CoreCompilationContext<'a>,
@@ -94,24 +98,17 @@ impl<'a> CompilationContext<'a> {
         &mut self,
         type_expression: &TypeExpression,
     ) {
+        // TODO: collect needed?
         let instructions = type_expression
-            .to_instructions(self)
-            .collect::<Vec<TypeInstruction>>();
+            .to_instructions(&mut self.core_context)
+            .collect::<Vec<Instruction>>();
         for instruction in instructions {
-            append_type_instruction(self.cursor(), instruction);
+            append_instruction(self.cursor(), instruction);
         }
     }
 
     #[deprecated(note = "use write() instead")]
     pub fn append_instruction_code(&mut self, code: InstructionCode) {
         append_instruction_code(self.cursor(), code);
-    }
-}
-
-impl<'ctx> SharedValueTrackingProvider<'ctx> for CompilationContext<'ctx> {
-    fn shared_value_tracking<'a>(
-        &'a self,
-    ) -> Option<&'a RefCell<SharedValueTracking<'ctx>>> {
-        Some(&self.core_context.shared_value_tracking)
     }
 }

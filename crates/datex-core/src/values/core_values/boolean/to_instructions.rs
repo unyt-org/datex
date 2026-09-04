@@ -1,25 +1,27 @@
 use crate::{
     core_compiler::to_instructions::{
-        SharedValueTrackingProvider, ToInstructions,
+        ToInstructions,
     },
     instruction::regular_instruction::RegularInstruction,
     prelude::*,
     values::core_values::boolean::Boolean,
 };
+use crate::core_compiler::value_visitor::ValueVisitor;
+use crate::instruction::Instruction;
 
 impl<'ctx, T> ToInstructions<'ctx, T> for Boolean
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx>,
 {
-    type InstructionType = RegularInstruction;
+
     fn to_instructions(
         &self,
         _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+    ) -> Box<impl Iterator<Item = Instruction>> {
         Box::new(core::iter::once(if self.is_true() {
-            RegularInstruction::r#true()
+            RegularInstruction::r#true().into()
         } else {
-            RegularInstruction::r#false()
+            RegularInstruction::r#false().into()
         }))
     }
 }

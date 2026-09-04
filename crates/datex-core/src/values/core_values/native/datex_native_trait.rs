@@ -2,6 +2,7 @@ use crate::{
     traits::{dyn_eq::DynEq, try_clone::TryClone, value_access::ValueAccess},
 };
 use core::any::Any;
+use crate::core_compiler::to_instructions::{ToInstructions, ToInstructionsDyn};
 use crate::traits::classification::Classification;
 use crate::traits::convert_parts::{FromParts, IntoParts};
 use crate::traits::convert_value_container::ConvertValueContainer;
@@ -67,6 +68,7 @@ pub trait DatexNative:
     TryClone +
     ConvertValueContainer +
     Classification +
+    ToInstructionsDyn +
     ToDatexExpressionData +
 {
     fn as_any(&self) -> &dyn Any;
@@ -84,7 +86,8 @@ pub trait DatexNative:
     ValueAccess +
     TryClone +
     ConvertValueContainer +
-    Classification
+    Classification +
+    ToInstructionsDyn +
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

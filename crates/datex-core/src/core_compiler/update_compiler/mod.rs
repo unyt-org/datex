@@ -40,7 +40,7 @@ pub fn compile_updates(
 
 /// Appends a list of update operations on a shared container
 /// The updates are appended as a single statement block, with the shared container being pushed to the stack first, followed by each update operation.
-fn append_updates<T: BufferProvider + ValueVisitor>(
+fn append_updates<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     container: &SharedContainer,
     updates: &[&UpdateData],
@@ -62,7 +62,7 @@ fn append_updates<T: BufferProvider + ValueVisitor>(
 }
 
 /// Appends a single update operation on a shared container
-fn append_update_operation<T: BufferProvider + ValueVisitor>(
+fn append_update_operation<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     operation: &UpdateOperation,
 ) {
@@ -87,7 +87,7 @@ fn append_update_operation<T: BufferProvider + ValueVisitor>(
 }
 
 /// Appends a set entry operation on a shared container
-fn append_set_entry<T: BufferProvider + ValueVisitor>(
+fn append_set_entry<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     set_entry_update_data: &SetEntryUpdateData,
 ) {
@@ -100,7 +100,7 @@ fn append_set_entry<T: BufferProvider + ValueVisitor>(
 }
 
 /// Appends a replace operation on a shared container
-fn append_replace<T: BufferProvider + ValueVisitor>(
+fn append_replace<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     replace_update_data: &ReplaceUpdateData,
 ) {
@@ -111,7 +111,7 @@ fn append_replace<T: BufferProvider + ValueVisitor>(
 }
 
 /// Appends an append entry operation on a shared container
-fn append_append_entry<T: BufferProvider + ValueVisitor>(
+fn append_append_entry<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     append_entry_update_data: &AppendEntryUpdateData,
 ) {
@@ -122,7 +122,7 @@ fn append_append_entry<T: BufferProvider + ValueVisitor>(
 }
 
 /// Appends a list splice operation on a shared container
-fn append_list_splice<T: BufferProvider + ValueVisitor>(
+fn append_list_splice<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     list_splice_update_data: &ListSpliceUpdateData,
 ) {
@@ -141,7 +141,7 @@ fn append_list_splice<T: BufferProvider + ValueVisitor>(
 }
 
 /// Appends a clear operation on a shared container
-fn append_clear<T: BufferProvider + ValueVisitor>(context: &mut T) {
+fn append_clear<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(context: &mut T) {
     context.write(RegularInstruction::clear());
 
     // target
@@ -149,7 +149,7 @@ fn append_clear<T: BufferProvider + ValueVisitor>(context: &mut T) {
 }
 
 /// Appends a delete entry operation on a shared container
-fn append_delete_entry<T: BufferProvider + ValueVisitor>(
+fn append_delete_entry<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     _context: &mut T,
     _delete_entry_update_data: &DeleteEntryUpdateData,
 ) {
@@ -157,7 +157,7 @@ fn append_delete_entry<T: BufferProvider + ValueVisitor>(
 }
 
 /// Appends a set property operation on a shared container, based on the provided value key.
-pub fn append_set_property_value_key<T: BufferProvider + ValueVisitor>(
+pub fn append_set_property_value_key<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     value_key: &ValueKey,
 ) {

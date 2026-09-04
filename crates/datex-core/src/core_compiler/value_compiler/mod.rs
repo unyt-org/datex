@@ -55,6 +55,7 @@ use crate::{
     },
     values::core_values::callable::CallableBody,
 };
+use crate::core_compiler::to_instructions::ToInstructionsDyn;
 use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -150,7 +151,7 @@ pub fn append_local_pointer_address(
 }
 
 /// Compiles a value container to the buffer of the provided context
-pub fn append_value_container<T: BufferProvider + ValueVisitor>(
+pub fn append_value_container<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     value_container: &ValueContainer,
 ) {
@@ -158,7 +159,7 @@ pub fn append_value_container<T: BufferProvider + ValueVisitor>(
 }
 
 /// Compiles a value to the buffer of the provided context
-pub fn append_value<T: BufferProvider + ValueVisitor>(
+pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     value: &Value,
 ) {
@@ -334,8 +335,17 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
         CoreValue::Uninitialized => {
             panic!("Tried to compile uninitialized value")
         }
-        CoreValue::Native(_) => {
-            todo!("Tried to compile native value")
+        CoreValue::Native(native) => {
+            for instruction in (*native.value).to_instructions_dyn(context) {
+                match instruction {
+                    Instruction::Regular(instruction) => {
+                        context.write(instruction);
+                    }
+                    Instruction::Type(instruction) => {
+                        context.write(instruction);
+                    }
+                }
+            }
         }
     };
 }
@@ -348,7 +358,7 @@ pub fn append_core_type_cast(
     todo!()
 }
 
-pub fn append_apply<T: BufferProvider + ValueVisitor>(
+pub fn append_apply<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     callee: RegularInstruction,
     args: Vec<ValueContainer>,
@@ -519,7 +529,7 @@ pub fn append_get_core_lib_value(cursor: &mut ByteCursor, id: CoreLibId) {
 }
 
 /// Appends a key-value pair for map entries, optimizing for short text keys
-pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
+pub fn append_key_value_pair<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     key: &ValueContainer,
     value: &ValueContainer,
