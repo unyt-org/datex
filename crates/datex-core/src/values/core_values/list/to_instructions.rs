@@ -13,11 +13,11 @@ impl<'ctx, T> ToInstructions<'ctx, T> for List
 where
     T: ValueVisitor<'ctx>,
 {
-    fn to_instructions(
-        &self,
-        _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Instruction>> {
-        Box::new(gen move {
+    fn to_instructions<'a>(
+        &'a self,
+        _ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        gen move {
             yield RegularInstruction::list(self.items.len() as u32).into();
             for _item in &self.items {
                 todo!("Implement instruction generation for value container");
@@ -25,6 +25,6 @@ where
                 //     yield instruction;
                 // }
             }
-        })
+        }
     }
 }

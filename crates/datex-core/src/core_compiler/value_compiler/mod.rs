@@ -159,7 +159,7 @@ pub fn append_value_container<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
 }
 
 /// Compiles a value to the buffer of the provided context
-pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
+pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx> + 'ctx>(
     context: &mut T,
     value: &Value,
 ) {
@@ -336,7 +336,11 @@ pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
             panic!("Tried to compile uninitialized value")
         }
         CoreValue::Native(native) => {
-            for instruction in (*native.value).to_instructions_dyn(context) {
+            let instructions = (*native.value)
+                .to_instructions_dyn(context)
+                .collect::<Vec<Instruction>>();
+
+            for instruction in instructions {
                 match instruction {
                     Instruction::Regular(instruction) => {
                         context.write(instruction);
