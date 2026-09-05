@@ -10,15 +10,15 @@ use crate::{
 pub trait IntoRegularInstruction {
     fn into_regular_instruction(&self) -> RegularInstruction;
 }
-
-impl<'ctx, T, V> ToInstructions<'ctx, T> for V
+impl<T: ?Sized> !IntoRegularInstruction for Box<T> {}
+impl<'ctx, C, V> ToInstructions<'ctx, C> for V
 where
-    T: ValueVisitor<'ctx> + ?Sized,
+    C: ValueVisitor<'ctx> + ?Sized,
     V: IntoRegularInstruction,
 {
     fn to_instructions<'a>(
         &'a self,
-        _ctx: &'a mut T,
+        _ctx: &'a mut C,
     ) -> impl Iterator<Item = Instruction> + 'a
     where
         'ctx: 'a,
