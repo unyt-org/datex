@@ -1,10 +1,8 @@
-mod try_from_core_value;
 mod datex_hash;
+mod try_from_core_value;
 
-use crate::{
-    prelude::*,
-    traits::value_access::ValueAccess,
-};
+use crate::{prelude::*, traits::value_access::ValueAccess};
+mod to_instructions;
 
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {

@@ -1,10 +1,15 @@
 pub mod try_from_core_value;
 
 use crate::{
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
+    },
+    instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
-    traits::value_access::ValueAccess,
+    traits::{datex_hash::impl_datex_hash, value_access::ValueAccess},
 };
-use crate::traits::datex_hash::impl_datex_hash;
+mod to_instructions;
+impl ValueAccess for bool {}
 
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {
@@ -20,7 +25,4 @@ mod to_datex_expression_data {
         }
     }
 }
-
-impl ValueAccess for bool {}
-
 impl_datex_hash!(bool);

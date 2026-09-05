@@ -1,10 +1,12 @@
 use core::cell::RefCell;
 
 use crate::{
-    core_compiler::shared_value_tracking::SharedValueTracking, prelude::*,
+    core_compiler::{
+        shared_value_tracking::SharedValueTracking, value_visitor::ValueVisitor,
+    },
+    instruction::{Instruction, regular_instruction::RegularInstruction},
+    prelude::*,
 };
-use crate::core_compiler::value_visitor::ValueVisitor;
-use crate::instruction::Instruction;
 
 pub struct InstructionContext<'tracking, 'ctx> {
     pub shared_value_tracking:
