@@ -29,6 +29,9 @@
 extern crate alloc;
 extern crate num_integer;
 
+#[doc(hidden)]
+pub mod preludes;
+
 #[doc = include_str!("../README.md")]
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
@@ -43,7 +46,6 @@ pub mod prelude;
 pub mod ast;
 #[cfg(feature = "compiler")]
 pub mod compiler;
-#[cfg(feature = "decompiler")]
 pub mod decompiler;
 #[cfg(feature = "compiler")]
 pub mod fmt;
@@ -63,7 +65,6 @@ pub mod type_inference;
 pub mod visitor;
 
 pub mod core_compiler;
-pub mod datex_proxy;
 pub mod dif;
 pub mod disassembler;
 pub mod dxb_parser;
@@ -81,6 +82,8 @@ extern crate core;
 
 pub mod datex_registry;
 pub mod inspector;
+pub mod serde_compat;
+pub mod shared_wrappers;
 
 pub use inventory;
 

@@ -18,7 +18,7 @@ impl ValueAccess for Map {
         key: BorrowedValueKey,
         _cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
-        Ok(self.try_get(key)?.as_borrowed())
+        Ok(self.try_get(key)?.into())
     }
 
     fn try_get_property_mut(
@@ -26,6 +26,6 @@ impl ValueAccess for Map {
         key: BorrowedValueKey,
         _cache: &mut SharedReferencesCache,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
-        Ok(self.try_get_mut(key)?.as_borrowed_mut())
+        Ok(self.try_get_mut(key)?.into())
     }
 }

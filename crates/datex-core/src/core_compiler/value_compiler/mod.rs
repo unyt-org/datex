@@ -55,6 +55,8 @@ use crate::{
     },
     values::core_values::callable::CallableBody,
 };
+use crate::core_compiler::to_instructions::ToInstructionsDyn;
+use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -149,7 +151,7 @@ pub fn append_local_pointer_address(
 }
 
 /// Compiles a value container to the buffer of the provided context
-pub fn append_value_container<T: BufferProvider + ValueVisitor>(
+pub fn append_value_container<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     value_container: &ValueContainer,
 ) {
@@ -157,43 +159,35 @@ pub fn append_value_container<T: BufferProvider + ValueVisitor>(
 }
 
 /// Compiles a value to the buffer of the provided context
-pub fn append_value<T: BufferProvider + ValueVisitor>(
+pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx> + 'ctx>(
     context: &mut T,
     value: &Value,
 ) {
-    // append non-default type information
-    if let Some(custom_type) = &value.custom_type {
-        // special case: tagged value with default type, no type cast needed
-        match custom_type {
-            // unit tagged value (e.g. #Example)
-            TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty:
-                    Some(Type::Definition(TypeDefinitionWithMetadata {
-                        definition:
-                            TypeDefinition::CoreType(CoreLibTypeId::Base(
-                                CoreLibBaseTypeId::Unit,
-                            )),
-                        ..
-                    })),
-                tag,
-            }) => {
-                context
-                    .write(RegularInstruction::tagged_value(tag.clone(), true));
-                return; // early return, don't append null value; TODO: assert that value is actually null?
-            }
-            // tagged value with actual value (e.g. #Example(null))
-            TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: Option::None,
-                tag,
-            }) => {
-                context.write(RegularInstruction::tagged_value(
-                    tag.clone(),
-                    false,
-                ));
-            }
-            _ => append_type_cast(context, custom_type),
+    // append classified type information
+    match &value.classification {
+        // unit tagged value (e.g. #Example)
+        ValueClassification::Tag(ValueTag {
+           tag,
+           is_empty, 
+        }) => {
+            context
+                .write(RegularInstruction::tagged_value(tag.clone(), *is_empty));
+            if *is_empty {return}; // early return, don't append null value; TODO: assert that value is actually null?
+        }
+        // entity value
+        ValueClassification::Entity(entity_type) => {
+            context.write(RegularInstruction::EntityValue(entity_type.pointer_address()));
+        }
+        // impls value
+        ValueClassification::Impls(impls) => {
+            todo!("Compiling values with Impls classification is not yet implemented");
+        }
+        // no classification, just append the value
+        ValueClassification::None => {
+
         }
     }
+
     let _: () = match &value.inner {
         CoreValue::Type(ty) => {
             if let Some(core_id) = ty.try_as_core_lib_type() {
@@ -341,8 +335,21 @@ pub fn append_value<T: BufferProvider + ValueVisitor>(
         CoreValue::Uninitialized => {
             panic!("Tried to compile uninitialized value")
         }
-        CoreValue::Native(_) => {
-            todo!("Tried to compile native value")
+        CoreValue::Native(native) => {
+            let instructions = (*native.value)
+                .to_instructions_dyn(context)
+                .collect::<Vec<Instruction>>();
+
+            for instruction in instructions {
+                match instruction {
+                    Instruction::Regular(instruction) => {
+                        context.write(instruction);
+                    }
+                    Instruction::Type(instruction) => {
+                        context.write(instruction);
+                    }
+                }
+            }
         }
     };
 }
@@ -355,7 +362,7 @@ pub fn append_core_type_cast(
     todo!()
 }
 
-pub fn append_apply<T: BufferProvider + ValueVisitor>(
+pub fn append_apply<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     callee: RegularInstruction,
     args: Vec<ValueContainer>,
@@ -365,16 +372,6 @@ pub fn append_apply<T: BufferProvider + ValueVisitor>(
         context.visit_value_container(&arg);
     }
     context.write(callee);
-}
-
-pub fn append_type_cast<T: BufferProvider + ValueVisitor>(
-    context: &mut T,
-    ty: &TypeDefinition,
-) {
-    context.write(RegularInstruction::typed_value());
-
-    // append type
-    context.visit_type(&Type::from(ty.clone()));
 }
 
 /// Appends a boolean value using the TRUE or FALSE instruction
@@ -536,7 +533,7 @@ pub fn append_get_core_lib_value(cursor: &mut ByteCursor, id: CoreLibId) {
 }
 
 /// Appends a key-value pair for map entries, optimizing for short text keys
-pub fn append_key_value_pair<T: BufferProvider + ValueVisitor>(
+pub fn append_key_value_pair<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     context: &mut T,
     key: &ValueContainer,
     value: &ValueContainer,
@@ -645,6 +642,8 @@ mod tests {
     };
     use core::assert_matches;
     use log::info;
+    use crate::shared_values::traits::SharedContainerCommon;
+    use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -664,15 +663,7 @@ mod tests {
     fn compile_tagged_empty_value() {
         let value = Value::new(
             CoreValue::Null,
-            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: Some(Box::new(Type::Definition(
-                    TypeDefinition::CoreType(CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Unit,
-                    ))
-                    .into(),
-                ))),
-                tag: "Example".to_string(),
-            })),
+            ValueClassification::Tag(ValueTag {tag: "Example".to_string(), is_empty: true}),
         );
 
         compile_value_assert_instructions(
@@ -688,10 +679,7 @@ mod tests {
     fn compile_tagged_value() {
         let value = Value::new(
             CoreValue::Null,
-            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: None,
-                tag: "Example".to_string(),
-            })),
+            ValueClassification::Tag(ValueTag {tag: "Example".to_string(), is_empty: false}),
         );
 
         compile_value_assert_instructions(
@@ -974,7 +962,8 @@ mod tests {
                 .unwrap(),
             TrackedValueMetadata::Root {
                 index: StackIndex(0),
-                ..
+                is_self_referencing: false,
+                is_known: false,
             }
         );
 
@@ -1047,7 +1036,7 @@ mod tests {
             TrackedValueMetadata::Root {
                 index: StackIndex(0),
                 is_known: false,
-                ..
+                is_self_referencing: false,
             }
         );
 
@@ -1128,7 +1117,8 @@ mod tests {
                 .unwrap(),
             TrackedValueMetadata::Root {
                 index: StackIndex(0),
-                ..
+                is_known: false,
+                is_self_referencing: false,
             }
         );
         assert_matches!(
@@ -1140,7 +1130,8 @@ mod tests {
                 .unwrap(),
             TrackedValueMetadata::Root {
                 index: StackIndex(1),
-                ..
+                is_known: false,
+                is_self_referencing: false,
             }
         );
 
@@ -1190,6 +1181,97 @@ mod tests {
                         RegularInstruction::TakeStackValue(StackIndex(0)),
                         RegularInstruction::TakeStackValue(StackIndex(1)),
                     )),
+                )
+            ),)
+        );
+    }
+
+    #[test]
+    fn self_referencing_shared_container() {
+        let mut provider = SelfOwnedPointerAddressProvider::default();
+        let shared = SharedContainer::new_owned_with_inferred_allowed_type(
+            List::default(),
+            SharedContainerMutability::Mutable,
+            &mut provider,
+        );
+
+        // *x = ['mut x]
+        {
+            let mut shared_vale_container = shared.value_container_mut();
+            let list = shared_vale_container.try_as_mut::<List>().unwrap();
+            list.push(ValueContainer::Shared(shared.clone()));
+        }
+
+        let shared_clone = shared.clone();
+
+        let shared_owned_address = match shared.pointer_address() {
+            PointerAddress::SelfOwned(owned) => owned,
+            _ => unreachable!(),
+        };
+
+        let mut context = core_compilation_context();
+        context.visit_value_container(&ValueContainer::Shared(shared));
+
+        assert_matches!(
+            context
+                .shared_value_tracking
+                .borrow()
+                .tracked_values
+                .get(&shared_clone)
+                .unwrap(),
+            TrackedValueMetadata::Root {
+                index: StackIndex(0),
+                is_known: false,
+                is_self_referencing: true,
+            }
+        );
+
+        let dxb = context.into_dxb_with_shared_values().dxb;
+
+        assert_instructions_equal!(
+            &dxb,
+            (RegularInstruction::statements_with_children(
+                false,
+                instructions!(
+                    RegularInstruction::PushListToStack,
+                    RegularInstruction::statements_with_children(
+                        false,
+                        instructions!(
+                            // x = shared nut [[UNINITIALIZED]]
+                            RegularInstruction::PushToStack,
+                            RegularInstruction::MoveWithValue(MoveWithValue {
+                                mutability:
+                                    SharedContainerMutability::Mutable,
+                                previous_address: shared_owned_address,
+                            }).with_children(instructions!(
+                                RegularInstruction::Uninitialized
+                            )),
+                            // *x = ['mut x]
+                            RegularInstruction::SetSharedContainerValue.with_children(
+                                instructions!(
+                                    RegularInstruction::list_with_children(
+                                        instructions!(
+                                            RegularInstruction::GetStackValueSharedRefMut(
+                                                StackIndex(0)
+                                            ),
+                                        )
+                                    ),
+                                    RegularInstruction::BorrowStackValue(
+                                        StackIndex(0)
+                                    )
+                                )
+                            ),
+                            // [x]
+                            RegularInstruction::list_with_children(
+                                instructions!(
+                                    RegularInstruction::TakeStackValue(
+                                        StackIndex(0)
+                                    ),
+                                )
+                            )
+                        )
+                    ),
+                    RegularInstruction::TakeStackValue(StackIndex(0)),
                 )
             ),)
         );

@@ -1,7 +1,6 @@
 //! This module contains the implementation of the [Value] struct, which represents a value in the DATEX type system.
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
-    datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::type_definition::{
@@ -20,26 +19,43 @@ use crate::{
 pub mod apply;
 pub mod borrowed_value;
 mod child_iterator;
-pub mod datex_proxy;
+pub mod classification;
+pub mod convert_parts;
+pub mod convert_value_container;
+mod datex_hash;
+mod datex_native;
 pub mod equality;
+pub mod get_core_lib_type_id;
+pub mod get_datex_type;
 mod local_child_path_resolver;
 pub mod ops;
 pub mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod to_instructions;
 pub mod update_handler;
 mod value_access;
+pub mod value_classification;
 
 use crate::{
-    datex_proxy::TryToDatexValueError,
+    preludes::derive::{
+        ConvertCoreValue, DatexNativeStructural, TaggedTypeDefinition,
+    },
     shared_values::errors::AccessError,
-    traits::value_access::ValueAccess,
+    traits::{
+        convert_value_container::ConvertValueContainer,
+        datex_native_only_structural::DatexNativeOnlyStructural,
+        static_classification::StaticClassification, value_access::ValueAccess,
+    },
+    types::{entity_type::EntityType, r#type::Type},
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
     values::{
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
-        core_values::endpoint::Endpoint,
+        core_values::{endpoint::Endpoint, native::validate_classification},
+        value::value_classification::{ValueClassification, ValueTag},
     },
 };
 use core::{
@@ -51,17 +67,15 @@ use core::{
 pub struct Value {
     /// The inner representation of the value, which is a [CoreValue].
     pub inner: CoreValue,
-    /// actual type of the value - if [None], use default type for given value
-    pub custom_type: Option<TypeDefinition>,
+    /// additional extensions for the value, including its entity type, impls, and tag
+    pub classification: ValueClassification,
 }
 
-/// The Value clone does copy the value and custom type,
-/// but removed the observer
 impl Clone for Value {
     fn clone(&self) -> Self {
         Value {
             inner: self.inner.clone(),
-            custom_type: self.custom_type.clone(),
+            classification: self.classification.clone(),
         }
     }
 }
@@ -71,7 +85,7 @@ impl<T: Into<CoreValue>> From<T> for Value {
         let inner = inner.into();
         Value {
             inner,
-            custom_type: None,
+            classification: ValueClassification::default(),
         }
     }
 }
@@ -81,43 +95,70 @@ impl Value {
         CoreValue::Null.into()
     }
 
-    pub fn unitialized() -> Self {
+    pub fn uninitialized() -> Self {
         CoreValue::Uninitialized.into()
     }
 
     pub fn new(
         inner: impl Into<CoreValue>,
-        custom_type: Option<TypeDefinition>,
+        classification: impl Into<ValueClassification>,
     ) -> Self {
         Value {
             inner: inner.into(),
-            custom_type,
+            classification: classification.into(),
         }
     }
 
     /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
-    pub fn native_boxed<T: DatexNative + DatexProxyType>(
-        value: Box<T>,
-        context: &mut SharedReferencesCache,
-    ) -> Value {
-        Value::new(
-            CoreValue::native_boxed(value),
-            Some(T::datex_type(context).convert_to_definition()),
-        )
-    }
-
-    pub fn native<T: DatexNative + DatexProxyType>(
+    /// Since types might be needed to get resolved for entity values, the cache is required.
+    pub fn native<T: DatexNative>(
         value: T,
-        context: &mut SharedReferencesCache,
+        cache: &mut SharedReferencesCache,
     ) -> Value {
-        Value::new(
-            CoreValue::native(value),
-            Some(T::datex_type(context).convert_to_definition()),
-        )
+        let classification = value.classification(cache);
+        Value::new(CoreValue::native(value), classification)
     }
 
-    pub fn custom_type(&self) -> Option<&TypeDefinition> {
-        self.custom_type.as_ref()
+    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
+    /// Since types might be needed to get resolved for entity values, the cache is required.
+    pub fn native_boxed<T: DatexNative>(
+        value: Box<T>,
+        cache: &mut SharedReferencesCache,
+    ) -> Value {
+        let classification = value.classification(cache);
+        Value::new(CoreValue::native_boxed(value), classification)
+    }
+
+    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
+    /// Since types might be needed to get resolved for entity values, the cache is required.
+    pub fn native_dyn(
+        value: Box<dyn DatexNative>,
+        cache: &mut SharedReferencesCache,
+    ) -> Value {
+        let classification = value.classification(cache);
+        Value::new(CoreValue::native_boxed(value), classification)
+    }
+
+    /// Creates a new CoreValue from a native value that implements the [DatexNativeStructural] trait.
+    /// Since the type is required to be completely structural without any entity references,
+    /// no cache is needed to resolve types.
+    pub fn native_structural<T: DatexNativeStructural>(value: T) -> Value {
+        let classification = value.classification_without_cache();
+        Value::new(CoreValue::native(value), classification)
+    }
+
+    /// Creates a new CoreValue from a native value that implements the [DatexNativeStructural] trait.
+    /// Since the type is required to be completely structural without any entity references,
+    /// no cache is needed to resolve types.
+    pub fn native_structural_boxed<T: DatexNativeStructural>(
+        value: Box<T>,
+    ) -> Value {
+        let classification = value.classification_without_cache();
+        Value::new(CoreValue::native_boxed(value), classification)
+    }
+
+    pub fn classification(&self) -> &ValueClassification {
+        &self.classification
     }
     pub fn into_inner(self) -> CoreValue {
         self.inner
@@ -126,34 +167,12 @@ impl Value {
         matches!(&self.inner, CoreValue::Uninitialized)
     }
 
-    /// Collapses the inner [CoreValue] of the [Value] to a DATEX value if it is a [CoreValue::Native].
-    pub fn into_non_native(
-        self,
-        cache: &mut SharedReferencesCache,
-    ) -> Result<Value, TryToDatexValueError> {
-        match self.inner {
-            CoreValue::Native(native) => {
-                Ok(native.value.try_boxed_to_value(cache)?)
-            }
-            _ => Ok(self),
-        }
-    }
-
-    /// Returns the inner [CoreValue] of the [Value].
-    /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
-    pub fn into_inner_non_native(
-        self,
-        cache: &mut SharedReferencesCache,
-    ) -> Result<CoreValue, TryToDatexValueError> {
-        self.into_non_native(cache).map(|v| v.inner)
-    }
-
     /// Returns a reference to the inner [CoreValue] of the [Value].
     /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
     pub fn inner_non_native(
         &self,
         _cache: &mut SharedReferencesCache,
-    ) -> Result<Cow<'_, CoreValue>, TryToDatexValueError> {
+    ) -> Result<Cow<'_, CoreValue>, ()> {
         Ok(Cow::Borrowed(&self.inner)) // workaround
         // TODO: implement try_borrowed_boxed_to_value
         // match &self.inner {
@@ -192,15 +211,15 @@ impl Value {
         body: CallableBody,
         creator: Endpoint,
     ) -> Self {
-        Value {
-            inner: CoreValue::Callable(Callable {
+        Value::new(
+            CoreValue::Callable(Callable {
                 name,
-                signature: signature.clone(),
+                signature,
                 body,
                 creator,
             }),
-            custom_type: Some(TypeDefinition::callable(signature)),
-        }
+            ValueClassification::None,
+        )
     }
 
     pub fn is_null(&self) -> bool {
@@ -209,78 +228,64 @@ impl Value {
 
     /// Tries to get a borrow of the current value as the specified type.
     /// Does not perform any type conversion.
-    pub fn try_as<'a, T: 'a>(&'a self) -> Option<&'a T>
+    pub fn try_as<T>(&self) -> Option<&T>
     where
-        &'a T: TryFrom<&'a CoreValue>,
+        T: ConvertCoreValue + StaticClassification,
     {
-        <&T>::try_from(&self.inner).ok()
+        match validate_classification::<T>(self) {
+            Ok(_) => T::try_borrow_from_core_value(&self.inner).ok(),
+            Err(_) => None,
+        }
     }
 
-    pub fn try_as_mut<'a, T: 'a>(&'a mut self) -> Option<&'a mut T>
+    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
     where
-        &'a mut T: TryFrom<&'a mut CoreValue>,
+        T: ConvertCoreValue + StaticClassification,
     {
-        <&mut T>::try_from(&mut self.inner).ok()
+        match validate_classification::<T>(self) {
+            Ok(_) => T::try_borrow_mut_from_core_value(&mut self.inner).ok(),
+            Err(_) => None,
+        }
     }
 
     /// Tries to convert the current value into the specific specified type.
     /// Does not perform any type conversion.
-    pub fn try_into_value<T>(self) -> Option<T>
+    pub fn try_into_value<T>(self) -> Result<T, Value>
     where
-        T: TryFrom<CoreValue>,
+        T: ConvertCoreValue + StaticClassification,
     {
-        T::try_from(self.inner).ok()
-    }
-
-    /// Returns true if the current Value's actual type is the same as its default type
-    /// E.g. if the type is integer for an Integer value, or integer/u8 for a typed integer value
-    /// This will return false for an integer value if the actual type is one of the following:
-    /// * an ImplType<integer, x>
-    /// * a new nominal type containing an integer
-    ///   TODO #604: this does not match all cases of default types from the point of view of the compiler -
-    ///   integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
-    ///   the variant must be included in the compiler output - so we need to handle theses cases as well.
-    ///   Generally speaking, all variants except the few integer variants should never be considered default types.
-    pub fn has_default_type(&self) -> bool {
-        match &self.custom_type {
-            None => true,
-            Some(TypeDefinition::CoreType(core_type)) => {
-                core_type == &self.default_core_type()
+        match validate_classification::<T>(&self) {
+            Ok(_) => {
+                T::try_from_core_value(self.inner).map_err(|inner| Value {
+                    inner,
+                    classification: self.classification,
+                })
             }
-            Some(_) => false,
+            Err(_) => Err(self),
         }
     }
 
-    /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
-        match &self.custom_type {
-            Some(actual_type) => Sheep::Borrowed(actual_type),
-            None => {
-                Sheep::Owned(TypeDefinition::CoreType(self.default_core_type()))
+    /// Returns the actual current [TypeDefinition] of the value
+    pub fn actual_type(&self) -> TypeDefinition {
+        match &self.classification {
+            ValueClassification::Entity(entity_type) => {
+                TypeDefinition::Box(Box::new(Type::Entity(entity_type.clone())))
+            }
+            ValueClassification::Tag(ValueTag { tag, is_empty }) => {
+                TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: tag.clone(),
+                    ty: if *is_empty {
+                        None
+                    } else {
+                        Some(Box::new(Type::core(self.default_core_type())))
+                    },
+                })
+            }
+            ValueClassification::Impls(impls) => todo!(),
+            ValueClassification::None => {
+                TypeDefinition::CoreType(self.default_core_type())
             }
         }
-    }
-
-    /// Returns true if the value is of structual type.
-    pub fn has_structural_type(&self) -> bool {
-        self.actual_type().is_structural()
-    }
-
-    /// Returns true if the value is of tagged type.
-    pub fn has_tagged_type(&self) -> bool {
-        self.actual_type().is_tagged()
-    }
-
-    /// Returns true if the value needs to be casted to its actual type.
-    /// This allows us to strip away the type cast on compilation, as not required.
-    pub fn needs_type_cast(&self) -> bool {
-        if self.has_default_type() {
-            return false;
-        }
-        if self.has_structural_type() && !self.has_tagged_type() {
-            return false;
-        }
-        true
     }
 
     /// Gets a property on the value if applicable (e.g. for map and structs)
@@ -419,23 +424,14 @@ impl Value {
     }
 }
 
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
-        core::write!(f, "{}", self.inner)
-    }
-}
-
-impl<T> From<Option<T>> for Value
-where
-    T: Into<Value>,
-{
-    fn from(opt: Option<T>) -> Self {
-        match opt {
-            Some(v) => v.into(),
-            None => Value::null(),
+impl_display_for_datex_value!(
+    Value,
+    impl core::fmt::Display for Value {
+        fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
+            core::write!(f, "{}", self.inner)
         }
     }
-}
+);
 
 #[cfg(test)]
 /// Tests for the Value struct and its methods.
@@ -608,35 +604,5 @@ mod tests {
             Value::from(42_i8),
             Value::from(Integer::from(42_i8))
         );
-    }
-
-    #[test]
-    fn default_types() {
-        let val = Value::from(Integer::from(42));
-        assert!(val.has_default_type());
-
-        let val = Value::from(42i8);
-        assert!(val.has_default_type());
-
-        let val = Value {
-            inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(TypeDefinition::CoreType(
-                CoreLibBaseTypeId::Integer.into(),
-            )),
-        };
-
-        assert!(val.has_default_type());
-
-        let val = Value {
-            inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(TypeDefinition::ImplType(
-                ImplTypeDefinition::new(
-                    Type::core(CoreLibBaseTypeId::Integer),
-                    vec![],
-                ),
-            )),
-        };
-
-        assert!(!val.has_default_type());
     }
 }

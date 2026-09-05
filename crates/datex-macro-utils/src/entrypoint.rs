@@ -3,10 +3,6 @@ use std::path::{Path, PathBuf};
 use crate::get_absolute_file_path;
 use datex_core::{
     compiler::{CompileOptions, compile_template},
-    datex_proxy::{
-        DatexValueContainerProxyDeserialize,
-        DatexValueContainerProxyInfallibleSerialize,
-    },
     runtime::{Runtime, RuntimeConfig},
 };
 use proc_macro2::TokenStream;
@@ -15,6 +11,8 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
+use datex_core::traits::convert_value_container::ConvertValueContainer;
+use datex_core::values::value_container::ValueContainer;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
@@ -175,7 +173,7 @@ pub fn datex_main_impl_with_config(
         #(#additional_attributes)*
         #(#attrs)*
         #vis #sig {
-            use #core_namespace::{runtime::{RuntimeRunner, RuntimeConfig, Runtime}, datex_proxy::DatexValueContainerProxyDeserialize};
+            use #core_namespace::{runtime::{RuntimeRunner, RuntimeConfig, Runtime}};
 
             #setup
 
@@ -204,7 +202,7 @@ pub fn get_config(parsed_attr: &ParsedAttributes) -> Option<RuntimeConfig> {
     // try to get config from config path
     parsed_attr.config.as_ref().map(|path| {
         RuntimeConfig::try_from_dx_file(path, &Runtime::stub()).unwrap_or_else(
-            |err| {
+            |err|  {
                 panic!(
                     "Failed to read config file at {}: {:?}",
                     path.to_str().unwrap_or("<invalid path>"),
@@ -254,7 +252,7 @@ pub fn get_arg_ident_and_type(
 fn compile_datex_config(config: RuntimeConfig) -> Vec<u8> {
     let (dxb, _) = compile_template(
         "?",
-        vec![Some(config.to_value_container_without_cache())],
+        vec![Some(ValueContainer::from(config))],
         CompileOptions::default(),
         // FIXME: stub runtime for now
         Runtime::stub(),

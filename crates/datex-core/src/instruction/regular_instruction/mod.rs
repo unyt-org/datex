@@ -409,6 +409,13 @@ impl RegularInstruction {
     pub fn r#false() -> Self {
         RegularInstruction::False
     }
+    pub fn boolean(value: bool) -> Self {
+        if value {
+            Self::r#true()
+        } else {
+            Self::r#false()
+        }
+    }
     pub fn set_stack_value(stack_index: StackIndex) -> Self {
         RegularInstruction::SetStackValue(stack_index)
     }
@@ -444,9 +451,6 @@ impl RegularInstruction {
     }
     pub fn unbox() -> Self {
         RegularInstruction::Unbox
-    }
-    pub fn typed_value() -> Self {
-        RegularInstruction::TypedValue
     }
     pub fn type_expression() -> Self {
         RegularInstruction::TypeExpression
@@ -734,8 +738,8 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::CALLABLE)]
     Callable(CallableData),
 
-    #[magic(InstructionCode::TYPED_VALUE)]
-    TypedValue,
+    #[magic(InstructionCode::ENTITY_VALUE)]
+    EntityValue(PointerAddress),
     #[magic(InstructionCode::TYPE_EXPRESSION)]
     TypeExpression,
 
@@ -1005,8 +1009,8 @@ impl RegularInstruction {
             | RegularInstruction::SetStackValue(_) => {
                 NextExpectedInstructions::Regular(1)
             }
-            RegularInstruction::TypedValue => {
-                NextExpectedInstructions::RegularAndType(1, 1)
+            RegularInstruction::EntityValue(_) => {
+                NextExpectedInstructions::Regular(1)
             }
 
             RegularInstruction::TypeExpression => {

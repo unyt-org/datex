@@ -1,6 +1,6 @@
 use crate::{
     core_compiler::to_instructions::{
-        SharedValueTrackingProvider, ToInstructions,
+        ToInstructions,
     },
     instruction::{
         instruction_data::{
@@ -34,17 +34,20 @@ use crate::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
+use crate::core_compiler::value_visitor::ValueVisitor;
+use crate::instruction::Instruction;
+
 impl<'ctx, T> ToInstructions<'ctx, T> for TypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
-        Box::new(gen move {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        gen move {
             match self {
                 TypeDefinition::ImplType(impl_type_def) => {
                     for instruction in impl_type_def.to_instructions(ctx) {
@@ -54,7 +57,7 @@ where
                 TypeDefinition::Literal(literal_type_definition) => {
                     yield TypeInstruction::Literal(
                         literal_type_definition.clone(),
-                    );
+                    ).into();
                 }
                 TypeDefinition::List(list_type_definition) => {
                     for instruction in list_type_definition.to_instructions(ctx)
@@ -91,7 +94,7 @@ where
                     }
                 }
                 TypeDefinition::Box(nested) => {
-                    yield TypeInstruction::Boxed;
+                    yield TypeInstruction::Boxed.into();
                     for instruction in nested.to_instructions(ctx) {
                         yield instruction;
                     }
@@ -125,25 +128,25 @@ where
                     }
                 }
                 TypeDefinition::CoreType(core_lib_type_id) => {
-                    yield TypeInstruction::CoreType(*core_lib_type_id)
+                    yield TypeInstruction::CoreType(*core_lib_type_id).into();
                 }
             }
-        })
+        }
     }
 }
 
 impl<'ctx, T> ToInstructions<'ctx, T> for TypeDefinitionWithMetadata
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen {
-            yield TypeInstruction::DefinitionWithMetadata(self.metadata);
+            yield TypeInstruction::DefinitionWithMetadata(self.metadata).into();
             for instruction in self.definition.to_instructions(ctx) {
                 yield instruction;
             }
@@ -152,19 +155,19 @@ where
 }
 impl<'ctx, T> ToInstructions<'ctx, T> for ImplTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen {
             yield TypeInstruction::ImplType(ImplTypeData {
                 impl_count: self.impl_markers.len() as u8,
                 impls: self.impl_markers.to_vec(),
-            });
+            }).into();
             for instruction in self.inner_type.to_instructions(ctx) {
                 yield instruction;
             }
@@ -174,18 +177,18 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for ListTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::List(ListData {
                 element_count: self.len() as u32,
-            });
+            }).into();
             for ty in self.iter() {
                 for instruction in ty.to_instructions(ctx).collect::<Vec<_>>() {
                     yield instruction;
@@ -197,18 +200,18 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for MapTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::Map(MapData {
                 element_count: self.len() as u32,
-            });
+            }).into();
             for (key_ty, value_ty) in self.iter() {
                 // FIXME: collect required everywhere due to lifetime issues with the generator and optional mut ref
                 for instruction in
@@ -228,16 +231,16 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for RangeTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
-            yield TypeInstruction::Range;
+            yield TypeInstruction::Range.into();
             for instruction in
                 self.start.to_instructions(ctx).collect::<Vec<_>>()
             {
@@ -253,14 +256,14 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for CollectionTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             match self {
                 CollectionTypeDefinition::List(list) => {
@@ -290,16 +293,16 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for ListCollectionTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen {
-            yield TypeInstruction::ListCollection;
+            yield TypeInstruction::ListCollection.into();
             for instruction in self.0.to_instructions(ctx) {
                 yield instruction;
             }
@@ -308,16 +311,16 @@ where
 }
 impl<'ctx, T> ToInstructions<'ctx, T> for MapCollectionTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
-            yield TypeInstruction::MapCollection;
+            yield TypeInstruction::MapCollection.into();
             for instruction in
                 self.key_type.to_instructions(ctx).collect::<Vec<_>>()
             {
@@ -334,20 +337,20 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for ListSliceCollectionTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::ListSliceCollection(
                 ListSliceCollectionData {
                     element_count: self.size as u32,
                 },
-            );
+            ).into();
             for instruction in
                 self.item_type.to_instructions(ctx).collect::<Vec<_>>()
             {
@@ -359,18 +362,18 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for IntersectionTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::Intersection(IntersectionData {
                 element_count: self.len() as u32,
-            });
+            }).into();
             for ty in self.iter() {
                 for instruction in ty.to_instructions(ctx).collect::<Vec<_>>() {
                     yield instruction;
@@ -382,14 +385,14 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for CallableTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::Callable(CallableSignatureData {
                 name: ShortTextData::new("".to_string()),
@@ -411,7 +414,7 @@ where
                         ShortTextData::new(name.clone().unwrap_or_default())
                     },
                 ),
-            });
+            }).into();
             for (_, ty) in &self.parameters {
                 for instruction in ty.to_instructions(ctx).collect::<Vec<_>>() {
                     yield instruction;
@@ -444,18 +447,18 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for UnionTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::Union(UnionData {
                 element_count: self.len() as u32,
-            });
+            }).into();
             for ty in self.iter() {
                 for instruction in ty.to_instructions(ctx).collect::<Vec<_>>() {
                     yield instruction;
@@ -467,19 +470,19 @@ where
 
 impl<'ctx, T> ToInstructions<'ctx, T> for TaggedTypeDefinition
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             yield TypeInstruction::TaggedType(TaggedTypeData::new(
                 self.tag.clone(),
                 self.ty.is_some(),
-            ));
+            )).into();
             if let Some(ty) = &self.ty {
                 for instruction in ty.to_instructions(ctx).collect::<Vec<_>>() {
                     yield instruction;

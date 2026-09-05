@@ -1,36 +1,38 @@
 use crate::{
-    core_compiler::to_instructions::{
-        SharedValueTrackingProvider, ToInstructions,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::regular_instruction::RegularInstruction,
+    instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
     values::core_values::decimal::Decimal,
 };
 
 impl<'ctx, T> ToInstructions<'ctx, T> for Decimal
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = RegularInstruction;
-    fn to_instructions(
-        &self,
-        _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
-        Box::new(gen move {
+    fn to_instructions<'a>(
+        &'a self,
+        _ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a
+    where
+        'ctx: 'a,
+    {
+        gen move {
             match &self {
                 Decimal::Finite(big_decimal) if big_decimal.is_integer() => {
                     if let Some(int) = big_decimal.to_i16() {
-                        yield RegularInstruction::decimal_as_int16(int);
+                        yield RegularInstruction::decimal_as_int16(int).into();
                     } else if let Some(int) = big_decimal.to_i32() {
-                        yield RegularInstruction::decimal_as_int32(int);
+                        yield RegularInstruction::decimal_as_int32(int).into();
                     } else {
-                        yield RegularInstruction::decimal(self.clone());
+                        yield RegularInstruction::decimal(self.clone()).into();
                     }
                 }
                 _ => {
-                    yield RegularInstruction::decimal(self.clone());
+                    yield RegularInstruction::decimal(self.clone()).into();
                 }
             }
-        })
+        }
     }
 }

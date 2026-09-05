@@ -8,8 +8,7 @@ use crate::{
         shared_value_tracking::{
             SharedValueTracking, TrackedValueCollection, TrackedValueMetadata,
         },
-        to_instructions::{SharedValueTrackingProvider, ToInstructions},
-        type_compiler::append_type_instruction,
+        to_instructions::{ToInstructions},
         value_compiler::append_value,
         value_visitor::ValueVisitor,
     },
@@ -29,6 +28,8 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Write};
+use crate::core_compiler::value_compiler::append_instruction;
+use crate::instruction::Instruction;
 
 #[derive(Debug)]
 struct PreambleContext<'a> {
@@ -46,7 +47,7 @@ impl BufferProvider for PreambleContext<'_> {
 // var x = shared {a: {b: null}};
 // x.a.b = x; /// #0.a.b = x;
 
-impl ValueVisitor for PreambleContext<'_> {
+impl<'ctx> ValueVisitor<'ctx> for PreambleContext<'ctx> {
     fn visit_value_container(&mut self, value_container: &ValueContainer) {
         match value_container {
             ValueContainer::Local(value) => append_value(self, value),
@@ -104,19 +105,17 @@ impl ValueVisitor for PreambleContext<'_> {
             Type::Entity(_) => todo!(),
             _ => {
                 let instructions =
-                    ty.to_instructions(self).collect::<Vec<TypeInstruction>>();
+                    ty.to_instructions(self).collect::<Vec<Instruction>>();
                 for instruction in instructions {
-                    append_type_instruction(self.cursor_mut(), instruction);
+                    append_instruction(self.cursor_mut(), instruction);
                 }
             }
         }
     }
-}
 
-impl<'ctx> SharedValueTrackingProvider<'ctx> for PreambleContext<'ctx> {
-    fn shared_value_tracking<'a>(
-        &'a self,
-    ) -> Option<&'a RefCell<SharedValueTracking<'ctx>>> {
+    fn shared_value_tracking(
+        &self,
+    ) -> Option<&RefCell<SharedValueTracking<'ctx>>> {
         None
     }
 }

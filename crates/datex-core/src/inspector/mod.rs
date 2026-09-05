@@ -1,21 +1,21 @@
 use crate::{
-    datex_proxy::{DatexProxyType, DatexValueProxyInfallibleSerialize},
     prelude::*,
     runtime::Runtime,
     values::value_container::ValueContainer,
 };
 use datex_macros_internal::{Datex, datex};
+use crate::traits::get_datex_type::GetDatexType;
 
 #[datex(name = "inspector")]
 mod datex_inspector {
+    use crate::shared_wrappers::shared::Shared;
+    use crate::shared_wrappers::shared::to_shared::ToShared;
     use super::*;
-    use crate::datex_proxy::shared::Shared;
 
     #[derive(Datex, Debug, Clone)]
     pub struct Inspector {
         name: String, // TODO: distinguish between pub and private entity properties
     }
-
     #[datex]
     impl Inspector {
         pub fn name_getter(&self) -> String {
@@ -31,7 +31,10 @@ mod datex_inspector {
     /// Creates a new [Inspector] instance.
     pub fn create(name: String) -> Shared<Inspector> {
         // TODO: add SharedRef here, caller should not own inspector
-        Inspector { name }.shared(&mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(), &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default())
+        Inspector { name }.shared(
+            &mut crate::runtime::cache::shared_references_cache::SharedReferencesCache::default(),
+            &mut crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider::default(),
+        )
     }
 
     pub async fn async_test(a: String) -> String {
@@ -57,7 +60,7 @@ mod tests {
         traits::apply::Apply, types::type_definition::callable::CallableKind,
         values::core_values::callable::native_sync_callable,
     };
-
+    use crate::preludes::derive::CoreValue;
     // FIXME
     // #[test]
     // fn ty() {

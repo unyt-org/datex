@@ -1,20 +1,20 @@
+use crate::random::RandomState;
+use indexmap::IndexMap;
 use crate::{
     collections::HashMap,
-    datex_proxy::{
-        DatexValueProxyInfallibleSerialize, DatexValueProxySerialize,
-    },
     network::com_hub::InterfacePriority,
     prelude::*,
     values::{core_values::endpoint::Endpoint, value::Value},
 };
 use datex_macros_internal::Datex;
+use crate::traits::datex_native_structural::DatexNativeStructural;
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
 }
 
 #[derive(Datex, Debug, Clone, PartialEq, Eq)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 /// A generic interface configuration to setup a runtime interface.
 pub struct RuntimeConfigInterface {
     #[datex(rename = "type")]
@@ -24,19 +24,14 @@ pub struct RuntimeConfigInterface {
 }
 
 impl RuntimeConfigInterface {
-    pub fn new<T: DatexValueProxySerialize>(
+    pub fn new<T: DatexNativeStructural>(
         interface_type: &str,
         setup_data: T,
     ) -> Result<RuntimeConfigInterface, String> {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            config: setup_data.try_to_value_without_cache().map_err(|e| {
-                format!(
-                    "Failed to convert setup_data to ValueContainer: {:?}",
-                    e
-                )
-            })?,
+            config: Value::native_structural(setup_data),
         })
     }
 
@@ -53,11 +48,11 @@ impl RuntimeConfigInterface {
 }
 
 #[derive(Datex, Debug, Default, Clone)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub struct RuntimeConfig {
     pub endpoint: Endpoint,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
-    pub env: Option<HashMap<String, String>>,
+    pub env: Option<IndexMap<String, String, RandomState>>,
 }
 
 impl RuntimeConfig {
@@ -69,13 +64,13 @@ impl RuntimeConfig {
         }
     }
 
-    pub fn add_interface<T: DatexValueProxyInfallibleSerialize>(
+    pub fn add_interface<T: DatexNativeStructural>(
         &mut self,
         interface_type: String,
         config: T,
         priority: InterfacePriority,
     ) {
-        let config = config.to_value_without_cache();
+        let config = Value::native_structural(config);
         let interface = RuntimeConfigInterface {
             interface_type,
             config,
@@ -90,12 +85,12 @@ impl RuntimeConfig {
 
     /// Adds a single environment variable to the runtime's custom environment variables.
     pub fn add_env_var(&mut self, key: String, value: String) {
-        self.env.get_or_insert_with(HashMap::new).insert(key, value);
+        self.env.get_or_insert_with(IndexMap::default).insert(key, value);
     }
 
     /// Adds multiple environment variables to the runtime's custom environment variables.
-    pub fn add_env_vars(&mut self, vars: HashMap<String, String>) {
-        self.env.get_or_insert_with(HashMap::new).extend(vars);
+    pub fn add_env_vars(&mut self, vars: IndexMap<String, String, RandomState>) {
+        self.env.get_or_insert_with(IndexMap::default).extend(vars);
     }
 
     #[cfg(feature = "target_native")]
@@ -103,7 +98,7 @@ impl RuntimeConfig {
     pub fn load_host_env_vars(&mut self) {
         // add all host environment variables to the runtime's custom environment variables
         for (key, value) in std::env::vars() {
-            self.env.get_or_insert_with(HashMap::new).insert(key, value);
+            self.env.get_or_insert_with(IndexMap::new).insert(key, value);
         }
     }
 
@@ -116,7 +111,7 @@ impl RuntimeConfig {
         let loader1 = dotenvy::from_path_iter(path)?;
         for item in loader1 {
             let (key, val) = item?;
-            self.env.get_or_insert_with(HashMap::new).insert(key, val);
+            self.env.get_or_insert_with(IndexMap::new).insert(key, val);
         }
         Ok(())
     }
@@ -127,11 +122,6 @@ pub mod tests {
     use datex_macros_internal::Datex;
 
     use crate::{
-        datex_proxy::{
-            DatexValueContainerProxyDeserialize,
-            DatexValueContainerProxyInfallibleSerialize,
-            DatexValueProxyInfallibleSerialize,
-        },
         prelude::*,
         runtime::{
             RuntimeConfig, RuntimeConfigInterface,
@@ -139,9 +129,10 @@ pub mod tests {
         },
         values::core_values::{endpoint::Endpoint, map::Map},
     };
+    use crate::preludes::derive::Value;
 
     #[derive(Datex)]
-    #[datex(structural_recursive)]
+    #[datex(structural)]
     struct MySetupData {
         field1: String,
         field2: i32,
@@ -185,19 +176,17 @@ pub mod tests {
             42
         );
 
-        let value_container = config_interface.to_value_without_cache();
+        let value_container =  Value::native_structural(config_interface);
         let parsed_config_interface: RuntimeConfigInterface =
-            value_container.try_into().unwrap();
+            value_container.try_into_value().unwrap();
         assert_eq!(parsed_config_interface.interface_type, "test");
     }
 
     #[test]
     fn datex_proxy_runtime_config() {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
-        let value_container =
-            config.to_value_container(&mut SharedReferencesCache::default());
-        let parsed_config: RuntimeConfig =
-            RuntimeConfig::try_from_value_container(value_container).unwrap();
+        let value_container = Value::native_structural(config);
+        let parsed_config: RuntimeConfig = value_container.try_into_value().unwrap();
         assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));
     }
 }

@@ -32,10 +32,6 @@ use crate::{
 
 use crate::{
     core_compiler::value_compiler::compile_value,
-    datex_proxy::{
-        DatexValueContainerProxyDeserialize,
-        DatexValueContainerProxyInfallibleSerialize,
-    },
     prelude::*,
     runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
 };
@@ -43,9 +39,10 @@ use datex_macros_internal::Datex;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
+use crate::traits::convert_value_container::ConvertValueContainer;
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub struct NetworkTraceHopSocket {
     pub interface_type: String,
     pub interface_name: Option<String>,
@@ -76,7 +73,7 @@ impl NetworkTraceHopSocket {
     Clone,
     strum_macros::Display,
 )]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub enum NetworkTraceHopDirection {
     Outgoing,
     Incoming,
@@ -84,7 +81,7 @@ pub enum NetworkTraceHopDirection {
 
 #[serde_as]
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub struct NetworkTraceHop {
     pub endpoint: Endpoint,
     pub distance: i8,
@@ -96,13 +93,13 @@ pub struct NetworkTraceHop {
 
 #[serde_as]
 #[derive(Datex, Debug, Clone, Deserialize, Serialize)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub struct NetworkTraceResult {
     pub sender: Endpoint,
     pub receiver: Endpoint,
     pub hops: Vec<NetworkTraceHop>,
     #[serde_as(as = "DurationMilliSeconds")]
-    #[datex(serde_infallible)]
+    #[datex(serde)]
     pub round_trip_time: Duration,
 }
 
@@ -620,7 +617,7 @@ impl ComHub {
         // convert hops to DATEX
         let hops_datex = hops
             .into_iter()
-            .map(|hop| hop.to_value_container_without_cache())
+            .map(|hop| ValueContainer::Local(Value::native_structural(hop)))
             .collect::<Vec<ValueContainer>>();
 
         let pointer_lookup = PointerAvailabilityLookup::default();

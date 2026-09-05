@@ -19,10 +19,17 @@ use serde::{Deserialize, Serialize};
 pub mod binrw;
 pub mod ops;
 pub mod primitive;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod datex_native;
+mod convert_parts;
+mod classification;
+mod datex_hash;
 
 pub const DECIMAL_NAN: &str = "nan";
 pub const DECIMAL_INFINITY: &str = "infinity";

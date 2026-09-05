@@ -1,5 +1,4 @@
 use crate::{
-    datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     types::r#type::Type,
@@ -9,6 +8,8 @@ use crate::{
     },
 };
 use seq_macro::seq;
+use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::traits::get_datex_type::GetDatexType;
 
 pub trait IntoDatexCallable<Args, R> {
     /// Returns a vector of tuples containing the parameter names (if any) and their corresponding [Type]s.
@@ -26,7 +27,7 @@ macro_rules! impl_datex_callable {
             where
                 F: Fn(#(A~N,)*) -> R,
                 #(
-                    A~N: DatexProxyType + TryFrom<ValueContainer>,
+                    A~N: GetDatexType + ConvertValueContainer,
                 )*
             {
                 fn parameters(
@@ -49,7 +50,7 @@ macro_rules! impl_datex_callable {
                         let arg~N: A~N = args
                             .next()
                             .unwrap()
-                            .try_into()
+                            .try_into_value()
                             .map_err(|_| CallableError::InvalidSignature)?;
                     )*
                     Ok(self(#(arg~N,)*))

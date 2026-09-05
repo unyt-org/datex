@@ -1,6 +1,5 @@
 //! Implements [TryFrom] for DATEX [CoreValue] and [Value] types. This allows to convert e.g. [CoreValue::Integer] to [Integer].
 use crate::{
-    datex_proxy::TryFromDatexValueError,
     prelude::*,
     types::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
@@ -25,67 +24,55 @@ use crate::{
         },
     },
 };
+use crate::traits::convert_core_value::ConvertCoreValue;
 
 /// Implements [TryFrom] for each [CoreValue] variant to its corresponding type. This allows to convert e.g. [CoreValue::Integer] to [Integer].
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
         $(
-            impl TryFrom<Value> for $type {
-                type Error = TryFromDatexValueError;
-                fn try_from(value: Value) -> Result<Self, Self::Error> {
-                    value.inner.try_into()
-                }
-            }
-
-            impl TryFrom<CoreValue> for $type {
-                type Error = TryFromDatexValueError;
-                fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+            impl ConvertCoreValue for $type {
+                fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
                     match value {
                         CoreValue::$variant(v) => Ok(v),
-                        _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
+                        _ => Err(value),
+                    }
+                }
+
+                fn try_borrow_from_core_value(value: &CoreValue) -> Result<&$type, ()> {
+                    match value {
+                        CoreValue::$variant(v) => Ok(v),
+                        _ => Err(()),
+                    }
+                }
+
+                fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut $type, ()> {
+                    match value {
+                        CoreValue::$variant(v) => Ok(v),
+                        _ => Err(()),
                     }
                 }
             }
 
             impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, $type> {
-                type Error = TryFromDatexValueError;
+                type Error = ();
                 fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
                     match value {
                         BorrowedCoreValue::$variant(v) => Ok(v),
-                        _ => Err(TryFromDatexValueError(format!("Cannot cast BorrowedCoreValue to {}, expected BorrowedCoreValue::{}", stringify!($type), stringify!($variant)))),
+                        _ => Err(()),
                     }
                 }
             }
 
             impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, $type> {
-                type Error = TryFromDatexValueError;
+                type Error = ();
                 fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
                     match value {
                         BorrowedCoreValueMut::$variant(v) => Ok(v),
-                        _ => Err(TryFromDatexValueError(format!("Cannot cast BorrowedCoreValueMut to {}, expected BorrowedCoreValueMut::{}", stringify!($type), stringify!($variant)))),
+                        _ => Err(()),
                     }
                 }
             }
 
-            impl<'a> TryFrom<&'a CoreValue> for &'a $type {
-                type Error = TryFromDatexValueError;
-                fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
-                    match value {
-                        CoreValue::$variant(v) => Ok(v),
-                        _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
-                    }
-                }
-            }
-
-            impl<'a> TryFrom<&'a mut CoreValue> for &'a mut $type {
-                type Error = TryFromDatexValueError;
-                fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
-                    match value {
-                        CoreValue::$variant(v) => Ok(v),
-                        _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
-                    }
-                }
-            }
         )*
     };
 }
@@ -111,7 +98,6 @@ mod tests {
     use core::assert_matches;
 
     use crate::{
-        datex_proxy::TryFromDatexValueError,
         values::{
             core_value::CoreValue,
             core_values::{integer::Integer, text::Text},
@@ -122,36 +108,36 @@ mod tests {
     #[test]
     fn try_from_core_value() {
         let int_value = CoreValue::Integer(Integer::new(42));
-        let int: Integer = int_value.try_into().unwrap();
+        let int: Integer = int_value.try_into_value().unwrap();
         assert_eq!(int, Integer::new(42));
 
         let text_value = CoreValue::Text(Text::new("Hello, DATEX!"));
-        let text: Text = text_value.try_into().unwrap();
+        let text: Text = text_value.try_into_value().unwrap();
         assert_eq!(text, Text::new("Hello, DATEX!"));
     }
 
     #[test]
     fn try_from_core_value_wrong_type() {
         let int_value = CoreValue::Integer(Integer::new(42));
-        let result: Result<Text, TryFromDatexValueError> = int_value.try_into();
-        assert_matches!(result, Err(TryFromDatexValueError(_)));
+        let result = int_value.try_into_value::<Text>();
+        assert_matches!(result, Err(_));
     }
 
     #[test]
     fn try_from_core_value_ref() {
         let int_value = CoreValue::Integer(Integer::new(42));
-        let int_ref: &Integer = (&int_value).try_into().unwrap();
+        let int_ref = int_value.try_as::<Integer>().unwrap();
         assert_eq!(*int_ref, Integer::new(42));
 
         let text_value = CoreValue::Text(Text::new("Hello, DATEX!"));
-        let text_ref: &Text = (&text_value).try_into().unwrap();
+        let text_ref: &Text = (&text_value).try_as().unwrap();
         assert_eq!(*text_ref, Text::new("Hello, DATEX!"));
     }
 
     #[test]
     fn try_from_core_value_mut_ref() {
         let mut int_value = CoreValue::Integer(Integer::new(42));
-        let int_mut_ref: &mut Integer = (&mut int_value).try_into().unwrap();
+        let int_mut_ref = int_value.try_as_mut::<Integer>().unwrap();
         *int_mut_ref = Integer::new(100);
         assert_eq!(*int_mut_ref, Integer::new(100));
         assert_eq!(int_value, CoreValue::Integer(Integer::new(100)));
@@ -160,7 +146,7 @@ mod tests {
     #[test]
     fn try_from_value() {
         let value = Value::from(CoreValue::Integer(Integer::new(42)));
-        let int: Integer = value.try_into().unwrap();
+        let int: Integer = value.try_into_value().unwrap();
         assert_eq!(int, Integer::new(42));
     }
 }

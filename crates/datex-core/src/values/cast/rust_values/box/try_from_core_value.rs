@@ -1,0 +1,25 @@
+use crate::traits::convert_core_value::ConvertCoreValue;
+use crate::values::core_value::CoreValue;
+use crate::values::core_values::native::DatexNativeBase;
+use crate::prelude::*;
+
+
+impl<T> ConvertCoreValue for Box<T>
+where
+    T: DatexNativeBase + 'static,
+{
+    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
+        match value {
+            CoreValue::Native(native) => native.try_into_value::<T>().map(Box::new).map_err(CoreValue::Native),
+            _ => Err(value),
+        }
+    }
+
+    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
+        Err(())
+    }
+
+    fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()> {
+        Err(())
+    }
+}

@@ -1,10 +1,9 @@
 mod impls;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 
 use core::assert_matches;
 use datex_core::{
-    datex_proxy::{DatexProxyType, DatexValueContainerProxy},
     prelude::*,
     values::{
         core_values::{endpoint::Endpoint, map::Map},
@@ -13,9 +12,10 @@ use datex_core::{
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
+use datex_core::traits::get_datex_type::GetDatexType;
 
 #[derive(Datex, Debug)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 enum ExampleEnum {
     VariantA,
     VariantB(u8, u8),
@@ -24,7 +24,7 @@ enum ExampleEnum {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 struct Example {
     a: u8,
     b: String,
@@ -38,7 +38,7 @@ struct SerdeExample {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 struct SerdeDatexExample {
     a: u8,
     #[datex(serde)]
@@ -46,17 +46,14 @@ struct SerdeDatexExample {
 }
 
 #[derive(Datex, Debug, PartialEq)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 struct ExampleNewType(Example);
 
 fn assert_round_trip<T>(value: T)
 where
-    T: DatexValueContainerProxy + PartialEq + std::fmt::Debug + Clone,
+    T: DatexNativeStructural + PartialEq + std::fmt::Debug + Clone,
 {
-    let value_container = value
-        .clone()
-        .try_to_value_container_without_cache()
-        .unwrap();
+    let value_container = ValueContainer::from(value.clone());
     let deserialized_value =
         T::try_from_value_container(value_container).unwrap();
     assert_eq!(value, deserialized_value);
@@ -87,6 +84,8 @@ use datex_core::{
     },
 };
 use test_case::test_case;
+use datex_core::preludes::derive::{DatexNative, DatexNativeStructural};
+use datex_core::values::value::value_classification::{ValueClassification, ValueTag};
 
 #[test_case(
     Example {
@@ -110,7 +109,7 @@ use test_case::test_case;
 ]) ; "map of primitives")]
 fn round_trip_struct<T>(structure: T)
 where
-    T: DatexValueContainerProxy + PartialEq + std::fmt::Debug + Clone,
+    T: DatexNativeStructural + PartialEq + std::fmt::Debug + Clone,
 {
     assert_round_trip(structure);
 }
@@ -139,7 +138,7 @@ fn struct_to_value_container() {
 #[test]
 fn skip() {
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(only_structural, no_deserialize)]
     struct SerdeDatexWithSkip {
         a: u8,
 
@@ -157,7 +156,7 @@ fn skip() {
     assert!(!map.has("b"));
 
     let value_container = ValueContainer::from(map);
-    let deserialized: SerdeDatexWithSkip = value_container.try_into().unwrap();
+    let deserialized = value_container.try_into_value::<SerdeDatexWithSkip>().unwrap();
 
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, "".to_string());
@@ -171,7 +170,7 @@ fn skip2() {
         b: String,
     }
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(only_structural, no_deserialize)]
     struct SerdeDatexWithSkip2 {
         a: u8,
         #[datex(skip)]
@@ -185,7 +184,7 @@ fn skip2() {
         },
     }
     .into();
-    let deserialized: SerdeDatexWithSkip2 = value_container.try_into().unwrap();
+    let deserialized = value_container.try_into_value::<SerdeDatexWithSkip2>().unwrap();
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, NoDerive::default());
 }
@@ -193,7 +192,7 @@ fn skip2() {
 #[test]
 fn default() {
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(only_structural, no_deserialize)]
     struct SerdeDatexWithDefault {
         a: u8,
         #[datex(default)]
@@ -203,8 +202,7 @@ fn default() {
     let map: Map =
         Map::from(vec![("a".to_string(), ValueContainer::from(42u8))]);
     let value_container = ValueContainer::from(map);
-    let deserialized: SerdeDatexWithDefault =
-        value_container.try_into().unwrap();
+    let deserialized = value_container.try_into_value::<SerdeDatexWithDefault>().unwrap();
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, "".to_string());
 }
@@ -215,11 +213,8 @@ fn enum_to_value() {
 
     assert_structural_eq!(variant_a, Value::null());
     assert_eq!(
-        variant_a.custom_type,
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-            tag: "VariantA".to_string(),
-            ty: None
-        }))
+        variant_a.classification(),
+        &ValueClassification::Tag(ValueTag {tag: "VariantA".to_string(), is_empty: true})
     );
 
     let variant_b: Value = ExampleEnum::VariantB(1, 2).into();
@@ -228,11 +223,8 @@ fn enum_to_value() {
         Value::from(vec![Value::from(1u8), Value::from(2u8)])
     );
     assert_eq!(
-        variant_b.custom_type,
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-            tag: "VariantB".to_string(),
-            ty: None,
-        }))
+        variant_b.classification(),
+        &ValueClassification::Tag(ValueTag {tag: "VariantB".to_string(), is_empty: false})
     );
 
     let variant_c: Value = ExampleEnum::VariantC {
@@ -248,21 +240,15 @@ fn enum_to_value() {
         ]))
     );
     assert_eq!(
-        variant_c.custom_type,
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-            tag: "VariantC".to_string(),
-            ty: None,
-        }))
+        variant_c.classification(),
+        &ValueClassification::Tag(ValueTag {tag: "VariantC".to_string(), is_empty: false})
     );
 
     let variant_d: Value = ExampleEnum::VariantD(1).into();
     assert_structural_eq!(variant_d, Value::from(1u8));
     assert_eq!(
-        variant_d.custom_type,
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-            tag: "VariantD".to_string(),
-            ty: None,
-        }))
+        variant_d.classification(),
+        &ValueClassification::Tag(ValueTag {tag: "VariantD".to_string(), is_empty: false})
     );
 }
 
@@ -275,7 +261,7 @@ fn struct_to_value() {
     }
     .into();
 
-    let map: Map = value.try_into().unwrap();
+    let map = value.try_into_value::<Map>().unwrap();
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(
         map.try_get("b").unwrap(),
@@ -296,7 +282,7 @@ fn new_type_struct_to_value() {
     })
     .into();
 
-    let map: Map = value.try_into().unwrap();
+    let map = value.try_into_value::<Map>().unwrap();
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(
         map.try_get("b").unwrap(),
@@ -317,7 +303,7 @@ fn value_container_to_struct() {
             ("c".to_string(), ValueContainer::from(Endpoint::default())),
         ]));
 
-    let example: Example = value_container.try_into().unwrap();
+    let example = value_container.try_into_value::<Example>().unwrap();
 
     assert_eq!(example.a, 42u8);
     assert_eq!(example.b, "Test".to_string());
@@ -332,7 +318,7 @@ fn value_to_struct() {
         ("c".to_string(), ValueContainer::from(Endpoint::default())),
     ]));
 
-    let example: Example = value.try_into().unwrap();
+    let example = value.try_into_value::<Example>().unwrap();
 
     assert_eq!(example.a, 42u8);
     assert_eq!(example.b, "Test".to_string());
@@ -347,7 +333,7 @@ fn value_to_new_typestruct() {
         ("c".to_string(), ValueContainer::from(Endpoint::default())),
     ]));
 
-    let example: ExampleNewType = value.try_into().unwrap();
+    let example = value.try_into_value::<ExampleNewType>().unwrap();
 
     assert_eq!(example.0.a, 42u8);
     assert_eq!(example.0.b, "Test".to_string());
@@ -358,13 +344,13 @@ fn value_to_new_typestruct() {
 fn value_to_enum() {
     let variant_a = Value::new(
         CoreValue::Null,
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+        ValueClassification::Tag(ValueTag {
             tag: "VariantA".to_string(),
-            ty: None,
-        })),
+            is_empty: true,
+        }),
     );
 
-    let example: ExampleEnum = variant_a.try_into().unwrap();
+    let example = variant_a.try_into_value::<ExampleEnum>().unwrap();
     assert_matches!(example, ExampleEnum::VariantA);
 
     let variant_b = Value::new(
@@ -372,12 +358,12 @@ fn value_to_enum() {
             ValueContainer::from(1u8),
             ValueContainer::from(2u8),
         ]),
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+        ValueClassification::Tag(ValueTag {
             tag: "VariantB".to_string(),
-            ty: None,
-        })),
+            is_empty: false,
+        }),
     );
-    let example: ExampleEnum = variant_b.try_into().unwrap();
+    let example = variant_b.try_into_value::<ExampleEnum>().unwrap();
     assert_matches!(example, ExampleEnum::VariantB(1, 2));
 
     let variant_c = Value::new(
@@ -385,22 +371,22 @@ fn value_to_enum() {
             ("x".to_string(), ValueContainer::from(3u8)),
             ("y".to_string(), ValueContainer::from("Hello".to_string())),
         ])),
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+        ValueClassification::Tag(ValueTag {
             tag: "VariantC".to_string(),
-            ty: None,
-        })),
+            is_empty: false,
+        }),
     );
-    let example: ExampleEnum = variant_c.try_into().unwrap();
+    let example = variant_c.try_into_value::<ExampleEnum>().unwrap();
     assert_matches!(example, ExampleEnum::VariantC { x: 3, y } if &y == "Hello" );
 
     let variant_d = Value::new(
         CoreValue::from(42u8),
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+        ValueClassification::Tag(ValueTag {
             tag: "VariantD".to_string(),
-            ty: None,
-        })),
+            is_empty: false,
+        }),
     );
-    let example: ExampleEnum = variant_d.try_into().unwrap();
+    let example = variant_d.try_into_value::<ExampleEnum>().unwrap();
     assert_matches!(example, ExampleEnum::VariantD(42));
 }
 
@@ -411,21 +397,21 @@ fn value_to_enum_failure() {
             ValueContainer::from(1u8),
             ValueContainer::from(2u8),
         ]),
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+        ValueClassification::Tag(ValueTag {
             tag: "VariantX".to_string(),
-            ty: None,
-        })),
+            is_empty: false,
+        }),
     );
-    assert!(ExampleEnum::try_from(invalid_variant).is_err());
+    assert!(invalid_variant.try_into_value::<ExampleEnum>().is_err());
 
     let invalid_variant = Value::new(
         CoreValue::from(42u8),
-        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+        ValueClassification::Tag(ValueTag {
             tag: "VariantA".to_string(),
-            ty: None,
-        })),
+            is_empty: false,
+        }),
     );
-    assert!(ExampleEnum::try_from(invalid_variant).is_err());
+    assert!(invalid_variant.try_into_value::<ExampleEnum>().is_err());
 }
 
 #[test]
@@ -462,10 +448,10 @@ fn struct_with_serde_to_value_container() {
 #[test]
 fn struct_with_serde_infallible_to_value_container() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(structural)]
     struct SerdeDatexExampleInfallible {
         a: u8,
-        #[datex(serde_infallible)]
+        #[datex(serde)]
         serde: SerdeExample,
     }
 
@@ -503,7 +489,7 @@ fn struct_with_value_container() {
     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(structural)]
     struct ExampleWithValueContainer {
         a: u8,
         val: ValueContainer,
@@ -516,7 +502,7 @@ fn struct_with_value_container() {
     };
 
     let value: Value = example_local.into();
-    let map: Map = value.try_into().unwrap();
+    let map = value.try_into_value::<Map>().unwrap();
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(
         map.try_get("val").unwrap(),
@@ -541,8 +527,8 @@ fn struct_with_value_container() {
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(map.try_get("val").unwrap(), &shared_container);
 
-    let deserialized_example_shared: ExampleWithValueContainer =
-        value_container.try_into().unwrap();
+    let deserialized_example_shared =
+        value_container.try_into_value::<ExampleWithValueContainer>().unwrap();
     assert_eq!(deserialized_example_shared.a, 42u8);
     assert_eq!(deserialized_example_shared.val, shared_container);
 }
@@ -552,7 +538,7 @@ fn struct_with_owned_shared_value_container() {
     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(structural)]
     struct ExampleWithOwnedContainer {
         owned: OwnedSharedContainer,
     }
@@ -584,7 +570,7 @@ fn struct_with_owned_shared_value_container() {
 
 #[test]
 fn get_datex_type_from_struct() {
-    let dx_type = Example::datex_type_without_cache();
+    let dx_type = Example::datex_type(&mut SharedReferencesCache::default());
 
     assert_eq!(
         dx_type,
@@ -643,7 +629,7 @@ fn get_datex_type_from_struct() {
 
 #[test]
 fn get_datex_type_from_enum() {
-    let dx_type = ExampleEnum::datex_type_without_cache();
+    let dx_type = ExampleEnum::datex_type(&mut SharedReferencesCache::default());
 
     assert_eq!(
         dx_type,
@@ -939,7 +925,7 @@ fn round_trip_boxed_struct() {
 #[test]
 fn struct_with_option() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(structural)]
     struct ExampleWithOption {
         value: Option<u8>,
     }
@@ -950,7 +936,7 @@ fn struct_with_option() {
 #[test]
 fn struct_with_box() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(structural)]
     struct ExampleWithBox {
         value: Box<u8>,
     }
@@ -962,7 +948,7 @@ fn struct_with_box() {
 #[test]
 fn struct_with_option_box() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(structural)]
     struct ExampleWithOptionBox {
         value: Option<Box<u8>>,
     }
@@ -975,7 +961,7 @@ fn struct_with_option_box() {
 #[test]
 fn struct_with_box_option() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(structural)]
     struct ExampleWithBoxOption {
         value: Box<Option<u8>>,
     }
@@ -990,7 +976,7 @@ fn struct_with_box_option() {
 #[test]
 fn struct_with_nested_option() {
     #[derive(Datex, Debug, Clone, PartialEq)]
-    #[datex(structural_recursive)]
+    #[datex(structural)]
     struct ExampleWithNestedOption {
         value: Option<Option<u8>>,
     }
@@ -1026,7 +1012,7 @@ fn round_trip_enum_with_option_and_box(value: ExampleEnumWithOptionAndBox) {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 enum ExampleEnumWithOptionAndBox {
     Optional(Option<u8>),
     Boxed(Box<u8>),
@@ -1036,6 +1022,7 @@ enum ExampleEnumWithOptionAndBox {
 #[test]
 fn recursive_struct_round_trip() {
     #[derive(Datex, Debug, Clone, PartialEq)]
+    #[datex(structural)]
     struct Node {
         value: u8,
         next: Option<Box<Node>>,

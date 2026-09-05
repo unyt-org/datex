@@ -1,11 +1,11 @@
 use crate::{
-    datex_proxy::DatexValueContainerProxyInfallibleSerialize,
     global::root_properties::RootProperty,
     runtime::execution::{
         ExecutionError, execution_loop::state::RuntimeExecutionState,
     },
     values::{core_values::map::Map, value_container::ValueContainer},
 };
+use crate::values::value::Value;
 
 pub fn get_root_property(
     runtime_state: &RuntimeExecutionState,
@@ -20,16 +20,13 @@ pub fn get_root_property(
             ValueContainer::from(runtime_state.caller_metadata.endpoint.clone())
         }
         RootProperty::ENV => {
-            ValueContainer::from(Map::from(runtime.internal.get_env()))
+            ValueContainer::from(runtime.internal.get_env())
         }
         RootProperty::CONFIG => {
-            runtime_state.runtime.config().clone().to_value_container(
-                &mut runtime_state
-                    .runtime
-                    .shared_references_cache_refcell()
-                    .borrow_mut(),
-            )
-        } // TODO pass context?
+            ValueContainer::Local(Value::native_structural(
+                runtime_state.runtime.config().clone(),
+            ))
+        }
     };
     Ok(res)
 }

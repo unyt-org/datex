@@ -1,22 +1,34 @@
 use crate::{
-    datex_proxy::DatexProxyType,
     prelude::*,
-    runtime::cache::shared_references_cache::SharedReferencesCache,
-    traits::{apply::ApplyArgument, callable::IntoDatexCallable},
+    runtime::{Runtime, cache::shared_references_cache::SharedReferencesCache},
+    traits::{
+        apply::ApplyArgument, callable::IntoDatexCallable,
+        convert_value_container::ConvertValueContainer,
+        get_datex_type::GetDatexType,
+    },
     types::type_definition::callable::{CallableKind, CallableTypeDefinition},
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
     values::{
         core_values::{callable::error::CallableError, endpoint::Endpoint},
         value_container::ValueContainer,
     },
 };
-use core::{fmt::Debug, hash::Hash, pin::Pin};
+use core::{fmt::Debug, hash::Hash, ops::DerefMut, pin::Pin};
 
 pub mod apply;
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
 pub mod equality;
 pub mod error;
+mod get_core_lib_type_id;
+mod get_datex_type;
 mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod to_instructions;
 mod value_access;
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
@@ -24,6 +36,7 @@ type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 type AsyncCallable = Rc<
     dyn Fn(
         Vec<ApplyArgument>,
+        &Runtime,
     ) -> BoxFuture<
         Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>,
     >,
@@ -32,6 +45,7 @@ type AsyncCallable = Rc<
 type SyncCallable = Rc<
     dyn Fn(
         Vec<ApplyArgument>,
+        &Runtime,
     ) -> Result<
         (Option<ValueContainer>, Vec<ValueContainer>),
         CallableError,
@@ -86,6 +100,7 @@ impl NativeCallable {
     pub fn new_sync(
         function: impl Fn(
             Vec<ApplyArgument>,
+            &Runtime,
         ) -> Result<
             (Option<ValueContainer>, Vec<ValueContainer>),
             CallableError,
@@ -97,6 +112,7 @@ impl NativeCallable {
     pub fn new_async(
         function: impl Fn(
             Vec<ApplyArgument>,
+            &Runtime,
         ) -> BoxFuture<
             Result<
                 (Option<ValueContainer>, Vec<ValueContainer>),
@@ -131,6 +147,7 @@ impl CallableBody {
     pub fn native_sync(
         native_callable: impl Fn(
             Vec<ApplyArgument>,
+            &Runtime,
         ) -> Result<
             (Option<ValueContainer>, Vec<ValueContainer>),
             CallableError,
@@ -141,6 +158,7 @@ impl CallableBody {
     pub fn native_async(
         native_callable: impl Fn(
             Vec<ApplyArgument>,
+            &Runtime,
         ) -> BoxFuture<
             Result<
                 (Option<ValueContainer>, Vec<ValueContainer>),
@@ -177,20 +195,28 @@ pub struct Callable {
     pub creator: Endpoint,
 }
 
+impl_display_for_datex_value!(
+    Callable,
+    impl core::fmt::Display for Callable {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            core::write!(f, "[[ callable ]]")
+        }
+    }
+);
+
 /// Creates a new [Callable] from a native Rust function or closure
 pub fn native_sync_callable<F, Args, R>(
     func: F,
     name: Option<String>,
     kind: CallableKind,
-    context: &mut SharedReferencesCache,
+    cache: &mut SharedReferencesCache,
 ) -> Callable
 where
     F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
-    R: DatexProxyType + TryInto<ValueContainer> + 'static,
-    <R as TryInto<ValueContainer>>::Error: Debug,
+    R: GetDatexType + ConvertValueContainer + 'static,
 {
-    let parameters = F::parameters(context);
-    let return_type = R::datex_type(context);
+    let parameters = F::parameters(cache);
+    let return_type = R::datex_type(cache);
     Callable {
         name,
         signature: CallableTypeDefinition {
@@ -201,11 +227,18 @@ where
             return_type: Some(Box::new(return_type)),
             yeet_type: None,
         },
-        body: CallableBody::Native(NativeCallable::new_sync(move |args| {
-            let result =
-                func.invoke(args.into_iter().map(|v| v.value).collect())?;
-            Ok((Some(result.try_into().unwrap()), vec![]))
-        })),
+        body: CallableBody::Native(NativeCallable::new_sync(
+            move |args, runtime| {
+                let result =
+                    func.invoke(args.into_iter().map(|v| v.value).collect())?;
+                Ok((
+                    Some(result.to_value_container(
+                        runtime.shared_references_cache_mut().deref_mut(),
+                    )),
+                    vec![],
+                ))
+            },
+        )),
         creator: Default::default(),
     }
 }
@@ -215,15 +248,14 @@ pub fn native_async_callable<F, Args, R>(
     func: F,
     name: Option<String>,
     kind: CallableKind,
-    context: &mut SharedReferencesCache,
+    cache: &mut SharedReferencesCache,
 ) -> Callable
 where
     F: IntoDatexCallable<Args, R> + Send + Sync + 'static,
-    R: DatexProxyType + TryInto<ValueContainer> + 'static,
-    <R as TryInto<ValueContainer>>::Error: Debug,
+    R: GetDatexType + ConvertValueContainer + 'static,
 {
-    let parameters = F::parameters(context);
-    let return_type = R::datex_type(context);
+    let parameters = F::parameters(cache);
+    let return_type = R::datex_type(cache);
     Callable {
         name,
         signature: CallableTypeDefinition {
@@ -234,14 +266,23 @@ where
             return_type: Some(Box::new(return_type)),
             yeet_type: None,
         },
-        body: CallableBody::Native(NativeCallable::new_async(move |args| {
-            let result =
-                func.invoke(args.into_iter().map(|v| v.value).collect());
-            Box::pin(async move {
-                let result = result?;
-                Ok((Some(result.try_into().unwrap()), vec![]))
-            })
-        })),
+        body: CallableBody::Native(NativeCallable::new_async(
+            move |args, runtime| {
+                // TODO: async invoke
+                let result =
+                    func.invoke(args.into_iter().map(|v| v.value).collect());
+                let runtime = runtime.clone();
+                Box::pin(async move {
+                    let result = result?;
+                    Ok((
+                        Some(result.to_value_container(
+                            runtime.shared_references_cache_mut().deref_mut(),
+                        )),
+                        vec![],
+                    ))
+                })
+            },
+        )),
         creator: Default::default(),
     }
 }

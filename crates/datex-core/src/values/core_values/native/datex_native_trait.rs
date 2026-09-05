@@ -1,51 +1,94 @@
 use crate::{
-    datex_proxy::DatexValueProxySerialize,
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-    prelude::*,
-    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::{dyn_eq::DynEq, try_clone::TryClone, value_access::ValueAccess},
-    values::value::Value,
 };
 use core::any::Any;
+use crate::core_compiler::to_instructions::{ToInstructions, ToInstructionsDyn};
+use crate::traits::classification::Classification;
+use crate::traits::convert_parts::{FromParts, IntoParts};
+use crate::traits::convert_value_container::ConvertValueContainer;
+use crate::traits::datex_hash::DatexHash;
+use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
+use crate::traits::get_datex_type::GetDatexType;
+#[cfg(feature = "ast")]
+use crate::traits::to_datex_expression_data::ToDatexExpressionData;
+
+
+#[cfg(feature = "ast")]
+pub trait DatexNativeBase: 
+    ConvertValueContainer + 
+    GetDatexType + 
+    IntoParts + 
+    FromParts + 
+    Classification +
+    GetCoreLibTypeId +
+    DatexHash +
+    ToDatexExpressionData {}
+#[cfg(feature = "ast")]
+impl <T> DatexNativeBase for T where T: 
+    ConvertValueContainer + 
+    GetDatexType + 
+    IntoParts + 
+    FromParts + 
+    Classification +
+    GetCoreLibTypeId +
+    DatexHash +
+    ToDatexExpressionData {}
+
+#[cfg(not(feature = "ast"))]
+pub trait DatexNativeBase:
+    ConvertValueContainer +
+    GetDatexType +
+    IntoParts +
+    FromParts +
+    Classification +
+    GetCoreLibTypeId +
+    DatexHash
+{}
+#[cfg(not(feature = "ast"))]
+impl <T> DatexNativeBase for T where T: 
+    ConvertValueContainer +
+    GetDatexType +
+    IntoParts +
+    FromParts +
+    Classification +
+    GetCoreLibTypeId +
+    DatexHash
+{}
 
 // TODO: better solution than duplicate definition of trait for different feature flags?
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 pub trait DatexNative:
-    Any
-    + DynEq
-    + DatexValueProxySerialize
-    + ValueAccess
-    + TryClone
-    + crate::traits::to_datex_expression_data::ToDatexExpressionData
+    Any +
+    DynEq +
+    DatexHash +
+    FromParts +
+    IntoParts +
+    GetCoreLibTypeId +
+    ValueAccess +
+    TryClone +
+    ConvertValueContainer +
+    Classification +
+    ToInstructionsDyn +
+    ToDatexExpressionData +
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
-
-    /// Convert the boxed native value into a [Value] containing a [CoreValue::Native] and the appropriate type definition.
-    fn boxed_to_datex_native_value(
-        self: Box<Self>,
-        cache: &mut SharedReferencesCache,
-    ) -> Value;
-
-    fn core_lib_type_id(&self) -> CoreLibTypeId {
-        CoreLibBaseTypeId::Any.into()
-    }
 }
 
-#[cfg(not(feature = "decompiler"))]
+#[cfg(not(feature = "ast"))]
 pub trait DatexNative:
-    Any + DynEq + DatexValueProxySerialize + ValueAccess + TryClone
+    Any +
+    DynEq +
+    DatexHash +
+    FromParts +
+    IntoParts +
+    GetCoreLibTypeId +
+    ValueAccess +
+    TryClone +
+    ConvertValueContainer +
+    Classification +
+    ToInstructionsDyn +
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
-
-    /// Convert the boxed native value into a [Value] containing a [CoreValue::Native] and the appropriate type definition.
-    fn boxed_to_datex_native_value(
-        self: Box<Self>,
-        cache: &mut SharedReferencesCache,
-    ) -> Value;
-
-    fn core_lib_type_id(&self) -> CoreLibTypeId {
-        CoreLibBaseTypeId::Any.into()
-    }
 }

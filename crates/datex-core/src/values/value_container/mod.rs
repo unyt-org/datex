@@ -1,8 +1,7 @@
 //! This module contains the implementation of the [ValueContainer] enum, which represents a container for values in the DATEX type system.
 //! A [ValueContainer] can either be a local value, which directly contains a [Value], or a shared value, which contains a reference to a [SharedContainer].
 use crate::{
-    datex_proxy::DatexValueContainerProxy, utils::sheep::Sheep,
-    values::value_container::value_key::BorrowedValueKey,
+    utils::sheep::Sheep, values::value_container::value_key::BorrowedValueKey,
 };
 pub mod equality;
 pub mod identity;
@@ -33,7 +32,11 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
-    utils::sheep_mut::SheepMut,
+    traits::convert_value_container::ConvertValueContainer,
+    utils::{
+        impl_display_for_datex_value::impl_display_for_datex_value,
+        sheep_mut::SheepMut,
+    },
     values::core_values::endpoint::Endpoint,
 };
 use core::{
@@ -42,11 +45,16 @@ use core::{
     ops::FnOnce,
 };
 
-pub mod datex_proxy;
+pub mod classification;
+pub mod convert_parts;
+mod convert_value_container;
+mod datex_hash;
 pub mod error;
-#[cfg(feature = "decompiler")]
+pub mod get_core_lib_type_id;
+pub mod get_datex_type;
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
-
+mod to_instructions;
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {
     Local(Value),
@@ -126,40 +134,31 @@ impl ValueContainer {
     /// Tries to get an immutable reference to the value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_as<'a, T>(&'a self) -> Option<&'a T>
+    pub fn try_as<T>(&self) -> Option<&T>
     where
-        &'a T: TryFrom<&'a CoreValue>,
+        T: ConvertValueContainer,
     {
-        match self {
-            ValueContainer::Local(value) => value.inner.try_as(),
-            ValueContainer::Shared(_) => None,
-        }
+        T::try_borrow_from_value_container(self).ok()
     }
 
     /// Tries to get a mutable reference to the value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_as_mut<'a, T>(&'a mut self) -> Option<&'a mut T>
+    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
     where
-        &'a mut T: TryFrom<&'a mut CoreValue>,
+        T: ConvertValueContainer,
     {
-        match self {
-            ValueContainer::Local(value) => value.inner.try_as_mut(),
-            ValueContainer::Shared(_) => None,
-        }
+        T::try_borrow_mut_from_value_container(self).ok()
     }
 
     /// Tries to get the current collapsed value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_into_value<T>(self) -> Option<T>
+    pub fn try_into_value<T>(self) -> Result<T, ValueContainer>
     where
-        T: TryFrom<CoreValue>,
+        T: ConvertValueContainer,
     {
-        match self {
-            ValueContainer::Local(value) => value.inner.try_into().ok(),
-            ValueContainer::Shared(_) => None,
-        }
+        T::try_from_value_container(self)
     }
 
     /// Strips any local observers from the given value container.
@@ -186,7 +185,7 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_type(&self) -> Sheep<'_, TypeDefinition> {
+    pub fn actual_type(&self) -> TypeDefinition {
         match self {
             ValueContainer::Local(local) => local.actual_type(),
             ValueContainer::Shared(shared) => shared.actual_type(),
@@ -197,7 +196,7 @@ impl ValueContainer {
     pub fn actual_container_type(&self) -> TypeDefinitionWithMetadata {
         match self {
             ValueContainer::Local(value) => TypeDefinitionWithMetadata::new(
-                value.actual_type().into_owned(),
+                value.actual_type(),
                 TypeMetadata::default(),
             ),
             ValueContainer::Shared(shared) => {
@@ -218,7 +217,7 @@ impl ValueContainer {
     /// For shared values, returns the allowed type of the value container
     pub fn allowed_or_actual_type(&self) -> Sheep<'_, TypeDefinition> {
         match self {
-            ValueContainer::Local(value) => value.actual_type(),
+            ValueContainer::Local(value) => Sheep::Owned(value.actual_type()),
             ValueContainer::Shared(shared) => Sheep::Ref(shared.allowed_type()),
         }
     }
@@ -271,13 +270,11 @@ impl ValueContainer {
         }
     }
 
-    /// Returns true if the underlaying value is uninitialized (recursive).
+    /// Returns true if the underlying value is uninitialized (recursive).
     pub fn is_uninitialized(&self) -> bool {
         match self {
             ValueContainer::Local(value) => value.is_uninitialized(),
-            ValueContainer::Shared(shared) => {
-                shared.value_container().is_uninitialized()
-            }
+            ValueContainer::Shared(shared) => shared.is_uninitialized(),
         }
     }
 
@@ -322,19 +319,22 @@ impl Hash for ValueContainer {
     }
 }
 
-impl Display for ValueContainer {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            ValueContainer::Local(value) => core::write!(f, "{value}"),
-            // TODO #118: only simple temporary way to distinguish between Value and Pointer
-            ValueContainer::Shared(shared) => {
-                if shared.is_borrowed() {
-                    write!(f, "{}", shared.to_string_omit_content())
-                } else {
-                    let value = shared.collapsed_value();
-                    write!(f, "shared ({})", value.borrow().as_ref())
+impl_display_for_datex_value!(
+    ValueContainer,
+    impl core::fmt::Display for ValueContainer {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            match self {
+                ValueContainer::Local(value) => core::write!(f, "{value}"),
+                // TODO #118: only simple temporary way to distinguish between Value and Pointer
+                ValueContainer::Shared(shared) => {
+                    if shared.is_borrowed() {
+                        write!(f, "{}", shared.to_string_omit_content())
+                    } else {
+                        let value = shared.collapsed_value();
+                        write!(f, "shared ({})", value.borrow().as_ref())
+                    }
                 }
             }
         }
     }
-}
+);

@@ -1,7 +1,11 @@
 use core::cell::RefCell;
 
 use crate::{
-    core_compiler::shared_value_tracking::SharedValueTracking, prelude::*,
+    core_compiler::{
+        shared_value_tracking::SharedValueTracking, value_visitor::ValueVisitor,
+    },
+    instruction::{Instruction, regular_instruction::RegularInstruction},
+    prelude::*,
 };
 
 pub struct InstructionContext<'tracking, 'ctx> {
@@ -17,19 +21,38 @@ impl<'tracking, 'ctx> InstructionContext<'tracking, 'ctx> {
     }
 }
 
-pub trait SharedValueTrackingProvider<'ctx> {
-    fn shared_value_tracking<'a>(
-        &'a self,
-    ) -> Option<&'a RefCell<SharedValueTracking<'ctx>>>;
-}
-pub trait ToInstructions<'ctx, T>
+pub trait ToInstructions<'ctx, V>
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    V: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType: Sized;
-
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>>;
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut V,
+    ) -> impl Iterator<Item = Instruction> + 'a
+    where
+        'ctx: 'a;
 }
+
+pub trait ToInstructionsDyn {
+    fn to_instructions_dyn<'a, 'ctx>(
+        &'a self,
+        ctx: &'a mut (dyn ValueVisitor<'ctx> + 'ctx),
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a;
+}
+// collides with box
+// impl<T> ToInstructionsDyn for T
+// where
+//     T: for<'ctx> ToInstructions<'ctx, dyn ValueVisitor<'ctx> + 'ctx> + ?Sized,
+// {
+//     default fn to_instructions_dyn<'a, 'ctx>(
+//         &'a self,
+//         ctx: &'a mut (dyn ValueVisitor<'ctx> + 'ctx),
+//     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+//     where
+//         'ctx: 'a,
+//     {
+//         Box::new(self.to_instructions(ctx))
+//     }
+// }

@@ -3,7 +3,6 @@ use crate::{
         core_compilation_context::CompileInput,
         value_compiler::compile_value_container,
     },
-    datex_proxy::DatexValueContainerProxySerialize,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     values::core_values::endpoint::Endpoint,
 };
@@ -61,7 +60,7 @@ impl WebRTCCommon {
 }
 
 #[derive(Datex)]
-#[datex(structural_recursive)]
+#[datex(structural)]
 pub struct WebRTCInterfaceSetupData {
     pub peer_endpoint: Endpoint,
     pub ice_servers: Option<Vec<RTCIceServer>>,

@@ -709,7 +709,7 @@ impl RuntimeInternal {
         Ok(())
     }
 
-    pub fn get_env(&self) -> HashMap<String, String> {
+    pub fn get_env(&self) -> IndexMap<String, String, RandomState> {
         self.config.env.clone().unwrap_or_default()
     }
 

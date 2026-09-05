@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn numeric_property() {
-        let mut list = Value::from(vec![
+        let mut list = Value::native_structural(vec![
             ValueContainer::from(1),
             ValueContainer::from(2),
             ValueContainer::from(3),
@@ -285,7 +285,7 @@ mod tests {
             .expect("Failed to set existing nested property");
         let prop = nested_map.try_get_property("outer", cache).unwrap();
         let inner_value = prop.try_as::<Map>().unwrap();
-        let inner_value = inner_value.try_get("inner").unwrap().as_borrowed();
+        let inner_value = inner_value.try_get("inner").unwrap();
         assert_eq!(inner_value.try_as::<i32>().unwrap().deref(), &42);
     }
 

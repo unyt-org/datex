@@ -21,15 +21,23 @@ use core::{
     result::Result,
 };
 mod child_iterator;
+pub mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod local_child_path_resolver;
 pub mod serde_dif;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod to_instructions;
 pub mod updates;
 mod value_access;
-
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
     value_updates::update_handler::{
         InternalMutabilityUpdateHandler, UpdateCallbackData,
     },
@@ -627,18 +635,21 @@ impl Iterator for IntoMapIterator {
     }
 }
 
-impl Display for Map {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        core::write!(f, "{{")?;
-        for (i, (key, value)) in self.iter().enumerate() {
-            if i > 0 {
-                core::write!(f, ", ")?;
+impl_display_for_datex_value!(
+    Map,
+    impl core::fmt::Display for Map {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result  {
+            core::write!(f, "{{")?;
+            for (i, (key, value)) in self.iter().enumerate() {
+                if i > 0 {
+                    core::write!(f, ", ")?;
+                }
+                core::write!(f, "{key}: {value}")?;
             }
-            core::write!(f, "{key}: {value}")?;
+            core::write!(f, "}}")
         }
-        core::write!(f, "}}")
     }
-}
+);
 
 impl<K, V> From<HashMap<K, V>> for Map
 where

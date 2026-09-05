@@ -1,23 +1,21 @@
 use crate::{
-    datex_proxy::DatexProxyType,
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::{AccessError, IndexOutOfBoundsError},
     traits::value_access::ValueAccess,
-    utils::goat::Goat,
     values::{
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
-        core_values::native::DatexNative,
-        value::borrowed_value::{BorrowedCoreValue, BorrowedValue},
         value_container::value_key::BorrowedValueKey,
     },
 };
+use crate::traits::get_datex_type::GetDatexType;
+use crate::values::core_values::native::DatexNativeBase;
 
 impl<T> ValueAccess for Vec<T>
 where
-    T: DatexNative + DatexProxyType,
+    T: DatexNativeBase + GetDatexType,
 {
     fn try_get_property(
         &self,
@@ -27,13 +25,7 @@ where
         match key {
             BorrowedValueKey::Index(index) => {
                 if let Some(value) = self.get(index as usize) {
-                    Ok(BorrowedValue {
-                        inner: BorrowedCoreValue::Native(Goat::Borrowed(value)),
-                        custom_type: Some(
-                            T::datex_type(cache).convert_to_definition(),
-                        ),
-                    }
-                    .into())
+                    Ok(value.as_borrowed_value_container(cache))
                 } else {
                     Err(AccessError::IndexOutOfBounds(IndexOutOfBoundsError {
                         index: index as u32,

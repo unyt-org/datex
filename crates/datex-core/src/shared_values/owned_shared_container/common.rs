@@ -44,7 +44,7 @@ impl SharedContainerCommon for OwnedSharedContainer {
 
     /// Checks if the owned container can be mutated by the local endpoint
     fn can_mutate(&self) -> bool {
-        self.container_mutability() == SharedContainerMutability::Mutable
+        self.container_mutability() == SharedContainerMutability::Mutable || self.is_uninitialized
     }
 
     fn inner(&self) -> Ref<'_, SharedContainerInner> {
@@ -78,4 +78,9 @@ impl SharedContainerCommon for OwnedSharedContainer {
     fn observer_data_mut(&self) -> RefMut<'_, ObserverData> {
         self.observer_data.borrow_mut()
     }
+
+    fn is_uninitialized(&self) -> bool {
+        self.is_uninitialized
+    }
+
 }

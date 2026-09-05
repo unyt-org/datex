@@ -12,13 +12,20 @@ pub mod equality;
 pub mod ops;
 pub mod serde_dif;
 use num::{BigInt, Num, ToPrimitive};
-
+mod to_instructions;
 use core::{fmt::Display, hash::Hash, str::FromStr};
 use num_integer::Integer as NumInteger;
 use serde::Deserialize;
 pub mod binrw;
+pub mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+pub mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod primitive;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;

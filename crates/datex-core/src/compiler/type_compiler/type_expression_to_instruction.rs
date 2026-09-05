@@ -1,43 +1,46 @@
 use crate::{
     ast::type_expressions::{TypeExpression, TypeExpressionData},
     core_compiler::to_instructions::{
-        SharedValueTrackingProvider, ToInstructions,
+        ToInstructions,
     },
     instruction::type_instruction::TypeInstruction,
     prelude::*,
     types::literal_type_definition::LiteralTypeDefinition,
 };
+use crate::core_compiler::value_visitor::ValueVisitor;
+use crate::instruction::Instruction;
+
 impl<'ctx, T> ToInstructions<'ctx, T> for TypeExpression
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             match self.data() {
                 TypeExpressionData::Integer(integer) => {
                     yield TypeInstruction::Literal(
                         LiteralTypeDefinition::Integer(integer.clone()),
-                    )
+                    ).into()
                 }
                 TypeExpressionData::Text(text) => {
                     yield TypeInstruction::Literal(LiteralTypeDefinition::Text(
                         text.clone(),
-                    ))
+                    )).into()
                 }
                 TypeExpressionData::Boolean(boolean) => {
                     yield TypeInstruction::Literal(
                         LiteralTypeDefinition::Boolean(boolean.clone()),
-                    )
+                    ).into()
                 }
                 TypeExpressionData::GetCoreLibType(core_lib_id) => {
-                    yield TypeInstruction::CoreType(*core_lib_id)
+                    yield TypeInstruction::CoreType(*core_lib_id).into()
                 }
                 TypeExpressionData::Range(range) => {
-                    yield TypeInstruction::Range;
+                    yield TypeInstruction::Range.into();
                     for instr in
                         range.start.to_instructions(ctx).collect::<Vec<_>>()
                     {

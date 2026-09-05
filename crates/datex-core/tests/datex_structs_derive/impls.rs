@@ -1,6 +1,5 @@
 use core::{cell::Ref, ops::DerefMut};
 use datex_core::{
-    datex_proxy::{DatexProxyType, DatexValueContainerProxySerialize},
     datex_registry::{
         all_datex_module_registrations, all_datex_type_registrations,
         get_all_modules,
@@ -16,6 +15,7 @@ use datex_core::{
         apply::{Apply, ApplyArgument},
         try_clone::TryClone,
         value_access::ValueAccess,
+        get_datex_type::GetDatexType,
     },
     types::{
         entities::{
@@ -23,7 +23,7 @@ use datex_core::{
             entity_type_definition::EntityTypeDefinition,
         },
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
+        entity_type::EntityType,
         r#type::Type,
         type_definition::{
             TypeDefinition,
@@ -42,6 +42,7 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
+use datex_core::values::value::value_classification::ValueClassification;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -86,11 +87,11 @@ fn entity_type_definition_from_type(
 #[test]
 fn take_from_cache() {
     let runtime = Runtime::stub();
-    let mut memory = runtime.shared_references_cache_mut();
-    let example_type = Example::datex_type(memory.deref_mut());
+    let mut cache = runtime.shared_references_cache_mut();
+    let example_type = Example::datex_type(cache.deref_mut());
 
     // when calling the datex_type function multiple times, it should return the same type definition from cache
-    assert_eq!(example_type, Example::datex_type(memory.deref_mut()));
+    assert_eq!(example_type, Example::datex_type(cache.deref_mut()));
 }
 
 #[test]
@@ -188,8 +189,8 @@ async fn call_async_instance_method_from_runtime() {
 #[test]
 fn signatures() {
     let runtime = Runtime::stub();
-    let mut memory = runtime.shared_references_cache_mut();
-    let example_type = Example::datex_type(memory.deref_mut());
+    let mut cache = runtime.shared_references_cache_mut();
+    let example_type = Example::datex_type(cache.deref_mut());
     let type_definition = entity_type_definition_from_type(&example_type);
 
     // call static method by manually extracting it from the type definition
@@ -216,9 +217,7 @@ fn signatures() {
                 result,
                 ValueContainer::Local(Value::new(
                     CoreValue::native(3u8),
-                    Some(TypeDefinition::core(CoreLibVariantTypeId::Integer(
-                        IntegerTypeVariant::U8
-                    )))
+                    ValueClassification::None,
                 ))
             );
         }
@@ -229,9 +228,7 @@ fn signatures() {
 
     // call method directly on an Example instance via the ValueContainer
     let example_instance = Box::new(Example { a: 1, b: 2 });
-    let example_instance_vc = example_instance
-        .try_boxed_to_value_container(&mut memory)
-        .unwrap();
+    let example_instance_vc = ValueContainer::from(Value::native(example_instance, cache.deref_mut()));
     // TODO: also store type in value container (this will require passing cache to the ValueContainer::from function somehow)
     // Then we can access methods on the type definition here
 

@@ -1,29 +1,29 @@
 use crate::{
-    core_compiler::to_instructions::{
-        SharedValueTrackingProvider, ToInstructions,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::regular_instruction::RegularInstruction,
-    prelude::*,
+    instruction::{Instruction, regular_instruction::RegularInstruction},
     values::core_values::list::List,
 };
 
 impl<'ctx, T> ToInstructions<'ctx, T> for List
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = RegularInstruction;
-    fn to_instructions(
-        &self,
-        _ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
-        Box::new(gen move {
-            yield RegularInstruction::list(self.items.len() as u32);
-            for _item in &self.items {
-                todo!("Implement instruction generation for value container");
-                // for instruction in item.to_instructions(ctx) {
-                //     yield instruction;
-                // }
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a
+    where
+        'ctx: 'a,
+    {
+        gen move {
+            yield RegularInstruction::list(self.items.len() as u32).into();
+            for item in &self.items {
+                for instruction in item.to_instructions(ctx) {
+                    yield instruction;
+                }
             }
-        })
+        }
     }
 }

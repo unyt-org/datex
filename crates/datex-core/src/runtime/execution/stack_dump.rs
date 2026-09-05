@@ -14,7 +14,7 @@ impl core::fmt::Display for MemoryDump {
         for (index, value) in self.stack.iter().enumerate() {
             match value {
                 Some(vc) => {
-                    let decompiled = crate::decompiler::decompile_value(
+                    let decompiled = crate::decompiler::ast_to_source_code::value_to_source_code(
                         vc,
                         crate::decompiler::DecompileOptions::colorized(),
                     );

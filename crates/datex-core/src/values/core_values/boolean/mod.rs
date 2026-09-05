@@ -9,9 +9,16 @@ use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 pub mod equality;
 pub mod ops;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
+mod datex_native_structural;
+pub mod datex_native;
+pub mod get_core_lib_type_id;
+pub mod convert_parts;
+pub mod get_datex_type;
+mod classification;
+mod datex_hash;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,
@@ -73,7 +80,7 @@ impl<T: Into<ValueContainer>> TryFrom<Option<T>> for Boolean {
                 let boolean: ValueContainer = v.into();
                 boolean
                     .try_into_value()
-                    .ok_or(ValueError::TypeConversionError)
+                    .map_err(|_| ValueError::TypeConversionError)
             }
             None => Err(ValueError::IsVoid),
         }

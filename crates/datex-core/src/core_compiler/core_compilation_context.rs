@@ -5,7 +5,7 @@ use crate::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
         shared_value_tracking::SharedValueTracking,
-        to_instructions::{SharedValueTrackingProvider, ToInstructions},
+        to_instructions::{ToInstructions},
         type_compiler::append_type_instruction,
         value_compiler::{append_shared_container_from_preamble, append_value},
         value_visitor::ValueVisitor,
@@ -20,6 +20,8 @@ use crate::{
     },
 };
 use binrw::io::Cursor;
+use crate::core_compiler::value_compiler::append_instruction;
+use crate::instruction::Instruction;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 
@@ -158,7 +160,7 @@ impl BufferProvider for CoreCompilationContext<'_> {
     }
 }
 
-impl ValueVisitor for CoreCompilationContext<'_> {
+impl<'ctx> ValueVisitor<'ctx> for CoreCompilationContext<'ctx> {
     /// Appends a value container.
     /// For local values, the value is just serialized
     /// For shared values, the container is registered in the context shared value tracking
@@ -174,18 +176,16 @@ impl ValueVisitor for CoreCompilationContext<'_> {
 
     fn visit_type(&mut self, ty: &Type) {
         let instructions =
-            ty.to_instructions(self).collect::<Vec<TypeInstruction>>();
+            ty.to_instructions(self).collect::<Vec<Instruction>>();
 
         for instruction in instructions {
-            append_type_instruction(self.cursor_mut(), instruction);
+            append_instruction(self.cursor_mut(), instruction);
         }
     }
-}
 
-impl<'a> SharedValueTrackingProvider<'a> for CoreCompilationContext<'a> {
-    fn shared_value_tracking<'b>(
-        &'b self,
-    ) -> Option<&'b RefCell<SharedValueTracking<'a>>> {
+    fn shared_value_tracking(
+        &self,
+    ) -> Option<&RefCell<SharedValueTracking<'ctx>>> {
         Some(&self.shared_value_tracking)
     }
 }

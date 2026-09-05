@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     types::{
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_entity_type::SharedContainerContainingEntityType,
+        entity_type::EntityType,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition::{
@@ -282,7 +282,7 @@ pub trait TypeFolder {
     /// Called when a reference to a shared container containing a entity type is encountered. The shared container is provided as an argument.
     fn fold_entity_reference(
         &mut self,
-        entity: &SharedContainerContainingEntityType,
+        entity: &EntityType,
     ) -> Result<Self::Output, Self::Error>;
 
     /// Called when a reference to a core type is encountered. The core type ID is provided as an argument.

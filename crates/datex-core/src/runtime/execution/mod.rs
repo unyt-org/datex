@@ -19,17 +19,21 @@ use crate::{
     },
     traits::apply::{Apply, ApplyArgument},
     types::{
-        entities::entity_impls::EntityImplMethod, r#type::Type,
-        type_definition::TypeDefinition,
+        entities::entity_impls::EntityImplMethod
     },
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
 use core::{result::Result, unreachable};
+use core::cell::Ref;
+use core::ops::Deref;
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
+use crate::types::entity_type::EntityType;
+use crate::values::value::Value;
+use crate::values::value::value_classification::ValueClassification;
 
 pub mod context;
 mod errors;
@@ -128,30 +132,20 @@ pub fn execute_dxb_sync(
                 method_name,
                 args,
             ) => {
-                let entity_type =
-                    if let TypeDefinition::Box(Type::Entity(entity_type)) =
-                        callee.value.actual_type().as_ref()
-                    {
-                        Some(entity_type.clone())
-                    } else {
-                        None
-                    };
+                let val = callee.value.collapsed_value();
+                let entity_type = try_get_entity_type(val.borrow().deref())?;
+                let method = try_get_method_data(
+                    &entity_type,
+                    method_name,
+                )?;
 
-                if let Some(entity_type) = entity_type
-                    && let Some(method) = entity_type
-                        .entity_definition()
-                        .try_get_method(&method_name)
-                {
-                    interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValueAndBorrowedArgs(
-                            try_call_method_sync(
-                                callee, method, args, &runtime,
-                            )?,
-                        ),
-                    )
-                } else {
-                    return Err(ExecutionError::MethodNotFound(method_name));
-                }
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValueAndBorrowedArgs(
+                        try_call_method_sync(
+                            callee, method.deref(), args, &runtime,
+                        )?,
+                    ),
+                )
             }
             _ => return Err(ExecutionError::RequiresAsyncExecution),
         }
@@ -290,36 +284,48 @@ pub async fn execute_dxb(
                 method_name,
                 args,
             ) => {
-                let entity_type =
-                    if let TypeDefinition::Box(Type::Entity(entity_type)) =
-                        callee.value.actual_type().as_ref()
-                    {
-                        Some(entity_type.clone())
-                    } else {
-                        None
-                    };
+                let val = callee.value.collapsed_value();
+                let entity_type = try_get_entity_type(val.borrow().deref())?;
+                let method = try_get_method_data(
+                    &entity_type,
+                    method_name,
+                )?;
 
-                if let Some(entity_type) = entity_type
-                    && let Some(method) = entity_type
-                        .entity_definition()
-                        .try_get_method(&method_name)
-                {
-                    interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValueAndBorrowedArgs(
-                            try_call_method_async(
-                                callee, method, args, &runtime,
-                            )
-                            .await?,
-                        ),
-                    )
-                } else {
-                    return Err(ExecutionError::MethodNotFound(method_name));
-                }
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValueAndBorrowedArgs(
+                        try_call_method_async(
+                            callee, method.deref(), args, &runtime,
+                        ).await?,
+                    ),
+                )
             }
         }
     }
 
     unreachable!("Execution loop should always return a result");
+}
+
+fn try_get_entity_type(
+    value: &Value,
+) -> Result<EntityType, ExecutionError> {
+    match value {
+        Value {classification: ValueClassification::Entity(entity_type), .. } => {
+            Ok(entity_type.clone())
+        }
+        _ => Err(ExecutionError::ExpectedEntityValue)
+    }
+}
+
+fn try_get_method_data(
+    entity_type: &EntityType,
+    method_name: String,
+) -> Result<Ref<EntityImplMethod>, ExecutionError> {
+    Ref::filter_map(
+        entity_type.entity_definition(),
+        |def| {
+            def.try_get_method(&method_name)
+        }
+    ).map_err(|_| ExecutionError::MethodNotFound(method_name))
 }
 
 fn try_call_method_sync(
@@ -508,7 +514,9 @@ mod tests {
         },
     };
     use core::assert_matches;
+    use indexmap::IndexMap;
     use log::{debug, info};
+    use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -733,16 +741,11 @@ mod tests {
         if let ValueContainer::Local(value) = result {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(
-                &value.custom_type,
-                &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                value.classification(),
+                &ValueClassification::Tag(ValueTag {
                     tag: "Example".to_string(),
-                    ty: Some(Box::new(Type::Definition(
-                        TypeDefinition::CoreType(
-                            CoreLibBaseTypeId::Unit.into()
-                        )
-                        .into()
-                    ))),
-                }))
+                    is_empty: true
+                })
             )
         } else {
             panic!("Result should be Local value");
@@ -762,11 +765,11 @@ mod tests {
                 )]))
             );
             assert_eq!(
-                &value.custom_type,
-                &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                value.classification(),
+                &ValueClassification::Tag(ValueTag {
                     tag: "Example".to_string(),
-                    ty: None,
-                }))
+                    is_empty: false
+                })
             )
         } else {
             panic!("Result should be Local value");
@@ -897,7 +900,7 @@ mod tests {
         let result =
             execute_datex_script_debug_with_result("{x: 1, y: 2, z: 42}");
         let map: CoreValue = result.get_cloned_value().inner;
-        let map: Map = map.try_into().unwrap();
+        let map = map.try_into_value::<Map>().unwrap();
 
         // form and size
         assert_eq!(map.to_string(), "{\"x\": 1, \"y\": 2, \"z\": 42}");
@@ -934,7 +937,7 @@ mod tests {
     fn empty_map() {
         let result = execute_datex_script_debug_with_result("{}");
         let map: CoreValue = result.clone().get_cloned_value().inner;
-        let map: Map = map.try_into().unwrap();
+        let map = map.try_into_value::<Map>().unwrap();
 
         // form and size
         assert_eq!(map.to_string(), "{}");
@@ -1124,7 +1127,7 @@ mod tests {
         let result =
             execute_datex_script_debug_with_result("const x = 'shared 42; x");
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
-            container.container_mutability().clone() == SharedContainerMutability::Immutable &&
+            container.container_mutability() == SharedContainerMutability::Immutable &&
             container.reference_mutability() == ReferenceMutability::Immutable
         );
 
@@ -1136,7 +1139,7 @@ mod tests {
         let result =
             execute_datex_script_debug_with_result("const x = shared 42; x");
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(ref container)) if
-            container.container_mutability().clone() == SharedContainerMutability::Immutable
+            container.container_mutability() == SharedContainerMutability::Immutable
         );
 
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
@@ -1149,7 +1152,7 @@ mod tests {
         );
         assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(
             ref container @ OwnedSharedContainer { .. }
-        )) if container.container_mutability().clone() == SharedContainerMutability::Mutable);
+        )) if container.container_mutability() == SharedContainerMutability::Mutable);
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -1206,7 +1209,7 @@ mod tests {
     async fn env_slot() {
         let res = execute_datex_script_with_runtime(
             RuntimeConfig {
-                env: Some(HashMap::from([(
+                env: Some(IndexMap::from([(
                     "TEST_ENV_VAR".to_string(),
                     "test_value".to_string(),
                 )])),
@@ -1217,8 +1220,8 @@ mod tests {
         .await
         .unwrap();
         assert!(res.is_some());
-        let env = res.unwrap().try_into_value::<Map>().unwrap();
-        assert_eq!(env.try_get("TEST_ENV_VAR"), Ok(&"test_value".into()));
+        let env = res.unwrap().try_into_value::<IndexMap<String, String>>().unwrap();
+        assert_eq!(env.get("TEST_ENV_VAR"), Some(&"test_value".into()));
     }
 
     #[test]

@@ -10,7 +10,6 @@ use crate::{
     types::entities::entity_type_definition::EntityTypeDefinition,
     values::core_values::native::{DatexNative, NativeCoreValue},
 };
-use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
 use crate::{
     types::r#type::Type,
@@ -37,16 +36,18 @@ use crate::{
 };
 use binrw::error::CustomError;
 use core::fmt::{Debug, Display, Formatter};
+use crate::preludes::derive::{ConvertCoreValue, DatexNativeStructural};
+use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 
 mod child_iterator;
-pub mod datex_proxy;
 pub mod equality;
 pub mod ops;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod try_clone;
+mod datex_hash;
 
-#[derive(Default, Clone, Debug, FromCoreValue)]
+#[derive(Default, Clone, Debug)]
 pub enum CoreValue {
     #[default]
     Uninitialized,
@@ -70,23 +71,16 @@ pub enum CoreValue {
     Native(NativeCoreValue),
 }
 
-impl From<&str> for CoreValue {
-    fn from(value: &str) -> Self {
-        CoreValue::Text(value.into())
-    }
-}
-impl From<String> for CoreValue {
-    fn from(value: String) -> Self {
-        CoreValue::Text(Text(value))
+/// Implementation that allows direct conversion from any type that implements the [DatexNativeStructural] trait into a [CoreValue].
+impl<T: DatexNativeStructural> From<T> for CoreValue {
+    fn from(value: T) -> Self {
+        CoreValue::native(value)
     }
 }
 
-impl<T> From<Vec<T>> for CoreValue
-where
-    T: Into<ValueContainer>,
-{
-    fn from(vec: Vec<T>) -> Self {
-        CoreValue::List(vec.into())
+impl From<&str> for CoreValue {
+    fn from(value: &str) -> Self {
+        CoreValue::Text(value.into())
     }
 }
 
@@ -96,101 +90,6 @@ where
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         CoreValue::List(List::new(iter.into_iter().map(Into::into).collect()))
-    }
-}
-
-impl From<bool> for CoreValue {
-    fn from(value: bool) -> Self {
-        CoreValue::Boolean(value.into())
-    }
-}
-
-impl From<i8> for CoreValue {
-    fn from(value: i8) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i16> for CoreValue {
-    fn from(value: i16) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i32> for CoreValue {
-    fn from(value: i32) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i64> for CoreValue {
-    fn from(value: i64) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<i128> for CoreValue {
-    fn from(value: i128) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-
-impl From<u8> for CoreValue {
-    fn from(value: u8) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u16> for CoreValue {
-    fn from(value: u16) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u32> for CoreValue {
-    fn from(value: u32) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u64> for CoreValue {
-    fn from(value: u64) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-impl From<u128> for CoreValue {
-    fn from(value: u128) -> Self {
-        CoreValue::TypedInteger(value.into())
-    }
-}
-
-impl From<f32> for CoreValue {
-    fn from(value: f32) -> Self {
-        CoreValue::TypedDecimal(value.into())
-    }
-}
-impl From<f64> for CoreValue {
-    fn from(value: f64) -> Self {
-        CoreValue::TypedDecimal(value.into())
-    }
-}
-
-impl From<usize> for CoreValue {
-    fn from(value: usize) -> Self {
-        #[cfg(target_pointer_width = "64")]
-        {
-            CoreValue::TypedInteger((value as u64).into())
-        }
-        #[cfg(target_pointer_width = "32")]
-        {
-            CoreValue::TypedInteger((value as u32).into())
-        }
-    }
-}
-
-impl From<isize> for CoreValue {
-    fn from(value: isize) -> Self {
-        #[cfg(target_pointer_width = "64")]
-        {
-            CoreValue::TypedInteger((value as i64).into())
-        }
-        #[cfg(target_pointer_width = "32")]
-        {
-            CoreValue::TypedInteger((value as i32).into())
-        }
     }
 }
 
@@ -270,27 +169,27 @@ impl CoreValue {
 
     /// Tries to get a borrow of the current value as the specified type.
     /// Does not perform any type conversion.
-    pub fn try_as<'a, T: 'a>(&'a self) -> Option<&'a T>
+    pub fn try_as<T>(&self) -> Option<&T>
     where
-        &'a T: TryFrom<&'a CoreValue>,
+        T: ConvertCoreValue
     {
-        <&T>::try_from(self).ok()
+        T::try_borrow_from_core_value(self).ok()
     }
 
-    pub fn try_as_mut<'a, T: 'a>(&'a mut self) -> Option<&'a mut T>
+    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
     where
-        &'a mut T: TryFrom<&'a mut CoreValue>,
+        T: ConvertCoreValue
     {
-        <&mut T>::try_from(self).ok()
+        T::try_borrow_mut_from_core_value(self).ok()
     }
 
     /// Tries to convert the current value into the specific specified type.
     /// Does not perform any type conversion.
-    pub fn try_into_value<T>(self) -> Option<T>
+    pub fn try_into_value<T>(self) -> Result<T, CoreValue>
     where
-        T: TryFrom<CoreValue>,
+        T: ConvertCoreValue,
     {
-        T::try_from(self).ok()
+        T::try_from_core_value(self)
     }
 
     /// Casts the value to a [Text] value
@@ -515,8 +414,8 @@ impl Display for CoreValue {
             }
             CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
             CoreValue::Box(inner) => write!(f, "({})", inner),
-            CoreValue::Native(_native) => {
-                write!(f, "[[ native value ]]")
+            CoreValue::Native(native) => {
+                write!(f, "{native}")
             }
         }
     }

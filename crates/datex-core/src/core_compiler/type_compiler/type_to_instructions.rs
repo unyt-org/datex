@@ -1,21 +1,24 @@
 use crate::{
     core_compiler::to_instructions::{
-        SharedValueTrackingProvider, ToInstructions,
+        ToInstructions,
     },
     instruction::type_instruction::TypeInstruction,
     prelude::*,
     types::r#type::Type,
 };
+use crate::core_compiler::value_visitor::ValueVisitor;
+use crate::instruction::Instruction;
+
 impl<'ctx, T> ToInstructions<'ctx, T> for Type
 where
-    T: SharedValueTrackingProvider<'ctx>,
+    T: ValueVisitor<'ctx> + ?Sized,
 {
-    type InstructionType = TypeInstruction;
 
-    fn to_instructions(
-        &self,
-        ctx: &mut T,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
+
+    fn to_instructions<'a>(
+        &'a self,
+        ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
         Box::new(gen move {
             match self {
                 Type::Entity(_) => unreachable!(),

@@ -46,6 +46,18 @@ impl TrackedValueMetadata {
             } => *is_self_referencing,
         }
     }
+    
+    /// Marks the tracked value as self-referencing.
+    pub(crate) fn mark_as_self_referencing(&mut self) {
+        match self {
+            TrackedValueMetadata::Root { is_self_referencing, .. } => {
+                *is_self_referencing = true;
+            }
+            TrackedValueMetadata::Child { is_self_referencing, .. } => {
+                *is_self_referencing = true;
+            }
+        }
+    }
 }
 
 /// Helper struct used during compilation to keep track which shared values are moved or referenced
@@ -99,10 +111,18 @@ impl<'a> SharedValueTracking<'a> {
 
     /// Updates the tracked value for a shared container if the new container has higher ownership than the existing one
     /// Returns the passed container if it was not yet in the tracked values
+    /// Sets is_self_referencing to true on the container metadata if it is already in the tracked values and
+    /// is_self_referencing is passed as true.
     fn update_container_ownership_if_exists(
         &mut self,
         container: SharedContainer,
+        is_self_referencing: bool,
     ) -> Option<SharedContainer> {
+        // if already existing container, update self_referencing if needed in metadata
+        if is_self_referencing && let Some((_, metadata)) = self.tracked_values.get_key_value_mut(&container) {
+            metadata.mark_as_self_referencing();
+        }
+        
         if let Some((existing, _)) =
             self.tracked_values.get_key_value(&container)
         {
@@ -156,25 +176,26 @@ impl<'a> SharedValueTracking<'a> {
         shared_container: SharedContainer,
         parents: &mut HashSet<SharedContainer>,
     ) {
+        // if already in parents list, this is a self-referencing value
+        let is_self_referencing = !parents.insert(shared_container.clone());
+
         // already registered as referenced, update the container mutability if needed
-        if let Some(container) =
-            self.update_container_ownership_if_exists(shared_container)
+        if let Some(new_registered_container) =
+            self.update_container_ownership_if_exists(shared_container, is_self_referencing)
         {
             let is_known = !self.receivers.is_empty()
                 && self
                     .pointer_availability_lookup
                     .is_available_for_all_endpoints(
                         self.receivers,
-                        &container.pointer_address(),
+                        &new_registered_container.pointer_address(),
                     );
 
-            let parent_moved = container.treat_as_move();
-            let container_clone = container.clone();
-
-            let is_self_referencing = !parents.insert(container_clone.clone());
+            let parent_moved = new_registered_container.treat_as_move();
+            let container_clone = new_registered_container.clone();
 
             self.tracked_values.insert(
-                container,
+                new_registered_container,
                 TrackedValueMetadata::Child {
                     is_known,
                     is_self_referencing,
@@ -557,9 +578,14 @@ mod tests {
 
         let parent_index = tracking.register_shared_value(&parent);
 
-        assert_eq!(parent_index, StackIndex(0));
         assert_eq!(tracking.tracked_values.len(), 1);
 
         assert_top_level(&tracking, &parent, StackIndex(0));
+        assert_eq!(parent_index, StackIndex(0));
+
+        assert_matches!(
+            tracking.tracked_values.first().unwrap().1,
+            &TrackedValueMetadata::Root { is_self_referencing: true, index: StackIndex(0), is_known: false }
+        );
     }
 }

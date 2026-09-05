@@ -18,9 +18,16 @@ pub struct Text(
     pub String,
 );
 pub mod ops;
-#[cfg(feature = "decompiler")]
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod convert_parts;
+mod get_datex_type;
+mod datex_native;
+mod classification;
+pub mod datex_hash;
 
 impl Display for Text {
     // TODO #319: escape string content
