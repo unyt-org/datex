@@ -1,10 +1,12 @@
+use crate::{
+    prelude::*,
+    preludes::derive::{DatexNative, StaticClassification},
+    traits::get_datex_type::GetDatexType,
+};
 use core::any::Any;
-use crate::preludes::derive::{DatexNative, StaticClassification};
-use crate::traits::get_datex_type::GetDatexType;
-use crate::prelude::*;
 
 impl<T: DatexNative + GetDatexType + StaticClassification> DatexNative
-for Box<T>
+    for Box<T>
 {
     fn as_any(&self) -> &dyn Any {
         self

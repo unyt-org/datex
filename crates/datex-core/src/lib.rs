@@ -22,7 +22,6 @@
 #![feature(const_default)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
-#![feature(negative_impls)]
 #![feature(try_blocks)]
 #![rustfmt::skip::macros(assert_regular_instructions_equal)]
 #![feature(arbitrary_self_types)]

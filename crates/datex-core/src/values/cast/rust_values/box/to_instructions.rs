@@ -1,9 +1,9 @@
 use crate::{
     core_compiler::{
-        into_regular_instruction::IntoRegularInstruction,
-        to_instructions::ToInstructions, value_visitor::ValueVisitor,
+        to_instructions::{ToInstructions, ToInstructionsDyn},
+        value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::Instruction,
 };
 
 impl<'ctx, C, V> ToInstructions<'ctx, C> for Box<V>
@@ -19,5 +19,20 @@ where
         'ctx: 'a,
     {
         self.as_ref().to_instructions(ctx)
+    }
+}
+
+impl<T> ToInstructionsDyn for Box<T>
+where
+    T: ToInstructionsDyn + ?Sized,
+{
+    fn to_instructions_dyn<'a, 'ctx>(
+        &'a self,
+        ctx: &'a mut (dyn ValueVisitor<'ctx> + 'ctx),
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
+        Box::new(self.as_ref().to_instructions_dyn(ctx))
     }
 }
