@@ -3,10 +3,10 @@ use crate::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
     instruction::{Instruction, regular_instruction::RegularInstruction},
-    values::core_values::list::List,
+    values::core_values::range::Range,
 };
 
-impl<'ctx, T> ToInstructions<'ctx, T> for List
+impl<'ctx, T> ToInstructions<'ctx, T> for Range
 where
     T: ValueVisitor<'ctx> + ?Sized,
 {
@@ -18,11 +18,12 @@ where
         'ctx: 'a,
     {
         gen move {
-            yield RegularInstruction::list(self.items.len() as u32).into();
-            for item in &self.items {
-                for instruction in item.to_instructions(ctx) {
-                    yield instruction;
-                }
+            yield RegularInstruction::range().into();
+            for instr in self.start.to_instructions(ctx) {
+                yield instr;
+            }
+            for instr in self.end.to_instructions(ctx) {
+                yield instr;
             }
         }
     }

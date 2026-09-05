@@ -409,6 +409,13 @@ impl RegularInstruction {
     pub fn r#false() -> Self {
         RegularInstruction::False
     }
+    pub fn boolean(value: bool) -> Self {
+        if value {
+            Self::r#true()
+        } else {
+            Self::r#false()
+        }
+    }
     pub fn set_stack_value(stack_index: StackIndex) -> Self {
         RegularInstruction::SetStackValue(stack_index)
     }

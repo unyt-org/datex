@@ -3,11 +3,10 @@ use crate::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
     instruction::{Instruction, regular_instruction::RegularInstruction},
-    prelude::*,
-    values::core_values::boolean::Boolean,
+    values::core_values::integer::Integer,
 };
 
-impl<'ctx, T> ToInstructions<'ctx, T> for Boolean
+impl<'ctx, T> ToInstructions<'ctx, T> for Integer
 where
     T: ValueVisitor<'ctx> + ?Sized,
 {
@@ -18,6 +17,8 @@ where
     where
         'ctx: 'a,
     {
-        Box::new(core::iter::once(RegularInstruction::boolean(self.0).into()))
+        core::iter::once(Instruction::Regular(RegularInstruction::integer(
+            self.clone(),
+        )))
     }
 }

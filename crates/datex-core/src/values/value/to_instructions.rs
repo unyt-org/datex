@@ -2,22 +2,20 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
-    prelude::*,
-    values::core_values::boolean::Boolean,
+    instruction::Instruction,
+    values::value::Value,
 };
-
-impl<'ctx, T> ToInstructions<'ctx, T> for Boolean
+impl<'ctx, T> ToInstructions<'ctx, T> for Value
 where
     T: ValueVisitor<'ctx> + ?Sized,
 {
     fn to_instructions<'a>(
         &'a self,
-        _ctx: &'a mut T,
+        ctx: &'a mut T,
     ) -> impl Iterator<Item = Instruction> + 'a
     where
         'ctx: 'a,
     {
-        Box::new(core::iter::once(RegularInstruction::boolean(self.0).into()))
+        gen move { todo!("Implement to_instructions for ValueContainer") }
     }
 }

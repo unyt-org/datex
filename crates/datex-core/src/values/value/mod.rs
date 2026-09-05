@@ -19,47 +19,49 @@ use crate::{
 pub mod apply;
 pub mod borrowed_value;
 mod child_iterator;
-pub mod get_datex_type;
+pub mod classification;
+pub mod convert_parts;
+pub mod convert_value_container;
+mod datex_hash;
+mod datex_native;
 pub mod equality;
+pub mod get_core_lib_type_id;
+pub mod get_datex_type;
 mod local_child_path_resolver;
 pub mod ops;
 pub mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod to_instructions;
 pub mod update_handler;
 mod value_access;
 pub mod value_classification;
-mod datex_native;
-pub mod convert_parts;
-pub mod get_core_lib_type_id;
-pub mod classification;
-pub mod convert_value_container;
-mod datex_hash;
 
 use crate::{
+    preludes::derive::{
+        ConvertCoreValue, DatexNativeStructural, TaggedTypeDefinition,
+    },
     shared_values::errors::AccessError,
-    traits::value_access::ValueAccess,
+    traits::{
+        convert_value_container::ConvertValueContainer,
+        datex_native_only_structural::DatexNativeOnlyStructural,
+        static_classification::StaticClassification, value_access::ValueAccess,
+    },
+    types::{entity_type::EntityType, r#type::Type},
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
     values::{
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
-        core_values::endpoint::Endpoint,
+        core_values::{endpoint::Endpoint, native::validate_classification},
+        value::value_classification::{ValueClassification, ValueTag},
     },
 };
 use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
-use crate::preludes::derive::{ConvertCoreValue, DatexNativeStructural, TaggedTypeDefinition};
-use crate::traits::convert_value_container::ConvertValueContainer;
-use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
-use crate::traits::static_classification::StaticClassification;
-use crate::types::entity_type::EntityType;
-use crate::types::r#type::Type;
-use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
-use crate::values::core_values::native::validate_classification;
-use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 #[derive(Debug)]
 pub struct Value {
@@ -103,7 +105,7 @@ impl Value {
     ) -> Self {
         Value {
             inner: inner.into(),
-            classification: classification.into()
+            classification: classification.into(),
         }
     }
 
@@ -114,12 +116,8 @@ impl Value {
         cache: &mut SharedReferencesCache,
     ) -> Value {
         let classification = value.classification(cache);
-        Value::new(
-            CoreValue::native(value),
-            classification,
-        )
+        Value::new(CoreValue::native(value), classification)
     }
-
 
     /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
     /// Since types might be needed to get resolved for entity values, the cache is required.
@@ -128,10 +126,7 @@ impl Value {
         cache: &mut SharedReferencesCache,
     ) -> Value {
         let classification = value.classification(cache);
-        Value::new(
-            CoreValue::native_boxed(value),
-            classification,
-        )
+        Value::new(CoreValue::native_boxed(value), classification)
     }
 
     /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
@@ -141,23 +136,15 @@ impl Value {
         cache: &mut SharedReferencesCache,
     ) -> Value {
         let classification = value.classification(cache);
-        Value::new(
-            CoreValue::native_boxed(value),
-            classification,
-        )
+        Value::new(CoreValue::native_boxed(value), classification)
     }
 
     /// Creates a new CoreValue from a native value that implements the [DatexNativeStructural] trait.
     /// Since the type is required to be completely structural without any entity references,
     /// no cache is needed to resolve types.
-    pub fn native_structural<T: DatexNativeStructural>(
-        value: T,
-    ) -> Value {
+    pub fn native_structural<T: DatexNativeStructural>(value: T) -> Value {
         let classification = value.classification_without_cache();
-        Value::new(
-            CoreValue::native(value),
-            classification,
-        )
+        Value::new(CoreValue::native(value), classification)
     }
 
     /// Creates a new CoreValue from a native value that implements the [DatexNativeStructural] trait.
@@ -167,10 +154,7 @@ impl Value {
         value: Box<T>,
     ) -> Value {
         let classification = value.classification_without_cache();
-        Value::new(
-            CoreValue::native_boxed(value),
-            classification,
-        )
+        Value::new(CoreValue::native_boxed(value), classification)
     }
 
     pub fn classification(&self) -> &ValueClassification {
@@ -246,7 +230,7 @@ impl Value {
     /// Does not perform any type conversion.
     pub fn try_as<T>(&self) -> Option<&T>
     where
-        T: ConvertCoreValue + StaticClassification
+        T: ConvertCoreValue + StaticClassification,
     {
         match validate_classification::<T>(self) {
             Ok(_) => T::try_borrow_from_core_value(&self.inner).ok(),
@@ -256,7 +240,7 @@ impl Value {
 
     pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
     where
-        T: ConvertCoreValue + StaticClassification
+        T: ConvertCoreValue + StaticClassification,
     {
         match validate_classification::<T>(self) {
             Ok(_) => T::try_borrow_mut_from_core_value(&mut self.inner).ok(),
@@ -271,7 +255,12 @@ impl Value {
         T: ConvertCoreValue + StaticClassification,
     {
         match validate_classification::<T>(&self) {
-            Ok(_) => T::try_from_core_value(self.inner).map_err(|inner| Value {inner, classification: self.classification}),
+            Ok(_) => {
+                T::try_from_core_value(self.inner).map_err(|inner| Value {
+                    inner,
+                    classification: self.classification,
+                })
+            }
             Err(_) => Err(self),
         }
     }
@@ -279,17 +268,23 @@ impl Value {
     /// Returns the actual current [TypeDefinition] of the value
     pub fn actual_type(&self) -> TypeDefinition {
         match &self.classification {
-            ValueClassification::Entity(entity_type) => TypeDefinition::Box(Box::new(Type::Entity(entity_type.clone()))),
-            ValueClassification::Tag(ValueTag {tag, is_empty}) => TypeDefinition::TaggedType(TaggedTypeDefinition {
-                tag: tag.clone(),
-                ty: if *is_empty {
-                   None
-                } else {
-                    Some(Box::new(Type::core(self.default_core_type())))
-                }
-            }),
+            ValueClassification::Entity(entity_type) => {
+                TypeDefinition::Box(Box::new(Type::Entity(entity_type.clone())))
+            }
+            ValueClassification::Tag(ValueTag { tag, is_empty }) => {
+                TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: tag.clone(),
+                    ty: if *is_empty {
+                        None
+                    } else {
+                        Some(Box::new(Type::core(self.default_core_type())))
+                    },
+                })
+            }
             ValueClassification::Impls(impls) => todo!(),
-            ValueClassification::None => TypeDefinition::CoreType(self.default_core_type()),
+            ValueClassification::None => {
+                TypeDefinition::CoreType(self.default_core_type())
+            }
         }
     }
 
@@ -437,7 +432,6 @@ impl_display_for_datex_value!(
         }
     }
 );
-
 
 #[cfg(test)]
 /// Tests for the Value struct and its methods.
