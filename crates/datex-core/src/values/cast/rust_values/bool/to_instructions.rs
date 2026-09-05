@@ -1,10 +1,22 @@
 use crate::{
-    core_compiler::into_regular_instruction::IntoRegularInstruction,
-    instruction::regular_instruction::RegularInstruction,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
+    },
+    instruction::{Instruction, regular_instruction::RegularInstruction},
+    prelude::*,
 };
 
-impl IntoRegularInstruction for bool {
-    fn into_regular_instruction(&self) -> RegularInstruction {
-        RegularInstruction::boolean(*self)
+impl<'ctx, T> ToInstructions<'ctx, T> for bool
+where
+    T: ValueVisitor<'ctx> + ?Sized,
+{
+    fn to_instructions<'a>(
+        &'a self,
+        _ctx: &'a mut T,
+    ) -> impl Iterator<Item = Instruction> + 'a
+    where
+        'ctx: 'a,
+    {
+        Box::new(core::iter::once(RegularInstruction::boolean(*self).into()))
     }
 }

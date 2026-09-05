@@ -41,18 +41,18 @@ pub trait ToInstructionsDyn {
     where
         'ctx: 'a;
 }
-
-impl<T> ToInstructionsDyn for T
-where
-    T: for<'ctx> ToInstructions<'ctx, dyn ValueVisitor<'ctx> + 'ctx>,
-{
-    fn to_instructions_dyn<'a, 'ctx>(
-        &'a self,
-        ctx: &'a mut (dyn ValueVisitor<'ctx> + 'ctx),
-    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
-    where
-        'ctx: 'a,
-    {
-        Box::new(self.to_instructions(ctx))
-    }
-}
+// collides with box
+// impl<T> ToInstructionsDyn for T
+// where
+//     T: for<'ctx> ToInstructions<'ctx, dyn ValueVisitor<'ctx> + 'ctx> + ?Sized,
+// {
+//     default fn to_instructions_dyn<'a, 'ctx>(
+//         &'a self,
+//         ctx: &'a mut (dyn ValueVisitor<'ctx> + 'ctx),
+//     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+//     where
+//         'ctx: 'a,
+//     {
+//         Box::new(self.to_instructions(ctx))
+//     }
+// }
