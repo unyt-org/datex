@@ -11,7 +11,6 @@ mod string;
 mod vec;
 
 use core::any::Any;
-use num::ToPrimitive;
 
 use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
@@ -19,11 +18,7 @@ use crate::{
     types::r#type::Type,
     values::{
         core_value::CoreValue,
-        core_values::{
-            boolean::Boolean, decimal::typed_decimal::TypedDecimal,
-            integer::typed_integer::TypedInteger, native::DatexNative,
-            text::Text,
-        },
+        core_values::{native::DatexNative, text::Text},
         value::Value,
         value_container::ValueContainer,
     },
@@ -32,27 +27,21 @@ use crate::{
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::{
+        classification::Classification,
+        convert_parts::{FromParts, IntoParts},
+        datex_native_only_structural::DatexNativeOnlyStructural,
+        datex_native_structural::DatexNativeStructural,
+        get_core_lib_type_id::GetCoreLibTypeId,
+        get_datex_type::GetDatexType,
+        static_classification::StaticClassification,
+    },
     types::type_definition::TypeDefinition,
-    values::{
-        borrowed_value_container::{
-            AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
-            BorrowedValueContainerMut,
-        },
-        core_values::{
-            decimal::typed_decimal::DecimalTypeVariant,
-            integer::typed_integer::IntegerTypeVariant,
-        },
+    values::core_values::{
+        decimal::typed_decimal::DecimalTypeVariant,
+        integer::typed_integer::IntegerTypeVariant,
     },
 };
-use crate::traits::classification::Classification;
-use crate::traits::convert_parts::{FromParts, IntoParts};
-use crate::traits::datex_hash::impl_datex_hash;
-use crate::traits::static_classification::StaticClassification;
-use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
-use crate::traits::datex_native_structural::DatexNativeStructural;
-use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
-use crate::traits::get_datex_type::GetDatexType;
-use crate::traits::value_access::ValueAccess;
 
 /// Implements [DatexNative] and associated traits for Rust core types.
 macro_rules! implement_rust_native_traits {
@@ -84,7 +73,9 @@ macro_rules! implement_rust_native_traits {
 
         impl GetDatexType for $type {
             fn datex_type(_cache: &mut SharedReferencesCache) -> Type {
-                Type::Definition(TypeDefinition::CoreType($dx_type.into()).into())
+                Type::Definition(
+                    TypeDefinition::CoreType($dx_type.into()).into(),
+                )
             }
         }
     };
@@ -354,12 +345,10 @@ impl GetDatexType for str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        values::{
-            core_value::CoreValue,
-            core_values::{boolean::Boolean, text::Text},
-            value::Value,
-        },
+    use crate::values::{
+        core_value::CoreValue,
+        core_values::{boolean::Boolean, text::Text},
+        value::Value,
     };
 
     #[test]
@@ -397,9 +386,6 @@ mod tests {
     fn try_boxed_to_value() {
         let value = Box::new(true);
         let result = Value::native_structural_boxed(value);
-        assert_eq!(
-            result,
-            Value::from(CoreValue::Boolean(Boolean(true)))
-        );
+        assert_eq!(result, Value::from(CoreValue::Boolean(Boolean(true))));
     }
 }

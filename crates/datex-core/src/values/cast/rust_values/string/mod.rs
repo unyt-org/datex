@@ -2,9 +2,9 @@ mod try_from_core_value;
 
 use crate::{
     prelude::*,
-    traits::value_access::ValueAccess,
+    traits::{datex_hash::impl_datex_hash, value_access::ValueAccess},
 };
-use crate::traits::datex_hash::impl_datex_hash;
+mod to_instructions;
 
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {
