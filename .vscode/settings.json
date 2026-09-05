@@ -7,6 +7,7 @@
         "compiler",
         "crypto_enabled"
     ],
+    "rust-analyzer.imports.preferPrelude": false,
     "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.check.command": "clippy",
     "rust-analyzer.check.workspace": false,

@@ -1,8 +1,7 @@
 //! This module contains the implementation of the [ValueContainer] enum, which represents a container for values in the DATEX type system.
 //! A [ValueContainer] can either be a local value, which directly contains a [Value], or a shared value, which contains a reference to a [SharedContainer].
 use crate::{
-    utils::sheep::Sheep,
-    values::value_container::value_key::BorrowedValueKey,
+    utils::sheep::Sheep, values::value_container::value_key::BorrowedValueKey,
 };
 pub mod equality;
 pub mod identity;
@@ -33,7 +32,11 @@ use crate::{
         },
         traits::SharedContainerCommon,
     },
-    utils::sheep_mut::SheepMut,
+    traits::convert_value_container::ConvertValueContainer,
+    utils::{
+        impl_display_for_datex_value::impl_display_for_datex_value,
+        sheep_mut::SheepMut,
+    },
     values::core_values::endpoint::Endpoint,
 };
 use core::{
@@ -41,19 +44,17 @@ use core::{
     hash::{Hash, Hasher},
     ops::FnOnce,
 };
-use crate::traits::convert_value_container::ConvertValueContainer;
-use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
-pub mod get_datex_type;
+pub mod classification;
+pub mod convert_parts;
+mod convert_value_container;
+mod datex_hash;
 pub mod error;
+pub mod get_core_lib_type_id;
+pub mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
-mod convert_value_container;
-pub mod classification;
-pub mod get_core_lib_type_id;
-pub mod convert_parts;
-mod datex_hash;
-
+mod to_instructions;
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {
     Local(Value),
@@ -273,9 +274,7 @@ impl ValueContainer {
     pub fn is_uninitialized(&self) -> bool {
         match self {
             ValueContainer::Local(value) => value.is_uninitialized(),
-            ValueContainer::Shared(shared) => {
-                shared.is_uninitialized()
-            }
+            ValueContainer::Shared(shared) => shared.is_uninitialized(),
         }
     }
 

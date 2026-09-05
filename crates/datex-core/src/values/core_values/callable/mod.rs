@@ -1,34 +1,35 @@
 use crate::{
     prelude::*,
-    runtime::cache::shared_references_cache::SharedReferencesCache,
-    traits::{apply::ApplyArgument, callable::IntoDatexCallable},
+    runtime::{Runtime, cache::shared_references_cache::SharedReferencesCache},
+    traits::{
+        apply::ApplyArgument, callable::IntoDatexCallable,
+        convert_value_container::ConvertValueContainer,
+        get_datex_type::GetDatexType,
+    },
     types::type_definition::callable::{CallableKind, CallableTypeDefinition},
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
     values::{
         core_values::{callable::error::CallableError, endpoint::Endpoint},
         value_container::ValueContainer,
     },
 };
-use core::{fmt::Debug, hash::Hash, pin::Pin};
-use core::ops::DerefMut;
-use crate::runtime::Runtime;
-use crate::traits::convert_value_container::ConvertValueContainer;
-use crate::traits::get_datex_type::GetDatexType;
-use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
+use core::{fmt::Debug, hash::Hash, ops::DerefMut, pin::Pin};
 
 pub mod apply;
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
 pub mod equality;
 pub mod error;
+mod get_core_lib_type_id;
+mod get_datex_type;
 mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod to_instructions;
 mod value_access;
-mod datex_native;
-mod get_core_lib_type_id;
-mod get_datex_type;
-mod convert_parts;
-mod classification;
-mod datex_native_structural;
-mod datex_hash;
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
@@ -203,7 +204,6 @@ impl_display_for_datex_value!(
     }
 );
 
-
 /// Creates a new [Callable] from a native Rust function or closure
 pub fn native_sync_callable<F, Args, R>(
     func: F,
@@ -227,11 +227,18 @@ where
             return_type: Some(Box::new(return_type)),
             yeet_type: None,
         },
-        body: CallableBody::Native(NativeCallable::new_sync(move |args, runtime| {
-            let result =
-                func.invoke(args.into_iter().map(|v| v.value).collect())?;
-            Ok((Some(result.to_value_container(runtime.shared_references_cache_mut().deref_mut())), vec![]))
-        })),
+        body: CallableBody::Native(NativeCallable::new_sync(
+            move |args, runtime| {
+                let result =
+                    func.invoke(args.into_iter().map(|v| v.value).collect())?;
+                Ok((
+                    Some(result.to_value_container(
+                        runtime.shared_references_cache_mut().deref_mut(),
+                    )),
+                    vec![],
+                ))
+            },
+        )),
         creator: Default::default(),
     }
 }
@@ -259,16 +266,23 @@ where
             return_type: Some(Box::new(return_type)),
             yeet_type: None,
         },
-        body: CallableBody::Native(NativeCallable::new_async(move |args, runtime| {
-            // TODO: async invoke
-            let result =
-                func.invoke(args.into_iter().map(|v| v.value).collect());
-            let runtime = runtime.clone();
-            Box::pin(async move {
-                let result = result?;
-                Ok((Some(result.to_value_container(runtime.shared_references_cache_mut().deref_mut())), vec![]))
-            })
-        })),
+        body: CallableBody::Native(NativeCallable::new_async(
+            move |args, runtime| {
+                // TODO: async invoke
+                let result =
+                    func.invoke(args.into_iter().map(|v| v.value).collect());
+                let runtime = runtime.clone();
+                Box::pin(async move {
+                    let result = result?;
+                    Ok((
+                        Some(result.to_value_container(
+                            runtime.shared_references_cache_mut().deref_mut(),
+                        )),
+                        vec![],
+                    ))
+                })
+            },
+        )),
         creator: Default::default(),
     }
 }
