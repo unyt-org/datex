@@ -1,28 +1,29 @@
 //! Implements [DatexValueProxy] for [Box<T>] where T: [DatexValueProxy].
+pub mod classification;
+mod convert_parts;
+pub mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
-mod get_datex_type;
-mod datex_native_structural;
-mod datex_native;
-mod convert_parts;
-mod get_core_lib_type_id;
-mod value_access;
-pub mod classification;
+mod to_instructions;
 mod try_from_core_value;
-pub mod datex_hash;
+mod value_access;
 
 #[cfg(test)]
 mod tests {
     use crate::{
         prelude::*,
-        values::value::Value,
-    };
-    use crate::preludes::derive::SharedReferencesCache;
-    use crate::traits::get_datex_type::GetDatexType;
-    use crate::values::{
-        core_value::CoreValue,
-        core_values::{endpoint::Endpoint, integer::Integer},
-        value_container::ValueContainer,
+        preludes::derive::SharedReferencesCache,
+        traits::get_datex_type::GetDatexType,
+        values::{
+            core_value::CoreValue,
+            core_values::{endpoint::Endpoint, integer::Integer},
+            value::Value,
+            value_container::ValueContainer,
+        },
     };
     // FIXME: how to handle Box<Value>
     // #[test]
@@ -47,11 +48,13 @@ mod tests {
             CoreValue::Endpoint(ref e) if e == &endpoint
         ));
     }
-    
+
     #[test]
     fn datex_type() {
-        let boxed_type = Box::<Endpoint>::datex_type(&mut SharedReferencesCache::default());
-        let endpoint_type = Endpoint::datex_type(&mut SharedReferencesCache::default());
+        let boxed_type =
+            Box::<Endpoint>::datex_type(&mut SharedReferencesCache::default());
+        let endpoint_type =
+            Endpoint::datex_type(&mut SharedReferencesCache::default());
         assert_eq!(boxed_type, endpoint_type);
     }
 }
