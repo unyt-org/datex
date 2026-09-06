@@ -3,7 +3,7 @@ mod common;
 pub mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
-
+mod to_instructions;
 use crate::{
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,

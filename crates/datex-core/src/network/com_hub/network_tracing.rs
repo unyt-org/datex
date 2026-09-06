@@ -11,6 +11,7 @@ use crate::{
             routing_header::RoutingHeader,
         },
     },
+    instruction::Instruction,
     network::{
         com_hub::{
             ComHub,
@@ -20,10 +21,12 @@ use crate::{
             properties::ComInterfaceProperties, socket::ComInterfaceSocketUUID,
         },
     },
+    preludes::derive::{RegularInstruction, ToInstructions, ValueVisitor},
     runtime::{
         execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
         pointer_availability_lookup::PointerAvailabilityLookup,
     },
+    serde_compat::serde_to_value_container,
     values::{
         core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
         value_container::ValueContainer,
@@ -102,6 +105,46 @@ pub struct NetworkTraceResult {
     #[datex(serde)]
     pub round_trip_time: Duration,
 }
+
+// impl NetworkTraceResult {
+//     fn to_instructions2<'ctx, 'a>(
+//         &'a self,
+//         ctx: &'a mut dyn ValueVisitor<'ctx>,
+//     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+//     where
+//         'ctx: 'a,
+//     {
+//         Box::new(gen move {
+//             {
+//                 let sender = &self.sender;
+//                 let receiver = &self.receiver;
+//                 let hops = &self.hops;
+//                 let round_trip_time = &self.round_trip_time;
+//                 yield RegularInstruction::map(4u32).into();
+//                 yield RegularInstruction::text("sender".to_string()).into();
+//                 for i in (sender).to_instructions(ctx) {
+//                     yield i;
+//                 }
+//                 yield RegularInstruction::text("receiver".to_string()).into();
+//                 for i in (receiver).to_instructions(ctx) {
+//                     yield i;
+//                 }
+//                 yield RegularInstruction::text("hops".to_string()).into();
+//                 for i in (hops).to_instructions(ctx) {
+//                     yield i;
+//                 }
+//                 yield RegularInstruction::text("round_trip_time".to_string())
+//                     .into();
+//                 let value = serde_to_value_container(&(round_trip_time))
+//                     .to_instructions(ctx)
+//                     .collect::<Vec<_>>();
+//                 for i in value {
+//                     yield i;
+//                 }
+//             }
+//         })
+//     }
+// }
 
 impl Default for NetworkTraceResult {
     fn default() -> Self {

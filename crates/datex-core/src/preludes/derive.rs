@@ -12,7 +12,7 @@ pub use crate::{
     core_compiler::to_instructions::ToInstructions,
     core_compiler::value_visitor::ValueVisitor,
     datex_registry::{get_impls, get_impls_for},
-    instruction::Instruction,
+    instruction::{Instruction, regular_instruction::RegularInstruction},
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     runtime::cache::shared_references_cache::{

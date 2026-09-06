@@ -1,6 +1,7 @@
 mod impls;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod to_instructions;
 
 use core::assert_matches;
 use datex_core::{
