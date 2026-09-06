@@ -1,40 +1,40 @@
 use crate::{
     ast::type_expressions::{TypeExpression, TypeExpressionData},
-    core_compiler::to_instructions::{
-        ToInstructions,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::type_instruction::TypeInstruction,
+    instruction::{Instruction, type_instruction::TypeInstruction},
     prelude::*,
     types::literal_type_definition::LiteralTypeDefinition,
 };
-use crate::core_compiler::value_visitor::ValueVisitor;
-use crate::instruction::Instruction;
 
-impl<'ctx, T> ToInstructions<'ctx, T> for TypeExpression
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-    fn to_instructions<'a>(
+impl ToInstructions for TypeExpression {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             match self.data() {
                 TypeExpressionData::Integer(integer) => {
                     yield TypeInstruction::Literal(
                         LiteralTypeDefinition::Integer(integer.clone()),
-                    ).into()
+                    )
+                    .into()
                 }
                 TypeExpressionData::Text(text) => {
                     yield TypeInstruction::Literal(LiteralTypeDefinition::Text(
                         text.clone(),
-                    )).into()
+                    ))
+                    .into()
                 }
                 TypeExpressionData::Boolean(boolean) => {
                     yield TypeInstruction::Literal(
                         LiteralTypeDefinition::Boolean(boolean.clone()),
-                    ).into()
+                    )
+                    .into()
                 }
                 TypeExpressionData::GetCoreLibType(core_lib_id) => {
                     yield TypeInstruction::CoreType(*core_lib_id).into()

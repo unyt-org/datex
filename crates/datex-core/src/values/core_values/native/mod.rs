@@ -8,27 +8,31 @@ use core::{
     fmt::{Debug, Formatter},
     ops::Deref,
 };
+mod datex_hash;
 mod datex_native_trait;
+pub mod display;
+mod get_core_lib_type_id;
+mod get_datex_type;
 mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod to_instructions;
 mod value_access;
-mod get_core_lib_type_id;
-mod get_datex_type;
-mod datex_hash;
-pub mod display;
 
 use crate::{
-    libs::core::type_id::CoreLibTypeId, traits::try_clone::TryClone,
-    values::core_value::CoreValue,
+    libs::core::type_id::CoreLibTypeId,
+    preludes::derive::{BorrowedValueContainer, StaticClassification},
+    traits::{
+        convert_core_value::ConvertCoreValue,
+        convert_value_container::ConvertValueContainer, try_clone::TryClone,
+    },
+    values::{core_value::CoreValue, value::borrowed_value::BorrowedValue},
 };
 pub use datex_native_trait::*;
-use crate::preludes::derive::{BorrowedValueContainer, StaticClassification};
-use crate::traits::convert_core_value::ConvertCoreValue;
-use crate::traits::convert_value_container::ConvertValueContainer;
-use crate::values::value::borrowed_value::BorrowedValue;
 
-impl<T: DatexNative + ConvertCoreValue + StaticClassification> ConvertValueContainer for T {
+impl<T: DatexNative + ConvertCoreValue + StaticClassification>
+    ConvertValueContainer for T
+{
     fn to_value_container(
         self,
         cache: &mut SharedReferencesCache,
@@ -36,18 +40,32 @@ impl<T: DatexNative + ConvertCoreValue + StaticClassification> ConvertValueConta
         ValueContainer::Local(Value::native(self, cache))
     }
 
-    fn as_borrowed_value_container(&self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer {
-        BorrowedValueContainer::Local(BorrowedValue::native_borrowed(self, cache))
+    fn as_borrowed_value_container(
+        &self,
+        cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainer {
+        BorrowedValueContainer::Local(BorrowedValue::native_borrowed(
+            self, cache,
+        ))
     }
 
-    fn try_from_value_container(value_container: ValueContainer) -> Result<Self, ValueContainer>
+    fn try_from_value_container(
+        value_container: ValueContainer,
+    ) -> Result<Self, ValueContainer>
     where
-        Self: Sized
+        Self: Sized,
     {
         match value_container {
             ValueContainer::Local(value) => {
                 match validate_classification::<T>(&value) {
-                    Ok(_) => Self::try_from_core_value(value.inner).map_err(|inner| ValueContainer::Local(Value {inner, classification: value.classification})),
+                    Ok(_) => Self::try_from_core_value(value.inner).map_err(
+                        |inner| {
+                            ValueContainer::Local(Value {
+                                inner,
+                                classification: value.classification,
+                            })
+                        },
+                    ),
                     Err(_) => Err(ValueContainer::Local(value)),
                 }
             }
@@ -55,14 +73,18 @@ impl<T: DatexNative + ConvertCoreValue + StaticClassification> ConvertValueConta
         }
     }
 
-    fn try_borrow_from_value_container(value_container: &ValueContainer) -> Result<&Self, ()>
+    fn try_borrow_from_value_container(
+        value_container: &ValueContainer,
+    ) -> Result<&Self, ()>
     where
-        Self: Sized
+        Self: Sized,
     {
         match value_container {
             ValueContainer::Local(value) => {
                 match validate_classification::<T>(&value) {
-                    Ok(_) => Ok(Self::try_borrow_from_core_value(&value.inner)?),
+                    Ok(_) => {
+                        Ok(Self::try_borrow_from_core_value(&value.inner)?)
+                    }
                     Err(_) => Err(()),
                 }
             }
@@ -70,14 +92,18 @@ impl<T: DatexNative + ConvertCoreValue + StaticClassification> ConvertValueConta
         }
     }
 
-    fn try_borrow_mut_from_value_container(value_container: &mut ValueContainer) -> Result<&mut Self, ()>
+    fn try_borrow_mut_from_value_container(
+        value_container: &mut ValueContainer,
+    ) -> Result<&mut Self, ()>
     where
-        Self: Sized
+        Self: Sized,
     {
         match value_container {
             ValueContainer::Local(value) => {
                 match validate_classification::<T>(&value) {
-                    Ok(_) => Ok(Self::try_borrow_mut_from_core_value(&mut value.inner)?),
+                    Ok(_) => Ok(Self::try_borrow_mut_from_core_value(
+                        &mut value.inner,
+                    )?),
                     Err(_) => Err(()),
                 }
             }
@@ -98,7 +124,6 @@ where
         Ok(())
     }
 }
-
 
 pub struct NativeCoreValue {
     pub value: Box<dyn DatexNative + 'static>,
@@ -187,18 +212,16 @@ mod tests {
         values::{core_value::CoreValue, core_values::native::NativeCoreValue},
     };
 
-    use crate::prelude::*;
-    use crate::values::value::value_classification::ValueClassification;
+    use crate::{
+        prelude::*, values::value::value_classification::ValueClassification,
+    };
 
     #[test]
     fn serde() {
         let val = NativeCoreValue::new("xx".to_string());
         let ser =
             val.to_datex_native_value(&mut SharedReferencesCache::default());
-        assert_eq!(
-            ser.classification(),
-            &ValueClassification::None,
-        );
+        assert_eq!(ser.classification(), &ValueClassification::None,);
         assert_eq!(
             ser.inner,
             CoreValue::Native(NativeCoreValue::new("xx".to_string()))

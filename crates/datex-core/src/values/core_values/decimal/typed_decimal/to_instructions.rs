@@ -1,24 +1,20 @@
 use crate::{
-    core_compiler::to_instructions::{
-        ToInstructions,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::regular_instruction::RegularInstruction,
+    instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
     values::core_values::decimal::typed_decimal::TypedDecimal,
 };
-use crate::core_compiler::value_visitor::ValueVisitor;
-use crate::instruction::Instruction;
-
-impl<'ctx, T> ToInstructions<'ctx, T> for TypedDecimal
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-    fn to_instructions<'a>(
+impl ToInstructions for TypedDecimal {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        _ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
-        gen move {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
+        Box::new(gen move {
             todo!(
                 "TODO: append type cast with only id (no need to access shared container)"
             );
@@ -34,6 +30,6 @@ where
                     RegularInstruction::decimal_big(val.clone()).into()
                 }
             }
-        }
+        })
     }
 }

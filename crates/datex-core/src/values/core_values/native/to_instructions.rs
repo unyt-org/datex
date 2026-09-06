@@ -3,11 +3,13 @@ use crate::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
     instruction::{Instruction, regular_instruction::RegularInstruction},
-    prelude::*,
-    values::core_values::Instant,
+    values::core_values::{
+        map::{BorrowedMapKey, Map},
+        native::NativeCoreValue,
+    },
 };
 
-impl ToInstructions for Instant {
+impl ToInstructions for NativeCoreValue {
     fn to_instructions<'ctx, 'a>(
         &'a self,
         ctx: &'a mut dyn ValueVisitor<'ctx>,
@@ -15,6 +17,6 @@ impl ToInstructions for Instant {
     where
         'ctx: 'a,
     {
-        Box::new(core::iter::once(RegularInstruction::instant(self.0).into()))
+        self.value.to_instructions(ctx)
     }
 }

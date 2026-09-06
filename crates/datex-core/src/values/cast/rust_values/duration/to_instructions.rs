@@ -2,7 +2,6 @@ use core::time::Duration;
 
 use crate::{
     core_compiler::{
-        into_regular_instruction::IntoRegularInstruction,
         to_instructions::{ToInstructions, ToInstructionsDyn},
         value_visitor::ValueVisitor,
     },
@@ -18,28 +17,25 @@ use crate::{
 //     }
 // }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for Duration
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-    fn to_instructions<'a>(
+impl ToInstructions for Duration {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        _ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a
-    where
-        'ctx: 'a,
-    {
-        gen move { todo!() }
-    }
-}
-impl ToInstructionsDyn for Duration {
-    fn to_instructions_dyn<'a, 'ctx>(
-        &'a self,
-        ctx: &'a mut (dyn ValueVisitor<'ctx> + 'ctx),
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
     {
-        Box::new(self.to_instructions(ctx))
+        Box::new(gen move { todo!() })
     }
 }
+// impl ToInstructionsDyn for Duration {
+//     fn to_instructions_dyn<'a, 'ctx>(
+//         &'a self,
+//         ctx: &'a mut (dyn ValueVisitor<'ctx> + 'ctx),
+//     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+//     where
+//         'ctx: 'a,
+//     {
+//         Box::new(self.to_instructions(ctx))
+//     }
+// }

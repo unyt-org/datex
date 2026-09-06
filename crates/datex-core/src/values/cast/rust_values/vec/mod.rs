@@ -1,19 +1,21 @@
-use crate::preludes::derive::{CoreValue, DatexNativeStructural, Value};
-use crate::traits::get_datex_type::GetDatexType;
-use crate::values::core_values::native::DatexNativeBase;
+use crate::{
+    preludes::derive::{CoreValue, DatexNativeStructural, Value},
+    traits::get_datex_type::GetDatexType,
+    values::core_values::native::DatexNativeBase,
+};
 
+pub mod classification;
+mod convert_parts;
+mod datex_hash;
+pub mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+pub mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
-mod value_access;
-pub mod get_datex_type;
-mod get_core_lib_type_id;
-mod datex_native_structural;
-mod convert_parts;
-pub mod datex_native;
+mod to_instructions;
 mod try_from_core_value;
-pub mod classification;
-mod datex_hash;
-
+mod value_access;
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -30,12 +32,13 @@ mod tests {
 
     use crate::{
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        preludes::derive::{CoreValue, SharedReferencesCache},
+        traits::get_datex_type::GetDatexType,
         types::type_definition::TypeDefinition,
+        values::{
+            core_values::integer::Integer, value_container::ValueContainer,
+        },
     };
-    use crate::preludes::derive::{CoreValue, SharedReferencesCache};
-    use crate::traits::get_datex_type::GetDatexType;
-    use crate::values::core_values::integer::Integer;
-    use crate::values::value_container::ValueContainer;
 
     #[test]
     fn to_value() {
@@ -63,7 +66,8 @@ mod tests {
 
     #[test]
     fn datex_type() {
-        let vec_type = Vec::<Integer>::datex_type(&mut SharedReferencesCache::default());
+        let vec_type =
+            Vec::<Integer>::datex_type(&mut SharedReferencesCache::default());
         vec_type.with_collapsed_type_definition(|td| {
             assert!(matches!(
                 td,

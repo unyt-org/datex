@@ -5,18 +5,16 @@ use crate::{
     instruction::{Instruction, regular_instruction::RegularInstruction},
     values::core_values::map::{BorrowedMapKey, Map},
 };
-impl<'ctx, T> ToInstructions<'ctx, T> for Map
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-    fn to_instructions<'a>(
+
+impl ToInstructions for Map {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
     {
-        gen move {
+        Box::new(gen move {
             yield RegularInstruction::map(self.size() as u32).into();
 
             for (key, value) in self.iter() {
@@ -29,23 +27,19 @@ where
                     yield instr;
                 }
             }
-        }
+        })
     }
 }
 
-impl<'ctx, 'b, T> ToInstructions<'ctx, T> for BorrowedMapKey<'b>
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-    fn to_instructions<'a>(
+impl<'b> ToInstructions for BorrowedMapKey<'b> {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
-        'b: 'a,
     {
-        gen move {
+        Box::new(gen move {
             match *self {
                 BorrowedMapKey::Text(text) => {
                     if text.len() < 256 {
@@ -64,6 +58,6 @@ where
                     }
                 }
             }
-        }
+        })
     }
 }
