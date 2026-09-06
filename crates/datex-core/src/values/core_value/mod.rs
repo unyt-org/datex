@@ -44,6 +44,7 @@ pub mod equality;
 pub mod ops;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod to_instructions;
 pub mod try_clone;
 
 #[derive(Default, Clone, Debug)]

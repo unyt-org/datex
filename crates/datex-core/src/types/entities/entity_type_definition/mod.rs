@@ -7,6 +7,7 @@ use crate::{
     prelude::*, types::type_definition::TypeDefinition,
     values::core_values::callable::Callable,
 };
+mod to_instructions;
 use core::fmt::Display;
 
 /// Represents a definition of an "entity" type,
