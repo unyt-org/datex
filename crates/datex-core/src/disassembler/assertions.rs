@@ -40,6 +40,25 @@ pub macro assert_instructions_equal {
     }}
 }
 
+/// Asserts that two lists of instructions are equal.
+/// The expected instructions can be provided either as a tuple of nested instructions or as a vector of instructions.
+pub macro assert_instruction_lists_eq {
+    ($output:expr, ($($expected:expr),* $(,)?)) => {{
+        use $crate::disassembler::assertions::assert_instruction_lists_eq;
+
+        let output_instructions = $output;
+        let expected_instructions = InstructionTree::<Instruction>::from(vec![$($expected),*]).flatten_instructions();
+        assert_instruction_lists_eq(output_instructions, expected_instructions, &[]);
+    }},
+    ($output:expr, $vec:expr $(,)?) => {{
+        use $crate::disassembler::assertions::assert_instruction_lists_eq;
+
+        let output_instructions = $output;
+        let expected_instructions = InstructionTree::<Instruction>::from($vec.into_iter().map(|i| i.into()).collect::<Vec<_>>()).flatten_instructions();
+        assert_instruction_lists_eq(output_instructions, expected_instructions, &[]);
+    }}
+}
+
 pub fn assert_instruction_lists_eq(
     output_instructions: Vec<Instruction>,
     expected_instructions: Vec<Instruction>,
