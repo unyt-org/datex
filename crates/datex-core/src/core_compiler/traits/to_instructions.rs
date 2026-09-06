@@ -21,17 +21,6 @@ impl<'tracking, 'ctx> InstructionContext<'tracking, 'ctx> {
     }
 }
 
-// pub trait ToInstructions<'ctx, V>
-// where
-//     V: ValueVisitor<'ctx> + ?Sized,
-// {
-//     fn to_instructions<'a>(
-//         &'a self,
-//         ctx: &'a mut V,
-//     ) -> impl Iterator<Item = Instruction> + 'a
-//     where
-//         'ctx: 'a;
-// }
 pub trait ToInstructions {
     fn to_instructions<'ctx, 'a>(
         &'a self,
@@ -40,27 +29,3 @@ pub trait ToInstructions {
     where
         'ctx: 'a;
 }
-
-pub trait ToInstructionsDyn {
-    fn to_instructions_dyn<'a, 'ctx>(
-        &'a self,
-        ctx: &'a mut (dyn ValueVisitor<'ctx> + 'ctx),
-    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
-    where
-        'ctx: 'a;
-}
-// collides with box
-// impl<T> ToInstructionsDyn for T
-// where
-//     T: for<'ctx> ToInstructions<'ctx, dyn ValueVisitor<'ctx> + 'ctx> + ?Sized,
-// {
-//     default fn to_instructions_dyn<'a, 'ctx>(
-//         &'a self,
-//         ctx: &'a mut (dyn ValueVisitor<'ctx> + 'ctx),
-//     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
-//     where
-//         'ctx: 'a,
-//     {
-//         Box::new(self.to_instructions(ctx))
-//     }
-// }
