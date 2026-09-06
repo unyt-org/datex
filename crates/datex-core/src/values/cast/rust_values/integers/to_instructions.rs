@@ -1,8 +1,9 @@
 use crate::{
-    core_compiler::into_regular_instruction::IntoRegularInstruction,
+    core_compiler::into_regular_instruction::{
+        IntoRegularInstruction, impl_regular_to_instructions,
+    },
     instruction::regular_instruction::RegularInstruction,
 };
-
 impl IntoRegularInstruction for u8 {
     fn into_regular_instruction(&self) -> RegularInstruction {
         RegularInstruction::uint8(*self)
@@ -86,3 +87,7 @@ impl IntoRegularInstruction for usize {
         RegularInstruction::uint64(*self as u64)
     }
 }
+
+impl_regular_to_instructions!(
+    u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, isize, usize,
+);

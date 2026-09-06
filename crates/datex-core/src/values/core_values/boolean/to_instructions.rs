@@ -6,14 +6,11 @@ use crate::{
     values::core_values::boolean::Boolean,
 };
 
-impl<'ctx, T> ToInstructions<'ctx, T> for Boolean
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-    fn to_instructions<'a>(
+impl ToInstructions for Boolean {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
     {

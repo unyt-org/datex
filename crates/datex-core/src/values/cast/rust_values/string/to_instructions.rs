@@ -1,5 +1,7 @@
 use crate::{
-    core_compiler::into_regular_instruction::IntoRegularInstruction,
+    core_compiler::into_regular_instruction::{
+        IntoRegularInstruction, impl_regular_to_instructions,
+    },
     instruction::regular_instruction::RegularInstruction,
 };
 
@@ -8,3 +10,4 @@ impl IntoRegularInstruction for String {
         RegularInstruction::text(self.clone())
     }
 }
+impl_regular_to_instructions!(String);

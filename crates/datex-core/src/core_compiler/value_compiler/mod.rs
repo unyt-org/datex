@@ -27,8 +27,9 @@ use binrw::{
 };
 
 use crate::{
-    core_compiler::core_compilation_context::{
-        ByteCursor, CoreCompilationContext,
+    core_compiler::{
+        core_compilation_context::{ByteCursor, CoreCompilationContext},
+        to_instructions::ToInstructionsDyn,
     },
     instruction::{
         Instruction,
@@ -53,10 +54,11 @@ use crate::{
         type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
-    values::core_values::callable::CallableBody,
+    values::{
+        core_values::callable::CallableBody,
+        value::value_classification::{ValueClassification, ValueTag},
+    },
 };
-use crate::core_compiler::to_instructions::ToInstructionsDyn;
-use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -166,26 +168,29 @@ pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx> + 'ctx>(
     // append classified type information
     match &value.classification {
         // unit tagged value (e.g. #Example)
-        ValueClassification::Tag(ValueTag {
-           tag,
-           is_empty, 
-        }) => {
-            context
-                .write(RegularInstruction::tagged_value(tag.clone(), *is_empty));
-            if *is_empty {return}; // early return, don't append null value; TODO: assert that value is actually null?
+        ValueClassification::Tag(ValueTag { tag, is_empty }) => {
+            context.write(RegularInstruction::tagged_value(
+                tag.clone(),
+                *is_empty,
+            ));
+            if *is_empty {
+                return;
+            }; // early return, don't append null value; TODO: assert that value is actually null?
         }
         // entity value
         ValueClassification::Entity(entity_type) => {
-            context.write(RegularInstruction::EntityValue(entity_type.pointer_address()));
+            context.write(RegularInstruction::EntityValue(
+                entity_type.pointer_address(),
+            ));
         }
         // impls value
         ValueClassification::Impls(impls) => {
-            todo!("Compiling values with Impls classification is not yet implemented");
+            todo!(
+                "Compiling values with Impls classification is not yet implemented"
+            );
         }
         // no classification, just append the value
-        ValueClassification::None => {
-
-        }
+        ValueClassification::None => {}
     }
 
     let _: () = match &value.inner {
@@ -337,7 +342,7 @@ pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx> + 'ctx>(
         }
         CoreValue::Native(native) => {
             let instructions = (*native.value)
-                .to_instructions_dyn(context)
+                .to_instructions(context)
                 .collect::<Vec<Instruction>>();
 
             for instruction in instructions {
@@ -627,7 +632,7 @@ mod tests {
         },
         shared_values::{
             PointerAddress, ReferenceMutability, SharedContainer,
-            SharedContainerMutability,
+            SharedContainerMutability, traits::SharedContainerCommon,
         },
         types::{
             r#type::Type,
@@ -636,14 +641,17 @@ mod tests {
             },
         },
         values::{
-            core_value::CoreValue, core_values::list::List, value::Value,
+            core_value::CoreValue,
+            core_values::list::List,
+            value::{
+                Value,
+                value_classification::{ValueClassification, ValueTag},
+            },
             value_container::ValueContainer,
         },
     };
     use core::assert_matches;
     use log::info;
-    use crate::shared_values::traits::SharedContainerCommon;
-    use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -663,7 +671,10 @@ mod tests {
     fn compile_tagged_empty_value() {
         let value = Value::new(
             CoreValue::Null,
-            ValueClassification::Tag(ValueTag {tag: "Example".to_string(), is_empty: true}),
+            ValueClassification::Tag(ValueTag {
+                tag: "Example".to_string(),
+                is_empty: true,
+            }),
         );
 
         compile_value_assert_instructions(
@@ -679,7 +690,10 @@ mod tests {
     fn compile_tagged_value() {
         let value = Value::new(
             CoreValue::Null,
-            ValueClassification::Tag(ValueTag {tag: "Example".to_string(), is_empty: false}),
+            ValueClassification::Tag(ValueTag {
+                tag: "Example".to_string(),
+                is_empty: false,
+            }),
         );
 
         compile_value_assert_instructions(

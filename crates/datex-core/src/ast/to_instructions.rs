@@ -3,32 +3,28 @@ use crate::{
         Apply, BinaryOperation, ComparisonOperation, CreateShared,
         DatexExpressionData, DeriveRef, DeriveSharedRef, GenericInstantiation,
         InterfaceMethodCall, List, Map, PropertyAccess, PropertyAssignment,
-        RangeDeclaration, RequestSharedRef, RootPropertyAccess, Statements,
-        TagExpression, UnaryOperation, UnboundedStatement, Unbox,
-        UnboxAssignment,
+        RangeDeclaration, RequestSharedRef, RootPropertyAccess, TagExpression,
+        UnaryOperation, Unbox, UnboxAssignment,
     },
-    compiler::context::CompilationContext,
-    core_compiler::to_instructions::{
-        ToInstructions,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
     global::{operators::ModificationOperator, root_properties::RootProperty},
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::regular_instruction::RegularInstruction,
     prelude::*,
     shared_values::{ReferenceMutability, SharedContainerMutability},
 };
 use core::str::FromStr;
-use crate::core_compiler::value_visitor::ValueVisitor;
 use crate::instruction::Instruction;
 
-impl<'ctx, T> ToInstructions<'ctx, T> for DatexExpressionData
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-    fn to_instructions<'a>(
+impl ToInstructions for DatexExpressionData {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             match self {
                 DatexExpressionData::Integer(integer) => {
@@ -233,7 +229,8 @@ where
                 DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
                     yield RegularInstruction::get_core_lib_value(
                         (*core_lib_id).into(),
-                    ).into();
+                    )
+                    .into();
                 }
 
                 DatexExpressionData::CallableDeclaration(
@@ -279,16 +276,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for RangeDeclaration
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for RangeDeclaration {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             yield RegularInstruction::range().into();
             for instruction in self.start.to_instructions(ctx) {
@@ -301,18 +296,17 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for ComparisonOperation
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for ComparisonOperation {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
-            yield RegularInstruction::comparison_operation(self.operator).into();
+            yield RegularInstruction::comparison_operation(self.operator)
+                .into();
             for instruction in self.left.to_instructions(ctx) {
                 yield instruction;
             }
@@ -323,16 +317,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for UnboxAssignment
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for UnboxAssignment {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             match self.operator {
                 Some(operator) => match operator {
@@ -344,7 +336,10 @@ where
                     }
                     _ => todo!("Generate x = x * z instructions;"),
                 },
-                None => yield RegularInstruction::set_shared_container_value().into(),
+                None => {
+                    yield RegularInstruction::set_shared_container_value()
+                        .into()
+                }
             };
 
             // compile assigned expression
@@ -360,16 +355,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for PropertyAssignment
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for PropertyAssignment {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             let PropertyAssignment {
                 base,
@@ -383,7 +376,8 @@ where
                 DatexExpressionData::Text(key)
                     if key.0.len() <= u8::MAX as usize =>
                 {
-                    yield RegularInstruction::set_entry_text(key.0.clone()).into();
+                    yield RegularInstruction::set_entry_text(key.0.clone())
+                        .into();
                 }
 
                 DatexExpressionData::Integer(index)
@@ -411,16 +405,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for UnaryOperation
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for UnaryOperation {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             yield RegularInstruction::unary_operation(self.operator).into();
             for instruction in self.expression.to_instructions(ctx) {
@@ -430,16 +422,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for Apply
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for Apply {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             yield RegularInstruction::apply(self.arguments.len() as u8).into();
             // compile arguments
@@ -456,16 +446,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for InterfaceMethodCall
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for InterfaceMethodCall {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             // TODO: replace with trait impls
             match self.method_name.as_str() {
@@ -497,7 +485,8 @@ where
                     yield RegularInstruction::call_method(
                         self.method_name.clone(),
                         self.arguments.len() as u8,
-                    ).into();
+                    )
+                    .into();
 
                     for argument in &self.arguments {
                         for instruction in argument.to_instructions(ctx) {
@@ -515,22 +504,21 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for PropertyAccess
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for PropertyAccess {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             // depending on the key, handle different property accesses
             match self.property.data() {
                 // simple text key if length fits in u8
                 DatexExpressionData::Text(key) if key.0.len() <= 255 => {
-                    yield RegularInstruction::get_entry_text(key.0.clone()).into();
+                    yield RegularInstruction::get_entry_text(key.0.clone())
+                        .into();
                 }
                 // index access if integer fits in u32
                 DatexExpressionData::Integer(index)
@@ -554,16 +542,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for GenericInstantiation
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for GenericInstantiation {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        _ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             // NOTE: might already be handled in type compilation
             todo!()
@@ -571,33 +557,32 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for RequestSharedRef
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for RequestSharedRef {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        _ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
-        Box::new(core::iter::once(RegularInstruction::get_shared_ref(
-            self.address.clone(),
-            &self.mutability,
-        ).into()))
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
+        Box::new(core::iter::once(
+            RegularInstruction::get_shared_ref(
+                self.address.clone(),
+                &self.mutability,
+            )
+            .into(),
+        ))
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for List
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for List {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             yield RegularInstruction::list(self.items.len() as u32).into();
             for item in &self.items {
@@ -609,16 +594,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for Map
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for Map {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             yield RegularInstruction::map(self.entries.len() as u32).into();
             for (key, value) in &self.entries {
@@ -628,10 +611,13 @@ where
                         if text.len() < 256 {
                             yield RegularInstruction::key_value_short_text(
                                 text.0.clone(),
-                            ).into();
+                            )
+                            .into();
                         } else {
-                            yield RegularInstruction::key_value_dynamic().into();
-                            yield RegularInstruction::text(text.0.clone()).into();
+                            yield RegularInstruction::key_value_dynamic()
+                                .into();
+                            yield RegularInstruction::text(text.0.clone())
+                                .into();
                         }
                     }
                     // other -> insert key as dynamic
@@ -652,21 +638,20 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for TagExpression
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for TagExpression {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             yield RegularInstruction::tagged_value(
                 self.tag.clone(),
                 self.expression.is_none(),
-            ).into();
+            )
+            .into();
             if let Some(expression) = &self.expression {
                 for instruction in expression.to_instructions(ctx) {
                     yield instruction;
@@ -675,17 +660,14 @@ where
         })
     }
 }
-
-impl<'ctx, T> ToInstructions<'ctx, T> for RootPropertyAccess
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for RootPropertyAccess {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        _ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             let root_property = RootProperty::from_str(&self.property_name)
                 .expect("invalid root property name");
@@ -694,16 +676,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for Unbox
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for Unbox {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             yield RegularInstruction::unbox().into();
             for instruction in self.expression.to_instructions(ctx) {
@@ -713,16 +693,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for DeriveRef
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for DeriveRef {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             for instruction in self.expression.to_instructions(ctx) {
                 yield instruction;
@@ -731,16 +709,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for CreateShared
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for CreateShared {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             match self.mutability {
                 SharedContainerMutability::Immutable => {
@@ -758,23 +734,22 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for DeriveSharedRef
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for DeriveSharedRef {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             match self.mutability {
                 ReferenceMutability::Immutable => {
                     yield RegularInstruction::derive_shared_reference().into();
                 }
                 ReferenceMutability::Mutable => {
-                    yield RegularInstruction::derive_shared_reference_mut().into();
+                    yield RegularInstruction::derive_shared_reference_mut()
+                        .into();
                 }
             }
 
@@ -785,16 +760,14 @@ where
     }
 }
 
-impl<'ctx, T> ToInstructions<'ctx, T> for BinaryOperation
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-
-
-    fn to_instructions<'a>(
+impl ToInstructions for BinaryOperation {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a where 'ctx: 'a {
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+    where
+        'ctx: 'a,
+    {
         Box::new(gen move {
             yield RegularInstruction::binary_operation(self.operator).into();
             for instruction in self.left.to_instructions(ctx) {
@@ -802,79 +775,6 @@ where
             }
             for instruction in self.right.to_instructions(ctx) {
                 yield instruction;
-            }
-        })
-    }
-}
-
-impl<'ctx> ToInstructions<'ctx, CompilationContext<'ctx>> for Statements {
-    type InstructionType = RegularInstruction;
-    fn to_instructions(
-        &self,
-        ctx: &mut CompilationContext,
-    ) -> Box<impl Iterator<Item = Self::InstructionType>> {
-        Box::new(gen move {
-            ctx.mark_has_non_static_value();
-            // if single statement and not terminated, just compile the expression
-            // (not for unbounded execution mode)
-            if self.unbounded.is_none()
-                && self.statements.len() == 1
-                && !self.is_terminated
-            {
-                for instruction in
-                    self.statements.first().unwrap().to_instructions(ctx)
-                {
-                    yield instruction;
-                }
-            } else {
-                let is_outer_context = true; //ctx.meta.is_outer_context(); FIXME
-
-                // Enter a child scope for nested contexts.
-                if !is_outer_context {
-                    let parent_scope = core::mem::take(&mut ctx.scope);
-                    ctx.scope = parent_scope.push();
-                }
-
-                if let Some(UnboundedStatement { is_first, .. }) =
-                    self.unbounded
-                {
-                    // if this is the first section of an unbounded statements block, mark as unbounded
-                    if is_first {
-                        yield RegularInstruction::unbounded_statements();
-                    }
-                    // if not first, don't insert any instruction code
-                }
-                // otherwise, statements with fixed length
-                else {
-                    yield RegularInstruction::statements(
-                        self.statements.len() as u32,
-                        self.is_terminated,
-                    );
-                }
-
-                for statement in self.statements.iter() {
-                    for instruction in statement.to_instructions(ctx) {
-                        yield instruction;
-                    }
-                }
-
-                // Restore the parent scope after compiling the child context.
-                if !is_outer_context {
-                    let child_scope = core::mem::take(&mut ctx.scope);
-
-                    ctx.scope = child_scope
-                        .pop()
-                        .expect("Failed to restore parent scope after compiling child context");
-                }
-
-                // if this is the last section of an unbounded statements block, add closing instruction
-                if let Some(UnboundedStatement { is_last: true, .. }) =
-                    self.unbounded
-                {
-                    yield RegularInstruction::unbounded_statements_end(
-                        self.is_terminated,
-                    );
-                }
             }
         })
     }

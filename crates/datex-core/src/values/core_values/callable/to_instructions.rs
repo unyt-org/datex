@@ -14,19 +14,15 @@ use crate::{
     preludes::derive::CallableBody,
     values::core_values::callable::Callable,
 };
-
-impl<'ctx, T> ToInstructions<'ctx, T> for Callable
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-    fn to_instructions<'a>(
+impl ToInstructions for Callable {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
     {
-        gen move {
+        Box::new(gen move {
             let (body, injected_values) = match &self.body {
                 CallableBody::DatexBytecode(datex_bytecode) => (
                     CallableDataBody {
@@ -111,6 +107,6 @@ where
                     yield instruction;
                 }
             }
-        }
+        })
     }
 }

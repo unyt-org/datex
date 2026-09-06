@@ -7,18 +7,15 @@ use crate::{
     values::core_values::decimal::Decimal,
 };
 
-impl<'ctx, T> ToInstructions<'ctx, T> for Decimal
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-    fn to_instructions<'a>(
+impl ToInstructions for Decimal {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        _ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
     {
-        gen move {
+        Box::new(gen move {
             match &self {
                 Decimal::Finite(big_decimal) if big_decimal.is_integer() => {
                     if let Some(int) = big_decimal.to_i16() {
@@ -33,6 +30,6 @@ where
                     yield RegularInstruction::decimal(self.clone()).into();
                 }
             }
-        }
+        })
     }
 }

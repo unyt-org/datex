@@ -5,17 +5,17 @@ use crate::{
     instruction::Instruction,
     values::value::Value,
 };
-impl<'ctx, T> ToInstructions<'ctx, T> for Value
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-    fn to_instructions<'a>(
+
+impl ToInstructions for Value {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
     {
-        gen move { todo!("Implement to_instructions for ValueContainer") }
+        Box::new(gen move {
+            todo!("Implement to_instructions for ValueContainer")
+        })
     }
 }

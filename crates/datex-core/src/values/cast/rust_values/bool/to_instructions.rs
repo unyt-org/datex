@@ -6,14 +6,11 @@ use crate::{
     prelude::*,
 };
 
-impl<'ctx, T> ToInstructions<'ctx, T> for bool
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-    fn to_instructions<'a>(
+impl ToInstructions for bool {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        _ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
     {

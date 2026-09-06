@@ -6,18 +6,15 @@ use crate::{
     values::core_values::range::Range,
 };
 
-impl<'ctx, T> ToInstructions<'ctx, T> for Range
-where
-    T: ValueVisitor<'ctx> + ?Sized,
-{
-    fn to_instructions<'a>(
+impl ToInstructions for Range {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut T,
-    ) -> impl Iterator<Item = Instruction> + 'a
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
     {
-        gen move {
+        Box::new(gen move {
             yield RegularInstruction::range().into();
             for instr in self.start.to_instructions(ctx) {
                 yield instr;
@@ -25,6 +22,6 @@ where
             for instr in self.end.to_instructions(ctx) {
                 yield instr;
             }
-        }
+        })
     }
 }

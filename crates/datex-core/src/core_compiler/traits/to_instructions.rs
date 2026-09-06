@@ -21,14 +21,22 @@ impl<'tracking, 'ctx> InstructionContext<'tracking, 'ctx> {
     }
 }
 
-pub trait ToInstructions<'ctx, V>
-where
-    V: ValueVisitor<'ctx> + ?Sized,
-{
-    fn to_instructions<'a>(
+// pub trait ToInstructions<'ctx, V>
+// where
+//     V: ValueVisitor<'ctx> + ?Sized,
+// {
+//     fn to_instructions<'a>(
+//         &'a self,
+//         ctx: &'a mut V,
+//     ) -> impl Iterator<Item = Instruction> + 'a
+//     where
+//         'ctx: 'a;
+// }
+pub trait ToInstructions {
+    fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut V,
-    ) -> impl Iterator<Item = Instruction> + 'a
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a;
 }
