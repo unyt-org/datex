@@ -1,11 +1,13 @@
 use crate::{
     collections::{HashMap, HashSet},
+    instruction::Instruction,
     network::{
         com_hub::{
             ComHubError, InterfacePriority, SocketEndpointRegistrationError,
         },
         com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
     },
+    preludes::derive::{RegularInstruction, ToInstructions, ValueVisitor},
 };
 use core::cell::{Ref, RefCell, RefMut};
 use datex_macros_internal::Datex;
@@ -41,6 +43,49 @@ pub struct DynamicEndpointProperties {
     pub channel_factor: u32,
     pub direction: InterfaceDirection,
 }
+
+// impl ToInstructions for DynamicEndpointProperties {
+//     fn to_instructions<'ctx, 'a>(
+//         &'a self,
+//         ctx: &'a mut dyn ValueVisitor<'ctx>,
+//     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
+//     where
+//         'ctx: 'a,
+//     {
+//         Box::new(gen move {
+//             {
+//                 let known_since = &self.known_since;
+//                 let distance = &self.distance;
+//                 let is_direct = &self.is_direct;
+//                 let channel_factor = &self.channel_factor;
+//                 let direction = &self.direction;
+//                 yield RegularInstruction::map(5u32).into();
+//                 yield RegularInstruction::text("known_since".to_string())
+//                     .into();
+//                 for i in (known_since).to_instructions(ctx) {
+//                     yield i;
+//                 }
+//                 yield RegularInstruction::text("distance".to_string()).into();
+//                 for i in (distance).to_instructions(ctx) {
+//                     yield i;
+//                 }
+//                 yield RegularInstruction::text("is_direct".to_string()).into();
+//                 for i in (is_direct).to_instructions(ctx) {
+//                     yield i;
+//                 }
+//                 yield RegularInstruction::text("channel_factor".to_string())
+//                     .into();
+//                 for i in (channel_factor).to_instructions(ctx) {
+//                     yield i;
+//                 }
+//                 yield RegularInstruction::text("direction".to_string()).into();
+//                 for i in (direction).to_instructions(ctx) {
+//                     yield i;
+//                 }
+//             }
+//         })
+//     }
+// }
 
 pub type SocketCloseReceiver = oneshot::Receiver<oneshot::Sender<()>>;
 
