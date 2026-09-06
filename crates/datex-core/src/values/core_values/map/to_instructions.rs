@@ -1,11 +1,12 @@
 use crate::{
+    alloc::string::ToString,
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
     instruction::{Instruction, regular_instruction::RegularInstruction},
+    prelude::*,
     values::core_values::map::{BorrowedMapKey, Map},
 };
-
 impl ToInstructions for Map {
     fn to_instructions<'ctx, 'a>(
         &'a self,

@@ -1,9 +1,11 @@
 pub mod ast_from_bytecode;
 
-use crate::decompiler::ast_to_source_code::ast_to_source_code;
-use crate::decompiler::DecompileOptions;
+use crate::{
+    decompiler::{DecompileOptions, ast_to_source_code::ast_to_source_code},
+    dxb_parser::body::DXBParserError,
+    prelude::*,
+};
 use ast_from_bytecode::ast_from_bytecode;
-use crate::dxb_parser::body::DXBParserError;
 
 /// Decompiles a DXB bytecode body into a human-readable string representation.
 pub fn dxb_to_source_code(
