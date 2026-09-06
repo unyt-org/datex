@@ -1,9 +1,7 @@
+use crate::values::{core_values::native::DatexNative, value::Value};
 use core::any::Any;
-use crate::values::core_values::native::DatexNative;
-use crate::values::value::Value;
 
-impl DatexNative for Value
-{
+impl DatexNative for Value {
     fn as_any(&self) -> &dyn Any {
         self
     }

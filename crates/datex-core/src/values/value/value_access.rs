@@ -13,12 +13,12 @@ use crate::{
         value::{
             Value,
             borrowed_value::{BorrowedCoreValue, BorrowedValue},
+            value_classification::ValueClassification,
         },
         value_container::value_key::BorrowedValueKey,
     },
 };
 use core::cell::Ref;
-use crate::values::value::value_classification::ValueClassification;
 
 impl ValueAccess for Value {
     fn try_get_property(

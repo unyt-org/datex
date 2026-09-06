@@ -4,6 +4,8 @@ use crate::get_absolute_file_path;
 use datex_core::{
     compiler::{CompileOptions, compile_template},
     runtime::{Runtime, RuntimeConfig},
+    traits::convert_value_container::ConvertValueContainer,
+    values::value_container::ValueContainer,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -11,8 +13,6 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
-use datex_core::traits::convert_value_container::ConvertValueContainer;
-use datex_core::values::value_container::ValueContainer;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
@@ -202,7 +202,7 @@ pub fn get_config(parsed_attr: &ParsedAttributes) -> Option<RuntimeConfig> {
     // try to get config from config path
     parsed_attr.config.as_ref().map(|path| {
         RuntimeConfig::try_from_dx_file(path, &Runtime::stub()).unwrap_or_else(
-            |err|  {
+            |err| {
                 panic!(
                     "Failed to read config file at {}: {:?}",
                     path.to_str().unwrap_or("<invalid path>"),

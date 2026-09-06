@@ -1,6 +1,8 @@
-use crate::preludes::derive::{SharedReferencesCache, Type, TypeDefinition, UnionTypeDefinition};
-use crate::traits::get_datex_type::GetDatexType;
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    preludes::derive::{SharedReferencesCache, Type},
+    traits::get_datex_type::GetDatexType,
+};
 
 impl<T> GetDatexType for Box<T>
 where

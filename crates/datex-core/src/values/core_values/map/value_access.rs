@@ -4,8 +4,7 @@ use crate::{
     traits::value_access::ValueAccess,
     values::{
         borrowed_value_container::{
-            AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
-            BorrowedValueContainerMut,
+            BorrowedValueContainer, BorrowedValueContainerMut,
         },
         core_values::map::Map,
         value_container::value_key::BorrowedValueKey,

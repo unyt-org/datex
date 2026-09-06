@@ -1,7 +1,11 @@
 use crate::{
+    random::RandomState,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::AccessError,
-    traits::value_access::ValueAccess,
+    traits::{
+        convert_value_container::ConvertValueContainer,
+        value_access::ValueAccess,
+    },
     values::{
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
@@ -11,8 +15,6 @@ use crate::{
 };
 use core::hash::Hash;
 use indexmap::IndexMap;
-use crate::traits::convert_value_container::ConvertValueContainer;
-use crate::random::RandomState;
 
 impl<K, V> ValueAccess for IndexMap<K, V, RandomState>
 where

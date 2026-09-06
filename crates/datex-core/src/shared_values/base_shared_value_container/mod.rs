@@ -16,14 +16,16 @@ use crate::{
 pub mod observers;
 pub mod serde_dif;
 
-use crate::shared_values::collapsed_container_value::{
-    CollapsedContainerValue, CollapsedContainerValueMut,
+use crate::{
+    shared_values::collapsed_container_value::{
+        CollapsedContainerValue, CollapsedContainerValueMut,
+    },
+    values::value::value_classification::ValueClassification,
 };
 use core::{
     fmt::{Debug, Display},
     prelude::rust_2024::*,
 };
-use crate::values::value::value_classification::ValueClassification;
 
 /// For the internal implementation of shared containers.
 /// A BaseSharedValueContainer can only exists, when it's inner value matches the allowed type.
@@ -40,7 +42,10 @@ impl BaseSharedValueContainer {
     /// Returns a new [BaseSharedValueContainer] with a [ValueContainer] containing a [CoreValue::Null], an allowed type of [CoreLibTypeId::Base(CoreLibBaseTypeId::Null)] and a mutability of [SharedContainerMutability::Immutable].
     pub fn null() -> Self {
         Self::new_with_inferred_allowed_type(
-            ValueContainer::Local(Value::new(CoreValue::Null, ValueClassification::None)),
+            ValueContainer::Local(Value::new(
+                CoreValue::Null,
+                ValueClassification::None,
+            )),
             SharedContainerMutability::Immutable,
         )
     }

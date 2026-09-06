@@ -1,4 +1,8 @@
-use crate::datex_proxy::data::{EnumVariant, Field, FieldAttributes, Fields, IndexedField, NamedField, NamedFieldAttributes, FieldMapping, Structure, StructureAttributes, StructureData, TypeKind};
+use crate::datex_proxy::data::{
+    EnumVariant, Field, FieldAttributes, FieldMapping, Fields, IndexedField,
+    NamedField, NamedFieldAttributes, Structure, StructureAttributes,
+    StructureData, TypeKind,
+};
 use proc_macro2::Span;
 use std::{env, path::PathBuf, str::FromStr};
 use syn::{
@@ -38,7 +42,9 @@ pub fn parse_structure_data(input: DeriveInput) -> StructureData {
         Data::Struct(data_struct) => {
             Structure::Struct(parse_struct(data_struct, &attributes))
         }
-        Data::Enum(data_enum) => Structure::Enum(parse_enum(data_enum, &attributes)),
+        Data::Enum(data_enum) => {
+            Structure::Enum(parse_enum(data_enum, &attributes))
+        }
         Data::Union(_) => {
             unimplemented!(
                 "Union types are not supported for DATEX derive macros."
@@ -56,12 +62,18 @@ pub fn parse_structure_data(input: DeriveInput) -> StructureData {
 }
 
 /// Parses a rust struct into the internal [Fields] representation.
-fn parse_struct(data_struct: DataStruct, structure_attributes: &StructureAttributes) -> Fields {
+fn parse_struct(
+    data_struct: DataStruct,
+    structure_attributes: &StructureAttributes,
+) -> Fields {
     parse_fields(data_struct.fields, structure_attributes)
 }
 
 /// Parses a rust enum into the internal [Vec<EnumVariant>] representation.
-fn parse_enum(data_enum: DataEnum, structure_attributes: &StructureAttributes) -> Vec<EnumVariant> {
+fn parse_enum(
+    data_enum: DataEnum,
+    structure_attributes: &StructureAttributes,
+) -> Vec<EnumVariant> {
     data_enum
         .variants
         .into_iter()
@@ -76,7 +88,7 @@ fn parse_enum(data_enum: DataEnum, structure_attributes: &StructureAttributes) -
 /// Parses the fields of a struct or enum variant into the internal [Fields] representation.
 fn parse_fields(
     fields: syn::Fields,
-    structure_attributes: &StructureAttributes
+    structure_attributes: &StructureAttributes,
 ) -> Fields {
     if fields.is_empty() {
         return Fields::Unit;
@@ -88,23 +100,33 @@ fn parse_fields(
         Fields::Named(
             fields
                 .into_iter()
-                .filter_map(|field| parse_named_field_attributes(&field.attrs, structure_attributes.no_deserialize).map(|attributes|(attributes, field)))
-                .map(|((attributes, named_attributes), field)| {
-                    NamedField {
-                        name: field.ident.unwrap().to_string(),
-                        field: Field {
-                            ty: field.ty,
-                            attributes,
-                        },
-                        attributes: named_attributes,
-                    }
+                .filter_map(|field| {
+                    parse_named_field_attributes(
+                        &field.attrs,
+                        structure_attributes.no_deserialize,
+                    )
+                    .map(|attributes| (attributes, field))
+                })
+                .map(|((attributes, named_attributes), field)| NamedField {
+                    name: field.ident.unwrap().to_string(),
+                    field: Field {
+                        ty: field.ty,
+                        attributes,
+                    },
+                    attributes: named_attributes,
                 })
                 .collect(),
         )
     } else {
         let mut fields_list = fields
             .into_iter()
-            .filter_map(|field| parse_field_attributes(&field.attrs, structure_attributes.no_deserialize).map(|attributes| (attributes, field)))
+            .filter_map(|field| {
+                parse_field_attributes(
+                    &field.attrs,
+                    structure_attributes.no_deserialize,
+                )
+                .map(|attributes| (attributes, field))
+            })
             .map(|(attributes, field)| Field {
                 ty: field.ty,
                 attributes,
@@ -116,10 +138,12 @@ fn parse_fields(
                 field: fields_list.remove(0),
             })
         } else {
-            Fields::Unnamed(fields_list
-                .into_iter()
-                .enumerate()
-                .map(|(index, field)| IndexedField { index, field }).collect()
+            Fields::Unnamed(
+                fields_list
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, field)| IndexedField { index, field })
+                    .collect(),
             )
         }
     }
@@ -158,11 +182,15 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
                 }
 
                 Meta::Path(path) if path.is_ident("structural") => {
-                    type_kind = TypeKind::Structural { only_structural: false };
+                    type_kind = TypeKind::Structural {
+                        only_structural: false,
+                    };
                 }
-                
+
                 Meta::Path(path) if path.is_ident("only_structural") => {
-                    type_kind = TypeKind::Structural { only_structural: true };
+                    type_kind = TypeKind::Structural {
+                        only_structural: true,
+                    };
                 }
 
                 Meta::Path(path) if path.is_ident("no_deserialize") => {
@@ -197,16 +225,17 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
 
 fn parse_named_field_attributes(
     attrs: &[Attribute],
-    is_no_deserialize: bool
+    is_no_deserialize: bool,
 ) -> Option<(FieldAttributes, NamedFieldAttributes)> {
     parse_all_field_attributes(attrs, true, is_no_deserialize)
 }
 
 fn parse_field_attributes(
     attrs: &[Attribute],
-    is_no_deserialize: bool
+    is_no_deserialize: bool,
 ) -> Option<FieldAttributes> {
-    parse_all_field_attributes(attrs, false, is_no_deserialize).map(|(field_attributes, _)| field_attributes)
+    parse_all_field_attributes(attrs, false, is_no_deserialize)
+        .map(|(field_attributes, _)| field_attributes)
 }
 
 fn parse_all_field_attributes(
@@ -214,7 +243,6 @@ fn parse_all_field_attributes(
     parse_named_attributes: bool,
     is_no_deserialize: bool,
 ) -> Option<(FieldAttributes, NamedFieldAttributes)> {
-
     let mut field_attributes = FieldAttributes {
         field_mapping: FieldMapping::Datex,
     };
@@ -244,17 +272,22 @@ fn parse_all_field_attributes(
                 match nested {
                     Meta::Path(path) => {
                         if path.is_ident("serde") {
-                            field_attributes.field_mapping = FieldMapping::Serde;
+                            field_attributes.field_mapping =
+                                FieldMapping::Serde;
                         } else if path.is_ident("default") {
                             check_named_attribute_allowed("default");
                             named_field_attributes.skip_with_default = true;
                         } else if path.is_ident("skip") {
                             if named_field_attributes.skip_with_default {
-                                panic!("Cannot use both datex(skip) and datex(default)");
+                                panic!(
+                                    "Cannot use both datex(skip) and datex(default)"
+                                );
                             }
                             // ignore this field, cannot deserialize from DATEX
                             if !is_no_deserialize {
-                                panic!("Cannot use datex(skip) on a struct or enum that is not marked with datex(no_deserialize)");
+                                panic!(
+                                    "Cannot use datex(skip) on a struct or enum that is not marked with datex(no_deserialize)"
+                                );
                             }
                             return None;
                         } else {
@@ -289,7 +322,7 @@ fn parse_all_field_attributes(
             }
         }
     }
-    
+
     Some((field_attributes, named_field_attributes))
 }
 

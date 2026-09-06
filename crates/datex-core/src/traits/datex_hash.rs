@@ -1,5 +1,4 @@
-use core::hash::Hasher;
-use core::hash::Hash;
+use core::hash::{Hash, Hasher};
 
 /// A trait for types that can be hashed using the default hasher
 /// This trait is automatically implemented for all types that implement [core::hash::Hash].

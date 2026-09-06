@@ -25,6 +25,7 @@ pub mod value_id;
 
 use crate::{
     prelude::*,
+    runtime::Runtime,
     traits::apply::{ApplyArgument, get_borrowed_apply_argument_values},
     types::{r#type::Type, type_definition::callable::CallableKind},
     values::core_values::{callable::CoreStub, endpoint::Endpoint},
@@ -32,7 +33,6 @@ use crate::{
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::runtime::Runtime;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {

@@ -1,7 +1,7 @@
+use crate::{
+    preludes::derive::DatexNative, values::core_values::boolean::Boolean,
+};
 use core::any::Any;
-use crate::preludes::derive::{DatexNative};
-use crate::traits::static_classification::StaticClassification;
-use crate::values::core_values::boolean::Boolean;
 
 impl DatexNative for Boolean {
     fn as_any(&self) -> &dyn Any {

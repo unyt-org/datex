@@ -386,13 +386,13 @@ impl ComInterfaceManager {
 
 #[cfg(test)]
 mod tests {
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
     use super::*;
     use crate::{
         network::com_interfaces::com_interface::factory::{
             SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
         },
         prelude::*,
+        runtime::cache::shared_references_cache::SharedReferencesCache,
         values::value::Value,
     };
     use datex_macros_internal::Datex;
@@ -469,7 +469,10 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface_sync(
                 "mock",
-                Value::native(setup_data, &mut SharedReferencesCache::default()),
+                Value::native(
+                    setup_data,
+                    &mut SharedReferencesCache::default(),
+                ),
                 InterfacePriority::None,
             )
             .unwrap();
@@ -507,7 +510,10 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                Value::native(setup_data, &mut SharedReferencesCache::default()),
+                Value::native(
+                    setup_data,
+                    &mut SharedReferencesCache::default(),
+                ),
                 InterfacePriority::None,
             )
             .await
@@ -542,8 +548,7 @@ mod tests {
             Rc::new(|setup_data: Value| {
                 Box::pin(async move {
                     let setup =
-                        setup_data.try_into_value::<MockSetupData>()
-                            .unwrap();
+                        setup_data.try_into_value::<MockSetupData>().unwrap();
                     setup.create_interface()
                 })
             });
@@ -555,7 +560,10 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                Value::native(setup_data, &mut SharedReferencesCache::default()),
+                Value::native(
+                    setup_data,
+                    &mut SharedReferencesCache::default(),
+                ),
                 InterfacePriority::None,
             )
             .await

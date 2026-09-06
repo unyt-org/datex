@@ -10,7 +10,7 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
         ident, generics, ..
     } = structure_data;
 
-    let native_only_structural_impl =
+    let _native_only_structural_impl =
         generate_datex_native_only_structural(structure_data);
 
     quote! {

@@ -1,23 +1,30 @@
-use crate::preludes::derive::SharedReferencesCache;
-use crate::traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts};
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    preludes::derive::SharedReferencesCache,
+    traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
+    values::{value::Value, value_container::ValueContainer},
+};
 
 impl IntoParts for ValueContainer {
-    fn into_parts<'a>(self, cache: &'a mut SharedReferencesCache) -> Option<Parts<'a>>   
+    fn into_parts<'a>(
+        self,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Option<Parts<'a>>
     where
-        Self: Sized + 'a, 
+        Self: Sized + 'a,
     {
         match self {
             ValueContainer::Local(value) => value.into_parts(cache),
-            ValueContainer::Shared(shared) => None
+            ValueContainer::Shared(_shared) => None,
         }
     }
 
-    fn as_parts<'a>(&'a self, cache: &'a mut SharedReferencesCache) -> Option<BorrowedParts<'a>> {
+    fn as_parts<'a>(
+        &'a self,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Option<BorrowedParts<'a>> {
         match self {
             ValueContainer::Local(value) => value.as_parts(cache),
-            ValueContainer::Shared(shared) => None
+            ValueContainer::Shared(_shared) => None,
         }
     }
 }

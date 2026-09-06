@@ -1,6 +1,8 @@
-use crate::datex_proxy::data::{EnumVariant, Field, FieldMapping, Fields, NamedField, Structure, StructureData};
+use crate::datex_proxy::data::{
+    EnumVariant, FieldMapping, Fields, NamedField, Structure, StructureData,
+};
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::Ident;
 
 /// Creates the implementation of the [ToDatexExpressionData] trait for the given structure data.
@@ -68,8 +70,12 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
         Fields::Unnamed(field) => {
             let field_expressions = field
                 .iter()
-                .enumerate()
-                .map(|(i, field)| field_to_expression_data(field.normalized_ident().into_token_stream(), &field.field.attributes.field_mapping))
+                .map(|field| {
+                    field_to_expression_data(
+                        field.normalized_ident().into_token_stream(),
+                        &field.field.attributes.field_mapping,
+                    )
+                })
                 .collect::<Vec<_>>();
 
             quote! {
@@ -81,7 +87,10 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
             }
         }
         Fields::Transparent(field) => {
-            let first_field = field_to_expression_data(field.normalized_ident().into_token_stream(), &field.field.attributes.field_mapping);
+            let first_field = field_to_expression_data(
+                field.normalized_ident().into_token_stream(),
+                &field.field.attributes.field_mapping,
+            );
             quote! {
                 {
                     *(#first_field.data)
@@ -94,7 +103,7 @@ fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
 /// Generates a type definition for a single field. Returns a TokenStream of [TypeDefinition].
 fn field_to_expression_data(
     accessor: TokenStream,
-    field_mapping: &FieldMapping
+    field_mapping: &FieldMapping,
 ) -> TokenStream {
     match field_mapping {
         FieldMapping::Datex => {
@@ -132,21 +141,21 @@ fn generate_datex_enum_fields(enum_ty: &[EnumVariant]) -> TokenStream {
             generate_datex_expression_data_fields(&variant.fields);
         let field_idents = variant.fields.normalized_field_idents();
         match &variant.fields {
-            Fields::Named(fields) => {
+            Fields::Named(_fields) => {
                 quote! {
                     Self::#variant_ident { #(#field_idents),* } => {
                         #variant_fields
                     }
                 }
             }
-            Fields::Unnamed(fields) => {
+            Fields::Unnamed(_fields) => {
                 quote! {
                     Self::#variant_ident(#(#field_idents),*) => {
                         #variant_fields
                     }
                 }
             }
-            Fields::Transparent(field) => {
+            Fields::Transparent(_field) => {
                 let first_field_ident = field_idents.first().unwrap();
                 quote! {
                     Self::#variant_ident(#first_field_ident) => {

@@ -1,12 +1,7 @@
 mod try_from_core_value;
 pub mod try_from_core_value_sized;
 
-use crate::{
-    prelude::*,
-    traits::{datex_hash::impl_datex_hash, value_access::ValueAccess},
-    utils::{goat::Goat, goat_mut::GoatMut},
-    values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
-};
+use crate::traits::{datex_hash::impl_datex_hash, value_access::ValueAccess};
 mod to_instructions;
 
 #[cfg(feature = "ast")]

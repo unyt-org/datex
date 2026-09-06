@@ -1,4 +1,5 @@
-use crate::values::core_values::text::Text;
-use crate::traits::datex_hash::impl_datex_hash;
+use crate::{
+    traits::datex_hash::impl_datex_hash, values::core_values::text::Text,
+};
 
 impl_datex_hash!(Text);

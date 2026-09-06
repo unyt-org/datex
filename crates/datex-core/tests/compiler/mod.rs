@@ -1,10 +1,12 @@
 use datex_core::{
     compiler::{CompileOptions, compile_script},
-    decompiler::{DecompileOptions, FormattingOptions},
+    decompiler::{
+        DecompileOptions, FormattingOptions,
+        dxb_to_source_code::dxb_to_source_code,
+    },
     runtime::Runtime,
 };
 use log::info;
-use datex_core::decompiler::dxb_to_source_code::dxb_to_source_code;
 
 fn compare_compiled_with_decompiled(datex_script: &str) {
     let runtime = Runtime::stub();

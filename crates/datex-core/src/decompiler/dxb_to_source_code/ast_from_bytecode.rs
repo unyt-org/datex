@@ -30,9 +30,10 @@ use crate::{
 use crate::{
     ast::expressions::{
         CallableDeclaration, CallableSignature, CloneExpression,
-        ComparisonOperation, CreateShared, DeriveSharedRef, RemoteExecution,
-        RequestSharedRef, RootPropertyAccess, StackAssignment,
-        StackListAssignment, TagExpression, UnboxAssignment,
+        ComparisonOperation, CreateShared, DeriveSharedRef,
+        EntityValueExpression, RemoteExecution, RequestSharedRef,
+        RootPropertyAccess, StackAssignment, StackListAssignment,
+        TagExpression, UnboxAssignment,
     },
     global::{
         operators::{ComparisonOperator, ModificationOperator},
@@ -54,7 +55,6 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
-use crate::ast::expressions::EntityValueExpression;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -732,11 +732,8 @@ pub fn ast_from_bytecode(
                                     entity_name: address.to_string(), // TODO: resolve human readable name?
                                     entity_address: Some(address),
                                     value: expr,
-                                })  
-                                    .with_default_span()
-                                    .into()
+                                }).with_default_span().into()
                             }
-
                             RegularInstruction::UnboundedStatementsEnd(
                                 UnboundedStatementsData { terminated },
                             ) => {

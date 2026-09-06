@@ -1,6 +1,5 @@
+use crate::{prelude::*, traits::datex_hash::DatexHash};
 use core::hash::Hasher;
-use crate::traits::datex_hash::DatexHash;
-use crate::prelude::*;
 
 impl<T> DatexHash for Box<T>
 where

@@ -12,6 +12,7 @@ use crate::{
 };
 pub mod serde_dif;
 use crate::{
+    preludes::derive::{ConvertCoreValue, DatexNativeStructural},
     types::r#type::Type,
     values::{
         core_values::{
@@ -36,16 +37,14 @@ use crate::{
 };
 use binrw::error::CustomError;
 use core::fmt::{Debug, Display, Formatter};
-use crate::preludes::derive::{ConvertCoreValue, DatexNativeStructural};
-use crate::traits::datex_native_only_structural::DatexNativeOnlyStructural;
 
 mod child_iterator;
+mod datex_hash;
 pub mod equality;
 pub mod ops;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod try_clone;
-mod datex_hash;
 
 #[derive(Default, Clone, Debug)]
 pub enum CoreValue {
@@ -171,14 +170,14 @@ impl CoreValue {
     /// Does not perform any type conversion.
     pub fn try_as<T>(&self) -> Option<&T>
     where
-        T: ConvertCoreValue
+        T: ConvertCoreValue,
     {
         T::try_borrow_from_core_value(self).ok()
     }
 
     pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
     where
-        T: ConvertCoreValue
+        T: ConvertCoreValue,
     {
         T::try_borrow_mut_from_core_value(self).ok()
     }

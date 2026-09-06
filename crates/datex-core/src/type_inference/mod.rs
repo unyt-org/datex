@@ -1576,9 +1576,9 @@ mod tests {
         },
         types::{
             entities::entity_type_definition::EntityTypeDefinition,
+            entity_type::EntityType,
             error::TypeError,
             literal_type_definition::LiteralTypeDefinition,
-            entity_type::EntityType,
             shared_container_containing_type::SharedContainerContainingType,
             r#type::Type,
             type_definition::{

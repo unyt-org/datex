@@ -10,7 +10,7 @@ use crate::{
 impl ToInstructions for Text {
     fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut dyn ValueVisitor<'ctx>,
+        _ctx: &'a mut dyn ValueVisitor<'ctx>,
     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,

@@ -1,8 +1,12 @@
+use crate::{
+    preludes::derive::DatexNative,
+    traits::{
+        classification::Classification,
+        static_classification::StaticClassification,
+    },
+    types::r#type::Type,
+};
 use core::any::Any;
-use crate::preludes::derive::{DatexNative};
-use crate::traits::classification::Classification;
-use crate::traits::static_classification::StaticClassification;
-use crate::types::r#type::Type;
 
 impl DatexNative for Type {
     fn as_any(&self) -> &dyn Any {

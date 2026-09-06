@@ -1,6 +1,6 @@
 //! Implements [TryFrom] for DATEX [CoreValue] and [Value] types. This allows to convert e.g. [CoreValue::Integer] to [Integer].
 use crate::{
-    prelude::*,
+    traits::convert_core_value::ConvertCoreValue,
     types::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
     },
@@ -18,13 +18,9 @@ use crate::{
             range::Range,
             text::Text,
         },
-        value::{
-            Value,
-            borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
-        },
+        value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
-use crate::traits::convert_core_value::ConvertCoreValue;
 
 /// Implements [TryFrom] for each [CoreValue] variant to its corresponding type. This allows to convert e.g. [CoreValue::Integer] to [Integer].
 macro_rules! impl_try_from_core_value {
@@ -97,12 +93,10 @@ impl_try_from_core_value! {
 mod tests {
     use core::assert_matches;
 
-    use crate::{
-        values::{
-            core_value::CoreValue,
-            core_values::{integer::Integer, text::Text},
-            value::Value,
-        },
+    use crate::values::{
+        core_value::CoreValue,
+        core_values::{integer::Integer, text::Text},
+        value::Value,
     };
 
     #[test]

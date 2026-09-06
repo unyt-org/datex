@@ -1,7 +1,7 @@
 #[cfg(feature = "ast")]
 use crate::traits::to_datex_expression_data::ToDatexExpressionData;
 use crate::{
-    core_compiler::to_instructions::{ToInstructions, ToInstructionsDyn},
+    core_compiler::to_instructions::ToInstructions,
     traits::{
         classification::Classification,
         convert_parts::{FromParts, IntoParts},

@@ -2,16 +2,15 @@ use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::{AccessError, IndexOutOfBoundsError},
-    traits::value_access::ValueAccess,
+    traits::{get_datex_type::GetDatexType, value_access::ValueAccess},
     values::{
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
+        core_values::native::DatexNativeBase,
         value_container::value_key::BorrowedValueKey,
     },
 };
-use crate::traits::get_datex_type::GetDatexType;
-use crate::values::core_values::native::DatexNativeBase;
 
 impl<T> ValueAccess for Vec<T>
 where

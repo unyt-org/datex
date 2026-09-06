@@ -316,7 +316,7 @@ fn try_get_entity_type(value: &Value) -> Result<EntityType, ExecutionError> {
 fn try_get_method_data(
     entity_type: &EntityType,
     method_name: String,
-) -> Result<Ref<EntityImplMethod>, ExecutionError> {
+) -> Result<Ref<'_, EntityImplMethod>, ExecutionError> {
     Ref::filter_map(entity_type.entity_definition(), |def| {
         def.try_get_method(&method_name)
     })

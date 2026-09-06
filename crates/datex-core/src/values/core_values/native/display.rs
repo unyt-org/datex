@@ -1,5 +1,7 @@
-use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
-use crate::values::core_values::native::NativeCoreValue;
+use crate::{
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
+    values::core_values::native::NativeCoreValue,
+};
 
 impl_display_for_datex_value!(
     NativeCoreValue,

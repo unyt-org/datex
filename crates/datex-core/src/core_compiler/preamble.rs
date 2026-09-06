@@ -8,15 +8,15 @@ use crate::{
         shared_value_tracking::{
             SharedValueTracking, TrackedValueCollection, TrackedValueMetadata,
         },
-        to_instructions::{ToInstructions},
-        value_compiler::append_value,
+        to_instructions::ToInstructions,
+        value_compiler::{append_instruction, append_value},
         value_visitor::ValueVisitor,
     },
     global::stack_index::StackIndex,
     instruction::{
+        Instruction,
         instruction_data::{MoveWithValue, SharedRef, SharedRefWithValue},
         regular_instruction::RegularInstruction,
-        type_instruction::TypeInstruction,
     },
     prelude::*,
     shared_values::{
@@ -28,8 +28,6 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Write};
-use crate::core_compiler::value_compiler::append_instruction;
-use crate::instruction::Instruction;
 
 #[derive(Debug)]
 struct PreambleContext<'a> {

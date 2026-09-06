@@ -18,7 +18,6 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    values::core_value::CoreValue,
 };
 
 pub mod apply;

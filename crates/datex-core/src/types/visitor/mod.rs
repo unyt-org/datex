@@ -2,8 +2,8 @@ use crate::{
     libs::core::type_id::CoreLibTypeId,
     prelude::*,
     types::{
-        literal_type_definition::LiteralTypeDefinition,
         entity_type::EntityType,
+        literal_type_definition::LiteralTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition::{

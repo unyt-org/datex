@@ -1,5 +1,3 @@
-use core::hash::Hash;
-
 use crate::{
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     values::{
@@ -10,7 +8,6 @@ use crate::{
         },
     },
 };
-use crate::traits::datex_hash::DatexHash;
 
 impl StructuralEq for CoreValue {
     fn structural_eq(&self, other: &Self) -> bool {

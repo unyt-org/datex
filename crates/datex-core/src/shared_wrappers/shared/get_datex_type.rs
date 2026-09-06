@@ -1,12 +1,18 @@
-use crate::shared_wrappers::shared::Shared;
-use crate::values::core_values::native::DatexNative;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::shared_values::{SharedContainerMutability, SharedContainerOwnership};
-use crate::traits::get_datex_type::GetDatexType;
-use crate::types::r#type::Type;
-use crate::types::type_definition::TypeDefinition;
-use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::{SharedContainerMutability, SharedContainerOwnership},
+    shared_wrappers::shared::Shared,
+    traits::get_datex_type::GetDatexType,
+    types::{
+        r#type::Type,
+        type_definition::TypeDefinition,
+        type_definition_with_metadata::{
+            TypeDefinitionWithMetadata, TypeMetadata,
+        },
+    },
+    values::core_values::native::DatexNative,
+};
 
 impl<T> GetDatexType for Shared<T>
 where

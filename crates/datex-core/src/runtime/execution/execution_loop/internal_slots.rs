@@ -3,9 +3,8 @@ use crate::{
     runtime::execution::{
         ExecutionError, execution_loop::state::RuntimeExecutionState,
     },
-    values::{core_values::map::Map, value_container::ValueContainer},
+    values::{value::Value, value_container::ValueContainer},
 };
-use crate::values::value::Value;
 
 pub fn get_root_property(
     runtime_state: &RuntimeExecutionState,
@@ -19,14 +18,10 @@ pub fn get_root_property(
         RootProperty::CALLER => {
             ValueContainer::from(runtime_state.caller_metadata.endpoint.clone())
         }
-        RootProperty::ENV => {
-            ValueContainer::from(runtime.internal.get_env())
-        }
-        RootProperty::CONFIG => {
-            ValueContainer::Local(Value::native_structural(
-                runtime_state.runtime.config().clone(),
-            ))
-        }
+        RootProperty::ENV => ValueContainer::from(runtime.internal.get_env()),
+        RootProperty::CONFIG => ValueContainer::Local(
+            Value::native_structural(runtime_state.runtime.config().clone()),
+        ),
     };
     Ok(res)
 }

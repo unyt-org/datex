@@ -2,18 +2,15 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::datex_proxy::data::{
-    EnumVariant, Field, Fields, NamedField, FieldMapping, Structure,
+    EnumVariant, Field, FieldMapping, Fields, NamedField, Structure,
     StructureData, TypeKind,
 };
 
-
 pub fn generate_core_lib_type_id(
-    structure_data: &StructureData
+    structure_data: &StructureData,
 ) -> TokenStream {
     let StructureData {
-        ident,
-        generics,
-        ..
+        ident, generics, ..
     } = structure_data;
 
     quote! {
@@ -24,9 +21,7 @@ pub fn generate_core_lib_type_id(
 
 /// Generates the [GetDatexType] implementation for the given structure data.
 /// Returns a TokenStream of the implementation.
-pub fn generate_datex_type(
-    structure_data: &StructureData,
-) -> TokenStream {
+pub fn generate_datex_type(structure_data: &StructureData) -> TokenStream {
     let datex_type = generate_type(structure_data);
     let StructureData {
         ident,
@@ -132,18 +127,16 @@ fn named_field_to_definition(field: &NamedField) -> TokenStream {
 
 /// Generates a type definition for an enum. Returns a TokenStream of [TypeDefinition].
 fn generate_datex_enum_type(enum_ty: &[EnumVariant]) -> TokenStream {
-    let variants_datex_types = enum_ty
-        .iter()
-        .map(|variant| {
-            let name = &variant.name;
-            let type_definition = generate_datex_type_definition(&variant.fields);
-            quote! {
-                Type::Definition(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                    tag: #name.to_string(),
-                    ty: Some(Box::new(Type::Definition(#type_definition.into()))),
-                }).into())
-            }
-        });
+    let variants_datex_types = enum_ty.iter().map(|variant| {
+        let name = &variant.name;
+        let type_definition = generate_datex_type_definition(&variant.fields);
+        quote! {
+            Type::Definition(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                tag: #name.to_string(),
+                ty: Some(Box::new(Type::Definition(#type_definition.into()))),
+            }).into())
+        }
+    });
 
     quote! {
         TypeDefinition::Union(UnionTypeDefinition(vec![

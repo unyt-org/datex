@@ -51,6 +51,7 @@ use crate::{
     },
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
+        entity_type::EntityType,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type, type_definition::TypeDefinition,
     },
@@ -70,7 +71,6 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
-use crate::types::entity_type::EntityType;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,

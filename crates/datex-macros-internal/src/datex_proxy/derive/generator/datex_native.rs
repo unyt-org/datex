@@ -10,7 +10,8 @@ pub fn generate_datex_native(structure_data: &StructureData) -> TokenStream {
         ident, generics, ..
     } = structure_data;
 
-    let native_only_structural_impl = generate_datex_native_only_structural(structure_data);
+    let native_only_structural_impl =
+        generate_datex_native_only_structural(structure_data);
 
     quote! {
         use core::any::Any;
@@ -28,19 +29,25 @@ pub fn generate_datex_native(structure_data: &StructureData) -> TokenStream {
     }
 }
 
-pub fn generate_datex_native_only_structural(structure_data: &StructureData) -> TokenStream {
+pub fn generate_datex_native_only_structural(
+    structure_data: &StructureData,
+) -> TokenStream {
     let StructureData {
         ident, generics, ..
     } = structure_data;
     // TODO: validate that all children also implement DatexNativeOnlyStructural
     match structure_data.attributes.type_kind {
-        TypeKind::Structural { only_structural: false } => quote! {
+        TypeKind::Structural {
+            only_structural: false,
+        } => quote! {
             impl #generics DatexNativeStructural for #ident #generics {}
         },
-        TypeKind::Structural { only_structural: true } => quote! {
+        TypeKind::Structural {
+            only_structural: true,
+        } => quote! {
             impl #generics DatexNativeStructural for #ident #generics {}
             impl #generics DatexNativeOnlyStructural for #ident #generics {}
         },
-        _ => quote! {}
+        _ => quote! {},
     }
 }

@@ -17,17 +17,17 @@ pub struct Text(
     #[br(map=|x: TextData| x.0)]
     pub String,
 );
+mod classification;
+mod convert_parts;
+pub mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod ops;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
-mod datex_native_structural;
-mod get_core_lib_type_id;
-mod convert_parts;
-mod get_datex_type;
-mod datex_native;
-mod classification;
-pub mod datex_hash;
 
 impl Display for Text {
     // TODO #319: escape string content

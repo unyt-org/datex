@@ -111,18 +111,20 @@ use crate::{
     instruction::instruction_data::{CallMethodData, CallableSignatureData},
     runtime::execution::macros::interrupt_with_borrowed_args_and_maybe_result,
     traits::apply::{ApplyArgument, into_apply_arguments_with_stack_indices},
-    types::type_definition::callable::CallableTypeDefinition,
+    types::{
+        entity_type::EntityType,
+        type_definition::callable::CallableTypeDefinition,
+    },
     value_updates::update_data::{
         DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
     },
     values::{
         borrowed_value_container::BorrowedValueContainer,
         core_values::callable::DatexBytecodeCallable,
+        value::value_classification::{ValueClassification, ValueTag},
     },
 };
 use collected_execution_result::CollectedExecutionResult;
-use crate::types::entity_type::EntityType;
-use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -1795,7 +1797,7 @@ fn create_new_reference_from_value(
             )?;
 
             // Note: safe because we checked if the address already exists in memory before
-            let mut reference = unsafe {
+            let reference = unsafe {
                 ReferencedSharedContainer::try_new_remote_from_base_container(
                     base,
                     remote_address.clone(),

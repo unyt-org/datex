@@ -545,7 +545,7 @@ impl ToInstructions for PropertyAccess {
 impl ToInstructions for GenericInstantiation {
     fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut dyn ValueVisitor<'ctx>,
+        _ctx: &'a mut dyn ValueVisitor<'ctx>,
     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
@@ -560,7 +560,7 @@ impl ToInstructions for GenericInstantiation {
 impl ToInstructions for RequestSharedRef {
     fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut dyn ValueVisitor<'ctx>,
+        _ctx: &'a mut dyn ValueVisitor<'ctx>,
     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
@@ -663,7 +663,7 @@ impl ToInstructions for TagExpression {
 impl ToInstructions for RootPropertyAccess {
     fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut dyn ValueVisitor<'ctx>,
+        _ctx: &'a mut dyn ValueVisitor<'ctx>,
     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,

@@ -1,6 +1,5 @@
-use core::any::Any;
-use core::time::Duration;
 use crate::preludes::derive::DatexNative;
+use core::{any::Any, time::Duration};
 
 impl DatexNative for Duration {
     fn as_any(&self) -> &dyn Any {

@@ -1,13 +1,14 @@
-use crate::ast::expressions::DatexExpression;
-use crate::decompiler::{DecompileOptions};
-use converter::AstToSourceCodeConverter;
-use crate::ast::spanned::Spanned;
+use crate::{
+    ast::{expressions::DatexExpression, spanned::Spanned},
+    decompiler::DecompileOptions,
+    prelude::*,
+    traits::to_datex_expression_data::ToDatexExpressionData,
+};
 use apply_syntax_highlighting::apply_syntax_highlighting;
-use crate::traits::to_datex_expression_data::ToDatexExpressionData;
-use crate::prelude::*;
+use converter::AstToSourceCodeConverter;
 
-mod converter;
 pub mod apply_syntax_highlighting;
+mod converter;
 
 /// Decompiles a single DATEX compatible value into a human-readable string representation.
 pub fn value_to_source_code(
@@ -19,12 +20,16 @@ pub fn value_to_source_code(
 }
 
 /// Decompiles a single DATEX compatible value into a human-readable string representation.
-pub fn value_to_source_code_default(value: &impl ToDatexExpressionData) -> String {
+pub fn value_to_source_code_default(
+    value: &impl ToDatexExpressionData,
+) -> String {
     value_to_source_code(value, DecompileOptions::default())
 }
 
-
-pub fn ast_to_source_code(ast: DatexExpression, options: DecompileOptions) -> String {
+pub fn ast_to_source_code(
+    ast: DatexExpression,
+    options: DecompileOptions,
+) -> String {
     let colorized = options.formatting_options.colorized;
     let converter = AstToSourceCodeConverter::new(options.formatting_options);
     // convert AST to source code

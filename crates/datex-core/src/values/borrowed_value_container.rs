@@ -1,11 +1,13 @@
 use crate::{
+    preludes::derive::SharedReferencesCache,
     shared_values::{
         OwnedSharedContainer, ReferencedSharedContainer, SharedContainer,
     },
+    traits::datex_native_structural::DatexNativeStructural,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
-        core_values::native::DatexNative,
+        core_values::{map::BorrowedMapKey, native::DatexNative},
         value::{
             Value,
             borrowed_value::{
@@ -16,27 +18,26 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{
-    fmt::Debug,
-};
-use crate::preludes::derive::SharedReferencesCache;
-use crate::traits::datex_native_structural::DatexNativeStructural;
-use crate::values::core_values::map::BorrowedMapKey;
+use core::fmt::Debug;
 
 pub trait AsBorrowed<'a> {
-    fn as_borrowed(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a>;
+    fn as_borrowed(
+        &'a self,
+        cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainer<'a>;
 }
-
 
 default impl<'a, T> AsBorrowed<'a> for T
 where
     T: DatexNative,
 {
-    fn as_borrowed(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a> {
+    fn as_borrowed(
+        &'a self,
+        cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainer<'a> {
         BorrowedValueContainer::native_borrowed(self, cache)
     }
 }
-
 
 #[derive(Debug)]
 pub enum BorrowedValueContainer<'a> {
@@ -48,15 +49,20 @@ impl<'a> BorrowedValueContainer<'a> {
     /// Creates a new `BorrowedValueContainer` from a reference to a native value.
     pub fn native_borrowed<T: DatexNative>(
         val: impl Into<Goat<'a, T>>,
-        cache: &mut SharedReferencesCache
+        cache: &mut SharedReferencesCache,
     ) -> Self {
-        BorrowedValueContainer::Local(BorrowedValue::native_borrowed(val, cache))
+        BorrowedValueContainer::Local(BorrowedValue::native_borrowed(
+            val, cache,
+        ))
     }
 
-
     /// Creates a new `BorrowedValueContainer` from a reference to a native value.
-    pub fn native_borrowed_structural<T: DatexNativeStructural>(val: impl Into<Goat<'a, T>>) -> Self {
-        BorrowedValueContainer::Local(BorrowedValue::native_borrowed_structural(val))
+    pub fn native_borrowed_structural<T: DatexNativeStructural>(
+        val: impl Into<Goat<'a, T>>,
+    ) -> Self {
+        BorrowedValueContainer::Local(
+            BorrowedValue::native_borrowed_structural(val),
+        )
     }
 
     /// Tries to get an immutable reference to the value as a specified type.
@@ -88,14 +94,20 @@ impl<'a> BorrowedValueContainer<'a> {
 }
 
 pub trait AsBorrowedMut<'a> {
-    fn as_borrowed_mut(&'a mut self, cache: &mut SharedReferencesCache) -> BorrowedValueContainerMut<'a>;
+    fn as_borrowed_mut(
+        &'a mut self,
+        cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainerMut<'a>;
 }
 
 default impl<'a, T> AsBorrowedMut<'a> for T
 where
     T: DatexNative,
 {
-    fn as_borrowed_mut(&'a mut self, cache: &mut SharedReferencesCache) -> BorrowedValueContainerMut<'a> {
+    fn as_borrowed_mut(
+        &'a mut self,
+        cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainerMut<'a> {
         BorrowedValueContainerMut::native_borrowed(self, cache)
     }
 }
@@ -109,15 +121,20 @@ impl<'a> BorrowedValueContainerMut<'a> {
     /// Creates a new `BorrowedValueContainer` from a reference to a native value.
     pub fn native_borrowed<T: DatexNative>(
         val: impl Into<GoatMut<'a, T>>,
-        cache: &mut SharedReferencesCache
+        cache: &mut SharedReferencesCache,
     ) -> Self {
-        BorrowedValueContainerMut::Local(BorrowedValueMut::native_borrowed(val, cache))
+        BorrowedValueContainerMut::Local(BorrowedValueMut::native_borrowed(
+            val, cache,
+        ))
     }
 
-
     /// Creates a new `BorrowedValueContainer` from a reference to a native value.
-    pub fn native_borrowed_structural<T: DatexNativeStructural>(val: impl Into<GoatMut<'a, T>>) -> Self {
-        BorrowedValueContainerMut::Local(BorrowedValueMut::native_borrowed_structural(val))
+    pub fn native_borrowed_structural<T: DatexNativeStructural>(
+        val: impl Into<GoatMut<'a, T>>,
+    ) -> Self {
+        BorrowedValueContainerMut::Local(
+            BorrowedValueMut::native_borrowed_structural(val),
+        )
     }
 
     /// Tries to get an immutable reference to the value as a specified type.
@@ -154,12 +171,18 @@ impl<'a> From<BorrowedValue<'a>> for BorrowedValueContainer<'a> {
 }
 
 impl<'a> AsBorrowed<'a> for SharedContainer {
-    fn as_borrowed(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a> {
+    fn as_borrowed(
+        &'a self,
+        _cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainer<'a> {
         BorrowedValueContainer::Shared(self.clone())
     }
 }
 impl<'a> AsBorrowed<'a> for OwnedSharedContainer {
-    fn as_borrowed(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a> {
+    fn as_borrowed(
+        &'a self,
+        _cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainer<'a> {
         BorrowedValueContainer::Shared(SharedContainer::Referenced(
             self.derive_with_max_mutability(),
         ))
@@ -167,7 +190,10 @@ impl<'a> AsBorrowed<'a> for OwnedSharedContainer {
 }
 
 impl<'a> AsBorrowed<'a> for ReferencedSharedContainer {
-    fn as_borrowed(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a> {
+    fn as_borrowed(
+        &'a self,
+        _cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainer<'a> {
         BorrowedValueContainer::Shared(SharedContainer::Referenced(
             self.clone(),
         ))
@@ -175,7 +201,10 @@ impl<'a> AsBorrowed<'a> for ReferencedSharedContainer {
 }
 
 impl<'a> AsBorrowed<'a> for Value {
-    fn as_borrowed(&'a self, cache: &mut SharedReferencesCache) -> BorrowedValueContainer<'a> {
+    fn as_borrowed(
+        &'a self,
+        _cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainer<'a> {
         BorrowedValueContainer::Local(self.into())
     }
 }
@@ -186,7 +215,9 @@ impl<'a> From<&'a ValueContainer> for BorrowedValueContainer<'a> {
             ValueContainer::Shared(shared_container) => {
                 BorrowedValueContainer::Shared(shared_container.clone())
             }
-            ValueContainer::Local(local_value) => BorrowedValueContainer::Local(BorrowedValue::from(local_value)),
+            ValueContainer::Local(local_value) => {
+                BorrowedValueContainer::Local(BorrowedValue::from(local_value))
+            }
         }
     }
 }
@@ -197,7 +228,11 @@ impl<'a> From<&'a mut ValueContainer> for BorrowedValueContainerMut<'a> {
             ValueContainer::Shared(shared_container) => {
                 BorrowedValueContainerMut::Shared(shared_container.clone())
             }
-            ValueContainer::Local(local_value) => BorrowedValueContainerMut::Local(BorrowedValueMut::from(local_value)),
+            ValueContainer::Local(local_value) => {
+                BorrowedValueContainerMut::Local(BorrowedValueMut::from(
+                    local_value,
+                ))
+            }
         }
     }
 }
@@ -205,12 +240,11 @@ impl<'a> From<&'a mut ValueContainer> for BorrowedValueContainerMut<'a> {
 impl<'a> From<BorrowedMapKey<'a>> for BorrowedValueContainer<'a> {
     fn from(borrowed_map_key: BorrowedMapKey<'a>) -> Self {
         match borrowed_map_key {
-            BorrowedMapKey::Text(text) => todo!(),// BorrowedValueContainer::Local(BorrowedValue::native_borrowed_structural(text)),
-            BorrowedMapKey::Value(value) => BorrowedValueContainer::from(value)
+            BorrowedMapKey::Text(_text) => todo!(), // BorrowedValueContainer::Local(BorrowedValue::native_borrowed_structural(text)),
+            BorrowedMapKey::Value(value) => BorrowedValueContainer::from(value),
         }
     }
 }
-
 
 impl<'a> From<BorrowedValueMut<'a>> for BorrowedValueContainerMut<'a> {
     fn from(borrowed_value: BorrowedValueMut<'a>) -> Self {
@@ -219,13 +253,19 @@ impl<'a> From<BorrowedValueMut<'a>> for BorrowedValueContainerMut<'a> {
 }
 
 impl<'a> AsBorrowedMut<'a> for SharedContainer {
-    fn as_borrowed_mut(&'a mut self, cache: &mut SharedReferencesCache) -> BorrowedValueContainerMut<'a> {
+    fn as_borrowed_mut(
+        &'a mut self,
+        _cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainerMut<'a> {
         BorrowedValueContainerMut::Shared(self.clone())
     }
 }
 
 impl<'a> AsBorrowedMut<'a> for OwnedSharedContainer {
-    fn as_borrowed_mut(&'a mut self, cache: &mut SharedReferencesCache) -> BorrowedValueContainerMut<'a> {
+    fn as_borrowed_mut(
+        &'a mut self,
+        _cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainerMut<'a> {
         BorrowedValueContainerMut::Shared(SharedContainer::Referenced(
             self.derive_with_max_mutability(),
         ))
@@ -233,7 +273,10 @@ impl<'a> AsBorrowedMut<'a> for OwnedSharedContainer {
 }
 
 impl<'a> AsBorrowedMut<'a> for ReferencedSharedContainer {
-    fn as_borrowed_mut(&'a mut self, cache: &mut SharedReferencesCache) -> BorrowedValueContainerMut<'a> {
+    fn as_borrowed_mut(
+        &'a mut self,
+        _cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainerMut<'a> {
         BorrowedValueContainerMut::Shared(SharedContainer::Referenced(
             self.clone(),
         ))
@@ -241,18 +284,26 @@ impl<'a> AsBorrowedMut<'a> for ReferencedSharedContainer {
 }
 
 impl<'a> AsBorrowedMut<'a> for Value {
-    fn as_borrowed_mut(&'a mut self, cache: &mut SharedReferencesCache) -> BorrowedValueContainerMut<'a> {
+    fn as_borrowed_mut(
+        &'a mut self,
+        _cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainerMut<'a> {
         BorrowedValueContainerMut::Local(self.into())
     }
 }
 
 impl<'a> AsBorrowedMut<'a> for ValueContainer {
-    fn as_borrowed_mut(&'a mut self, cache: &mut SharedReferencesCache) -> BorrowedValueContainerMut<'a> {
+    fn as_borrowed_mut(
+        &'a mut self,
+        cache: &mut SharedReferencesCache,
+    ) -> BorrowedValueContainerMut<'a> {
         match self {
             ValueContainer::Shared(shared_container) => {
                 shared_container.as_borrowed_mut(cache)
             }
-            ValueContainer::Local(local_value) => local_value.as_borrowed_mut(cache),
+            ValueContainer::Local(local_value) => {
+                local_value.as_borrowed_mut(cache)
+            }
         }
     }
 }
