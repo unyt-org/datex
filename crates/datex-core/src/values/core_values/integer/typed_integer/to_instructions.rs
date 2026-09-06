@@ -9,41 +9,65 @@ use crate::{
 impl ToInstructions for TypedInteger {
     fn to_instructions<'ctx, 'a>(
         &'a self,
-        _ctx: &'a mut dyn ValueVisitor<'ctx>,
+        ctx: &'a mut dyn ValueVisitor<'ctx>,
     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,
     {
         Box::new(gen move {
-            yield match self {
-                TypedInteger::I8(val) => RegularInstruction::int8(*val).into(),
+            match self {
+                TypedInteger::I8(val) => {
+                    for i in val.to_instructions(ctx) {
+                        yield i;
+                    }
+                }
                 TypedInteger::I16(val) => {
-                    RegularInstruction::int16(*val).into()
+                    for i in val.to_instructions(ctx) {
+                        yield i;
+                    }
                 }
                 TypedInteger::I32(val) => {
-                    RegularInstruction::int32(*val).into()
+                    for i in val.to_instructions(ctx) {
+                        yield i;
+                    }
                 }
                 TypedInteger::I64(val) => {
-                    RegularInstruction::int64(*val).into()
+                    for i in val.to_instructions(ctx) {
+                        yield i;
+                    }
                 }
                 TypedInteger::I128(val) => {
-                    RegularInstruction::int128(*val).into()
+                    for i in val.to_instructions(ctx) {
+                        yield i;
+                    }
                 }
-                TypedInteger::U8(val) => RegularInstruction::uint8(*val).into(),
+                TypedInteger::U8(val) => {
+                    for i in val.to_instructions(ctx) {
+                        yield i;
+                    }
+                }
                 TypedInteger::U16(val) => {
-                    RegularInstruction::uint16(*val).into()
+                    for i in val.to_instructions(ctx) {
+                        yield i;
+                    }
                 }
                 TypedInteger::U32(val) => {
-                    RegularInstruction::uint32(*val).into()
+                    for i in val.to_instructions(ctx) {
+                        yield i;
+                    }
                 }
                 TypedInteger::U64(val) => {
-                    RegularInstruction::uint64(*val).into()
+                    for i in val.to_instructions(ctx) {
+                        yield i;
+                    }
                 }
                 TypedInteger::U128(val) => {
-                    RegularInstruction::uint128(*val).into()
+                    for i in val.to_instructions(ctx) {
+                        yield i;
+                    }
                 }
                 TypedInteger::IBig(val) => {
-                    RegularInstruction::big_integer(val.clone()).into()
+                    yield RegularInstruction::big_integer(val.clone()).into()
                 }
             };
         })
