@@ -1,11 +1,8 @@
 // TODO: move tests
 #[cfg(test)]
 mod tests {
-    use crate::{
-        values::{
-            core_value::CoreValue, core_values::endpoint::Endpoint,
-            value::Value,
-        },
+    use crate::values::{
+        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
     };
 
     #[test]

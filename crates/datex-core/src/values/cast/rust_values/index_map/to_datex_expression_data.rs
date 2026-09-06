@@ -1,10 +1,10 @@
 use crate::{
     ast::{expressions::DatexExpressionData, spanned::Spanned},
+    random::RandomState,
     traits::to_datex_expression_data::ToDatexExpressionData,
 };
 use core::hash::Hash;
 use indexmap::IndexMap;
-use crate::random::RandomState;
 
 impl<K, V> ToDatexExpressionData for IndexMap<K, V, RandomState>
 where

@@ -1,13 +1,12 @@
-use crate::random::RandomState;
-use indexmap::IndexMap;
 use crate::{
-    collections::HashMap,
     network::com_hub::InterfacePriority,
     prelude::*,
+    random::RandomState,
+    traits::datex_native_structural::DatexNativeStructural,
     values::{core_values::endpoint::Endpoint, value::Value},
 };
 use datex_macros_internal::Datex;
-use crate::traits::datex_native_structural::DatexNativeStructural;
+use indexmap::IndexMap;
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -85,11 +84,16 @@ impl RuntimeConfig {
 
     /// Adds a single environment variable to the runtime's custom environment variables.
     pub fn add_env_var(&mut self, key: String, value: String) {
-        self.env.get_or_insert_with(IndexMap::default).insert(key, value);
+        self.env
+            .get_or_insert_with(IndexMap::default)
+            .insert(key, value);
     }
 
     /// Adds multiple environment variables to the runtime's custom environment variables.
-    pub fn add_env_vars(&mut self, vars: IndexMap<String, String, RandomState>) {
+    pub fn add_env_vars(
+        &mut self,
+        vars: IndexMap<String, String, RandomState>,
+    ) {
         self.env.get_or_insert_with(IndexMap::default).extend(vars);
     }
 
@@ -98,7 +102,9 @@ impl RuntimeConfig {
     pub fn load_host_env_vars(&mut self) {
         // add all host environment variables to the runtime's custom environment variables
         for (key, value) in std::env::vars() {
-            self.env.get_or_insert_with(IndexMap::new).insert(key, value);
+            self.env
+                .get_or_insert_with(IndexMap::new)
+                .insert(key, value);
         }
     }
 
@@ -123,13 +129,13 @@ pub mod tests {
 
     use crate::{
         prelude::*,
+        preludes::derive::Value,
         runtime::{
             RuntimeConfig, RuntimeConfigInterface,
             cache::shared_references_cache::SharedReferencesCache,
         },
         values::core_values::{endpoint::Endpoint, map::Map},
     };
-    use crate::preludes::derive::Value;
 
     #[derive(Datex)]
     #[datex(structural)]
@@ -176,7 +182,7 @@ pub mod tests {
             42
         );
 
-        let value_container =  Value::native_structural(config_interface);
+        let value_container = Value::native_structural(config_interface);
         let parsed_config_interface: RuntimeConfigInterface =
             value_container.try_into_value().unwrap();
         assert_eq!(parsed_config_interface.interface_type, "test");
@@ -186,7 +192,8 @@ pub mod tests {
     fn datex_proxy_runtime_config() {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
         let value_container = Value::native_structural(config);
-        let parsed_config: RuntimeConfig = value_container.try_into_value().unwrap();
+        let parsed_config: RuntimeConfig =
+            value_container.try_into_value().unwrap();
         assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));
     }
 }

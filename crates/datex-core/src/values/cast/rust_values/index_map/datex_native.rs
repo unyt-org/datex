@@ -1,9 +1,9 @@
-use core::any::Any;
-use core::hash::Hash;
-use crate::random::RandomState;
+use crate::{
+    preludes::derive::DatexNative, random::RandomState,
+    values::core_values::native::DatexNativeBase,
+};
+use core::{any::Any, hash::Hash};
 use indexmap::IndexMap;
-use crate::preludes::derive::{DatexNative};
-use crate::values::core_values::native::DatexNativeBase;
 
 impl<K, V> DatexNative for IndexMap<K, V, RandomState>
 where

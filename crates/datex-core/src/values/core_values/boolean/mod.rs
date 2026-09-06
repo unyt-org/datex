@@ -7,18 +7,18 @@ mod to_instructions;
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
+mod classification;
+pub mod convert_parts;
+mod datex_hash;
+pub mod datex_native;
+mod datex_native_structural;
 pub mod equality;
+pub mod get_core_lib_type_id;
+pub mod get_datex_type;
 pub mod ops;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
-mod datex_native_structural;
-pub mod datex_native;
-pub mod get_core_lib_type_id;
-pub mod convert_parts;
-pub mod get_datex_type;
-mod classification;
-mod datex_hash;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,

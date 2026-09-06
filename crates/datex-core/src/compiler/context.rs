@@ -6,25 +6,17 @@ use crate::{
         core_compilation_context::{
             CompileInput, CoreCompilationContext, DXBWithSharedValues,
         },
-        shared_value_tracking::SharedValueTracking,
-        to_instructions::{ToInstructions},
-        type_compiler::append_type_instruction,
-        value_compiler::append_instruction_code,
+        to_instructions::ToInstructions,
+        value_compiler::{append_instruction, append_instruction_code},
     },
     global::stack_index::StackIndex,
-    instruction::{
-        instruction_codes::InstructionCode, type_instruction::TypeInstruction,
-    },
+    instruction::{Instruction, instruction_codes::InstructionCode},
     prelude::*,
     runtime::execution::context::ExecutionMode,
     utils::buffers::append_u32,
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Cursor, meta::WriteEndian};
-use core::cell::RefCell;
-use crate::core_compiler::value_compiler::append_instruction;
-use crate::core_compiler::value_visitor::ValueVisitor;
-use crate::instruction::Instruction;
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext<'a> {

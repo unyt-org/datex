@@ -157,7 +157,10 @@ fn append_delete_entry<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
 }
 
 /// Appends a set property operation on a shared container, based on the provided value key.
-pub fn append_set_property_value_key<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
+pub fn append_set_property_value_key<
+    'ctx,
+    T: BufferProvider + ValueVisitor<'ctx>,
+>(
     context: &mut T,
     value_key: &ValueKey,
 ) {

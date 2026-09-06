@@ -1,10 +1,9 @@
 pub mod serde_dif;
 
-use serde::{Deserialize, Serialize};
+use crate::{
+    prelude::*, shared_values::PointerAddress, types::entity_type::EntityType,
+};
 use strum_macros::AsRefStr;
-use crate::shared_values::PointerAddress;
-use crate::types::entity_type::EntityType;
-use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct ValueTag {
@@ -22,7 +21,7 @@ pub enum ValueClassification {
     /// list of impls that are associated with the value (e.g. null + $1234 + $5678)
     Impls(Vec<PointerAddress>),
     /// a tagged value, e.g. #Tagged(42)
-    Tag(ValueTag)
+    Tag(ValueTag),
 }
 
 impl ValueClassification {
@@ -30,7 +29,6 @@ impl ValueClassification {
         matches!(self, ValueClassification::None)
     }
 }
-
 
 impl From<EntityType> for ValueClassification {
     fn from(entity_type: EntityType) -> Self {
@@ -55,6 +53,9 @@ impl From<Vec<PointerAddress>> for ValueClassification {
 
 impl From<String> for ValueClassification {
     fn from(tag: String) -> Self {
-        ValueClassification::Tag(ValueTag { tag, is_empty: false })
+        ValueClassification::Tag(ValueTag {
+            tag,
+            is_empty: false,
+        })
     }
 }

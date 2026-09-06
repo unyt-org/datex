@@ -1,10 +1,14 @@
+use crate::{
+    preludes::derive::{SharedReferencesCache, Type, TypeDefinition},
+    random::RandomState,
+    traits::get_datex_type::GetDatexType,
+    types::type_definition::collection::{
+        CollectionTypeDefinition,
+        type_definition::map::MapCollectionTypeDefinition,
+    },
+};
 use core::hash::Hash;
 use indexmap::IndexMap;
-use crate::preludes::derive::{SharedReferencesCache, Type, TypeDefinition};
-use crate::traits::get_datex_type::GetDatexType;
-use crate::types::type_definition::collection::CollectionTypeDefinition;
-use crate::types::type_definition::collection::type_definition::map::MapCollectionTypeDefinition;
-use crate::random::RandomState;
 
 impl<K, V> GetDatexType for IndexMap<K, V, RandomState>
 where
@@ -19,7 +23,7 @@ where
                     V::datex_type(memory),
                 ),
             ))
-                .into(),
+            .into(),
         )
     }
 }

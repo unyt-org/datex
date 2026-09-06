@@ -1,15 +1,20 @@
-use crate::traits::convert_core_value::ConvertCoreValue;
-use crate::utils::goat::Goat;
-use crate::utils::goat_mut::GoatMut;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::boolean::Boolean;
-use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::{
+    traits::convert_core_value::ConvertCoreValue,
+    utils::{goat::Goat, goat_mut::GoatMut},
+    values::{
+        core_value::CoreValue,
+        core_values::boolean::Boolean,
+        value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
+    },
+};
 
 impl ConvertCoreValue for bool {
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Boolean(Boolean(bool)) => Ok(bool),
-            CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
+            CoreValue::Native(native) => {
+                native.try_into_value().map_err(CoreValue::Native)
+            }
             _ => Err(value),
         }
     }
@@ -22,8 +27,9 @@ impl ConvertCoreValue for bool {
         }
     }
 
-    fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()>
-    {
+    fn try_borrow_mut_from_core_value(
+        value: &mut CoreValue,
+    ) -> Result<&mut Self, ()> {
         match value {
             CoreValue::Boolean(Boolean(bool)) => Ok(bool),
             CoreValue::Native(native) => native.try_as_mut().ok_or(()),
@@ -32,13 +38,14 @@ impl ConvertCoreValue for bool {
     }
 }
 
-
 impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, bool> {
     type Error = ();
     fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
         match value {
             BorrowedCoreValue::Boolean(v) => Ok(v.map(|v| &v.0)),
-            BorrowedCoreValue::Native(native) => native.filter_map(|v| v.as_any().downcast_ref::<bool>()).ok_or(()),
+            BorrowedCoreValue::Native(native) => native
+                .filter_map(|v| v.as_any().downcast_ref::<bool>())
+                .ok_or(()),
             _ => Err(()),
         }
     }
@@ -49,7 +56,9 @@ impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, bool> {
     fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
         match value {
             BorrowedCoreValueMut::Boolean(v) => Ok(v.map(|v| &mut v.0)),
-            BorrowedCoreValueMut::Native(native) => native.filter_map(|v| v.as_any_mut().downcast_mut::<bool>()).ok_or(()),
+            BorrowedCoreValueMut::Native(native) => native
+                .filter_map(|v| v.as_any_mut().downcast_mut::<bool>())
+                .ok_or(()),
             _ => Err(()),
         }
     }
@@ -58,8 +67,7 @@ impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::values::core_value::CoreValue;
-    use crate::values::core_values::boolean::Boolean;
+    use crate::values::{core_value::CoreValue, core_values::boolean::Boolean};
 
     #[test]
     fn try_bool_from_core_value() {

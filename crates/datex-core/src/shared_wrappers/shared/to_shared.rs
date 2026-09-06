@@ -1,7 +1,9 @@
-use crate::shared_wrappers::shared::Shared;
-use crate::preludes::derive::{DatexNative, SharedReferencesCache};
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::shared_values::{SharedContainer, SharedContainerMutability};
+use crate::{
+    preludes::derive::{DatexNative, SharedReferencesCache},
+    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+    shared_values::{SharedContainer, SharedContainerMutability},
+    shared_wrappers::shared::Shared,
+};
 
 pub trait ToShared: DatexNative + Sized {
     fn shared(
@@ -13,9 +15,10 @@ pub trait ToShared: DatexNative + Sized {
             self.to_value_container(cache),
             SharedContainerMutability::Mutable,
             provider,
-        )).unwrap() // TODO: can we always unwrap safely here?
+        ))
+        .unwrap() // TODO: can we always unwrap safely here?
     }
 }
 
 /// Auto implementation of ToShared for all types that implement DatexNative and are Sized.
-impl <T> ToShared for T where T: DatexNative + Sized {}
+impl<T> ToShared for T where T: DatexNative + Sized {}

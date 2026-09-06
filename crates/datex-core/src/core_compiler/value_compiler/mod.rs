@@ -27,9 +27,8 @@ use binrw::{
 };
 
 use crate::{
-    core_compiler::{
-        core_compilation_context::{ByteCursor, CoreCompilationContext},
-        to_instructions::ToInstructionsDyn,
+    core_compiler::core_compilation_context::{
+        ByteCursor, CoreCompilationContext,
     },
     instruction::{
         Instruction,
@@ -40,7 +39,7 @@ use crate::{
     },
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdIndex},
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        type_id::CoreLibTypeId,
         value_id::CoreLibValueId,
     },
     prelude::*,
@@ -48,11 +47,6 @@ use crate::{
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainer,
         SharedContainerOwnership, traits::SharedContainerCommon,
-    },
-    types::{
-        r#type::Type,
-        type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
-        type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
     values::{
         core_values::callable::CallableBody,
@@ -184,7 +178,7 @@ pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx> + 'ctx>(
             ));
         }
         // impls value
-        ValueClassification::Impls(impls) => {
+        ValueClassification::Impls(_impls) => {
             todo!(
                 "Compiling values with Impls classification is not yet implemented"
             );

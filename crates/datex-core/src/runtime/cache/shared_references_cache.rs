@@ -8,8 +8,7 @@ use crate::{
     },
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
-        entity_type::EntityType,
-        r#type::Type,
+        entity_type::EntityType, r#type::Type,
     },
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
@@ -176,9 +175,9 @@ impl SharedReferencesCache {
             }
             // SAFETY: We have checked that the value is a SharedContainer containing an EntityTypeDefinition.
             unsafe {
-                Some(EntityType::new_unchecked(
-                    SharedContainer::Referenced(value.clone()),
-                ))
+                Some(EntityType::new_unchecked(SharedContainer::Referenced(
+                    value.clone(),
+                )))
             }
         } else {
             None
@@ -227,9 +226,9 @@ impl SharedReferencesCache {
             .get_owned_reference(&PointerAddress::SelfOwned(address.clone()))
         {
             return SharedTypeReservation::Existing(unsafe {
-                EntityType::new_unchecked(
-                    SharedContainer::Referenced(existing.clone()),
-                )
+                EntityType::new_unchecked(SharedContainer::Referenced(
+                    existing.clone(),
+                ))
             });
         }
         let shared_container = unsafe {
@@ -302,10 +301,8 @@ impl SharedReferencesCache {
 #[cfg(feature = "decompiler")]
 impl Display for SharedReferencesCache {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        use crate::decompiler::*;
-        use crate::decompiler::ast_to_source_code::value_to_source_code;
+        use crate::decompiler::{ast_to_source_code::value_to_source_code, *};
 
-        
         // print owned values
         writeln!(f, "Owned Values:")?;
         for (address, value) in &self.owned_values {

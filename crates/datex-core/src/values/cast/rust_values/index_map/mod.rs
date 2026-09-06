@@ -12,24 +12,6 @@ mod to_datex_expression_data;
 mod to_instructions;
 mod try_from_core_value;
 mod value_access;
-use crate::{
-    prelude::*,
-    types::{
-        r#type::Type,
-        type_definition::collection::{
-            CollectionTypeDefinition,
-            type_definition::map::MapCollectionTypeDefinition,
-        },
-    },
-    values::{core_values::map::Map, value::Value},
-};
-
-use crate::{
-    runtime::cache::shared_references_cache::SharedReferencesCache,
-    types::type_definition::TypeDefinition,
-    values::core_values::native::DatexNative,
-};
-use core::{any::Any, hash::Hash};
 
 #[cfg(test)]
 mod tests {

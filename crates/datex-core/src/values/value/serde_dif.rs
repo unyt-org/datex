@@ -2,7 +2,6 @@ use crate::{
     dif::serde_context::SerdeContext,
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
     prelude::*,
-    types::type_definition::TypeDefinition,
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
         core_value::{CoreValue, serde_dif::CoreValueVisitor},
@@ -10,7 +9,7 @@ use crate::{
             boolean::Boolean, decimal::typed_decimal::TypedDecimal,
             native::NativeCoreValue,
         },
-        value::Value,
+        value::{Value, value_classification::ValueClassification},
         value_container::ValueContainer,
     },
 };
@@ -21,7 +20,6 @@ use serde::{
     de::{DeserializeSeed, Error as DeError, Visitor},
     ser::SerializeTuple,
 };
-use crate::values::value::value_classification::ValueClassification;
 
 impl<'ctx> SerdeContext<'ctx, Value> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)

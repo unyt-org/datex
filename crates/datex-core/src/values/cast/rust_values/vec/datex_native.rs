@@ -1,7 +1,8 @@
+use crate::{
+    prelude::*, preludes::derive::DatexNative,
+    values::core_values::native::DatexNativeBase,
+};
 use core::any::Any;
-use crate::preludes::derive::{CoreValue, DatexNative};
-use crate::values::core_values::native::DatexNativeBase;
-use crate::prelude::*;
 
 impl<T: DatexNativeBase + 'static> DatexNative for Vec<T> {
     fn as_any(&self) -> &dyn Any {

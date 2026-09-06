@@ -2,12 +2,9 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::Instruction,
     prelude::*,
-    values::core_values::{
-        map::{BorrowedMapKey, Map},
-        native::NativeCoreValue,
-    },
+    values::core_values::native::NativeCoreValue,
 };
 
 impl ToInstructions for NativeCoreValue {

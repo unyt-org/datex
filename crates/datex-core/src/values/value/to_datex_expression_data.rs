@@ -6,9 +6,11 @@ use crate::{
         spanned::Spanned,
     },
     traits::to_datex_expression_data::ToDatexExpressionData,
-    values::value::Value,
+    values::value::{
+        Value,
+        value_classification::{ValueClassification, ValueTag},
+    },
 };
-use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 impl ToDatexExpressionData for Value {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
@@ -41,7 +43,7 @@ fn classification_expression(
                 value: expression.with_default_span(),
             })
         }
-        ValueClassification::Impls(impls) => {
+        ValueClassification::Impls(_impls) => {
             todo!()
         }
     }

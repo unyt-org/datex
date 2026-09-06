@@ -71,11 +71,11 @@ impl ToDatexExpressionData for Callable {
                     ..
                 }) => {
                     use crate::decompiler::dxb_to_source_code::ast_from_bytecode::ast_from_bytecode;
-                    
+
                     ast_from_bytecode(body).unwrap_or_else(|_| {
                         DatexExpressionData::Noop.with_default_span()
                     })
-                },
+                }
                 #[cfg(not(feature = "decompiler"))]
                 CallableBody::DatexBytecode(_) => {
                     DatexExpressionData::NativeImplementationIndicator

@@ -1,9 +1,12 @@
-use crate::traits::convert_core_value::ConvertCoreValue;
-use crate::utils::goat::Goat;
-use crate::utils::goat_mut::GoatMut;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::{
+    traits::convert_core_value::ConvertCoreValue,
+    utils::{goat::Goat, goat_mut::GoatMut},
+    values::{
+        core_value::CoreValue,
+        core_values::integer::typed_integer::TypedInteger,
+        value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
+    },
+};
 
 macro_rules! impl_pointer_sized_core_value_conversions {
     ($($ty:ident => $variant:ident, $repr:ty, $borrow:ident, $borrow_mut:ident;)* $(,)?) => {

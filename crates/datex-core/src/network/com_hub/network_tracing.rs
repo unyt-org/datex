@@ -34,12 +34,12 @@ use crate::{
     core_compiler::value_compiler::compile_value,
     prelude::*,
     runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
+    traits::convert_value_container::ConvertValueContainer,
 };
 use datex_macros_internal::Datex;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
-use crate::traits::convert_value_container::ConvertValueContainer;
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
 #[datex(structural)]

@@ -1,16 +1,13 @@
 use crate::{
-    prelude::*,
-    runtime::Runtime,
+    prelude::*, runtime::Runtime, traits::get_datex_type::GetDatexType,
     values::value_container::ValueContainer,
 };
 use datex_macros_internal::{Datex, datex};
-use crate::traits::get_datex_type::GetDatexType;
 
 #[datex(name = "inspector")]
 mod datex_inspector {
-    use crate::shared_wrappers::shared::Shared;
-    use crate::shared_wrappers::shared::to_shared::ToShared;
     use super::*;
+    use crate::shared_wrappers::shared::{Shared, to_shared::ToShared};
 
     #[derive(Datex, Debug, Clone)]
     pub struct Inspector {
@@ -57,10 +54,10 @@ pub fn register_inspector_namespace(runtime: &Runtime) {
 #[cfg(test)]
 mod tests {
     use crate::{
-        traits::apply::Apply, types::type_definition::callable::CallableKind,
+        preludes::derive::CoreValue, traits::apply::Apply,
+        types::type_definition::callable::CallableKind,
         values::core_values::callable::native_sync_callable,
     };
-    use crate::preludes::derive::CoreValue;
     // FIXME
     // #[test]
     // fn ty() {

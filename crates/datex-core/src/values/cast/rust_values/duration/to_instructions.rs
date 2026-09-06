@@ -2,12 +2,10 @@ use core::time::Duration;
 
 use crate::{
     core_compiler::{
-        to_instructions::{ToInstructions, ToInstructionsDyn},
-        value_visitor::ValueVisitor,
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::Instruction,
     prelude::*,
-    values::core_values::Instant,
 };
 
 // impl IntoRegularInstruction for Instant {
@@ -20,7 +18,7 @@ use crate::{
 impl ToInstructions for Duration {
     fn to_instructions<'ctx, 'a>(
         &'a self,
-        ctx: &'a mut dyn ValueVisitor<'ctx>,
+        _ctx: &'a mut dyn ValueVisitor<'ctx>,
     ) -> Box<dyn Iterator<Item = Instruction> + 'a>
     where
         'ctx: 'a,

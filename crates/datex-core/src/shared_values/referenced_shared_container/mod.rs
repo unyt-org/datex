@@ -20,6 +20,7 @@ use crate::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
     types::type_definition::TypeDefinition,
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
     values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
@@ -28,8 +29,6 @@ use core::{
     fmt::Display,
     hash::{Hash, Hasher},
 };
-use crate::shared_values::SharedContainer;
-use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -296,8 +295,6 @@ impl_display_for_datex_value!(
         }
     }
 );
-
-
 
 impl _ExposeRcInternal for ReferencedSharedContainer {
     type Shared = SharedContainerInner;

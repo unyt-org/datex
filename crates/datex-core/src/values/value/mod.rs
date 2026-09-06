@@ -6,7 +6,6 @@ use crate::{
     types::type_definition::{
         TypeDefinition, callable::CallableTypeDefinition,
     },
-    utils::sheep::Sheep,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -47,7 +46,7 @@ use crate::{
         datex_native_only_structural::DatexNativeOnlyStructural,
         static_classification::StaticClassification, value_access::ValueAccess,
     },
-    types::{entity_type::EntityType, r#type::Type},
+    types::r#type::Type,
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
     values::{
@@ -281,7 +280,7 @@ impl Value {
                     },
                 })
             }
-            ValueClassification::Impls(impls) => todo!(),
+            ValueClassification::Impls(_impls) => todo!(),
             ValueClassification::None => {
                 TypeDefinition::CoreType(self.default_core_type())
             }

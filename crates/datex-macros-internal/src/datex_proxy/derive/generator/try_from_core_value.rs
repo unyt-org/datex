@@ -1,9 +1,11 @@
+use crate::datex_proxy::data::StructureData;
 use proc_macro2::TokenStream;
 use quote::quote;
-use crate::datex_proxy::data::StructureData;
 
 /// Generates the from core value traits
-pub fn generate_try_from_core_value(structure_data: &StructureData) -> TokenStream {
+pub fn generate_try_from_core_value(
+    structure_data: &StructureData,
+) -> TokenStream {
     let StructureData {
         ident, generics, ..
     } = structure_data;

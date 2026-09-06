@@ -1,7 +1,6 @@
+use crate::{random::RandomState, traits::datex_hash::DatexHash};
 use core::hash::Hasher;
 use indexmap::IndexMap;
-use crate::traits::datex_hash::DatexHash;
-use crate::random::RandomState;
 
 impl<K, V> DatexHash for IndexMap<K, V, RandomState>
 where

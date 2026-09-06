@@ -1,12 +1,16 @@
-use serde::de::{DeserializeSeed, SeqAccess, Visitor};
-use serde::{Deserializer, Serializer};
-use serde::ser::SerializeSeq;
-use crate::dif::serde_context::SerdeContext;
-use crate::shared_values::PointerAddress;
-use crate::types::entity_type::EntityType;
-use crate::utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed};
-use crate::values::value::value_classification::{ValueClassification, ValueTag};
-use crate::prelude::*;
+use crate::{
+    dif::serde_context::SerdeContext,
+    prelude::*,
+    shared_values::PointerAddress,
+    types::entity_type::EntityType,
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    values::value::value_classification::{ValueClassification, ValueTag},
+};
+use serde::{
+    Deserializer, Serializer,
+    de::{DeserializeSeed, SeqAccess, Visitor},
+    ser::SerializeSeq,
+};
 
 /// Serialization for [ValueClassification].
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueClassification> {
@@ -45,8 +49,9 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueClassification> {
     }
 }
 
-
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueClassification> {
+impl<'de, 'ctx> DeserializeSeed<'de>
+    for SerdeContext<'ctx, ValueClassification>
+{
     type Value = ValueClassification;
     fn deserialize<D: Deserializer<'de>>(
         self,
@@ -71,31 +76,34 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueClassification> {
         A: SeqAccess<'de>,
     {
         let mut seq = seq;
-        let classification: String = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::custom("expected a value classification"))?;
+        let classification: String = seq.next_element()?.ok_or_else(|| {
+            serde::de::Error::custom("expected a value classification")
+        })?;
 
         match classification.as_str() {
             "None" => Ok(ValueClassification::None),
             "Entity" => {
                 let entity_type: EntityType = seq
                     .next_element_seed(self.cast::<EntityType>())?
-                    .ok_or_else(|| serde::de::Error::custom("expected an entity type"))?;
+                    .ok_or_else(|| {
+                        serde::de::Error::custom("expected an entity type")
+                    })?;
                 Ok(ValueClassification::Entity(entity_type))
             }
             "Impls" => {
-                let impls: Vec<PointerAddress> = seq
-                    .next_element()?
-                    .ok_or_else(|| serde::de::Error::custom("expected a list of impls"))?;
+                let impls: Vec<PointerAddress> =
+                    seq.next_element()?.ok_or_else(|| {
+                        serde::de::Error::custom("expected a list of impls")
+                    })?;
                 Ok(ValueClassification::Impls(impls))
             }
             "Tag" => {
-                let tag: String = seq
-                    .next_element()?
-                    .ok_or_else(|| serde::de::Error::custom("expected a tag string"))?;
-                let is_empty: bool = seq
-                    .next_element()?
-                    .ok_or_else(|| serde::de::Error::custom("expected a boolean for is_empty"))?;
+                let tag: String = seq.next_element()?.ok_or_else(|| {
+                    serde::de::Error::custom("expected a tag string")
+                })?;
+                let is_empty: bool = seq.next_element()?.ok_or_else(|| {
+                    serde::de::Error::custom("expected a boolean for is_empty")
+                })?;
                 Ok(ValueClassification::Tag(ValueTag { tag, is_empty }))
             }
             _ => Err(serde::de::Error::custom(format!(

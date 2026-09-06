@@ -20,6 +20,7 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
     values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
@@ -29,7 +30,6 @@ use core::{
     hash::{Hash, Hasher},
     mem,
 };
-use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -102,16 +102,17 @@ impl OwnedSharedContainer {
     ) -> Self {
         let is_uninitialized = value_container.is_uninitialized();
 
-        let mut container = OwnedSharedContainer::new_from_self_owned_container(unsafe {
-            SelfOwnedSharedContainer::new_with_address(
-                BaseSharedValueContainer::new_with_inferred_allowed_type(
-                    value_container,
-                    mutability,
-                ),
-                address,
-            )
-        });
-        
+        let mut container =
+            OwnedSharedContainer::new_from_self_owned_container(unsafe {
+                SelfOwnedSharedContainer::new_with_address(
+                    BaseSharedValueContainer::new_with_inferred_allowed_type(
+                        value_container,
+                        mutability,
+                    ),
+                    address,
+                )
+            });
+
         if is_uninitialized {
             container.mark_uninitialized();
         }

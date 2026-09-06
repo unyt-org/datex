@@ -1,9 +1,12 @@
-use crate::traits::convert_core_value::ConvertCoreValue;
-use crate::utils::goat::Goat;
-use crate::utils::goat_mut::GoatMut;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::{
+    traits::convert_core_value::ConvertCoreValue,
+    utils::{goat::Goat, goat_mut::GoatMut},
+    values::{
+        core_value::CoreValue,
+        core_values::integer::typed_integer::TypedInteger,
+        value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
+    },
+};
 
 macro_rules! impl_integer_core_value_conversions {
     ($($ty:ident => $variant:ident, $borrow:ident, $borrow_mut:ident;)* $(,)?) => {
@@ -83,18 +86,17 @@ impl_integer_core_value_conversions! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::values::core_value::CoreValue;
-    use crate::values::core_values::boolean::Boolean;
+    use crate::values::{core_value::CoreValue, core_values::boolean::Boolean};
 
     #[test]
     fn try_bool_from_core_value() {
         let mut core_value = CoreValue::Boolean(Boolean(true));
         let result = core_value.try_as::<bool>();
         assert_eq!(*result.unwrap(), true);
-        
+
         let result_mut = core_value.try_as_mut::<bool>();
         assert_eq!(*result_mut.unwrap(), true);
-        
+
         let result_into = core_value.try_into_value::<bool>();
         assert_eq!(result_into.unwrap(), true);
     }

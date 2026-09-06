@@ -13,17 +13,17 @@ use datex_core::{
     },
     traits::{
         apply::{Apply, ApplyArgument},
+        get_datex_type::GetDatexType,
         try_clone::TryClone,
         value_access::ValueAccess,
-        get_datex_type::GetDatexType,
     },
     types::{
         entities::{
             entity_impls::{EntityImpl, EntityImplMethod},
             entity_type_definition::EntityTypeDefinition,
         },
-        literal_type_definition::LiteralTypeDefinition,
         entity_type::EntityType,
+        literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
         type_definition::{
             TypeDefinition,
@@ -38,11 +38,10 @@ use datex_core::{
             integer::typed_integer::{IntegerTypeVariant, TypedInteger},
             native::{DatexNative, NativeCoreValue},
         },
-        value::Value,
+        value::{Value, value_classification::ValueClassification},
         value_container::ValueContainer,
     },
 };
-use datex_core::values::value::value_classification::ValueClassification;
 use datex_macros_internal::{Datex, datex};
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -228,7 +227,10 @@ fn signatures() {
 
     // call method directly on an Example instance via the ValueContainer
     let example_instance = Box::new(Example { a: 1, b: 2 });
-    let example_instance_vc = ValueContainer::from(Value::native(example_instance, cache.deref_mut()));
+    let example_instance_vc = ValueContainer::from(Value::native(
+        example_instance,
+        cache.deref_mut(),
+    ));
     // TODO: also store type in value container (this will require passing cache to the ValueContainer::from function somehow)
     // Then we can access methods on the type definition here
 

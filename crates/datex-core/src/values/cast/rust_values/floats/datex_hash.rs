@@ -1,7 +1,6 @@
-use core::hash::Hasher;
-use core::hash::Hash;
-use ordered_float::OrderedFloat;
 use crate::traits::datex_hash::DatexHash;
+use core::hash::{Hash, Hasher};
+use ordered_float::OrderedFloat;
 
 impl DatexHash for f32 {
     fn datex_hash(&self, mut state: &mut dyn Hasher) {

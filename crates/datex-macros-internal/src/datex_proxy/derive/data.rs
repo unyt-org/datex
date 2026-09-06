@@ -1,6 +1,5 @@
-use proc_macro2::TokenStream;
-use proc_macro2::{Ident, Span};
-use quote::{quote, ToTokens};
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::ToTokens;
 use syn::{Generics, Type};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -61,7 +60,6 @@ pub struct IndexedField {
     pub field: Field,
 }
 
-
 impl IndexedField {
     pub fn index_accessor(&self) -> syn::Index {
         syn::Index::from(self.index)
@@ -119,15 +117,12 @@ impl Fields {
     /// For unnamed fields, it returns identifiers like `_0`, `_1`, etc.
     pub fn normalized_field_idents(&self) -> Vec<Ident> {
         match self {
-            Fields::Named(fields) => fields
-                .iter()
-                .map(|f| f.normalized_ident())
-                .collect(),
-            Fields::Unnamed(fields) => fields
-                .iter()
-                .enumerate()
-                .map(|(_, f)| f.normalized_ident())
-                .collect(),
+            Fields::Named(fields) => {
+                fields.iter().map(|f| f.normalized_ident()).collect()
+            }
+            Fields::Unnamed(fields) => {
+                fields.iter().map(|f| f.normalized_ident()).collect()
+            }
             Fields::Transparent(field) => {
                 vec![field.normalized_ident()]
             }
@@ -144,10 +139,11 @@ impl Fields {
                 .collect(),
             Fields::Unnamed(fields) => fields
                 .iter()
-                .enumerate()
-                .map(|(_, f)| f.index_accessor().into_token_stream())
+                .map(|f| f.index_accessor().into_token_stream())
                 .collect(),
-            Fields::Transparent(field) => vec![field.index_accessor().into_token_stream()],
+            Fields::Transparent(field) => {
+                vec![field.index_accessor().into_token_stream()]
+            }
             Fields::Unit => vec![],
         }
     }

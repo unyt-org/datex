@@ -1,4 +1,4 @@
-
+use crate::{dxb_parser::body::DXBParserError, prelude::*};
 #[cfg(feature = "syntax_highlighting_legacy")]
 use syntect::{
     easy::HighlightLines,
@@ -6,8 +6,6 @@ use syntect::{
     parsing::{SyntaxDefinition, SyntaxSetBuilder},
     util::{LinesWithEndings, as_24_bit_terminal_escaped},
 };
-use crate::dxb_parser::body::DXBParserError;
-use crate::prelude::*;
 
 #[cfg(not(feature = "syntax_highlighting_legacy"))]
 pub fn apply_syntax_highlighting(

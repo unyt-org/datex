@@ -13,8 +13,8 @@ use crate::{
     },
     types::{
         entities::entity_type_definition::EntityTypeDefinition,
-        literal_type_definition::LiteralTypeDefinition,
         entity_type::EntityType,
+        literal_type_definition::LiteralTypeDefinition,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
             LocalMutability, LocalOwnership, TypeDefinitionWithMetadata,
@@ -341,18 +341,18 @@ impl Type {
     // }
 }
 
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
 pub mod equality;
+mod get_core_lib_type_id;
 pub mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 #[cfg(feature = "ast")]
 mod to_type_expression_data;
 mod value_access;
-mod datex_native;
-mod datex_native_structural;
-mod convert_parts;
-mod get_core_lib_type_id;
-mod datex_hash;
 
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -483,8 +483,7 @@ impl TryFrom<ValueContainer> for Type {
     fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
         match value {
             ValueContainer::Shared(shared) => {
-                EntityType::try_from(shared)
-                    .map(Type::Entity)
+                EntityType::try_from(shared).map(Type::Entity)
             }
             ValueContainer::Local(value) => match value.inner {
                 CoreValue::Type(ty) => Ok(ty),

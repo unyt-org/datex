@@ -1,6 +1,6 @@
+use crate::datex_proxy::data::StructureData;
 use proc_macro2::TokenStream;
 use quote::quote;
-use crate::datex_proxy::data::StructureData;
 
 /// Generates the [FromParts] and [IntoParts] implementations
 pub fn generate_convert_parts(structure_data: &StructureData) -> TokenStream {

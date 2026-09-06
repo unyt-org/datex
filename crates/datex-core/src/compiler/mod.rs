@@ -46,6 +46,7 @@ use crate::{
         stack_index::StackIndex,
     },
     instruction::{
+        Instruction,
         instruction_codes::InstructionCode,
         instruction_data::{
             CallableDeclarationData, CallableSignatureData,
@@ -75,7 +76,6 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::instruction::Instruction;
 
 pub mod context;
 pub mod datex_expression_to_instruction;

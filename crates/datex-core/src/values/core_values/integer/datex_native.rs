@@ -1,7 +1,7 @@
+use crate::{
+    preludes::derive::DatexNative, values::core_values::integer::Integer,
+};
 use core::any::Any;
-use crate::preludes::derive::{DatexNative};
-use crate::traits::static_classification::StaticClassification;
-use crate::values::core_values::integer::Integer;
 
 impl DatexNative for Integer {
     fn as_any(&self) -> &dyn Any {

@@ -12,7 +12,6 @@ use crate::{
         },
         traits::_ExposeRcInternal,
     },
-    utils::sheep::Sheep,
     values::value_container::ValueContainer,
 };
 pub mod identity;
@@ -30,6 +29,7 @@ use crate::{
         shared_mut::SharedMut,
         traits::SharedContainerCommon,
     },
+    traits::convert_value_container::ConvertValueContainer,
     types::type_definition::TypeDefinition,
     value_updates::update_handler::{
         InternalMutabilityUpdateHandler, UpdateCallbackData,
@@ -43,8 +43,6 @@ use core::{
     mem,
     ops::Deref,
 };
-use crate::traits::convert_value_container::ConvertValueContainer;
-use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 pub mod apply;
 pub mod serde_dif;
@@ -416,7 +414,8 @@ impl SharedContainer {
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
     pub fn try_as<T>(&self) -> Option<Ref<'_, T>>
-    where T: ConvertValueContainer
+    where
+        T: ConvertValueContainer,
     {
         Ref::filter_map(self.value_container(), |value| value.try_as::<T>())
             .ok()
@@ -426,7 +425,8 @@ impl SharedContainer {
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
     pub fn try_as_mut<T>(&self) -> Option<SharedMut<'_, T>>
-    where T: ConvertValueContainer
+    where
+        T: ConvertValueContainer,
     {
         RefMut::filter_map(self.value_container_mut(), |value| {
             value.try_as_mut::<T>()
@@ -491,11 +491,10 @@ impl Display for SharedContainer {
     }
 }
 
-
 pub mod clone_unsafe;
 mod common;
-pub mod get_datex_type;
 pub mod equality;
+pub mod get_datex_type;
 pub mod update_handler;
 
 impl From<OwnedSharedContainer> for SharedContainer {

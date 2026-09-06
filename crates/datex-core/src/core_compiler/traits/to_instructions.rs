@@ -4,7 +4,7 @@ use crate::{
     core_compiler::{
         shared_value_tracking::SharedValueTracking, value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::Instruction,
     prelude::*,
 };
 

@@ -1,6 +1,10 @@
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::{
+        convert_value_container::ConvertValueContainer,
+        get_datex_type::GetDatexType,
+    },
     types::r#type::Type,
     values::{
         core_values::callable::error::CallableError,
@@ -8,8 +12,6 @@ use crate::{
     },
 };
 use seq_macro::seq;
-use crate::traits::convert_value_container::ConvertValueContainer;
-use crate::traits::get_datex_type::GetDatexType;
 
 pub trait IntoDatexCallable<Args, R> {
     /// Returns a vector of tuples containing the parameter names (if any) and their corresponding [Type]s.

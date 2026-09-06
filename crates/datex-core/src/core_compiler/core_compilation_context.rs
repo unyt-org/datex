@@ -5,12 +5,14 @@ use crate::{
         buffer_provider::BufferProvider,
         preamble::append_injected_values_preamble,
         shared_value_tracking::SharedValueTracking,
-        to_instructions::{ToInstructions},
-        type_compiler::append_type_instruction,
-        value_compiler::{append_shared_container_from_preamble, append_value},
+        to_instructions::ToInstructions,
+        value_compiler::{
+            append_instruction, append_shared_container_from_preamble,
+            append_value,
+        },
         value_visitor::ValueVisitor,
     },
-    instruction::type_instruction::TypeInstruction,
+    instruction::Instruction,
     prelude::*,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     shared_values::SharedContainer,
@@ -20,8 +22,6 @@ use crate::{
     },
 };
 use binrw::io::Cursor;
-use crate::core_compiler::value_compiler::append_instruction;
-use crate::instruction::Instruction;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 

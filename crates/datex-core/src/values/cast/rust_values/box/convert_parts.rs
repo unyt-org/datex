@@ -1,24 +1,34 @@
+use crate::{
+    prelude::*,
+    preludes::derive::SharedReferencesCache,
+    traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
+};
 use core::ops::Deref;
-use crate::preludes::derive::{SharedReferencesCache};
-use crate::traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts};
-use crate::prelude::*;
 
 impl<T: IntoParts> IntoParts for Box<T> {
-    fn into_parts<'a>(self, cache: &'a mut SharedReferencesCache) -> Option<Parts<'a>> where Self: Sized + 'a {
+    fn into_parts<'a>(
+        self,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Option<Parts<'a>>
+    where
+        Self: Sized + 'a,
+    {
         let inner = *self;
         inner.into_parts(cache)
     }
 
-    fn as_parts<'a>(&'a self, cache: &'a mut SharedReferencesCache) -> Option<BorrowedParts<'a>> {
+    fn as_parts<'a>(
+        &'a self,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Option<BorrowedParts<'a>> {
         self.deref().as_parts(cache)
     }
 }
 
 impl<T: FromParts> FromParts for Box<T> {
-
     fn try_from_parts(parts: Parts) -> Result<Self, ()>
     where
-        Self: Sized
+        Self: Sized,
     {
         Ok(Box::new(T::try_from_parts(parts)?))
     }

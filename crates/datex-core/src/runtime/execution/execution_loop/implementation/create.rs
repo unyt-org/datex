@@ -10,9 +10,11 @@ use crate::{
         SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
     },
-    values::value_container::ValueContainer,
+    values::{
+        value::value_classification::{ValueClassification, ValueTag},
+        value_container::ValueContainer,
+    },
 };
-use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 /// Creates a new [ValueContainer] with a tagged type definition based on the provided [ValueContainer] and tag.
 /// It expects the input [ValueContainer] to be a local value; otherwise, it returns an [ExecutionError::ExpectedLocalValue].
@@ -23,7 +25,10 @@ pub fn create_tagged_value_container(
     match value_container {
         ValueContainer::Local(mut value) => {
             // add tag type to the value
-            value.classification = ValueClassification::Tag(ValueTag { tag, is_empty: false });
+            value.classification = ValueClassification::Tag(ValueTag {
+                tag,
+                is_empty: false,
+            });
             Ok(ValueContainer::Local(value))
         }
         _ => Err(ExecutionError::ExpectedLocalValue),

@@ -11,7 +11,6 @@ use crate::{
 use core::cell::{Ref, RefMut};
 
 use crate::shared_values::base_shared_value_container::observers::ObserverData;
-use crate::shared_values::SharedContainer;
 
 impl SharedContainerCommon for ReferencedSharedContainer {
     /// Get the [SharedContainerMutability] of the inner [SelfOwnedSharedContainer].
@@ -45,7 +44,8 @@ impl SharedContainerCommon for ReferencedSharedContainer {
 
     /// Checks if the reference can be mutated by the local endpoint
     fn can_mutate(&self) -> bool {
-        self.reference_mutability == ReferenceMutability::Mutable || self.is_uninitialized
+        self.reference_mutability == ReferenceMutability::Mutable
+            || self.is_uninitialized
     }
 
     // TODO: convert to try_inner borrows

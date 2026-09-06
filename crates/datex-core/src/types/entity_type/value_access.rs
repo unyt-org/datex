@@ -5,12 +5,14 @@ use crate::{
     types::entity_type::EntityType,
     values::{
         borrowed_value_container::BorrowedValueContainer,
-        value::borrowed_value::{BorrowedCoreValue, BorrowedValue},
+        value::{
+            borrowed_value::{BorrowedCoreValue, BorrowedValue},
+            value_classification::ValueClassification,
+        },
         value_container::value_key::BorrowedValueKey,
     },
 };
 use core::cell::Ref;
-use crate::values::value::value_classification::ValueClassification;
 
 impl ValueAccess for EntityType {
     fn try_get_property(

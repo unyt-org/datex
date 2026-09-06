@@ -1,5 +1,5 @@
-pub mod get_datex_type;
 pub mod convert_value_container;
+pub mod get_datex_type;
 pub mod to_shared;
 
 use crate::{
@@ -9,11 +9,10 @@ use crate::{
         SharedContainer, SharedContainerMutability,
         traits::SharedContainerCommon,
     },
-    types::type_definition::TypeDefinition,
     values::{
         core_value::CoreValue,
         core_values::native::{DatexNative, NativeCoreValue},
-        value::Value,
+        value::{Value, value_classification::ValueClassification},
         value_container::ValueContainer,
     },
 };
@@ -21,7 +20,6 @@ use core::{
     cell::{Ref, RefMut},
     ops::Deref,
 };
-use crate::values::value::value_classification::ValueClassification;
 
 pub struct Shared<T: DatexNative + ?Sized> {
     container: SharedContainer,
@@ -131,9 +129,9 @@ impl<T: DatexNative + 'static> TryFrom<SharedContainer> for Shared<T> {
 #[cfg(test)]
 mod test {
     use crate::{
-        shared_wrappers::shared::Shared,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{SharedContainer, SharedContainerMutability},
+        shared_wrappers::shared::Shared,
     };
 
     use crate::{prelude::*, values::core_value::CoreValue};

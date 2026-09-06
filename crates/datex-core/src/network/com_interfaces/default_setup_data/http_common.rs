@@ -3,11 +3,11 @@ use core::fmt::Display;
 use crate::{
     network::com_hub::errors::ComInterfaceCreateError, prelude::*,
     runtime::RuntimeConfigInterface,
+    traits::datex_native_structural::DatexNativeStructural,
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 use url::Url;
-use crate::traits::datex_native_structural::DatexNativeStructural;
 
 #[derive(Debug)]
 pub enum URLError {

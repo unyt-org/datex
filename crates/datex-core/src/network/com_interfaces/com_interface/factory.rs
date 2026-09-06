@@ -11,6 +11,7 @@ use crate::{
         },
     },
     prelude::*,
+    preludes::derive::{ConvertCoreValue, StaticClassification},
     std_sync::Mutex,
     utils::async_callback::AsyncCallback,
     values::{core_values::endpoint::Endpoint, value::Value},
@@ -19,9 +20,6 @@ use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
 use futures_util::TryStreamExt;
-use crate::preludes::derive::{ConvertCoreValue, CoreValue, StaticClassification};
-use crate::traits::convert_value_container::ConvertValueContainer;
-use crate::values::core_values::native::DatexNative;
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
@@ -427,7 +425,8 @@ where
     fn factory(
         setup_data: Value,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        let setup_data = setup_data.try_into_value()
+        let setup_data = setup_data
+            .try_into_value()
             .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
         Self::create_interface(setup_data)
     }
@@ -485,7 +484,8 @@ where
     /// The setup data is passed as a ValueContainer and has to be downcasted
     fn factory(setup_data: Value) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            let setup_data = setup_data.try_into_value()
+            let setup_data = setup_data
+                .try_into_value()
                 .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
             Self::create_interface(setup_data).await
         })

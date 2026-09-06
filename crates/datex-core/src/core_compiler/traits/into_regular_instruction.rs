@@ -1,12 +1,6 @@
 //! Helper trait to implement [into_regular_instruction] if a type can (without context) be converted
 //! to a [RegularInstruction] directly.
-use crate::{
-    core_compiler::{
-        to_instructions::ToInstructionsDyn,
-        traits::to_instructions::ToInstructions, value_visitor::ValueVisitor,
-    },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
-};
+use crate::instruction::regular_instruction::RegularInstruction;
 
 pub trait IntoRegularInstruction {
     fn into_regular_instruction(&self) -> RegularInstruction;

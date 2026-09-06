@@ -5,6 +5,7 @@ mod to_datex_expression_data;
 use core::assert_matches;
 use datex_core::{
     prelude::*,
+    traits::get_datex_type::GetDatexType,
     values::{
         core_values::{endpoint::Endpoint, map::Map},
         value_container::ValueContainer,
@@ -12,7 +13,6 @@ use datex_core::{
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
-use datex_core::traits::get_datex_type::GetDatexType;
 
 #[derive(Datex, Debug)]
 #[datex(structural)]
@@ -62,6 +62,7 @@ where
 use datex_core::{
     self,
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+    preludes::derive::{DatexNative, DatexNativeStructural},
     runtime::{
         cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -80,12 +81,14 @@ use datex_core::{
     },
     values::{
         core_value::CoreValue,
-        core_values::integer::typed_integer::IntegerTypeVariant, value::Value,
+        core_values::integer::typed_integer::IntegerTypeVariant,
+        value::{
+            Value,
+            value_classification::{ValueClassification, ValueTag},
+        },
     },
 };
 use test_case::test_case;
-use datex_core::preludes::derive::{DatexNative, DatexNativeStructural};
-use datex_core::values::value::value_classification::{ValueClassification, ValueTag};
 
 #[test_case(
     Example {
@@ -156,7 +159,9 @@ fn skip() {
     assert!(!map.has("b"));
 
     let value_container = ValueContainer::from(map);
-    let deserialized = value_container.try_into_value::<SerdeDatexWithSkip>().unwrap();
+    let deserialized = value_container
+        .try_into_value::<SerdeDatexWithSkip>()
+        .unwrap();
 
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, "".to_string());
@@ -184,7 +189,9 @@ fn skip2() {
         },
     }
     .into();
-    let deserialized = value_container.try_into_value::<SerdeDatexWithSkip2>().unwrap();
+    let deserialized = value_container
+        .try_into_value::<SerdeDatexWithSkip2>()
+        .unwrap();
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, NoDerive::default());
 }
@@ -202,7 +209,9 @@ fn default() {
     let map: Map =
         Map::from(vec![("a".to_string(), ValueContainer::from(42u8))]);
     let value_container = ValueContainer::from(map);
-    let deserialized = value_container.try_into_value::<SerdeDatexWithDefault>().unwrap();
+    let deserialized = value_container
+        .try_into_value::<SerdeDatexWithDefault>()
+        .unwrap();
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, "".to_string());
 }
@@ -214,7 +223,10 @@ fn enum_to_value() {
     assert_structural_eq!(variant_a, Value::null());
     assert_eq!(
         variant_a.classification(),
-        &ValueClassification::Tag(ValueTag {tag: "VariantA".to_string(), is_empty: true})
+        &ValueClassification::Tag(ValueTag {
+            tag: "VariantA".to_string(),
+            is_empty: true
+        })
     );
 
     let variant_b: Value = ExampleEnum::VariantB(1, 2).into();
@@ -224,7 +236,10 @@ fn enum_to_value() {
     );
     assert_eq!(
         variant_b.classification(),
-        &ValueClassification::Tag(ValueTag {tag: "VariantB".to_string(), is_empty: false})
+        &ValueClassification::Tag(ValueTag {
+            tag: "VariantB".to_string(),
+            is_empty: false
+        })
     );
 
     let variant_c: Value = ExampleEnum::VariantC {
@@ -241,14 +256,20 @@ fn enum_to_value() {
     );
     assert_eq!(
         variant_c.classification(),
-        &ValueClassification::Tag(ValueTag {tag: "VariantC".to_string(), is_empty: false})
+        &ValueClassification::Tag(ValueTag {
+            tag: "VariantC".to_string(),
+            is_empty: false
+        })
     );
 
     let variant_d: Value = ExampleEnum::VariantD(1).into();
     assert_structural_eq!(variant_d, Value::from(1u8));
     assert_eq!(
         variant_d.classification(),
-        &ValueClassification::Tag(ValueTag {tag: "VariantD".to_string(), is_empty: false})
+        &ValueClassification::Tag(ValueTag {
+            tag: "VariantD".to_string(),
+            is_empty: false
+        })
     );
 }
 
@@ -527,8 +548,9 @@ fn struct_with_value_container() {
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(map.try_get("val").unwrap(), &shared_container);
 
-    let deserialized_example_shared =
-        value_container.try_into_value::<ExampleWithValueContainer>().unwrap();
+    let deserialized_example_shared = value_container
+        .try_into_value::<ExampleWithValueContainer>()
+        .unwrap();
     assert_eq!(deserialized_example_shared.a, 42u8);
     assert_eq!(deserialized_example_shared.val, shared_container);
 }
@@ -629,7 +651,8 @@ fn get_datex_type_from_struct() {
 
 #[test]
 fn get_datex_type_from_enum() {
-    let dx_type = ExampleEnum::datex_type(&mut SharedReferencesCache::default());
+    let dx_type =
+        ExampleEnum::datex_type(&mut SharedReferencesCache::default());
 
     assert_eq!(
         dx_type,

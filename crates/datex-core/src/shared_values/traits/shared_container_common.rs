@@ -61,5 +61,4 @@ pub trait SharedContainerCommon {
 
     /// Returns true if the shared container is uninitialized (i.e., it has no value assigned yet)
     fn is_uninitialized(&self) -> bool;
-
 }

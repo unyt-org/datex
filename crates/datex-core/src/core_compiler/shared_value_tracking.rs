@@ -46,14 +46,20 @@ impl TrackedValueMetadata {
             } => *is_self_referencing,
         }
     }
-    
+
     /// Marks the tracked value as self-referencing.
     pub(crate) fn mark_as_self_referencing(&mut self) {
         match self {
-            TrackedValueMetadata::Root { is_self_referencing, .. } => {
+            TrackedValueMetadata::Root {
+                is_self_referencing,
+                ..
+            } => {
                 *is_self_referencing = true;
             }
-            TrackedValueMetadata::Child { is_self_referencing, .. } => {
+            TrackedValueMetadata::Child {
+                is_self_referencing,
+                ..
+            } => {
                 *is_self_referencing = true;
             }
         }
@@ -119,10 +125,13 @@ impl<'a> SharedValueTracking<'a> {
         is_self_referencing: bool,
     ) -> Option<SharedContainer> {
         // if already existing container, update self_referencing if needed in metadata
-        if is_self_referencing && let Some((_, metadata)) = self.tracked_values.get_key_value_mut(&container) {
+        if is_self_referencing
+            && let Some((_, metadata)) =
+                self.tracked_values.get_key_value_mut(&container)
+        {
             metadata.mark_as_self_referencing();
         }
-        
+
         if let Some((existing, _)) =
             self.tracked_values.get_key_value(&container)
         {
@@ -180,8 +189,11 @@ impl<'a> SharedValueTracking<'a> {
         let is_self_referencing = !parents.insert(shared_container.clone());
 
         // already registered as referenced, update the container mutability if needed
-        if let Some(new_registered_container) =
-            self.update_container_ownership_if_exists(shared_container, is_self_referencing)
+        if let Some(new_registered_container) = self
+            .update_container_ownership_if_exists(
+                shared_container,
+                is_self_referencing,
+            )
         {
             let is_known = !self.receivers.is_empty()
                 && self
@@ -585,7 +597,11 @@ mod tests {
 
         assert_matches!(
             tracking.tracked_values.first().unwrap().1,
-            &TrackedValueMetadata::Root { is_self_referencing: true, index: StackIndex(0), is_known: false }
+            &TrackedValueMetadata::Root {
+                is_self_referencing: true,
+                index: StackIndex(0),
+                is_known: false
+            }
         );
     }
 }

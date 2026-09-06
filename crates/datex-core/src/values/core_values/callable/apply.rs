@@ -83,7 +83,9 @@ impl Apply for NativeCallable {
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
         match self {
             NativeCallable::Sync(f) => f(args, runtime).map_err(|e| e.into()),
-            NativeCallable::Async(f) => f(args, runtime).await.map_err(|e| e.into()),
+            NativeCallable::Async(f) => {
+                f(args, runtime).await.map_err(|e| e.into())
+            }
         }
     }
 }

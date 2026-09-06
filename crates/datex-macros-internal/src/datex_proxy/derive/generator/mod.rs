@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::{
     datex_proxy::{
         data::StructureData,

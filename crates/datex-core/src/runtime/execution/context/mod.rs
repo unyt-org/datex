@@ -132,10 +132,11 @@ impl ExecutionContext {
 
         #[cfg(feature = "decompiler")]
         {
-            let decompiled = crate::decompiler::dxb_to_source_code::dxb_to_source_code(
-                dxb,
-                crate::decompiler::DecompileOptions::colorized(),
-            );
+            let decompiled =
+                crate::decompiler::dxb_to_source_code::dxb_to_source_code(
+                    dxb,
+                    crate::decompiler::DecompileOptions::colorized(),
+                );
             if let Err(e) = decompiled {
                 info!("\x1b[31m[Decompiler Error] {e}\x1b[0m");
             } else {

@@ -43,7 +43,7 @@ impl<T: DatexNative + ConvertCoreValue + StaticClassification>
     fn as_borrowed_value_container(
         &self,
         cache: &mut SharedReferencesCache,
-    ) -> BorrowedValueContainer {
+    ) -> BorrowedValueContainer<'_> {
         BorrowedValueContainer::Local(BorrowedValue::native_borrowed(
             self, cache,
         ))
@@ -81,7 +81,7 @@ impl<T: DatexNative + ConvertCoreValue + StaticClassification>
     {
         match value_container {
             ValueContainer::Local(value) => {
-                match validate_classification::<T>(&value) {
+                match validate_classification::<T>(value) {
                     Ok(_) => {
                         Ok(Self::try_borrow_from_core_value(&value.inner)?)
                     }
@@ -100,7 +100,7 @@ impl<T: DatexNative + ConvertCoreValue + StaticClassification>
     {
         match value_container {
             ValueContainer::Local(value) => {
-                match validate_classification::<T>(&value) {
+                match validate_classification::<T>(value) {
                     Ok(_) => Ok(Self::try_borrow_mut_from_core_value(
                         &mut value.inner,
                     )?),

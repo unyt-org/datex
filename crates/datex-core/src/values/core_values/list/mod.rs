@@ -9,6 +9,7 @@ pub mod serde_dif;
 mod to_instructions;
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
+    utils::impl_display_for_datex_value::impl_display_for_datex_value,
     value_updates::update_handler::{
         InternalMutabilityUpdateHandler, UpdateCallbackData,
     },
@@ -19,22 +20,21 @@ use core::{
     ops::{Index, Range},
     result::Result,
 };
-use crate::utils::impl_display_for_datex_value::impl_display_for_datex_value;
 
 mod child_iterator;
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod get_core_lib_type_id;
+mod get_datex_type;
 pub mod local_child_path_resolver;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod update_handler;
 pub mod updates;
 mod value_access;
-mod get_core_lib_type_id;
-mod get_datex_type;
-mod datex_native;
-mod datex_native_structural;
-mod convert_parts;
-mod classification;
-mod datex_hash;
 
 #[derive(Debug, Default)]
 pub struct List {

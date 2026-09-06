@@ -1,6 +1,8 @@
+use crate::{
+    preludes::derive::CoreValue,
+    traits::datex_hash::{DatexHash, impl_datex_hash},
+};
 use core::hash::{Hash, Hasher};
-use crate::preludes::derive::CoreValue;
-use crate::traits::datex_hash::{impl_datex_hash, DatexHash};
 
 impl Hash for CoreValue {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -21,9 +23,7 @@ impl Hash for CoreValue {
             CoreValue::Callable(c) => c.hash(state),
             CoreValue::Range(r) => r.hash(state),
             CoreValue::Box(b) => b.hash(state),
-            CoreValue::Native(native) => {
-                native.datex_hash(state)
-            }
+            CoreValue::Native(native) => native.datex_hash(state),
         }
     }
 }
