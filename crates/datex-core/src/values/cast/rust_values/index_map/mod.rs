@@ -15,18 +15,16 @@ mod value_access;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
         traits::get_datex_type::GetDatexType,
         values::{
             core_value::CoreValue,
-            core_values::{endpoint::Endpoint, integer::Integer},
+            core_values::{endpoint::Endpoint, integer::Integer, map::Map},
             value::Value,
             value_container::ValueContainer,
         },
     };
     use indexmap::IndexMap;
-
     #[test]
     #[cfg(feature = "std")]
     fn to_value() {
@@ -46,6 +44,8 @@ mod tests {
     #[allow(clippy::mutable_key_type)]
     #[cfg(feature = "std")]
     fn from_value() {
+        use crate::preludes::derive::SharedReferencesCache;
+
         let cache = &mut SharedReferencesCache::default();
         // map with [Value], [Value] as key and value
         let mut map = IndexMap::new();
@@ -83,10 +83,20 @@ mod tests {
     #[test]
     #[cfg(feature = "std")]
     fn datex_type() {
+        use crate::preludes::derive::SharedReferencesCache;
+
         let map_type = IndexMap::<Integer, Endpoint>::datex_type(
             &mut SharedReferencesCache::default(),
         );
         map_type.with_collapsed_type_definition(|d| {
+            use crate::{
+                preludes::derive::TypeDefinition,
+                types::type_definition::collection::{
+                    CollectionTypeDefinition,
+                    type_definition::map::MapCollectionTypeDefinition,
+                },
+            };
+
             assert_eq!(
                 d,
                 &TypeDefinition::Collection(CollectionTypeDefinition::Map(
