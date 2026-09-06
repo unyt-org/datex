@@ -2,7 +2,7 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::{Instruction, regular_instruction::RegularInstruction},
+    instruction::Instruction,
     prelude::*,
     values::core_values::list::List,
 };
