@@ -4,7 +4,10 @@ use datex_core::{
         to_instructions::ToInstructions,
         value_visitor::ValueVisitor,
     },
-    instruction::Instruction,
+    disassembler::assertions::{
+        assert_instruction_lists_eq, assert_instructions_equal, instructions,
+    },
+    instruction::{Instruction, regular_instruction::RegularInstruction},
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
 };
 use datex_macros_internal::Datex;
@@ -30,6 +33,15 @@ fn example_struct_to_instructions() {
         a: 42u8,
         b: "Test".to_string(),
     };
-    let instructions = to_instructions(&structure);
-    println!("{:?}", instructions);
+    assert_instruction_lists_eq!(
+        to_instructions(&structure),
+        (RegularInstruction::map(2).with_children(instructions!(
+            // a
+            RegularInstruction::text("a".to_string()),
+            RegularInstruction::uint8(42),
+            // b
+            RegularInstruction::text("b".to_string()),
+            RegularInstruction::text("Test".to_string()),
+        )))
+    )
 }
