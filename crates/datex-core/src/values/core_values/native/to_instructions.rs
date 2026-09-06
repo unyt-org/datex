@@ -3,6 +3,7 @@ use crate::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
     instruction::{Instruction, regular_instruction::RegularInstruction},
+    prelude::*,
     values::core_values::{
         map::{BorrowedMapKey, Map},
         native::NativeCoreValue,

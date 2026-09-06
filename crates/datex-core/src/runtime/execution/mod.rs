@@ -19,21 +19,18 @@ use crate::{
     },
     traits::apply::{Apply, ApplyArgument},
     types::{
-        entities::entity_impls::EntityImplMethod
+        entities::entity_impls::EntityImplMethod, entity_type::EntityType,
     },
     values::{
-        core_values::endpoint::Endpoint, value_container::ValueContainer,
+        core_values::endpoint::Endpoint,
+        value::{Value, value_classification::ValueClassification},
+        value_container::ValueContainer,
     },
 };
-use core::{result::Result, unreachable};
-use core::cell::Ref;
-use core::ops::Deref;
+use core::{cell::Ref, ops::Deref, result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
-use crate::types::entity_type::EntityType;
-use crate::values::value::Value;
-use crate::values::value::value_classification::ValueClassification;
 
 pub mod context;
 mod errors;
@@ -134,15 +131,15 @@ pub fn execute_dxb_sync(
             ) => {
                 let val = callee.value.collapsed_value();
                 let entity_type = try_get_entity_type(val.borrow().deref())?;
-                let method = try_get_method_data(
-                    &entity_type,
-                    method_name,
-                )?;
+                let method = try_get_method_data(&entity_type, method_name)?;
 
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValueAndBorrowedArgs(
                         try_call_method_sync(
-                            callee, method.deref(), args, &runtime,
+                            callee,
+                            method.deref(),
+                            args,
+                            &runtime,
                         )?,
                     ),
                 )
@@ -286,16 +283,17 @@ pub async fn execute_dxb(
             ) => {
                 let val = callee.value.collapsed_value();
                 let entity_type = try_get_entity_type(val.borrow().deref())?;
-                let method = try_get_method_data(
-                    &entity_type,
-                    method_name,
-                )?;
+                let method = try_get_method_data(&entity_type, method_name)?;
 
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValueAndBorrowedArgs(
                         try_call_method_async(
-                            callee, method.deref(), args, &runtime,
-                        ).await?,
+                            callee,
+                            method.deref(),
+                            args,
+                            &runtime,
+                        )
+                        .await?,
                     ),
                 )
             }
@@ -305,14 +303,13 @@ pub async fn execute_dxb(
     unreachable!("Execution loop should always return a result");
 }
 
-fn try_get_entity_type(
-    value: &Value,
-) -> Result<EntityType, ExecutionError> {
+fn try_get_entity_type(value: &Value) -> Result<EntityType, ExecutionError> {
     match value {
-        Value {classification: ValueClassification::Entity(entity_type), .. } => {
-            Ok(entity_type.clone())
-        }
-        _ => Err(ExecutionError::ExpectedEntityValue)
+        Value {
+            classification: ValueClassification::Entity(entity_type),
+            ..
+        } => Ok(entity_type.clone()),
+        _ => Err(ExecutionError::ExpectedEntityValue),
     }
 }
 
@@ -320,12 +317,10 @@ fn try_get_method_data(
     entity_type: &EntityType,
     method_name: String,
 ) -> Result<Ref<EntityImplMethod>, ExecutionError> {
-    Ref::filter_map(
-        entity_type.entity_definition(),
-        |def| {
-            def.try_get_method(&method_name)
-        }
-    ).map_err(|_| ExecutionError::MethodNotFound(method_name))
+    Ref::filter_map(entity_type.entity_definition(), |def| {
+        def.try_get_method(&method_name)
+    })
+    .map_err(|_| ExecutionError::MethodNotFound(method_name))
 }
 
 fn try_call_method_sync(
@@ -510,13 +505,15 @@ mod tests {
                 list::{List, datex_list},
                 map::Map,
             },
-            value::Value,
+            value::{
+                Value,
+                value_classification::{ValueClassification, ValueTag},
+            },
         },
     };
     use core::assert_matches;
     use indexmap::IndexMap;
     use log::{debug, info};
-    use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -1206,6 +1203,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "std")]
     async fn env_slot() {
         let res = execute_datex_script_with_runtime(
             RuntimeConfig {
@@ -1220,7 +1218,10 @@ mod tests {
         .await
         .unwrap();
         assert!(res.is_some());
-        let env = res.unwrap().try_into_value::<IndexMap<String, String>>().unwrap();
+        let env = res
+            .unwrap()
+            .try_into_value::<IndexMap<String, String>>()
+            .unwrap();
         assert_eq!(env.get("TEST_ENV_VAR"), Some(&"test_value".into()));
     }
 

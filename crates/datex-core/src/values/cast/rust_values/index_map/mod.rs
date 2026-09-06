@@ -44,7 +44,9 @@ mod tests {
         },
     };
     use indexmap::IndexMap;
+
     #[test]
+    #[cfg(feature = "std")]
     fn to_value() {
         let mut map = IndexMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
@@ -60,6 +62,7 @@ mod tests {
 
     #[test]
     #[allow(clippy::mutable_key_type)]
+    #[cfg(feature = "std")]
     fn from_value() {
         let cache = &mut SharedReferencesCache::default();
         // map with [Value], [Value] as key and value
@@ -96,6 +99,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn datex_type() {
         let map_type = IndexMap::<Integer, Endpoint>::datex_type(
             &mut SharedReferencesCache::default(),

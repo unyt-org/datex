@@ -4,6 +4,7 @@ use crate::{
         value_visitor::ValueVisitor,
     },
     instruction::Instruction,
+    prelude::*,
 };
 
 impl<V> ToInstructions for Box<V>

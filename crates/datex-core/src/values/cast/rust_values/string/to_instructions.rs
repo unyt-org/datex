@@ -4,6 +4,7 @@ use crate::{
     },
     instruction::regular_instruction::RegularInstruction,
 };
+use alloc::string::String;
 
 impl IntoRegularInstruction for String {
     fn into_regular_instruction(&self) -> RegularInstruction {

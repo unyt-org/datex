@@ -34,11 +34,11 @@ macro_rules! impl_regular_to_instructions {
                 fn to_instructions<'ctx, 'a>(
                     &'a self,
                     _ctx: &'a mut dyn $crate::core_compiler::value_visitor::ValueVisitor<'ctx>,
-                ) -> Box<dyn Iterator<Item = $crate::instruction::Instruction> + 'a>
+                ) -> alloc::boxed::Box<dyn Iterator<Item = $crate::instruction::Instruction> + 'a>
                 where
                     'ctx: 'a,
                 {
-                    Box::new(core::iter::once(
+                    alloc::boxed::Box::new(core::iter::once(
                         self.into_regular_instruction().into()
                     ))
                 }
