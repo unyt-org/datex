@@ -26,6 +26,7 @@ pub trait DatexNativeBase:
     + GetCoreLibTypeId
     + DatexHash
     + ToDatexExpressionData
+    + ToInstructions
 {
 }
 #[cfg(feature = "ast")]
@@ -38,6 +39,7 @@ impl<T> DatexNativeBase for T where
         + GetCoreLibTypeId
         + DatexHash
         + ToDatexExpressionData
+        + ToInstructions
 {
 }
 

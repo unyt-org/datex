@@ -14,13 +14,6 @@ impl ToInstructions for List {
     where
         'ctx: 'a,
     {
-        Box::new(gen move {
-            yield RegularInstruction::list(self.items.len() as u32).into();
-            for item in &self.items {
-                for instruction in item.to_instructions(ctx) {
-                    yield instruction;
-                }
-            }
-        })
+        self.items.to_instructions(ctx)
     }
 }
