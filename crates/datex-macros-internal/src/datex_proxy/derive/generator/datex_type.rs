@@ -5,6 +5,7 @@ use crate::datex_proxy::data::{
     EnumVariant, Field, FieldMapping, Fields, NamedField, Structure,
     StructureData, TypeKind,
 };
+use crate::utils::{get_datex_core_crate_name, get_project_relative_file_path};
 
 pub fn generate_core_lib_type_id(
     structure_data: &StructureData,
@@ -34,6 +35,9 @@ pub fn generate_datex_type(structure_data: &StructureData) -> TokenStream {
         .datex_name
         .clone()
         .unwrap_or(structure_data.ident.to_string());
+
+    let registration = generate_type_registration(structure_data);
+
     if matches!(attributes.type_kind, TypeKind::Structural { .. }) {
         quote! {
             #[automatically_derived]
@@ -44,6 +48,8 @@ pub fn generate_datex_type(structure_data: &StructureData) -> TokenStream {
                     )
                 }
             }
+
+            #registration
         }
     } else {
         quote! {
@@ -53,9 +59,60 @@ pub fn generate_datex_type(structure_data: &StructureData) -> TokenStream {
                     #datex_type
                 }
             }
+
+            #registration
         }
     }
 }
+
+fn generate_type_registration(structure_data: &StructureData) -> TokenStream {
+    let datex_core_crate_name = get_datex_core_crate_name();
+
+    let StructureData {
+        ident,
+        generics,
+        attributes,
+        ..
+    } = structure_data;
+
+    let datex_name = attributes
+        .datex_name
+        .clone()
+        .unwrap_or(ident.to_string());
+
+    let docs = match &attributes.docs {
+        Some(docs) => quote! {
+            Some(#docs)
+        },
+        None => quote! {
+            None
+        },
+    };
+
+    let namespace = {
+        let mut ns = get_project_relative_file_path();
+        ns.set_extension("");
+        ns.to_str()
+            .expect("Failed to convert file path to string")
+            .to_string()
+    };
+
+    quote! {
+        #datex_core_crate_name::inventory::submit! {
+            #datex_core_crate_name::datex_registry::DatexTypeRegistration::new_with_cache::<#ident>(
+                #datex_core_crate_name::datex_registry::DatexTypeMetadata {
+                    name: #datex_name,
+                    rust_ident: stringify!(#ident),
+                    docs: #docs,
+                    export: true, // FIXME
+                    namespace: #namespace,
+                }
+            )
+        }
+    }
+}
+
+
 
 /// Generates a type definition for fields. Returns a TokenStream of [TypeDefinition].
 fn generate_datex_type_definition(fields: &Fields) -> TokenStream {
