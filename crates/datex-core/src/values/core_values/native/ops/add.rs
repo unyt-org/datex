@@ -3,6 +3,7 @@ use crate::{
     values::core_values::native::{DatexNative, NativeCoreValue},
 };
 use core::ops::Add;
+use core::ops::Deref;
 
 impl Add for &NativeCoreValue {
     type Output = Option<NativeCoreValue>;
@@ -11,7 +12,7 @@ impl Add for &NativeCoreValue {
         // println!("lhs: {}", self.value.type_name());
         // println!("rhs: {}", rhs.value.type_name());
 
-        let value = self.value.add_native(&*rhs.value)?;
+        let value = self.value.deref().add_native(&*rhs.value)?;
         Some(NativeCoreValue { value })
     }
 }

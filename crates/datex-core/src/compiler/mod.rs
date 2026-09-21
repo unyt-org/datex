@@ -2911,7 +2911,7 @@ pub mod tests {
         .0;
         assert_matches!(
             res,
-            StaticValueOrDXB::StaticValue(val) if val == Some(TypedInteger::from(1u8).into())
+            StaticValueOrDXB::StaticValue(val) if val.as_ref().unwrap().try_as::<u8>().unwrap() == &1u8
         );
 
         let script = "1u8 + 2u8";

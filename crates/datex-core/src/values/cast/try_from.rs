@@ -118,6 +118,7 @@ mod tests {
             },
             value::Value,
         },
+        prelude::*,
     };
 
     #[test]
