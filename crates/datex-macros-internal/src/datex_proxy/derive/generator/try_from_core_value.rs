@@ -13,6 +13,10 @@ pub fn generate_try_from_core_value(
     quote! {
         #[automatically_derived]
         impl #generics ConvertCoreValue for #ident #generics {
+            fn to_core_value(self) -> CoreValue {
+                CoreValue::native(self)
+            }
+
             fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
                 match value {
                     CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),

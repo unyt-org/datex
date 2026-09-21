@@ -10,10 +10,14 @@ use crate::{
 };
 use core::hash::Hash;
 use indexmap::IndexMap;
+use crate::preludes::derive::Map;
 
 impl<K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static>
     ConvertCoreValue for IndexMap<K, V, RandomState>
 {
+    fn to_core_value(self) -> CoreValue {
+        CoreValue::native(self)
+    }
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Native(native) => {

@@ -2,11 +2,18 @@ use crate::{
     traits::convert_core_value::ConvertCoreValue,
     values::{core_value::CoreValue, core_values::native::DatexNativeBase},
 };
+use crate::preludes::derive::DatexNative;
 
 impl<T> ConvertCoreValue for Option<T>
 where
-    T: DatexNativeBase + 'static,
+    T: DatexNative + 'static,
 {
+    fn to_core_value(self) -> CoreValue {
+        match self {
+            Some(value) => CoreValue::native(value),
+            None => CoreValue::Null,
+        }
+    }
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Null => Ok(None),
@@ -100,7 +107,7 @@ mod tests {
 
     #[test]
     fn try_option_from_native() {
-        let core_value = CoreValue::from(42u32);
+        let core_value = 42u32.to_core_value();
         let result = Option::<u32>::try_from_core_value(core_value);
         assert_eq!(result.unwrap(), Some(42));
     }
@@ -121,7 +128,7 @@ mod tests {
 
     #[test]
     fn try_option_ref_from_native() {
-        let core_value = CoreValue::from(42u32);
+        let core_value = 42u32.to_core_value();
         let result = Option::<&u32>::try_from(&core_value);
         assert_eq!(*result.unwrap().unwrap(), 42);
     }
@@ -142,7 +149,7 @@ mod tests {
 
     #[test]
     fn try_option_mut_ref_from_native() {
-        let mut core_value = CoreValue::from(42u32);
+        let mut core_value = 42u32.to_core_value();
         let result = Option::<&mut u32>::try_from(&mut core_value);
         let value = result.unwrap().unwrap();
         *value = 100;

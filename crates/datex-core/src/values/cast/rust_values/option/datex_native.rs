@@ -3,7 +3,7 @@ use crate::values::core_values::native::{
 };
 use core::any::Any;
 
-impl<T: DatexNativeBase + 'static> DatexNative for Option<T> {
+impl<T: DatexNative + 'static> DatexNative for Option<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -11,4 +11,4 @@ impl<T: DatexNativeBase + 'static> DatexNative for Option<T> {
         self
     }
 }
-impl<T: DatexNativeBase + 'static> DatexNativeOps for Option<T> {}
+impl<T: DatexNative + 'static> DatexNativeOps for Option<T> {}

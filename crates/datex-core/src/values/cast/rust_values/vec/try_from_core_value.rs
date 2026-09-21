@@ -10,6 +10,9 @@ use crate::{
 };
 
 impl<T: DatexNativeBase + 'static> ConvertCoreValue for Vec<T> {
+    fn to_core_value(self) -> CoreValue {
+        CoreValue::native(self)
+    }
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Native(native) => {

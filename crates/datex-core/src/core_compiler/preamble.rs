@@ -752,7 +752,7 @@ mod tests {
             map.set_unchecked(
                 "a",
                 Map::from(vec![(
-                    ValueContainer::from("b"),
+                    ValueContainer::from("b".to_string()),
                     ValueContainer::Shared(container_ref),
                 )]),
             );
@@ -847,7 +847,7 @@ mod tests {
             address_provider,
             ValueContainer::Local(
                 Map::from(vec![(
-                    ValueContainer::from("a"),
+                    ValueContainer::from("a".to_string()),
                     ValueContainer::Shared(SharedContainer::Referenced(
                         owned_container_a.derive_with_max_mutability(),
                     )),

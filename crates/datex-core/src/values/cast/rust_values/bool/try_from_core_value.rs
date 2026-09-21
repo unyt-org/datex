@@ -9,6 +9,9 @@ use crate::{
 };
 
 impl ConvertCoreValue for bool {
+    fn to_core_value(self) -> CoreValue {
+        CoreValue::Boolean(Boolean(self))
+    }
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Boolean(Boolean(bool)) => Ok(bool),
@@ -71,6 +74,7 @@ mod tests {
         utils::{goat::Goat, goat_mut::GoatMut},
         values::{core_value::CoreValue, core_values::boolean::Boolean},
     };
+    use crate::traits::convert_core_value::ConvertCoreValue;
 
     #[test]
     fn try_bool_from_core_value() {
@@ -100,14 +104,14 @@ mod tests {
 
     #[test]
     fn try_bool_from_native_core_value() {
-        let core_value = CoreValue::from(true);
+        let core_value = true.to_core_value();
         let result = core_value.try_as::<bool>();
         assert!(*result.unwrap());
     }
 
     #[test]
     fn try_borrow_mut_bool_from_native_core_value() {
-        let mut core_value = CoreValue::from(false);
+        let mut core_value = false.to_core_value();
         let result = core_value.try_as_mut::<bool>();
         *result.unwrap() = true;
         assert!(*core_value.try_as::<bool>().unwrap());
@@ -115,7 +119,7 @@ mod tests {
 
     #[test]
     fn try_owned_bool_from_native_core_value() {
-        let core_value = CoreValue::from(true);
+        let core_value = true.to_core_value();
         let result = core_value.try_into_value::<bool>();
         assert!(result.unwrap());
     }

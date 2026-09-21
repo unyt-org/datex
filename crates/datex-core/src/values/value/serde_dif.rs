@@ -494,7 +494,7 @@ mod tests {
 
         // { "endpoint": "@jonas" } -> [<map-idx>, [[<endpoint-idx>, "@jonas"]]]
         let value = Value::from(CoreValue::Map(Map::structural(vec![(
-            "endpoint".into(),
+            "endpoint".to_string().into(),
             Value::from(Endpoint::from_str("@jonas").unwrap()).into(),
         )])));
         let serialized =

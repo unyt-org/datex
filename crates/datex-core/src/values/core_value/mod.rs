@@ -46,6 +46,7 @@ pub mod ops;
 mod to_datex_expression_data;
 mod to_instructions;
 pub mod try_clone;
+pub mod convert_core_value;
 
 #[derive(Default, Clone, Debug)]
 pub enum CoreValue {
@@ -71,18 +72,12 @@ pub enum CoreValue {
     Native(NativeCoreValue),
 }
 
-/// Implementation that allows direct conversion from any type that implements the [DatexNativeStructural] trait into a [CoreValue].
-impl<T: DatexNativeStructural> From<T> for CoreValue {
-    fn from(value: T) -> Self {
-        CoreValue::native(value)
-    }
-}
-
-impl From<&str> for CoreValue {
-    fn from(value: &str) -> Self {
-        CoreValue::Text(value.into())
-    }
-}
+//
+// impl From<&str> for CoreValue {
+//     fn from(value: &str) -> Self {
+//         CoreValue::Text(value.into())
+//     }
+// }
 
 impl<T> FromIterator<T> for CoreValue
 where
@@ -432,24 +427,24 @@ mod tests {
 
     #[test]
     fn type_construct() {
-        let a = CoreValue::from(42i32);
+        let a = 42i32.to_core_value();
         assert_eq!(a.default_core_type().to_string(), "integer/i32");
     }
 
     #[test]
     fn addition() {
-        let a = CoreValue::from(42i32);
-        let b = CoreValue::from(11i32);
+        let a = 42i32.to_core_value();
+        let b = 11i32.to_core_value();
 
         let a_plus_b = (a.clone() + b.clone()).unwrap();
-        assert_eq!(a_plus_b.clone(), CoreValue::from(53));
+        assert_eq!(a_plus_b.clone(), 53i32.to_core_value());
         info!("{} + {} = {}", a.clone(), b.clone(), a_plus_b.clone());
     }
 
     #[test]
     fn endpoint() {
         let endpoint: Endpoint =
-            CoreValue::from("@test").cast_to_endpoint().unwrap();
+            "@test".to_string().to_core_value().cast_to_endpoint().unwrap();
         debug!("Endpoint: {endpoint}");
         assert_eq!(endpoint.to_string(), "@test");
     }

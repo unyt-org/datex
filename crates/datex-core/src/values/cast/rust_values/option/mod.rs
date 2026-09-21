@@ -8,7 +8,7 @@ pub mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
-mod try_from_core_value;
+mod convert_core_value;
 mod value_access;
 
 #[cfg(test)]

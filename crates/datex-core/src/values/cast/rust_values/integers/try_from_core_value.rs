@@ -12,6 +12,9 @@ macro_rules! impl_integer_core_value_conversions {
     ($($ty:ident => $variant:ident, $borrow:ident, $borrow_mut:ident;)* $(,)?) => {
         $(
             impl ConvertCoreValue for $ty {
+                fn to_core_value(self) -> CoreValue {
+                    CoreValue::TypedInteger(TypedInteger::$variant(self))
+                }
                 fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
                     match value {
                         CoreValue::TypedInteger(TypedInteger::$variant(v)) => Ok(v),
@@ -93,6 +96,7 @@ mod tests {
             core_values::integer::typed_integer::TypedInteger,
         },
     };
+    use crate::traits::convert_core_value::ConvertCoreValue;
 
     #[test]
     fn try_integer_from_core_value() {
@@ -143,14 +147,14 @@ mod tests {
 
     #[test]
     fn try_integer_from_native_core_value() {
-        let core_value = CoreValue::from(42u32);
+        let core_value = 42u32.to_core_value();
         let result = core_value.try_as::<u32>();
         assert_eq!(*result.unwrap(), 42);
     }
 
     #[test]
     fn try_borrow_mut_integer_from_native_core_value() {
-        let mut core_value = CoreValue::from(42u32);
+        let mut core_value = 42u32.to_core_value();
         let result = core_value.try_as_mut::<u32>();
         *result.unwrap() = 99;
         assert_eq!(*core_value.try_as::<u32>().unwrap(), 99);
@@ -158,7 +162,7 @@ mod tests {
 
     #[test]
     fn try_owned_integer_from_native_core_value() {
-        let core_value = CoreValue::from(42u32);
+        let core_value = 42u32.to_core_value();
         let result = core_value.try_into_value::<u32>();
         assert_eq!(result.unwrap(), 42);
     }

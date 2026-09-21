@@ -9,10 +9,11 @@ use crate::{
         value::value_classification::ValueClassification,
     },
 };
+use crate::preludes::derive::DatexNative;
 
 impl<T> Classification for Option<T>
 where
-    T: DatexNativeBase + 'static,
+    T: DatexNative + 'static,
 {
     fn classification(
         &self,
@@ -25,4 +26,4 @@ where
     }
 }
 
-impl<T> StaticClassification for Option<T> where T: DatexNativeBase + 'static {}
+impl<T> StaticClassification for Option<T> where T: DatexNative + 'static {}

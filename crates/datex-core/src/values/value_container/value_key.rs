@@ -220,7 +220,7 @@ impl<'a> BorrowedValueKey<'a> {
             }
             BorrowedValueKey::Text(text) => {
                 let value_container =
-                    ValueContainer::Local(text.as_ref().into());
+                    ValueContainer::Local(text.to_string().into());
                 callback(&value_container)
             }
             BorrowedValueKey::Index(index) => {

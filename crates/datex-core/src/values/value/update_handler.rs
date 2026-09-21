@@ -219,8 +219,8 @@ mod tests {
     fn text_property() {
         let cache = &mut SharedReferencesCache::default();
         let mut struct_val = Value::from(Map::from(vec![
-            (ValueContainer::from("name"), ValueContainer::from("Alice")),
-            (ValueContainer::from("age"), ValueContainer::from(30)),
+            (ValueContainer::from("name".to_string()), ValueContainer::from("Alice".to_string())),
+            (ValueContainer::from("age".to_string()), ValueContainer::from(30)),
         ]));
 
         // Set existing property
@@ -228,7 +228,7 @@ mod tests {
             .try_update_collapsed_local_inner(
                 UpdateOperation::set_entry(
                     "name".into(),
-                    ValueContainer::from("Bob"),
+                    ValueContainer::from("Bob".to_string()),
                 ),
                 vec![],
                 None,
@@ -241,7 +241,7 @@ mod tests {
         let result = struct_val.try_update_collapsed_local_inner(
             UpdateOperation::set_entry(
                 "non_existing".into(),
-                ValueContainer::from("Charlie"),
+                ValueContainer::from("Charlie".to_string()),
             ),
             vec![],
             None,
@@ -253,7 +253,7 @@ mod tests {
         let result = int.try_update_collapsed_local_inner(
             UpdateOperation::set_entry(
                 "name".into(),
-                ValueContainer::from("Bob"),
+                ValueContainer::from("Bob".to_string()),
             ),
             vec![],
             None,
@@ -265,9 +265,9 @@ mod tests {
     fn nested_map_property() {
         let cache = &mut SharedReferencesCache::default();
         let mut nested_map = Value::from(Map::from(vec![(
-            ValueContainer::from("outer"),
+            ValueContainer::from("outer".to_string()),
             ValueContainer::from(Map::from(vec![(
-                ValueContainer::from("inner"),
+                ValueContainer::from("inner".to_string()),
                 ValueContainer::from(1),
             )])),
         )]));

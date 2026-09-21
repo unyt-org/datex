@@ -11,6 +11,7 @@ use crate::{
         },
         value_container::value_key::BorrowedValueKey,
     },
+    prelude::*,
 };
 use core::cell::Ref;
 
@@ -26,7 +27,7 @@ impl ValueAccess for EntityType {
                 |entity_definition| entity_definition.try_get_property(key),
             )
             .map_err(|_| {
-                AccessError::KeyNotFound(KeyNotFoundError::new(key.into()))
+                AccessError::KeyNotFound(KeyNotFoundError::new(key.to_string().into()))
             })?;
             Ok(BorrowedValueContainer::Local(BorrowedValue {
                 inner: BorrowedCoreValue::Callable(callable_ref.into()),

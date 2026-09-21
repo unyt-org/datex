@@ -14,34 +14,35 @@ use crate::{
 };
 #[cfg(feature = "ast")]
 use crate::{
-    preludes::derive::DatexNativeOps,
     traits::to_datex_expression_data::ToDatexExpressionData,
 };
 use core::any::Any;
+use crate::values::core_values::native::DatexNativeOps;
 
 #[cfg(feature = "ast")]
 pub trait DatexNativeBase:
-    ConvertValueContainer
+    ToDatexExpressionData
+    + ConvertValueContainer
     + GetDatexType
     + IntoParts
     + FromParts
     + Classification
     + GetCoreLibTypeId
     + DatexHash
-    + ToDatexExpressionData
     + ToInstructions
 {
 }
+
 #[cfg(feature = "ast")]
 impl<T> DatexNativeBase for T where
-    T: ConvertValueContainer
+    T: ToDatexExpressionData
+        + ConvertValueContainer
         + GetDatexType
         + IntoParts
         + FromParts
         + Classification
         + GetCoreLibTypeId
         + DatexHash
-        + ToDatexExpressionData
         + ToInstructions
 {
 }
@@ -55,6 +56,7 @@ pub trait DatexNativeBase:
     + Classification
     + GetCoreLibTypeId
     + DatexHash
+    + ToInstructions
 {
 }
 #[cfg(not(feature = "ast"))]
@@ -66,13 +68,15 @@ impl<T> DatexNativeBase for T where
         + Classification
         + GetCoreLibTypeId
         + DatexHash
+        + ToInstructions
 {
 }
 
 // TODO: better solution than duplicate definition of trait for different feature flags?
 #[cfg(feature = "ast")]
 pub trait DatexNative:
-    Any
+    ToDatexExpressionData
+    + Any
     + DynEq
     + DatexHash
     + FromParts
@@ -83,7 +87,6 @@ pub trait DatexNative:
     + ConvertValueContainer
     + Classification
     + ToInstructions
-    + ToDatexExpressionData
     + DatexNativeOps
 {
     fn as_any(&self) -> &dyn Any;
@@ -106,6 +109,7 @@ pub trait DatexNative:
     + ConvertValueContainer
     + Classification
     + ToInstructions
+    + DatexNativeOps
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

@@ -10,6 +10,10 @@ use crate::{
 };
 
 impl ConvertCoreValue for String {
+    fn to_core_value(self) -> CoreValue {
+        CoreValue::Text(Text(self))
+    }
+
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Text(Text(string)) => Ok(string),
@@ -90,7 +94,7 @@ mod tests {
 
     #[test]
     fn try_borrow_mut_string_from_core_value() {
-        let mut core_value = CoreValue::Text(Text("Hello, World!".to_string()));
+        let mut core_value = Text("Hello, World!".to_string()).to_core_value();
         let result = core_value.try_as_mut::<String>();
 
         let value = result.unwrap();
@@ -100,14 +104,14 @@ mod tests {
 
     #[test]
     fn try_string_from_native_core_value() {
-        let core_value = CoreValue::from("Hello, World!".to_string());
+        let core_value = "Hello, World!".to_string().to_core_value();
         let result = core_value.try_as::<String>();
         assert_eq!(result.unwrap(), "Hello, World!");
     }
 
     #[test]
     fn try_borrow_mut_string_from_native_core_value() {
-        let mut core_value = CoreValue::from("Hello, World!".to_string());
+        let mut core_value = "Hello, World!".to_string().to_core_value();
         let result = core_value.try_as_mut::<String>();
         result.unwrap().push('!');
         assert_eq!(core_value.try_as::<String>().unwrap(), "Hello, World!!");
@@ -115,7 +119,7 @@ mod tests {
 
     #[test]
     fn try_owned_string_from_native_core_value() {
-        let core_value = CoreValue::from("Hello, World!".to_string());
+        let core_value = "Hello, World!".to_string().to_core_value();
         let result = core_value.try_into_value::<String>();
         assert_eq!(result.unwrap(), "Hello, World!");
     }

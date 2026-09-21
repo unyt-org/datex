@@ -17,6 +17,9 @@ macro_rules! impl_pointer_sized_core_value_conversions {
             };
 
             impl ConvertCoreValue for $ty {
+                fn to_core_value(self) -> CoreValue {
+                    CoreValue::TypedInteger(TypedInteger::$variant(self as $repr))
+                }
                 fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
                     match value {
                         CoreValue::TypedInteger(TypedInteger::$variant(v)) => Ok(v as $ty),
