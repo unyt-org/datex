@@ -93,6 +93,14 @@ pub struct NamedField {
 }
 
 impl NamedField {
+    /// Returns the name of the field to be used in the DATEX representation.
+    /// This will return the `rename` attribute if it is set, otherwise it will return the original Rust field name.
+    pub fn datex_field_name(&self) -> &str {
+        self.attributes
+            .rename
+            .as_deref()
+            .unwrap_or(self.name.as_str())
+    }
     pub fn ident_accessor(&self) -> Ident {
         Ident::new(&self.name, Span::call_site())
     }
