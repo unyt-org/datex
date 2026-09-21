@@ -186,11 +186,21 @@ fn named_field_to_definition(field: &NamedField) -> TokenStream {
 fn generate_datex_enum_type(enum_ty: &[EnumVariant]) -> TokenStream {
     let variants_datex_types = enum_ty.iter().map(|variant| {
         let name = &variant.name;
-        let type_definition = generate_datex_type_definition(&variant.fields);
+        let type_definition = match variant.fields {
+            Fields::Unit => quote! {
+                None
+            },
+            _ => {
+                let def = Some(generate_datex_type_definition(&variant.fields));
+                quote! {
+                    Some(Box::new(Type::Definition(#def.into())))
+                }
+            }
+        };
         quote! {
             Type::Definition(TypeDefinition::TaggedType(TaggedTypeDefinition {
                 tag: #name.to_string(),
-                ty: Some(Box::new(Type::Definition(#type_definition.into()))),
+                ty: #type_definition,
             }).into())
         }
     });
