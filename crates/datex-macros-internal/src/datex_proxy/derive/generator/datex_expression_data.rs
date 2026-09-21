@@ -124,7 +124,7 @@ fn named_field_to_expression_data(field: &NamedField) -> TokenStream {
     let id = field.normalized_ident().into_token_stream();
     let expression_data =
         field_to_expression_data(id, &field.field.attributes.field_mapping);
-    let name = field.name.clone();
+    let name = field.datex_field_name().to_string();
     quote! {
         (
             DatexExpressionData::Text(Text(#name.to_string())).with_default_span(),

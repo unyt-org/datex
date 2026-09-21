@@ -173,7 +173,7 @@ fn field_to_definition(field: &Field) -> TokenStream {
 /// Generates a type definition for a named field. Returns a TokenStream with a tuple of name and [TypeDefinition].
 fn named_field_to_definition(field: &NamedField) -> TokenStream {
     let field_definition = field_to_definition(&field.field);
-    let name = field.name.clone();
+    let name = field.datex_field_name().to_string();
     quote! {
         (
             Type::Definition(TypeDefinition::Literal(LiteralTypeDefinition::Text(#name.into())).into()),
