@@ -90,6 +90,7 @@ use datex_core::{
     },
 };
 use test_case::test_case;
+use datex_core::traits::convert_core_value::ConvertCoreValue;
 
 #[test_case(
     Example {
@@ -402,7 +403,7 @@ fn value_to_enum() {
     assert_matches!(example, ExampleEnum::VariantC { x: 3, y } if &y == "Hello" );
 
     let variant_d = Value::new(
-        CoreValue::from(42u8),
+        42u8.to_core_value(),
         ValueClassification::Tag(ValueTag {
             tag: "VariantD".to_string(),
             is_empty: false,
