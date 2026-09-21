@@ -1111,7 +1111,7 @@ mod tests {
 
         let local = ValueContainer::Local(
             List::new(vec![
-                ValueContainer::from("test"),
+                ValueContainer::from("test".to_string()),
                 ValueContainer::Shared(a_shared),
                 ValueContainer::Shared(b_shared),
             ])

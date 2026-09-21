@@ -35,6 +35,8 @@ mod to_datex_expression_data;
 mod to_instructions;
 pub mod updates;
 mod value_access;
+
+
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
@@ -382,7 +384,7 @@ impl<'a> From<BorrowedMapKey<'a>> for ValueContainer {
     fn from(key: BorrowedMapKey) -> Self {
         match key {
             BorrowedMapKey::Text(text) => {
-                ValueContainer::Local(Value::from(text))
+                ValueContainer::Local(Value::from(text.to_string()))
             }
             BorrowedMapKey::Value(value) => value.clone(),
         }
@@ -434,7 +436,7 @@ impl<'a> From<BorrowedMutMapKey<'a>> for ValueContainer {
     fn from(key: BorrowedMutMapKey) -> Self {
         match key {
             BorrowedMutMapKey::Text(text) => {
-                ValueContainer::Local(Value::from(text as &_))
+                ValueContainer::Local(Value::from(text.to_string()))
             }
             BorrowedMutMapKey::Value(value) => value.clone(),
         }
@@ -816,7 +818,7 @@ mod tests {
     fn map() {
         let mut map = Map::default();
         map.set_unchecked("key1", 42);
-        map.set_unchecked("key2", "value2");
+        map.set_unchecked("key2", "value2".to_string());
         assert_eq!(map.size(), 2);
         assert_eq!(map.try_get("key1").unwrap().to_string(), "42");
         assert_eq!(map.try_get("key2").unwrap().to_string(), "\"value2\"");
@@ -827,7 +829,7 @@ mod tests {
     fn duplicate_keys() {
         let mut map = Map::default();
         map.set_unchecked("key1", 42);
-        map.set_unchecked("key1", "new_value");
+        map.set_unchecked("key1", "new_value".to_string());
         assert_eq!(map.size(), 1);
         assert_eq!(map.try_get("key1").unwrap().to_string(), "\"new_value\"");
     }
@@ -845,7 +847,7 @@ mod tests {
             ),
         );
 
-        map.set_unchecked(key.clone(), "value");
+        map.set_unchecked(key.clone(), "value".to_string());
         // same reference should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&key));
@@ -867,7 +869,7 @@ mod tests {
     fn decimal_nan_value_key() {
         let mut map = Map::default();
         let nan_value = ValueContainer::from(Decimal::Nan);
-        map.set_unchecked(&nan_value, "value");
+        map.set_unchecked(&nan_value, "value".to_string());
         // same NaN value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&nan_value));
@@ -877,7 +879,7 @@ mod tests {
         assert!(map.has(&new_nan_value));
 
         // adding new_nan_value should not increase size
-        map.set_unchecked(&new_nan_value, "new_value");
+        map.set_unchecked(&new_nan_value, "new_value".to_string());
         assert_eq!(map.size(), 1);
     }
 
@@ -885,7 +887,7 @@ mod tests {
     fn float_nan_value_key() {
         let mut map = Map::default();
         let nan_value = ValueContainer::from(f64::NAN);
-        map.set_unchecked(&nan_value, "value");
+        map.set_unchecked(&nan_value, "value".to_string());
         // same NaN value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&nan_value));
@@ -899,7 +901,7 @@ mod tests {
         assert!(!map.has(&float32_nan_value));
 
         // adding new_nan_value should not increase size
-        map.set_unchecked(&new_nan_value, "new_value");
+        map.set_unchecked(&new_nan_value, "new_value".to_string());
         assert_eq!(map.size(), 1);
     }
 
@@ -907,7 +909,7 @@ mod tests {
     fn decimal_zero_value_key() {
         let mut map = Map::default();
         let zero_value = ValueContainer::from(Decimal::Zero);
-        map.set_unchecked(&zero_value, "value");
+        map.set_unchecked(&zero_value, "value".to_string());
         // same Zero value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&zero_value));
@@ -921,7 +923,7 @@ mod tests {
         assert!(map.has(&neg_zero_value));
 
         // adding neg_zero_value should not increase size
-        map.set_unchecked(&neg_zero_value, "new_value");
+        map.set_unchecked(&neg_zero_value, "new_value".to_string());
         assert_eq!(map.size(), 1);
     }
 
@@ -929,7 +931,7 @@ mod tests {
     fn float_zero_value_key() {
         let mut map = Map::default();
         let zero_value = ValueContainer::from(0.0f64);
-        map.set_unchecked(&zero_value, "value");
+        map.set_unchecked(&zero_value, "value".to_string());
         // same 0.0 value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&zero_value));
@@ -941,7 +943,7 @@ mod tests {
         assert!(map.has(&neg_zero_value));
 
         // adding neg_zero_value should not increase size
-        map.set_unchecked(&neg_zero_value, "new_value");
+        map.set_unchecked(&neg_zero_value, "new_value".to_string());
         assert_eq!(map.size(), 1);
 
         // new 0.0f32 value should not be found
@@ -954,7 +956,7 @@ mod tests {
         let mut map = Map::default();
         let zero_big_decimal =
             ValueContainer::from(TypedDecimal::Decimal(Decimal::Zero));
-        map.set_unchecked(&zero_big_decimal, "value");
+        map.set_unchecked(&zero_big_decimal, "value".to_string());
         // same Zero value should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&zero_big_decimal));
@@ -968,7 +970,7 @@ mod tests {
         assert!(map.has(&neg_zero_big_decimal));
 
         // adding neg_zero_big_decimal should not increase size
-        map.set_unchecked(&neg_zero_big_decimal, "new_value");
+        map.set_unchecked(&neg_zero_big_decimal, "new_value".to_string());
         assert_eq!(map.size(), 1);
     }
 }

@@ -39,7 +39,7 @@ impl ValueAccess for Value {
                     )
                     .map_err(|_| {
                         AccessError::KeyNotFound(KeyNotFoundError::new(
-                            key.into(),
+                            key.to_string().into(),
                         ))
                     })?;
                     Ok(BorrowedValueContainer::Local(BorrowedValue {

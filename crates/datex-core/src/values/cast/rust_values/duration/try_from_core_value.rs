@@ -9,6 +9,9 @@ use crate::{
 use core::time::Duration;
 
 impl ConvertCoreValue for Duration {
+    fn to_core_value(self) -> CoreValue {
+        todo!()
+    }
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Native(native) => {
@@ -68,24 +71,25 @@ mod tests {
         },
     };
     use core::time::Duration;
+    use crate::traits::convert_core_value::ConvertCoreValue;
 
     #[test]
     fn try_duration_from_native_core_value() {
         let duration = Duration::from_secs(10);
-        let core_value = CoreValue::from(duration);
+        let core_value = duration.to_core_value();
         assert_eq!(core_value.try_into_value::<Duration>().unwrap(), duration);
     }
 
     #[test]
     fn try_borrow_duration_from_native_core_value() {
         let duration = Duration::from_secs(10);
-        let core_value = CoreValue::from(duration);
+        let core_value = duration.to_core_value();
         assert_eq!(*core_value.try_as::<Duration>().unwrap(), duration);
     }
 
     #[test]
     fn try_borrow_mut_duration_from_native_core_value() {
-        let mut core_value = CoreValue::from(Duration::from_secs(10));
+        let mut core_value = Duration::from_secs(10).to_core_value();
         *core_value.try_as_mut::<Duration>().unwrap() = Duration::from_secs(20);
         assert_eq!(
             *core_value.try_as::<Duration>().unwrap(),
@@ -103,7 +107,7 @@ mod tests {
     #[test]
     fn try_borrowed_core_value_duration() {
         let duration = Duration::from_secs(10);
-        let core_value = CoreValue::from(duration);
+        let core_value = duration.to_core_value();
         let borrowed = BorrowedCoreValue::from(&core_value);
         let result = Goat::<Duration>::try_from(borrowed).unwrap();
         assert_eq!(*result, duration);
@@ -111,7 +115,7 @@ mod tests {
 
     #[test]
     fn try_borrowed_core_value_mut_duration() {
-        let mut core_value = CoreValue::from(Duration::from_secs(10));
+        let mut core_value = Duration::from_secs(10).to_core_value();
         let borrowed = BorrowedCoreValueMut::from(&mut core_value);
         let mut result = GoatMut::<Duration>::try_from(borrowed).unwrap();
         *result = Duration::from_secs(20);

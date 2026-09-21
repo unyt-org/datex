@@ -367,6 +367,7 @@ impl GetDatexType for str {
 
 #[cfg(test)]
 mod tests {
+    use crate::traits::convert_core_value::ConvertCoreValue;
     use super::*;
     use crate::values::{
         core_value::CoreValue,
@@ -378,8 +379,8 @@ mod tests {
     fn try_without_context() {
         // core rust types like String should be convertible to value without cache
         let _ = Value::native_structural("test".to_string());
-        let _ = CoreValue::from("test");
-        let _ = Value::from("test");
+        let _ = "test".to_string().to_core_value();
+        let _ = Value::from("test".to_string());
     }
 
     #[test]

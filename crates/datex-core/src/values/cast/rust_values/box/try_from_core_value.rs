@@ -3,11 +3,15 @@ use crate::{
     traits::convert_core_value::ConvertCoreValue,
     values::{core_value::CoreValue, core_values::native::DatexNativeBase},
 };
+use crate::preludes::derive::DatexNative;
 
 impl<T> ConvertCoreValue for Box<T>
 where
-    T: DatexNativeBase + 'static,
+    T: DatexNative + 'static,
 {
+    fn to_core_value(self) -> CoreValue {
+        CoreValue::native(*self)
+    }
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Native(native) => native
@@ -36,7 +40,7 @@ mod tests {
 
     #[test]
     fn try_box_from_native_core_value() {
-        let core_value = CoreValue::from(42u32);
+        let core_value = 42u32.to_core_value();
         let result = core_value.try_into_value::<Box<u32>>().unwrap();
         assert_eq!(*result, 42);
     }

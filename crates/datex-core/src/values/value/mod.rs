@@ -79,9 +79,9 @@ impl Clone for Value {
     }
 }
 
-impl<T: Into<CoreValue>> From<T> for Value {
+impl<T: ConvertCoreValue> From<T> for Value {
     fn from(inner: T) -> Self {
-        let inner = inner.into();
+        let inner = inner.to_core_value();
         Value {
             inner,
             classification: ValueClassification::default(),
@@ -99,11 +99,11 @@ impl Value {
     }
 
     pub fn new(
-        inner: impl Into<CoreValue>,
+        inner: impl ConvertCoreValue,
         classification: impl Into<ValueClassification>,
     ) -> Self {
         Value {
-            inner: inner.into(),
+            inner: inner.to_core_value(),
             classification: classification.into(),
         }
     }
@@ -494,7 +494,7 @@ mod tests {
     #[test]
     fn list() {
         let mut a = List::from(vec![
-            Value::from("42"),
+            Value::from("42".to_string()),
             Value::from(42),
             Value::from(true),
         ]);
@@ -507,10 +507,10 @@ mod tests {
         let b = List::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
         assert_eq!(b.len(), 11);
 
-        let c = datex_list![1, "test", 3, true, false];
+        let c = datex_list![1, "test".to_string(), 3, true, false];
         assert_eq!(c.len(), 5);
         assert_eq!(c[0], 1.into());
-        assert_eq!(c[1], "test".into());
+        assert_eq!(c[1], "test".to_string().into());
         assert_eq!(c[2], 3.into());
     }
 
@@ -580,7 +580,7 @@ mod tests {
 
     #[test]
     fn string_concatenation() {
-        let a = Value::from("Hello ");
+        let a = Value::from("Hello ".to_string());
         let b = Value::from(TypedInteger::I8(42i8));
         assert!(matches!(a.inner, CoreValue::Text(_)));
         assert!(matches!(
@@ -594,8 +594,8 @@ mod tests {
         assert!(matches!(a_plus_b.inner, CoreValue::Text(_)));
         assert!(matches!(b_plus_a.inner, CoreValue::Text(_)));
 
-        assert_eq!(a_plus_b, Value::from("Hello 42"));
-        assert_eq!(b_plus_a, Value::from("42Hello "));
+        assert_eq!(a_plus_b, Value::from("Hello 42".to_string()));
+        assert_eq!(b_plus_a, Value::from("42Hello ".to_string()));
 
         info!("{} + {} = {}", a.clone(), b.clone(), a_plus_b);
         info!("{} + {} = {}", b.clone(), a.clone(), b_plus_a);

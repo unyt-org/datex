@@ -30,6 +30,10 @@ macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
         $(
             impl ConvertCoreValue for $type {
+                fn to_core_value(self) -> CoreValue {
+                    CoreValue::$variant(self)
+                }
+                
                 fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
                     match value {
                         CoreValue::Native(native) => {

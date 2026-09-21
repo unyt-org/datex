@@ -9,6 +9,9 @@ use crate::{
 };
 
 impl ConvertCoreValue for f32 {
+    fn to_core_value(self) -> CoreValue {
+        CoreValue::TypedDecimal(TypedDecimal::F32(self.into()))
+    }
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(value.0),
@@ -71,6 +74,9 @@ impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, f32> {
 }
 
 impl ConvertCoreValue for f64 {
+    fn to_core_value(self) -> CoreValue {
+        CoreValue::TypedDecimal(TypedDecimal::F64(self.into()))
+    }
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(value.0),
@@ -141,6 +147,7 @@ mod tests {
             core_values::decimal::typed_decimal::TypedDecimal,
         },
     };
+    use crate::traits::convert_core_value::ConvertCoreValue;
 
     #[test]
     fn try_f32_from_core_value() {
@@ -173,14 +180,14 @@ mod tests {
 
     #[test]
     fn try_f32_from_native_core_value() {
-        let core_value = CoreValue::from(1.5f32);
+        let core_value = 1.5f32.to_core_value();
         let result = core_value.try_as::<f32>();
         assert_eq!(*result.unwrap(), 1.5);
     }
 
     #[test]
     fn try_borrow_mut_f32_from_native_core_value() {
-        let mut core_value = CoreValue::from(1.5f32);
+        let mut core_value = 1.5f32.to_core_value();
 
         let result = core_value.try_as_mut::<f32>();
         *result.unwrap() = 2.5;
@@ -189,7 +196,7 @@ mod tests {
 
     #[test]
     fn try_owned_f32_from_native_core_value() {
-        let core_value = CoreValue::from(1.5f32);
+        let core_value = 1.5f32.to_core_value();
         let result = core_value.try_into_value::<f32>();
         assert_eq!(result.unwrap(), 1.5);
     }
@@ -254,14 +261,14 @@ mod tests {
 
     #[test]
     fn try_f64_from_native_core_value() {
-        let core_value = CoreValue::from(1.5f64);
+        let core_value = 1.5f64.to_core_value();
         let result = core_value.try_as::<f64>();
         assert_eq!(*result.unwrap(), 1.5);
     }
 
     #[test]
     fn try_borrow_mut_f64_from_native_core_value() {
-        let mut core_value = CoreValue::from(1.5f64);
+        let mut core_value = 1.5f64.to_core_value();
         let result = core_value.try_as_mut::<f64>();
         *result.unwrap() = 2.5;
         assert_eq!(*core_value.try_as::<f64>().unwrap(), 2.5);
@@ -269,7 +276,7 @@ mod tests {
 
     #[test]
     fn try_owned_f64_from_native_core_value() {
-        let core_value = CoreValue::from(1.5f64);
+        let core_value = 1.5f64.to_core_value();
         let result = core_value.try_into_value::<f64>();
         assert_eq!(result.unwrap(), 1.5);
     }
@@ -289,7 +296,7 @@ mod tests {
 
     #[test]
     fn try_borrowed_core_value_f64() {
-        let core_value = CoreValue::TypedDecimal(TypedDecimal::F64(1.5.into()));
+        let core_value = 1.5f64.to_core_value();
         let borrowed = BorrowedCoreValue::from(&core_value);
         let result = Goat::<f64>::try_from(borrowed);
         assert_eq!(*result.unwrap(), 1.5);
