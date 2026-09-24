@@ -3,6 +3,7 @@ mod try_from_core_value;
 
 use crate::traits::value_access::ValueAccess;
 mod to_instructions;
+mod try_clone;
 
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {

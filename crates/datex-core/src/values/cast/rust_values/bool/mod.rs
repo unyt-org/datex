@@ -2,6 +2,8 @@ pub mod try_from_core_value;
 
 use crate::traits::{datex_hash::impl_datex_hash, value_access::ValueAccess};
 mod to_instructions;
+mod try_clone;
+
 impl ValueAccess for bool {}
 
 #[cfg(feature = "ast")]

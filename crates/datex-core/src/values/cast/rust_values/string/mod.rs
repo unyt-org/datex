@@ -5,6 +5,7 @@ use crate::{
     traits::{datex_hash::impl_datex_hash, value_access::ValueAccess},
 };
 mod to_instructions;
+pub mod try_clone;
 
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {

@@ -30,7 +30,7 @@ pub mod primitive;
 mod to_datex_expression_data;
 pub mod update_handler;
 mod value_access;
-
+mod try_clone;
 
 pub const DECIMAL_NAN: &str = "nan";
 pub const DECIMAL_INFINITY: &str = "infinity";

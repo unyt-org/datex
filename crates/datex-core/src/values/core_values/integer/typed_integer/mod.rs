@@ -32,7 +32,7 @@ pub mod primitive;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod value_access;
-
+mod try_clone;
 
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).
