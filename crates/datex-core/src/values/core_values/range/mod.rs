@@ -17,7 +17,7 @@ pub mod serde_dif;
 mod to_datex_expression_data;
 mod to_instructions;
 mod value_access;
-
+mod try_clone;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Range {

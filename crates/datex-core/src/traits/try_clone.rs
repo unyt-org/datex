@@ -17,7 +17,7 @@ impl<T> TryClone for T {
 
 /// For any [DatexNative] type that implements [Clone],
 /// try_clone gets this default impl that returns a new [CoreValue] containing the cloned value.
-impl<T> TryClone for T
+default impl<T> TryClone for T
 where
     T: Clone + DatexNative,
 {
