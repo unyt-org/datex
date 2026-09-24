@@ -1,6 +1,8 @@
 use alloc::str::FromStr;
 use core::assert_matches;
+use indexmap::IndexMap;
 use datex_core::{
+    random::RandomState,
     ast::{
         expressions::{
             CallableSignature, RemoteExecution, Statements,
@@ -8,7 +10,6 @@ use datex_core::{
         },
         type_expressions::StructuralMap,
     },
-    collections::HashMap,
     global::operators::{
         ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
         LogicalUnaryOperator, ModificationOperator, UnaryOperator,
@@ -2652,13 +2653,14 @@ fn text_to_value_container() {
 fn list_to_value_container() {
     let src = "[1, 2, 3, 4.5, \"text\"]";
     let val = parse_to_value_container(src);
-    let value_container_list: Vec<ValueContainer> = vec![
+    let value_container_vec: Vec<ValueContainer> = vec![
         Integer::from(1).into(),
         Integer::from(2).into(),
         Integer::from(3).into(),
         Decimal::try_from_string("4.5").unwrap().into(),
         "text".to_string().into(),
     ];
+    let value_container_list = datex_core::values::core_values::list::List::new(value_container_vec);
     assert_eq!(val, ValueContainer::from(value_container_list));
 }
 
@@ -2677,17 +2679,18 @@ fn json_to_value_container() {
     "#;
 
     let val = parse_to_value_container(src);
-    let value_container_list: Vec<ValueContainer> = vec![
+    let value_container_vec: Vec<ValueContainer> = vec![
         Integer::from(1).into(),
         Integer::from(2).into(),
         Integer::from(3).into(),
         Decimal::try_from_string("0.5").unwrap().into(),
     ];
+    let value_container_list = datex_core::values::core_values::list::List::new(value_container_vec);
     let value_container_inner_map: ValueContainer =
         ValueContainer::from(datex_core::values::core_values::map::Map::from(
             vec![("key".to_string(), "value".to_string().into())]
                 .into_iter()
-                .collect::<HashMap<String, ValueContainer>>(),
+                .collect::<IndexMap<String, ValueContainer, RandomState>>(),
         ));
     let value_container_map: ValueContainer =
         ValueContainer::from(datex_core::values::core_values::map::Map::from(
@@ -2699,7 +2702,7 @@ fn json_to_value_container() {
                 ("nested".to_string(), value_container_inner_map),
             ]
             .into_iter()
-            .collect::<HashMap<String, ValueContainer>>(),
+            .collect::<IndexMap<String, ValueContainer, RandomState>>(),
         ));
     assert_eq!(val, value_container_map);
 }
