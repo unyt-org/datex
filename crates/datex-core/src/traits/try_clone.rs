@@ -31,6 +31,7 @@ mod tests {
     use crate::{
         prelude::*, traits::try_clone::TryClone, values::core_value::CoreValue,
     };
+    use crate::traits::convert_core_value::ConvertCoreValue;
 
     #[test]
     fn test_try_string() {
@@ -38,7 +39,7 @@ mod tests {
         let cloned_value = value.try_clone().unwrap();
         assert_eq!(
             cloned_value,
-            CoreValue::native("Hello, world!".to_string())
+            "Hello, world!".to_string().to_core_value()
         );
     }
 
