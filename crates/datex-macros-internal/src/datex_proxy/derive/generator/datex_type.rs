@@ -5,7 +5,7 @@ use crate::datex_proxy::data::{
     EnumVariant, Field, FieldMapping, Fields, NamedField, Structure,
     StructureData, TypeKind,
 };
-use crate::utils::{get_datex_core_crate_name, get_project_relative_file_path};
+use crate::utils::{get_datex_core_crate_name_with_options, get_project_relative_file_path};
 
 pub fn generate_core_lib_type_id(
     structure_data: &StructureData,
@@ -66,7 +66,7 @@ pub fn generate_datex_type(structure_data: &StructureData) -> TokenStream {
 }
 
 fn generate_type_registration(structure_data: &StructureData) -> TokenStream {
-    let datex_core_crate_name = get_datex_core_crate_name();
+    let datex_core_crate_name = get_datex_core_crate_name_with_options(&structure_data.attributes);
 
     let StructureData {
         ident,

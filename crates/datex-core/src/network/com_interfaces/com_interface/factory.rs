@@ -390,6 +390,8 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 /// The trait should be implemented for the setup data type of the interface.
 /// Example:
 /// ```
+/// #![feature(gen_blocks)]
+///
 /// use datex_macros_internal::Datex;
 /// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::factory::{ComInterfaceSyncFactory,ComInterfaceConfiguration};
@@ -447,6 +449,8 @@ where
 /// The trait should be implemented for the setup data type of the interface.
 /// Example:
 /// ```
+/// #![feature(gen_blocks)]
+///
 /// use datex_macros_internal::Datex;
 /// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
