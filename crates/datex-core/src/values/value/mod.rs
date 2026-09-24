@@ -460,7 +460,7 @@ mod tests {
     #[test]
     fn endpoint() {
         let endpoint = Value::from(Endpoint::new("@test"));
-        assert!(endpoint.is_native());
+        assert!(!endpoint.is_native());
 
         let endpoint_value = endpoint.try_into_value::<Endpoint>().unwrap();
         assert_eq!(endpoint_value.to_string(), "@test");

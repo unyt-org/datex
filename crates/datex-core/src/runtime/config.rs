@@ -136,8 +136,9 @@ pub mod tests {
         },
         values::core_values::{endpoint::Endpoint, map::Map},
     };
+    use crate::traits::try_clone::TryClone;
 
-    #[derive(Datex)]
+    #[derive(Datex, Clone)]
     #[datex(structural)]
     struct MySetupData {
         field1: String,
@@ -163,7 +164,7 @@ pub mod tests {
         )
         .unwrap();
         assert_eq!(config_interface.interface_type, "test");
-        let setup_data = config_interface.config.clone();
+        let setup_data = config_interface.config.try_clone().unwrap();
         let map: Map = setup_data.try_into_value().unwrap();
         assert_eq!(
             map.try_get("field1")
