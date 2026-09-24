@@ -114,7 +114,7 @@ mod tests {
             .unwrap()
             .0
             .expect("Function should return a value");
-        assert_eq!(res, 5u8.into());
+        assert_eq!(res.try_as::<u8>(), Some(&5u8));
 
         // 2 args
         let func_2 = |x: u8, y: u8| x + y;
@@ -129,6 +129,6 @@ mod tests {
             .unwrap()
             .0
             .expect("Function should return a value");
-        assert_eq!(res_2, 7u8.into());
+        assert_eq!(res_2.try_as::<u8>(), Some(&7u8));
     }
 }
