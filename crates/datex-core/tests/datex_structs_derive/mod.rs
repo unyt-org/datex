@@ -52,7 +52,7 @@ struct ExampleNewType(Example);
 
 fn assert_round_trip<T>(value: T)
 where
-    T: DatexNativeStructural + PartialEq + std::fmt::Debug + Clone,
+    T: ConvertCoreValue + ConvertValueContainer + PartialEq + std::fmt::Debug + Clone,
 {
     let value_container = ValueContainer::from(value.clone());
     let deserialized_value =
@@ -90,6 +90,7 @@ use datex_core::{
     },
 };
 use test_case::test_case;
+use datex_core::preludes::derive::ConvertValueContainer;
 use datex_core::traits::convert_core_value::ConvertCoreValue;
 
 #[test_case(
@@ -114,7 +115,7 @@ use datex_core::traits::convert_core_value::ConvertCoreValue;
 ]) ; "map of primitives")]
 fn round_trip_struct<T>(structure: T)
 where
-    T: DatexNativeStructural + PartialEq + std::fmt::Debug + Clone,
+    T: ConvertCoreValue  + ConvertValueContainer + PartialEq + std::fmt::Debug + Clone,
 {
     assert_round_trip(structure);
 }
@@ -377,10 +378,10 @@ fn value_to_enum() {
     assert_matches!(example, ExampleEnum::VariantA);
 
     let variant_b = Value::new(
-        CoreValue::from(vec![
+        vec![
             ValueContainer::from(1u8),
             ValueContainer::from(2u8),
-        ]),
+        ].to_core_value(),
         ValueClassification::Tag(ValueTag {
             tag: "VariantB".to_string(),
             is_empty: false,
@@ -390,10 +391,10 @@ fn value_to_enum() {
     assert_matches!(example, ExampleEnum::VariantB(1, 2));
 
     let variant_c = Value::new(
-        CoreValue::from(Map::from(vec![
+        Map::from(vec![
             ("x".to_string(), ValueContainer::from(3u8)),
             ("y".to_string(), ValueContainer::from("Hello".to_string())),
-        ])),
+        ]).to_core_value(),
         ValueClassification::Tag(ValueTag {
             tag: "VariantC".to_string(),
             is_empty: false,
@@ -416,10 +417,10 @@ fn value_to_enum() {
 #[test]
 fn value_to_enum_failure() {
     let invalid_variant = Value::new(
-        CoreValue::from(vec![
+        vec![
             ValueContainer::from(1u8),
             ValueContainer::from(2u8),
-        ]),
+        ].to_core_value(),
         ValueClassification::Tag(ValueTag {
             tag: "VariantX".to_string(),
             is_empty: false,
@@ -428,7 +429,7 @@ fn value_to_enum_failure() {
     assert!(invalid_variant.try_into_value::<ExampleEnum>().is_err());
 
     let invalid_variant = Value::new(
-        CoreValue::from(42u8),
+        42u8.to_core_value(),
         ValueClassification::Tag(ValueTag {
             tag: "VariantA".to_string(),
             is_empty: false,
