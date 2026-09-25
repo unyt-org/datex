@@ -179,6 +179,8 @@ impl NativeCoreValue {
             Some(val)
         } else if let Some(val) = any.downcast_ref::<Box<T>>() {
             Some(&**val)
+        } else if let Some(val) = any.downcast_ref::<Option<T>>() {
+            val.as_ref()
         } else {
             None
         }
@@ -192,6 +194,8 @@ impl NativeCoreValue {
             Some(val)
         } else if let Some(val) = any_mut.downcast_mut::<Box<T>>() {
             Some(&mut **val)
+        } else if let Some(val) = any_mut.downcast_mut::<Option<T>>() {
+            val.as_mut()
         } else {
             None
         }
@@ -207,6 +211,13 @@ impl NativeCoreValue {
         } else if any.is::<Box<T>>() {
             // SAFETY: we just verified the type
             Ok(**self.into_any().downcast::<Box<T>>().unwrap())
+        } else if any.is::<Option<T>>() {
+            // SAFETY: we just verified the type
+            if self.as_any().downcast_ref::<Option<T>>().unwrap().is_some() {
+                Ok(self.into_any().downcast::<Option<T>>().unwrap().unwrap())
+            } else {
+                Err(self)
+            }
         } else {
             Err(self)
         }

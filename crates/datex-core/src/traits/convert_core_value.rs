@@ -7,9 +7,13 @@ pub trait ConvertCoreValue {
     where
         Self: Sized;
 
-    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()>;
+    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()>
+    where
+        Self: Sized;
 
     fn try_borrow_mut_from_core_value(
         value: &mut CoreValue,
-    ) -> Result<&mut Self, ()>;
+    ) -> Result<&mut Self, ()>
+    where
+        Self: Sized;
 }

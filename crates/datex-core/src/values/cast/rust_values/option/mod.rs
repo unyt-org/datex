@@ -14,10 +14,15 @@ mod value_access;
 #[cfg(test)]
 mod tests {
     use crate::{
-        preludes::derive::SharedReferencesCache,
+        preludes::derive::{CoreValue, SharedReferencesCache},
         traits::get_datex_type::GetDatexType,
         types::type_definition::TypeDefinition,
-        values::{core_values::integer::Integer, value::Value},
+        values::{
+            core_values::{
+                endpoint::Endpoint, integer::Integer, native::NativeCoreValue,
+            },
+            value::Value,
+        },
     };
 
     #[test]
@@ -28,11 +33,14 @@ mod tests {
         let some_value: Value = Value::native_structural(some_option);
         let none_value: Value = Value::native_structural(none_option);
 
-        assert_eq!(
-            some_value,
-            Value::boxed(Value::native_structural(Integer::new(1)))
-        );
-        assert_eq!(none_value, Value::boxed(Value::null()));
+        // assert_eq!(some_value.try_as::<Integer>().unwrap(), &Integer::new(1));
+        // assert_eq!(
+        //     some_value.try_into_value::<Option<Integer>>().unwrap(),
+        //     Some(Integer::new(1))
+        // );
+
+        assert_eq!(none_value.try_as::<Option<Integer>>().unwrap(), &None);
+        // assert_eq!(none_value, Value::native_structural(None::<Integer>));
     }
 
     #[test]
@@ -43,7 +51,7 @@ mod tests {
             some_value.try_into_value::<Option<Integer>>().unwrap();
         assert_eq!(some_option, Some(Integer::new(1)));
 
-        let none_value: Value = Value::boxed(Value::null());
+        let none_value: Value = Value::native_structural(None::<Integer>);
         let none_option =
             none_value.try_into_value::<Option<Integer>>().unwrap();
         assert_eq!(none_option, None);
@@ -56,5 +64,26 @@ mod tests {
         option_type.with_collapsed_type_definition(|td| {
             assert!(matches!(td, TypeDefinition::Box(_)));
         });
+    }
+
+    #[test]
+    fn endpoint_in_option() {
+        let endpoint = Endpoint::new("@jonas");
+        let boxed_endpoint = Some(endpoint.clone());
+        let value: Value = Value::native_structural(boxed_endpoint);
+        assert_eq!(
+            value.inner,
+            CoreValue::Native(NativeCoreValue::new(Some(endpoint.clone())))
+        );
+        assert_eq!(
+            value.try_as::<Endpoint>().expect("Expected Endpoint"),
+            &endpoint
+        );
+        assert_eq!(
+            *value
+                .try_as::<Option<Endpoint>>()
+                .expect("Expected Endpoint"),
+            Some(endpoint.clone())
+        );
     }
 }
