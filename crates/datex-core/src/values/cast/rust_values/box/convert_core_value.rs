@@ -6,17 +6,16 @@ use crate::{
 
 impl<T> ConvertCoreValue for Box<T>
 where
-    T: DatexNative + 'static,
+    Box<T>: DatexNative + 'static,
 {
     fn to_core_value(self) -> CoreValue {
-        CoreValue::native(*self)
+        CoreValue::native(self)
     }
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
-            CoreValue::Native(native) => native
-                .try_into_value::<T>()
-                .map(Box::new)
-                .map_err(CoreValue::Native),
+            CoreValue::Native(native) => {
+                native.try_into_value::<Box<T>>().map_err(CoreValue::Native)
+            }
             _ => Err(value),
         }
     }
@@ -35,11 +34,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::values::core_value::CoreValue;
 
     #[test]
     fn try_box_from_native_core_value() {
-        let core_value = 42u32.to_core_value();
+        let core_value = Box::new(42u32).to_core_value();
         let result = core_value.try_into_value::<Box<u32>>().unwrap();
         assert_eq!(*result, 42);
     }

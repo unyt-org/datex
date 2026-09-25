@@ -1,5 +1,6 @@
 //! Implements [DatexValueProxy] for [Box<T>] where T: [DatexValueProxy].
 pub mod classification;
+mod convert_core_value;
 mod convert_parts;
 pub mod datex_hash;
 mod datex_native;
@@ -9,7 +10,6 @@ mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
-mod try_from_core_value;
 mod update_handler;
 mod value_access;
 
@@ -21,7 +21,9 @@ mod tests {
         traits::get_datex_type::GetDatexType,
         values::{
             core_value::CoreValue,
-            core_values::{endpoint::Endpoint, integer::Integer},
+            core_values::{
+                endpoint::Endpoint, integer::Integer, native::NativeCoreValue,
+            },
             value::Value,
             value_container::ValueContainer,
         },
@@ -44,10 +46,19 @@ mod tests {
         let endpoint = Endpoint::new("@jonas");
         let boxed_endpoint = Box::new(endpoint.clone());
         let value: Value = Value::native_structural(boxed_endpoint);
-        assert!(matches!(
+        assert_eq!(
             value.inner,
-            CoreValue::Endpoint(ref e) if e == &endpoint
-        ));
+            CoreValue::Native(NativeCoreValue::new(Box::new(endpoint.clone())))
+        );
+        assert_eq!(
+            value.try_as::<Endpoint>().expect("Expected Endpoint"),
+            &endpoint
+        );
+        // TODO, do we want to allow this?
+        assert_eq!(
+            value.try_as::<Box<Endpoint>>().expect("Expected Endpoint"),
+            &Box::new(endpoint.clone())
+        );
     }
 
     #[test]
