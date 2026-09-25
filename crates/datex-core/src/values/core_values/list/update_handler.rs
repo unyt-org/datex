@@ -62,19 +62,18 @@ impl UpdateHandlerImpl for List {
         &mut self,
         data: DeleteEntryUpdateData,
         cache: &RefCell<SharedReferencesCache>,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
+    ) -> Result<ValueContainer, UpdateError> {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
             || UpdateError::access_error(AccessError::InvalidIndexKey),
         )?;
         self.try_delete_with_source(key, None)
             .map_err(UpdateError::access_error)
-            .map(Some)
     }
 
     fn try_append_entry(
         &mut self,
         data: AppendEntryUpdateData,
-        cache: &RefCell<SharedReferencesCache>,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         self.push_with_source(data.value, None);
         Ok(())
@@ -82,7 +81,7 @@ impl UpdateHandlerImpl for List {
 
     fn try_clear(
         &mut self,
-        cache: &RefCell<SharedReferencesCache>,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<ValueContainer, UpdateError> {
         let previous = core::mem::take(self);
         Ok(ValueContainer::Local(previous.into()))

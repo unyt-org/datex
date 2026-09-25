@@ -93,8 +93,8 @@ impl UpdateHandlerImpl for Value {
             CoreValue::TypedDecimal(decimal) => {
                 decimal.try_update(operation, source_id, cache)
             }
-            CoreValue::Native(_native) => {
-                todo!("Add UpdateHandlerImpl to DatexNative")
+            CoreValue::Native(native) => {
+                native.try_update(operation, source_id, cache)
             }
             _ => Err(UpdateError::InvalidUpdate),
         }

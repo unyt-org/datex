@@ -65,7 +65,7 @@ impl<T: DatexNative + 'static> UpdateHandlerImpl for Option<T> {
         &mut self,
         data: DeleteEntryUpdateData,
         cache: &RefCell<SharedReferencesCache>,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
+    ) -> Result<ValueContainer, UpdateError> {
         if let Some(inner) = self {
             inner.try_delete_entry(data, cache)
         } else {

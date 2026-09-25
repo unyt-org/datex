@@ -109,14 +109,14 @@ fn try_clone() {
 #[test]
 fn call_instance_method_from_runtime() {
     let runtime = Runtime::stub();
-    let mut cache = runtime.shared_references_cache_mut();
+    let mut cache = runtime.shared_references_cache_refcell();
 
     let example = Example::new(1, 2);
-    let example_vc = Value::native(example, cache.deref_mut());
+    let example_vc = Value::native(example, cache.borrow_mut().deref_mut());
 
-    let example_type = Example::datex_type(cache.deref_mut());
+    let example_type = Example::datex_type(cache.borrow_mut().deref_mut());
     let set_a = example_type
-        .try_get_property("set_a".into(), cache.deref_mut())
+        .try_get_property("set_a".into(), cache)
         .unwrap();
     let set_a_callable = set_a.try_as::<Callable>().unwrap();
 
@@ -139,7 +139,7 @@ fn call_instance_method_from_runtime() {
         // a was updated to 10
         ValueContainer::from(Value::native(
             Example { a: 10, b: 2 },
-            cache.deref_mut()
+            cache.borrow_mut().deref_mut()
         ))
     );
 }
@@ -159,7 +159,7 @@ async fn call_async_instance_method_from_runtime() {
     let async_test = example_type
         .try_get_property(
             "async_test".into(),
-            runtime.shared_references_cache_mut().deref_mut(),
+            runtime.shared_references_cache_refcell(),
         )
         .unwrap();
     let async_test_callable = async_test.try_as::<Callable>().unwrap();

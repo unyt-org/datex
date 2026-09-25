@@ -4,7 +4,7 @@ use crate::{
     preludes::derive::{
         BorrowedValueKey, SharedReferencesCache, ValueContainer,
     },
-    shared_values::errors::AccessError,
+    shared_values::errors::{AccessError, IndexOutOfBoundsError},
     types::error::TypeError,
     value_updates::{
         errors::UpdateError,
@@ -35,7 +35,9 @@ impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {
             .transpose()
             .map_err(|_: ()| UpdateError::type_error(TypeError::Invalid))?
             .ok_or_else(|| {
-                UpdateError::access_error(AccessError::InvalidIndexKey)
+                UpdateError::access_error(AccessError::IndexOutOfBounds(
+                    IndexOutOfBoundsError { index: key as u32 },
+                ))
             })
             .map(Some)
     }
@@ -44,19 +46,16 @@ impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {
         &mut self,
         data: DeleteEntryUpdateData,
         cache: &RefCell<SharedReferencesCache>,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
+    ) -> Result<ValueContainer, UpdateError> {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
             || UpdateError::access_error(AccessError::InvalidIndexKey),
         )? as usize;
-        self.try_remove(key)
-            .map(|previous| {
-                Some(
-                    previous.to_value_container(cache.borrow_mut().deref_mut()),
-                )
-            })
-            .ok_or_else(|| {
-                UpdateError::access_error(AccessError::InvalidIndexKey)
-            })
+        let removed = self.try_remove(key).ok_or_else(|| {
+            UpdateError::access_error(AccessError::IndexOutOfBounds(
+                IndexOutOfBoundsError { index: key as u32 },
+            ))
+        })?;
+        Ok(removed.to_value_container(cache.borrow_mut().deref_mut()))
     }
 
     fn try_append_entry(

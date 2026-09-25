@@ -377,7 +377,7 @@ pub trait UpdateHandlerImpl: UpdateCallbackDataAccess {
         &mut self,
         _data: DeleteEntryUpdateData,
         _cache: &RefCell<SharedReferencesCache>,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
+    ) -> Result<ValueContainer, UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
 
