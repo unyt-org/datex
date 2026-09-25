@@ -174,21 +174,39 @@ impl NativeCoreValue {
     /// Attempt to downcast the native value to a specific type.
     /// Returns `Some(&T)` if the downcast is successful, or `None` if it fails.
     pub fn try_as<T: 'static>(&self) -> Option<&T> {
-        self.value.as_any().downcast_ref::<T>()
+        let any = self.value.as_any();
+        if let Some(val) = any.downcast_ref::<T>() {
+            Some(val)
+        } else if let Some(val) = any.downcast_ref::<Box<T>>() {
+            Some(&**val)
+        } else {
+            None
+        }
     }
 
     /// Attempt to downcast the native value to a specific type.
     /// Returns `Some(&mut T)` if the downcast is successful, or `None` if it fails.
     pub fn try_as_mut<T: 'static>(&mut self) -> Option<&mut T> {
-        self.value.as_any_mut().downcast_mut::<T>()
+        let any_mut = self.value.as_any_mut();
+        if let Some(val) = any_mut.downcast_mut::<T>() {
+            Some(val)
+        } else if let Some(val) = any_mut.downcast_mut::<Box<T>>() {
+            Some(&mut **val)
+        } else {
+            None
+        }
     }
 
     /// Attempt to downcast the native value to a specific type.
     /// Returns `Ok(T)` if the downcast is successful, or `Err(Self)` if it fails.
     pub fn try_into_value<T: 'static>(self) -> Result<T, Self> {
-        if self.as_any().is::<T>() {
+        let any = self.as_any();
+        if any.is::<T>() {
             // SAFETY: we just verified the type
             Ok(*self.into_any().downcast::<T>().unwrap())
+        } else if any.is::<Box<T>>() {
+            // SAFETY: we just verified the type
+            Ok(**self.into_any().downcast::<Box<T>>().unwrap())
         } else {
             Err(self)
         }
