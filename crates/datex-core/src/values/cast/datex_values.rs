@@ -19,10 +19,10 @@ mod tests {
     fn try_boxed_to_value() {
         let endpoint = Endpoint::new("@jonas");
         let value = Value::native_structural(endpoint.clone());
-        assert!(matches!(
-            value.inner,
-            CoreValue::Endpoint(ref e) if e == &endpoint
-        ));
+        assert_eq!(
+            *value.try_as::<Endpoint>().expect("Expected Endpoint"),
+            endpoint
+        );
     }
 
     #[test]
