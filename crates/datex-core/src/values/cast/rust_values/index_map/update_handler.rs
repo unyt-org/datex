@@ -1,4 +1,11 @@
-use crate::{preludes::derive::ConvertCoreValue, random::RandomState};
+use crate::{
+    preludes::derive::{
+        AccessError::{self},
+        ConvertCoreValue, KeyNotFoundError,
+    },
+    random::RandomState,
+    values::core_values::map::MapAccessError,
+};
 use core::{cell::RefCell, hash::Hash, mem, ops::DerefMut};
 use indexmap::IndexMap;
 
@@ -50,16 +57,25 @@ where
         &mut self,
         data: DeleteEntryUpdateData,
         cache: &RefCell<SharedReferencesCache>,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
+    ) -> Result<ValueContainer, UpdateError> {
         let key = data
             .key
             .into_value_container()
             .try_into_value::<K>()
             .map_err(|_| UpdateError::type_error(TypeError::Invalid))?;
 
-        Ok(self.shift_remove(&key).map(|previous| {
-            previous.to_value_container(cache.borrow_mut().deref_mut())
-        }))
+        self.shift_remove(&key)
+            .map(|previous| {
+                previous.to_value_container(cache.borrow_mut().deref_mut())
+            })
+            .ok_or_else(|| {
+                AccessError::MapAccessError(MapAccessError::KeyNotFound(
+                    KeyNotFoundError::new(
+                        key.to_value_container(cache.borrow_mut().deref_mut()),
+                    ),
+                ))
+                .into()
+            })
     }
 
     fn try_clear(

@@ -36,7 +36,7 @@ impl<T: DatexNative> UpdateHandlerImpl for Box<T> {
         &mut self,
         data: DeleteEntryUpdateData,
         cache: &RefCell<SharedReferencesCache>,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
+    ) -> Result<ValueContainer, UpdateError> {
         (**self).try_delete_entry(data, cache)
     }
     fn try_increment(

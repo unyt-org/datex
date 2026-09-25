@@ -57,12 +57,11 @@ impl UpdateHandlerImpl for Map {
     fn try_delete_entry(
         &mut self,
         data: DeleteEntryUpdateData,
-        cache: &RefCell<SharedReferencesCache>,
-    ) -> Result<Option<ValueContainer>, UpdateError> {
+        _cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<ValueContainer, UpdateError> {
         let key = BorrowedValueKey::from(data.key);
         self.try_delete_with_source(key, None)
             .map_err(UpdateError::access_error)
-            .map(Some)
     }
 
     fn try_clear(

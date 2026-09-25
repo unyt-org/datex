@@ -23,6 +23,7 @@ mod serde_dif;
 mod to_datex_expression_data;
 mod to_instructions;
 mod value_access;
+mod value_update;
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     preludes::derive::{BorrowedValueContainer, StaticClassification},
