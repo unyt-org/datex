@@ -16,3 +16,10 @@ impl DatexNative for Endpoint {
 }
 impl DatexNativeOps for Endpoint {}
 impl LocalChildPathResolver for Endpoint {}
+
+use crate::value_updates::update_handler::{
+    UpdateCallbackDataAccess, UpdateHandlerImpl,
+};
+
+impl UpdateHandlerImpl for Endpoint {}
+impl UpdateCallbackDataAccess for Endpoint {}

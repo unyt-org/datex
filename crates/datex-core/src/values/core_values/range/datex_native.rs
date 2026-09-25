@@ -16,3 +16,10 @@ impl DatexNative for Range {
 }
 impl DatexNativeOps for Range {}
 impl LocalChildPathResolver for Range {}
+
+use crate::value_updates::update_handler::{
+    UpdateCallbackDataAccess, UpdateHandlerImpl,
+};
+
+impl UpdateHandlerImpl for Range {}
+impl UpdateCallbackDataAccess for Range {}

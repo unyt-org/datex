@@ -1,4 +1,5 @@
 use crate::{
+    preludes::derive::SharedReferencesCache,
     value_updates::update_data::IncrementUpdateData,
     values::core_values::integer::Integer,
 };
@@ -10,7 +11,7 @@ use crate::value_updates::{
         UpdateCallbackData, UpdateCallbackDataAccess, UpdateHandlerImpl,
     },
 };
-use core::result::Result;
+use core::{cell::RefCell, result::Result};
 
 impl UpdateCallbackDataAccess for Integer {
     fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
@@ -22,6 +23,7 @@ impl UpdateHandlerImpl for Integer {
     fn try_increment(
         &mut self,
         data: IncrementUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         let value = data
             .value
@@ -33,6 +35,7 @@ impl UpdateHandlerImpl for Integer {
     fn try_decrement(
         &mut self,
         data: DecrementUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         let value = data
             .value

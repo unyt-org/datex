@@ -1,4 +1,7 @@
+use core::cell::RefCell;
+
 use crate::{
+    preludes::derive::SharedReferencesCache,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     value_updates::{
         errors::UpdateError,
@@ -8,7 +11,11 @@ use crate::{
 };
 
 impl UpdateHandler for SharedContainer {
-    fn try_handle_update(&mut self, update: Update) -> UpdateResult {
+    fn try_handle_update(
+        &mut self,
+        update: Update,
+        cache: &RefCell<SharedReferencesCache>,
+    ) -> UpdateResult {
         if let SharedContainer::Referenced(referenced) = self
             && !referenced.can_mutate()
         {
@@ -22,7 +29,7 @@ impl UpdateHandler for SharedContainer {
 
         let result = self
             .base_shared_container_mut()
-            .try_handle_update(operation, path)?;
+            .try_handle_update(operation, path, cache)?;
 
         // since we have assigned a new value to the shared container, we must unset the uninitialized flag
         self.unset_uninitialized();
@@ -86,6 +93,7 @@ mod tests {
 
     #[test]
     fn update_top_down_trigger_observer() {
+        let cache = RefCell::new(SharedReferencesCache::default());
         let (mut shared, updates) =
             get_shared_container_with_observer(List::from(vec![
                 ValueContainer::from(1),
@@ -98,7 +106,7 @@ mod tests {
             )),
         );
 
-        shared.try_handle_update(update.clone()).unwrap();
+        shared.try_handle_update(update.clone(), &cache).unwrap();
 
         {
             let updates = updates.borrow();

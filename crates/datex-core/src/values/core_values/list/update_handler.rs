@@ -1,5 +1,6 @@
 use crate::{
     prelude::*,
+    preludes::derive::SharedReferencesCache,
     shared_values::errors::AccessError,
     values::{
         core_values::list::List,
@@ -18,7 +19,7 @@ use crate::value_updates::{
         UpdateCallbackDataAccess, UpdateHandlerImpl,
     },
 };
-use core::result::Result;
+use core::{cell::RefCell, result::Result};
 
 impl InternalMutabilityUpdateHandler for List {
     fn set_update_callback_data(
@@ -43,11 +44,11 @@ impl UpdateCallbackDataAccess for List {
         self.update_callback_data.as_ref()
     }
 }
-
 impl UpdateHandlerImpl for List {
     fn try_set_entry(
         &mut self,
         data: SetEntryUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
             || UpdateError::access_error(AccessError::InvalidIndexKey),
@@ -60,6 +61,7 @@ impl UpdateHandlerImpl for List {
     fn try_delete_entry(
         &mut self,
         data: DeleteEntryUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
             || UpdateError::access_error(AccessError::InvalidIndexKey),
@@ -72,12 +74,16 @@ impl UpdateHandlerImpl for List {
     fn try_append_entry(
         &mut self,
         data: AppendEntryUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         self.push_with_source(data.value, None);
         Ok(())
     }
 
-    fn try_clear(&mut self) -> Result<ValueContainer, UpdateError> {
+    fn try_clear(
+        &mut self,
+        cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<ValueContainer, UpdateError> {
         let previous = core::mem::take(self);
         Ok(ValueContainer::Local(previous.into()))
     }
@@ -85,6 +91,7 @@ impl UpdateHandlerImpl for List {
     fn try_list_splice(
         &mut self,
         data: ListSpliceUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         Ok(self.splice_with_source(
             data.start..(data.start + data.delete_count),

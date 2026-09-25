@@ -910,6 +910,7 @@ pub gen fn inner_execution_loop(
                                         target,
                                         new_value,
                                         source_id,
+                                        state.runtime.shared_references_cache_refcell()
                                     )?;
                                     None.into()
                                 }
@@ -927,7 +928,8 @@ pub gen fn inner_execution_loop(
                                             splice.start_index,
                                             splice.delete_count,
                                             values,
-                                        )).map_err(|e| e.into())?;
+                                        
+                                        ), state.runtime.shared_references_cache_refcell()).map_err(|e| e.into())?;
 
                                     // create new list from result values
                                     ValueContainer::from(List::new(res_values)).into()
@@ -970,7 +972,7 @@ pub gen fn inner_execution_loop(
                                             start_index,
                                             delete_count,
                                             values.into_vec(),
-                                        )).map_err(|e| e.into())?;
+                                        ), state.runtime.shared_references_cache_refcell()).map_err(|e| e.into())?;
 
                                     // create new list from result values
                                     ValueContainer::from(List::new(res_values)).into()
@@ -983,7 +985,7 @@ pub gen fn inner_execution_loop(
 
                                     // TODO: res?
                                     let _res = target_value
-                                        .try_clear(vec![], source_id)
+                                        .try_clear(vec![], source_id, state.runtime.shared_references_cache_refcell())
                                         .map_err(|e| e.into())?;
 
                                     None.into()
@@ -995,7 +997,7 @@ pub gen fn inner_execution_loop(
                                     let target_value = target.as_value_container_mut(&mut state.stack)?;
 
                                     target_value
-                                        .try_append_entry(vec![], source_id, AppendEntryUpdateData::new(value))
+                                        .try_append_entry(vec![], source_id, AppendEntryUpdateData::new(value), state.runtime.shared_references_cache_refcell())
                                         .map_err(|e| e.into())?;
 
                                     None.into()
@@ -1009,7 +1011,7 @@ pub gen fn inner_execution_loop(
 
 
                                     target_value
-                                        .try_increment(vec![], source_id, IncrementUpdateData::new(value))
+                                        .try_increment(vec![], source_id, IncrementUpdateData::new(value), state.runtime.shared_references_cache_refcell())
                                         .map_err(|e| e.into())?;
 
                                     None.into()
@@ -1022,7 +1024,7 @@ pub gen fn inner_execution_loop(
                                     let target_value = target.as_value_container_mut(&mut state.stack)?;
 
                                     target_value
-                                        .try_decrement(vec![], source_id, DecrementUpdateData::new(value))
+                                        .try_decrement(vec![], source_id, DecrementUpdateData::new(value), state.runtime.shared_references_cache_refcell())
                                         .map_err(|e| e.into())?;
 
                                     None.into()
@@ -1093,7 +1095,7 @@ pub gen fn inner_execution_loop(
                                         let collapsed_value = target.collapsed_value();
                                         collapsed_value.borrow().try_get_property(
                                             &property_name,
-                                            state.runtime.shared_references_cache_mut().deref_mut(),
+                                            state.runtime.shared_references_cache_refcell(),
                                         )
                                             .map(BorrowedValueContainer::try_clone_to_value_container)  // FIXME: no clone?
                                             .map_err(ExecutionError::access_error)?
@@ -1114,7 +1116,7 @@ pub gen fn inner_execution_loop(
                                     let collapsed_value = value_container.collapsed_value();
                                     let res = collapsed_value.borrow()
                                         .try_get_property(
-                                            property_index, state.runtime.shared_references_cache_mut().deref_mut()
+                                            property_index, state.runtime.shared_references_cache_refcell()
                                         )
                                         .map(BorrowedValueContainer::try_clone_to_value_container) // FIXME: no clone?
                                         .map_err(ExecutionError::access_error)?
@@ -1131,7 +1133,7 @@ pub gen fn inner_execution_loop(
                                     let value_container = target.as_value_container(&state.stack)?;
                                     let collapsed_value = value_container.collapsed_value();
                                     let res = collapsed_value.borrow()
-                                        .try_get_property(&key, state.runtime.shared_references_cache_mut().deref_mut())
+                                        .try_get_property(&key, state.runtime.shared_references_cache_refcell())
                                         .map(BorrowedValueContainer::try_clone_to_value_container)  // FIXME: no clone?
                                         .map_err(ExecutionError::access_error)?
                                         .map_err(|_| ExecutionError::UnclonableValue)?;
@@ -1152,6 +1154,7 @@ pub gen fn inner_execution_loop(
                                         vec![], // FIXME path
                                         source_id,
                                         DeleteEntryUpdateData { key: ValueKey::Index(property_index as i64) },
+                                        state.runtime.shared_references_cache_refcell()
                                     ).map_err(ExecutionError::update_error)?;
                                     ValueContainer::new_from_option(res)
                                         .into()
@@ -1189,6 +1192,7 @@ pub gen fn inner_execution_loop(
                                             value,
                                             vec![], // FIXME path
                                             source_id,
+                                            state.runtime.shared_references_cache_refcell(),
                                         )?
                                     };
                                     ValueContainer::new_from_option(res).into()
@@ -1212,7 +1216,7 @@ pub gen fn inner_execution_loop(
                                         value,
                                         vec![], // FIXME path
                                         source_id,
-                                    )?;
+                                    state.runtime.shared_references_cache_refcell())?;
                                     None.into()
                                 }
 
@@ -1234,6 +1238,7 @@ pub gen fn inner_execution_loop(
                                         value,
                                         vec![], // FIXME path
                                         source_id,
+                                        state.runtime.shared_references_cache_refcell()
                                     )?;
                                     None.into()
                                 }

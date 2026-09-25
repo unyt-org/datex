@@ -49,6 +49,9 @@ pub use crate::{
         },
     },
     utils::{goat::Goat, goat_mut::GoatMut},
+    value_updates::update_handler::{
+        UpdateCallbackDataAccess, UpdateHandlerImpl,
+    },
     values::core_values::callable::{Callable, CallableBody},
     values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     values::{

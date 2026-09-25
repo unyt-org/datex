@@ -1,3 +1,5 @@
+use core::cell::RefCell;
+
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -17,7 +19,7 @@ pub trait ValueAccess {
     fn try_get_property(
         &self,
         _key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         Err(AccessError::InvalidOperation(
             "Cannot get property".to_string(),
@@ -28,7 +30,7 @@ pub trait ValueAccess {
     fn try_get_property_mut(
         &mut self,
         _key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         Err(AccessError::InvalidOperation(
             "Cannot get property".to_string(),

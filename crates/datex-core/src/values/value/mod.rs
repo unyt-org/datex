@@ -58,6 +58,7 @@ use crate::{
     },
 };
 use core::{
+    cell::RefCell,
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
@@ -296,7 +297,7 @@ impl Value {
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-        cache: &mut SharedReferencesCache,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         <Self as ValueAccess>::try_get_property(self, key.into(), cache)
     }
@@ -304,7 +305,7 @@ impl Value {
     pub fn try_get_property_mut<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
-        cache: &mut SharedReferencesCache,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         <Self as ValueAccess>::try_get_property_mut(self, key.into(), cache)
     }
@@ -313,7 +314,7 @@ impl Value {
     pub fn try_take_property<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<ValueContainer, AccessError> {
         // TODO
         match self.inner {

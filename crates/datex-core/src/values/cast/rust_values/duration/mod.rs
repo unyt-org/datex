@@ -3,13 +3,18 @@ pub mod datex_hash;
 pub mod datex_native;
 mod try_from_core_value;
 
-use crate::traits::{
-    convert_parts::{FromParts, IntoParts},
-    datex_native_only_structural::DatexNativeOnlyStructural,
-    datex_native_structural::DatexNativeStructural,
-    get_core_lib_type_id::GetCoreLibTypeId,
-    get_datex_type::GetDatexType,
-    value_access::ValueAccess,
+use crate::{
+    traits::{
+        convert_parts::{FromParts, IntoParts},
+        datex_native_only_structural::DatexNativeOnlyStructural,
+        datex_native_structural::DatexNativeStructural,
+        get_core_lib_type_id::GetCoreLibTypeId,
+        get_datex_type::GetDatexType,
+        value_access::ValueAccess,
+    },
+    value_updates::update_handler::{
+        UpdateCallbackDataAccess, UpdateHandlerImpl,
+    },
 };
 use core::time::Duration;
 mod to_instructions;
@@ -35,6 +40,8 @@ impl FromParts for Duration {}
 impl IntoParts for Duration {}
 impl GetCoreLibTypeId for Duration {}
 impl GetDatexType for Duration {}
+impl UpdateHandlerImpl for Duration {}
+impl UpdateCallbackDataAccess for Duration {}
 
 impl DatexNativeStructural for Duration {}
 impl DatexNativeOnlyStructural for Duration {}
