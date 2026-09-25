@@ -1,3 +1,5 @@
+use core::cell::RefCell;
+
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::AccessError,
@@ -15,7 +17,7 @@ impl ValueAccess for Map {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         Ok(self.try_get(key)?.into())
     }
@@ -23,7 +25,7 @@ impl ValueAccess for Map {
     fn try_get_property_mut(
         &mut self,
         key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         Ok(self.try_get_mut(key)?.into())
     }

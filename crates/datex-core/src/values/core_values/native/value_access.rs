@@ -1,3 +1,5 @@
+use core::cell::RefCell;
+
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::AccessError,
@@ -15,7 +17,7 @@ impl ValueAccess for NativeCoreValue {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         self.value.try_get_property(key, cache)
     }
@@ -23,7 +25,7 @@ impl ValueAccess for NativeCoreValue {
     fn try_get_property_mut(
         &mut self,
         key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         self.value.try_get_property_mut(key, cache)
     }

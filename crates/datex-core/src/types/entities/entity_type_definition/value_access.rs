@@ -1,3 +1,5 @@
+use core::cell::RefCell;
+
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::AccessError,
@@ -13,7 +15,7 @@ impl ValueAccess for EntityTypeDefinition {
     fn try_get_property(
         &self,
         _key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         todo!()
     }

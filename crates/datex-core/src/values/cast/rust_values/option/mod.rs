@@ -16,7 +16,7 @@ mod tests {
     use crate::{
         preludes::derive::SharedReferencesCache,
         traits::get_datex_type::GetDatexType,
-        types::type_definition::{TypeDefinition, union::UnionTypeDefinition},
+        types::type_definition::TypeDefinition,
         values::{core_values::integer::Integer, value::Value},
     };
 

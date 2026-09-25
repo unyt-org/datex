@@ -28,6 +28,8 @@ pub fn generate_datex_native(structure_data: &StructureData) -> TokenStream {
         // TODO move to separate mods
         impl #generics DatexNativeOps for #ident #generics {}
         impl #generics LocalChildPathResolver for #ident #generics {}
+        impl #generics UpdateHandlerImpl for #ident #generics {}
+        impl #generics UpdateCallbackDataAccess for #ident #generics {}
 
         #native_only_structural_impl
     }

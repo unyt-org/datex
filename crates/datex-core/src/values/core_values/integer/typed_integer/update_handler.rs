@@ -1,4 +1,5 @@
 use crate::{
+    preludes::derive::SharedReferencesCache,
     value_updates::update_data::IncrementUpdateData,
     values::core_values::integer::typed_integer::TypedInteger,
 };
@@ -11,6 +12,7 @@ use crate::value_updates::{
     },
 };
 use core::{
+    cell::RefCell,
     ops::{AddAssign, SubAssign},
     result::Result,
 };
@@ -25,6 +27,7 @@ impl UpdateHandlerImpl for TypedInteger {
     fn try_increment(
         &mut self,
         data: IncrementUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         let value = data
             .value
@@ -38,6 +41,7 @@ impl UpdateHandlerImpl for TypedInteger {
     fn try_decrement(
         &mut self,
         data: DecrementUpdateData,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
         let value = data
             .value

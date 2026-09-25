@@ -1,5 +1,9 @@
+use core::cell::RefCell;
+
 use crate::{
     prelude::*,
+    preludes::derive::SharedReferencesCache,
+    runtime::cache,
     shared_values::base_shared_value_container::BaseSharedValueContainer,
     types::traits::type_match::TypeSuperset,
     value_updates::{
@@ -14,6 +18,7 @@ impl BaseSharedValueContainer {
         &mut self,
         operation: UpdateOperation,
         path: Vec<ValueKey>,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> UpdateResult {
         self.assert_can_mutate()?;
 
@@ -40,7 +45,8 @@ impl BaseSharedValueContainer {
         if let ValueContainer::Local(local_value) = &mut self.value_container {
             // Set source_id to None since we don't want the inner container to trigger its own observers.
             // The observers are already triggered from the parent shared container
-            local_value.try_update_collapsed_local_inner(operation, path, None)
+            local_value
+                .try_update_collapsed_local_inner(operation, path, None, cache)
         } else {
             Err(UpdateError::InvalidUpdate)
         }

@@ -13,7 +13,7 @@ use crate::{
         value_container::value_key::BorrowedValueKey,
     },
 };
-use core::hash::Hash;
+use core::{cell::RefCell, hash::Hash};
 use indexmap::IndexMap;
 
 impl<K, V> ValueAccess for IndexMap<K, V, RandomState>
@@ -24,7 +24,7 @@ where
     fn try_get_property(
         &self,
         _key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         todo!()
     }
@@ -32,7 +32,7 @@ where
     fn try_get_property_mut(
         &mut self,
         _key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         todo!()
     }

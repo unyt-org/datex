@@ -25,6 +25,7 @@ impl Display for IllegalTypeError {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeError {
+    Invalid,
     SubvariantNotFound(String, String),
     // only for debugging purposes
     InvalidUnboxType(Box<Type>),
@@ -138,6 +139,9 @@ impl Display for MismatchedOperandsError {
 impl Display for TypeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
+            TypeError::Invalid => {
+                write!(f, "Invalid type error")
+            }
             TypeError::UnsupportedApply(ty) => {
                 write!(f, "Cannot apply non-callable type {}", ty)
             }

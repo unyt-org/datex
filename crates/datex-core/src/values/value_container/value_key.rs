@@ -9,6 +9,7 @@ use serde::{
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
+    preludes::derive::{ConvertCoreValue, Text},
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
@@ -18,9 +19,24 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ValueKey {
     Text(String),
-    Index(i64),
+    Index(i64), // FIXME shall we use something else, what is the maximum req. we have for DIF to have here? Do we want unsigned int instead?
     Value(ValueContainer),
 }
+
+impl ValueKey {
+    pub fn into_value_container(self) -> ValueContainer {
+        match self {
+            ValueKey::Text(text) => {
+                ValueContainer::Local(text.to_core_value().into())
+            }
+            ValueKey::Index(index) => {
+                ValueContainer::Local(index.to_core_value().into())
+            }
+            ValueKey::Value(value_container) => value_container,
+        }
+    }
+}
+
 impl Display for ValueKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {

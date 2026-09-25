@@ -1,5 +1,8 @@
+use core::cell::RefCell;
+
 use crate::{
     prelude::*,
+    preludes::derive::SharedReferencesCache,
     shared_values::base_shared_value_container::observers::TransceiverId,
     traits::local_child_path_resolver::LocalChildPathResolver,
     value_updates::{
@@ -48,6 +51,7 @@ impl Value {
         operation: UpdateOperation,
         path: Vec<ValueKey>,
         source_id: Option<TransceiverId>,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> UpdateResult {
         // first collapse path to most inner nested value
         let inner_local =
@@ -58,7 +62,7 @@ impl Value {
             };
 
         // then apply update
-        inner_local.try_update(operation, source_id)
+        inner_local.try_update(operation, source_id, cache)
     }
 }
 
@@ -69,22 +73,25 @@ impl UpdateHandlerImpl for Value {
         &mut self,
         operation: UpdateOperation,
         source_id: Option<TransceiverId>,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> UpdateResult {
         match &mut self.inner {
             // collections
-            CoreValue::Map(map) => map.try_update(operation, source_id),
-            CoreValue::List(list) => list.try_update(operation, source_id),
+            CoreValue::Map(map) => map.try_update(operation, source_id, cache),
+            CoreValue::List(list) => {
+                list.try_update(operation, source_id, cache)
+            }
             CoreValue::Integer(integer) => {
-                integer.try_update(operation, source_id)
+                integer.try_update(operation, source_id, cache)
             }
             CoreValue::Decimal(decimal) => {
-                decimal.try_update(operation, source_id)
+                decimal.try_update(operation, source_id, cache)
             }
             CoreValue::TypedInteger(integer) => {
-                integer.try_update(operation, source_id)
+                integer.try_update(operation, source_id, cache)
             }
             CoreValue::TypedDecimal(decimal) => {
-                decimal.try_update(operation, source_id)
+                decimal.try_update(operation, source_id, cache)
             }
             CoreValue::Native(_native) => {
                 todo!("Add UpdateHandlerImpl to DatexNative")
@@ -122,7 +129,7 @@ mod tests {
 
     #[test]
     fn push() {
-        let cache = &mut SharedReferencesCache::default();
+        let cache = RefCell::new(SharedReferencesCache::default());
         // Push to list value
         let mut list = Value::from(List::from(vec![
             ValueContainer::from(1),
@@ -133,9 +140,10 @@ mod tests {
             UpdateOperation::append_entry(ValueContainer::from(4)),
             vec![],
             None,
+            &cache,
         )
         .expect("Failed to push value to list");
-        let updated_value = list.try_get_property(3, cache).unwrap();
+        let updated_value = list.try_get_property(3, &cache).unwrap();
         assert_eq!(updated_value.try_as::<i32>().unwrap().deref(), &4);
 
         // Try to push to non-list value
@@ -144,13 +152,14 @@ mod tests {
             UpdateOperation::append_entry(ValueContainer::from(4)),
             vec![],
             None,
+            &cache,
         );
         assert_matches!(result, Err(UpdateError::InvalidUpdate))
     }
 
     #[test]
     fn get_set_property() {
-        let cache = &mut SharedReferencesCache::default();
+        let cache = RefCell::new(SharedReferencesCache::default());
         let mut map = Value::from(Map::from(vec![
             ("key1".to_string(), ValueContainer::from(1)),
             ("key2".to_string(), ValueContainer::from(2)),
@@ -160,9 +169,10 @@ mod tests {
             UpdateOperation::set_entry("key1".into(), ValueContainer::from(42)),
             vec![],
             None,
+            &cache,
         )
         .expect("Failed to set existing property");
-        let updated_value = map.try_get_property("key1", cache).unwrap();
+        let updated_value = map.try_get_property("key1", &cache).unwrap();
         assert_eq!(updated_value.try_as::<i32>().unwrap().deref(), &42);
 
         // Set new property
@@ -170,9 +180,10 @@ mod tests {
             UpdateOperation::set_entry("new".into(), ValueContainer::from(99)),
             vec![],
             None,
+            &cache,
         );
         assert!(result.is_ok());
-        let new_value = map.try_get_property("new", cache).unwrap();
+        let new_value = map.try_get_property("new", &cache).unwrap();
         assert_eq!(new_value.try_as::<i32>().unwrap().deref(), &99);
     }
 
@@ -184,15 +195,16 @@ mod tests {
             ValueContainer::from(3),
         ]);
 
-        let cache = &mut SharedReferencesCache::default();
+        let cache = RefCell::new(SharedReferencesCache::default());
         // Set existing index
         list.try_update_collapsed_local_inner(
             UpdateOperation::set_entry(1.into(), ValueContainer::from(42)),
             vec![],
             None,
+            &cache,
         )
         .expect("Failed to set existing index");
-        let updated_value = list.try_get_property(1, cache).unwrap();
+        let updated_value = list.try_get_property(1, &cache).unwrap();
         assert_eq!(updated_value.try_as::<i32>().unwrap().deref(), &42);
 
         // Try to set out-of-bounds index
@@ -200,6 +212,7 @@ mod tests {
             UpdateOperation::set_entry(5.into(), ValueContainer::from(99)),
             vec![],
             None,
+            &cache,
         );
         assert_eq!(
             result,
@@ -214,13 +227,14 @@ mod tests {
             UpdateOperation::set_entry(0.into(), ValueContainer::from(42)),
             vec![],
             None,
+            &cache,
         );
         assert_matches!(result, Err(UpdateError::InvalidUpdate));
     }
 
     #[test]
     fn text_property() {
-        let cache = &mut SharedReferencesCache::default();
+        let cache = RefCell::new(SharedReferencesCache::default());
         let mut struct_val = Value::from(Map::from(vec![
             (
                 ValueContainer::from("name".to_string()),
@@ -241,9 +255,10 @@ mod tests {
                 ),
                 vec![],
                 None,
+                &cache,
             )
             .expect("Failed to set existing property");
-        let name = struct_val.try_get_property("name", cache).unwrap();
+        let name = struct_val.try_get_property("name", &cache).unwrap();
         assert_eq!(name.try_as::<String>().unwrap().deref(), &"Bob");
 
         // Try to set non-existing property
@@ -254,6 +269,7 @@ mod tests {
             ),
             vec![],
             None,
+            &cache,
         );
         assert_matches!(result, Ok(_));
 
@@ -266,13 +282,14 @@ mod tests {
             ),
             vec![],
             None,
+            &cache,
         );
         assert_matches!(result, Err(UpdateError::InvalidUpdate));
     }
 
     #[test]
     fn nested_map_property() {
-        let cache = &mut SharedReferencesCache::default();
+        let cache = RefCell::new(SharedReferencesCache::default());
         let mut nested_map = Value::from(Map::from(vec![(
             ValueContainer::from("outer".to_string()),
             ValueContainer::from(Map::from(vec![(
@@ -290,9 +307,10 @@ mod tests {
                 ),
                 vec![ValueKey::Text("outer".to_string())],
                 None,
+                &cache,
             )
             .expect("Failed to set existing nested property");
-        let prop = nested_map.try_get_property("outer", cache).unwrap();
+        let prop = nested_map.try_get_property("outer", &cache).unwrap();
         let inner_value = prop.try_as::<Map>().unwrap();
         let inner_value = inner_value.try_get("inner").unwrap();
         assert_eq!(inner_value.try_as::<i32>().unwrap().deref(), &42);
@@ -300,7 +318,7 @@ mod tests {
 
     #[test]
     fn observer_callbacks() {
-        let cache = &mut SharedReferencesCache::default();
+        let cache = RefCell::new(SharedReferencesCache::default());
         let mut list = Value::from(List::from(vec![
             ValueContainer::from(List::from(vec![1])),
             ValueContainer::from(2),
@@ -321,6 +339,7 @@ mod tests {
             UpdateOperation::append_entry(ValueContainer::from(4)),
             vec![],
             None,
+            &cache,
         )
         .expect("Failed to push value to list");
 
@@ -329,6 +348,7 @@ mod tests {
             UpdateOperation::append_entry(ValueContainer::from(5)),
             vec![],
             Some(TransceiverId::Local),
+            &cache,
         )
         .expect("Failed to push value to list");
 
@@ -346,7 +366,7 @@ mod tests {
         {
             // get inner list value and check that it has the correct update callback data
             // (should be auto derived for children)
-            let inner = list.try_get_property_mut(0, cache).unwrap();
+            let inner = list.try_get_property_mut(0, &cache).unwrap();
             let mut inner_list = inner.try_as_mut::<List>().unwrap();
             assert_matches!(inner_list.get_update_callback_data(), Some(UpdateCallbackData {
                 path,
@@ -361,6 +381,7 @@ mod tests {
                 .try_update(
                     UpdateOperation::append_entry(ValueContainer::from(6)),
                     Some(TransceiverId::Local),
+                    &cache,
                 )
                 .expect("Failed to push value to inner list");
         }
@@ -386,6 +407,7 @@ mod tests {
             ),
             vec![ValueKey::Index(0)],
             Some(TransceiverId::Local),
+            &cache,
         )
         .expect("Failed to set inner list value");
 
@@ -408,7 +430,7 @@ mod tests {
         // update inner list with normal push method directly
         {
             // get inner list value
-            let inner = list.try_get_property_mut(0, cache).unwrap();
+            let inner = list.try_get_property_mut(0, &cache).unwrap();
             let mut inner_list = inner.try_as_mut::<List>().unwrap();
             inner_list.push(42);
         }
@@ -434,11 +456,12 @@ mod tests {
                 UpdateOperation::set_entry(1.into(), new_inner),
                 vec![],
                 Some(TransceiverId::Local),
+                &cache,
             )
             .unwrap();
 
             // check that the callback data was set on the new inner list
-            let inner = list.try_get_property_mut(1, cache).unwrap();
+            let inner = list.try_get_property_mut(1, &cache).unwrap();
             let mut inner_list = inner.try_as_mut::<List>().unwrap();
             assert_matches!(inner_list.get_update_callback_data(), Some(UpdateCallbackData {
                 path,

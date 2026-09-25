@@ -1,3 +1,5 @@
+use core::cell::RefCell;
+
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::AccessError,
@@ -15,7 +17,7 @@ impl ValueAccess for List {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         if let Some(index) = key.try_as_index() {
             Ok(self.try_get(index)?.into())
@@ -27,7 +29,7 @@ impl ValueAccess for List {
     fn try_get_property_mut(
         &mut self,
         key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         if let Some(index) = key.try_as_index() {
             Ok(self.try_get_mut(index)?.into())

@@ -37,12 +37,14 @@ use crate::{
         static_classification::StaticClassification,
     },
     types::type_definition::TypeDefinition,
+    value_updates::update_handler::{
+        UpdateCallbackDataAccess, UpdateHandlerImpl,
+    },
     values::core_values::{
         decimal::typed_decimal::DecimalTypeVariant,
         integer::typed_integer::IntegerTypeVariant, native::DatexNativeOps,
     },
 };
-
 /// Implements [DatexNative] and associated traits for Rust core types.
 macro_rules! implement_rust_native_traits {
     ($type:ty, $dx_type:expr, {$($core_match:tt)*}, {$($core_ref_match:tt)*}) => {
@@ -60,6 +62,8 @@ macro_rules! implement_rust_native_traits {
         impl Classification for $type {}
         impl StaticClassification for $type {}
         impl LocalChildPathResolver for $type {}
+        impl UpdateHandlerImpl for $type {}
+        impl UpdateCallbackDataAccess for $type {}
 
         impl FromParts for $type {}
         impl IntoParts for $type {}

@@ -1,9 +1,10 @@
 use core::{
-    cell::Ref,
+    cell::{Ref, RefCell},
     hash::{Hash, Hasher},
 };
 
 use crate::{
+    preludes::derive::SharedReferencesCache,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     value_updates::{errors::UpdateError, update_handler::UpdateHandler},
     values::value_container::ValueContainer,
@@ -98,12 +99,14 @@ impl UpdateHistory {
     pub fn insert(
         &mut self,
         entry: UpdateHistoryEntry,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<bool, UpdateError> {
-        self.insert_multiple(vec![entry])
+        self.insert_multiple(vec![entry], cache)
     }
     fn insert_multiple(
         &mut self,
         entries: Vec<UpdateHistoryEntry>,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<bool, UpdateError> {
         for mut entry in entries {
             if self.known_updates.contains(&entry.id) {
@@ -117,14 +120,18 @@ impl UpdateHistory {
         }
 
         self.rebuild_hashes();
-        self.replay_all()?;
+        self.replay_all(cache)?;
         Ok(true)
     }
 
-    fn replay_all(&mut self) -> Result<(), UpdateError> {
+    fn replay_all(
+        &mut self,
+        cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<(), UpdateError> {
         self.current = self.snapshot.value.clone();
         for entry in &self.entries {
-            self.current.try_handle_update(entry.update.clone())?;
+            self.current
+                .try_handle_update(entry.update.clone(), cache)?;
         }
         Ok(())
     }
@@ -169,8 +176,9 @@ impl UpdateHistory {
     pub fn apply_batch(
         &mut self,
         batch: UpdateBatch,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<(), UpdateError> {
-        self.insert_multiple(batch.updates)?;
+        self.insert_multiple(batch.updates, cache)?;
         if self.history_hash() != batch.final_hash {
             return Err(UpdateError::InvalidUpdate);
         }
@@ -240,12 +248,13 @@ mod tests {
 
     #[test]
     fn insert_order() {
+        let cache = RefCell::new(SharedReferencesCache::default());
         let provider = &mut SelfOwnedPointerAddressProvider::default();
         let mut history = UpdateHistory::new(empty_value(provider));
 
-        history.insert(entry(3, 30.into())).unwrap();
-        history.insert(entry(1, 10.into())).unwrap();
-        history.insert(entry(2, 20.into())).unwrap();
+        history.insert(entry(3, 30.into()), &cache).unwrap();
+        history.insert(entry(1, 10.into()), &cache).unwrap();
+        history.insert(entry(2, 20.into()), &cache).unwrap();
 
         assert_eq!(
             history
@@ -259,18 +268,20 @@ mod tests {
 
     #[test]
     fn ignore_duplicate_updates() {
+        let cache = RefCell::new(SharedReferencesCache::default());
         let provider = &mut SelfOwnedPointerAddressProvider::default();
         let mut history = UpdateHistory::new(empty_value(provider));
         let update = entry(1, 100.into());
-        assert!(history.insert(update.clone()).unwrap());
+        assert!(history.insert(update.clone(), &cache).unwrap());
 
         // Inserting the same update again should return false and not change the length of the history
-        assert!(!history.insert(update).unwrap());
+        assert!(!history.insert(update, &cache).unwrap());
         assert_eq!(history.len(), 1);
     }
 
     #[test]
     fn random_order() {
+        let cache = RefCell::new(SharedReferencesCache::default());
         let provider = &mut SelfOwnedPointerAddressProvider::default();
         let updates = vec![
             entry(1, 10.into()),
@@ -283,13 +294,13 @@ mod tests {
         // Insert in order
         let mut ordered = UpdateHistory::new(empty_value(provider));
         for u in updates.clone() {
-            ordered.insert(u).unwrap();
+            ordered.insert(u, &cache).unwrap();
         }
 
         // Insert in random order
         let mut shuffled = UpdateHistory::new(empty_value(provider));
         for u in [3, 0, 4, 1, 2] {
-            shuffled.insert(updates[u].clone()).unwrap();
+            shuffled.insert(updates[u].clone(), &cache).unwrap();
         }
 
         // Check that the final value and history hash are the same
@@ -299,6 +310,7 @@ mod tests {
 
     #[test]
     fn hashes_deterministic() {
+        let cache = RefCell::new(SharedReferencesCache::default());
         let provider = &mut SelfOwnedPointerAddressProvider::default();
         let updates = vec![
             entry(1, 10.into()),
@@ -311,12 +323,12 @@ mod tests {
 
         // Insert in order into a
         for u in &updates {
-            a.insert(u.clone()).unwrap();
+            a.insert(u.clone(), &cache).unwrap();
         }
 
         // Insert in reverse order into b
         for u in updates.iter().rev() {
-            b.insert(u.clone()).unwrap();
+            b.insert(u.clone(), &cache).unwrap();
         }
 
         assert_eq!(a.history_hash(), b.history_hash());
@@ -324,11 +336,12 @@ mod tests {
 
     #[test]
     fn compact_preserves_value() {
+        let cache = RefCell::new(SharedReferencesCache::default());
         let provider = &mut SelfOwnedPointerAddressProvider::default();
         let mut history = UpdateHistory::new(empty_value(provider));
 
-        history.insert(entry(1, 10.into())).unwrap();
-        history.insert(entry(2, 20.into())).unwrap();
+        history.insert(entry(1, 10.into()), &cache).unwrap();
+        history.insert(entry(2, 20.into()), &cache).unwrap();
 
         let before = history.value().clone();
 
@@ -342,10 +355,11 @@ mod tests {
     #[test]
     fn updates_after() {
         let provider = &mut SelfOwnedPointerAddressProvider::default();
+        let cache = RefCell::new(SharedReferencesCache::default());
         let mut history = UpdateHistory::new(empty_value(provider));
 
         for i in 1..=5 {
-            history.insert(entry(i, i.into())).unwrap();
+            history.insert(entry(i, i.into()), &cache).unwrap();
         }
         let batch = history.updates_after(Some(UpdateId {
             timestamp: 3,
@@ -359,15 +373,16 @@ mod tests {
     #[test]
     fn two_nodes_sync() {
         let provider = &mut SelfOwnedPointerAddressProvider::default();
+        let cache = RefCell::new(SharedReferencesCache::default());
         let mut endpoint_owner = UpdateHistory::new(empty_value(provider));
         let mut endpoint_receiver = UpdateHistory::new(empty_value(provider));
 
         for i in 1..=10 {
-            endpoint_owner.insert(entry(i, i.into())).unwrap();
+            endpoint_owner.insert(entry(i, i.into()), &cache).unwrap();
         }
 
         let batch = endpoint_owner.updates_after(None);
-        endpoint_receiver.apply_batch(batch).unwrap();
+        endpoint_receiver.apply_batch(batch, &cache).unwrap();
         assert_eq!(
             endpoint_owner.value().clone(),
             endpoint_receiver.value().clone()

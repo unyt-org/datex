@@ -544,12 +544,15 @@ pub async fn test_remote_sync() {
 
             // trigger update a -> b
             shared_value_on_a
-                .try_handle_update(Update::new(
-                    TransceiverId::Local,
-                    UpdateData::new(UpdateOperation::replace(
-                        ValueContainer::from(100),
-                    )),
-                ))
+                .try_handle_update(
+                    Update::new(
+                        TransceiverId::Local,
+                        UpdateData::new(UpdateOperation::replace(
+                            ValueContainer::from(100),
+                        )),
+                    ),
+                    runtime_a.shared_references_cache_refcell(),
+                )
                 .unwrap();
 
             // wait for update sync
@@ -583,12 +586,15 @@ pub async fn test_remote_sync() {
 
                 // trigger update b -> a
                 shared_value_on_b
-                    .try_handle_update(Update::new(
-                        TransceiverId::Local,
-                        UpdateData::new(UpdateOperation::replace(
-                            ValueContainer::from(200),
-                        )),
-                    ))
+                    .try_handle_update(
+                        Update::new(
+                            TransceiverId::Local,
+                            UpdateData::new(UpdateOperation::replace(
+                                ValueContainer::from(200),
+                            )),
+                        ),
+                        runtime_b.shared_references_cache_refcell(),
+                    )
                     .unwrap();
             }
 

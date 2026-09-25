@@ -10,6 +10,7 @@ mod get_datex_type;
 mod to_datex_expression_data;
 mod to_instructions;
 mod try_from_core_value;
+mod update_handler;
 mod value_access;
 
 #[cfg(test)]

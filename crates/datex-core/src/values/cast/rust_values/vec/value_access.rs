@@ -1,3 +1,5 @@
+use core::{cell::RefCell, ops::DerefMut};
+
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -19,12 +21,14 @@ where
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         match key {
             BorrowedValueKey::Index(index) => {
                 if let Some(value) = self.get(index as usize) {
-                    Ok(value.as_borrowed_value_container(cache))
+                    Ok(value.as_borrowed_value_container(
+                        cache.borrow_mut().deref_mut(),
+                    ))
                 } else {
                     Err(AccessError::IndexOutOfBounds(IndexOutOfBoundsError {
                         index: index as u32,
@@ -41,7 +45,7 @@ where
     fn try_get_property_mut(
         &mut self,
         _key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         todo!()
     }

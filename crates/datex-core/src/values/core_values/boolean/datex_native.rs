@@ -1,5 +1,7 @@
 use crate::{
-    preludes::derive::DatexNative,
+    preludes::derive::{
+        DatexNative, UpdateCallbackDataAccess, UpdateHandlerImpl,
+    },
     traits::local_child_path_resolver::LocalChildPathResolver,
     values::core_values::{boolean::Boolean, native::DatexNativeOps},
 };
@@ -16,3 +18,5 @@ impl DatexNative for Boolean {
 }
 impl DatexNativeOps for Boolean {}
 impl LocalChildPathResolver for Boolean {}
+impl UpdateHandlerImpl for Boolean {}
+impl UpdateCallbackDataAccess for Boolean {}

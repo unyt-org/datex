@@ -18,13 +18,13 @@ use crate::{
         value_container::value_key::BorrowedValueKey,
     },
 };
-use core::cell::Ref;
+use core::cell::{Ref, RefCell};
 
 impl ValueAccess for Value {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         match &self.inner {
             CoreValue::Map(map) => map.try_get_property(key, cache),
@@ -65,7 +65,7 @@ impl ValueAccess for Value {
     fn try_get_property_mut(
         &mut self,
         key: BorrowedValueKey,
-        cache: &mut SharedReferencesCache,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         match &mut self.inner {
             CoreValue::Map(map) => map.try_get_property_mut(key, cache),

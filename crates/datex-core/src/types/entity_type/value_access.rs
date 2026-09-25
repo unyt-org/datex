@@ -13,13 +13,13 @@ use crate::{
         value_container::value_key::BorrowedValueKey,
     },
 };
-use core::cell::Ref;
+use core::cell::{Ref, RefCell};
 
 impl ValueAccess for EntityType {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        _cache: &mut SharedReferencesCache,
+        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         if let Some(key) = key.try_as_text() {
             let callable_ref = Ref::filter_map(

@@ -1,6 +1,9 @@
-use crate::values::{
-    core_values::map::Map,
-    value_container::{ValueContainer, value_key::BorrowedValueKey},
+use crate::{
+    preludes::derive::SharedReferencesCache,
+    values::{
+        core_values::map::Map,
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
+    },
 };
 
 use crate::{
@@ -14,7 +17,7 @@ use crate::{
     },
     values::core_values::map::MapKey,
 };
-use core::result::Result;
+use core::{cell::RefCell, result::Result};
 
 impl InternalMutabilityUpdateHandler for Map {
     fn set_update_callback_data(
@@ -44,6 +47,7 @@ impl UpdateHandlerImpl for Map {
     fn try_set_entry(
         &mut self,
         data: SetEntryUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key);
         self.try_set_with_source(key, data.value, None)
@@ -53,6 +57,7 @@ impl UpdateHandlerImpl for Map {
     fn try_delete_entry(
         &mut self,
         data: DeleteEntryUpdateData,
+        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Option<ValueContainer>, UpdateError> {
         let key = BorrowedValueKey::from(data.key);
         self.try_delete_with_source(key, None)
@@ -60,7 +65,10 @@ impl UpdateHandlerImpl for Map {
             .map(Some)
     }
 
-    fn try_clear(&mut self) -> Result<ValueContainer, UpdateError> {
+    fn try_clear(
+        &mut self,
+        cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<ValueContainer, UpdateError> {
         self.try_clear_with_source(None)
             .map_err(UpdateError::access_error)
     }
