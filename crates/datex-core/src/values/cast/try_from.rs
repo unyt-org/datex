@@ -33,7 +33,7 @@ macro_rules! impl_try_from_core_value {
                 fn to_core_value(self) -> CoreValue {
                     CoreValue::$variant(self)
                 }
-                
+
                 fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
                     match value {
                         CoreValue::Native(native) => {
@@ -113,6 +113,7 @@ mod tests {
     use core::assert_matches;
 
     use crate::{
+        prelude::*,
         preludes::derive::ConvertCoreValue,
         values::{
             core_value::CoreValue,
@@ -122,7 +123,6 @@ mod tests {
             },
             value::Value,
         },
-        prelude::*,
     };
 
     #[test]
@@ -189,6 +189,7 @@ mod tests {
                 .unwrap();
         *endpoint_mut_ref = Endpoint::new("@test2");
         assert_eq!(*endpoint_mut_ref, Endpoint::new("@test2"));
+
         assert_eq!(
             native_endpoint,
             CoreValue::Native(NativeCoreValue::new(Endpoint::new("@test2")))

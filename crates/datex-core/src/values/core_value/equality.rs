@@ -110,7 +110,7 @@ impl PartialEq for CoreValue {
             (CoreValue::Range(r1), CoreValue::Range(r2)) => r1 == r2,
             (CoreValue::Box(b1), CoreValue::Box(b2)) => *b1 == *b2,
             (CoreValue::Native(n1), CoreValue::Native(n2)) => {
-                n1.value.dyn_eq(&*n2.value)
+                (*n1.value).dyn_eq(&*n2.value)
             }
             (CoreValue::Native(n), other) => other.dyn_eq_native(&*n.value),
             (other, CoreValue::Native(n)) => other.dyn_eq_native(&*n.value),
