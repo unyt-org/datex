@@ -71,10 +71,10 @@ impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, bool> {
 mod tests {
     use crate::{
         preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut},
+        traits::convert_core_value::ConvertCoreValue,
         utils::{goat::Goat, goat_mut::GoatMut},
         values::{core_value::CoreValue, core_values::boolean::Boolean},
     };
-    use crate::traits::convert_core_value::ConvertCoreValue;
 
     #[test]
     fn try_bool_from_core_value() {

@@ -137,9 +137,9 @@ impl CoreValue {
             CoreValue::Range(v) => native.dyn_eq(v),
             CoreValue::Null => native.dyn_eq(&()), //FIXME or false?
             CoreValue::Uninitialized => todo!(),
-            CoreValue::EntityTypeDefinition(entity_type_definition) => todo!(),
+            CoreValue::EntityTypeDefinition(_entity_type_definition) => todo!(),
             CoreValue::Box(value_container) => value_container.dyn_eq(native), // FIXME
-            CoreValue::Native(native_core_value) => {
+            CoreValue::Native(_native_core_value) => {
                 unreachable!("covered above")
             }
         }

@@ -1,4 +1,5 @@
 pub mod classification;
+mod convert_core_value;
 pub mod convert_parts;
 mod datex_hash;
 pub mod datex_native;
@@ -8,7 +9,6 @@ pub mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
-mod convert_core_value;
 mod value_access;
 
 #[cfg(test)]

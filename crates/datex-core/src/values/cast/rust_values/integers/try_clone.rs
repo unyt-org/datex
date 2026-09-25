@@ -1,11 +1,17 @@
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::traits::try_clone::TryClone;
-use crate::values::core_value::CoreValue;
+use crate::{
+    traits::try_clone::TryClone,
+    values::{
+        core_value::CoreValue,
+        core_values::integer::typed_integer::TypedInteger,
+    },
+};
 
 macro try_clone_integer($t:ty, $variant:ident) {
     impl TryClone for $t {
-        fn try_clone(&self) -> Result<CoreValue , ()> {
-            Ok(CoreValue::TypedInteger(TypedInteger::$variant(self.clone())))
+        fn try_clone(&self) -> Result<CoreValue, ()> {
+            Ok(CoreValue::TypedInteger(TypedInteger::$variant(
+                self.clone(),
+            )))
         }
     }
 }

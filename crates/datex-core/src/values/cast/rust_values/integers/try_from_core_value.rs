@@ -90,13 +90,13 @@ impl_integer_core_value_conversions! {
 mod tests {
     use crate::{
         preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut},
+        traits::convert_core_value::ConvertCoreValue,
         utils::{goat::Goat, goat_mut::GoatMut},
         values::{
             core_value::CoreValue,
             core_values::integer::typed_integer::TypedInteger,
         },
     };
-    use crate::traits::convert_core_value::ConvertCoreValue;
 
     #[test]
     fn try_integer_from_core_value() {

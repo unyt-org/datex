@@ -27,9 +27,9 @@ mod get_datex_type;
 pub mod primitive;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod try_clone;
 pub mod update_handler;
 mod value_access;
-mod try_clone;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]
 pub struct Integer(pub BigInt);

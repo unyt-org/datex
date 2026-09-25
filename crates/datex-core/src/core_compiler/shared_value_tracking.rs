@@ -287,6 +287,7 @@ mod tests {
         },
         global::stack_index::StackIndex,
         prelude::*,
+        preludes::derive::ConvertCoreValue,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             PointerAddress, ReferenceMutability, SharedContainer,
@@ -295,7 +296,6 @@ mod tests {
         values::{core_values::list::List, value_container::ValueContainer},
     };
     use core::assert_matches;
-    use crate::preludes::derive::ConvertCoreValue;
 
     fn owned_shared(
         address_provider: &mut SelfOwnedPointerAddressProvider,
@@ -586,7 +586,8 @@ mod tests {
             let mut value = collapsed.borrow_mut();
 
             value.inner =
-                List::from(vec![ValueContainer::Shared(parent.clone())]).to_core_value();
+                List::from(vec![ValueContainer::Shared(parent.clone())])
+                    .to_core_value();
         }
 
         let parent_index = tracking.register_shared_value(&parent);

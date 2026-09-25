@@ -25,8 +25,8 @@ mod get_datex_type;
 pub mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
-mod value_access;
 mod try_clone;
+mod value_access;
 
 #[derive(
     BinWrite, BinRead, Debug, Clone, Copy, Hash, PartialEq, Eq, Default,

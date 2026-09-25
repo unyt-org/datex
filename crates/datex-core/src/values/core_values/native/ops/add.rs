@@ -3,7 +3,6 @@ use crate::{
     values::core_values::native::{DatexNative, NativeCoreValue},
 };
 use core::ops::Add;
-use core::ops::Deref;
 
 impl Add for &NativeCoreValue {
     type Output = Option<NativeCoreValue>;

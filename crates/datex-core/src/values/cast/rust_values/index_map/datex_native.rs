@@ -38,8 +38,8 @@ where
 {
     fn resolve_value_for_path(
         &mut self,
-        first: &ValueKey,
-        remaining_path: &[ValueKey],
+        _first: &ValueKey,
+        _remaining_path: &[ValueKey],
     ) -> Result<&mut Value, UpdateError> {
         todo!()
     }

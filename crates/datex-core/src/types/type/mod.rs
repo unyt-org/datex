@@ -354,7 +354,6 @@ mod to_datex_expression_data;
 mod to_type_expression_data;
 mod value_access;
 
-
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {

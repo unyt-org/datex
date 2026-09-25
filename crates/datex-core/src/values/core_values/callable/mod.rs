@@ -29,8 +29,8 @@ mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
-mod value_access;
 mod try_clone;
+mod value_access;
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 

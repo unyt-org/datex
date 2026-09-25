@@ -141,13 +141,13 @@ impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, f64> {
 mod tests {
     use crate::{
         preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut},
+        traits::convert_core_value::ConvertCoreValue,
         utils::{goat::Goat, goat_mut::GoatMut},
         values::{
             core_value::CoreValue,
             core_values::decimal::typed_decimal::TypedDecimal,
         },
     };
-    use crate::traits::convert_core_value::ConvertCoreValue;
 
     #[test]
     fn try_f32_from_core_value() {

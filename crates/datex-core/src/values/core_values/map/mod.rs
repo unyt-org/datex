@@ -33,9 +33,9 @@ pub mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
+mod try_clone;
 pub mod updates;
 mod value_access;
-mod try_clone;
 
 use crate::{
     shared_values::base_shared_value_container::observers::TransceiverId,

@@ -1,8 +1,6 @@
 use alloc::str::FromStr;
 use core::assert_matches;
-use indexmap::IndexMap;
 use datex_core::{
-    random::RandomState,
     ast::{
         expressions::{
             CallableSignature, RemoteExecution, Statements,
@@ -16,6 +14,7 @@ use datex_core::{
         binary::{ArithmeticOperator, BitwiseOperator},
     },
     prelude::*,
+    random::RandomState,
     values::{
         core_values::{
             decimal::Decimal,
@@ -25,6 +24,7 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
+use indexmap::IndexMap;
 
 use datex_core::{
     ast::{
@@ -2660,7 +2660,8 @@ fn list_to_value_container() {
         Decimal::try_from_string("4.5").unwrap().into(),
         "text".to_string().into(),
     ];
-    let value_container_list = datex_core::values::core_values::list::List::new(value_container_vec);
+    let value_container_list =
+        datex_core::values::core_values::list::List::new(value_container_vec);
     assert_eq!(val, ValueContainer::from(value_container_list));
 }
 
@@ -2685,7 +2686,8 @@ fn json_to_value_container() {
         Integer::from(3).into(),
         Decimal::try_from_string("0.5").unwrap().into(),
     ];
-    let value_container_list = datex_core::values::core_values::list::List::new(value_container_vec);
+    let value_container_list =
+        datex_core::values::core_values::list::List::new(value_container_vec);
     let value_container_inner_map: ValueContainer =
         ValueContainer::from(datex_core::values::core_values::map::Map::from(
             vec![("key".to_string(), "value".to_string().into())]

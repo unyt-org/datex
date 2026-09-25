@@ -13,10 +13,10 @@ use crate::{
             value_access::generate_value_access,
         },
     },
+    utils::get_datex_core_crate_name_with_options,
 };
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
-use crate::utils::get_datex_core_crate_name_with_options;
 
 pub mod classification;
 mod convert_parts;
@@ -46,7 +46,8 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
             feature = "ast" => generate_datex_expression_data(&structure_data),
             _ => quote! {},
         };
-    let datex_core_crate_name = get_datex_core_crate_name_with_options(&structure_data.attributes);
+    let datex_core_crate_name =
+        get_datex_core_crate_name_with_options(&structure_data.attributes);
 
     quote! {
         const _: () = {

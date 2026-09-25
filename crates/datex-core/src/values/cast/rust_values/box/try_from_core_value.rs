@@ -1,9 +1,8 @@
 use crate::{
-    prelude::*,
+    prelude::*, preludes::derive::DatexNative,
     traits::convert_core_value::ConvertCoreValue,
-    values::{core_value::CoreValue, core_values::native::DatexNativeBase},
+    values::core_value::CoreValue,
 };
-use crate::preludes::derive::DatexNative;
 
 impl<T> ConvertCoreValue for Box<T>
 where

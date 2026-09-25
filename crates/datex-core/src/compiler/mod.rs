@@ -1856,15 +1856,15 @@ pub mod tests {
             type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         },
         prelude::*,
+        preludes::derive::SharedReferencesCache,
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
         shared_values::PointerAddress,
+        traits::convert_value_container::ConvertValueContainer,
         values::core_values::integer::{Integer, typed_integer::TypedInteger},
     };
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::preludes::derive::SharedReferencesCache;
-    use crate::traits::convert_value_container::ConvertValueContainer;
 
     fn compile_unwrap(script: &str) -> Vec<u8> {
         compile_script(script, CompileOptions::default(), Runtime::stub())
@@ -2911,7 +2911,7 @@ pub mod tests {
         )
         .unwrap()
         .0;
-        
+
         assert_matches!(
             res,
             StaticValueOrDXB::StaticValue(val) if val.as_ref().unwrap().try_as::<u8>().unwrap() == &1u8
