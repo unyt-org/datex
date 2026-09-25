@@ -10,11 +10,10 @@ mod option;
 mod string;
 mod vec;
 
-use core::any::Any;
-
 use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     prelude::*,
+    traits::local_child_path_resolver::LocalChildPathResolver,
     types::r#type::Type,
     values::{
         core_value::CoreValue,
@@ -23,6 +22,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use core::any::Any;
 
 use crate::{
     libs::core::type_id::CoreLibTypeId,
@@ -59,6 +59,7 @@ macro_rules! implement_rust_native_traits {
 
         impl Classification for $type {}
         impl StaticClassification for $type {}
+        impl LocalChildPathResolver for $type {}
 
         impl FromParts for $type {}
         impl IntoParts for $type {}
@@ -367,12 +368,14 @@ impl GetDatexType for str {
 
 #[cfg(test)]
 mod tests {
-    use crate::traits::convert_core_value::ConvertCoreValue;
     use super::*;
-    use crate::values::{
-        core_value::CoreValue,
-        core_values::{boolean::Boolean, text::Text},
-        value::Value,
+    use crate::{
+        traits::convert_core_value::ConvertCoreValue,
+        values::{
+            core_value::CoreValue,
+            core_values::{boolean::Boolean, text::Text},
+            value::Value,
+        },
     };
 
     #[test]

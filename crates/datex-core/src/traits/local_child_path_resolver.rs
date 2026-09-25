@@ -12,7 +12,9 @@ pub trait LocalChildPathResolver {
     fn resolve_child(
         &mut self,
         key: &ValueKey,
-    ) -> Result<&mut ValueContainer, UpdateError>;
+    ) -> Result<&mut ValueContainer, UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
 
     fn resolve_value_for_path(
         &mut self,

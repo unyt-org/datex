@@ -1,7 +1,13 @@
 use crate::{
     preludes::derive::DatexNative,
     random::RandomState,
-    values::core_values::native::{DatexNativeBase, DatexNativeOps},
+    traits::local_child_path_resolver::LocalChildPathResolver,
+    value_updates::errors::UpdateError,
+    values::{
+        core_values::native::{DatexNativeBase, DatexNativeOps},
+        value::Value,
+        value_container::value_key::ValueKey,
+    },
 };
 use core::{any::Any, hash::Hash};
 use indexmap::IndexMap;
@@ -23,4 +29,18 @@ where
     K: DatexNativeBase + Eq + Hash + 'static,
     V: DatexNativeBase + 'static,
 {
+}
+
+impl<K, V> LocalChildPathResolver for IndexMap<K, V, RandomState>
+where
+    K: DatexNativeBase + Eq + Hash + 'static,
+    V: DatexNativeBase + 'static,
+{
+    fn resolve_value_for_path(
+        &mut self,
+        first: &ValueKey,
+        remaining_path: &[ValueKey],
+    ) -> Result<&mut Value, UpdateError> {
+        todo!()
+    }
 }

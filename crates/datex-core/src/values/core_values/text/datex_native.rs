@@ -1,5 +1,6 @@
 use crate::{
     preludes::derive::DatexNative,
+    traits::local_child_path_resolver::LocalChildPathResolver,
     values::core_values::{native::DatexNativeOps, text::Text},
 };
 use core::any::Any;
@@ -14,3 +15,4 @@ impl DatexNative for Text {
     }
 }
 impl DatexNativeOps for Text {}
+impl LocalChildPathResolver for Text {}

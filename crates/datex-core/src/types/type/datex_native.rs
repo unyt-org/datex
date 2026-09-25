@@ -1,5 +1,5 @@
 use crate::{
-    preludes::derive::DatexNative,
+    preludes::derive::{DatexNative, LocalChildPathResolver},
     traits::{
         classification::Classification,
         static_classification::StaticClassification,
@@ -23,3 +23,4 @@ impl Classification for Type {}
 
 impl StaticClassification for Type {}
 impl DatexNativeOps for Type {}
+impl LocalChildPathResolver for Type {}
