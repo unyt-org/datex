@@ -23,8 +23,8 @@ impl<T: DatexNativeBase + 'static> DatexNativeOps for Vec<T> {}
 impl<T: DatexNativeBase + 'static> LocalChildPathResolver for Vec<T> {
     fn resolve_value_for_path(
         &mut self,
-        first: &ValueKey,
-        remaining_path: &[ValueKey],
+        _first: &ValueKey,
+        _remaining_path: &[ValueKey],
     ) -> Result<&mut Value, UpdateError> {
         todo!()
     }

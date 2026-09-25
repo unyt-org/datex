@@ -1,11 +1,15 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::datex_proxy::data::{
-    EnumVariant, Field, FieldMapping, Fields, NamedField, Structure,
-    StructureData, TypeKind,
+use crate::{
+    datex_proxy::data::{
+        EnumVariant, Field, FieldMapping, Fields, NamedField, Structure,
+        StructureData, TypeKind,
+    },
+    utils::{
+        get_datex_core_crate_name_with_options, get_project_relative_file_path,
+    },
 };
-use crate::utils::{get_datex_core_crate_name_with_options, get_project_relative_file_path};
 
 pub fn generate_core_lib_type_id(
     structure_data: &StructureData,
@@ -66,19 +70,17 @@ pub fn generate_datex_type(structure_data: &StructureData) -> TokenStream {
 }
 
 fn generate_type_registration(structure_data: &StructureData) -> TokenStream {
-    let datex_core_crate_name = get_datex_core_crate_name_with_options(&structure_data.attributes);
+    let datex_core_crate_name =
+        get_datex_core_crate_name_with_options(&structure_data.attributes);
 
     let StructureData {
         ident,
-        generics,
+        generics: _,
         attributes,
         ..
     } = structure_data;
 
-    let datex_name = attributes
-        .datex_name
-        .clone()
-        .unwrap_or(ident.to_string());
+    let datex_name = attributes.datex_name.clone().unwrap_or(ident.to_string());
 
     let docs = match &attributes.docs {
         Some(docs) => quote! {
@@ -111,8 +113,6 @@ fn generate_type_registration(structure_data: &StructureData) -> TokenStream {
         }
     }
 }
-
-
 
 /// Generates a type definition for fields. Returns a TokenStream of [TypeDefinition].
 fn generate_datex_type_definition(fields: &Fields) -> TokenStream {

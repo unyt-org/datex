@@ -134,9 +134,9 @@ pub mod tests {
             RuntimeConfig, RuntimeConfigInterface,
             cache::shared_references_cache::SharedReferencesCache,
         },
+        traits::try_clone::TryClone,
         values::core_values::{endpoint::Endpoint, map::Map},
     };
-    use crate::traits::try_clone::TryClone;
 
     #[derive(Datex, Clone)]
     #[datex(structural)]

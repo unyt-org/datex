@@ -2,7 +2,6 @@ use crate::{
     traits::local_child_path_resolver::LocalChildPathResolver,
     value_updates::errors::UpdateError,
     values::{
-        core_value::CoreValue,
         core_values::native::NativeCoreValue,
         value::Value,
         value_container::{ValueContainer, value_key::ValueKey},

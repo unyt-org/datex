@@ -470,6 +470,7 @@ mod tests {
         instruction::Instruction,
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
+        preludes::derive::SharedReferencesCache,
         runtime::{
             Runtime, RuntimeConfig, RuntimeRunner,
             execution::{
@@ -484,6 +485,7 @@ mod tests {
             traits::SharedContainerCommon,
         },
         traits::{
+            convert_value_container::ConvertValueContainer,
             structural_eq::{StructuralEq, assert_structural_eq},
             value_eq::{ValueEq, assert_value_eq},
         },
@@ -514,8 +516,6 @@ mod tests {
     use core::assert_matches;
     use indexmap::IndexMap;
     use log::{debug, info};
-    use crate::preludes::derive::SharedReferencesCache;
-    use crate::traits::convert_value_container::ConvertValueContainer;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -730,7 +730,11 @@ mod tests {
         let result = execute_datex_script_debug_with_result("[]");
         let list: &List = result.try_as().unwrap();
         assert_eq!(list.len(), 0);
-        assert_eq!(result, List::new(Vec::<ValueContainer>::new()).to_value_container(&mut SharedReferencesCache::default()));
+        assert_eq!(
+            result,
+            List::new(Vec::<ValueContainer>::new())
+                .to_value_container(&mut SharedReferencesCache::default())
+        );
     }
 
     #[test]
@@ -785,8 +789,16 @@ mod tests {
         ];
         assert_eq!(list.len(), 3);
         assert_eq!(result, expected.into());
-        assert_ne!(result, List::new(vec![1, 2, 3]).to_value_container(&mut SharedReferencesCache::default()));
-        assert_structural_eq!(result, List::new(vec![1, 2, 3]).to_value_container(&mut SharedReferencesCache::default()));
+        assert_ne!(
+            result,
+            List::new(vec![1, 2, 3])
+                .to_value_container(&mut SharedReferencesCache::default())
+        );
+        assert_structural_eq!(
+            result,
+            List::new(vec![1, 2, 3])
+                .to_value_container(&mut SharedReferencesCache::default())
+        );
     }
 
     #[test]
@@ -802,7 +814,8 @@ mod tests {
         assert_ne!(result, ValueContainer::from(vec![1_u8, 5_u8, 4_u8]));
         assert_structural_eq!(
             result,
-            List::new(vec![1_u8, 5_u8, 4_u8]).to_value_container(&mut SharedReferencesCache::default())
+            List::new(vec![1_u8, 5_u8, 4_u8])
+                .to_value_container(&mut SharedReferencesCache::default())
         );
     }
 

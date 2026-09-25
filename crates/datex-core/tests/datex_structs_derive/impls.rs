@@ -167,7 +167,10 @@ async fn call_async_instance_method_from_runtime() {
     let (res, mut borrows) = async_test_callable
         .try_apply_async_checked(
             &runtime,
-            vec![ApplyArgument::referenced(example_vc), "test".to_string().into()],
+            vec![
+                ApplyArgument::referenced(example_vc),
+                "test".to_string().into(),
+            ],
         )
         .await
         .unwrap();

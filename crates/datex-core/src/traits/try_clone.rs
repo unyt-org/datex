@@ -29,18 +29,16 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        prelude::*, traits::try_clone::TryClone, values::core_value::CoreValue,
+        prelude::*,
+        traits::{convert_core_value::ConvertCoreValue, try_clone::TryClone},
+        values::core_value::CoreValue,
     };
-    use crate::traits::convert_core_value::ConvertCoreValue;
 
     #[test]
     fn test_try_string() {
         let value = "Hello, world!".to_string();
         let cloned_value = value.try_clone().unwrap();
-        assert_eq!(
-            cloned_value,
-            "Hello, world!".to_string().to_core_value()
-        );
+        assert_eq!(cloned_value, "Hello, world!".to_string().to_core_value());
     }
 
     #[test]

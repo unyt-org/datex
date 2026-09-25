@@ -12,7 +12,7 @@ use crate::{
 };
 pub mod serde_dif;
 use crate::{
-    preludes::derive::{ConvertCoreValue, DatexNativeStructural},
+    preludes::derive::ConvertCoreValue,
     types::r#type::Type,
     values::{
         core_values::{
@@ -39,6 +39,7 @@ use binrw::error::CustomError;
 use core::fmt::{Debug, Display, Formatter};
 
 mod child_iterator;
+pub mod convert_core_value;
 mod datex_hash;
 pub mod equality;
 pub mod ops;
@@ -46,7 +47,6 @@ pub mod ops;
 mod to_datex_expression_data;
 mod to_instructions;
 pub mod try_clone;
-pub mod convert_core_value;
 
 #[derive(Default, Clone, Debug)]
 pub enum CoreValue {
@@ -443,8 +443,11 @@ mod tests {
 
     #[test]
     fn endpoint() {
-        let endpoint: Endpoint =
-            "@test".to_string().to_core_value().cast_to_endpoint().unwrap();
+        let endpoint: Endpoint = "@test"
+            .to_string()
+            .to_core_value()
+            .cast_to_endpoint()
+            .unwrap();
         debug!("Endpoint: {endpoint}");
         assert_eq!(endpoint.to_string(), "@test");
     }

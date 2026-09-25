@@ -64,6 +64,7 @@ impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, Duration> {
 #[cfg(test)]
 mod tests {
     use crate::{
+        traits::convert_core_value::ConvertCoreValue,
         utils::{goat::Goat, goat_mut::GoatMut},
         values::{
             core_value::CoreValue,
@@ -71,7 +72,6 @@ mod tests {
         },
     };
     use core::time::Duration;
-    use crate::traits::convert_core_value::ConvertCoreValue;
 
     #[test]
     fn try_duration_from_native_core_value() {

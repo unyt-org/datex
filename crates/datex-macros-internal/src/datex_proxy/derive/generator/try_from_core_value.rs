@@ -68,13 +68,15 @@ pub fn generate_try_from_core_value(
     }
 }
 
-
 /// Generates the match arm for converting from a CoreValue::Map or CoreValue::List to the target type.
 fn generate_try_from_map_or_list(
     structure_data: &StructureData,
 ) -> TokenStream {
     let StructureData {
-        ident, generics, structure, ..
+        ident: _,
+        generics: _,
+        structure,
+        ..
     } = structure_data;
 
     match structure {
@@ -88,6 +90,6 @@ fn generate_try_from_map_or_list(
         },
         Structure::Enum(_) => quote! {
             CoreValue::Map(map) => todo!()
-        }
+        },
     }
 }

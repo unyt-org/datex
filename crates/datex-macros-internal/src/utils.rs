@@ -1,10 +1,10 @@
 use std::{env, path::PathBuf, str::FromStr};
 
+use crate::datex_proxy::data::StructureAttributes;
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, Span};
 use quote::format_ident;
 use syn::{Path, PathSegment, punctuated::Punctuated};
-use crate::datex_proxy::data::StructureAttributes;
 
 /// Gets the absolute file path of the source file where the macro is invoked.
 pub fn get_project_relative_file_path() -> PathBuf {
@@ -50,11 +50,10 @@ pub fn get_datex_core_crate_name() -> Path {
 }
 
 pub fn get_datex_core_crate_name_with_options(
-    attributes: &StructureAttributes
+    attributes: &StructureAttributes,
 ) -> Path {
     if attributes.force_datex_core_namespace {
-        PathSegment::from(Ident::new("datex_core", Span::call_site()))
-            .into()
+        PathSegment::from(Ident::new("datex_core", Span::call_site())).into()
     } else {
         get_datex_core_crate_name()
     }

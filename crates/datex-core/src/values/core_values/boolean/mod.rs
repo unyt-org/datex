@@ -18,8 +18,8 @@ pub mod get_datex_type;
 pub mod ops;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
-mod value_access;
 mod try_clone;
+mod value_access;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,

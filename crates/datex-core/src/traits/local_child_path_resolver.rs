@@ -11,7 +11,7 @@ use crate::{
 pub trait LocalChildPathResolver {
     fn resolve_child(
         &mut self,
-        key: &ValueKey,
+        _key: &ValueKey,
     ) -> Result<&mut ValueContainer, UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }

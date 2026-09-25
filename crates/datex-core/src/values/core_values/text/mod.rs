@@ -27,8 +27,8 @@ mod get_datex_type;
 pub mod ops;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
-mod value_access;
 mod try_clone;
+mod value_access;
 
 impl Display for Text {
     // TODO #319: escape string content

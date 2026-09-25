@@ -32,10 +32,10 @@ mod get_datex_type;
 pub mod local_child_path_resolver;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod try_clone;
 pub mod update_handler;
 pub mod updates;
 mod value_access;
-mod try_clone;
 
 #[derive(Debug, Default)]
 pub struct List {

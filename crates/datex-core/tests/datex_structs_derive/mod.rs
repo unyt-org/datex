@@ -52,7 +52,11 @@ struct ExampleNewType(Example);
 
 fn assert_round_trip<T>(value: T)
 where
-    T: ConvertCoreValue + ConvertValueContainer + PartialEq + std::fmt::Debug + Clone,
+    T: ConvertCoreValue
+        + ConvertValueContainer
+        + PartialEq
+        + std::fmt::Debug
+        + Clone,
 {
     let value_container = ValueContainer::from(value.clone());
     let deserialized_value =
@@ -63,7 +67,9 @@ where
 use datex_core::{
     self,
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
-    preludes::derive::{DatexNative, DatexNativeStructural},
+    preludes::derive::{
+        ConvertValueContainer, DatexNative, DatexNativeStructural,
+    },
     runtime::{
         cache::shared_references_cache::SharedReferencesCache,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -71,7 +77,10 @@ use datex_core::{
     shared_values::{
         OwnedSharedContainer, SharedContainer, SharedContainerMutability,
     },
-    traits::structural_eq::assert_structural_eq,
+    traits::{
+        convert_core_value::ConvertCoreValue,
+        structural_eq::assert_structural_eq,
+    },
     types::{
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
@@ -90,8 +99,6 @@ use datex_core::{
     },
 };
 use test_case::test_case;
-use datex_core::preludes::derive::ConvertValueContainer;
-use datex_core::traits::convert_core_value::ConvertCoreValue;
 
 #[test_case(
     Example {
@@ -115,7 +122,11 @@ use datex_core::traits::convert_core_value::ConvertCoreValue;
 ]) ; "map of primitives")]
 fn round_trip_struct<T>(structure: T)
 where
-    T: ConvertCoreValue  + ConvertValueContainer + PartialEq + std::fmt::Debug + Clone,
+    T: ConvertCoreValue
+        + ConvertValueContainer
+        + PartialEq
+        + std::fmt::Debug
+        + Clone,
 {
     assert_round_trip(structure);
 }
@@ -378,10 +389,8 @@ fn value_to_enum() {
     assert_matches!(example, ExampleEnum::VariantA);
 
     let variant_b = Value::new(
-        vec![
-            ValueContainer::from(1u8),
-            ValueContainer::from(2u8),
-        ].to_core_value(),
+        vec![ValueContainer::from(1u8), ValueContainer::from(2u8)]
+            .to_core_value(),
         ValueClassification::Tag(ValueTag {
             tag: "VariantB".to_string(),
             is_empty: false,
@@ -394,7 +403,8 @@ fn value_to_enum() {
         Map::from(vec![
             ("x".to_string(), ValueContainer::from(3u8)),
             ("y".to_string(), ValueContainer::from("Hello".to_string())),
-        ]).to_core_value(),
+        ])
+        .to_core_value(),
         ValueClassification::Tag(ValueTag {
             tag: "VariantC".to_string(),
             is_empty: false,
@@ -417,10 +427,8 @@ fn value_to_enum() {
 #[test]
 fn value_to_enum_failure() {
     let invalid_variant = Value::new(
-        vec![
-            ValueContainer::from(1u8),
-            ValueContainer::from(2u8),
-        ].to_core_value(),
+        vec![ValueContainer::from(1u8), ValueContainer::from(2u8)]
+            .to_core_value(),
         ValueClassification::Tag(ValueTag {
             tag: "VariantX".to_string(),
             is_empty: false,

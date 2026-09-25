@@ -34,9 +34,9 @@ mod get_datex_type;
 pub mod primitive;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod try_clone;
 pub mod update_handler;
 mod value_access;
-mod try_clone;
 
 /// The decimal type variants to be used as a inline
 /// definition in DATEX (such as 42.4f32 or -42.4f32).
