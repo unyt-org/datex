@@ -6,7 +6,7 @@ use crate::{
 
 impl<T> ConvertCoreValue for Option<T>
 where
-    T: DatexNative + 'static,
+    T: DatexNative + ConvertCoreValue + 'static,
 {
     fn to_core_value(self) -> CoreValue {
         match self {
@@ -17,73 +17,46 @@ where
     fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
         match value {
             CoreValue::Null => Ok(None),
-            CoreValue::Native(native) => {
-                // native T -> Some(T)
-                match native.try_into_value::<T>() {
-                    Ok(value) => Ok(Some(value)),
-                    Err(native) => {
-                        // Native Option<T> -> Option<T>
-                        native
-                            .try_into_value::<Option<T>>()
-                            .map_err(CoreValue::Native)
-                    }
-                }
-            }
-            value => Err(value),
+            value => value.try_into_value::<T>().map(Some),
         }
     }
 
     fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
-        match value {
-            CoreValue::Native(native) => native.try_as::<Option<T>>().ok_or(()),
-            CoreValue::Null => Ok(&None),
-            _ => Err(()),
-        }
+        // We could return CoreValue::Null => Ok(&None) here, but to make the API consistent with the mutable version and avoid returning a reference to a temporary Option<T>, we simply return an error.
+        Err(())
     }
 
     fn try_borrow_mut_from_core_value(
         value: &mut CoreValue,
     ) -> Result<&mut Self, ()> {
-        match value {
-            CoreValue::Native(native) => {
-                native.try_as_mut::<Option<T>>().ok_or(())
-            }
-            // We can not cover the CoreValue::Null here because we need to return a mutable reference to an Option<T>
-            _ => Err(()),
-        }
+        // We can not cover the CoreValue::Null here because we need to return a mutable reference to an Option<T>
+        // We can not call value.try_as_mut::<Option<T>>().ok_or(()) and basicially forced, to do nothing here.
+        Err(())
     }
 }
 
 impl<'a, T> TryFrom<&'a CoreValue> for Option<&'a T>
 where
-    T: DatexNativeBase + 'static,
+    T: DatexNativeBase + ConvertCoreValue + 'static,
 {
     type Error = ();
     fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
         match value {
             CoreValue::Null => Ok(None),
-            CoreValue::Native(native) => {
-                native.try_as::<T>().map(Some).ok_or(())
-            }
-
-            _ => Err(()),
+            _ => value.try_as::<T>().map(Some).ok_or(()),
         }
     }
 }
 
 impl<'a, T> TryFrom<&'a mut CoreValue> for Option<&'a mut T>
 where
-    T: DatexNativeBase + 'static,
+    T: DatexNativeBase + ConvertCoreValue + 'static,
 {
     type Error = ();
     fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
         match value {
             CoreValue::Null => Ok(None),
-            CoreValue::Native(native) => {
-                native.try_as_mut::<T>().map(Some).ok_or(())
-            }
-
-            _ => Err(()),
+            _ => value.try_as_mut::<T>().map(Some).ok_or(()),
         }
     }
 }
