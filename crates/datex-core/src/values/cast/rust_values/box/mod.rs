@@ -56,8 +56,8 @@ mod tests {
         );
         // TODO, do we want to allow this?
         assert_eq!(
-            value.try_as::<Box<Endpoint>>().expect("Expected Endpoint"),
-            &Box::new(endpoint.clone())
+            *value.try_as::<Box<Endpoint>>().expect("Expected Endpoint"),
+            Box::new(endpoint.clone())
         );
     }
 

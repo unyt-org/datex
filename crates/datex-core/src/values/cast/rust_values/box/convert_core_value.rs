@@ -20,14 +20,22 @@ where
         }
     }
 
-    fn try_borrow_from_core_value(_value: &CoreValue) -> Result<&Self, ()> {
-        Err(())
+    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
+        match value {
+            CoreValue::Native(native) => native.try_as::<Box<T>>().ok_or(()),
+            _ => Err(()),
+        }
     }
 
     fn try_borrow_mut_from_core_value(
-        _value: &mut CoreValue,
+        value: &mut CoreValue,
     ) -> Result<&mut Self, ()> {
-        Err(())
+        match value {
+            CoreValue::Native(native) => {
+                native.try_as_mut::<Box<T>>().ok_or(())
+            }
+            _ => Err(()),
+        }
     }
 }
 
