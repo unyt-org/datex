@@ -1,5 +1,7 @@
 use crate::{
-    preludes::derive::DatexNative, values::core_values::native::DatexNativeOps,
+    preludes::derive::DatexNative,
+    traits::local_child_path_resolver::LocalChildPathResolver,
+    values::core_values::native::DatexNativeOps,
 };
 use core::{any::Any, time::Duration};
 
@@ -13,3 +15,4 @@ impl DatexNative for Duration {
     }
 }
 impl DatexNativeOps for Duration {}
+impl LocalChildPathResolver for Duration {}

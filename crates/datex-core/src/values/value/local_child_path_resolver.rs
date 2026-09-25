@@ -30,6 +30,9 @@ impl LocalChildPathResolver for Value {
             CoreValue::List(list) => {
                 list.resolve_value_for_path(first, remaining_path)
             }
+            CoreValue::Native(native) => {
+                native.resolve_value_for_path(first, remaining_path)
+            }
             _ => Err(UpdateError::InvalidUpdate),
         }
     }

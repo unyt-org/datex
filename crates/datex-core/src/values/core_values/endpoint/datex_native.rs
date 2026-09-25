@@ -1,5 +1,6 @@
 use crate::{
     preludes::derive::DatexNative,
+    traits::local_child_path_resolver::LocalChildPathResolver,
     values::core_values::{endpoint::Endpoint, native::DatexNativeOps},
 };
 use core::any::Any;
@@ -14,3 +15,4 @@ impl DatexNative for Endpoint {
     }
 }
 impl DatexNativeOps for Endpoint {}
+impl LocalChildPathResolver for Endpoint {}

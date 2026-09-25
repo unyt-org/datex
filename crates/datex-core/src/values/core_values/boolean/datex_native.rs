@@ -1,5 +1,6 @@
 use crate::{
     preludes::derive::DatexNative,
+    traits::local_child_path_resolver::LocalChildPathResolver,
     values::core_values::{boolean::Boolean, native::DatexNativeOps},
 };
 use core::any::Any;
@@ -14,3 +15,4 @@ impl DatexNative for Boolean {
     }
 }
 impl DatexNativeOps for Boolean {}
+impl LocalChildPathResolver for Boolean {}

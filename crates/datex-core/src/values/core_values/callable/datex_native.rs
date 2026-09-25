@@ -1,5 +1,6 @@
 use crate::{
     preludes::derive::DatexNative,
+    traits::local_child_path_resolver::LocalChildPathResolver,
     values::core_values::{callable::Callable, native::DatexNativeOps},
 };
 use core::any::Any;
@@ -14,3 +15,4 @@ impl DatexNative for Callable {
     }
 }
 impl DatexNativeOps for Callable {}
+impl LocalChildPathResolver for Callable {}

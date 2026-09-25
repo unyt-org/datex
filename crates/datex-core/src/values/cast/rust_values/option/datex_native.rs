@@ -1,5 +1,6 @@
-use crate::values::core_values::native::{
-    DatexNative, DatexNativeBase, DatexNativeOps,
+use crate::{
+    traits::local_child_path_resolver::LocalChildPathResolver,
+    values::core_values::native::{DatexNative, DatexNativeOps},
 };
 use core::any::Any;
 
@@ -12,3 +13,4 @@ impl<T: DatexNative + 'static> DatexNative for Option<T> {
     }
 }
 impl<T: DatexNative + 'static> DatexNativeOps for Option<T> {}
+impl<T: DatexNative + 'static> LocalChildPathResolver for Option<T> {}

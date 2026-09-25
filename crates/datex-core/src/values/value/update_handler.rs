@@ -86,6 +86,9 @@ impl UpdateHandlerImpl for Value {
             CoreValue::TypedDecimal(decimal) => {
                 decimal.try_update(operation, source_id)
             }
+            CoreValue::Native(native) => {
+                todo!("Add UpdateHandlerImpl to DatexNative")
+            }
             _ => Err(UpdateError::InvalidUpdate),
         }
     }
@@ -219,8 +222,14 @@ mod tests {
     fn text_property() {
         let cache = &mut SharedReferencesCache::default();
         let mut struct_val = Value::from(Map::from(vec![
-            (ValueContainer::from("name".to_string()), ValueContainer::from("Alice".to_string())),
-            (ValueContainer::from("age".to_string()), ValueContainer::from(30)),
+            (
+                ValueContainer::from("name".to_string()),
+                ValueContainer::from("Alice".to_string()),
+            ),
+            (
+                ValueContainer::from("age".to_string()),
+                ValueContainer::from(30),
+            ),
         ]));
 
         // Set existing property

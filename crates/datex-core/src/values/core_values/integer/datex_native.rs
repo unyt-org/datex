@@ -1,5 +1,6 @@
 use crate::{
     prelude::*,
+    traits::local_child_path_resolver::LocalChildPathResolver,
     values::core_values::{
         integer::Integer,
         native::{DatexNative, DatexNativeOps, add_native_impl},
@@ -25,3 +26,4 @@ impl DatexNativeOps for Integer {
         add_native_impl(self, rhs)
     }
 }
+impl LocalChildPathResolver for Integer {}
