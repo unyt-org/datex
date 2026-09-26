@@ -1080,4 +1080,115 @@ mod tests {
             List::from(vec![Integer::from(1), Integer::from(2)]).into()
         );
     }
+
+    #[test]
+    fn conditional() {
+        let run = execute_datex_script_debug_with_result;
+        assert_eq!(run("if (true) (1) else (2)"), Integer::from(1).into());
+        assert_eq!(run("if (false) (1) else (2)"), Integer::from(2).into());
+        assert_eq!(run("if (1 == 2) (1)"), Value::null().into());
+        assert_eq!(
+            run("if (false) (1) else if (true) (2) else (3)"),
+            Integer::from(2).into()
+        );
+        assert_eq!(
+            run(
+                "var x = 1; var y = if (true) (var x = 2; x) else (0); var z = 3; [x, y, z]"
+            ),
+            List::from(vec![
+                Integer::from(1),
+                Integer::from(2),
+                Integer::from(3)
+            ])
+            .into()
+        );
+    }
+
+    #[test]
+    fn conditional_only_runs_taken_branch() {
+        let result = execute_datex_script_debug_with_result(
+            "var x = 0; if (true) (x = 1) else (x = 2); x",
+        );
+        assert_eq!(result, Integer::from(1).into());
+        let result = execute_datex_script_debug_with_result(
+            "var x = 0; if (false) (x = 1) else (x = 2); x",
+        );
+        assert_eq!(result, Integer::from(2).into());
+    }
+
+    #[test]
+    fn conditional_non_boolean_condition() {
+        assert_matches!(
+            execute_datex_script_debug_with_error("if (1) (1)"),
+            Err(ExecutionError::ExpectedBooleanValue)
+        );
+    }
+
+    #[test]
+    fn logical_operators() {
+        let run = execute_datex_script_debug_with_result;
+        assert_eq!(run("true and false"), false.into());
+        assert_eq!(run("true and true"), true.into());
+        assert_eq!(run("false or true"), true.into());
+        assert_eq!(run("false or false"), false.into());
+        assert_eq!(run("!true"), false.into());
+        assert_eq!(run("!(1 == 2)"), true.into());
+    }
+
+    #[test]
+    fn logical_operators_short_circuit() {
+        let result = execute_datex_script_debug_with_result(
+            "var x = 0; false and (x = 1; true); true or (x = 2; true); x",
+        );
+        assert_eq!(result, Integer::from(0).into());
+        let result = execute_datex_script_debug_with_result(
+            "var x = 0; true and (x = 1; true); x",
+        );
+        assert_eq!(result, Integer::from(1).into());
+    }
+
+    #[test]
+    fn while_loop() {
+        let result = execute_datex_script_debug_with_result(
+            "var x = 0; while (x != 3) (x += 1); x",
+        );
+        assert_eq!(result, Integer::from(3).into());
+    }
+
+    #[test]
+    fn while_loop_not_entered() {
+        let result = execute_datex_script_debug_with_result(
+            "var x = 5; while (false) (x = 0); x",
+        );
+        assert_eq!(result, Integer::from(5).into());
+    }
+
+    #[test]
+    fn while_loop_with_stack_values_in_body() {
+        let result = execute_datex_script_debug_with_result(
+            "var x = 0; var sum = 0; while (x != 4) (var y = 2; x += 1; sum += y); var z = 10; [x, sum, z]",
+        );
+        assert_eq!(
+            result,
+            List::from(vec![
+                Integer::from(4),
+                Integer::from(8),
+                Integer::from(10)
+            ])
+            .into()
+        );
+    }
+
+    #[test]
+    fn nested_while_loops() {
+        let result = execute_datex_script_debug_with_result(
+            "var i = 0; var count = 0; while (i != 3) (var j = 0; while (j != 2) (j += 1; count += 1); i += 1); count",
+        );
+        assert_eq!(result, Integer::from(6).into());
+    }
+
+    #[test]
+    fn while_loop_result_is_null() {
+        assert_eq!(execute_datex_script_debug("while (false) (1)"), None);
+    }
 }

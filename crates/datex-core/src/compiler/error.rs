@@ -44,6 +44,8 @@ pub enum CompilerError {
     InvalidConversionFromRefToOwnedValue,
     UnknownInterfaceMethod(String),
     InvalidInterfaceMethodCall(String),
+    /// Operator that has no runtime instruction yet
+    UnsupportedOperator(String),
 }
 impl CompilerError {
     pub fn unexpected_term(expr: DatexExpression) -> Self {
@@ -411,6 +413,9 @@ impl Display for CompilerError {
                     f,
                     "Interface method \"{name}\" was called with wrong arguments"
                 )
+            }
+            CompilerError::UnsupportedOperator(operator) => {
+                core::write!(f, "Operator {operator} is not supported yet")
             }
         }
     }

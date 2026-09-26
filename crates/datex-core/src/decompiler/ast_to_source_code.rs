@@ -6,7 +6,7 @@ use crate::{
             PropertyAccess, PropertyAssignment, RangeDeclaration,
             RemoteExecution, StackAssignment, TypeDeclaration, UnboxAssignment,
             VariableAccess, VariableAssignment, VariableDeclaration,
-            VariantAccess,
+            VariantAccess, WhileLoop,
         },
         type_expressions::{
             CallableTypeExpression, TypeExpression, TypeExpressionData,
@@ -497,6 +497,14 @@ impl AstToSourceCodeConverter {
         self.format_inner(ast, true)
     }
 
+    /// Format an expression that must be parenthesized (e.g. a condition or branch).
+    fn format_block(&self, ast: &DatexExpression) -> String {
+        match ast.data() {
+            DatexExpressionData::Statements(_) => self.format_child(ast),
+            _ => format!("({})", self.format_child(ast)),
+        }
+    }
+
     /// Format a DatexExpression tree into source code, treating it as a child node (not the root).
     fn format_child(&self, ast: &DatexExpression) -> String {
         self.format_inner(ast, false)
@@ -704,10 +712,46 @@ impl AstToSourceCodeConverter {
                 )
             }
             DatexExpressionData::Conditional(Conditional {
-                condition: _,
-                then_branch: _,
-                else_branch: _,
-            }) => core::todo!("#476 Undescribed by author."),
+                condition,
+                then_branch,
+                else_branch,
+            }) => {
+                let code = ast_fmt!(
+                    &self,
+                    "if%s{}%s{}",
+                    self.format_block(condition),
+                    self.format_block(then_branch)
+                );
+                match else_branch {
+                    // else if chain
+                    Some(else_branch)
+                        if matches!(
+                            else_branch.data(),
+                            DatexExpressionData::Conditional(_)
+                        ) =>
+                    {
+                        format!(
+                            "{code} else {}",
+                            self.format_child(else_branch)
+                        )
+                    }
+                    Some(else_branch) => ast_fmt!(
+                        &self,
+                        "{} else%s{}",
+                        code,
+                        self.format_block(else_branch)
+                    ),
+                    None => code,
+                }
+            }
+            DatexExpressionData::WhileLoop(WhileLoop { condition, body }) => {
+                ast_fmt!(
+                    &self,
+                    "while%s{}%s{}",
+                    self.format_block(condition),
+                    self.format_block(body)
+                )
+            }
             DatexExpressionData::VariableDeclaration(VariableDeclaration {
                 id: _,
                 kind,

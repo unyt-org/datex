@@ -163,6 +163,11 @@ pub enum InstructionCode {
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key
 
     REMOTE_EXECUTION, // ::
+
+    CONDITIONAL, // if (cond) (then) else (else) - branches are length prefixed so the untaken one can be skipped
+    WHILE_LOOP, // while (cond) (body) - cond and body are length prefixed so the loop can rewind
+    BITWISE_AND, // &
+    BITWISE_OR, // |
 }
 impl InstructionCode {
     pub const fn as_u8(&self) -> u8 {

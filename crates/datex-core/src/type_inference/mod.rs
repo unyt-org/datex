@@ -23,7 +23,7 @@ use crate::{
             RemoteExecution, RequestSharedRef, StackAssignment, Statements,
             TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
             ValueAccessType, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariantAccess,
+            VariableDeclaration, VariantAccess, WhileLoop,
         },
         type_expressions::{
             CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
@@ -901,6 +901,9 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                     ))
                 }
             }
+            BinaryOperator::Logical(_) => {
+                mark_type(Type::core(CoreLibBaseTypeId::Boolean))
+            }
             _ => {
                 //  otherwise, use never type
                 self.record_error(SpannedTypeError::new_with_span(
@@ -1106,15 +1109,32 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     }
     fn visit_conditional(
         &mut self,
-        _conditional: &mut Conditional,
-        span: &Range<usize>,
+        conditional: &mut Conditional,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError::new_with_span(
-            TypeError::Unimplemented(
-                "Conditional type inference not implemented".into(),
-            ),
-            span.clone(),
-        ))
+        self.infer_expression(&mut conditional.condition)?;
+        let then_type = self.infer_expression(&mut conditional.then_branch)?;
+        let else_type = match &mut conditional.else_branch {
+            Some(else_branch) => self.infer_expression(else_branch)?,
+            None => Type::core(CoreLibBaseTypeId::Null),
+        };
+        mark_type(if then_type == else_type {
+            then_type
+        } else {
+            Type::from(TypeDefinition::Union(UnionTypeDefinition(vec![
+                then_type, else_type,
+            ])))
+        })
+    }
+
+    fn visit_while_loop(
+        &mut self,
+        while_loop: &mut WhileLoop,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedTypeError> {
+        self.infer_expression(&mut while_loop.condition)?;
+        self.infer_expression(&mut while_loop.body)?;
+        mark_type(Type::core(CoreLibBaseTypeId::Unit))
     }
 
     fn visit_unbox(

@@ -140,9 +140,9 @@ impl Display for RangeOperator {
 impl From<&BitwiseOperator> for InstructionCode {
     fn from(op: &BitwiseOperator) -> Self {
         match op {
-            BitwiseOperator::And => InstructionCode::AND,
-            BitwiseOperator::Or => InstructionCode::OR,
-            BitwiseOperator::Not => InstructionCode::NOT,
+            BitwiseOperator::And => InstructionCode::BITWISE_AND,
+            BitwiseOperator::Or => InstructionCode::BITWISE_OR,
+            BitwiseOperator::Not => InstructionCode::BITWISE_NOT,
             _ => {
                 core::todo!(
                     "Bitwise operator {:?} not implemented for InstructionCode",

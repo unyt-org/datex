@@ -38,6 +38,9 @@ impl From<&RegularInstruction> for UnaryOperator {
             RegularInstruction::Unbox => {
                 UnaryOperator::Reference(SharedValueUnaryOperator::Unbox)
             }
+            RegularInstruction::LogicalNot => {
+                UnaryOperator::Logical(LogicalUnaryOperator::Not)
+            }
             _ => {
                 core::todo!(
                     "Unary operator for instruction {:?} not implemented",

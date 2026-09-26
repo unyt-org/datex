@@ -340,17 +340,10 @@ impl ObserverData {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        shared_values::{
-            base_shared_value_container::{
-                observers::{
-                    Observer, ObserverData, ObserverError,
-                    ObserverId,
-                },
-            },
-        },
+    use crate::shared_values::base_shared_value_container::observers::{
+        Observer, ObserverData, ObserverError, ObserverId,
     };
-    use core::{assert_matches};
+    use core::assert_matches;
 
     #[test]
     fn observe_and_unobserve() {

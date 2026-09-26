@@ -23,12 +23,12 @@ pub mod scope_stack;
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, CloneExpression, DatexExpression,
+            BinaryOperation, CloneExpression, Conditional, DatexExpression,
             DatexExpressionData, DeriveRef, DeriveSharedRef,
             PropertyAssignment, RemoteExecution, RequestSharedRef, Statements,
             TypeDeclaration, TypeDeclarationKind, Unbox, UnboxAssignment,
             ValueAccessType, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariableKind, VariantAccess,
+            VariableDeclaration, VariableKind, VariantAccess, WhileLoop,
         },
         resolved_variable::ResolvedVariable,
         spanned::Spanned,
@@ -1003,6 +1003,27 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         }
     }
 
+    fn visit_conditional(
+        &mut self,
+        conditional: &mut Conditional,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        conditional.walk_children(self)?;
+        borrow_variable_access(&mut conditional.condition);
+        Ok(VisitAction::AbortRecursion)
+    }
+
+    fn visit_while_loop(
+        &mut self,
+        while_loop: &mut WhileLoop,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        while_loop.walk_children(self)?;
+        // read, not move
+        borrow_variable_access(&mut while_loop.condition);
+        Ok(VisitAction::AbortRecursion)
+    }
+
     fn visit_comparison_operation(
         &mut self,
         comparison_operation: &mut crate::ast::expressions::ComparisonOperation,
@@ -1040,6 +1061,17 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             span,
             ValueAccessType::MoveOrCopy,
         )
+    }
+}
+
+/// Changes a plain variable access to a borrow, e.g. for conditions that only read the value
+fn borrow_variable_access(expression: &mut DatexExpression) {
+    if let DatexExpressionData::VariableAccess(VariableAccess {
+        access_type,
+        ..
+    }) = expression.data_mut()
+    {
+        *access_type = ValueAccessType::Borrow
     }
 }
 

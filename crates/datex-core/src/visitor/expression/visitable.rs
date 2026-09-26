@@ -7,7 +7,7 @@ use crate::{
         PropertyAssignment, RangeDeclaration, RemoteExecution, StackAssignment,
         StackListAssignment, Statements, TagExpression, TypeDeclaration,
         UnaryOperation, Unbox, UnboxAssignment, UnboxSlotAssignment,
-        VariableAssignment, VariableDeclaration,
+        VariableAssignment, VariableDeclaration, WhileLoop,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
@@ -90,6 +90,15 @@ impl<E> VisitableExpression<E> for Conditional {
             visitor.visit_datex_expression(else_branch)?;
         }
         Ok(())
+    }
+}
+impl<E> VisitableExpression<E> for WhileLoop {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.condition)?;
+        visitor.visit_datex_expression(&mut self.body)
     }
 }
 impl<E> VisitableExpression<E> for VariableDeclaration {
@@ -361,6 +370,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::Map(map) => map.walk_children(visitor),
             DatexExpressionData::Conditional(conditional) => {
                 conditional.walk_children(visitor)
+            }
+            DatexExpressionData::WhileLoop(while_loop) => {
+                while_loop.walk_children(visitor)
             }
             DatexExpressionData::VariableDeclaration(variable_declaration) => {
                 variable_declaration.walk_children(visitor)

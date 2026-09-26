@@ -6,14 +6,15 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
-                Int16Data, Int32Data, Int64Data, Int128Data, ListData, MapData,
-                MoveWithValue, SharedRef, SharedRefWithValue, ShortListData,
+                ApplyData, ConditionalData, Float32Data, Float64Data,
+                FloatAsInt16Data, FloatAsInt32Data, InstantData,
+                InstructionBlockData, Int8Data, Int16Data, Int32Data,
+                Int64Data, Int128Data, ListData, MapData, MoveWithValue,
+                SharedRef, SharedRefWithValue, ShortCircuitData, ShortListData,
                 ShortMapData, ShortStatementsData, ShortTextData, SpliceData,
                 StackIndex, StatementsData, TaggedValue, TextData, UInt8Data,
                 UInt16Data, UInt32Data, UInt64Data, UInt128Data,
-                UnboundedStatementsData,
+                UnboundedStatementsData, WhileLoopData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -545,6 +546,17 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::BITWISE_NOT)]
     BitwiseNot,
 
+    #[magic(InstructionCode::CONDITIONAL)]
+    Conditional(ConditionalData),
+    #[magic(InstructionCode::WHILE_LOOP)]
+    WhileLoop(WhileLoopData),
+    #[magic(InstructionCode::AND)]
+    LogicalAnd(ShortCircuitData),
+    #[magic(InstructionCode::OR)]
+    LogicalOr(ShortCircuitData),
+    #[magic(InstructionCode::NOT)]
+    LogicalNot,
+
     #[magic(InstructionCode::APPLY_ZERO)]
     ApplyZero,
 
@@ -688,6 +700,19 @@ pub enum RegularInstruction {
 }
 
 impl RegularInstruction {
+    /// Returns true for instructions whose children after the first one are only executed conditionally
+    /// When executing, only the first child is read eagerly, the executor then decides which of the
+    /// remaining (length-prefixed) children to run or skip.
+    pub fn is_control_flow(&self) -> bool {
+        matches!(
+            self,
+            RegularInstruction::Conditional(_)
+                | RegularInstruction::WhileLoop(_)
+                | RegularInstruction::LogicalAnd(_)
+                | RegularInstruction::LogicalOr(_)
+        )
+    }
+
     pub fn instruction_code_string(&self) -> String {
         if let Some(code) = self.code() {
             format!("{}", code)
@@ -740,6 +765,20 @@ impl RegularInstruction {
 
             RegularInstruction::UnboundedStatementsEnd(_) => {
                 NextExpectedInstructions::UnboundedEnd
+            }
+
+            RegularInstruction::Conditional(_) => {
+                NextExpectedInstructions::Regular(3)
+            } // condition, then branch, else branch
+            RegularInstruction::WhileLoop(_) => {
+                NextExpectedInstructions::Regular(2)
+            } // condition, body
+            RegularInstruction::LogicalAnd(_)
+            | RegularInstruction::LogicalOr(_) => {
+                NextExpectedInstructions::Regular(2)
+            } // lhs, rhs
+            RegularInstruction::LogicalNot => {
+                NextExpectedInstructions::Regular(1)
             }
 
             RegularInstruction::Apply(apply_data) => {
@@ -1082,6 +1121,24 @@ impl RegularInstruction {
                     data.length,
                     data.injected_values
                 )
+            }
+            RegularInstruction::Conditional(data) => {
+                write!(
+                    string,
+                    "[then_length: {}, else_length: {}]",
+                    data.then_length, data.else_length
+                )
+            }
+            RegularInstruction::WhileLoop(data) => {
+                write!(
+                    string,
+                    "[condition_length: {}, body_length: {}]",
+                    data.condition_length, data.body_length
+                )
+            }
+            RegularInstruction::LogicalAnd(data)
+            | RegularInstruction::LogicalOr(data) => {
+                write!(string, "[rhs_length: {}]", data.rhs_length)
             }
             RegularInstruction::GetEntryIndex(uint_32_data) => {
                 write!(string, "{}", uint_32_data.0)

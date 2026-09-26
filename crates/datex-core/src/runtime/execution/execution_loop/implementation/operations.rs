@@ -12,7 +12,10 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    values::{core_values::range::Range, value_container::ValueContainer},
+    values::{
+        core_value::CoreValue, core_values::range::Range,
+        value_container::ValueContainer,
+    },
 };
 use core::cell::RefCell;
 
@@ -43,11 +46,24 @@ fn handle_unary_shared_value_operation(
 /// Handles a unary operation on a [ValueContainer] based on the specified [UnaryOperator].
 fn handle_unary_logical_operation(
     operator: LogicalUnaryOperator,
-    _value_container: ValueContainer,
+    value_container: ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
-    unimplemented!(
-        "Logical unary operations are not implemented yet: {operator:?}"
-    )
+    match operator {
+        LogicalUnaryOperator::Not => {
+            Ok(ValueContainer::from(!expect_boolean(&value_container)?))
+        }
+    }
+}
+
+/// Returns the boolean value of a [ValueContainer], or an error if it is not a boolean
+/// Used for conditions (if, while) and logical operators, which do not perform implicit conversions
+pub fn expect_boolean(
+    value_container: &ValueContainer,
+) -> Result<bool, ExecutionError> {
+    match &value_container.collapsed_value().borrow().inner {
+        CoreValue::Boolean(boolean) => Ok(boolean.as_bool()),
+        _ => Err(ExecutionError::ExpectedBooleanValue),
+    }
 }
 
 /// Handles an arithmetic unary operation on a [ValueContainer] based on the specified [ArithmeticUnaryOperator].
@@ -58,9 +74,9 @@ fn handle_unary_arithmetic_operation(
     match operator {
         ArithmeticUnaryOperator::Minus => Ok((-value_container)?),
         ArithmeticUnaryOperator::Plus => Ok(value_container),
-        _ => unimplemented!(
-            "Arithmetic unary operations are not implemented yet: {operator:?}"
-        ),
+        _ => Err(ExecutionError::NotImplemented(format!(
+            "Arithmetic unary operation {operator:?}"
+        ))),
     }
 }
 
@@ -84,9 +100,9 @@ pub fn handle_unary_operation(
         UnaryOperator::Arithmetic(arithmetic) => {
             handle_unary_arithmetic_operation(arithmetic, value_container)
         }
-        _ => {
-            core::todo!("#102 Unary instruction not implemented: {operator:?}")
-        }
+        _ => Err(ExecutionError::NotImplemented(format!(
+            "Unary operation {operator:?}"
+        ))),
     }
 }
 
@@ -129,9 +145,10 @@ pub fn handle_comparison_operation(
             let val = v_type.satisfies_value_container(lhs);
             Ok(ValueContainer::from(val))
         }
-        _ => {
-            unreachable!("Instruction {:?} is not a valid operation", operator);
-        }
+        // TODO: ordering comparisons (<, <=, >, >=) need a value ordering
+        _ => Err(ExecutionError::NotImplemented(format!(
+            "Comparison operation {operator:?}"
+        ))),
     }
 }
 
@@ -151,12 +168,9 @@ fn handle_arithmetic_operation(
         // ArithmeticOperator::Divide => {
         //     Ok((active_value_container / &value_container)?)
         // }
-        _ => {
-            core::todo!(
-                "#408 Implement arithmetic operation for {:?}",
-                operator
-            );
-        }
+        _ => Err(ExecutionError::NotImplemented(format!(
+            "#408 Arithmetic operation {operator:?}"
+        ))),
     }
 }
 
@@ -166,10 +180,9 @@ fn handle_bitwise_operation(
     _lhs: &ValueContainer,
     _rhs: &ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
-    // apply operation to active value
-    {
-        core::todo!("#409 Implement bitwise operation for {:?}", operator);
-    }
+    Err(ExecutionError::NotImplemented(format!(
+        "#409 Bitwise operation {operator:?}"
+    )))
 }
 
 /// Handles a logical operation between two [ValueContainer]s based on the specified [LogicalOperator].
@@ -178,10 +191,10 @@ fn handle_logical_operation(
     _lhs: &ValueContainer,
     _rhs: &ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
-    // apply operation to active value
-    {
-        core::todo!("#410 Implement logical operation for {:?}", operator);
-    }
+    // and/or are compiled to short circuiting control flow instructions and never reach this point
+    Err(ExecutionError::NotImplemented(format!(
+        "#410 Logical operation {operator:?}"
+    )))
 }
 
 /// Handles a range operation between two [ValueContainer]s based on the specified [RangeOperator].
@@ -196,9 +209,9 @@ fn handle_range_operation(
             start: Box::new(lhs.clone()),
             end: Box::new(rhs.clone()),
         })),
-        _ => {
-            core::todo!("#742 Implement range operation for {:?}", operator);
-        }
+        _ => Err(ExecutionError::NotImplemented(format!(
+            "#742 Range operation {operator:?}"
+        ))),
     }
 }
 

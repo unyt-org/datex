@@ -2,13 +2,14 @@
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, ComparisonOperation, DatexExpression,
+            BinaryOperation, ComparisonOperation, Conditional, DatexExpression,
             DatexExpressionData, PropertyAssignment, RemoteExecution,
             RootPropertyAccess, Statements, UnaryOperation, UnboundedStatement,
             UnboxAssignment, ValueAccessType, VariableAccess,
-            VariableAssignment, VariableDeclaration, VariableKind,
+            VariableAssignment, VariableDeclaration, VariableKind, WhileLoop,
         },
         resolved_variable::VariableId,
+        spanned::Spanned,
     },
     compiler::{
         context::CompilationContext,
@@ -36,7 +37,11 @@ use crate::{
     global::{
         dxb_block::DXBBlock,
         instruction_codes::InstructionCode,
-        operators::modification::ModificationOperator,
+        operators::{
+            BinaryOperator, ComparisonOperator,
+            binary::{ArithmeticOperator, LogicalOperator, RangeOperator},
+            modification::ModificationOperator,
+        },
         protocol_structures::{
             block_header::BlockHeader,
             encrypted_header::EncryptedHeader,
@@ -44,7 +49,10 @@ use crate::{
                 InjectedValueType, LocalInjectedValueType,
                 SharedInjectedValueType,
             },
-            instruction_data::{InstructionBlockData, StackIndex},
+            instruction_data::{
+                ConditionalData, InstructionBlockData, ShortCircuitData,
+                StackIndex, WhileLoopData,
+            },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
         },
@@ -836,6 +844,127 @@ fn compile_expression(
             )?;
         }
 
+        // if (cond) (then) else (else)
+        DatexExpressionData::Conditional(Conditional {
+            condition,
+            then_branch,
+            else_branch,
+        }) => {
+            compilation_context.mark_has_non_static_value();
+            compilation_context.write(RegularInstruction::Conditional(
+                ConditionalData {
+                    then_length: 0,
+                    else_length: 0,
+                },
+            ));
+            let data_index = compilation_context.buffer_index() as usize - 8;
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(condition, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+            let then_length;
+            (scope, then_length) = compile_scoped(
+                compilation_context,
+                then_branch,
+                &metadata,
+                scope,
+            )?;
+            // a missing else branch evaluates to null
+            let else_branch = else_branch.unwrap_or_else(|| {
+                DatexExpressionData::Null.with_span(span.clone())
+            });
+            let else_length;
+            (scope, else_length) = compile_scoped(
+                compilation_context,
+                else_branch,
+                &metadata,
+                scope,
+            )?;
+            compilation_context.set_u32_at_index(then_length, data_index);
+            compilation_context.set_u32_at_index(else_length, data_index + 4);
+        }
+
+        // while (cond) (body)
+        DatexExpressionData::WhileLoop(WhileLoop { condition, body }) => {
+            compilation_context.mark_has_non_static_value();
+            compilation_context.write(RegularInstruction::WhileLoop(
+                WhileLoopData {
+                    condition_length: 0,
+                    body_length: 0,
+                },
+            ));
+            let data_index = compilation_context.buffer_index() as usize - 8;
+            let condition_start = compilation_context.buffer_index();
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(condition, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+            let condition_length =
+                (compilation_context.buffer_index() - condition_start) as u32;
+            let body_length;
+            (scope, body_length) =
+                compile_scoped(compilation_context, body, &metadata, scope)?;
+            compilation_context.set_u32_at_index(condition_length, data_index);
+            compilation_context.set_u32_at_index(body_length, data_index + 4);
+        }
+
+        // short-circuiting logical operations (and, or)
+        DatexExpressionData::BinaryOperation(BinaryOperation {
+            operator: BinaryOperator::Logical(operator),
+            left,
+            right,
+            ..
+        }) => {
+            compilation_context.mark_has_non_static_value();
+            let data = ShortCircuitData { rhs_length: 0 };
+            compilation_context.write(match operator {
+                LogicalOperator::And => RegularInstruction::LogicalAnd(data),
+                LogicalOperator::Or => RegularInstruction::LogicalOr(data),
+            });
+            let data_index = compilation_context.buffer_index() as usize - 4;
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(left, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+            let rhs_length;
+            (scope, rhs_length) =
+                compile_scoped(compilation_context, right, &metadata, scope)?;
+            compilation_context.set_u32_at_index(rhs_length, data_index);
+        }
+
+        // operations without a runtime instruction yet
+        DatexExpressionData::BinaryOperation(BinaryOperation {
+            operator:
+                operator @ (BinaryOperator::Arithmetic(
+                    ArithmeticOperator::Modulo | ArithmeticOperator::Power,
+                )
+                | BinaryOperator::Bitwise(_)
+                | BinaryOperator::Range(RangeOperator::Exclusive)),
+            ..
+        }) => {
+            return Err(CompilerError::UnsupportedOperator(
+                operator.to_string(),
+            ));
+        }
+        DatexExpressionData::ComparisonOperation(ComparisonOperation {
+            operator:
+                operator @ (ComparisonOperator::LessThan
+                | ComparisonOperator::GreaterThan
+                | ComparisonOperator::LessThanOrEqual
+                | ComparisonOperator::GreaterThanOrEqual),
+            ..
+        }) => {
+            return Err(CompilerError::UnsupportedOperator(
+                operator.to_string(),
+            ));
+        }
+
         // operations (add, subtract, multiply, divide, etc.)
         DatexExpressionData::BinaryOperation(BinaryOperation {
             operator,
@@ -1529,6 +1658,27 @@ fn compile_expression(
     }
 
     Ok(scope)
+}
+
+/// Compiles an expression in its own scope and returns the number of written bytes.
+/// Used for the parts of control flow instructions that are skipped or repeated at runtime,
+/// where the runtime also drops the stack values allocated in that part.
+fn compile_scoped(
+    compilation_context: &mut CompilationContext,
+    expression: DatexExpression,
+    metadata: &Rc<RefCell<AstMetadata>>,
+    scope: CompilationScope,
+) -> Result<(CompilationScope, u32), CompilerError> {
+    let start = compilation_context.buffer_index();
+    let scope = compile_expression(
+        compilation_context,
+        RichAst::new(expression, metadata),
+        CompileMetadata::default(),
+        scope.push(),
+    )?
+    .pop()
+    .ok_or(CompilerError::ScopePopError)?;
+    Ok((scope, (compilation_context.buffer_index() - start) as u32))
 }
 
 /// Compiles a direct assignment operation (e.g., `+=`, `-=`) into the corresponding regular instruction (e.g. [RegularInstruction::Increment]).
@@ -3920,5 +4070,26 @@ pub mod tests {
                 )
             ),)
         );
+    }
+
+    #[test]
+    fn unsupported_operators_are_compile_errors() {
+        for script in ["1 < 2", "1 & 2"] {
+            let result = compile_script(
+                script,
+                CompileOptions::default(),
+                Runtime::stub(),
+            );
+            assert!(
+                matches!(
+                    result,
+                    Err(super::SpannedCompilerError {
+                        error: CompilerError::UnsupportedOperator(_),
+                        ..
+                    })
+                ),
+                "{script}: {result:?}"
+            );
+        }
     }
 }

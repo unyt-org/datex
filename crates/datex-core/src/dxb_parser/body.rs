@@ -1,5 +1,6 @@
 use crate::dxb_parser::next_instructions_stack::{
-    NextInstructionType, NextInstructionsStack, NotInUnboundedRegularScopeError,
+    NextInstructionType, NextInstructionsStack, NextScopeInstruction,
+    NotInUnboundedRegularScopeError,
 };
 
 use crate::{
@@ -29,6 +30,8 @@ pub enum DXBParserError {
     FromUtf8Error(FromUtf8Error),
     NotInUnboundedRegularScopeError,
     InvalidCoreLibId(CoreLibIdIndex),
+    /// Returned when a rewind (e.g. to repeat a loop) targets bytes that are no longer available
+    InvalidRewind(u32),
 }
 
 // custom impl required because binrw::Error does not implement PartialEq
@@ -142,14 +145,43 @@ impl Display for DXBParserError {
             DXBParserError::InvalidCoreLibId(id) => {
                 core::write!(f, "Invalid Core Lib Id: {}", id.0)
             }
+            DXBParserError::InvalidRewind(count) => {
+                core::write!(
+                    f,
+                    "Cannot rewind {count} bytes, target is no longer available"
+                )
+            }
         }
     }
 }
 
-// TODO #676: we must ensure while an execution for a block runs, no other executions run using the same next_instructions_stack - maybe also find a solution without Rc<RefCell>
-pub gen fn iterate_instructions(
+/// Iterates over all instructions in the DXB body, including all children of control flow instructions
+/// (e.g. both branches of a conditional).
+pub fn iterate_instructions(
     dxb_body_ref: Rc<RefCell<Vec<u8>>>,
     nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
+) -> impl Iterator<Item = Result<Instruction, DXBParserError>> {
+    iterate_instructions_with_control_flow(
+        dxb_body_ref,
+        nested_instruction_resolution_strategy,
+        None,
+    )
+}
+
+/// Scope instructions that the consumer of the iterator pushes to decide how control flow continues
+/// (e.g. which branch of a conditional is read and which one is skipped).
+/// They are applied before the next instruction is read.
+pub type ControlFlowQueue = Rc<RefCell<Vec<NextScopeInstruction>>>;
+
+/// Iterates over the instructions in the DXB body.
+/// If a control flow queue is given, only the first child of control flow instructions
+/// (see [RegularInstruction::is_control_flow]) is read, the consumer must push the scope instructions
+/// for the remaining children to the queue.
+// TODO #676: we must ensure while an execution for a block runs, no other executions run using the same next_instructions_stack - maybe also find a solution without Rc<RefCell>
+pub gen fn iterate_instructions_with_control_flow(
+    dxb_body_ref: Rc<RefCell<Vec<u8>>>,
+    nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
+    control_flow_queue: Option<ControlFlowQueue>,
 ) -> Result<Instruction, DXBParserError> {
     let mut next_instructions_stack = NextInstructionsStack::default();
 
@@ -158,7 +190,16 @@ pub gen fn iterate_instructions(
     let mut reader = Cursor::new(dxb_body);
 
     loop {
-        if reader.position() as usize >= len {
+        if let Some(queue) = &control_flow_queue {
+            for instruction in queue.borrow_mut().drain(..) {
+                next_instructions_stack.push(instruction);
+            }
+        }
+
+        // a rewind at the end of the body (e.g. at the end of a loop) does not need more bytes
+        if reader.position() as usize >= len
+            && !next_instructions_stack.is_rewind_next()
+        {
             if !next_instructions_stack.is_end() {
                 yield Err(DXBParserError::ExpectingMoreInstructions);
 
@@ -176,6 +217,33 @@ pub gen fn iterate_instructions(
 
         let instruction_result: Result<Instruction, DXBParserError> = try {
             match next_instruction_type {
+                NextInstructionType::Skip(count) => {
+                    let position = reader.position();
+                    let available = len as u64 - position;
+                    if count as u64 <= available {
+                        reader.set_position(position + count as u64);
+                    } else {
+                        // skipped bytes continue in the next chunk
+                        reader.set_position(len as u64);
+                        next_instructions_stack.push(
+                            NextScopeInstruction::Skip(
+                                count - available as u32,
+                            ),
+                        );
+                    }
+                    continue;
+                }
+
+                NextInstructionType::Rewind(count) => {
+                    let position = reader.position();
+                    if count as u64 > position {
+                        Err(DXBParserError::InvalidRewind(count))?;
+                    }
+                    reader.set_position(position - count as u64);
+                    next_instructions_stack.push_next_regular(1);
+                    continue;
+                }
+
                 NextInstructionType::End => {
                     if len > reader.position() as usize {
                         yield Err(
@@ -268,13 +336,20 @@ pub gen fn iterate_instructions(
                             instruction
                         };
 
-                    next_instructions_stack
-                        .handle_next_expected_instructions(
-                            instruction.get_next_expected_instructions(),
-                        )
-                        .map_err(|_| {
-                            DXBParserError::NotInUnboundedRegularScopeError
-                        })?;
+                    // only read the first child, the consumer decides how to continue
+                    if control_flow_queue.is_some()
+                        && instruction.is_control_flow()
+                    {
+                        next_instructions_stack.push_next_regular(1);
+                    } else {
+                        next_instructions_stack
+                            .handle_next_expected_instructions(
+                                instruction.get_next_expected_instructions(),
+                            )
+                            .map_err(|_| {
+                                DXBParserError::NotInUnboundedRegularScopeError
+                            })?;
+                    }
 
                     instruction.into()
                 }

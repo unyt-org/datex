@@ -12,11 +12,17 @@ pub enum NextScopeInstruction {
     RegularUnbounded,
     /// number of type instructions expected to follow
     Type(u32),
+    /// skip the next n bytes without parsing them (e.g. an untaken branch)
+    Skip(u32),
+    /// move the reader n bytes back and read one more regular instruction from there (e.g. to repeat a loop)
+    Rewind(u32),
 }
 
 pub enum NextInstructionType {
     Regular,
     Type,
+    Skip(u32),
+    Rewind(u32),
     End,
 }
 
@@ -84,6 +90,24 @@ impl NextInstructionsStack {
         }
     }
 
+    /// Pushes a scope instruction on top of the stack.
+    /// Regular and type counts are merged with the current top entry if possible.
+    pub fn push(&mut self, instruction: NextScopeInstruction) {
+        match instruction {
+            NextScopeInstruction::Regular(count) => {
+                self.push_next_regular(count)
+            }
+            NextScopeInstruction::Type(count) => self.push_next_type(count),
+            NextScopeInstruction::Skip(0) => {}
+            instruction => self.0.push(instruction),
+        }
+    }
+
+    /// Returns true if the next entry is a rewind
+    pub fn is_rewind_next(&self) -> bool {
+        matches!(self.0.last(), Some(NextScopeInstruction::Rewind(_)))
+    }
+
     pub fn push_next_regular_unbounded(&mut self) {
         self.0.push(NextScopeInstruction::RegularUnbounded);
     }
@@ -127,6 +151,16 @@ impl NextInstructionsStack {
                         stack.pop();
                     }
                     NextInstructionType::Type
+                }
+                NextScopeInstruction::Skip(count) => {
+                    let count = *count;
+                    stack.pop();
+                    NextInstructionType::Skip(count)
+                }
+                NextScopeInstruction::Rewind(count) => {
+                    let count = *count;
+                    stack.pop();
+                    NextInstructionType::Rewind(count)
                 }
             }
         } else {

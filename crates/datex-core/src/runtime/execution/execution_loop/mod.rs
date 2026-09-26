@@ -13,21 +13,25 @@ use crate::{
         injected_values::compile_injected_values,
     },
     dxb_parser::{
-        body::{DXBParserError, iterate_instructions},
-        instruction_collector::{
-            CollectionResultsPopper, FullOrPartialResult, InstructionCollector,
-            LastUnboundedResultCollector, ResultCollector,
-            StatementResultCollectionStrategy,
+        body::{
+            ControlFlowQueue, DXBParserError,
+            iterate_instructions_with_control_flow,
         },
+        instruction_collector::{
+            CollectedResults, CollectionResultsPopper, FullOrPartialResult,
+            InstructionCollector, LastUnboundedResultCollector,
+            ResultCollector, StatementResultCollectionStrategy,
+        },
+        next_instructions_stack::NextScopeInstruction,
     },
     global::{
         operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
         protocol_structures::{
             instruction_data::{
-                ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-                FloatAsInt32Data, InstantData, ShortStatementsData,
-                ShortTextData, StatementsData, TaggedValue, TextData,
-                UnboundedStatementsData,
+                ApplyData, ConditionalData, Float32Data, Float64Data,
+                FloatAsInt16Data, FloatAsInt32Data, InstantData,
+                ShortCircuitData, ShortStatementsData, ShortTextData,
+                StatementsData, TaggedValue, TextData, UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
@@ -151,6 +155,64 @@ pub fn execution_loop(
     }
 }
 
+/// Handles a control flow instruction after its condition (or left hand side) was collected
+/// Pushes the scope instructions to the control flow queue that decide which bytes are read next
+/// Returns the result if the instruction is already finished (e.g. a short circuited `and`)
+fn handle_control_flow(
+    instruction: RegularInstruction,
+    mut results: CollectedResults<CollectedExecutionResult>,
+    state: &mut RuntimeExecutionState,
+    collector: &mut InstructionCollector<CollectedExecutionResult>,
+    control_flow_queue: &ControlFlowQueue,
+) -> Result<Option<CollectedExecutionResult>, ExecutionError> {
+    // a borrowed condition stays on the stack (e.g. a variable read in each loop iteration)
+    let value = results.try_pop_runtime_value()?;
+    let condition = expect_boolean(value.as_value_container(&state.stack)?)?;
+    let stack_index = state.stack.current_index();
+    // the queue is applied like a stack: the last pushed entry is read first
+    let mut queue = control_flow_queue.borrow_mut();
+    match &instruction {
+        RegularInstruction::Conditional(ConditionalData {
+            then_length,
+            else_length,
+        }) => {
+            if condition {
+                queue.extend([
+                    NextScopeInstruction::Skip(*else_length),
+                    NextScopeInstruction::Regular(1),
+                ]);
+            } else {
+                queue.extend([
+                    NextScopeInstruction::Regular(1),
+                    NextScopeInstruction::Skip(*then_length),
+                ]);
+            }
+        }
+        RegularInstruction::WhileLoop(data) => {
+            if !condition {
+                queue.push(NextScopeInstruction::Skip(data.body_length));
+                return Ok(Some(CollectedExecutionResult::value(None)));
+            }
+            queue.extend([
+                NextScopeInstruction::Rewind(data.rewind_length()),
+                NextScopeInstruction::Regular(1),
+            ]);
+        }
+        RegularInstruction::LogicalAnd(ShortCircuitData { rhs_length })
+        | RegularInstruction::LogicalOr(ShortCircuitData { rhs_length }) => {
+            let is_or = matches!(instruction, RegularInstruction::LogicalOr(_));
+            if condition == is_or {
+                queue.push(NextScopeInstruction::Skip(*rhs_length));
+                return Ok(Some(value.into()));
+            }
+            queue.push(NextScopeInstruction::Regular(1));
+        }
+        _ => unreachable!("not a control flow instruction"),
+    }
+    collector.collect_last(Instruction::Regular(instruction), 1, stack_index);
+    Ok(None)
+}
+
 pub gen fn inner_execution_loop(
     dxb_body: Rc<RefCell<Vec<u8>>>,
     interrupt_provider: InterruptProvider,
@@ -158,10 +220,12 @@ pub gen fn inner_execution_loop(
 ) -> Result<ExecutionInterrupt, ExecutionError> {
     let mut collector =
         InstructionCollector::<CollectedExecutionResult>::default();
+    let control_flow_queue = ControlFlowQueue::default();
 
-    for instruction_result in iterate_instructions(
+    for instruction_result in iterate_instructions_with_control_flow(
         dxb_body,
         NestedInstructionResolutionStrategy::None,
+        Some(control_flow_queue.clone()),
     ) {
         let instruction = match instruction_result {
             Ok(instruction) => instruction,
@@ -179,12 +243,21 @@ pub gen fn inner_execution_loop(
         let result: Option<CollectedExecutionResult> = match instruction {
             // handle regular instructions
             Instruction::Regular(regular_instruction) => {
-                let regular_instruction = collector
-                    .default_regular_instruction_collection(
-                        regular_instruction,
-                        StatementResultCollectionStrategy::Last,
-                        state.stack.current_index(),
-                    );
+                // control flow instructions first only collect their condition
+                let regular_instruction =
+                    if regular_instruction.is_control_flow() {
+                        collector.collect_full(
+                            Instruction::Regular(regular_instruction),
+                            1,
+                        );
+                        None
+                    } else {
+                        collector.default_regular_instruction_collection(
+                            regular_instruction,
+                            StatementResultCollectionStrategy::Last,
+                            state.stack.current_index(),
+                        )
+                    };
 
                 let expr: Option<Option<RuntimeValue>> = if let Some(
                     regular_instruction,
@@ -447,6 +520,11 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::MoveWithValue(_) |
                             RegularInstruction::SharedRefWithValue(_) |
+                            RegularInstruction::Conditional(_) |
+                            RegularInstruction::WhileLoop(_) |
+                            RegularInstruction::LogicalAnd(_) |
+                            RegularInstruction::LogicalOr(_) |
+                            RegularInstruction::LogicalNot |
                             RegularInstruction::TypeExpression => unreachable!(),
                             #[cfg(feature = "disassembler")]
                             RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => unreachable!(),
@@ -548,6 +626,36 @@ pub gen fn inner_execution_loop(
 
         // handle collecting nested expressions
         while let Some(result) = collector.try_pop_collected() {
+            let result = match result {
+                FullOrPartialResult::Full {
+                    instruction: Instruction::Regular(instruction),
+                    results,
+                } if instruction.is_control_flow() => {
+                    match handle_control_flow(
+                        instruction,
+                        results,
+                        &mut state,
+                        &mut collector,
+                        &control_flow_queue,
+                    ) {
+                        Ok(Some(result)) => collector.push_result(result),
+                        Ok(None) => {}
+                        Err(error) => return yield Err(error),
+                    }
+                    continue;
+                }
+                // a loop iteration has no result, the loop instruction is read again after the body
+                FullOrPartialResult::Partial {
+                    instruction:
+                        Instruction::Regular(RegularInstruction::WhileLoop(_)),
+                    previous_stack_index,
+                    ..
+                } => {
+                    state.stack.truncate(previous_stack_index);
+                    continue;
+                }
+                result => result,
+            };
             let expr_result: Result<CollectedExecutionResult, ExecutionError> = try {
                 match result {
                     FullOrPartialResult::Full {
@@ -636,17 +744,18 @@ pub gen fn inner_execution_loop(
                                 | RegularInstruction::Equal
                                 | RegularInstruction::NotStructuralEqual
                                 | RegularInstruction::NotEqual => {
+                                    // comparisons only borrow their operands, borrowed stack values stay on the stack
                                     let right = collected_results
-                                        .try_pop_value_container(&mut state)?;
+                                        .try_pop_runtime_value()?;
                                     let left = collected_results
-                                        .try_pop_value_container(&mut state)?;
+                                        .try_pop_runtime_value()?;
 
                                     let res = handle_comparison_operation(
                                         ComparisonOperator::from(
                                             regular_instruction,
                                         ),
-                                        &left,
-                                        &right,
+                                        left.as_value_container(&state.stack)?,
+                                        right.as_value_container(&state.stack)?,
                                     )?;
                                     res.into()
                                 }
@@ -701,6 +810,7 @@ pub gen fn inner_execution_loop(
                                 RegularInstruction::UnaryMinus
                                 | RegularInstruction::UnaryPlus
                                 | RegularInstruction::BitwiseNot
+                                | RegularInstruction::LogicalNot
                                 | RegularInstruction::Unbox => {
                                     let target = collected_results
                                         .try_pop_runtime_value()?;
@@ -1354,6 +1464,16 @@ pub gen fn inner_execution_loop(
                                                 _ => unreachable!(), // statements always resolve to values
                                             }
                                         }
+                                    }
+                                    // result of the taken branch / right hand side
+                                    RegularInstruction::Conditional(_)
+                                    | RegularInstruction::LogicalAnd(_)
+                                    | RegularInstruction::LogicalOr(_) => {
+                                        collected_result.unwrap_or(
+                                            CollectedExecutionResult::value(
+                                                None,
+                                            ),
+                                        )
                                     }
                                     _ => unreachable!(),
                                 }

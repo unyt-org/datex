@@ -1,9 +1,10 @@
 use crate::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, DatexExpression, DatexExpressionData,
-            InterfaceMethodCall, List, Map, PropertyAssignment, Statements,
-            UnaryOperation, UnboundedStatement, VariableAssignment,
+            Apply, BinaryOperation, Conditional, DatexExpression,
+            DatexExpressionData, InterfaceMethodCall, List, Map,
+            PropertyAssignment, Statements, UnaryOperation, UnboundedStatement,
+            VariableAssignment, WhileLoop,
         },
         spanned::Spanned,
         type_expressions::{TypeExpression, TypeExpressionData},
@@ -16,7 +17,7 @@ use crate::{
         },
     },
     global::{
-        operators::{BinaryOperator, UnaryOperator},
+        operators::{BinaryOperator, UnaryOperator, binary::LogicalOperator},
         protocol_structures::{
             instruction_data::{ShortStatementsData, StatementsData},
             instructions::Instruction,
@@ -361,6 +362,11 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::UnaryMinus
                         | RegularInstruction::UnaryPlus
                         | RegularInstruction::BitwiseNot
+                        | RegularInstruction::Conditional(_)
+                        | RegularInstruction::WhileLoop(_)
+                        | RegularInstruction::LogicalAnd(_)
+                        | RegularInstruction::LogicalOr(_)
+                        | RegularInstruction::LogicalNot
                         | RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. })
                         | RegularInstruction::Apply(_)
                         | RegularInstruction::ApplySingle
@@ -558,6 +564,54 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
+                            RegularInstruction::LogicalAnd(_)
+                            | RegularInstruction::LogicalOr(_) => {
+                                let right = collected_results.pop_value();
+                                let left = collected_results.pop_value();
+                                let operator = match regular_instruction {
+                                    RegularInstruction::LogicalAnd(_) => LogicalOperator::And,
+                                    _ => LogicalOperator::Or,
+                                };
+                                DatexExpressionData::BinaryOperation(
+                                    BinaryOperation {
+                                        operator: BinaryOperator::Logical(operator),
+                                        left,
+                                        right,
+                                        ty: None,
+                                    },
+                                )
+                                    .with_default_span()
+                                    .into()
+                            }
+
+                            RegularInstruction::Conditional(_) => {
+                                let else_branch = collected_results.pop_value();
+                                let then_branch = collected_results.pop_value();
+                                let condition = collected_results.pop_value();
+                                DatexExpressionData::Conditional(Conditional {
+                                    condition,
+                                    then_branch,
+                                    // the compiler emits null for a missing else branch
+                                    else_branch: match else_branch.data() {
+                                        DatexExpressionData::Null => None,
+                                        _ => Some(else_branch),
+                                    },
+                                })
+                                    .with_default_span()
+                                    .into()
+                            }
+
+                            RegularInstruction::WhileLoop(_) => {
+                                let body = collected_results.pop_value();
+                                let condition = collected_results.pop_value();
+                                DatexExpressionData::WhileLoop(WhileLoop {
+                                    condition,
+                                    body,
+                                })
+                                    .with_default_span()
+                                    .into()
+                            }
+
                             RegularInstruction::Is
                             | RegularInstruction::StructuralEqual
                             | RegularInstruction::Equal
@@ -646,6 +700,7 @@ pub fn ast_from_bytecode(
                             RegularInstruction::UnaryMinus
                             | RegularInstruction::UnaryPlus
                             | RegularInstruction::BitwiseNot
+                            | RegularInstruction::LogicalNot
                             | RegularInstruction::Unbox => {
                                 let expr = collected_results.pop_value();
                                 DatexExpressionData::UnaryOperation(
@@ -1585,4 +1640,35 @@ mod tests {
     //         })
     //     );
     // }
+
+    fn decompile_script(script: &str) -> String {
+        let (dxb, _) = crate::compiler::compile_script(
+            script,
+            crate::compiler::CompileOptions::default(),
+            crate::runtime::Runtime::stub(),
+        )
+        .unwrap();
+        crate::decompiler::decompile_body(
+            &dxb,
+            crate::decompiler::DecompileOptions::default(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn control_flow_round_trip() {
+        assert_eq!(
+            decompile_script("if (true) (1) else (2)"),
+            "if(true)(1) else(2)"
+        );
+        assert_eq!(decompile_script("if (false) (1)"), "if(false)(1)");
+        assert_eq!(
+            decompile_script("if (false) (1) else if (true) (2) else (3)"),
+            "if(false)(1) else if(true)(2) else(3)"
+        );
+        assert_eq!(decompile_script("while (false) (1)"), "while(false)(1)");
+        assert_eq!(decompile_script("true and false"), "(true)and(false)");
+        assert_eq!(decompile_script("true or false"), "(true)or(false)");
+        assert_eq!(decompile_script("!true"), "!true");
+    }
 }

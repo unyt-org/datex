@@ -97,6 +97,7 @@ pub enum ExecutionError {
     InvalidUnbox,
     InvalidTypeCast,
     ExpectedTypeValue,
+    ExpectedBooleanValue,
     InvalidSharedValueType,
     ExpectedSharedValue,
     ExpectedLocalValue,
@@ -285,6 +286,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::ExpectedTypeValue => {
                 core::write!(f, "Expected a type value")
+            }
+            ExecutionError::ExpectedBooleanValue => {
+                core::write!(f, "Expected a boolean value")
             }
             ExecutionError::InvalidSharedValueType => {
                 core::write!(f, "Invalid shared value type")

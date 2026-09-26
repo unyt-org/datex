@@ -449,6 +449,41 @@ cfg_if! {
     }
 }
 
+/// Byte lengths of the branches following the condition of a CONDITIONAL instruction
+/// Branches are length prefixed so the executor can skip the one that is not taken
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ConditionalData {
+    pub then_length: u32,
+    pub else_length: u32,
+}
+
+/// Byte lengths of the condition and body of a WHILE_LOOP instruction
+/// Used to skip the body when the loop ends, and to rewind to the loop start after each iteration
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct WhileLoopData {
+    pub condition_length: u32,
+    pub body_length: u32,
+}
+
+impl WhileLoopData {
+    /// Size of the full WHILE_LOOP instruction (code + data) in bytes
+    pub const INSTRUCTION_SIZE: u32 = 1 + 4 + 4;
+
+    /// Number of bytes from the end of the loop body back to the start of the WHILE_LOOP instruction
+    pub fn rewind_length(&self) -> u32 {
+        Self::INSTRUCTION_SIZE + self.condition_length + self.body_length
+    }
+}
+
+/// Byte length of the right-hand side of a short-circuiting AND/OR instruction
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ShortCircuitData {
+    pub rhs_length: u32,
+}
+
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct ApplyData {

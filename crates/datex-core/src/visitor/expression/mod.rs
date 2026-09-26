@@ -10,7 +10,7 @@ use crate::{
         RootPropertyAccess, StackAssignment, StackListAssignment, Statements,
         TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, ValueAccessType, VariableAccess,
-        VariableAssignment, VariableDeclaration, VariantAccess,
+        VariableAssignment, VariableDeclaration, VariantAccess, WhileLoop,
     },
     global::protocol_structures::instruction_data::StackIndex,
     libs::core::core_lib_id::CoreLibId,
@@ -119,6 +119,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                 .visit_request_shared_reference(request_shared_ref, &expr.span),
             DatexExpressionData::Conditional(conditional) => {
                 self.visit_conditional(conditional, &expr.span)
+            }
+            DatexExpressionData::WhileLoop(while_loop) => {
+                self.visit_while_loop(while_loop, &expr.span)
             }
             DatexExpressionData::TypeDeclaration(type_declaration) => {
                 self.visit_type_declaration(type_declaration, &expr.span)
@@ -328,6 +331,17 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = conditional;
+        Ok(VisitAction::ContinueRecursion)
+    }
+
+    /// Visit while loop expression
+    fn visit_while_loop(
+        &mut self,
+        while_loop: &mut WhileLoop,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = while_loop;
         Ok(VisitAction::ContinueRecursion)
     }
 

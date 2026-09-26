@@ -1,6 +1,8 @@
 use crate::{
     ast::{
-        expressions::{Conditional, DatexExpression, DatexExpressionData},
+        expressions::{
+            Conditional, DatexExpression, DatexExpressionData, WhileLoop,
+        },
         spanned::Spanned,
     },
     parser::{Parser, SpannedParserError, lexer::Token},
@@ -30,6 +32,18 @@ impl Parser {
             else_branch,
         })
         .with_span(start..self.get_current_source_position()))
+    }
+
+    pub(crate) fn parse_while_loop(
+        &mut self,
+    ) -> Result<DatexExpression, SpannedParserError> {
+        let start = self.expect(Token::While)?.span.start;
+        let condition = self.parse_parenthesized_statements()?;
+        let body = self.parse_parenthesized_statements()?;
+        Ok(
+            DatexExpressionData::WhileLoop(WhileLoop { condition, body })
+                .with_span(start..self.get_current_source_position()),
+        )
     }
 
     fn parse_parenthesized_statements_or_if_else(
