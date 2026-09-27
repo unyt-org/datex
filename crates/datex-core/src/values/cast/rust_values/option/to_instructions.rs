@@ -5,8 +5,9 @@ use crate::{
     instruction::Instruction,
     prelude::*,
 };
+use crate::instruction::regular_instruction::RegularInstruction;
 
-impl<K> ToInstructions for Option<K> {
+impl<K> ToInstructions for Option<K> where K: ToInstructions {
     fn to_instructions<'ctx, 'a>(
         &'a self,
         _ctx: &'a mut dyn ValueVisitor<'ctx>,
@@ -14,6 +15,17 @@ impl<K> ToInstructions for Option<K> {
     where
         'ctx: 'a,
     {
-        Box::new(gen move { todo!() })
+        Box::new(gen move {
+            match self {
+                None => {
+                    yield Instruction::Regular(RegularInstruction::Null);
+                }
+                Some (value) => {
+                    for instruction in value.to_instructions(_ctx) {
+                        yield instruction;
+                    }
+                }
+            }
+        })
     }
 }
