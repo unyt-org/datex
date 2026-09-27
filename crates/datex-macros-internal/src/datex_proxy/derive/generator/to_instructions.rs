@@ -4,6 +4,7 @@ use quote::{ToTokens, quote};
 use crate::datex_proxy::data::{
     FieldMapping, Fields, IndexedField, NamedField, Structure, StructureData,
 };
+use crate::datex_proxy::generator::helpers::{generate_struct_field_accessors, generate_struct_or_enum_variants_fields_mapping, map_enum_variants};
 
 /// Generates the implementation of the [ToInstructions] trait for the given structure data.
 /// Returns a [TokenStream] containing the generated implementation.
@@ -14,16 +15,12 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
 
     // TODO add for the other derives to fix generics!
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let body = match &structure_data.structure {
-        Structure::Struct(fields) => {
-            generate_to_instructions_for_struct(fields)
-        }
-        Structure::Enum(_variants) => {
-            quote! {
-                todo!("Implement ToInstructions for enums")
-            }
-        }
-    };
+  
+    let body = generate_struct_or_enum_variants_fields_mapping(
+        &structure_data.structure,
+        generate_to_instructions_for_fields
+    );
+
 
     quote! {
         impl #impl_generics ToInstructions for #ident #ty_generics #where_clause {
@@ -42,19 +39,10 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
     }
 }
 
-/// Generates the instructions for a struct based on its fields.
-fn generate_to_instructions_for_struct(fields: &Fields) -> TokenStream {
-    let field_assignments = fields
-        .field_accessors()
-        .iter()
-        .zip(fields.normalized_field_idents().iter())
-        .map(|(accessor, normalized_ident)| {
-            quote! {
-                let #normalized_ident = &self.#accessor;
-            }
-        })
-        .collect::<Vec<_>>();
-
+/// Generates the instructions for the given fields, handling different field types.
+fn generate_to_instructions_for_fields(
+    fields: &Fields
+) -> TokenStream {
     let fields = match fields {
         Fields::Unit => {
             quote! {}
@@ -69,7 +57,6 @@ fn generate_to_instructions_for_struct(fields: &Fields) -> TokenStream {
     };
 
     quote! {{
-        #(#field_assignments)*
         #fields
     }}
 }
