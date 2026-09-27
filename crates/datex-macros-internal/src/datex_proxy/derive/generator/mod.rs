@@ -27,6 +27,7 @@ mod datex_type;
 mod to_instructions;
 pub mod try_from_core_value;
 pub mod value_access;
+pub mod helpers;
 
 /// Generates the code for the derive macro based on the provided structure data.
 pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
