@@ -29,7 +29,10 @@ pub fn generate_datex_expression_data(
 }
 
 /// Generates the datex expression data for the given fields. Returns a TokenStream of [DatexExpressionData].
-fn generate_datex_expression_data_fields(fields: &Fields) -> TokenStream {
+fn generate_datex_expression_data_fields(fields: &Fields, tag: Option<&String>) -> TokenStream {
+
+    // TODO: handle tag?
+
     match fields {
         Fields::Unit => quote! {
             DatexExpressionData::Statements(Statements::empty())

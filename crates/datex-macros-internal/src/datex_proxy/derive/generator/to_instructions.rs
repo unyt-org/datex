@@ -15,7 +15,7 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
 
     // TODO add for the other derives to fix generics!
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-  
+
     let body = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
         generate_to_instructions_for_fields
@@ -41,8 +41,19 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
 
 /// Generates the instructions for the given fields, handling different field types.
 fn generate_to_instructions_for_fields(
-    fields: &Fields
+    fields: &Fields,
+    tag: Option<&String>
 ) -> TokenStream {
+
+    let tag = if let Some(tag) = tag {
+        let is_empty = matches!(fields, Fields::Unit);
+        quote! {
+            yield RegularInstruction::tagged_value(#tag.to_string(), #is_empty).into();
+        }
+    } else {
+        quote! {}
+    };
+
     let fields = match fields {
         Fields::Unit => {
             quote! {}
@@ -57,6 +68,7 @@ fn generate_to_instructions_for_fields(
     };
 
     quote! {{
+        #tag
         #fields
     }}
 }
@@ -92,7 +104,7 @@ fn generate_unnamed_fields_to_instructions(
     fields: &[IndexedField],
 ) -> TokenStream {
     let field_instructions = fields.iter().map(|field| {
-        let accessor = field.index_accessor().to_token_stream();
+        let accessor = field.normalized_ident().to_token_stream();
         let mapping = &field.field.attributes.field_mapping;
         field_to_instructions(accessor, mapping)
     });
@@ -110,7 +122,7 @@ fn generate_unnamed_fields_to_instructions(
 fn generate_transparent_field_to_instructions(
     field: &IndexedField,
 ) -> TokenStream {
-    let accessor = field.index_accessor().to_token_stream();
+    let accessor = field.normalized_ident().to_token_stream();
     let mapping = &field.field.attributes.field_mapping;
     field_to_instructions(accessor, mapping)
 }
