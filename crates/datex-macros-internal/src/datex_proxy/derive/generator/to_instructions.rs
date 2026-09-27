@@ -82,10 +82,7 @@ fn generate_named_fields_to_instructions(fields: &[NamedField]) -> TokenStream {
         let value_instructions = field_to_instructions(accessor, mapping);
 
         quote! {
-            yield RegularInstruction::text(
-                #name.to_string()
-            ).into();
-
+            yield RegularInstruction::key_value_short_text(#name.to_string()).into();
             #value_instructions
         }
     });

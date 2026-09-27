@@ -100,10 +100,10 @@ fn example_enum_variant_2_to_instructions() {
         (RegularInstruction::tagged_value("Variant2".to_string(), false).with_children(instructions!(
             RegularInstruction::map(2).with_children(instructions!(
                 // x
-                RegularInstruction::text("x".to_string()),
+                RegularInstruction::key_value_short_text("x".to_string()),
                 RegularInstruction::uint8(42),
                 // y
-                RegularInstruction::text("y".to_string()),
+                RegularInstruction::key_value_short_text("y".to_string()),
                 RegularInstruction::text("Test".to_string()),
             ))
         )))
