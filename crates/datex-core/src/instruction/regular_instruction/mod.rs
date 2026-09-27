@@ -1306,6 +1306,14 @@ impl RegularInstruction {
                 write!(string, "{}", short_text_data.0)
             }
 
+            RegularInstruction::TaggedValue(tagged_value) => {
+                write!(
+                    string,
+                    "[tag: {}, is_empty: {}]",
+                    tagged_value.tag.0, tagged_value.is_empty
+                )
+            }
+            
             #[cfg(feature = "disassembler")]
             RegularInstruction::_CallableDeclarationDebugTree(data) => {
                 write!(

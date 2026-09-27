@@ -6,12 +6,12 @@ use crate::datex_proxy::data::{EnumVariant, Fields, Structure};
 /// The `fields_mapping` function is called with the fields of the struct or the fields of each enum variant, and should return a TokenStream representing the mapping for those fields.
 pub fn generate_struct_or_enum_variants_fields_mapping(
     structure: &Structure,
-    fields_mapping: impl Fn(&Fields) -> TokenStream,
+    fields_mapping: impl Fn(&Fields, Option<&String>) -> TokenStream,
 ) -> TokenStream {
     match structure {
         Structure::Struct(fields) => {
             let field_assignments = generate_struct_field_accessors(fields);
-            let mapping = fields_mapping(fields);
+            let mapping = fields_mapping(fields, None);
             quote! {{
                 #field_assignments
                 #mapping
@@ -20,7 +20,7 @@ pub fn generate_struct_or_enum_variants_fields_mapping(
         Structure::Enum(variants) => {
             map_enum_variants(
                 variants,
-                |variant| fields_mapping(&variant.fields)
+                |variant| fields_mapping(&variant.fields, Some(&variant.name))
             )
         }
     }
