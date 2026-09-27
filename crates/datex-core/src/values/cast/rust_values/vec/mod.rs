@@ -34,28 +34,16 @@ mod tests {
             core_values::integer::Integer, value_container::ValueContainer,
         },
     };
+    use crate::values::value::value_classification::ValueClassification;
 
     #[test]
     fn to_value() {
         let vec = vec![Integer::new(1), Integer::new(2), Integer::new(3)];
-        let value: Value = Value::native_structural(vec);
-        assert!(matches!(
-            value.inner,
-            CoreValue::List(ref l) if l == &List::from(vec![ValueContainer::from(Integer::new(1)), ValueContainer::from(Integer::new(2)), ValueContainer::from(Integer::new(3))])
-        ));
-    }
-    #[test]
-    fn try_from_value() {
-        let value: Value = List::from(vec![
-            ValueContainer::from(Integer::new(1)),
-            ValueContainer::from(Integer::new(2)),
-            ValueContainer::from(Integer::new(3)),
-        ])
-        .into();
-        let vec: Vec<Integer> = value.try_into_value().unwrap();
+        let vec_clone = vec.clone();
+        let value: Value = Value::new(vec, ValueClassification::None);
         assert_eq!(
-            vec,
-            vec![Integer::new(1), Integer::new(2), Integer::new(3)]
+            value.inner.try_into_value::<Vec<Integer>>(),
+            Ok(vec_clone)
         );
     }
 

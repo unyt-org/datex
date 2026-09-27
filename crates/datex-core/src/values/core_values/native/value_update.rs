@@ -10,6 +10,7 @@ use crate::{
         update_handler::{UpdateCallbackData, UpdateHandlerImpl},
     },
     values::core_values::native::NativeCoreValue,
+    prelude::*,
 };
 impl UpdateCallbackDataAccess for NativeCoreValue {
     fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {

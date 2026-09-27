@@ -6,7 +6,7 @@ use crate::{
         value::Value,
         value_container::{ValueContainer, value_key::ValueKey},
     },
-};
+ };
 
 impl LocalChildPathResolver for NativeCoreValue {
     fn resolve_child(
