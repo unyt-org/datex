@@ -780,23 +780,23 @@ mod tests {
 
     #[test]
     fn list() {
-        let result = execute_datex_script_debug_with_result("[1, 2, 3]");
+        let result = execute_datex_script_debug_with_result("[1i8, 2i8, 3i8]");
         let list: &List = result.try_as().unwrap();
         let expected = datex_list![
-            Integer::from(1i8),
-            Integer::from(2i8),
-            Integer::from(3i8)
+            TypedInteger::from(1i8),
+            TypedInteger::from(2i8),
+            TypedInteger::from(3i8)
         ];
         assert_eq!(list.len(), 3);
         assert_eq!(result, expected.into());
-        assert_ne!(
+        assert_eq!(
             result,
-            List::new(vec![1, 2, 3])
+            List::new(vec![1i8, 2i8, 3i8])
                 .to_value_container(&mut SharedReferencesCache::default())
         );
         assert_structural_eq!(
             result,
-            List::new(vec![1, 2, 3])
+            List::new(vec![1i8, 2i8, 3i8])
                 .to_value_container(&mut SharedReferencesCache::default())
         );
     }

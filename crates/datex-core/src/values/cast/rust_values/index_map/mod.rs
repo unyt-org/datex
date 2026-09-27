@@ -19,25 +19,24 @@ mod tests {
     use crate::{
         traits::get_datex_type::GetDatexType,
         values::{
-            core_value::CoreValue,
             core_values::{endpoint::Endpoint, integer::Integer, map::Map},
             value::Value,
             value_container::ValueContainer,
         },
     };
     use indexmap::IndexMap;
+    use crate::values::value::value_classification::ValueClassification;
+
     #[test]
     #[cfg(feature = "std")]
     fn to_value() {
-        let mut map = IndexMap::new();
-        map.insert(Integer::from(1), Endpoint::new("@jonas"));
-        let value: Value = Value::native_structural(map);
+        let mut index_map = IndexMap::new();
+        index_map.insert(Integer::from(1), Endpoint::new("@jonas"));
+        let index_map_clone = index_map.clone();
+        let value = Value::new(index_map, ValueClassification::None);
         assert_eq!(
-            value.inner,
-            CoreValue::Map(Map::from_iter(vec![(
-                Integer::from(1),
-                Endpoint::new("@jonas")
-            )]))
+            value.try_into_value::<IndexMap<Integer, Endpoint>>().unwrap(),
+            index_map_clone,
         );
     }
 

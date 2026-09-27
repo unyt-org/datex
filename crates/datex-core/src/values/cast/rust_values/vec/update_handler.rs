@@ -15,6 +15,7 @@ use crate::{
         update_handler::{UpdateCallbackDataAccess, UpdateHandlerImpl},
     },
     values::core_values::native::DatexNativeBase,
+    prelude::*,
 };
 impl<T: DatexNativeBase + 'static> UpdateCallbackDataAccess for Vec<T> {}
 impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {

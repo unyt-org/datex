@@ -15,7 +15,7 @@ use datex_core::{
     traits::structural_eq::{StructuralEq, assert_structural_eq},
     values::{
         core_value::CoreValue,
-        core_values::{decimal::Decimal, integer::Integer, map::Map},
+        core_values::{decimal::Decimal, list::List, integer::Integer, map::Map},
         value::Value,
         value_container::ValueContainer,
     },
@@ -50,7 +50,7 @@ fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
         }
         json_syntax::Value::Boolean(b) => Value::from(*b),
         json_syntax::Value::Array(arr) => {
-            let mut vec = Vec::new();
+            let mut vec = List::default();
             for value in arr {
                 vec.push(json_value_to_datex_value(value));
             }

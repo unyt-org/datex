@@ -63,6 +63,19 @@ pub fn into_dyn_goat_mut<'a, T: DatexNative>(
 }
 
 impl<'a> BorrowedValue<'a> {
+    
+    pub fn new<T: DatexNative>(
+        val: impl Into<Goat<'a, T>>,
+        classification: ValueClassification,
+    ) -> Self {
+        let val = val.into();
+        let val = into_dyn_goat(val);
+        BorrowedValue {
+            inner: BorrowedCoreValue::Native(val),
+            classification,
+        }
+    }
+    
     /// Creates a new [BorrowedValue] from a reference to a native value.
     pub fn native_borrowed<T: DatexNative>(
         val: impl Into<Goat<'a, T>>,

@@ -10,16 +10,14 @@ use crate::{
         get_datex_type::GetDatexType,
         try_clone::TryClone,
         value_access::ValueAccess,
+        local_child_path_resolver::LocalChildPathResolver,
     },
     values::core_values::native::DatexNativeOps,
+    value_updates::update_handler::UpdateHandlerImpl,
 };
 #[cfg(feature = "ast")]
-use crate::{
-    traits::{
-        local_child_path_resolver::LocalChildPathResolver,
-        to_datex_expression_data::ToDatexExpressionData,
-    },
-    value_updates::update_handler::UpdateHandlerImpl,
+use crate::traits::{
+    to_datex_expression_data::ToDatexExpressionData
 };
 use core::any::Any;
 
@@ -116,6 +114,8 @@ pub trait DatexNative:
     + Classification
     + ToInstructions
     + DatexNativeOps
+    + UpdateHandlerImpl
+    + LocalChildPathResolver
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

@@ -42,16 +42,16 @@ impl<T: DatexNative + ConvertCoreValue + StaticClassification>
         self,
         cache: &mut SharedReferencesCache,
     ) -> ValueContainer {
-        ValueContainer::Local(Value::native(self, cache))
+        let classification = self.classification(cache);
+        ValueContainer::Local(Value::new(self, classification))
     }
 
     fn as_borrowed_value_container(
         &self,
         cache: &mut SharedReferencesCache,
     ) -> BorrowedValueContainer<'_> {
-        BorrowedValueContainer::Local(BorrowedValue::native_borrowed(
-            self, cache,
-        ))
+        let classification = self.classification(cache);
+        BorrowedValueContainer::Local(BorrowedValue::new(self, classification))
     }
 
     fn try_from_value_container(
