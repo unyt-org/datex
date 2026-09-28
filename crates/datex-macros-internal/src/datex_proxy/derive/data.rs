@@ -24,6 +24,15 @@ pub enum FieldMapping {
     Serde,
 }
 
+impl FieldMapping {
+    pub fn is_datex(&self) -> bool {
+        matches!(self, FieldMapping::Datex)
+    }
+    pub fn is_serde(&self) -> bool {
+        matches!(self, FieldMapping::Serde)
+    }
+}
+
 /// Top-level attributes for the Datex derive macro
 #[derive(Debug, PartialEq)]
 pub struct StructureAttributes {

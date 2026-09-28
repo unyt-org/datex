@@ -4,7 +4,7 @@ use quote::{ToTokens, quote};
 use crate::datex_proxy::data::{
     FieldMapping, Fields, IndexedField, NamedField, Structure, StructureData,
 };
-use crate::datex_proxy::generator::helpers::{generate_struct_field_accessors, generate_struct_or_enum_variants_fields_mapping, map_enum_variants};
+use crate::datex_proxy::generator::helpers::{generate_struct_field_accessors, generate_struct_or_enum_variants_fields_mapping, map_enum_variants, SelfAccess};
 
 /// Generates the implementation of the [ToInstructions] trait for the given structure data.
 /// Returns a [TokenStream] containing the generated implementation.
@@ -18,6 +18,7 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
 
     let body = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
+        SelfAccess::Borrowed,
         generate_to_instructions_for_fields
     );
 
