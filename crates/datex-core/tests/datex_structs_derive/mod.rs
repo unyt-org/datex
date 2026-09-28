@@ -4,6 +4,7 @@ mod to_datex_expression_data;
 mod to_instructions;
 
 use core::assert_matches;
+use core::cell::RefCell;
 use datex_core::{
     prelude::*,
     traits::get_datex_type::GetDatexType,
@@ -154,6 +155,8 @@ fn struct_to_value_container() {
 
 #[test]
 fn skip() {
+    let cache = RefCell::new(SharedReferencesCache::default());
+    
     #[derive(Datex, Debug, PartialEq)]
     #[datex(only_structural, no_deserialize)]
     struct SerdeDatexWithSkip {
@@ -168,7 +171,7 @@ fn skip() {
     }
     .into();
 
-    let map: Map = value_container.try_into_value().unwrap();
+    let map = Map::try_cast_from(value_container, &cache).unwrap();
     assert!(map.has("a"));
     assert!(!map.has("b"));
 

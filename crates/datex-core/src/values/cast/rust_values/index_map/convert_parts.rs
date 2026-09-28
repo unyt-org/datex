@@ -13,14 +13,14 @@ use indexmap::IndexMap;
 impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts
     for IndexMap<K, V, RandomState>
 {
-    fn into_parts<'a>(
-        self,
+    fn try_into_parts<'a>(
+        self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Option<Parts<'a>>
+    ) -> Result<Parts<'a>, ()>
     where
         Self: 'a,
     {
-        Some(Parts::Map(Box::new(self.into_iter().map(
+        Ok(Parts::Map(Box::new(self.into_iter().map(
             move |(key, value)| {
                 (
                     key.to_value_container(cache),
@@ -30,11 +30,11 @@ impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts
         ))))
     }
 
-    fn as_parts<'a>(
+    fn try_as_parts<'a>(
         &'a self,
         cache: &'a mut SharedReferencesCache,
-    ) -> Option<BorrowedParts<'a>> {
-        Some(BorrowedParts::Map(Box::new(self.iter().map(
+    ) -> Result<BorrowedParts<'a>, ()> {
+        Ok(BorrowedParts::Map(Box::new(self.iter().map(
             move |(key, value)| {
                 (
                     key.as_borrowed_value_container(cache),

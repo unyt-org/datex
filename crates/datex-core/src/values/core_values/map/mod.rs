@@ -20,6 +20,9 @@ use core::{
     hash::{Hash, Hasher},
     result::Result,
 };
+use core::cell::RefCell;
+use core::ops::DerefMut;
+
 mod child_iterator;
 pub mod classification;
 mod convert_parts;
@@ -46,6 +49,8 @@ use crate::{
     values::value_container::value_key::ValueKey,
 };
 use indexmap::{IndexMap, map::MutableKeys};
+use crate::preludes::derive::SharedReferencesCache;
+use crate::traits::convert_parts::{FromParts, IntoParts, PartsKind};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MapEntries {
@@ -144,6 +149,32 @@ impl Map {
         entries: Vec<(String, ValueContainer)>,
     ) -> Self {
         MapEntries::StructuralWithStringKeys(entries).into()
+    }
+
+    /// Tries to cast a [ValueContainer] into a [Map].
+    /// First tries to downcast directly from the value container,
+    /// and if that fails, tries to recreate the map from its parts.
+    /// This allows e.g. converting a struct into a map, if the struct implements [IntoParts].
+    pub fn try_cast_from(
+        value: ValueContainer,
+        cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<Self, Box<ValueContainer>> {
+        // first try to downcast directly from value container
+        match value.try_into_value::<Map>() {
+            Ok(map) => Ok(map),
+            // try to recreate map from parts
+            Err(value) => {
+                // panic!("kind: {:?}", value.parts_kind());
+                if matches!(value.parts_kind(), PartsKind::Map) {
+                    // unwraps are safe because we just checked the kind
+                    let mut cache = cache.borrow_mut();
+                    let parts = Box::new(value).try_into_parts(cache.deref_mut()).unwrap();
+                    Ok(Map::try_from_parts(parts).unwrap())
+                } else {
+                    Err(Box::new(value))
+                }
+            }
+        }
     }
 
     pub fn is_structural(&self) -> bool {

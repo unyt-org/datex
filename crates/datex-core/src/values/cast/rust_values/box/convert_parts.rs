@@ -6,22 +6,23 @@ use crate::{
 use core::ops::Deref;
 
 impl<T: IntoParts> IntoParts for Box<T> {
-    fn into_parts<'a>(
-        self,
+    fn try_into_parts<'a>(
+        self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Option<Parts<'a>>
+    ) -> Result<Parts<'a>, ()>
     where
-        Self: Sized + 'a,
+        Self: 'a,
     {
         let inner = *self;
-        inner.into_parts(cache)
+        inner
+            .try_into_parts(cache)
     }
 
-    fn as_parts<'a>(
+    fn try_as_parts<'a>(
         &'a self,
         cache: &'a mut SharedReferencesCache,
-    ) -> Option<BorrowedParts<'a>> {
-        self.deref().as_parts(cache)
+    ) -> Result<BorrowedParts<'a>, ()> {
+        self.deref().try_as_parts(cache)
     }
 }
 

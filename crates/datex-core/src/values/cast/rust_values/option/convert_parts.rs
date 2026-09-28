@@ -1,29 +1,31 @@
 use crate::{
     preludes::derive::SharedReferencesCache,
     traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
+    prelude::*,
 };
 
 impl<T: IntoParts> IntoParts for Option<T> {
-    fn into_parts<'a>(
-        self,
+    fn try_into_parts<'a>(
+        self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Option<Parts<'a>>
+    ) -> Result<Parts<'a>, ()>
     where
         Self: 'a,
     {
-        match self {
-            Some(value) => value.into_parts(cache),
-            None => None,
+        match *self {
+            Some(value) => Box::new(value)
+                .try_into_parts(cache),
+            None => Err(()),
         }
     }
 
-    fn as_parts<'a>(
+    fn try_as_parts<'a>(
         &'a self,
         cache: &'a mut SharedReferencesCache,
-    ) -> Option<BorrowedParts<'a>> {
+    ) -> Result<BorrowedParts<'a>, ()> {
         match self {
-            Some(value) => value.as_parts(cache),
-            None => None,
+            Some(value) => value.try_as_parts(cache),
+            None => Err(()),
         }
     }
 }
