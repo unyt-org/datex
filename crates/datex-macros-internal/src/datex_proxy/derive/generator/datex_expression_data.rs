@@ -3,7 +3,7 @@ use crate::datex_proxy::data::{
 };
 use proc_macro2::{TokenStream};
 use quote::{ToTokens, quote};
-use crate::datex_proxy::generator::helpers::{generate_struct_or_enum_variants_fields_mapping};
+use crate::datex_proxy::generator::helpers::{generate_struct_or_enum_variants_fields_mapping, SelfAccess};
 
 /// Creates the implementation of the [ToDatexExpressionData] trait for the given structure data.
 /// Returns a TokenStream of the implementation.
@@ -16,6 +16,7 @@ pub fn generate_datex_expression_data(
 
     let datex_expression_data = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
+        SelfAccess::Borrowed,
         generate_datex_expression_data_fields
     );
 

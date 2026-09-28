@@ -43,6 +43,8 @@ use core::{
     hash::{Hash, Hasher},
     ops::FnOnce,
 };
+use serde::Serialize;
+use crate::shared_values::{OwnedSharedContainer, ReferencedSharedContainer};
 
 pub mod classification;
 pub mod convert_parts;
@@ -290,6 +292,24 @@ impl ValueContainer {
 impl<T: Into<Value>> From<T> for ValueContainer {
     fn from(value: T) -> Self {
         ValueContainer::Local(value.into())
+    }
+}
+
+impl From<SharedContainer> for ValueContainer {
+    fn from(shared: SharedContainer) -> Self {
+        ValueContainer::Shared(shared)
+    }
+}
+
+impl From<OwnedSharedContainer> for ValueContainer {
+    fn from(shared: OwnedSharedContainer) -> Self {
+        ValueContainer::Shared(shared.into())
+    }
+}
+
+impl From<ReferencedSharedContainer> for ValueContainer {
+    fn from(shared: ReferencedSharedContainer) -> Self {
+        ValueContainer::Shared(shared.into())
     }
 }
 

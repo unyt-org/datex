@@ -156,7 +156,7 @@ fn struct_to_value_container() {
 #[test]
 fn skip() {
     let cache = RefCell::new(SharedReferencesCache::default());
-    
+
     #[derive(Datex, Debug, PartialEq)]
     #[datex(only_structural, no_deserialize)]
     struct SerdeDatexWithSkip {

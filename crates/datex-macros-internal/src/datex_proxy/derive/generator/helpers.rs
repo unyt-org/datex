@@ -2,15 +2,22 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use crate::datex_proxy::data::{EnumVariant, Fields, Structure};
 
+/// Represents whether the self value is borrowed or moved in the context of generating code for struct or enum variants.
+pub enum SelfAccess {
+    Borrowed,
+    Moved
+}
+
 /// Generates a mapping for the fields of a struct or the variants of an enum, depending on the structure type.
 /// The `fields_mapping` function is called with the fields of the struct or the fields of each enum variant, and should return a TokenStream representing the mapping for those fields.
 pub fn generate_struct_or_enum_variants_fields_mapping(
     structure: &Structure,
+    self_access: SelfAccess,
     fields_mapping: impl Fn(&Fields, Option<&String>) -> TokenStream,
 ) -> TokenStream {
     match structure {
         Structure::Struct(fields) => {
-            let field_assignments = generate_struct_field_accessors(fields);
+            let field_assignments = generate_struct_field_accessors(fields, self_access);
             let mapping = fields_mapping(fields, None);
             quote! {{
                 #field_assignments
@@ -77,14 +84,23 @@ pub fn map_enum_variants(
 }
 
 /// Generates the field accessors for a struct, creating let bindings for each field.
-pub fn generate_struct_field_accessors(fields: &Fields) -> TokenStream {
+pub fn generate_struct_field_accessors(fields: &Fields, self_access: SelfAccess) -> TokenStream {
     let field_assignments = fields
         .field_accessors()
         .iter()
         .zip(fields.normalized_field_idents().iter())
         .map(|(accessor, normalized_ident)| {
-            quote! {
-                let #normalized_ident = &self.#accessor;
+            match self_access {
+                SelfAccess::Borrowed => {
+                    quote! {
+                        let #normalized_ident = &self.#accessor;
+                    }
+                }
+                SelfAccess::Moved => {
+                    quote! {
+                        let #normalized_ident = self.#accessor;
+                    }
+                }
             }
         })
         .collect::<Vec<_>>();
