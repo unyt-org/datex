@@ -2,29 +2,37 @@ use crate::{
     preludes::derive::SharedReferencesCache,
     traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
     values::{value::Value, value_container::ValueContainer},
+    prelude::*,
 };
+use crate::traits::convert_parts::PartsKind;
 
 impl IntoParts for ValueContainer {
-    fn into_parts<'a>(
-        self,
+    fn parts_kind(&self) -> PartsKind {
+        match self {
+            ValueContainer::Local(value) => value.parts_kind(),
+            ValueContainer::Shared(_shared) => PartsKind::None,
+        }
+    }
+    fn try_into_parts<'a>(
+        self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Option<Parts<'a>>
+    ) -> Result<Parts<'a>, ()>
     where
-        Self: Sized + 'a,
+        Self: 'a,
     {
         match self {
-            ValueContainer::Local(value) => value.into_parts(cache),
-            ValueContainer::Shared(_shared) => None,
+            ValueContainer::Local(value) => Box::new(value).try_into_parts(cache).map_err(|inner| ()),
+            ValueContainer::Shared(shared) => Err(()),
         }
     }
 
-    fn as_parts<'a>(
+    fn try_as_parts<'a>(
         &'a self,
         cache: &'a mut SharedReferencesCache,
-    ) -> Option<BorrowedParts<'a>> {
+    ) -> Result<BorrowedParts<'a>, ()> {
         match self {
-            ValueContainer::Local(value) => value.as_parts(cache),
-            ValueContainer::Shared(_shared) => None,
+            ValueContainer::Local(value) => value.try_as_parts(cache),
+            ValueContainer::Shared(_shared) => Err(()),
         }
     }
 }

@@ -8,24 +8,24 @@ use crate::{
 };
 
 impl<T: ConvertValueContainer> IntoParts for Vec<T> {
-    fn into_parts<'a>(
-        self,
+    fn try_into_parts<'a>(
+        self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Option<Parts<'a>>
+    ) -> Result<Parts<'a>, ()>
     where
         Self: 'a,
     {
-        Some(Parts::List(Box::new(
+        Ok(Parts::List(Box::new(
             self.into_iter()
                 .map(move |item| item.to_value_container(cache)),
         )))
     }
 
-    fn as_parts<'a>(
+    fn try_as_parts<'a>(
         &'a self,
         cache: &'a mut SharedReferencesCache,
-    ) -> Option<BorrowedParts<'a>> {
-        Some(BorrowedParts::List(Box::new(
+    ) -> Result<BorrowedParts<'a>, ()> {
+        Ok(BorrowedParts::List(Box::new(
             self.iter()
                 .map(|item| item.as_borrowed_value_container(cache)),
         )))

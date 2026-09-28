@@ -31,6 +31,17 @@ pub enum BorrowedParts<'a> {
     ),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Represents the kind of parts that a value can be converted into.
+pub enum PartsKind {
+    /// Represents a list value (a struct without named fields).
+    List,
+    /// Represents a map value (a struct with named fields).
+    Map,
+    /// Represents no parts.
+    None,
+}
+
 /// A trait for types that can be constructed from parts.
 pub trait FromParts {
     /// Tries to construct the implementing type from parts.
@@ -44,22 +55,34 @@ pub trait FromParts {
 
 /// A trait for types that can be converted into parts.
 pub trait IntoParts {
+    /// Returns the kind of parts that the implementing type can be converted into.
+    /// Both `try_into_parts` and `try_as_parts` should return a the parts variant that matches the kind returned by this method.
+    fn parts_kind(&self) -> PartsKind {
+        PartsKind::None
+    }
+    
     /// Converts the implementing type into its parts.
-    fn into_parts<'a>(
-        self,
+    /// Returns an error if the conversion is not possible.
+    /// You can check if the conversion is possible by calling `parts_kind()` 
+    /// and checking if it returns a value other than `PartsKind::None`.
+    fn try_into_parts<'a>(
+        self: Box<Self>,
         _cache: &'a mut SharedReferencesCache,
-    ) -> Option<Parts<'a>>
+    ) -> Result<Parts<'a>, ()>
     where
-        Self: Sized + 'a,
+        Self: 'a,
     {
-        None
+        Err(())
     }
 
     /// Converts the implementing type into its borrowed parts.
-    fn as_parts<'a>(
+    /// Returns an error if the conversion is not possible.
+    /// You can check if the conversion is possible by calling `parts_kind()` 
+    /// and checking if it returns a value other than `PartsKind::None`.
+    fn try_as_parts<'a>(
         &'a self,
         _cache: &'a mut SharedReferencesCache,
-    ) -> Option<BorrowedParts<'a>> {
-        None
+    ) -> Result<BorrowedParts<'a>, ()> {
+        Err(())
     }
 }

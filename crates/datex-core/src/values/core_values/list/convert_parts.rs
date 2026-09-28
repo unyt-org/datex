@@ -4,23 +4,27 @@ use crate::{
     traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
     values::core_values::list::List,
 };
+use crate::traits::convert_parts::PartsKind;
 
 impl IntoParts for List {
-    fn into_parts<'a>(
-        self,
+    fn parts_kind(&self) -> PartsKind {
+        PartsKind::List
+    }
+    fn try_into_parts<'a>(
+        self: Box<Self>,
         _cache: &'a mut SharedReferencesCache,
-    ) -> Option<Parts<'a>>
+    ) -> Result<Parts<'a>, ()>
     where
         Self: 'a,
     {
-        Some(Parts::List(Box::new(self.into_iter())))
+        Ok(Parts::List(Box::new(self.into_iter())))
     }
 
-    fn as_parts<'a>(
+    fn try_as_parts<'a>(
         &'a self,
         _cache: &'a mut SharedReferencesCache,
-    ) -> Option<BorrowedParts<'a>> {
-        Some(BorrowedParts::List(Box::new(
+    ) -> Result<BorrowedParts<'a>, ()> {
+        Ok(BorrowedParts::List(Box::new(
             self.iter().map(|item| item.into()),
         )))
     }

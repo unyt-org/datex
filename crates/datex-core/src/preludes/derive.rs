@@ -36,6 +36,7 @@ pub use crate::{
     traits::local_child_path_resolver::LocalChildPathResolver,
     traits::static_classification::StaticClassification,
     traits::value_access::ValueAccess,
+    traits::convert_parts::PartsKind,
     types::type_definition::callable::{CallableKind, CallableTypeDefinition},
     types::{
         entities::entity_impls::EntityImpl,
@@ -66,5 +67,5 @@ pub use crate::{
         },
         value::Value,
         value_container::{ValueContainer, value_key::BorrowedValueKey},
-    },
+    }
 };
