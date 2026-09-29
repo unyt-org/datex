@@ -151,35 +151,9 @@ impl Map {
         MapEntries::StructuralWithStringKeys(entries).into()
     }
 
-    /// Tries to cast a [ValueContainer] into a [Map].
-    /// First tries to downcast directly from the value container,
-    /// and if that fails, tries to recreate the map from its parts.
-    /// This allows e.g. converting a struct into a map, if the struct implements [IntoParts].
-    pub fn try_cast_from(
-        value: ValueContainer,
-        cache: &RefCell<SharedReferencesCache>,
-    ) -> Result<Self, Box<ValueContainer>> {
-        // first try to downcast directly from value container
-        match value.try_into_value::<Map>() {
-            Ok(map) => Ok(map),
-            // try to recreate map from parts
-            Err(value) => {
-                // panic!("kind: {:?}", value.parts_kind());
-                if matches!(value.parts_kind(), PartsKind::Map) {
-                    // unwraps are safe because we just checked the kind
-                    let mut cache = cache.borrow_mut();
-                    let map = Box::new(value).try_into_map_parts(cache.deref_mut()).unwrap();
-                    Ok(map)
-                } else {
-                    Err(Box::new(value))
-                }
-            }
-        }
-    }
-
-    // TODO:
-    pub fn try_cast_to<T: FromParts>(&self) -> Result<T, Box<ValueContainer>> {
-        T::try_from_parts(self)
+    // Tries to cast the map into a type that implements [FromParts].
+    pub fn try_cast_to<T: FromParts>(self) -> Result<T, ()> {
+        T::try_from_map_parts(self)
     }
 
     pub fn is_structural(&self) -> bool {

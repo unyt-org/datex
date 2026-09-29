@@ -1,3 +1,4 @@
+use core::cell::RefCell;
 #[cfg(feature = "compiler")]
 use crate::compiler::error::SpannedCompilerError;
 #[cfg(feature = "parser")]
@@ -12,6 +13,8 @@ use crate::{
     },
     values::borrowed_value_container::BorrowedValueContainer,
 };
+use crate::preludes::derive::{IntoParts, PartsKind};
+use crate::traits::convert_parts::FromParts;
 
 #[derive(Debug)]
 pub enum DeserializationError {
@@ -53,29 +56,36 @@ impl From<ScriptExecutionError> for DeserializationError {
     }
 }
 
+/// This traits allows converting types to and from [ValueContainer]s
+/// No value conversions are performed, only downcasts to more specific types or upcasts to more general types are performed
 pub trait ConvertValueContainer {
+    /// Convert the value to a [ValueContainer]
     fn to_value_container(
         self,
         cache: &mut SharedReferencesCache,
     ) -> ValueContainer;
 
+    /// Borrow the value as a [BorrowedValueContainer]
     fn as_borrowed_value_container(
         &self,
         cache: &mut SharedReferencesCache,
     ) -> BorrowedValueContainer<'_>;
 
+    /// Tries to downcast a [ValueContainer] into [Self]
     fn try_from_value_container(
         value_container: ValueContainer,
     ) -> Result<Self, ValueContainer>
     where
         Self: Sized;
 
+    /// Tries to downcast a [ValueContainer] into a reference of [Self]
     fn try_borrow_from_value_container(
         value_container: &ValueContainer,
     ) -> Result<&Self, ()>
     where
         Self: Sized;
 
+    /// Tries to downcast a [ValueContainer] into a mutable reference of [Self]
     fn try_borrow_mut_from_value_container(
         value_container: &mut ValueContainer,
     ) -> Result<&mut Self, ()>
@@ -157,5 +167,42 @@ pub trait ConvertValueContainer {
             .ok_or(DeserializationError::NoStaticValueFound)?;
         Self::try_from_value_container(value)
             .map_err(|_| DeserializationError::InvalidValue)
+    }
+
+    /// Tries to cast a `ValueContainer` into the specified type `T`.
+    /// First, it attempts a direct conversion (downcast) of the `ValueContainer`
+    /// into the type `T`.
+    /// If that fails, it tries to convert the `ValueContainer` into map or list parts and then into the type `T`.
+    fn try_cast_from_value_container(
+        value_container: ValueContainer,
+        cache: &RefCell<SharedReferencesCache>,
+    ) -> Result<Self, ()>
+    where
+        Self: ConvertValueContainer + FromParts + Sized {
+        // first try to convert (downcast) the value container directly into the type T
+        let val = value_container.try_into_value::<Self>();
+        match val {
+            Ok(value) => Ok(value),
+            // otherwise, try to convert the value container into map or list parts and then into the type T
+            Err(value_container) => match value_container.parts_kind() {
+                PartsKind::Map => {
+                    let map_parts = Box::new(value_container).try_into_map_parts(&mut cache.borrow_mut());
+                    if let Ok(map) = map_parts {
+                        Self::try_from_map_parts(map)
+                    } else {
+                        Err(())
+                    }
+                }
+                PartsKind::List => {
+                    let list_parts = Box::new(value_container).try_into_list_parts(&mut cache.borrow_mut());
+                    if let Ok(list) = list_parts {
+                        Self::try_from_list_parts(list)
+                    } else {
+                        Err(())
+                    }
+                }
+                _ => Err(()),
+            }
+        }
     }
 }
