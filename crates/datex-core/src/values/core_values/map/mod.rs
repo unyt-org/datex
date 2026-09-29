@@ -177,6 +177,11 @@ impl Map {
         }
     }
 
+    // TODO:
+    pub fn try_cast_to<T: FromParts>(&self) -> Result<T, Box<ValueContainer>> {
+        T::try_from_parts(self)
+    }
+
     pub fn is_structural(&self) -> bool {
         core::matches!(
             &self.entries,

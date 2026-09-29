@@ -22,19 +22,10 @@ impl IntoParts for List {
 }
 
 impl FromParts for List {
-    fn try_from_parts(parts: Parts) -> Result<Self, ()>
+    fn try_from_list_parts(parts: List) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        match parts {
-            Parts::List(iter) => {
-                let mut list = List::default();
-                for item in iter {
-                    list.push(item);
-                }
-                Ok(list)
-            }
-            _ => Err(()),
-        }
+        Ok(parts)
     }
 }

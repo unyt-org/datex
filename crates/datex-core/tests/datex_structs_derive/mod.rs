@@ -177,7 +177,7 @@ fn skip() {
 
     let value_container = ValueContainer::from(map);
     let deserialized = value_container
-        .try_into_value::<SerdeDatexWithSkip>()
+        .try_cast_to::<SerdeDatexWithSkip>()
         .unwrap();
 
     assert_eq!(deserialized.a, 42);

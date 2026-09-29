@@ -41,10 +41,16 @@ impl IntoParts for ValueContainer {
 }
 
 impl FromParts for ValueContainer {
-    fn try_from_parts(parts: Parts) -> Result<Self, ()>
+    fn try_from_map_parts(parts: Map) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        Ok(ValueContainer::Local(Value::try_from_parts(parts)?))
+        Ok(ValueContainer::Local(Value::try_from_map_parts(parts)?))
+    }
+    fn try_from_list_parts(parts: List) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        Ok(ValueContainer::Local(Value::try_from_list_parts(parts)?))
     }
 }

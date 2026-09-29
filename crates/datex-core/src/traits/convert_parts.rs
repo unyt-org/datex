@@ -46,8 +46,16 @@ pub enum PartsKind {
 
 /// A trait for types that can be constructed from parts.
 pub trait FromParts {
-    /// Tries to construct the implementing type from parts.
-    fn try_from_parts(_parts: Parts) -> Result<Self, ()>
+    /// Tries to construct the implementing type from the given map parts.
+    fn try_from_map_parts(_parts: Map) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        Err(())
+    }
+    
+    /// Tries to construct the implementing type from the given list parts.
+    fn try_from_list_parts(_parts: List) -> Result<Self, ()>
     where
         Self: Sized,
     {
@@ -79,10 +87,10 @@ pub trait IntoParts {
     {
         Err(())
     }
-    
+
     /// Converts the implementing type into its list parts.
     /// Returns an error if the conversion is not possible.
-    /// You can check if the conversion is possible by calling `parts_kind()` 
+    /// You can check if the conversion is possible by calling `parts_kind()`
     /// and checking if it returns `PartsKind::List`.
     fn try_into_list_parts<'a>(
         self: Box<Self>,

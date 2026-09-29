@@ -9,9 +9,7 @@ pub fn generate_try_from_core_value(
     let StructureData {
         ident, generics, ..
     } = structure_data;
-
-    let from_map_or_list = generate_try_from_map_or_list(structure_data);
-
+    
     quote! {
         #[automatically_derived]
         impl #generics ConvertCoreValue for #ident #generics {
@@ -22,7 +20,6 @@ pub fn generate_try_from_core_value(
             fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
                 match value {
                     CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
-                    #from_map_or_list,
                     _ => Err(value),
                 }
             }
@@ -65,31 +62,5 @@ pub fn generate_try_from_core_value(
         //         }
         //     }
         // }
-    }
-}
-
-/// Generates the match arm for converting from a CoreValue::Map or CoreValue::List to the target type.
-fn generate_try_from_map_or_list(
-    structure_data: &StructureData,
-) -> TokenStream {
-    let StructureData {
-        ident: _,
-        generics: _,
-        structure,
-        ..
-    } = structure_data;
-
-    match structure {
-        Structure::Struct(_) => quote! {
-            CoreValue::Map(map) => {
-                for (key, value) in map.into_iter() {
-                    panic!("key: {}, value: {:?}", key, value);
-                }
-                todo!()
-            }
-        },
-        Structure::Enum(_) => quote! {
-            CoreValue::Map(map) => todo!()
-        },
     }
 }

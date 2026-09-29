@@ -37,22 +37,16 @@ impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts
 impl<K: ConvertValueContainer + Eq + Hash, V: ConvertValueContainer> FromParts
     for IndexMap<K, V, RandomState>
 {
-    fn try_from_parts(parts: Parts) -> Result<Self, ()>
+    fn try_from_map_parts(parts: Map) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        match parts {
-            Parts::Map(iter) => {
-                let mut map = IndexMap::default();
-                for (key, value) in iter {
-                    map.insert(
-                        K::try_from_value_container(key).map_err(|_| ())?,
-                        V::try_from_value_container(value).map_err(|_| ())?,
-                    );
-                }
-                Ok(map)
-            }
-            _ => Err(()),
+        let mut index_map = IndexMap::default();
+        for (key, value) in parts {
+            let key = K::try_from_value_container(key.into()).map_err(|_| ())?;
+            let value = V::try_from_value_container(value).map_err(|_| ())?;
+            index_map.insert(key, value);
         }
+        Ok(index_map)
     }
 }
