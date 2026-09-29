@@ -4,8 +4,10 @@ use crate::datex_proxy::data::{EnumVariant, Fields, Structure};
 
 /// Represents whether the self value is borrowed or moved in the context of generating code for struct or enum variants.
 pub enum SelfAccess {
+    /// Indicates that the self value is borrowed, and field access should use references.
     Borrowed,
-    Moved
+    /// Indicates that the self value is moved, and field access should take ownership of the fields.
+    Moved,
 }
 
 /// Generates a mapping for the fields of a struct or the variants of an enum, depending on the structure type.

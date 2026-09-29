@@ -4,6 +4,8 @@ pub mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
+mod convert_value_container;
+
 use crate::{
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
