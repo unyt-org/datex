@@ -135,6 +135,7 @@ where
 
 #[test]
 fn struct_to_value_container() {
+    let cache = RefCell::new(SharedReferencesCache::default());
     let value_container: ValueContainer = Example {
         a: 42u8,
         b: "Test".to_string(),
@@ -142,7 +143,7 @@ fn struct_to_value_container() {
     }
     .into();
 
-    let map: Map = value_container.try_into_value().unwrap();
+    let map: Map = Map::try_cast_from_value_container(value_container, &cache).unwrap();
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(
         map.try_get("b").unwrap(),
@@ -177,11 +178,11 @@ fn skip() {
     assert!(!map.has("b"));
 
     let value_container = ValueContainer::from(map);
-    let deserialized = SerdeDatexWithSkip::try_cast_from_value_container(value_container, &cache)
-        .unwrap();
-
-    assert_eq!(deserialized.a, 42);
-    assert_eq!(deserialized.b, "".to_string());
+    // Attempting to deserialize should fail because the `b` field is skipped and cannot be deserialized
+    assert!(
+        SerdeDatexWithSkip::try_cast_from_value_container(value_container, &cache)
+            .is_err()
+    )
 }
 
 #[test]
@@ -210,13 +211,18 @@ fn skip2() {
         .try_into_value::<SerdeDatexWithSkip2>()
         .unwrap();
     assert_eq!(deserialized.a, 42);
-    assert_eq!(deserialized.b, NoDerive::default());
+    assert_eq!(deserialized.b, NoDerive {
+        a: 1,
+        b: "Hello".to_string(),
+    });
 }
 
 #[test]
 fn default() {
+    let cache = RefCell::new(SharedReferencesCache::default());
+
     #[derive(Datex, Debug, PartialEq)]
-    #[datex(only_structural, no_deserialize)]
+    #[datex(only_structural)]
     struct SerdeDatexWithDefault {
         a: u8,
         #[datex(default)]
@@ -226,9 +232,7 @@ fn default() {
     let map: Map =
         Map::from(vec![("a".to_string(), ValueContainer::from(42u8))]);
     let value_container = ValueContainer::from(map);
-    let deserialized = value_container
-        .try_into_value::<SerdeDatexWithDefault>()
-        .unwrap();
+    let deserialized = SerdeDatexWithDefault::try_cast_from_value_container(value_container, &cache).unwrap();
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, "".to_string());
 }

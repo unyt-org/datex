@@ -2,6 +2,7 @@ mod common;
 pub mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+mod convert_value_container;
 
 use crate::{
     prelude::*,

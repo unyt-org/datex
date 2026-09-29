@@ -35,7 +35,7 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
         SelfAccess::Moved,
         generate_into_map_parts_for_fields
     );
-    
+
     let into_list_parts_impl = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
         SelfAccess::Moved,
@@ -51,17 +51,17 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
 
             fn try_into_map_parts<'a>(
                 self: Box<Self>,
-                _cache: &'a mut SharedReferencesCache,
+                cache: &'a mut SharedReferencesCache,
             ) -> Result<Map, ()>
             where
                 Self: 'a,
             {
                 #into_map_parts_impl
             }
-            
+
             fn try_into_list_parts<'a>(
                 self: Box<Self>,
-                _cache: &'a mut SharedReferencesCache
+                cache: &'a mut SharedReferencesCache
             ) -> Result<List, ()>
             where
                 Self: 'a,
@@ -109,10 +109,10 @@ fn generate_into_map_parts_for_fields(fields: &Fields, tag: Option<&String>) -> 
                 Ok(map.collect::<Map>())
             }
         },
-        Fields::Unit | Fields::Unnamed(_) => quote! { Err(()) }, // unit structs cannot be converted into parts
+        Fields::Unit | Fields::Unnamed(_) => quote! { Err(()) }, // cannot be converted into map parts
         Fields::Transparent(field) => {
             let accessor = field.normalized_ident();
-            quote! { Box::new(#accessor).try_into_map_parts(_cache) } // delegate to the single field's implementation
+            quote! { Box::new(#accessor).try_into_map_parts(cache) } // delegate to the single field's implementation
         }
     }
 }
@@ -138,10 +138,10 @@ fn generate_into_list_parts_for_fields(fields: &Fields, tag: Option<&String>) ->
                 Ok(list.collect::<List>())
             }
         },
-        Fields::Unit | Fields::Named(_) => quote! { Err(()) }, // unit structs cannot be converted into parts
+        Fields::Unit | Fields::Named(_) => quote! { Err(()) }, // cannot be converted into list parts
         Fields::Transparent(field) => {
             let accessor = field.normalized_ident();
-            quote! { Box::new(#accessor).try_into_list_parts(_cache) } // delegate to the single field's implementation
+            quote! { Box::new(#accessor).try_into_list_parts(cache) } // delegate to the single field's implementation
         }
     }
 }
@@ -160,14 +160,149 @@ fn value_container_from_field(
     }
 }
 
+/// Generates the appropriate ValueContainer conversion from a ValueContainer based on the field's mapping
+/// For fields with serde mapping, it uses `try_serde_from_value_container`, otherwise it uses `try_into_value`.
+fn field_from_value_container(
+    accessor_result: Ident,
+    field_mapping: &FieldMapping,
+    unwrap_default: bool
+) -> TokenStream {
+    let access = if field_mapping.is_serde() {
+        quote! {{
+            match #accessor_result {
+                Ok(v) => Ok(try_serde_from_value_container(v).map_err(|_| ())?),
+                Err(e) => Err(e),
+            }
+        }}
+    } else {
+        quote! {{
+            match #accessor_result {
+                Ok(v) => Ok(v.try_into_value().map_err(|_| ())?),
+                Err(e) => Err(e),
+            }
+        }}
+    };
+
+    if unwrap_default {
+        quote! { #access.unwrap_or_default() }
+    } else {
+        quote! { #access.map_err(|_| ())? }
+    }
+}
 
 fn generate_from_parts(structure_data: &StructureData) -> TokenStream {
     let StructureData {
-        ident, generics, ..
+        ident, generics, attributes, ..
     } = structure_data;
+
+
+    let from_map_parts_impl = if attributes.no_deserialize {
+        quote! { Err(()) }
+    }
+    else {
+        match &structure_data.structure {
+            Structure::Struct(fields) => generate_from_map_parts_for_fields(fields),
+            Structure::Enum(variants) => {
+                quote! {todo!()}
+            }
+        }
+    };
+
+    let from_list_parts_impl = if attributes.no_deserialize {
+        quote! { Err(()) }
+    }
+    else {
+        match &structure_data.structure {
+            Structure::Struct(fields) => generate_from_list_parts_for_fields(fields),
+            Structure::Enum(variants) => {
+                quote! {todo!()}
+            }
+        }
+    };
 
     quote! {
         #[automatically_derived]
-        impl #generics FromParts for #ident #generics {}
+        impl #generics FromParts for #ident #generics {
+            fn try_from_map_parts(mut parts: Map) -> Result<Self, ()>
+            where
+                Self: Sized,
+            {
+                #from_map_parts_impl
+            }
+
+            fn try_from_list_parts(mut parts: List) -> Result<Self, ()>
+            where
+                Self: Sized,
+            {
+                #from_list_parts_impl
+            }
+        }
+    }
+}
+
+fn generate_from_map_parts_for_fields(fields: &Fields) -> TokenStream {
+    match fields {
+        Fields::Named(fields) => {
+            let field_conversions = fields.iter().map(|field| {
+                let field_name = &field.name;
+                let field_ident = field.ident_accessor();
+                let accessor = field.normalized_ident();
+
+                let from_value_container = field_from_value_container(
+                    accessor.clone(),
+                    &field.field.attributes.field_mapping,
+                    field.attributes.skip_with_default,
+                );
+
+                quote! {
+                    #field_ident: {
+                        /// SAFETY: parts is not used afterward
+                        let #accessor = unsafe { parts.try_delete_unchecked(#field_name) };
+                        #from_value_container
+                    },
+                }
+            });
+            quote! {
+                Ok(Self {
+                    #(#field_conversions)*
+                })
+            }
+        },
+        Fields::Unit | Fields::Unnamed(_) => quote! { Err(()) }, // unit structs cannot be converted from map parts
+        Fields::Transparent(field) => {
+            quote! { todo!() } // delegate to the single field's implementation
+        }
+    }
+}
+
+fn generate_from_list_parts_for_fields(fields: &Fields) -> TokenStream {
+    match fields {
+        Fields::Unnamed(fields) => {
+            let (field_pops, field_idents) = fields.iter().enumerate().map(|(index, field)| {
+                let ident = field.normalized_ident();
+                let from_value_container = field_from_value_container(
+                    ident.clone(),
+                    &field.field.attributes.field_mapping,
+                    false, // TODO
+                );
+                (
+                    quote! {
+                        let #ident = parts.pop(#index).ok_or(())?;
+                    },
+                    from_value_container
+                )
+            }).collect::<(Vec<_>, Vec<_>)>();
+
+            quote! {
+                #(#field_pops)*
+                Ok(Self(
+                    #(#field_idents)*
+                ))
+            }
+        },
+        Fields::Unit | Fields::Named(_) => quote! { Err(()) }, // unit structs cannot be converted from list parts
+        Fields::Transparent(field) => {
+            quote! { todo!() } // delegate to the single field's implementation
+        }
     }
 }
