@@ -296,6 +296,7 @@ fn enum_to_value() {
 
 #[test]
 fn struct_to_value() {
+    let cache = RefCell::new(SharedReferencesCache::default());
     let value: Value = Example {
         a: 42u8,
         b: "Test".to_string(),
@@ -303,7 +304,7 @@ fn struct_to_value() {
     }
     .into();
 
-    let map = value.try_into_value::<Map>().unwrap();
+    let map = Map::try_cast_from_value_container(ValueContainer::from(value), &cache).unwrap();
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(
         map.try_get("b").unwrap(),
@@ -317,6 +318,7 @@ fn struct_to_value() {
 
 #[test]
 fn new_type_struct_to_value() {
+    let cache = RefCell::new(SharedReferencesCache::default());
     let value: Value = ExampleNewType(Example {
         a: 42u8,
         b: "Test".to_string(),
@@ -324,7 +326,7 @@ fn new_type_struct_to_value() {
     })
     .into();
 
-    let map = value.try_into_value::<Map>().unwrap();
+    let map = Map::try_cast_from_value_container(ValueContainer::from(value), &cache).unwrap();
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(
         map.try_get("b").unwrap(),
@@ -338,6 +340,7 @@ fn new_type_struct_to_value() {
 
 #[test]
 fn value_container_to_struct() {
+    let cache = RefCell::new(SharedReferencesCache::default());
     let value_container: ValueContainer =
         ValueContainer::from(Map::from(vec![
             ("a".to_string(), ValueContainer::from(42u8)),
@@ -345,7 +348,7 @@ fn value_container_to_struct() {
             ("c".to_string(), ValueContainer::from(Endpoint::default())),
         ]));
 
-    let example = value_container.try_into_value::<Example>().unwrap();
+    let example = Example::try_cast_from_value_container(value_container, &cache).unwrap();
 
     assert_eq!(example.a, 42u8);
     assert_eq!(example.b, "Test".to_string());
@@ -354,13 +357,14 @@ fn value_container_to_struct() {
 
 #[test]
 fn value_to_struct() {
+    let cache = RefCell::new(SharedReferencesCache::default());
     let value: Value = Value::from(Map::from(vec![
         ("a".to_string(), ValueContainer::from(42u8)),
         ("b".to_string(), ValueContainer::from("Test".to_string())),
         ("c".to_string(), ValueContainer::from(Endpoint::default())),
     ]));
 
-    let example = value.try_into_value::<Example>().unwrap();
+    let example = Example::try_cast_from_value_container(ValueContainer::from(value), &cache).unwrap();
 
     assert_eq!(example.a, 42u8);
     assert_eq!(example.b, "Test".to_string());
@@ -369,13 +373,14 @@ fn value_to_struct() {
 
 #[test]
 fn value_to_new_typestruct() {
+    let cache = RefCell::new(SharedReferencesCache::default());
     let value: Value = Value::from(Map::from(vec![
         ("a".to_string(), ValueContainer::from(42u8)),
         ("b".to_string(), ValueContainer::from("Test".to_string())),
         ("c".to_string(), ValueContainer::from(Endpoint::default())),
     ]));
 
-    let example = value.try_into_value::<ExampleNewType>().unwrap();
+    let example = ExampleNewType::try_cast_from_value_container(ValueContainer::from(value), &cache).unwrap();
 
     assert_eq!(example.0.a, 42u8);
     assert_eq!(example.0.b, "Test".to_string());
@@ -455,6 +460,7 @@ fn value_to_enum_failure() {
 
 #[test]
 fn struct_with_serde_to_value_container() {
+    let cache = RefCell::new(SharedReferencesCache::default());
     let serde_example = SerdeDatexExample {
         a: 42u8,
         serde: SerdeExample {
@@ -466,7 +472,7 @@ fn struct_with_serde_to_value_container() {
     // Note: uses try_into because of datex(serde)
     let value_container: ValueContainer = serde_example.try_into().unwrap();
 
-    let map: Map = value_container.try_into_value().unwrap();
+    let map: Map = Map::try_cast_from_value_container(value_container, &cache).unwrap();
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     let serde_map: Map = map
         .try_get("serde")
@@ -486,6 +492,8 @@ fn struct_with_serde_to_value_container() {
 
 #[test]
 fn struct_with_serde_infallible_to_value_container() {
+    let cache = RefCell::new(SharedReferencesCache::default());
+
     #[derive(Datex, Debug, Clone, PartialEq)]
     #[datex(structural)]
     struct SerdeDatexExampleInfallible {
@@ -505,7 +513,7 @@ fn struct_with_serde_infallible_to_value_container() {
     // Note: uses into instead of try_into because of datex(serde_infallible)
     let value_container: ValueContainer = serde_example.into();
 
-    let map: Map = value_container.try_into_value().unwrap();
+    let map: Map = Map::try_cast_from_value_container(value_container, &cache).unwrap();
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     let serde_map: Map = map
         .try_get("serde")
@@ -525,9 +533,10 @@ fn struct_with_serde_infallible_to_value_container() {
 
 #[test]
 fn struct_with_value_container() {
+    let cache = RefCell::new(SharedReferencesCache::default());
     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
-    #[derive(Datex, Debug, PartialEq)]
+    #[derive(Datex, Debug, PartialEq, Clone)]
     #[datex(structural)]
     struct ExampleWithValueContainer {
         a: u8,
@@ -541,7 +550,7 @@ fn struct_with_value_container() {
     };
 
     let value: Value = example_local.into();
-    let map = value.try_into_value::<Map>().unwrap();
+    let map = Map::try_cast_from_value_container(ValueContainer::from(value), &cache).unwrap();
     assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(
         map.try_get("val").unwrap(),
@@ -561,13 +570,14 @@ fn struct_with_value_container() {
         val: shared_container.clone(),
     };
 
-    let value_container: ValueContainer = example_shared.into();
-    let map: &Map = value_container.try_as().unwrap();
-    assert_eq!(map.try_get("a").unwrap(), &ValueContainer::from(42u8));
-    assert_eq!(map.try_get("val").unwrap(), &shared_container);
+    let value_container: ValueContainer = example_shared.clone().into();
+    let value_container_2: ValueContainer = example_shared.into();
 
-    let deserialized_example_shared = value_container
-        .try_into_value::<ExampleWithValueContainer>()
+    let map_2 = Map::try_cast_from_value_container(value_container, &cache).unwrap();
+    assert_eq!(map_2.try_get("a").unwrap(), &ValueContainer::from(42u8));
+    assert_eq!(map_2.try_get("val").unwrap(), &shared_container);
+
+    let deserialized_example_shared = ExampleWithValueContainer::try_cast_from_value_container(value_container_2, &cache)
         .unwrap();
     assert_eq!(deserialized_example_shared.a, 42u8);
     assert_eq!(deserialized_example_shared.val, shared_container);
@@ -575,6 +585,7 @@ fn struct_with_value_container() {
 
 #[test]
 fn struct_with_owned_shared_value_container() {
+    let cache = RefCell::new(SharedReferencesCache::default());
     let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
     #[derive(Datex, Debug, PartialEq)]
@@ -595,7 +606,7 @@ fn struct_with_owned_shared_value_container() {
 
     let value_container: ValueContainer = example.into();
 
-    let map: &Map = value_container.try_as().unwrap();
+    let map = Map::try_cast_from_value_container(value_container, &cache).unwrap();
 
     if let ValueContainer::Shared(SharedContainer::Owned(shared_container)) =
         map.try_get("owned").unwrap()
