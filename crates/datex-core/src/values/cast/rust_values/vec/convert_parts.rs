@@ -5,30 +5,26 @@ use crate::{
         convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
         convert_value_container::ConvertValueContainer,
     },
+    values::{core_values::list::List},
 };
+use crate::preludes::derive::PartsKind;
 
 impl<T: ConvertValueContainer> IntoParts for Vec<T> {
-    fn try_into_parts<'a>(
+    fn parts_kind(&self) -> PartsKind {
+        PartsKind::List
+    }
+    fn try_into_list_parts<'a>(
         self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Result<Parts<'a>, ()>
+    ) -> Result<List, ()>
     where
         Self: 'a,
     {
-        Ok(Parts::List(Box::new(
-            self.into_iter()
-                .map(move |item| item.to_value_container(cache)),
-        )))
-    }
-
-    fn try_as_parts<'a>(
-        &'a self,
-        cache: &'a mut SharedReferencesCache,
-    ) -> Result<BorrowedParts<'a>, ()> {
-        Ok(BorrowedParts::List(Box::new(
-            self.iter()
-                .map(|item| item.as_borrowed_value_container(cache)),
-        )))
+        let mut list = List::default();
+        for item in *self {
+            list.push(item.to_value_container(cache));
+        }
+        Ok(list)
     }
 }
 
