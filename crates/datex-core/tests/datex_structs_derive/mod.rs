@@ -5,6 +5,7 @@ mod to_instructions;
 
 use core::assert_matches;
 use core::cell::RefCell;
+use std::ops::{Deref, DerefMut};
 use datex_core::{
     prelude::*,
     traits::get_datex_type::GetDatexType,
@@ -171,13 +172,12 @@ fn skip() {
     }
     .into();
 
-    let map = Map::try_cast_from(value_container, &cache).unwrap();
+    let map = Map::try_cast_from_value_container(value_container, &cache).unwrap();
     assert!(map.has("a"));
     assert!(!map.has("b"));
 
     let value_container = ValueContainer::from(map);
-    let deserialized = value_container
-        .try_cast_to::<SerdeDatexWithSkip>()
+    let deserialized = SerdeDatexWithSkip::try_cast_from_value_container(value_container, &cache)
         .unwrap();
 
     assert_eq!(deserialized.a, 42);
