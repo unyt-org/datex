@@ -11,54 +11,43 @@ use crate::values::core_values::map::Map;
 use crate::values::core_values::list::List;
 
 impl FromParts for Value {
-    fn try_from_parts(parts: Parts) -> Result<Self, ()>
+    fn try_from_map_parts(parts: Map) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        match parts {
-            Parts::Map(iter) => {
-                Ok(Value::from(Map::from(iter.collect_vec())))
-            }
-            Parts::List(iter) => {
-                Ok(Value::from(List::new(iter.collect_vec())))
-            }
-        }
+        Ok(CoreValue::try_from_map_parts(parts)?.into())
+    }
+
+    fn try_from_list_parts(parts: List) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        Ok(CoreValue::try_from_list_parts(parts)?.into())
     }
 }
 
 impl IntoParts for Value {
     fn parts_kind(&self) -> PartsKind {
-        match &self.inner {
-            CoreValue::Map(_) => PartsKind::Map,
-            CoreValue::List(_) => PartsKind::List,
-            CoreValue::Native(native) => native.value.parts_kind(),
-            _ => PartsKind::None,
-        }
+        self.inner.parts_kind()
     }
 
     fn try_into_map_parts<'a>(
         self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Result<Map, ()> where Self: 'a
+    ) -> Result<Map, ()>
+    where
+        Self: 'a,
     {
-        match self.inner {
-            CoreValue::Map(map) => Ok(map),
-            CoreValue::Native(native) => native.value.try_into_map_parts(cache),
-            _ => Err(()),
-        }
+        Box::new(self.inner).try_into_map_parts(cache)
     }
 
     fn try_into_list_parts<'a>(
-        self: Box<Self>, 
+        self: Box<Self>,
         cache: &'a mut SharedReferencesCache
     ) -> Result<List, ()>
     where
         Self: 'a,
     {
-        match self.inner {
-            CoreValue::List(list) => Ok(list),
-            CoreValue::Native(native) => native.value.try_into_list_parts(cache),
-            _ => Err(()),
-        }
+        Box::new(self.inner).try_into_list_parts(cache)
     }
 }

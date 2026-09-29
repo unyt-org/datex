@@ -23,19 +23,10 @@ impl IntoParts for Map {
 }
 
 impl FromParts for Map {
-    fn try_from_parts(parts: Parts) -> Result<Self, ()>
+    fn try_from_map_parts(parts: Map) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        match parts {
-            Parts::Map(iter) => {
-                let mut map = Map::default();
-                for (key, value) in iter {
-                    map.set_unchecked(key, value);
-                }
-                Ok(map)
-            }
-            _ => Err(()),
-        }
+        Ok(parts)
     }
 }

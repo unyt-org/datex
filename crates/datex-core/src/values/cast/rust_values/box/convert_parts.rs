@@ -33,10 +33,17 @@ impl<T: IntoParts> IntoParts for Box<T> {
 }
 
 impl<T: FromParts> FromParts for Box<T> {
-    fn try_from_parts(parts: Parts) -> Result<Self, ()>
+    fn try_from_map_parts(parts: Map) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        Ok(Box::new(T::try_from_parts(parts)?))
+        Ok(Box::new(T::try_from_map_parts(parts)?))
+    }
+
+    fn try_from_list_parts(parts: List) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        Ok(Box::new(T::try_from_list_parts(parts)?))
     }
 }

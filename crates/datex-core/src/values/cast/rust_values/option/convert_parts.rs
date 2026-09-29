@@ -28,7 +28,7 @@ impl<T: IntoParts> IntoParts for Option<T> {
     }
 
     fn try_into_list_parts<'a>(
-        self: Box<Self>, 
+        self: Box<Self>,
         cache: &'a mut SharedReferencesCache
     ) -> Result<List, ()>
     where
@@ -43,10 +43,16 @@ impl<T: IntoParts> IntoParts for Option<T> {
 }
 
 impl<T: FromParts> FromParts for Option<T> {
-    fn try_from_parts(parts: Parts) -> Result<Self, ()>
+    fn try_from_map_parts(parts: Map) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        Ok(Some(T::try_from_parts(parts)?))
+        Ok(Some(T::try_from_map_parts(parts)?))
+    }
+    fn try_from_list_parts(parts: List) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        Ok(Some(T::try_from_list_parts(parts)?))
     }
 }

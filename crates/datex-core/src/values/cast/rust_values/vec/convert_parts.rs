@@ -29,21 +29,14 @@ impl<T: ConvertValueContainer> IntoParts for Vec<T> {
 }
 
 impl<T: ConvertValueContainer> FromParts for Vec<T> {
-    fn try_from_parts(parts: Parts) -> Result<Self, ()>
+    fn try_from_list_parts(parts: List) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        match parts {
-            Parts::List(list) => {
-                let mut vec = Vec::new();
-                for item in list {
-                    vec.push(
-                        T::try_from_value_container(item).map_err(|_| ())?,
-                    );
-                }
-                Ok(vec)
-            }
-            _ => Err(()),
+        let mut vec = Vec::new();
+        for item in parts {
+            vec.push(T::try_from_value_container(item).map_err(|_| ())?);
         }
+        Ok(vec)
     }
 }
