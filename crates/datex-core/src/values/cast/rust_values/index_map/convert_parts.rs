@@ -6,6 +6,7 @@ use crate::{
         convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
         convert_value_container::ConvertValueContainer,
     },
+    values::{core_values::map::Map},
 };
 use core::hash::Hash;
 use indexmap::IndexMap;
@@ -13,35 +14,23 @@ use indexmap::IndexMap;
 impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts
     for IndexMap<K, V, RandomState>
 {
-    fn try_into_parts<'a>(
+    fn try_into_map_parts<'a>(
         self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Result<Parts<'a>, ()>
+    ) -> Result<Map, ()>
     where
         Self: 'a,
     {
-        Ok(Parts::Map(Box::new(self.into_iter().map(
-            move |(key, value)| {
+        Ok(self
+            .into_iter()
+            .map(|(key, value)| {
                 (
                     key.to_value_container(cache),
                     value.to_value_container(cache),
                 )
-            },
-        ))))
-    }
-
-    fn try_as_parts<'a>(
-        &'a self,
-        cache: &'a mut SharedReferencesCache,
-    ) -> Result<BorrowedParts<'a>, ()> {
-        Ok(BorrowedParts::Map(Box::new(self.iter().map(
-            move |(key, value)| {
-                (
-                    key.as_borrowed_value_container(cache),
-                    value.as_borrowed_value_container(cache),
-                )
-            },
-        ))))
+            })
+            .collect::<Map>()
+        )
     }
 }
 

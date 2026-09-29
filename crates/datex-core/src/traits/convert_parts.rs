@@ -4,6 +4,8 @@ use crate::{
     values::{
         borrowed_value_container::BorrowedValueContainer,
         value_container::ValueContainer,
+        core_values::map::Map,
+        core_values::list::List
     },
 };
 
@@ -56,33 +58,39 @@ pub trait FromParts {
 /// A trait for types that can be converted into parts.
 pub trait IntoParts {
     /// Returns the kind of parts that the implementing type can be converted into.
-    /// Both `try_into_parts` and `try_as_parts` should return a the parts variant that matches the kind returned by this method.
+    /// This can be used to check if the conversion is possible before attempting it.
+    /// If this returns `PartsKind::None`, then the conversion is not possible.
+    /// If this returns `PartsKind::List`, then the conversion is possible and `try_into_list_parts()` can be called.
+    /// If this returns `PartsKind::Map`, then the conversion is possible and `try_into_map_parts()` can be called.
     fn parts_kind(&self) -> PartsKind {
         PartsKind::None
     }
     
-    /// Converts the implementing type into its parts.
+    /// Converts the implementing type into its map parts.
     /// Returns an error if the conversion is not possible.
     /// You can check if the conversion is possible by calling `parts_kind()` 
-    /// and checking if it returns a value other than `PartsKind::None`.
-    fn try_into_parts<'a>(
+    /// and checking if it returns `PartsKind::Map`.
+    fn try_into_map_parts<'a>(
         self: Box<Self>,
         _cache: &'a mut SharedReferencesCache,
-    ) -> Result<Parts<'a>, ()>
+    ) -> Result<Map, ()>
     where
         Self: 'a,
     {
         Err(())
     }
-
-    /// Converts the implementing type into its borrowed parts.
+    
+    /// Converts the implementing type into its list parts.
     /// Returns an error if the conversion is not possible.
     /// You can check if the conversion is possible by calling `parts_kind()` 
-    /// and checking if it returns a value other than `PartsKind::None`.
-    fn try_as_parts<'a>(
-        &'a self,
+    /// and checking if it returns `PartsKind::List`.
+    fn try_into_list_parts<'a>(
+        self: Box<Self>,
         _cache: &'a mut SharedReferencesCache,
-    ) -> Result<BorrowedParts<'a>, ()> {
+    ) -> Result<List, ()>
+    where
+        Self: 'a,
+    {
         Err(())
     }
 }

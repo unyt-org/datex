@@ -2,27 +2,33 @@ use crate::{
     prelude::*,
     preludes::derive::SharedReferencesCache,
     traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
+    values::core_values::map::Map,
+    values::core_values::list::List,
 };
 use core::ops::Deref;
+use crate::preludes::derive::{PartsKind};
 
 impl<T: IntoParts> IntoParts for Box<T> {
-    fn try_into_parts<'a>(
+    fn parts_kind(&self) -> PartsKind {
+        self.deref().parts_kind()
+    }
+    fn try_into_map_parts<'a>(
         self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Result<Parts<'a>, ()>
+    ) -> Result<Map, ()>
     where
         Self: 'a,
     {
         let inner = *self;
-        inner
-            .try_into_parts(cache)
+        inner.try_into_map_parts(cache)
     }
 
-    fn try_as_parts<'a>(
-        &'a self,
-        cache: &'a mut SharedReferencesCache,
-    ) -> Result<BorrowedParts<'a>, ()> {
-        self.deref().try_as_parts(cache)
+    fn try_into_list_parts<'a>(self: Box<Self>, _cache: &'a mut SharedReferencesCache) -> Result<List, ()>
+    where
+        Self: 'a,
+    {
+        let inner = *self;
+        inner.try_into_list_parts(_cache)
     }
 }
 

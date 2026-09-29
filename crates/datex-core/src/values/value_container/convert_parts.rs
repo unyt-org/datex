@@ -1,7 +1,7 @@
 use crate::{
     preludes::derive::SharedReferencesCache,
     traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
-    values::{value::Value, value_container::ValueContainer},
+    values::{value::Value, value_container::ValueContainer, core_values::map::Map, core_values::list::List},
     prelude::*,
 };
 use crate::traits::convert_parts::PartsKind;
@@ -13,26 +13,29 @@ impl IntoParts for ValueContainer {
             ValueContainer::Shared(_shared) => PartsKind::None,
         }
     }
-    fn try_into_parts<'a>(
+    fn try_into_map_parts<'a>(
         self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Result<Parts<'a>, ()>
+    ) -> Result<Map, ()>
     where
         Self: 'a,
     {
         match self {
-            ValueContainer::Local(value) => Box::new(value).try_into_parts(cache).map_err(|inner| ()),
+            ValueContainer::Local(value) => Box::new(value).try_into_map_parts(cache),
             ValueContainer::Shared(shared) => Err(()),
         }
     }
 
-    fn try_as_parts<'a>(
-        &'a self,
-        cache: &'a mut SharedReferencesCache,
-    ) -> Result<BorrowedParts<'a>, ()> {
+    fn try_into_list_parts<'a>(
+        self: Box<Self>,
+        cache: &'a mut SharedReferencesCache
+    ) -> Result<List, ()>
+    where
+        Self: 'a,
+    {
         match self {
-            ValueContainer::Local(value) => value.try_as_parts(cache),
-            ValueContainer::Shared(_shared) => Err(()),
+            ValueContainer::Local(value) => Box::new(value).try_into_list_parts(cache),
+            ValueContainer::Shared(shared) => Err(()),
         }
     }
 }

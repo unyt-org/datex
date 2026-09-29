@@ -10,23 +10,14 @@ impl IntoParts for List {
     fn parts_kind(&self) -> PartsKind {
         PartsKind::List
     }
-    fn try_into_parts<'a>(
+    fn try_into_list_parts<'a>(
         self: Box<Self>,
         _cache: &'a mut SharedReferencesCache,
-    ) -> Result<Parts<'a>, ()>
+    ) -> Result<List, ()>
     where
         Self: 'a,
     {
-        Ok(Parts::List(Box::new(self.into_iter())))
-    }
-
-    fn try_as_parts<'a>(
-        &'a self,
-        _cache: &'a mut SharedReferencesCache,
-    ) -> Result<BorrowedParts<'a>, ()> {
-        Ok(BorrowedParts::List(Box::new(
-            self.iter().map(|item| item.into()),
-        )))
+        Ok(*self)
     }
 }
 

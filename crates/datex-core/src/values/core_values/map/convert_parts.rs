@@ -10,26 +10,15 @@ impl IntoParts for Map {
     fn parts_kind(&self) -> PartsKind {
         PartsKind::Map
     }
-    
-    fn try_into_parts<'a>(
+
+    fn try_into_map_parts<'a>(
         self: Box<Self>,
         _cache: &'a mut SharedReferencesCache,
-    ) -> Result<Parts<'a>, ()>
+    ) -> Result<Map, ()>
     where
         Self: 'a,
     {
-        Ok(Parts::Map(Box::new(
-            self.into_iter().map(|(key, value)| (key.into(), value)),
-        )))
-    }
-
-    fn try_as_parts<'a>(
-        &'a self,
-        _cache: &'a mut SharedReferencesCache,
-    ) -> Result<BorrowedParts<'a>, ()> {
-        Ok(BorrowedParts::Map(Box::new(
-            self.iter().map(|(key, value)| (key.into(), value.into())),
-        )))
+        Ok(*self)
     }
 }
 

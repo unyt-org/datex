@@ -36,26 +36,28 @@ impl IntoParts for Value {
         }
     }
 
-    fn try_into_parts<'a>(
+    fn try_into_map_parts<'a>(
         self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Result<Parts<'a>, ()> where Self: 'a
+    ) -> Result<Map, ()> where Self: 'a
     {
         match self.inner {
-            CoreValue::Map(map) => Box::new(map).try_into_parts(cache),
-            CoreValue::List(list) => Box::new(list).try_into_parts(cache),
-            CoreValue::Native(native) => native.value.try_into_parts(cache),
+            CoreValue::Map(map) => Ok(map),
+            CoreValue::Native(native) => native.value.try_into_map_parts(cache),
             _ => Err(()),
         }
     }
-    fn try_as_parts<'a>(
-        &'a self,
-        cache: &'a mut SharedReferencesCache,
-    ) -> Result<BorrowedParts<'a>, ()> {
-        match &self.inner {
-            CoreValue::Map(map) => map.try_as_parts(cache),
-            CoreValue::List(list) => list.try_as_parts(cache),
-            CoreValue::Native(native) => native.value.try_as_parts(cache),
+
+    fn try_into_list_parts<'a>(
+        self: Box<Self>, 
+        cache: &'a mut SharedReferencesCache
+    ) -> Result<List, ()>
+    where
+        Self: 'a,
+    {
+        match self.inner {
+            CoreValue::List(list) => Ok(list),
+            CoreValue::Native(native) => native.value.try_into_list_parts(cache),
             _ => Err(()),
         }
     }

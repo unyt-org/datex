@@ -168,8 +168,8 @@ impl Map {
                 if matches!(value.parts_kind(), PartsKind::Map) {
                     // unwraps are safe because we just checked the kind
                     let mut cache = cache.borrow_mut();
-                    let parts = Box::new(value).try_into_parts(cache.deref_mut()).unwrap();
-                    Ok(Map::try_from_parts(parts).unwrap())
+                    let map = Box::new(value).try_into_map_parts(cache.deref_mut()).unwrap();
+                    Ok(map)
                 } else {
                     Err(Box::new(value))
                 }
