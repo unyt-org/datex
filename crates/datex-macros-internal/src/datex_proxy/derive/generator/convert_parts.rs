@@ -49,11 +49,15 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
-        #[automatically_derived]
-        impl #impl_generics IntoParts for #ident #ty_generics #where_clause {
+         #[automatically_derived]
+        impl #impl_generics WithPartsKind for #ident #ty_generics #where_clause {
             fn parts_kind(&self) -> PartsKind {
                 #parts_kind
             }
+        }
+
+        #[automatically_derived]
+        impl #impl_generics IntoParts for #ident #ty_generics #where_clause {
 
             fn try_into_map_parts<'a>(
                 self: Box<Self>,
@@ -238,14 +242,14 @@ fn generate_from_parts(structure_data: &StructureData) -> TokenStream {
     quote! {
         #[automatically_derived]
         impl #impl_generics FromParts for #ident #ty_generics #where_clause {
-            fn try_from_map_parts(mut parts: Map) -> Result<Self, ()>
+            fn try_from_map_parts_with_tag(mut parts: Map, tag: Option<&str>) -> Result<Self, ()>
             where
                 Self: Sized,
             {
                 #from_map_parts_impl
             }
 
-            fn try_from_list_parts(mut parts: List) -> Result<Self, ()>
+            fn try_from_list_parts_with_tag(mut parts: List, tag: Option<&str>) -> Result<Self, ()>
             where
                 Self: Sized,
             {

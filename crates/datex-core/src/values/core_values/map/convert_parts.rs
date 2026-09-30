@@ -1,16 +1,17 @@
 use crate::{
     prelude::*,
     preludes::derive::SharedReferencesCache,
-    traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
+    traits::convert_parts::{FromParts, IntoParts, PartsKind, WithPartsKind},
     values::core_values::map::Map,
 };
-use crate::traits::convert_parts::PartsKind;
 
-impl IntoParts for Map {
+impl WithPartsKind for Map {
     fn parts_kind(&self) -> PartsKind {
         PartsKind::Map
     }
+}
 
+impl IntoParts for Map {
     fn try_into_map_parts<'a>(
         self: Box<Self>,
         _cache: &'a mut SharedReferencesCache,

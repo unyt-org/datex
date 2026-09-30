@@ -1,15 +1,25 @@
 use crate::{
     prelude::*,
-    preludes::derive::SharedReferencesCache,
+    preludes::derive::{PartsKind, SharedReferencesCache},
     random::RandomState,
     traits::{
-        convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
+        convert_parts::{
+            BorrowedParts, FromParts, IntoParts, Parts, WithPartsKind,
+        },
         convert_value_container::ConvertValueContainer,
     },
-    values::{core_values::map::Map},
+    values::core_values::map::Map,
 };
 use core::hash::Hash;
 use indexmap::IndexMap;
+
+impl<K: ConvertValueContainer, V: ConvertValueContainer> WithPartsKind
+    for IndexMap<K, V, RandomState>
+{
+    fn parts_kind(&self) -> PartsKind {
+        PartsKind::Map
+    }
+}
 
 impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts
     for IndexMap<K, V, RandomState>
@@ -29,8 +39,7 @@ impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts
                     value.to_value_container(cache),
                 )
             })
-            .collect::<Map>()
-        )
+            .collect::<Map>())
     }
 }
 
@@ -43,7 +52,8 @@ impl<K: ConvertValueContainer + Eq + Hash, V: ConvertValueContainer> FromParts
     {
         let mut index_map = IndexMap::default();
         for (key, value) in parts {
-            let key = K::try_from_value_container(key.into()).map_err(|_| ())?;
+            let key =
+                K::try_from_value_container(key.into()).map_err(|_| ())?;
             let value = V::try_from_value_container(value).map_err(|_| ())?;
             index_map.insert(key, value);
         }

@@ -1,11 +1,11 @@
 pub mod classification;
+mod convert_core_value;
 pub mod datex_hash;
 pub mod datex_native;
-mod try_from_core_value;
 
 use crate::{
     traits::{
-        convert_parts::{FromParts, IntoParts},
+        convert_parts::{FromParts, IntoParts, WithPartsKind},
         datex_native_only_structural::DatexNativeOnlyStructural,
         datex_native_structural::DatexNativeStructural,
         get_core_lib_type_id::GetCoreLibTypeId,
@@ -38,6 +38,7 @@ mod to_datex_expression_data {
 impl ValueAccess for Duration {}
 impl FromParts for Duration {}
 impl IntoParts for Duration {}
+impl WithPartsKind for Duration {}
 impl GetCoreLibTypeId for Duration {}
 impl GetDatexType for Duration {}
 impl UpdateHandlerImpl for Duration {}

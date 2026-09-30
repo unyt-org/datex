@@ -1,13 +1,12 @@
-use itertools::Itertools;
 use crate::{
-    preludes::derive::SharedReferencesCache,
-    traits::convert_parts::{FromParts, IntoParts, Parts},
     prelude::*,
+    preludes::derive::{CoreValue, SharedReferencesCache},
+    traits::convert_parts::{
+        FromParts, IntoParts, Parts, PartsKind, WithPartsKind,
+    },
+    values::core_values::{list::List, map::Map},
 };
-use crate::preludes::derive::CoreValue;
-use crate::traits::convert_parts::PartsKind;
-use crate::values::core_values::map::Map;
-use crate::values::core_values::list::List;
+use itertools::Itertools;
 
 impl FromParts for CoreValue {
     fn try_from_map_parts(parts: Map) -> Result<Self, ()>
@@ -18,7 +17,7 @@ impl FromParts for CoreValue {
     }
 }
 
-impl IntoParts for CoreValue {
+impl WithPartsKind for CoreValue {
     fn parts_kind(&self) -> PartsKind {
         match self {
             CoreValue::Map(_) => PartsKind::Map,
@@ -27,11 +26,15 @@ impl IntoParts for CoreValue {
             _ => PartsKind::None,
         }
     }
+}
 
+impl IntoParts for CoreValue {
     fn try_into_map_parts<'a>(
         self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
-    ) -> Result<Map, ()> where Self: 'a
+    ) -> Result<Map, ()>
+    where
+        Self: 'a,
     {
         match self {
             CoreValue::Map(map) => Ok(map),
@@ -41,15 +44,17 @@ impl IntoParts for CoreValue {
     }
 
     fn try_into_list_parts<'a>(
-        self: Box<Self>, 
-        cache: &'a mut SharedReferencesCache
+        self: Box<Self>,
+        cache: &'a mut SharedReferencesCache,
     ) -> Result<List, ()>
     where
         Self: 'a,
     {
         match self {
             CoreValue::List(list) => Ok(list),
-            CoreValue::Native(native) => native.value.try_into_list_parts(cache),
+            CoreValue::Native(native) => {
+                native.value.try_into_list_parts(cache)
+            }
             _ => Err(()),
         }
     }

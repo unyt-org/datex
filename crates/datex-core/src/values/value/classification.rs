@@ -5,10 +5,15 @@ use crate::{
 };
 
 impl Classification for Value {
+    /// Give back the classification of the value. If the classification is `None`,
+    /// return the classification of the inner value (if it is a native value, it might have its own classification)
     fn classification(
         &self,
-        _cache: &mut SharedReferencesCache,
+        cache: &mut SharedReferencesCache,
     ) -> ValueClassification {
-        self.classification.clone()
+        match &self.classification {
+            ValueClassification::None => self.inner.classification(cache),
+            other => other.clone(),
+        }
     }
 }
