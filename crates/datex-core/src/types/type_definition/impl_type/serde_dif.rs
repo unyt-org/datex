@@ -2,13 +2,13 @@ use serde::{Serializer, de::DeserializeSeed, ser::SerializeSeq};
 
 use crate::{
     dif::serde_context::SerdeContext,
-    types::{r#type::Type, type_definition::impl_type::ImplTypeDefinition},
+    types::{r#type::Type, type_definition::impl_type::ImplMarkers},
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
 
 use crate::prelude::*;
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ImplTypeDefinition> {
-    type Value = ImplTypeDefinition;
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, ImplMarkers> {
+    type Value = ImplMarkers;
 
     fn serialize<S: Serializer>(
         &mut self,
@@ -16,10 +16,6 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ImplTypeDefinition> {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
-        seq.serialize_element(&ValueWithSeed::new(
-            &value.inner_type as &Type,
-            self.cast::<Type>(),
-        ))?;
         seq.serialize_element(&value.impl_markers)?;
         seq.end()
     }
@@ -32,9 +28,9 @@ use serde::{
 };
 
 impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, ImplTypeDefinition>
+    for SerdeContext<'ctx, ImplMarkers>
 {
-    type Value = ImplTypeDefinition;
+    type Value = ImplMarkers;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -44,8 +40,8 @@ impl<'de, 'ctx> DeserializeSeed<'de>
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ImplTypeDefinition> {
-    type Value = ImplTypeDefinition;
+impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ImplMarkers> {
+    type Value = ImplMarkers;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("a tuple [inner_type, impl_markers]")
@@ -55,10 +51,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ImplTypeDefinition> {
     where
         A: SeqAccess<'de>,
     {
-        let inner_type = seq
-            .next_element_seed(self.cast::<Type>())?
-            .ok_or_else(|| de::Error::custom("expected inner type"))?;
-
         let impl_markers = seq
             .next_element()?
             .ok_or_else(|| de::Error::custom("expected impl markers"))?;
@@ -67,8 +59,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ImplTypeDefinition> {
             return Err(de::Error::custom("expected exactly 2 elements"));
         }
 
-        Ok(ImplTypeDefinition {
-            inner_type: Box::new(inner_type),
+        Ok(ImplMarkers {
             impl_markers,
         })
     }

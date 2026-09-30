@@ -62,7 +62,7 @@ use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
-use crate::types::type_definition::impl_type::ImplTypeDefinition;
+use crate::types::type_definition::impl_type::ImplMarkers;
 use crate::types::type_definition::intersection::IntersectionTypeDefinition;
 
 #[derive(Debug)]
@@ -292,8 +292,8 @@ impl Value {
             }).into());
         }
         
-        for impl_address in &self.classification.impls {
-            todo!("converting impls classification to type definition is not yet implemented")
+        if !self.classification.impls.is_empty() {
+            types.push(TypeDefinition::ImplMarkers(ImplMarkers::new(self.classification.impls.clone())).into());
         }
         
         if types.is_empty() {
@@ -460,7 +460,7 @@ mod tests {
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
         traits::structural_eq::assert_structural_eq,
-        types::{r#type::Type, type_definition::impl_type::ImplTypeDefinition},
+        types::{r#type::Type, type_definition::impl_type::ImplMarkers},
         values::core_values::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},

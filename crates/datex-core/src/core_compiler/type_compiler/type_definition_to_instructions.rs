@@ -6,7 +6,7 @@ use crate::{
     instruction::{
         Instruction,
         instruction_data::{
-            CallableSignatureData, ImplTypeData, IntersectionData, ListData,
+            CallableSignatureData, ImplMarkersData, IntersectionData, ListData,
             ListSliceCollectionData, MapData, ShortTextData, TaggedTypeData,
             UnionData,
         },
@@ -25,7 +25,7 @@ use crate::{
                     map::MapCollectionTypeDefinition,
                 },
             },
-            impl_type::ImplTypeDefinition,
+            impl_type::ImplMarkers,
             intersection::IntersectionTypeDefinition,
             list::ListTypeDefinition,
             map::MapTypeDefinition,
@@ -47,7 +47,7 @@ impl ToInstructions for TypeDefinition {
     {
         Box::new(gen move {
             match self {
-                TypeDefinition::ImplType(impl_type_def) => {
+                TypeDefinition::ImplMarkers(impl_type_def) => {
                     for instruction in impl_type_def.to_instructions(ctx) {
                         yield instruction;
                     }
@@ -150,7 +150,7 @@ impl ToInstructions for TypeDefinitionWithMetadata {
         })
     }
 }
-impl ToInstructions for ImplTypeDefinition {
+impl ToInstructions for ImplMarkers {
     fn to_instructions<'ctx, 'a>(
         &'a self,
         ctx: &'a mut dyn ValueVisitor<'ctx>,
@@ -159,14 +159,11 @@ impl ToInstructions for ImplTypeDefinition {
         'ctx: 'a,
     {
         Box::new(gen {
-            yield TypeInstruction::ImplType(ImplTypeData {
+            yield TypeInstruction::ImplMarkers(ImplMarkersData {
                 impl_count: self.impl_markers.len() as u8,
                 impls: self.impl_markers.to_vec(),
             })
             .into();
-            for instruction in self.inner_type.deref().to_instructions(ctx) {
-                yield instruction;
-            }
         })
     }
 }

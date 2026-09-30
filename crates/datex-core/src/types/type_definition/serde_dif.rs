@@ -11,7 +11,7 @@ use crate::{
         type_definition::{
             TypeDefinition, callable::CallableTypeDefinition,
             collection::CollectionTypeDefinition,
-            impl_type::ImplTypeDefinition,
+            impl_type::ImplMarkers,
             intersection::IntersectionTypeDefinition, list::ListTypeDefinition,
             map::MapTypeDefinition, range::RangeTypeDefinition,
             tagged_type::TaggedTypeDefinition, union::UnionTypeDefinition,
@@ -87,10 +87,10 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinition> {
                             callable_signature,
                             self.cast::<CallableTypeDefinition>(),
                         ))?,
-                    TypeDefinition::ImplType(def) => {
+                    TypeDefinition::ImplMarkers(def) => {
                         outer.serialize_value(&ValueWithSeed::new(
                             def,
-                            self.cast::<ImplTypeDefinition>(),
+                            self.cast::<ImplMarkers>(),
                         ))?
                     }
                     TypeDefinition::Intersection(type_intersection) => outer
@@ -207,8 +207,8 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
 
             "impl_type" => {
                 let def =
-                    map.next_value_seed(self.cast::<ImplTypeDefinition>())?;
-                TypeDefinition::ImplType(def)
+                    map.next_value_seed(self.cast::<ImplMarkers>())?;
+                TypeDefinition::ImplMarkers(def)
             }
 
             "intersection" => {
