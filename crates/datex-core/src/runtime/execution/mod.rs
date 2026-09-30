@@ -744,7 +744,7 @@ mod tests {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(
                 value.classification(),
-                &ValueClassification::Tag(ValueTag {
+                &ValueClassification::new_with_tag(ValueTag {
                     tag: "Example".to_string(),
                     is_empty: true
                 })
@@ -768,7 +768,7 @@ mod tests {
             );
             assert_eq!(
                 value.classification(),
-                &ValueClassification::Tag(ValueTag {
+                &ValueClassification::new_with_tag(ValueTag {
                     tag: "Example".to_string(),
                     is_empty: false
                 })

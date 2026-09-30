@@ -205,7 +205,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
                 TypeDefinition::Callable(callable)
             }
 
-            "impl_type" => {
+            "impl_markers" => {
                 let def =
                     map.next_value_seed(self.cast::<ImplMarkers>())?;
                 TypeDefinition::ImplMarkers(def)
@@ -251,7 +251,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
                         "collection",
                         "nested",
                         "callable",
-                        "impl_type",
+                        "impl_markers",
                         "intersection",
                         "union",
                         "tagged_type",
