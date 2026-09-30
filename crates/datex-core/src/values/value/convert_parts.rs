@@ -1,36 +1,55 @@
-use itertools::Itertools;
 use crate::{
-    preludes::derive::SharedReferencesCache,
-    traits::convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
-    values::value::Value,
     prelude::*,
+    preludes::derive::{CoreValue, SharedReferencesCache},
+    traits::convert_parts::{FromParts, IntoParts, PartsKind, WithPartsKind},
+    values::{
+        core_values::{list::List, map::Map},
+        value::{
+            Value,
+            value_classification::{ValueClassification, ValueTag},
+        },
+    },
 };
-use crate::preludes::derive::CoreValue;
-use crate::traits::convert_parts::PartsKind;
-use crate::values::core_values::map::Map;
-use crate::values::core_values::list::List;
 
 impl FromParts for Value {
-    fn try_from_map_parts(parts: Map) -> Result<Self, ()>
+    fn try_from_map_parts_with_tag(
+        parts: Map,
+        tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        Ok(CoreValue::try_from_map_parts(parts)?.into())
+        if let Some(tag) = tag {
+            Ok(Value::new(
+                CoreValue::try_from_map_parts_with_tag(parts, None)?,
+                ValueClassification::Tag(ValueTag {
+                    tag: tag.to_string(),
+                    is_empty: false,
+                }),
+            ))
+        } else {
+            Ok(CoreValue::try_from_map_parts_with_tag(parts, tag)?.into())
+        }
     }
 
-    fn try_from_list_parts(parts: List) -> Result<Self, ()>
+    fn try_from_list_parts_with_tag(
+        parts: List,
+        tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        Ok(CoreValue::try_from_list_parts(parts)?.into())
+        Ok(CoreValue::try_from_list_parts_with_tag(parts, tag)?.into())
+    }
+}
+
+impl WithPartsKind for Value {
+    fn parts_kind(&self) -> PartsKind {
+        self.inner.parts_kind()
     }
 }
 
 impl IntoParts for Value {
-    fn parts_kind(&self) -> PartsKind {
-        self.inner.parts_kind()
-    }
-
     fn try_into_map_parts<'a>(
         self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
@@ -43,7 +62,7 @@ impl IntoParts for Value {
 
     fn try_into_list_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Result<List, ()>
     where
         Self: 'a,

@@ -1,4 +1,3 @@
-use core::cell::RefCell;
 #[cfg(feature = "compiler")]
 use crate::compiler::error::SpannedCompilerError;
 #[cfg(feature = "parser")]
@@ -6,15 +5,18 @@ use crate::parser::errors::SpannedParserError;
 use crate::{
     core_compiler::core_compilation_context::DXBWithSharedValues,
     prelude::*,
-    preludes::derive::{SharedReferencesCache, ValueContainer},
+    preludes::derive::{
+        Classification, IntoParts, PartsKind, SharedReferencesCache,
+        ValueContainer, WithPartsKind,
+    },
     runtime::{
         Runtime,
         execution::{ExecutionError, context::ScriptExecutionError},
     },
+    traits::convert_parts::FromParts,
     values::borrowed_value_container::BorrowedValueContainer,
 };
-use crate::preludes::derive::{IntoParts, PartsKind};
-use crate::traits::convert_parts::FromParts;
+use core::cell::RefCell;
 
 #[derive(Debug)]
 pub enum DeserializationError {
@@ -178,30 +180,39 @@ pub trait ConvertValueContainer {
         cache: &RefCell<SharedReferencesCache>,
     ) -> Result<Self, ()>
     where
-        Self: ConvertValueContainer + FromParts + Sized {
+        Self: ConvertValueContainer + FromParts + Sized,
+    {
         // first try to convert (downcast) the value container directly into the type T
         let val = value_container.try_into_value::<Self>();
         match val {
             Ok(value) => Ok(value),
             // otherwise, try to convert the value container into map or list parts and then into the type T
-            Err(value_container) => match value_container.parts_kind() {
-                PartsKind::Map => {
-                    let map_parts = Box::new(value_container).try_into_map_parts(&mut cache.borrow_mut());
-                    if let Ok(map) = map_parts {
-                        Self::try_from_map_parts(map)
-                    } else {
-                        Err(())
+            Err(value_container) => {
+                let tag =
+                    value_container.classification(&mut cache.borrow_mut());
+                let tag = tag.tag_str();
+
+                match value_container.parts_kind() {
+                    PartsKind::Map => {
+                        let map_parts = Box::new(value_container)
+                            .try_into_map_parts(&mut cache.borrow_mut());
+                        if let Ok(map) = map_parts {
+                            Self::try_from_map_parts_with_tag(map, tag)
+                        } else {
+                            Err(())
+                        }
                     }
-                }
-                PartsKind::List => {
-                    let list_parts = Box::new(value_container).try_into_list_parts(&mut cache.borrow_mut());
-                    if let Ok(list) = list_parts {
-                        Self::try_from_list_parts(list)
-                    } else {
-                        Err(())
+                    PartsKind::List => {
+                        let list_parts = Box::new(value_container)
+                            .try_into_list_parts(&mut cache.borrow_mut());
+                        if let Ok(list) = list_parts {
+                            Self::try_from_list_parts_with_tag(list, tag)
+                        } else {
+                            Err(())
+                        }
                     }
+                    _ => Err(()),
                 }
-                _ => Err(()),
             }
         }
     }

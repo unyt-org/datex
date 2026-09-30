@@ -27,6 +27,8 @@ pub use crate::{
     traits::convert_core_value::ConvertCoreValue,
     traits::convert_parts::FromParts,
     traits::convert_parts::IntoParts,
+    traits::convert_parts::WithPartsKind,
+    traits::convert_parts::{Parts, PartsKind},
     traits::convert_value_container::ConvertValueContainer,
     traits::datex_hash::DatexHash,
     traits::datex_native_only_structural::DatexNativeOnlyStructural,
@@ -36,7 +38,6 @@ pub use crate::{
     traits::local_child_path_resolver::LocalChildPathResolver,
     traits::static_classification::StaticClassification,
     traits::value_access::ValueAccess,
-    traits::convert_parts::{PartsKind, Parts},
     types::type_definition::callable::{CallableKind, CallableTypeDefinition},
     types::{
         entities::entity_impls::EntityImpl,
@@ -67,5 +68,5 @@ pub use crate::{
         },
         value::Value,
         value_container::{ValueContainer, value_key::BorrowedValueKey},
-    }
+    },
 };

@@ -1,18 +1,19 @@
 use crate::{
     prelude::*,
-    preludes::derive::SharedReferencesCache,
+    preludes::derive::{PartsKind, SharedReferencesCache},
     traits::{
-        convert_parts::{BorrowedParts, FromParts, IntoParts, Parts},
+        convert_parts::{FromParts, IntoParts, WithPartsKind},
         convert_value_container::ConvertValueContainer,
     },
-    values::{core_values::list::List},
+    values::core_values::list::List,
 };
-use crate::preludes::derive::PartsKind;
 
-impl<T: ConvertValueContainer> IntoParts for Vec<T> {
+impl<T> WithPartsKind for Vec<T> {
     fn parts_kind(&self) -> PartsKind {
         PartsKind::List
     }
+}
+impl<T: ConvertValueContainer> IntoParts for Vec<T> {
     fn try_into_list_parts<'a>(
         self: Box<Self>,
         cache: &'a mut SharedReferencesCache,
@@ -29,7 +30,10 @@ impl<T: ConvertValueContainer> IntoParts for Vec<T> {
 }
 
 impl<T: ConvertValueContainer> FromParts for Vec<T> {
-    fn try_from_list_parts(parts: List) -> Result<Self, ()>
+    fn try_from_list_parts_with_tag(
+        parts: List,
+        _tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {

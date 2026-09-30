@@ -38,6 +38,7 @@ use crate::{
 use core::fmt::{Debug, Display, Formatter};
 
 mod child_iterator;
+mod classification;
 pub mod convert_core_value;
 mod convert_parts;
 mod datex_hash;

@@ -25,6 +25,15 @@ pub enum ValueClassification {
 }
 
 impl ValueClassification {
+    pub fn tag_str(&self) -> Option<&str> {
+        match self {
+            ValueClassification::Tag(value_tag) => Some(&value_tag.tag),
+            _ => None,
+        }
+    }
+}
+
+impl ValueClassification {
     pub fn is_none(&self) -> bool {
         matches!(self, ValueClassification::None)
     }

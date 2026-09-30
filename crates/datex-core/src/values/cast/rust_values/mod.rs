@@ -9,11 +9,13 @@ mod integers;
 mod option;
 mod string;
 mod vec;
-
 use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     prelude::*,
-    traits::local_child_path_resolver::LocalChildPathResolver,
+    traits::{
+        convert_parts::WithPartsKind,
+        local_child_path_resolver::LocalChildPathResolver,
+    },
     types::r#type::Type,
     values::{
         core_value::CoreValue,
@@ -67,6 +69,7 @@ macro_rules! implement_rust_native_traits {
 
         impl FromParts for $type {}
         impl IntoParts for $type {}
+        impl WithPartsKind for $type {}
 
         impl DatexNativeStructural for $type {}
         impl DatexNativeOnlyStructural for $type {}
