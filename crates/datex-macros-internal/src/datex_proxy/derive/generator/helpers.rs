@@ -8,6 +8,8 @@ pub enum SelfAccess {
     Borrowed,
     /// Indicates that the self value is moved, and field access should take ownership of the fields.
     Moved,
+    /// Indicates that the self is passed as a `Box<Self>`
+    Boxed,
 }
 
 /// Generates a mapping for the fields of a struct or the variants of an enum, depending on the structure type.
@@ -27,7 +29,7 @@ pub fn generate_struct_or_enum_variants_fields_mapping(
                 #mapping
             }}
         }
-        Structure::Enum(variants) => map_enum_variants(variants, |variant| {
+        Structure::Enum(variants) => map_enum_variants(variants, self_access, |variant| {
             fields_mapping(&variant.fields, Some(&variant.name))
         }),
     }
@@ -49,6 +51,7 @@ pub fn generate_from_parts_impl(
 /// This provides the identifiers of the fields in the match arm, so that they can be used in the body of the match arm.
 pub fn map_enum_variants(
     enum_ty: &[EnumVariant],
+    self_access: SelfAccess,
     generate_match_arm_body: impl Fn(&EnumVariant) -> TokenStream,
 ) -> TokenStream {
     let arms = enum_ty.iter().map(|variant| {
@@ -87,9 +90,14 @@ pub fn map_enum_variants(
             }
         }
     });
+    
+    let self_access_pattern = match self_access {
+        SelfAccess::Borrowed | SelfAccess::Moved => quote! { self },
+        SelfAccess::Boxed => quote! { *self },
+    };
 
     quote! {
-        match self {
+        match #self_access_pattern {
             #(#arms),*
         }
     }
@@ -110,7 +118,7 @@ pub fn generate_struct_field_accessors(
                     let #normalized_ident = &self.#accessor;
                 }
             }
-            SelfAccess::Moved => {
+            SelfAccess::Moved | SelfAccess::Boxed => {
                 quote! {
                     let #normalized_ident = self.#accessor;
                 }
