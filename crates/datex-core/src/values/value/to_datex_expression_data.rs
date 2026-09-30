@@ -20,31 +20,36 @@ impl ToDatexExpressionData for Value {
 }
 
 fn classification_expression(
-    expression: DatexExpressionData,
+    mut expression: DatexExpressionData,
     classification: &ValueClassification,
 ) -> DatexExpressionData {
-    match classification {
-        ValueClassification::new_unclassified() => expression,
-        ValueClassification::Tag(ValueTag { tag, is_empty }) => {
-            DatexExpressionData::Tag(TagExpression {
-                tag: tag.clone(),
-                expression: if !is_empty {
-                    Some(expression.with_default_span())
-                } else {
-                    None
-                },
-            })
-        }
-        ValueClassification::Entity(entity_type) => {
-            let name = entity_type.entity_definition().name.clone();
-            DatexExpressionData::EntityValue(EntityValueExpression {
-                entity_name: name,
-                entity_address: Some(entity_type.pointer_address()),
-                value: expression.with_default_span(),
-            })
-        }
-        ValueClassification::Impls(_impls) => {
-            todo!()
-        }
+    if classification.is_none() {
+        return expression;
     }
+    
+    if !classification.impls.is_empty() {
+        todo!()
+    }
+    
+    if let Some(ValueTag { tag, is_empty }) = &classification.tag {
+        expression = DatexExpressionData::Tag(TagExpression {
+            tag: tag.clone(),
+            expression: if !is_empty {
+                Some(expression.with_default_span())
+            } else {
+                None
+            },
+        });
+    }
+    
+    if let Some(entity_type) = &classification.entity_type {
+        let name = entity_type.entity_definition().name.clone();
+        expression = DatexExpressionData::EntityValue(EntityValueExpression {
+            entity_name: name,
+            entity_address: Some(entity_type.pointer_address()),
+            value: expression.with_default_span(),
+        })
+    }
+    
+    expression
 }

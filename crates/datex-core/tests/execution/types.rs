@@ -119,7 +119,6 @@ fn union() {
 fn impl_type() {
     let ty = Type::Definition(
         TypeDefinition::ImplMarkers(ImplMarkers::new(
-            Type::Definition(LiteralTypeDefinition::Integer(42.into()).into()),
             vec![PointerAddress::self_owned([1u8, 2u8, 3u8, 4u8, 5u8])],
         ))
         .into(),

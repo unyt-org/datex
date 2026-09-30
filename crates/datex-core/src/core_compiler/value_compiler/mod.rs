@@ -665,7 +665,7 @@ mod tests {
     fn compile_tagged_empty_value() {
         let value = Value::new(
             CoreValue::Null,
-            ValueClassification::Tag(ValueTag {
+            ValueClassification::new_with_tag(ValueTag {
                 tag: "Example".to_string(),
                 is_empty: true,
             }),
@@ -684,7 +684,7 @@ mod tests {
     fn compile_tagged_value() {
         let value = Value::new(
             CoreValue::Null,
-            ValueClassification::Tag(ValueTag {
+            ValueClassification::new_with_tag(ValueTag {
                 tag: "Example".to_string(),
                 is_empty: false,
             }),
