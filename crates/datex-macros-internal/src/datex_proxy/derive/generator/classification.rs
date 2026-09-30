@@ -1,6 +1,8 @@
-use crate::datex_proxy::data::{StructureData, TypeKind};
+use crate::datex_proxy::data::{EnumVariant, Fields, Structure, StructureData, TypeKind};
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::Variant;
+use crate::datex_proxy::generator::helpers::map_enum_variants;
 
 /// Generates the [Classification] and [StaticClassification] implementations
 pub fn generate_classification(structure_data: &StructureData) -> TokenStream {
@@ -11,9 +13,9 @@ pub fn generate_classification(structure_data: &StructureData) -> TokenStream {
 
     let has_classification = !structure_data
         .attributes.type_kind.is_structural();
-    
+
     let classification_methods = generate_classification_methods(structure_data);
-    
+
     quote! {
         #[automatically_derived]
         impl #impl_generics Classification for #ident #ty_generics #where_clause {
@@ -23,32 +25,62 @@ pub fn generate_classification(structure_data: &StructureData) -> TokenStream {
         #[automatically_derived]
         impl #impl_generics StaticClassification for #ident #ty_generics #where_clause {
             fn has_classification() -> bool {
-                #has_classification            
+                #has_classification
             }
         }
     }
 }
 
 
+/// Generates the methods for the [Classification] implementation
+/// Adds an entity_type method if the type is an entity, and a tag method if the type is a tagged enum
 fn generate_classification_methods(structure_data: &StructureData) -> TokenStream {
-    let StructureData {
-        ident, generics, ..
-    } = structure_data;
+    let tag_method = match &structure_data.structure {
+        Structure::Enum(variants) => {
+            let enum_tags = generate_enum_tags(variants);
+            Some(
+                quote! {
+                     fn tag(&self) -> Option<ValueTag> {
+                        #enum_tags
+                    }
+                }
+            )
+        },
+        Structure::Struct(_) => None,
+    };
 
-    if structure_data.attributes.type_kind.is_entity() {
-        quote! {
-            fn entity_type(
-                &self,
-                _cache: &mut SharedReferencesCache,
-            ) -> Option<EntityType> {
-                todo!()
+    let entity_type_method = if structure_data.attributes.type_kind.is_entity() {
+        Some(
+            quote! {
+                fn entity_type(
+                    &self,
+                    _cache: &mut SharedReferencesCache,
+                ) -> Option<EntityType> {
+                    todo!()
+                }
             }
-            
-            fn tag(&self) -> Option<ValueTag> {
-                None
-            }
-        }
+        )
     } else {
-        quote! {}
+        None
+    };
+
+    quote! {
+        #entity_type_method
+        #tag_method
     }
+}
+
+fn generate_enum_tags(variants: &[EnumVariant]) -> TokenStream {
+    map_enum_variants(variants, |variant| {
+        let variant_name = &variant.name;
+        let is_empty = matches!(variant.fields, Fields::Unit);
+        quote! {
+            Some(
+                ValueTag {
+                    tag: #variant_name.to_string(),
+                    is_empty: #is_empty,
+                }
+            )
+        }
+    })
 }

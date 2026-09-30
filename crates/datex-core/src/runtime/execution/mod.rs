@@ -516,6 +516,7 @@ mod tests {
     use core::assert_matches;
     use indexmap::IndexMap;
     use log::{debug, info};
+    use crate::traits::classification::Classification;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -739,12 +740,13 @@ mod tests {
 
     #[test]
     fn empty_tag() {
+        let cache = &mut SharedReferencesCache::default();
         let result = execute_datex_script_debug_with_result("#Example");
         if let ValueContainer::Local(value) = result {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(
-                value.classification(),
-                &ValueClassification::new_with_tag(ValueTag {
+                value.classification(cache),
+                ValueClassification::new_with_tag(ValueTag {
                     tag: "Example".to_string(),
                     is_empty: true
                 })
@@ -756,6 +758,7 @@ mod tests {
 
     #[test]
     fn empty_with_map() {
+        let cache = &mut SharedReferencesCache::default();
         let result =
             execute_datex_script_debug_with_result("#Example {a: true}");
         if let ValueContainer::Local(value) = result {
@@ -767,8 +770,8 @@ mod tests {
                 )]))
             );
             assert_eq!(
-                value.classification(),
-                &ValueClassification::new_with_tag(ValueTag {
+                value.classification(cache),
+                ValueClassification::new_with_tag(ValueTag {
                     tag: "Example".to_string(),
                     is_empty: false
                 })
