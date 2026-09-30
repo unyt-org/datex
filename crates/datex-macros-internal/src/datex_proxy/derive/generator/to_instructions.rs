@@ -1,10 +1,16 @@
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 
-use crate::datex_proxy::data::{
-    FieldMapping, Fields, IndexedField, NamedField, Structure, StructureData,
+use crate::datex_proxy::{
+    data::{
+        FieldMapping, Fields, IndexedField, NamedField, Structure,
+        StructureData,
+    },
+    generator::helpers::{
+        SelfAccess, generate_struct_field_accessors,
+        generate_struct_or_enum_variants_fields_mapping, map_enum_variants,
+    },
 };
-use crate::datex_proxy::generator::helpers::{generate_struct_field_accessors, generate_struct_or_enum_variants_fields_mapping, map_enum_variants, SelfAccess};
 
 /// Generates the implementation of the [ToInstructions] trait for the given structure data.
 /// Returns a [TokenStream] containing the generated implementation.
@@ -13,15 +19,13 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
         ident, generics, ..
     } = structure_data;
 
-    // TODO add for the other derives to fix generics!
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let body = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
         SelfAccess::Borrowed,
-        generate_to_instructions_for_fields
+        generate_to_instructions_for_fields,
     );
-
 
     quote! {
         impl #impl_generics ToInstructions for #ident #ty_generics #where_clause {
@@ -43,9 +47,8 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
 /// Generates the instructions for the given fields, handling different field types.
 fn generate_to_instructions_for_fields(
     fields: &Fields,
-    tag: Option<&String>
+    tag: Option<&String>,
 ) -> TokenStream {
-
     let tag = if let Some(tag) = tag {
         let is_empty = matches!(fields, Fields::Unit);
         quote! {

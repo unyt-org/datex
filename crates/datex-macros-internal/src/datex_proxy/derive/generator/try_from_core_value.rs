@@ -9,10 +9,11 @@ pub fn generate_try_from_core_value(
     let StructureData {
         ident, generics, ..
     } = structure_data;
-    
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     quote! {
         #[automatically_derived]
-        impl #generics ConvertCoreValue for #ident #generics {
+        impl #impl_generics ConvertCoreValue for #ident #ty_generics #where_clause {
             fn to_core_value(self) -> CoreValue {
                 CoreValue::native(self)
             }

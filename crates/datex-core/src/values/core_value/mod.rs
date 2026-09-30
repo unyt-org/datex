@@ -35,11 +35,11 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use binrw::error::CustomError;
 use core::fmt::{Debug, Display, Formatter};
 
 mod child_iterator;
 pub mod convert_core_value;
+mod convert_parts;
 mod datex_hash;
 pub mod equality;
 pub mod ops;
@@ -47,7 +47,6 @@ pub mod ops;
 mod to_datex_expression_data;
 mod to_instructions;
 pub mod try_clone;
-mod convert_parts;
 
 #[derive(Default, Clone, Debug)]
 pub enum CoreValue {

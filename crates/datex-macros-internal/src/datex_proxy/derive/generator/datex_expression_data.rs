@@ -1,9 +1,11 @@
-use crate::datex_proxy::data::{
-    FieldMapping, Fields, NamedField, StructureData,
+use crate::datex_proxy::{
+    data::{FieldMapping, Fields, NamedField, StructureData},
+    generator::helpers::{
+        SelfAccess, generate_struct_or_enum_variants_fields_mapping,
+    },
 };
-use proc_macro2::{TokenStream};
+use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
-use crate::datex_proxy::generator::helpers::{generate_struct_or_enum_variants_fields_mapping, SelfAccess};
 
 /// Creates the implementation of the [ToDatexExpressionData] trait for the given structure data.
 /// Returns a TokenStream of the implementation.
@@ -17,11 +19,12 @@ pub fn generate_datex_expression_data(
     let datex_expression_data = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
         SelfAccess::Borrowed,
-        generate_datex_expression_data_fields
+        generate_datex_expression_data_fields,
     );
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
-        impl #generics ToDatexExpressionData for #ident #generics {
+        impl #impl_generics ToDatexExpressionData for #ident #ty_generics #where_clause {
             fn to_datex_expression_data(&self) -> DatexExpressionData {
                 #datex_expression_data
             }
@@ -30,8 +33,10 @@ pub fn generate_datex_expression_data(
 }
 
 /// Generates the datex expression data for the given fields. Returns a TokenStream of [DatexExpressionData].
-fn generate_datex_expression_data_fields(fields: &Fields, tag: Option<&String>) -> TokenStream {
-
+fn generate_datex_expression_data_fields(
+    fields: &Fields,
+    tag: Option<&String>,
+) -> TokenStream {
     // TODO: handle tag?
 
     match fields {

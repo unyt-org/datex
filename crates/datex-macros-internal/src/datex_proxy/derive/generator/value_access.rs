@@ -7,9 +7,10 @@ pub fn generate_value_access(structure_data: &StructureData) -> TokenStream {
     let StructureData {
         ident, generics, ..
     } = structure_data;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
         #[automatically_derived]
-        impl #generics ValueAccess for #ident #generics {}
+        impl #impl_generics ValueAccess for #ident #ty_generics #where_clause {}
     }
 }

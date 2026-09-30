@@ -1,7 +1,12 @@
-use crate::datex_proxy::data::{Field, FieldMapping, Fields, Structure, StructureData};
+use crate::datex_proxy::{
+    data::{Field, FieldMapping, Fields, Structure, StructureData},
+    generator::helpers::{
+        SelfAccess, generate_struct_or_enum_variants_fields_mapping,
+        map_enum_variants,
+    },
+};
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use crate::datex_proxy::generator::helpers::{generate_struct_or_enum_variants_fields_mapping, map_enum_variants, SelfAccess};
 
 /// Generates the [FromParts] and [IntoParts] implementations
 pub fn generate_convert_parts(structure_data: &StructureData) -> TokenStream {
@@ -18,7 +23,6 @@ pub fn generate_convert_parts(structure_data: &StructureData) -> TokenStream {
     }
 }
 
-
 fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
     let StructureData {
         ident, generics, ..
@@ -27,24 +31,26 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
     let parts_kind = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
         SelfAccess::Borrowed,
-        get_fields_parts_kind
+        get_fields_parts_kind,
     );
 
     let into_map_parts_impl = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
         SelfAccess::Moved,
-        generate_into_map_parts_for_fields
+        generate_into_map_parts_for_fields,
     );
 
     let into_list_parts_impl = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
         SelfAccess::Moved,
-        generate_into_list_parts_for_fields
+        generate_into_list_parts_for_fields,
     );
+
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
         #[automatically_derived]
-        impl #generics IntoParts for #ident #generics {
+        impl #impl_generics IntoParts for #ident #ty_generics #where_clause {
             fn parts_kind(&self) -> PartsKind {
                 #parts_kind
             }
@@ -85,7 +91,10 @@ fn get_fields_parts_kind(fields: &Fields, tag: Option<&String>) -> TokenStream {
     }
 }
 
-fn generate_into_map_parts_for_fields(fields: &Fields, tag: Option<&String>) -> TokenStream {
+fn generate_into_map_parts_for_fields(
+    fields: &Fields,
+    tag: Option<&String>,
+) -> TokenStream {
     match fields {
         Fields::Named(fields) => {
             let yields = fields.iter().map(|field| {
@@ -108,7 +117,7 @@ fn generate_into_map_parts_for_fields(fields: &Fields, tag: Option<&String>) -> 
                 };
                 Ok(map.collect::<Map>())
             }
-        },
+        }
         Fields::Unit | Fields::Unnamed(_) => quote! { Err(()) }, // cannot be converted into map parts
         Fields::Transparent(field) => {
             let accessor = field.normalized_ident();
@@ -117,8 +126,10 @@ fn generate_into_map_parts_for_fields(fields: &Fields, tag: Option<&String>) -> 
     }
 }
 
-
-fn generate_into_list_parts_for_fields(fields: &Fields, tag: Option<&String>) -> TokenStream {
+fn generate_into_list_parts_for_fields(
+    fields: &Fields,
+    tag: Option<&String>,
+) -> TokenStream {
     match fields {
         Fields::Unnamed(fields) => {
             let yields = fields.iter().map(|field| {
@@ -137,7 +148,7 @@ fn generate_into_list_parts_for_fields(fields: &Fields, tag: Option<&String>) ->
                 };
                 Ok(list.collect::<List>())
             }
-        },
+        }
         Fields::Unit | Fields::Named(_) => quote! { Err(()) }, // cannot be converted into list parts
         Fields::Transparent(field) => {
             let accessor = field.normalized_ident();
@@ -145,7 +156,6 @@ fn generate_into_list_parts_for_fields(fields: &Fields, tag: Option<&String>) ->
         }
     }
 }
-
 
 /// Generates the appropriate ValueContainer conversion based on the field's mapping
 /// For fields with serde mapping, it uses `serde_to_value_container`, otherwise it uses `ValueContainer::from`.
@@ -165,7 +175,7 @@ fn value_container_from_field(
 fn field_from_value_container(
     accessor_result: Ident,
     field_mapping: &FieldMapping,
-    unwrap_default: bool
+    unwrap_default: bool,
 ) -> TokenStream {
     let access = if field_mapping.is_serde() {
         quote! {{
@@ -192,16 +202,20 @@ fn field_from_value_container(
 
 fn generate_from_parts(structure_data: &StructureData) -> TokenStream {
     let StructureData {
-        ident, generics, attributes, ..
+        ident,
+        generics,
+        attributes,
+        ..
     } = structure_data;
-
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let from_map_parts_impl = if attributes.no_deserialize {
         quote! { Err(()) }
-    }
-    else {
+    } else {
         match &structure_data.structure {
-            Structure::Struct(fields) => generate_from_map_parts_for_fields(fields),
+            Structure::Struct(fields) => {
+                generate_from_map_parts_for_fields(fields)
+            }
             Structure::Enum(variants) => {
                 quote! {todo!()}
             }
@@ -210,10 +224,11 @@ fn generate_from_parts(structure_data: &StructureData) -> TokenStream {
 
     let from_list_parts_impl = if attributes.no_deserialize {
         quote! { Err(()) }
-    }
-    else {
+    } else {
         match &structure_data.structure {
-            Structure::Struct(fields) => generate_from_list_parts_for_fields(fields),
+            Structure::Struct(fields) => {
+                generate_from_list_parts_for_fields(fields)
+            }
             Structure::Enum(variants) => {
                 quote! {todo!()}
             }
@@ -222,7 +237,7 @@ fn generate_from_parts(structure_data: &StructureData) -> TokenStream {
 
     quote! {
         #[automatically_derived]
-        impl #generics FromParts for #ident #generics {
+        impl #impl_generics FromParts for #ident #ty_generics #where_clause {
             fn try_from_map_parts(mut parts: Map) -> Result<Self, ()>
             where
                 Self: Sized,
@@ -267,7 +282,7 @@ fn generate_from_map_parts_for_fields(fields: &Fields) -> TokenStream {
                     #(#field_conversions)*
                 })
             }
-        },
+        }
         Fields::Unit | Fields::Unnamed(_) => quote! { Err(()) }, // unit structs cannot be converted from map parts
         Fields::Transparent(field) => {
             quote! { todo!() } // delegate to the single field's implementation
@@ -278,20 +293,24 @@ fn generate_from_map_parts_for_fields(fields: &Fields) -> TokenStream {
 fn generate_from_list_parts_for_fields(fields: &Fields) -> TokenStream {
     match fields {
         Fields::Unnamed(fields) => {
-            let (field_pops, field_idents) = fields.iter().enumerate().map(|(index, field)| {
-                let ident = field.normalized_ident();
-                let from_value_container = field_from_value_container(
-                    ident.clone(),
-                    &field.field.attributes.field_mapping,
-                    false, // TODO
-                );
-                (
-                    quote! {
-                        let #ident = parts.pop(#index).ok_or(())?;
-                    },
-                    from_value_container
-                )
-            }).collect::<(Vec<_>, Vec<_>)>();
+            let (field_pops, field_idents) = fields
+                .iter()
+                .enumerate()
+                .map(|(index, field)| {
+                    let ident = field.normalized_ident();
+                    let from_value_container = field_from_value_container(
+                        ident.clone(),
+                        &field.field.attributes.field_mapping,
+                        false, // TODO
+                    );
+                    (
+                        quote! {
+                            let #ident = parts.pop(#index).ok_or(())?;
+                        },
+                        from_value_container,
+                    )
+                })
+                .collect::<(Vec<_>, Vec<_>)>();
 
             quote! {
                 #(#field_pops)*
@@ -299,7 +318,7 @@ fn generate_from_list_parts_for_fields(fields: &Fields) -> TokenStream {
                     #(#field_idents)*
                 ))
             }
-        },
+        }
         Fields::Unit | Fields::Named(_) => quote! { Err(()) }, // unit structs cannot be converted from list parts
         Fields::Transparent(field) => {
             quote! { todo!() } // delegate to the single field's implementation
