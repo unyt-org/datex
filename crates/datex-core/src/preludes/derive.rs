@@ -49,6 +49,10 @@ pub use crate::{
             TypeDefinition, list::ListTypeDefinition, map::MapTypeDefinition,
             tagged_type::TaggedTypeDefinition, union::UnionTypeDefinition,
         },
+        entity_type::EntityType,
+    },
+    values::value::{
+        value_classification::{ValueClassification, ValueTag},
     },
     utils::{goat::Goat, goat_mut::GoatMut},
     value_updates::update_handler::{

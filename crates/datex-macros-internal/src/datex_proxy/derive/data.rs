@@ -8,6 +8,15 @@ pub enum TypeKind {
     Structural { only_structural: bool },
 }
 
+impl TypeKind {
+    pub fn is_entity(&self) -> bool {
+        matches!(self, TypeKind::Entity)
+    }
+    pub fn is_structural(&self) -> bool {
+        matches!(self, TypeKind::Structural { .. })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Namespace {
     None,
