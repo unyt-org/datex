@@ -188,9 +188,9 @@ pub trait ConvertValueContainer {
             Ok(value) => Ok(value),
             // otherwise, try to convert the value container into map or list parts and then into the type T
             Err(value_container) => {
-                let tag =
+                let classification =
                     value_container.classification(&mut cache.borrow_mut());
-                let tag = tag.tag_str();
+                let tag = classification.tag_str();
 
                 match value_container.parts_kind() {
                     PartsKind::Map => {
