@@ -18,8 +18,8 @@ where
         Type::Definition(
             TypeDefinition::Box(Box::new(
                 TypeDefinition::Union(UnionTypeDefinition(vec![
-                    Type::NULL,
                     inner_type,
+                    Type::NULL,
                 ]))
                 .into(),
             ))
