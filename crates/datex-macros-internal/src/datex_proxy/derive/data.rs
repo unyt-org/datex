@@ -172,6 +172,11 @@ pub struct EnumVariant {
     pub fields: Fields,
     // TODO: enum variant attributes?
 }
+impl EnumVariant {
+    pub fn ident(&self) -> Ident {
+        Ident::new(&self.name, Span::call_site())
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum Structure {

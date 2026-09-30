@@ -1,8 +1,15 @@
-use crate::datex_proxy::{
-    data::{Field, FieldMapping, Fields, Structure, StructureData},
+use crate::{
+    datex_proxy::{
+        data::{
+            EnumVariant, Field, FieldMapping, Fields, Structure, StructureData,
+        },
+        generator::helpers::{
+            SelfAccess, generate_struct_or_enum_variants_fields_mapping,
+            map_enum_variants,
+        },
+    },
     generator::helpers::{
-        SelfAccess, generate_struct_or_enum_variants_fields_mapping,
-        map_enum_variants,
+        generate_enum_match_from_parts, generate_from_parts_impl,
     },
 };
 use proc_macro2::{Ident, TokenStream};
@@ -216,27 +223,19 @@ fn generate_from_parts(structure_data: &StructureData) -> TokenStream {
     let from_map_parts_impl = if attributes.no_deserialize {
         quote! { Err(()) }
     } else {
-        match &structure_data.structure {
-            Structure::Struct(fields) => {
-                generate_from_map_parts_for_fields(fields)
-            }
-            Structure::Enum(variants) => {
-                quote! {todo!()}
-            }
-        }
+        generate_from_parts_impl(
+            &structure_data.structure,
+            generate_from_map_parts_for_fields,
+        )
     };
 
     let from_list_parts_impl = if attributes.no_deserialize {
         quote! { Err(()) }
     } else {
-        match &structure_data.structure {
-            Structure::Struct(fields) => {
-                generate_from_list_parts_for_fields(fields)
-            }
-            Structure::Enum(variants) => {
-                quote! {todo!()}
-            }
-        }
+        generate_from_parts_impl(
+            &structure_data.structure,
+            generate_from_list_parts_for_fields,
+        )
     };
 
     quote! {
@@ -259,7 +258,13 @@ fn generate_from_parts(structure_data: &StructureData) -> TokenStream {
     }
 }
 
-fn generate_from_map_parts_for_fields(fields: &Fields) -> TokenStream {
+fn generate_from_map_parts_for_fields(
+    fields: &Fields,
+    variant_ident: Option<&syn::Ident>,
+) -> TokenStream {
+    let variant_ident = variant_ident
+        .map(|ident| quote! { Self::#ident })
+        .unwrap_or(quote! { Self });
     match fields {
         Fields::Named(fields) => {
             let field_conversions = fields.iter().map(|field| {
@@ -282,7 +287,7 @@ fn generate_from_map_parts_for_fields(fields: &Fields) -> TokenStream {
                 }
             });
             quote! {
-                Ok(Self {
+                Ok(#variant_ident {
                     #(#field_conversions)*
                 })
             }
@@ -294,11 +299,18 @@ fn generate_from_map_parts_for_fields(fields: &Fields) -> TokenStream {
     }
 }
 
-fn generate_from_list_parts_for_fields(fields: &Fields) -> TokenStream {
+fn generate_from_list_parts_for_fields(
+    fields: &Fields,
+    variant_ident: Option<&syn::Ident>,
+) -> TokenStream {
+    let variant_ident = variant_ident
+        .map(|ident| quote! { Self::#ident })
+        .unwrap_or(quote! { Self });
     match fields {
         Fields::Unnamed(fields) => {
             let (field_pops, field_idents) = fields
                 .iter()
+                .rev()
                 .enumerate()
                 .map(|(index, field)| {
                     let ident = field.normalized_ident();
@@ -309,17 +321,16 @@ fn generate_from_list_parts_for_fields(fields: &Fields) -> TokenStream {
                     );
                     (
                         quote! {
-                            let #ident = parts.pop(#index).ok_or(())?;
+                            let #ident = parts.pop().ok_or(());
                         },
                         from_value_container,
                     )
                 })
                 .collect::<(Vec<_>, Vec<_>)>();
-
             quote! {
                 #(#field_pops)*
-                Ok(Self(
-                    #(#field_idents)*
+                Ok(#variant_ident(
+                    #(#field_idents),*
                 ))
             }
         }
