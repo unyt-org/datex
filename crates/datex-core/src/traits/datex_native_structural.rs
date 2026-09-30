@@ -10,8 +10,8 @@ pub trait DatexNativeStructural: DatexNative {
     /// This only checks for the presence of tag, since entity type resolution requires a cache.
     fn classification_without_cache(&self) -> ValueClassification {
         match self.tag() {
-            Some(tag) => ValueClassification::Tag(tag),
-            None => ValueClassification::None,
+            Some(tag) => ValueClassification::new_with_tag(tag),
+            None => ValueClassification::new_unclassified(),
         }
         // TODO: impl types?
     }

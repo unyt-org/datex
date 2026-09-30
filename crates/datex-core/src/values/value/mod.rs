@@ -62,6 +62,8 @@ use core::{
     fmt::{Debug, Display, Formatter},
     result::Result,
 };
+use crate::types::type_definition::impl_type::ImplTypeDefinition;
+use crate::types::type_definition::intersection::IntersectionTypeDefinition;
 
 #[derive(Debug)]
 pub struct Value {
@@ -85,7 +87,7 @@ impl<T: ConvertCoreValue> From<T> for Value {
         let inner = inner.to_core_value();
         Value {
             inner,
-            classification: ValueClassification::default(),
+            classification: ValueClassification::new_unclassified(),
         }
     }
 }
@@ -223,7 +225,7 @@ impl Value {
                 body,
                 creator,
             }),
-            ValueClassification::None,
+            ValueClassification::new_unclassified(),
         )
     }
 
@@ -272,24 +274,34 @@ impl Value {
 
     /// Returns the actual current [TypeDefinition] of the value
     pub fn actual_type(&self) -> TypeDefinition {
-        match &self.classification {
-            ValueClassification::Entity(entity_type) => {
-                TypeDefinition::Box(Box::new(Type::Entity(entity_type.clone())))
-            }
-            ValueClassification::Tag(ValueTag { tag, is_empty }) => {
-                TypeDefinition::TaggedType(TaggedTypeDefinition {
-                    tag: tag.clone(),
-                    ty: if *is_empty {
-                        None
-                    } else {
-                        Some(Box::new(Type::core(self.default_core_type())))
-                    },
-                })
-            }
-            ValueClassification::Impls(_impls) => todo!(),
-            ValueClassification::None => {
-                TypeDefinition::CoreType(self.default_core_type())
-            }
+        
+        let mut types = Vec::<Type>::new();
+        
+        if let Some(entity_type) = &self.classification.entity_type {
+            types.push(Type::Entity(entity_type.clone()));
+        }
+        
+        if let Some(ValueTag { tag, is_empty }) = &self.classification.tag {
+            types.push(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                tag: tag.clone(),
+                ty: if *is_empty {
+                    None
+                } else {
+                    Some(Box::new(Type::core(self.default_core_type())))
+                },
+            }).into());
+        }
+        
+        for impl_address in &self.classification.impls {
+            todo!("converting impls classification to type definition is not yet implemented")
+        }
+        
+        if types.is_empty() {
+            TypeDefinition::CoreType(self.default_core_type())
+        } else if types.len() == 1 {
+            types.into_iter().next().unwrap().convert_to_definition()
+        } else {
+            TypeDefinition::Intersection(IntersectionTypeDefinition::new(types))
         }
     }
 

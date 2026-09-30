@@ -25,7 +25,7 @@ pub fn create_tagged_value_container(
     match value_container {
         ValueContainer::Local(mut value) => {
             // add tag type to the value
-            value.classification = ValueClassification::Tag(ValueTag {
+            value.classification = ValueClassification::new_with_tag(ValueTag {
                 tag,
                 is_empty: false,
             });

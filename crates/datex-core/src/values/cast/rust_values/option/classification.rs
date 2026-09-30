@@ -17,7 +17,7 @@ where
     ) -> ValueClassification {
         match self {
             Some(value) => value.classification(cache),
-            None => ValueClassification::None,
+            None => ValueClassification::new_unclassified(),
         }
     }
 }

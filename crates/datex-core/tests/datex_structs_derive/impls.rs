@@ -219,7 +219,7 @@ fn signatures() {
                 result,
                 ValueContainer::Local(Value::new(
                     CoreValue::native(3u8),
-                    ValueClassification::None,
+                    ValueClassification::new_unclassified(),
                 ))
             );
         }

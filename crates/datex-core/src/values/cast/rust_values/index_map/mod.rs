@@ -33,7 +33,7 @@ mod tests {
         let mut index_map = IndexMap::new();
         index_map.insert(Integer::from(1), Endpoint::new("@jonas"));
         let index_map_clone = index_map.clone();
-        let value = Value::new(index_map, ValueClassification::None);
+        let value = Value::new(index_map, ValueClassification::new_unclassified());
         assert_eq!(
             value.try_into_value::<IndexMap<Integer, Endpoint>>().unwrap(),
             index_map_clone,

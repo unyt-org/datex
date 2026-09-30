@@ -129,7 +129,7 @@ impl TypeSuperset<EntityType> for EntityType {
 impl TypeSatisfiesValueContainer for EntityType {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
         match &value.collapsed_value().borrow().classification {
-            ValueClassification::Entity(entity) => self.is_superset_of(entity),
+            ValueClassification{ entity_type: Some(entity), ..} => self.is_superset_of(entity),
             _ => false,
         }
     }
