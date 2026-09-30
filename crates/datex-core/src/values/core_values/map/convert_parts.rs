@@ -24,7 +24,7 @@ impl IntoParts for Map {
 }
 
 impl FromParts for Map {
-    fn try_from_map_parts(parts: Map) -> Result<Self, ()>
+    fn try_from_map_parts_with_tag(parts: Map, _tag: Option<&str>) -> Result<Self, ()>
     where
         Self: Sized,
     {
