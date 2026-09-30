@@ -36,6 +36,7 @@ use crate::{
     values::{core_value::CoreValue, value::borrowed_value::BorrowedValue},
 };
 pub use datex_native_trait::*;
+use crate::traits::classification::Classification;
 
 impl<T: DatexNative + ConvertCoreValue + StaticClassification>
     ConvertValueContainer for T
@@ -125,7 +126,8 @@ pub fn validate_classification<T>(value: &Value) -> Result<(), ()>
 where
     T: StaticClassification,
 {
-    if !T::has_classification() && !value.classification().is_none() {
+    let cache = &mut SharedReferencesCache::default();
+    if !T::has_classification() && !value.classification(cache).is_none() {
         Err(())
     } else {
         Ok(())
@@ -251,13 +253,15 @@ mod tests {
     use crate::{
         prelude::*, values::value::value_classification::ValueClassification,
     };
+    use crate::traits::classification::Classification;
 
     #[test]
     fn serde() {
+        let cache = &mut SharedReferencesCache::default();
         let val = NativeCoreValue::new("xx".to_string());
         let ser =
-            val.to_datex_native_value(&mut SharedReferencesCache::default());
-        assert_eq!(ser.classification(), &ValueClassification::new_unclassified(),);
+            val.to_datex_native_value(cache);
+        assert_eq!(ser.classification(cache), ValueClassification::new_unclassified(),);
         assert_eq!(
             ser.inner,
             CoreValue::Native(NativeCoreValue::new("xx".to_string()))

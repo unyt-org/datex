@@ -163,10 +163,7 @@ impl Value {
     pub fn is_native(&self) -> bool {
         matches!(&self.inner, CoreValue::Native(_))
     }
-
-    pub fn classification(&self) -> &ValueClassification {
-        &self.classification
-    }
+    
     pub fn into_inner(self) -> CoreValue {
         self.inner
     }
