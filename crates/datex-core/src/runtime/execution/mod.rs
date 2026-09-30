@@ -306,7 +306,7 @@ pub async fn execute_dxb(
 fn try_get_entity_type(value: &Value) -> Result<EntityType, ExecutionError> {
     match value {
         Value {
-            classification: ValueClassification::Entity(entity_type),
+            classification: ValueClassification { entity_type: Some(entity_type), ..},
             ..
         } => Ok(entity_type.clone()),
         _ => Err(ExecutionError::ExpectedEntityValue),

@@ -20,31 +20,29 @@ impl ToInstructions for Value {
         'ctx: 'a,
     {
         Box::new(gen move {
-            // append classified type information
-            match &self.classification {
-                ValueClassification::None => {
-                    // no classification, just append the value
-                }
-                ValueClassification::Entity(entity_type) => {
-                    yield RegularInstruction::EntityValue(
-                        entity_type.pointer_address(),
-                    )
+            if let Some(entity_type) = &self.classification.entity_type {
+                yield RegularInstruction::EntityValue(
+                    entity_type.pointer_address(),
+                )
                     .into()
-                }
-                ValueClassification::Impls(_items) => todo!(
+            }
+
+            for impl_address in &self.classification.impls {
+                todo!(
                     "Compiling values with Impls classification is not yet implemented"
-                ),
-                ValueClassification::Tag(ValueTag { tag, is_empty }) => {
-                    yield RegularInstruction::tagged_value(
-                        tag.clone(),
-                        *is_empty,
-                    )
+                )
+            }
+            
+            if let Some(ValueTag {tag, is_empty}) = &self.classification.tag {
+                yield RegularInstruction::tagged_value(
+                    tag.clone(),
+                    *is_empty,
+                )
                     .into();
-                    if *is_empty {
-                        // early return, don't append null value; TODO: assert that value is actually null?
-                        return;
-                    };
-                }
+                if *is_empty {
+                    // early return, don't append null value; TODO: assert that value is actually null?
+                    return;
+                };
             }
 
             // append inner instructions

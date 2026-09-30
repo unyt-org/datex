@@ -245,7 +245,7 @@ fn enum_to_value() {
     // assert_structural_eq!(variant_a, Value::null());
     assert_eq!(
         variant_a.classification(),
-        &ValueClassification::Tag(ValueTag {
+        &ValueClassification::new_with_tag(ValueTag {
             tag: "VariantA".to_string(),
             is_empty: true
         })
@@ -258,7 +258,7 @@ fn enum_to_value() {
     );
     assert_eq!(
         variant_b.classification(),
-        &ValueClassification::Tag(ValueTag {
+        &ValueClassification::new_with_tag(ValueTag {
             tag: "VariantB".to_string(),
             is_empty: false
         })
@@ -278,7 +278,7 @@ fn enum_to_value() {
     );
     assert_eq!(
         variant_c.classification(),
-        &ValueClassification::Tag(ValueTag {
+        &ValueClassification::new_with_tag(ValueTag {
             tag: "VariantC".to_string(),
             is_empty: false
         })
@@ -288,7 +288,7 @@ fn enum_to_value() {
     assert_structural_eq!(variant_d, Value::from(1u8));
     assert_eq!(
         variant_d.classification(),
-        &ValueClassification::Tag(ValueTag {
+        &ValueClassification::new_with_tag(ValueTag {
             tag: "VariantD".to_string(),
             is_empty: false
         })
@@ -392,7 +392,7 @@ fn value_to_new_typestruct() {
 fn value_to_enum() {
     let variant_a = Value::new(
         CoreValue::Null,
-        ValueClassification::Tag(ValueTag {
+        ValueClassification::new_with_tag(ValueTag {
             tag: "VariantA".to_string(),
             is_empty: true,
         }),
@@ -404,7 +404,7 @@ fn value_to_enum() {
     let variant_b = Value::new(
         vec![ValueContainer::from(1u8), ValueContainer::from(2u8)]
             .to_core_value(),
-        ValueClassification::Tag(ValueTag {
+        ValueClassification::new_with_tag(ValueTag {
             tag: "VariantB".to_string(),
             is_empty: false,
         }),
@@ -418,7 +418,7 @@ fn value_to_enum() {
             ("y".to_string(), ValueContainer::from("Hello".to_string())),
         ])
         .to_core_value(),
-        ValueClassification::Tag(ValueTag {
+        ValueClassification::new_with_tag(ValueTag {
             tag: "VariantC".to_string(),
             is_empty: false,
         }),
@@ -428,7 +428,7 @@ fn value_to_enum() {
 
     let variant_d = Value::new(
         42u8.to_core_value(),
-        ValueClassification::Tag(ValueTag {
+        ValueClassification::new_with_tag(ValueTag {
             tag: "VariantD".to_string(),
             is_empty: false,
         }),
@@ -442,7 +442,7 @@ fn value_to_enum_failure() {
     let invalid_variant = Value::new(
         vec![ValueContainer::from(1u8), ValueContainer::from(2u8)]
             .to_core_value(),
-        ValueClassification::Tag(ValueTag {
+        ValueClassification::new_with_tag(ValueTag {
             tag: "VariantX".to_string(),
             is_empty: false,
         }),
@@ -451,7 +451,7 @@ fn value_to_enum_failure() {
 
     let invalid_variant = Value::new(
         42u8.to_core_value(),
-        ValueClassification::Tag(ValueTag {
+        ValueClassification::new_with_tag(ValueTag {
             tag: "VariantA".to_string(),
             is_empty: false,
         }),

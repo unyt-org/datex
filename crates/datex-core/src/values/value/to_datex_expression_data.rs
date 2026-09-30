@@ -24,7 +24,7 @@ fn classification_expression(
     classification: &ValueClassification,
 ) -> DatexExpressionData {
     match classification {
-        ValueClassification::None => expression,
+        ValueClassification::new_unclassified() => expression,
         ValueClassification::Tag(ValueTag { tag, is_empty }) => {
             DatexExpressionData::Tag(TagExpression {
                 tag: tag.clone(),

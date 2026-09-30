@@ -2,7 +2,9 @@ use crate::{
     preludes::derive::SharedReferencesCache,
     types::entity_type::EntityType,
     values::value::value_classification::{ValueClassification, ValueTag},
+    prelude::*,
 };
+use crate::shared_values::PointerAddress;
 
 pub trait Classification {
     /// Returns the DATEX [EntityType] of the native value if it has an entity type.
@@ -21,19 +23,26 @@ pub trait Classification {
         None
     }
 
+    /// Returns a list of [PointerAddress]es of the impls associated with the value.
+    /// The default implementation returns an empty list, indicating that the value does not have any impls.
+    fn impls(&self) -> Vec<PointerAddress> {
+        Vec::new()
+    }
+
     /// Returns the DATEX [ValueClassification] of the native value.
     /// This tries to resolve the entity type and tag, assuming at most one of them is present.
     fn classification(
         &self,
         cache: &mut SharedReferencesCache,
     ) -> ValueClassification {
-        if let Some(entity_type) = self.entity_type(cache) {
-            ValueClassification::Entity(entity_type)
-        } else if let Some(tag) = self.tag() {
-            ValueClassification::Tag(tag)
-        } else {
-            ValueClassification::None
+        let impls = self.impls();
+        let entity = self.entity_type(cache);
+        let tag = self.tag();
+
+        ValueClassification {
+            entity_type: entity,
+            impls,
+            tag,
         }
-        // TODO: impl types?
     }
 }

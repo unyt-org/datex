@@ -163,31 +163,27 @@ pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx> + 'ctx>(
     value: &Value,
 ) {
     // append classified type information
-    match &value.classification {
-        // unit tagged value (e.g. #Example)
-        ValueClassification::Tag(ValueTag { tag, is_empty }) => {
-            context.write(RegularInstruction::tagged_value(
-                tag.clone(),
-                *is_empty,
-            ));
-            if *is_empty {
-                return;
-            }; // early return, don't append null value; TODO: assert that value is actually null?
-        }
-        // entity value
-        ValueClassification::Entity(entity_type) => {
-            context.write(RegularInstruction::EntityValue(
-                entity_type.pointer_address(),
-            ));
-        }
-        // impls value
-        ValueClassification::Impls(_impls) => {
-            todo!(
-                "Compiling values with Impls classification is not yet implemented"
-            );
-        }
-        // no classification, just append the value
-        ValueClassification::None => {}
+    if let Some(entity_type) = &value.classification.entity_type {
+        context.write(RegularInstruction::EntityValue(
+            entity_type.pointer_address(),
+        ))
+    }
+
+    for impl_address in &value.classification.impls {
+        todo!(
+            "Compiling values with Impls classification is not yet implemented"
+        )
+    }
+
+    if let Some(ValueTag {tag, is_empty}) = &value.classification.tag {
+        context.write(RegularInstruction::tagged_value(
+            tag.clone(),
+            *is_empty,
+        ));
+        if *is_empty {
+            // early return, don't append null value; TODO: assert that value is actually null?
+            return;
+        };
     }
 
     let _: () = match &value.inner {

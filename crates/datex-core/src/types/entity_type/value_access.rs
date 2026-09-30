@@ -33,7 +33,7 @@ impl ValueAccess for EntityType {
             })?;
             Ok(BorrowedValueContainer::Local(BorrowedValue {
                 inner: BorrowedCoreValue::Callable(callable_ref.into()),
-                classification: ValueClassification::None,
+                classification: ValueClassification::new_unclassified(),
             }))
         } else {
             Err(AccessError::InvalidIndexKey)

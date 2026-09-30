@@ -46,7 +46,7 @@ impl ValueAccess for Value {
                         inner: BorrowedCoreValue::Callable(Goat::Ref(
                             reference,
                         )),
-                        classification: ValueClassification::None,
+                        classification: ValueClassification::new_unclassified(),
                     }))
                 } else {
                     Err(AccessError::InvalidIndexKey)

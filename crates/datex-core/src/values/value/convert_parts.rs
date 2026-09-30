@@ -22,7 +22,7 @@ impl FromParts for Value {
         if let Some(tag) = tag {
             Ok(Value::new(
                 CoreValue::try_from_map_parts_with_tag(parts, None)?,
-                ValueClassification::Tag(ValueTag {
+                ValueClassification::new_with_tag(ValueTag {
                     tag: tag.to_string(),
                     is_empty: false,
                 }),

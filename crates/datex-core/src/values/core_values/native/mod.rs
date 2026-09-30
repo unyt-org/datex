@@ -257,7 +257,7 @@ mod tests {
         let val = NativeCoreValue::new("xx".to_string());
         let ser =
             val.to_datex_native_value(&mut SharedReferencesCache::default());
-        assert_eq!(ser.classification(), &ValueClassification::None,);
+        assert_eq!(ser.classification(), &ValueClassification::none(),);
         assert_eq!(
             ser.inner,
             CoreValue::Native(NativeCoreValue::new("xx".to_string()))

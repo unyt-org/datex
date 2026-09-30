@@ -44,7 +44,7 @@ impl BaseSharedValueContainer {
         Self::new_with_inferred_allowed_type(
             ValueContainer::Local(Value::new(
                 CoreValue::Null,
-                ValueClassification::None,
+                ValueClassification::new_unclassified(),
             )),
             SharedContainerMutability::Immutable,
         )

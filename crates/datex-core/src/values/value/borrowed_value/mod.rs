@@ -267,7 +267,7 @@ impl<'a> From<BorrowedCoreValue<'a>> for BorrowedValue<'a> {
     fn from(borrowed_core_value: BorrowedCoreValue<'a>) -> Self {
         BorrowedValue {
             inner: borrowed_core_value,
-            classification: ValueClassification::None,
+            classification: ValueClassification::new_unclassified(),
         }
     }
 }

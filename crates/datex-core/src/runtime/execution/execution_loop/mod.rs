@@ -429,7 +429,7 @@ pub gen fn inner_execution_loop(
 
                             RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
                                 Some(RuntimeValue::ValueContainer(
-                                    ValueContainer::Local(Value::new(CoreValue::Null, ValueClassification::Tag(ValueTag {
+                                    ValueContainer::Local(Value::new(CoreValue::Null, ValueClassification::new_with_tag(ValueTag {
                                         tag,
                                         is_empty: true,
                                     })))
@@ -878,7 +878,7 @@ pub gen fn inner_execution_loop(
 
                                     match &mut value_container {
                                         ValueContainer::Local(value) => {
-                                            value.classification = ValueClassification::Entity(entity_type);
+                                            value.classification = ValueClassification::new_with_entity(entity_type);
                                         }
                                         _ => return yield Err(ExecutionError::invalid_program(InvalidProgramError::InvalidType)),
                                     }

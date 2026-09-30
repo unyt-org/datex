@@ -5,15 +5,13 @@ use crate::{
 };
 
 impl Classification for Value {
-    /// Give back the classification of the value. If the classification is `None`,
-    /// return the classification of the inner value (if it is a native value, it might have its own classification)
+    /// Give back the classification of the value.
+    /// Merges the classification of the inner value with the classification of the [Value].
     fn classification(
         &self,
         cache: &mut SharedReferencesCache,
     ) -> ValueClassification {
-        match &self.classification {
-            ValueClassification::None => self.inner.classification(cache),
-            other => other.clone(),
-        }
+        self.classification
+            .merge(self.inner.classification(cache))
     }
 }
