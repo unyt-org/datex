@@ -17,10 +17,11 @@ pub fn generate_core_lib_type_id(
     let StructureData {
         ident, generics, ..
     } = structure_data;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
         #[automatically_derived]
-        impl #generics GetCoreLibTypeId for #ident #generics {}
+        impl #impl_generics GetCoreLibTypeId for #ident #ty_generics #where_clause {}
     }
 }
 
@@ -41,11 +42,12 @@ pub fn generate_datex_type(structure_data: &StructureData) -> TokenStream {
         .unwrap_or(structure_data.ident.to_string());
 
     let registration = generate_type_registration(structure_data);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     if matches!(attributes.type_kind, TypeKind::Structural { .. }) {
         quote! {
             #[automatically_derived]
-            impl #generics GetDatexType for #ident #generics {
+            impl #impl_generics GetDatexType for #ident #ty_generics #where_clause {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     cache.resolve_structural_type::<Self, _>(
                         |cache| (#datex_type).with_name(#datex_name)
@@ -58,7 +60,7 @@ pub fn generate_datex_type(structure_data: &StructureData) -> TokenStream {
     } else {
         quote! {
             #[automatically_derived]
-            impl #generics GetDatexType for #ident #generics {
+            impl #impl_generics GetDatexType for #ident #ty_generics #where_clause {
                 fn datex_type(cache: &mut SharedReferencesCache) -> Type {
                     #datex_type
                 }
