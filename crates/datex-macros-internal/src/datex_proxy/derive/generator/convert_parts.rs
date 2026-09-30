@@ -43,13 +43,13 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
 
     let into_map_parts_impl = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
-        SelfAccess::Moved,
+        SelfAccess::Boxed,
         generate_into_map_parts_for_fields,
     );
 
     let into_list_parts_impl = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
-        SelfAccess::Moved,
+        SelfAccess::Boxed,
         generate_into_list_parts_for_fields,
     );
 

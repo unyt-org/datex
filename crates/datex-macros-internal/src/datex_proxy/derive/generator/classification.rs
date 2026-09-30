@@ -2,7 +2,7 @@ use crate::datex_proxy::data::{EnumVariant, Fields, Structure, StructureData, Ty
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Variant;
-use crate::datex_proxy::generator::helpers::map_enum_variants;
+use crate::datex_proxy::generator::helpers::{map_enum_variants, SelfAccess};
 
 /// Generates the [Classification] and [StaticClassification] implementations
 pub fn generate_classification(structure_data: &StructureData) -> TokenStream {
@@ -37,7 +37,7 @@ pub fn generate_classification(structure_data: &StructureData) -> TokenStream {
 fn generate_classification_methods(structure_data: &StructureData) -> TokenStream {
     let tag_method = match &structure_data.structure {
         Structure::Enum(variants) => {
-            let enum_tags = generate_enum_tags(variants);
+            let enum_tags = generate_enum_tags(variants, SelfAccess::Borrowed);
             Some(
                 quote! {
                      fn tag(&self) -> Option<ValueTag> {
@@ -70,8 +70,8 @@ fn generate_classification_methods(structure_data: &StructureData) -> TokenStrea
     }
 }
 
-fn generate_enum_tags(variants: &[EnumVariant]) -> TokenStream {
-    map_enum_variants(variants, |variant| {
+fn generate_enum_tags(variants: &[EnumVariant], self_access: SelfAccess) -> TokenStream {
+    map_enum_variants(variants, self_access, |variant| {
         let variant_name = &variant.name;
         let is_empty = matches!(variant.fields, Fields::Unit);
         quote! {
