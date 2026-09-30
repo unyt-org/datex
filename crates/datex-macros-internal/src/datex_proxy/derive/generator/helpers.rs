@@ -1,6 +1,6 @@
+use crate::datex_proxy::data::{EnumVariant, Fields, Structure};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use crate::datex_proxy::data::{EnumVariant, Fields, Structure};
 
 /// Represents whether the self value is borrowed or moved in the context of generating code for struct or enum variants.
 pub enum SelfAccess {
@@ -19,18 +19,28 @@ pub fn generate_struct_or_enum_variants_fields_mapping(
 ) -> TokenStream {
     match structure {
         Structure::Struct(fields) => {
-            let field_assignments = generate_struct_field_accessors(fields, self_access);
+            let field_assignments =
+                generate_struct_field_accessors(fields, self_access);
             let mapping = fields_mapping(fields, None);
             quote! {{
                 #field_assignments
                 #mapping
             }}
         }
+        Structure::Enum(variants) => map_enum_variants(variants, |variant| {
+            fields_mapping(&variant.fields, Some(&variant.name))
+        }),
+    }
+}
+
+pub fn generate_from_parts_impl(
+    structure: &Structure,
+    fields_mapper: impl Fn(&Fields, Option<&syn::Ident>) -> TokenStream,
+) -> TokenStream {
+    match &structure {
+        Structure::Struct(fields) => fields_mapper(fields, None),
         Structure::Enum(variants) => {
-            map_enum_variants(
-                variants,
-                |variant| fields_mapping(&variant.fields, Some(&variant.name))
-            )
+            generate_enum_match_from_parts(variants, fields_mapper)
         }
     }
 }
@@ -86,22 +96,23 @@ pub fn map_enum_variants(
 }
 
 /// Generates the field accessors for a struct, creating let bindings for each field.
-pub fn generate_struct_field_accessors(fields: &Fields, self_access: SelfAccess) -> TokenStream {
+pub fn generate_struct_field_accessors(
+    fields: &Fields,
+    self_access: SelfAccess,
+) -> TokenStream {
     let field_assignments = fields
         .field_accessors()
         .iter()
         .zip(fields.normalized_field_idents().iter())
-        .map(|(accessor, normalized_ident)| {
-            match self_access {
-                SelfAccess::Borrowed => {
-                    quote! {
-                        let #normalized_ident = &self.#accessor;
-                    }
+        .map(|(accessor, normalized_ident)| match self_access {
+            SelfAccess::Borrowed => {
+                quote! {
+                    let #normalized_ident = &self.#accessor;
                 }
-                SelfAccess::Moved => {
-                    quote! {
-                        let #normalized_ident = self.#accessor;
-                    }
+            }
+            SelfAccess::Moved => {
+                quote! {
+                    let #normalized_ident = self.#accessor;
                 }
             }
         })
@@ -110,4 +121,29 @@ pub fn generate_struct_field_accessors(fields: &Fields, self_access: SelfAccess)
     quote! {
         #(#field_assignments)*
     }
+}
+
+pub fn generate_enum_match_from_parts(
+    variants: &[EnumVariant],
+    field_generator: impl Fn(&Fields, Option<&syn::Ident>) -> TokenStream,
+) -> TokenStream {
+    let variant = variants
+        .iter()
+        .map(|variant| {
+            let variant_ident = &variant.name;
+            let fields =
+                &field_generator(&variant.fields, Some(&variant.ident()));
+            quote! {
+                Some(#variant_ident) => {
+                    #fields
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+    quote! {{
+        match tag {
+            #(#variant,)*
+            _ => Err(()),
+        }
+    }}
 }
