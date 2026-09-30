@@ -479,7 +479,7 @@ pub fn ast_from_bytecode(
                             | TypeInstruction::ListCollection
                             | TypeInstruction::MapCollection
                             | TypeInstruction::Range
-                            | TypeInstruction::ImplType(_)
+                            | TypeInstruction::ImplMarkers(_)
                             | TypeInstruction::Callable(_)
                             | TypeInstruction::TaggedType(_)
                             | TypeInstruction::Map(_)

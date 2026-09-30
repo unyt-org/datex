@@ -2,7 +2,7 @@ use crate::{
     instruction::{
         NextExpectedInstructions,
         instruction_data::{
-            CallableSignatureData, ImplTypeData, IntersectionData, ListData,
+            CallableSignatureData, ImplMarkersData, IntersectionData, ListData,
             ListSliceCollectionData, MapData, TaggedTypeData,
             TypeReferenceData, UnionData,
         },
@@ -26,7 +26,7 @@ pub enum TypeInstruction {
     #[brw(magic = 0x0u8)]
     CoreType(CoreLibTypeId),
     #[brw(magic = 0x1u8)]
-    ImplType(ImplTypeData),
+    ImplMarkers(ImplMarkersData),
     #[brw(magic = 0x2u8)]
     SharedTypeReference(TypeReferenceData),
     #[brw(magic = 0x3u8)]
@@ -104,7 +104,6 @@ impl TypeInstruction {
             TypeInstruction::Callable(callable) => {
                 NextExpectedInstructions::Type(callable.total_type_count())
             }
-            TypeInstruction::ImplType(_) => NextExpectedInstructions::Type(1),
             TypeInstruction::TaggedType(ty) => {
                 if ty.has_type {
                     NextExpectedInstructions::Type(1)
@@ -136,7 +135,7 @@ impl TypeInstruction {
             TypeInstruction::CoreType(data) => {
                 write!(string, "{}", data)
             }
-            TypeInstruction::ImplType(data) => {
+            TypeInstruction::ImplMarkers(data) => {
                 write!(string, "[{} impls]", data.impl_count)
             }
             TypeInstruction::TaggedType(data) => {

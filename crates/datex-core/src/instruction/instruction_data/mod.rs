@@ -517,7 +517,7 @@ pub struct CallMethodData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct ImplTypeData {
+pub struct ImplMarkersData {
     pub impl_count: u8,
     #[br(count = impl_count)]
     pub impls: Vec<PointerAddress>,

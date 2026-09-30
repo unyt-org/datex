@@ -28,7 +28,7 @@ use datex_core::{
                     map::MapCollectionTypeDefinition,
                 },
             },
-            impl_type::ImplTypeDefinition,
+            impl_type::ImplMarkers,
             intersection::IntersectionTypeDefinition,
             map::MapTypeDefinition,
             range::RangeTypeDefinition,
@@ -118,7 +118,7 @@ fn union() {
 #[test]
 fn impl_type() {
     let ty = Type::Definition(
-        TypeDefinition::ImplType(ImplTypeDefinition::new(
+        TypeDefinition::ImplMarkers(ImplMarkers::new(
             Type::Definition(LiteralTypeDefinition::Integer(42.into()).into()),
             vec![PointerAddress::self_owned([1u8, 2u8, 3u8, 4u8, 5u8])],
         ))

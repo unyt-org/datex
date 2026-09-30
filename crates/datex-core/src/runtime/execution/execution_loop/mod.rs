@@ -74,7 +74,7 @@ use crate::{
                     map::MapCollectionTypeDefinition,
                 },
             },
-            impl_type::ImplTypeDefinition,
+            impl_type::ImplMarkers,
             intersection::IntersectionTypeDefinition,
             map::MapTypeDefinition,
             range::RangeTypeDefinition,
@@ -125,6 +125,7 @@ use crate::{
     },
 };
 use collected_execution_result::CollectedExecutionResult;
+use crate::instruction::instruction_data::ImplMarkersData;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -595,6 +596,12 @@ pub gen fn inner_execution_loop(
                             }
                         }
 
+                        TypeInstruction::ImplMarkers(ImplMarkersData {impls, ..}) => {
+                            CollectedExecutionResult::type_definition(
+                                TypeDefinition::ImplMarkers(ImplMarkers::new(impls))
+                            )
+                        }
+
                         // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                         TypeInstruction::List(_)
                         | TypeInstruction::Intersection(_)
@@ -610,8 +617,7 @@ pub gen fn inner_execution_loop(
                         | TypeInstruction::TaggedType(TaggedTypeData {
                             has_type: true,
                             ..
-                        })
-                        | TypeInstruction::ImplType(_) => {
+                        }) => {
                             panic!(
                                 "Unexpected type instruction: {:?}",
                                 type_instruction
@@ -1524,19 +1530,6 @@ pub gen fn inner_execution_loop(
                                                 tagged_type_data.tag.0
                                             )).into()
                                         }
-                                    }
-                                    TypeInstruction::ImplType(
-                                        impl_type_data,
-                                    ) => {
-                                        let def =
-                                            collected_results.pop_type();
-
-                                        TypeDefinition::ImplType(ImplTypeDefinition::new(
-                                            def,
-                                            impl_type_data
-                                                .impls
-                                                .into_iter().collect(),
-                                        )).into()
                                     }
                                     TypeInstruction::Range => {
                                         let type_end =

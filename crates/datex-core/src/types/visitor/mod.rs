@@ -17,7 +17,7 @@ use crate::{
                     map::MapCollectionTypeDefinition,
                 },
             },
-            impl_type::ImplTypeDefinition,
+            impl_type::ImplMarkers,
             intersection::IntersectionTypeDefinition,
             list::ListTypeDefinition,
             map::MapTypeDefinition,
@@ -185,9 +185,8 @@ where
                 folder.fold_range(range_type_definition, start, end)
             }
         },
-        TypeDefinition::ImplType(impl_type) => {
-            let ty = fold_type(folder, &impl_type.inner_type)?;
-            folder.fold_impl_type(impl_type, ty)
+        TypeDefinition::ImplMarkers(impl_markers) => {
+            folder.fold_impl_markers(impl_markers)
         }
         TypeDefinition::TaggedType(tagged) => {
             let payload = tagged
@@ -307,10 +306,9 @@ pub trait TypeFolder {
     ) -> Result<Self::Output, Self::Error>;
 
     /// Called when an impl type definition is encountered. The folded inner type is provided as an argument.
-    fn fold_impl_type(
+    fn fold_impl_markers(
         &mut self,
-        source: &ImplTypeDefinition,
-        ty: Self::Output,
+        source: &ImplMarkers,
     ) -> Result<Self::Output, Self::Error>;
 
     /// Called when a list collection type definition is encountered. The folded item type is provided as an argument.

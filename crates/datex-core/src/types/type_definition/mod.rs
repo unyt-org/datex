@@ -15,7 +15,7 @@ use crate::{
         type_definition::{
             callable::CallableTypeDefinition,
             collection::CollectionTypeDefinition,
-            impl_type::ImplTypeDefinition,
+            impl_type::ImplMarkers,
             intersection::IntersectionTypeDefinition, list::ListTypeDefinition,
             map::MapTypeDefinition, range::RangeTypeDefinition,
             tagged_type::TaggedTypeDefinition, union::UnionTypeDefinition,
@@ -72,7 +72,7 @@ pub enum TypeDefinition {
     /// The type is treated as equivalent to `innerType` for most operations,
     /// but the impl markers can be used to enforce additional constraints during
     /// type checking or runtime behavior.
-    ImplType(ImplTypeDefinition),
+    ImplMarkers(ImplMarkers),
 
     /// NOTE: all the types below can never exist as actual types of a runtime value - they are only
     /// relevant for type space definitions and type checking.
@@ -98,7 +98,7 @@ impl TypeDefinition {
             self,
             TypeDefinition::CoreType(_)
                 | TypeDefinition::Box(Type::Entity(_))
-                | TypeDefinition::ImplType(_)
+                | TypeDefinition::ImplMarkers(_)
         )
     }
 
@@ -160,7 +160,7 @@ impl Hash for TypeDefinition {
                 callable.return_type.hash(state);
                 callable.yeet_type.hash(state);
             }
-            TypeDefinition::ImplType(definition) => {
+            TypeDefinition::ImplMarkers(definition) => {
                 definition.hash(state);
             }
             TypeDefinition::Box(ty) => {
@@ -205,7 +205,7 @@ impl Display for TypeDefinition {
             TypeDefinition::Shared(reference) => {
                 write!(f, "{}", reference.deref())
             }
-            TypeDefinition::ImplType(definition) => {
+            TypeDefinition::ImplMarkers(definition) => {
                 write!(f, "{}", definition)?;
                 Ok(())
             }
@@ -343,8 +343,8 @@ impl TypeDefinition {
     }
 
     /// Creates a new type with impls.
-    pub fn impl_type(ty: impl Into<Type>, impls: Vec<PointerAddress>) -> Self {
-        TypeDefinition::ImplType(ImplTypeDefinition::new(ty.into(), impls))
+    pub fn impl_markers(impls: Vec<PointerAddress>) -> Self {
+        TypeDefinition::ImplMarkers(ImplMarkers::new(impls))
     }
 
     /// Get the core lib type pointer id for this structural type definition
