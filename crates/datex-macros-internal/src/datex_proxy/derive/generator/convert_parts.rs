@@ -62,7 +62,7 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
-         #[automatically_derived]
+        #[automatically_derived]
         impl #impl_generics HasPartsKind for #ident #ty_generics #where_clause {
             fn parts_kind(&self) -> PartsKind {
                 #parts_kind

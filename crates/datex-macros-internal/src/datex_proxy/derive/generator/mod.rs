@@ -17,6 +17,7 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::quote;
+use crate::datex_proxy::generator::serde_dif::generate_serde_dif;
 
 pub mod classification;
 mod convert_parts;
@@ -28,6 +29,7 @@ mod to_instructions;
 pub mod try_from_core_value;
 pub mod value_access;
 pub mod helpers;
+pub mod serde_dif;
 
 /// Generates the code for the derive macro based on the provided structure data.
 pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
@@ -41,6 +43,7 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
     let value_access = generate_value_access(&structure_data);
     let datex_hash = generate_datex_hash(&structure_data);
     let to_instructions = generate_to_instructions(&structure_data);
+    let serde_dif = generate_serde_dif(&structure_data);
 
     let datex_expression_data =
         cfg_select! {
@@ -62,6 +65,7 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
             #value_access
             #datex_hash
             #to_instructions
+            #serde_dif
             #datex_expression_data
         };
     }
