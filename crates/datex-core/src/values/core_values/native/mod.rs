@@ -28,7 +28,7 @@ mod value_access;
 mod value_update;
 use crate::{
     libs::core::type_id::CoreLibTypeId,
-    preludes::derive::{BorrowedValueContainer, StaticClassification},
+    preludes::derive::{BorrowedValueContainer},
     traits::{
         convert_core_value::ConvertCoreValue,
         convert_value_container::ConvertValueContainer, try_clone::TryClone,
@@ -38,7 +38,7 @@ use crate::{
 pub use datex_native_trait::*;
 use crate::traits::classification::Classification;
 
-impl<T: DatexNative + ConvertCoreValue + StaticClassification>
+impl<T: DatexNative + ConvertCoreValue + Classification>
     ConvertValueContainer for T
 {
     fn to_value_container(
@@ -65,17 +65,14 @@ impl<T: DatexNative + ConvertCoreValue + StaticClassification>
     {
         match value_container {
             ValueContainer::Local(value) => {
-                match validate_classification::<T>(&value) {
-                    Ok(_) => Self::try_from_core_value(value.inner).map_err(
-                        |inner| {
-                            ValueContainer::Local(Value {
-                                inner,
-                                classification: value.classification,
-                            })
-                        },
-                    ),
-                    Err(_) => Err(ValueContainer::Local(value)),
-                }
+                Self::try_from_core_value(value.inner).map_err(
+                    |inner| {
+                        ValueContainer::Local(Value {
+                            inner,
+                            classification: value.classification,
+                        })
+                    },
+                )
             }
             _ => Err(value_container),
         }
@@ -89,12 +86,7 @@ impl<T: DatexNative + ConvertCoreValue + StaticClassification>
     {
         match value_container {
             ValueContainer::Local(value) => {
-                match validate_classification::<T>(value) {
-                    Ok(_) => {
-                        Ok(Self::try_borrow_from_core_value(&value.inner)?)
-                    }
-                    Err(_) => Err(()),
-                }
+                Self::try_borrow_from_core_value(&value.inner)
             }
             _ => Err(()),
         }
@@ -108,29 +100,10 @@ impl<T: DatexNative + ConvertCoreValue + StaticClassification>
     {
         match value_container {
             ValueContainer::Local(value) => {
-                match validate_classification::<T>(value) {
-                    Ok(_) => Ok(Self::try_borrow_mut_from_core_value(
-                        &mut value.inner,
-                    )?),
-                    Err(_) => Err(()),
-                }
+                Self::try_borrow_mut_from_core_value(&mut value.inner)
             }
             _ => Err(()),
         }
-    }
-}
-
-// if the target type has no classification, i.e. is structural
-// but the value has a classification, we cannot convert it into the target type
-pub fn validate_classification<T>(value: &Value) -> Result<(), ()>
-where
-    T: StaticClassification,
-{
-    let cache = &mut SharedReferencesCache::default();
-    if !T::has_classification() && !value.classification(cache).is_none() {
-        Err(())
-    } else {
-        Ok(())
     }
 }
 

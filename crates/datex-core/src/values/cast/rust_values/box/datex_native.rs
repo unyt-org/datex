@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    preludes::derive::{DatexNative, StaticClassification, ValueContainer},
+    preludes::derive::{DatexNative, ValueContainer},
     traits::{
         get_datex_type::GetDatexType,
         local_child_path_resolver::LocalChildPathResolver,
@@ -12,8 +12,9 @@ use crate::{
     },
 };
 use core::any::Any;
+use crate::traits::classification::Classification;
 
-impl<T: DatexNative + GetDatexType + StaticClassification> DatexNative
+impl<T: DatexNative + GetDatexType + Classification> DatexNative
     for Box<T>
 {
     fn as_any(&self) -> &dyn Any {
@@ -23,7 +24,7 @@ impl<T: DatexNative + GetDatexType + StaticClassification> DatexNative
         self
     }
 }
-impl<T: DatexNative + GetDatexType + StaticClassification> DatexNativeOps
+impl<T: DatexNative + GetDatexType + Classification> DatexNativeOps
     for Box<T>
 {
 }

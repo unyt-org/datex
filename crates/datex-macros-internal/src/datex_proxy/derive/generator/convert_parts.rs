@@ -110,7 +110,7 @@ fn get_fields_parts_kind(fields: &Fields, tag: Option<&String>) -> TokenStream {
     match fields {
         Fields::Named(_) => quote! { PartsKind::Map },
         Fields::Unnamed(_) => quote! { PartsKind::List },
-        Fields::Unit => quote! { PartsKind::None },
+        Fields::Unit => quote! { PartsKind::SingleValue }, // unit structs can be represented as a single value (null)
         Fields::Transparent(field) => {
             let accessor = field.normalized_ident();
             quote! { #accessor.parts_kind() } // retrieve the parts kind of the single field
@@ -191,13 +191,7 @@ fn generate_into_single_value_for_fields(
     match fields {
         Fields::Transparent(field) => {
             let accessor = field.normalized_ident();
-            let value_container = value_container_from_field(
-                accessor.clone(),
-                &field.field.attributes.field_mapping,
-            );
-            quote! {
-                Ok(#value_container)
-            }
+            quote! { Box::new(#accessor).try_into_single_value(cache) } // delegate to the single field's implementation
         }
         Fields::Unit => quote! { Ok(ValueContainer::Local(Value::null())) }, // unit structs can be represented as null
         Fields::Named(_) | Fields::Unnamed(_) => quote! { Err(()) }, // only transparent structs can be converted into a single value
@@ -347,7 +341,10 @@ fn generate_from_map_parts_for_fields(
         }
         Fields::Unit | Fields::Unnamed(_) => quote! { Err(()) }, // unit structs cannot be converted from map parts
         Fields::Transparent(field) => {
-            quote! { todo!() } // delegate to the single field's implementation
+            let ty = &field.field.ty;
+            quote! {
+                <#ty>::try_from_map_parts_with_tag(parts, tag).map(#variant_ident)
+            } // delegate to the single field's implementation
         }
     }
 }
@@ -361,11 +358,9 @@ fn generate_from_list_parts_for_fields(
         .unwrap_or(quote! { Self });
     match fields {
         Fields::Unnamed(fields) => {
-            let (field_pops, field_idents) = fields
+            let (mut field_pops, field_idents) = fields
                 .iter()
-                .rev()
-                .enumerate()
-                .map(|(index, field)| {
+                .map(|field| {
                     let ident = field.normalized_ident();
                     let from_value_container = field_from_value_container(
                         ident.clone(),
@@ -380,6 +375,7 @@ fn generate_from_list_parts_for_fields(
                     )
                 })
                 .collect::<(Vec<_>, Vec<_>)>();
+            field_pops.reverse();
             quote! {
                 #(#field_pops)*
                 Ok(#variant_ident(
@@ -389,7 +385,10 @@ fn generate_from_list_parts_for_fields(
         }
         Fields::Unit | Fields::Named(_) => quote! { Err(()) }, // unit structs cannot be converted from list parts
         Fields::Transparent(field) => {
-            quote! { todo!() } // delegate to the single field's implementation
+            let ty = &field.field.ty;
+            quote! {
+                <#ty>::try_from_list_parts_with_tag(parts, tag).map(#variant_ident)
+            } // delegate to the single field's implementation
         }
     }
 }
@@ -403,18 +402,11 @@ fn generate_from_single_value_for_fields(
         .unwrap_or(quote! { Self });
     match fields {
         Fields::Transparent(field) => {
-            let accessor = field.normalized_ident();
-            let from_value_container = field_from_value_container(
-                accessor.clone(),
-                &field.field.attributes.field_mapping,
-                false, // TODO
-            );
+            let ty = &field.field.ty;
             quote! {
-                let #accessor: Result<ValueContainer, ()> = Ok(value);
-                let #accessor = #from_value_container;
-                Ok(#variant_ident(#accessor))
-            }
-        },
+                <#ty>::try_from_single_value_with_tag(value, tag).map(#variant_ident)
+            } // delegate to the single field's implementation
+        }
         Fields::Unit => {
             // if value is null, we can construct the unit struct, otherwise we cannot
             quote! {

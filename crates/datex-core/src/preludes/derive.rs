@@ -36,7 +36,6 @@ pub use crate::{
     traits::get_core_lib_type_id::GetCoreLibTypeId,
     traits::get_datex_type::GetDatexType,
     traits::local_child_path_resolver::LocalChildPathResolver,
-    traits::static_classification::StaticClassification,
     traits::value_access::ValueAccess,
     types::type_definition::callable::{CallableKind, CallableTypeDefinition},
     types::{

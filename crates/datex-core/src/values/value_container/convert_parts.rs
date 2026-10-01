@@ -83,7 +83,7 @@ impl FromParts for ValueContainer {
         )?))
     }
 
-    fn try_from_single_value(value: ValueContainer) -> Result<Self, ()>
+    fn try_from_single_value_with_tag(value: ValueContainer, _tag: Option<&str>) -> Result<Self, ()>
     where
         Self: Sized,
     {

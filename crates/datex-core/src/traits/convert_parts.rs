@@ -7,6 +7,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::traits::convert_value_container::ConvertValueContainer;
 
 /// Represents the different parts of a disassembled value
 /// that can be used to reconstruct the original value.
@@ -62,7 +63,7 @@ pub trait FromParts: HasPartsKind {
     {
         Self::try_from_list_parts_with_tag(_parts, None)
     }
-    
+
     /// Tries to construct the implementing type from a single value.
     fn try_from_single_value(_value: ValueContainer) -> Result<Self, ()>
     where
@@ -90,7 +91,7 @@ pub trait FromParts: HasPartsKind {
     {
         Err(())
     }
-    
+
     fn try_from_single_value_with_tag(
         _value: ValueContainer,
         _tag: Option<&str>,
@@ -144,7 +145,7 @@ pub trait IntoParts: HasPartsKind {
     {
         Err(())
     }
-    
+
     /// Converts the implementing type into a single value.
     /// Returns an error if the conversion is not possible.
     /// You can check if the conversion is possible by calling `parts_kind()`
