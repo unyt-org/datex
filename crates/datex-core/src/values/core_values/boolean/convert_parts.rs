@@ -1,9 +1,9 @@
 use crate::{
-    traits::convert_parts::{FromParts, IntoParts, WithPartsKind},
+    traits::convert_parts::{FromParts, IntoParts, HasPartsKind},
     values::core_values::boolean::Boolean,
 };
 
 /// Default implementations - cannot be split into parts
 impl IntoParts for Boolean {}
 impl FromParts for Boolean {}
-impl WithPartsKind for Boolean {}
+impl HasPartsKind for Boolean {}

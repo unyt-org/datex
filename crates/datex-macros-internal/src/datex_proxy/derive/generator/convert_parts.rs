@@ -53,11 +53,17 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
         generate_into_list_parts_for_fields,
     );
 
+    let into_single_value_impl = generate_struct_or_enum_variants_fields_mapping(
+        &structure_data.structure,
+        SelfAccess::Boxed,
+        generate_into_single_value_for_fields
+    );
+
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
          #[automatically_derived]
-        impl #impl_generics WithPartsKind for #ident #ty_generics #where_clause {
+        impl #impl_generics HasPartsKind for #ident #ty_generics #where_clause {
             fn parts_kind(&self) -> PartsKind {
                 #parts_kind
             }
@@ -84,6 +90,16 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
                 Self: 'a,
             {
                 #into_list_parts_impl
+            }
+
+            fn try_into_single_value<'a>(
+                self: Box<Self>,
+                cache: &'a mut SharedReferencesCache,
+            ) -> Result<ValueContainer, ()>
+            where
+                Self: 'a,
+            {
+                #into_single_value_impl
             }
         }
     }
@@ -168,6 +184,26 @@ fn generate_into_list_parts_for_fields(
     }
 }
 
+fn generate_into_single_value_for_fields(
+    fields: &Fields,
+    tag: Option<&String>,
+) -> TokenStream {
+    match fields {
+        Fields::Transparent(field) => {
+            let accessor = field.normalized_ident();
+            let value_container = value_container_from_field(
+                accessor.clone(),
+                &field.field.attributes.field_mapping,
+            );
+            quote! {
+                Ok(#value_container)
+            }
+        }
+        Fields::Unit => quote! { Ok(ValueContainer::Local(Value::null())) }, // unit structs can be represented as null
+        Fields::Named(_) | Fields::Unnamed(_) => quote! { Err(()) }, // only transparent structs can be converted into a single value
+    }
+}
+
 /// Generates the appropriate ValueContainer conversion based on the field's mapping
 /// For fields with serde mapping, it uses `serde_to_value_container`, otherwise it uses `ValueContainer::from`.
 fn value_container_from_field(
@@ -238,6 +274,16 @@ fn generate_from_parts(structure_data: &StructureData) -> TokenStream {
         )
     };
 
+
+    let from_single_value_impl = if attributes.no_deserialize {
+        quote! { Err(()) }
+    } else {
+        generate_from_parts_impl(
+            &structure_data.structure,
+            generate_from_single_value_for_fields,
+        )
+    };
+
     quote! {
         #[automatically_derived]
         impl #impl_generics FromParts for #ident #ty_generics #where_clause {
@@ -253,6 +299,13 @@ fn generate_from_parts(structure_data: &StructureData) -> TokenStream {
                 Self: Sized,
             {
                 #from_list_parts_impl
+            }
+
+            fn try_from_single_value_with_tag(value: ValueContainer, tag: Option<&str>) -> Result<Self, ()>
+            where
+                Self: Sized,
+            {
+                #from_single_value_impl
             }
         }
     }
@@ -338,5 +391,40 @@ fn generate_from_list_parts_for_fields(
         Fields::Transparent(field) => {
             quote! { todo!() } // delegate to the single field's implementation
         }
+    }
+}
+
+fn generate_from_single_value_for_fields(
+    fields: &Fields,
+    variant_ident: Option<&syn::Ident>,
+) -> TokenStream {
+    let variant_ident = variant_ident
+        .map(|ident| quote! { Self::#ident })
+        .unwrap_or(quote! { Self });
+    match fields {
+        Fields::Transparent(field) => {
+            let accessor = field.normalized_ident();
+            let from_value_container = field_from_value_container(
+                accessor.clone(),
+                &field.field.attributes.field_mapping,
+                false, // TODO
+            );
+            quote! {
+                let #accessor: Result<ValueContainer, ()> = Ok(value);
+                let #accessor = #from_value_container;
+                Ok(#variant_ident(#accessor))
+            }
+        },
+        Fields::Unit => {
+            // if value is null, we can construct the unit struct, otherwise we cannot
+            quote! {
+                if value.is_null() {
+                    Ok(#variant_ident)
+                } else {
+                    Err(())
+                }
+            }
+        },
+        Fields::Named(_) | Fields::Unnamed(_) => quote! { Err(()) }, // only transparent structs can be converted from a single value
     }
 }

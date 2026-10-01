@@ -1,7 +1,7 @@
 use crate::{
     prelude::*,
     preludes::derive::{CoreValue, SharedReferencesCache},
-    traits::convert_parts::{FromParts, IntoParts, PartsKind, WithPartsKind},
+    traits::convert_parts::{FromParts, IntoParts, PartsKind, HasPartsKind},
     values::{
         core_values::{list::List, map::Map},
         value::{
@@ -10,6 +10,13 @@ use crate::{
         },
     },
 };
+use crate::preludes::derive::ValueContainer;
+
+impl HasPartsKind for Value {
+    fn parts_kind(&self) -> PartsKind {
+        self.inner.parts_kind()
+    }
+}
 
 impl FromParts for Value {
     fn try_from_map_parts_with_tag(
@@ -19,17 +26,11 @@ impl FromParts for Value {
     where
         Self: Sized,
     {
-        if let Some(tag) = tag {
-            Ok(Value::new(
-                CoreValue::try_from_map_parts_with_tag(parts, None)?,
-                ValueClassification::new_with_tag(ValueTag {
-                    tag: tag.to_string(),
-                    is_empty: false,
-                }),
-            ))
-        } else {
-            Ok(CoreValue::try_from_map_parts_with_tag(parts, tag)?.into())
-        }
+        let classification = ValueClassification::new_with_maybe_tag(tag.clone());
+        Ok(Value::new(
+            CoreValue::try_from_map_parts_with_tag(parts, tag)?,
+            classification,
+        ))
     }
 
     fn try_from_list_parts_with_tag(
@@ -39,16 +40,27 @@ impl FromParts for Value {
     where
         Self: Sized,
     {
-        Ok(CoreValue::try_from_list_parts_with_tag(parts, tag)?.into())
+        let classification = ValueClassification::new_with_maybe_tag(tag.clone());
+        Ok(Value::new(
+            CoreValue::try_from_list_parts_with_tag(parts, tag)?,
+            classification,
+        ))
+    }
+    
+    fn try_from_single_value_with_tag(
+        value: ValueContainer,
+        tag: Option<&str>,
+    ) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        let classification = ValueClassification::new_with_maybe_tag(tag.clone());
+        Ok(Value::new(
+            CoreValue::try_from_single_value_with_tag(value, tag)?,
+            classification,
+        ))
     }
 }
-
-impl WithPartsKind for Value {
-    fn parts_kind(&self) -> PartsKind {
-        self.inner.parts_kind()
-    }
-}
-
 impl IntoParts for Value {
     fn try_into_map_parts<'a>(
         self: Box<Self>,
@@ -68,5 +80,12 @@ impl IntoParts for Value {
         Self: 'a,
     {
         Box::new(self.inner).try_into_list_parts(cache)
+    }
+
+    fn try_into_single_value<'a>(self: Box<Self>, cache: &'a mut SharedReferencesCache) -> Result<ValueContainer, ()>
+    where
+        Self: 'a,
+    {
+        Box::new(self.inner).try_into_single_value(cache)
     }
 }

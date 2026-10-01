@@ -7,7 +7,7 @@ use crate::{
     prelude::*,
     preludes::derive::{
         Classification, IntoParts, PartsKind, SharedReferencesCache,
-        ValueContainer, WithPartsKind,
+        ValueContainer, HasPartsKind,
     },
     runtime::{
         Runtime,
@@ -211,7 +211,16 @@ pub trait ConvertValueContainer {
                             Err(())
                         }
                     }
-                    _ => Err(()),
+                    PartsKind::SingleValue => {
+                        let single_value_parts = Box::new(value_container)
+                            .try_into_single_value(&mut cache.borrow_mut());
+                        if let Ok(single_value) = single_value_parts {
+                            Self::try_from_single_value_with_tag(single_value, tag)
+                        } else {
+                            Err(())
+                        }
+                    }
+                    PartsKind::None => Err(()),
                 }
             }
         }

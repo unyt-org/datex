@@ -17,6 +17,12 @@ impl From<String> for ValueTag {
     }
 }
 
+impl From<&str> for ValueTag {
+    fn from(tag: &str) -> Self {
+        ValueTag { tag: tag.to_string(), is_empty: false }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct ValueClassification {
     /// a nominal (entity) type associated with the value (e.g. Example {...})
@@ -53,6 +59,15 @@ impl ValueClassification {
     pub fn new_with_tag(tag: impl Into<ValueTag>) -> Self {
         ValueClassification {
             tag: Some(tag.into()),
+            ..Default::default()
+        }
+    }
+    
+    /// Creates a new [ValueClassification] with an optional tag. 
+    /// If the tag is None, the classification will be unclassified.
+    pub fn new_with_maybe_tag(tag: Option<impl Into<ValueTag>>) -> Self {
+        ValueClassification {
+            tag: tag.map(|t| t.into()),
             ..Default::default()
         }
     }

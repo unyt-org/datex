@@ -2,12 +2,12 @@ use crate::{
     prelude::*,
     preludes::derive::SharedReferencesCache,
     traits::convert_parts::{
-        BorrowedParts, FromParts, IntoParts, Parts, PartsKind, WithPartsKind,
+        BorrowedParts, FromParts, IntoParts, Parts, PartsKind, HasPartsKind,
     },
     values::core_values::list::List,
 };
 
-impl WithPartsKind for List {
+impl HasPartsKind for List {
     fn parts_kind(&self) -> PartsKind {
         PartsKind::List
     }

@@ -27,7 +27,7 @@ pub use crate::{
     traits::convert_core_value::ConvertCoreValue,
     traits::convert_parts::FromParts,
     traits::convert_parts::IntoParts,
-    traits::convert_parts::WithPartsKind,
+    traits::convert_parts::HasPartsKind,
     traits::convert_parts::{Parts, PartsKind},
     traits::convert_value_container::ConvertValueContainer,
     traits::datex_hash::DatexHash,

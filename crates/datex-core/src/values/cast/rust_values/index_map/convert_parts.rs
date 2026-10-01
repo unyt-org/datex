@@ -4,7 +4,7 @@ use crate::{
     random::RandomState,
     traits::{
         convert_parts::{
-            BorrowedParts, FromParts, IntoParts, Parts, WithPartsKind,
+            BorrowedParts, FromParts, IntoParts, Parts, HasPartsKind,
         },
         convert_value_container::ConvertValueContainer,
     },
@@ -13,7 +13,7 @@ use crate::{
 use core::hash::Hash;
 use indexmap::IndexMap;
 
-impl<K: ConvertValueContainer, V: ConvertValueContainer> WithPartsKind
+impl<K: ConvertValueContainer, V: ConvertValueContainer> HasPartsKind
     for IndexMap<K, V, RandomState>
 {
     fn parts_kind(&self) -> PartsKind {

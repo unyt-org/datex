@@ -13,7 +13,7 @@ use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     prelude::*,
     traits::{
-        convert_parts::WithPartsKind,
+        convert_parts::HasPartsKind,
         local_child_path_resolver::LocalChildPathResolver,
     },
     types::r#type::Type,
@@ -69,7 +69,7 @@ macro_rules! implement_rust_native_traits {
 
         impl FromParts for $type {}
         impl IntoParts for $type {}
-        impl WithPartsKind for $type {}
+        impl HasPartsKind for $type {}
 
         impl DatexNativeStructural for $type {}
         impl DatexNativeOnlyStructural for $type {}
