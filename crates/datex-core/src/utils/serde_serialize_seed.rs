@@ -6,6 +6,16 @@ use serde::{
     de::{DeserializeSeed, Error, SeqAccess},
     ser::{SerializeSeq, SerializeTuple},
 };
+use crate::dif::serde_context::SerdeContext2;
+
+
+pub trait SerializeSeed2 {
+    fn serialize<'ctx, S: Serializer>(
+        &self,
+        ctxt: &mut SerdeContext2<'ctx>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>;
+}
 
 pub trait SerializeSeed {
     type Value: ?Sized;
