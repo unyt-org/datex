@@ -2,7 +2,7 @@ use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
     shared_values::base_shared_value_container::observers::TransceiverId,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
     value_updates::update_data::{
         AppendEntryUpdateData, DecrementUpdateData, DeleteEntryUpdateData,
         IncrementUpdateData, ListSpliceUpdateData, ReplaceUpdateData,
@@ -32,7 +32,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Update> {
         // serialize path, if the path is empty, we pack an empty vec, otherwise we pack the path as a sequence of ValueKeys
         {
             let val = value.path();
-            let path_val = ValueWithSeed::new(&val, self.cast::<&[ValueKey]>());
+            let path_val = ValueWithSerdeContext::new(&val, self.cast::<&[ValueKey]>());
             seq.serialize_element(&path_val)?;
         }
 

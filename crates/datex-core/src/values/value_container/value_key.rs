@@ -10,7 +10,7 @@ use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
     preludes::derive::{ConvertCoreValue, Text},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
@@ -64,7 +64,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
                 let mut map_serializer = serializer.serialize_map(Some(1))?;
                 map_serializer.serialize_entry(
                     "value",
-                    &ValueWithSeed::new(
+                    &ValueWithSerdeContext::new(
                         value_container,
                         &mut self.cast::<ValueContainer>(),
                     ),
@@ -86,7 +86,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, &'ctx [ValueKey]> {
     ) -> Result<S::Ok, S::Error> {
         let mut seq_serializer = serializer.serialize_seq(Some(value.len()))?;
         for key in *value {
-            seq_serializer.serialize_element(&ValueWithSeed::new(
+            seq_serializer.serialize_element(&ValueWithSerdeContext::new(
                 key,
                 self.cast::<ValueKey>(),
             ))?;

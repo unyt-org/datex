@@ -3,7 +3,7 @@ use serde::{Serializer, de::DeserializeSeed, ser::SerializeSeq};
 use crate::{
     dif::serde_context::SerdeContext,
     types::{r#type::Type, type_definition::union::UnionTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, UnionTypeDefinition> {
@@ -16,7 +16,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, UnionTypeDefinition> {
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(value.len()))?;
         for type_def in value.iter() {
-            seq.serialize_element(&ValueWithSeed::new(
+            seq.serialize_element(&ValueWithSerdeContext::new(
                 type_def,
                 self.cast::<Type>(),
             ))?;

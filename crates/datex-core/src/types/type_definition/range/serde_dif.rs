@@ -2,7 +2,7 @@ use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
     types::{r#type::Type, type_definition::range::RangeTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 use serde::{
     Deserializer, Serializer,
@@ -19,11 +19,11 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, RangeTypeDefinition> {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;
-        tuple.serialize_element(&ValueWithSeed::new(
+        tuple.serialize_element(&ValueWithSerdeContext::new(
             &*value.start,
             self.cast::<Type>(),
         ))?;
-        tuple.serialize_element(&ValueWithSeed::new(
+        tuple.serialize_element(&ValueWithSerdeContext::new(
             &*value.end,
             self.cast::<Type>(),
         ))?;

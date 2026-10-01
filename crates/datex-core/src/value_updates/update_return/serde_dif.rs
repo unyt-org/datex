@@ -1,7 +1,7 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
     value_updates::UpdateReturn,
     values::value_container::ValueContainer,
 };
@@ -27,14 +27,14 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, UpdateReturn> {
             }
             UpdateReturn::SingleValue(value) => {
                 seq.serialize_element("single_value")?;
-                seq.serialize_element(&ValueWithSeed::new(
+                seq.serialize_element(&ValueWithSerdeContext::new(
                     value,
                     self.cast::<ValueContainer>(),
                 ))?;
             }
             UpdateReturn::MultipleValues(values) => {
                 seq.serialize_element("multiple_values")?;
-                seq.serialize_element(&ValueWithSeed::new(
+                seq.serialize_element(&ValueWithSerdeContext::new(
                     values,
                     self.cast::<Vec<ValueContainer>>(),
                 ))?;

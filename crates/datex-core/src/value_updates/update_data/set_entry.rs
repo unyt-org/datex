@@ -5,7 +5,7 @@ use serde::{
 
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::ValueWithSeed,
+    utils::serde_serialize_seed::ValueWithSerdeContext,
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
 
@@ -26,12 +26,12 @@ impl<'ctx> SerdeContext<'ctx, SetEntryUpdateData> {
         value: &SetEntryUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
-        seq.serialize_element(&ValueWithSeed::new(
+        seq.serialize_element(&ValueWithSerdeContext::new(
             &value.key,
             self.cast::<ValueKey>(),
         ))?;
 
-        seq.serialize_element(&ValueWithSeed::new(
+        seq.serialize_element(&ValueWithSerdeContext::new(
             &value.value,
             self.cast::<ValueContainer>(),
         ))?;

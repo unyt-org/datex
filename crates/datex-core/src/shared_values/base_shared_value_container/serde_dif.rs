@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     shared_values::base_shared_value_container::BaseSharedValueContainer,
     types::type_definition::TypeDefinition,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
     values::value_container::ValueContainer,
 };
 use core::fmt;
@@ -24,13 +24,13 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, BaseSharedValueContainer> {
         // serialize as struct
         let mut state = serializer.serialize_seq(Some(3))?;
 
-        state.serialize_element(&ValueWithSeed::new(
+        state.serialize_element(&ValueWithSerdeContext::new(
             &value.value_container,
             self.cast::<ValueContainer>(),
         ))?;
 
         state.serialize_element(&value.mutability)?;
-        state.serialize_element(&ValueWithSeed::new(
+        state.serialize_element(&ValueWithSerdeContext::new(
             &value.allowed_type,
             self.cast::<TypeDefinition>(),
         ))?;

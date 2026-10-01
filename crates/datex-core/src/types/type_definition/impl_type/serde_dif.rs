@@ -3,7 +3,7 @@ use serde::{Serializer, de::DeserializeSeed, ser::SerializeSeq};
 use crate::{
     dif::serde_context::SerdeContext,
     types::{r#type::Type, type_definition::impl_type::ImplMarkers},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 
 use crate::prelude::*;

@@ -5,7 +5,7 @@ use crate::{
     types::{
         r#type::Type, type_definition::intersection::IntersectionTypeDefinition,
     },
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, IntersectionTypeDefinition> {
@@ -18,7 +18,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, IntersectionTypeDefinition> {
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(value.len()))?;
         for type_def in value.iter() {
-            seq.serialize_element(&ValueWithSeed::new(
+            seq.serialize_element(&ValueWithSerdeContext::new(
                 type_def,
                 self.cast::<Type>(),
             ))?;

@@ -1,6 +1,6 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
     values::{core_values::list::List, value_container::ValueContainer},
 };
 use serde::{
@@ -21,7 +21,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, List> {
     {
         let mut state = serializer.serialize_seq(Some(value.len() as usize))?;
         for value in value.iter() {
-            state.serialize_element(&ValueWithSeed::new(
+            state.serialize_element(&ValueWithSerdeContext::new(
                 value,
                 self.cast::<ValueContainer>(),
             ))?;

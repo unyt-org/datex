@@ -1,55 +1,54 @@
 use crate::{
     dif::serde_context::SerdeContext,
     types::{r#type::Type, type_definition::list::ListTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 use serde::{
     Serializer,
-    de::{DeserializeSeed, Visitor},
+    de::{Visitor},
     ser::SerializeSeq,
 };
-
+use crate::dif::serde_context::DeserializeSerdeContext;
 use crate::prelude::*;
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ListTypeDefinition> {
-    type Value = ListTypeDefinition;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for ListTypeDefinition {
+
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(value.len()))?;
-        for item in value.iter() {
-            seq.serialize_element(&ValueWithSeed::new(
+        ctx.shared_container_cache.borrow_mut().remove_callable_with_hash(45);
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
+        for item in self.iter() {
+            seq.serialize_element(&ValueWithSerdeContext::new(
                 item,
-                self.cast::<Type>(),
+                ctx
             ))?;
         }
         seq.end()
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, ListTypeDefinition>
-{
-    type Value = ListTypeDefinition;
 
-    fn deserialize<D: serde::de::Deserializer<'de>>(
-        self,
+impl<'de> DeserializeWithSerdeContext<'de> for ListTypeDefinition {
+    fn deserialize_with_ctx<D: serde::de::Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_seq(self)
+    ) -> Result<Self, D::Error> {
+        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ListTypeDefinition> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, ListTypeDefinition> {
+    type Value = ListTypeDefinition;
     fn expecting(
         &self,
         formatter: &mut core::fmt::Formatter,
     ) -> core::fmt::Result {
         formatter.write_str("a list of type definitions")
     }
-    type Value = ListTypeDefinition;
 
     fn visit_seq<A: serde::de::SeqAccess<'de>>(
         mut self,

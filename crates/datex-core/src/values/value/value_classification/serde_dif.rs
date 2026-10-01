@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     shared_values::PointerAddress,
     types::entity_type::EntityType,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
     values::value::value_classification::{ValueClassification, ValueTag},
 };
 use serde::{

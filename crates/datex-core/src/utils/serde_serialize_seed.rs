@@ -1,85 +1,105 @@
 /// Implementation of https://docs.rs/serde-serialize-seed/latest/serde_serialize_seed/, but with &mut self
 use crate::prelude::*;
-use core::{cell::UnsafeCell, fmt, fmt::Formatter, marker::PhantomData};
+use core::{fmt, fmt::Formatter, marker::PhantomData};
 use serde::{
-    Deserialize, Deserializer, Serialize, Serializer, de,
-    de::{DeserializeSeed, Error, SeqAccess},
+    Deserialize, Serialize, Serializer, de,
+    de::{DeserializeSeed, Deserializer, Error, SeqAccess},
     ser::{SerializeSeq, SerializeTuple},
 };
-use crate::dif::serde_context::SerdeContext2;
+use crate::dif::serde_context::{DeserializeSerdeContext, SerdeContext};
 
 
-pub trait SerializeSeed2 {
-    fn serialize<'ctx, S: Serializer>(
+/// A trait for types that can be serialized with a `SerdeContext`.
+/// TODO: rename to SerializeWithSerdeContext
+pub trait SerializeSeed {
+    fn serialize_seed<S: Serializer>(
         &self,
-        ctxt: &mut SerdeContext2<'ctx>,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>;
 }
 
-pub trait SerializeSeed {
-    type Value: ?Sized;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+impl<T: SerializeSeed + ?Sized> SerializeSeed for &T {
+    fn serialize_seed<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
-    ) -> Result<S::Ok, S::Error>;
+    ) -> Result<S::Ok, S::Error> {
+        (**self).serialize_seed(ctx, serializer)
+    }
 }
 
 impl<T: SerializeSeed + ?Sized> SerializeSeed for &mut T {
-    type Value = T::Value;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+    fn serialize_seed<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        (**self).serialize(value, serializer)
+        (**self).serialize_seed(ctx, serializer)
     }
 }
 
 #[derive(Debug)]
-pub struct ValueWithSeed<'a, Value: ?Sized, Seed>(
-    pub &'a Value,
-    pub UnsafeCell<Seed>,
-);
+pub struct ValueWithSerdeContext<'a, 'ctx, V: ?Sized> {
+    value: &'a V,
+    ctx: &'a SerdeContext<'ctx>,
+}
 
-impl<'a, Value: ?Sized, Seed: SerializeSeed<Value = Value>>
-    ValueWithSeed<'a, Value, Seed>
-{
-    pub fn new(value: &'a Value, seed: Seed) -> Self {
-        Self(value, UnsafeCell::new(seed))
+
+impl<'a, 'ctx, V: ?Sized + SerializeSeed> ValueWithSerdeContext<'a, 'ctx, V> {
+    pub fn new(value: &'a V, ctx: &'a SerdeContext<'ctx>) -> Self {
+        Self { value, ctx }
     }
 }
 
-impl<'a, Value: ?Sized, Seed: SerializeSeed<Value = Value>> Serialize
-    for ValueWithSeed<'a, Value, Seed>
-{
-    fn serialize<S: Serializer>(
-        &self,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        // SAFETY: serde calls serialize exactly once, so no aliased &mut exists
-        let seed = unsafe { &mut *self.1.get() };
-        seed.serialize(self.0, serializer)
+impl<V: ?Sized + SerializeSeed> Serialize for ValueWithSerdeContext<'_, '_, V> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.value.serialize_seed(&self.ctx, serializer)
     }
 }
+
+
+/// A trait for types that can be deserialized with a `SerdeContext`.
+pub trait DeserializeWithSerdeContext<'de>: Sized {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error>;
+}
+
+impl<'de, T: DeserializeWithSerdeContext<'de>> DeserializeSeed<'de>
+for DeserializeSerdeContext<'_, '_, T>
+{
+    type Value = T;
+
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<T, D::Error> {
+        T::deserialize_with_ctx(self.ctx, deserializer)
+    }
+}
+
+
+
+
+
+
+
+
+
 
 #[derive(Debug, Clone, Copy)]
 pub struct StatelessSerde<T: ?Sized>(pub PhantomData<T>);
 
-impl<T: Serialize + ?Sized> SerializeSeed for StatelessSerde<T> {
-    type Value = T;
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        value.serialize(serializer)
-    }
-}
+// impl<T: Serialize + ?Sized> SerializeSeed for StatelessSerde<T> {
+//     type Value = T;
+//
+//     fn serialize<S: Serializer>(
+//         &mut self,
+//         value: &Self::Value,
+//         serializer: S,
+//     ) -> Result<S::Ok, S::Error> {
+//         value.serialize(serializer)
+//     }
+// }
 
 impl<'de, T: Deserialize<'de>> DeserializeSeed<'de> for StatelessSerde<T> {
     type Value = T;
@@ -95,24 +115,24 @@ impl<'de, T: Deserialize<'de>> DeserializeSeed<'de> for StatelessSerde<T> {
 #[derive(Debug, Clone, Copy)]
 pub struct PairSerde<U, V>(pub U, pub V);
 
-impl<U: SerializeSeed, V: SerializeSeed> SerializeSeed for PairSerde<U, V>
-where
-    U::Value: Sized,
-    V::Value: Sized,
-{
-    type Value = (U::Value, V::Value);
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_tuple(2)?;
-        s.serialize_element(&ValueWithSeed::new(&value.0, &mut self.0))?;
-        s.serialize_element(&ValueWithSeed::new(&value.1, &mut self.1))?;
-        s.end()
-    }
-}
+// impl<U: SerializeSeed, V: SerializeSeed> SerializeSeed for PairSerde<U, V>
+// where
+//     U::Value: Sized,
+//     V::Value: Sized,
+// {
+//     type Value = (U::Value, V::Value);
+//
+//     fn serialize<S: Serializer>(
+//         &mut self,
+//         value: &Self::Value,
+//         serializer: S,
+//     ) -> Result<S::Ok, S::Error> {
+//         let mut s = serializer.serialize_tuple(2)?;
+//         s.serialize_element(&ValueWithSeed::new(&value.0, &mut self.0))?;
+//         s.serialize_element(&ValueWithSeed::new(&value.1, &mut self.1))?;
+//         s.end()
+//     }
+// }
 
 struct PairDeVisitor<U, V>(PairSerde<U, V>);
 
@@ -161,29 +181,29 @@ where
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple4Serde<T1, T2, T3, T4>(pub T1, pub T2, pub T3, pub T4);
 
-impl<T1: SerializeSeed, T2: SerializeSeed, T3: SerializeSeed, T4: SerializeSeed>
-    SerializeSeed for Tuple4Serde<T1, T2, T3, T4>
-where
-    T1::Value: Sized,
-    T2::Value: Sized,
-    T3::Value: Sized,
-    T4::Value: Sized,
-{
-    type Value = (T1::Value, T2::Value, T3::Value, T4::Value);
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let mut s = serializer.serialize_tuple(4)?;
-        s.serialize_element(&ValueWithSeed::new(&value.0, &mut self.0))?;
-        s.serialize_element(&ValueWithSeed::new(&value.1, &mut self.1))?;
-        s.serialize_element(&ValueWithSeed::new(&value.2, &mut self.2))?;
-        s.serialize_element(&ValueWithSeed::new(&value.3, &mut self.3))?;
-        s.end()
-    }
-}
+// impl<T1: SerializeSeed, T2: SerializeSeed, T3: SerializeSeed, T4: SerializeSeed>
+//     SerializeSeed for Tuple4Serde<T1, T2, T3, T4>
+// where
+//     T1::Value: Sized,
+//     T2::Value: Sized,
+//     T3::Value: Sized,
+//     T4::Value: Sized,
+// {
+//     type Value = (T1::Value, T2::Value, T3::Value, T4::Value);
+//
+//     fn serialize<S: Serializer>(
+//         &mut self,
+//         value: &Self::Value,
+//         serializer: S,
+//     ) -> Result<S::Ok, S::Error> {
+//         let mut s = serializer.serialize_tuple(4)?;
+//         s.serialize_element(&ValueWithSeed::new(&value.0, &mut self.0))?;
+//         s.serialize_element(&ValueWithSeed::new(&value.1, &mut self.1))?;
+//         s.serialize_element(&ValueWithSeed::new(&value.2, &mut self.2))?;
+//         s.serialize_element(&ValueWithSeed::new(&value.3, &mut self.3))?;
+//         s.end()
+//     }
+// }
 
 struct Tuple4DeVisitor<T1, T2, T3, T4>(Tuple4Serde<T1, T2, T3, T4>);
 
@@ -252,25 +272,25 @@ where
 #[derive(Debug, Clone, Copy)]
 pub struct VecSerde<T>(pub T);
 
-impl<T: SerializeSeed + Clone> SerializeSeed for VecSerde<T>
-where
-    T::Value: Sized,
-{
-    type Value = [T::Value];
-
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let mut serializer = serializer.serialize_seq(Some(value.len()))?;
-        for item in value {
-            serializer
-                .serialize_element(&ValueWithSeed::new(item, &mut self.0))?;
-        }
-        serializer.end()
-    }
-}
+// impl<T: SerializeSeed + Clone> SerializeSeed for VecSerde<T>
+// where
+//     T::Value: Sized,
+// {
+//     type Value = [T::Value];
+//
+//     fn serialize<S: Serializer>(
+//         &mut self,
+//         value: &Self::Value,
+//         serializer: S,
+//     ) -> Result<S::Ok, S::Error> {
+//         let mut serializer = serializer.serialize_seq(Some(value.len()))?;
+//         for item in value {
+//             serializer
+//                 .serialize_element(&ValueWithSeed::new(item, &mut self.0))?;
+//         }
+//         serializer.end()
+//     }
+// }
 
 struct VecDeVisitor<T>(VecSerde<T>);
 

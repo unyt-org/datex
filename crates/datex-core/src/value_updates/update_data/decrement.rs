@@ -3,7 +3,7 @@ use core::fmt;
 
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::ValueWithSeed,
+    utils::serde_serialize_seed::ValueWithSerdeContext,
 };
 use serde::{
     de::{self, Visitor},
@@ -25,7 +25,7 @@ impl<'ctx> SerdeContext<'ctx, DecrementUpdateData> {
         value: &DecrementUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
-        seq.serialize_element(&ValueWithSeed::new(
+        seq.serialize_element(&ValueWithSerdeContext::new(
             &value.value,
             self.cast::<ValueContainer>(),
         ))?;
