@@ -11,7 +11,7 @@ use crate::{
         },
     },
     prelude::*,
-    preludes::derive::{ConvertCoreValue, StaticClassification},
+    preludes::derive::{ConvertCoreValue},
     std_sync::Mutex,
     utils::async_callback::AsyncCallback,
     values::{core_values::endpoint::Endpoint, value::Value},
@@ -419,7 +419,7 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 /// }
 pub trait ComInterfaceSyncFactory
 where
-    Self: ConvertCoreValue + StaticClassification + Sized,
+    Self: ConvertCoreValue + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
@@ -481,7 +481,7 @@ where
 /// }
 pub trait ComInterfaceAsyncFactory
 where
-    Self: ConvertCoreValue + StaticClassification + Sized,
+    Self: ConvertCoreValue + Sized,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.

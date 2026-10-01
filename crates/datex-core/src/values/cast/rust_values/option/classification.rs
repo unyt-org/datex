@@ -2,7 +2,6 @@ use crate::{
     preludes::derive::{DatexNative, SharedReferencesCache},
     traits::{
         classification::Classification,
-        static_classification::StaticClassification,
     },
     values::value::value_classification::ValueClassification,
 };
@@ -21,5 +20,3 @@ where
         }
     }
 }
-
-impl<T> StaticClassification for Option<T> where T: DatexNative + 'static {}

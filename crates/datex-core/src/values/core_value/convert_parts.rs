@@ -6,7 +6,6 @@ use crate::{
     },
     values::core_values::{list::List, map::Map},
 };
-use itertools::Itertools;
 use crate::preludes::derive::{ValueClassification, ValueContainer};
 use crate::values::value::Value;
 
@@ -42,7 +41,7 @@ impl HasPartsKind for CoreValue {
             CoreValue::Map(_) => PartsKind::Map,
             CoreValue::List(_) => PartsKind::List,
             CoreValue::Native(native) => native.value.parts_kind(),
-            _ => PartsKind::None,
+            _ => PartsKind::SingleValue,
         }
     }
 }

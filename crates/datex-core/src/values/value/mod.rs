@@ -43,8 +43,8 @@ use crate::{
     shared_values::errors::AccessError,
     traits::{
         convert_value_container::ConvertValueContainer,
-        datex_native_only_structural::DatexNativeOnlyStructural,
-        static_classification::StaticClassification, value_access::ValueAccess,
+        datex_native_only_structural::DatexNativeOnlyStructural, 
+        value_access::ValueAccess,
     },
     types::r#type::Type,
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
@@ -53,7 +53,7 @@ use crate::{
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
-        core_values::{endpoint::Endpoint, native::validate_classification},
+        core_values::{endpoint::Endpoint},
         value::value_classification::{ValueClassification, ValueTag},
     },
 };
@@ -235,39 +235,28 @@ impl Value {
     /// Does not perform any type conversion.
     pub fn try_as<T>(&self) -> Option<&T>
     where
-        T: ConvertCoreValue + StaticClassification,
+        T: ConvertCoreValue,
     {
-        match validate_classification::<T>(self) {
-            Ok(_) => T::try_borrow_from_core_value(&self.inner).ok(),
-            Err(_) => None,
-        }
+        T::try_borrow_from_core_value(&self.inner).ok()
     }
 
     pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
     where
-        T: ConvertCoreValue + StaticClassification,
+        T: ConvertCoreValue,
     {
-        match validate_classification::<T>(self) {
-            Ok(_) => T::try_borrow_mut_from_core_value(&mut self.inner).ok(),
-            Err(_) => None,
-        }
+        T::try_borrow_mut_from_core_value(&mut self.inner).ok()
     }
 
     /// Tries to convert the current value into the specific specified type.
     /// Does not perform any type conversion.
     pub fn try_into_value<T>(self) -> Result<T, Value>
     where
-        T: ConvertCoreValue + StaticClassification,
+        T: ConvertCoreValue,
     {
-        match validate_classification::<T>(&self) {
-            Ok(_) => {
-                T::try_from_core_value(self.inner).map_err(|inner| Value {
-                    inner,
-                    classification: self.classification,
-                })
-            }
-            Err(_) => Err(self),
-        }
+        T::try_from_core_value(self.inner).map_err(|inner| Value {
+            inner,
+            classification: self.classification,
+        })
     }
 
     /// Returns the actual current [TypeDefinition] of the value

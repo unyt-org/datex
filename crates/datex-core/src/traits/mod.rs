@@ -15,7 +15,6 @@ pub mod get_core_lib_type_id;
 pub mod get_datex_type;
 pub mod identity;
 pub mod local_child_path_resolver;
-pub mod static_classification;
 pub mod structural_eq;
 #[cfg(feature = "ast")]
 pub mod to_datex_expression_data;

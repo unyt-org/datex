@@ -24,6 +24,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::traits::convert_value_container::ConvertValueContainer;
 use core::any::Any;
 
 use crate::{
@@ -36,7 +37,6 @@ use crate::{
         datex_native_structural::DatexNativeStructural,
         get_core_lib_type_id::GetCoreLibTypeId,
         get_datex_type::GetDatexType,
-        static_classification::StaticClassification,
     },
     types::type_definition::TypeDefinition,
     value_updates::update_handler::{
@@ -62,13 +62,29 @@ macro_rules! implement_rust_native_traits {
         // impl DatexNativeOps for $type {}
 
         impl Classification for $type {}
-        impl StaticClassification for $type {}
         impl LocalChildPathResolver for $type {}
         impl UpdateHandlerImpl for $type {}
         impl UpdateCallbackDataAccess for $type {}
 
-        impl FromParts for $type {}
-        impl IntoParts for $type {}
+        impl FromParts for $type {
+             fn try_from_single_value_with_tag(value: ValueContainer, _tag: Option<&str>) -> Result<Self, ()>
+                where
+                    Self: Sized,
+            {
+                Self::try_from_value_container(value).map_err(|_| ())
+            }
+        }
+        impl IntoParts for $type {
+            fn try_into_single_value<'a>(
+                self: Box<Self>,
+                cache: &'a mut SharedReferencesCache,
+            ) -> Result<ValueContainer, ()>
+            where
+                Self: 'a,
+            {
+                Ok(self.to_value_container(cache))
+            }
+        }
         impl HasPartsKind for $type {}
 
         impl DatexNativeStructural for $type {}

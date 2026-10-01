@@ -1,7 +1,6 @@
 use crate::traits::{
-    classification::Classification, static_classification::StaticClassification,
+    classification::Classification,
 };
 use core::time::Duration;
 
 impl Classification for Duration {}
-impl StaticClassification for Duration {}

@@ -4,7 +4,7 @@ use quote::quote;
 use syn::Variant;
 use crate::datex_proxy::generator::helpers::{map_enum_variants, SelfAccess};
 
-/// Generates the [Classification] and [StaticClassification] implementations
+/// Generates the [Classification] implementations
 pub fn generate_classification(structure_data: &StructureData) -> TokenStream {
     let StructureData {
         ident, generics, ..
@@ -20,13 +20,6 @@ pub fn generate_classification(structure_data: &StructureData) -> TokenStream {
         #[automatically_derived]
         impl #impl_generics Classification for #ident #ty_generics #where_clause {
             #classification_methods
-        }
-
-        #[automatically_derived]
-        impl #impl_generics StaticClassification for #ident #ty_generics #where_clause {
-            fn has_classification() -> bool {
-                #has_classification
-            }
         }
     }
 }

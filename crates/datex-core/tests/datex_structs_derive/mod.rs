@@ -394,7 +394,7 @@ fn value_to_new_typestruct() {
 }
 
 #[test]
-fn value_to_enum() {
+fn value_to_empty_enum_variant() {
     let cache = RefCell::new(SharedReferencesCache::default());
 
     let variant_a = Value::new(
@@ -407,6 +407,11 @@ fn value_to_enum() {
 
     let example = ExampleEnum::try_cast_from_value_container(ValueContainer::from(variant_a), &cache).unwrap();
     assert_matches!(example, ExampleEnum::VariantA);
+}
+
+#[test]
+fn value_to_list_enum_variant() {
+    let cache = RefCell::new(SharedReferencesCache::default());
 
     let variant_b = Value::new(
         vec![ValueContainer::from(1u8), ValueContainer::from(2u8)]
@@ -418,13 +423,18 @@ fn value_to_enum() {
     );
     let example = ExampleEnum::try_cast_from_value_container(ValueContainer::from(variant_b), &cache).unwrap();
     assert_matches!(example, ExampleEnum::VariantB(1, 2));
+}
+
+#[test]
+fn value_to_map_enum_variant() {
+    let cache = RefCell::new(SharedReferencesCache::default());
 
     let variant_c = Value::new(
         Map::from(vec![
             ("x".to_string(), ValueContainer::from(3u8)),
             ("y".to_string(), ValueContainer::from("Hello".to_string())),
         ])
-        .to_core_value(),
+            .to_core_value(),
         ValueClassification::new_with_tag(ValueTag {
             tag: "VariantC".to_string(),
             is_empty: false,
@@ -432,6 +442,11 @@ fn value_to_enum() {
     );
     let example = ExampleEnum::try_cast_from_value_container(ValueContainer::from(variant_c), &cache).unwrap();
     assert_matches!(example, ExampleEnum::VariantC { x: 3, y } if &y == "Hello" );
+}
+
+#[test]
+fn value_to_transparent_enum_variant() {
+    let cache = RefCell::new(SharedReferencesCache::default());
 
     let variant_d = Value::new(
         42u8.to_core_value(),
@@ -440,6 +455,7 @@ fn value_to_enum() {
             is_empty: false,
         }),
     );
+
     let example = ExampleEnum::try_cast_from_value_container(ValueContainer::from(variant_d), &cache).unwrap();
     assert_matches!(example, ExampleEnum::VariantD(42));
 }
