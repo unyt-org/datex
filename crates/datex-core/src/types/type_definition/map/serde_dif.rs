@@ -3,7 +3,7 @@ use core::fmt;
 use crate::{
     dif::serde_context::SerdeContext,
     types::{r#type::Type, type_definition::map::MapTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 use serde::{
     Deserializer, Serializer,
@@ -23,7 +23,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, MapTypeDefinition> {
         let mut seq = serializer.serialize_seq(Some(value.len()))?;
 
         for (key, value) in value.iter() {
-            seq.serialize_element(&ValueWithSeed::new(
+            seq.serialize_element(&ValueWithSerdeContext::new(
                 &(key.clone(), value.clone()),
                 self.cast::<(Type, Type)>(),
             ))?;
@@ -44,12 +44,12 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, (Type, Type)> {
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;
 
-        tuple.serialize_element(&ValueWithSeed::new(
+        tuple.serialize_element(&ValueWithSerdeContext::new(
             &value.0,
             self.cast::<Type>(),
         ))?;
 
-        tuple.serialize_element(&ValueWithSeed::new(
+        tuple.serialize_element(&ValueWithSerdeContext::new(
             &value.1,
             self.cast::<Type>(),
         ))?;

@@ -12,7 +12,7 @@ use crate::{
         },
         range::RangeTypeDefinition,
     },
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 use serde::{
     Deserializer, Serializer,
@@ -32,25 +32,25 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, CollectionTypeDefinition> {
         obj.serialize_key(value.as_ref())?;
         match value {
             CollectionTypeDefinition::List(iten) => {
-                obj.serialize_value(&ValueWithSeed::new(
+                obj.serialize_value(&ValueWithSerdeContext::new(
                     iten,
                     self.cast::<ListCollectionTypeDefinition>(),
                 ))?
             }
             CollectionTypeDefinition::ListSlice(item) => {
-                obj.serialize_value(&ValueWithSeed::new(
+                obj.serialize_value(&ValueWithSerdeContext::new(
                     item,
                     self.cast::<ListSliceCollectionTypeDefinition>(),
                 ))?
             }
             CollectionTypeDefinition::Map(map) => {
-                obj.serialize_value(&ValueWithSeed::new(
+                obj.serialize_value(&ValueWithSerdeContext::new(
                     map,
                     self.cast::<MapCollectionTypeDefinition>(),
                 ))?
             }
             CollectionTypeDefinition::Range(range) => obj.serialize_value(
-                &ValueWithSeed::new(range, self.cast::<RangeTypeDefinition>()),
+                &ValueWithSerdeContext::new(range, self.cast::<RangeTypeDefinition>()),
             )?,
         }
         obj.end()

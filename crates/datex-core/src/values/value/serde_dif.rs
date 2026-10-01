@@ -2,7 +2,7 @@ use crate::{
     dif::serde_context::SerdeContext,
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
     prelude::*,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
     values::{
         core_value::{CoreValue, serde_dif::CoreValueVisitor},
         core_values::{
@@ -54,7 +54,7 @@ impl<'ctx> SerdeContext<'ctx, Value> {
         tuple.serialize_element(inner)?;
         if !classification.is_none() {
             // [id, value, classification]
-            tuple.serialize_element(&ValueWithSeed::new(
+            tuple.serialize_element(&ValueWithSerdeContext::new(
                 classification,
                 &mut self.cast::<ValueClassification>(),
             ))?;
@@ -84,13 +84,13 @@ impl<'ctx> SerdeContext<'ctx, Value> {
         let mut tuple = serializer
             .serialize_tuple(if classification.is_none() { 2 } else { 3 })?;
         tuple.serialize_element(&index.to_u16())?;
-        tuple.serialize_element(&ValueWithSeed::new(
+        tuple.serialize_element(&ValueWithSerdeContext::new(
             inner,
             &mut self.cast::<T>(),
         ))?;
         if !classification.is_none() {
             // [id, value, classification]
-            tuple.serialize_element(&ValueWithSeed::new(
+            tuple.serialize_element(&ValueWithSerdeContext::new(
                 classification,
                 &mut self.cast::<ValueClassification>(),
             ))?;

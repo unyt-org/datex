@@ -19,35 +19,35 @@ use serde::{
     Serializer,
     de::{DeserializeSeed, IntoDeserializer, Visitor},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::preludes::derive::ListTypeDefinition;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
-    type Value = Type;
-
-    fn serialize<S>(
+impl<'ctx> SerializeSeed for Type {
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match value {
+        match self {
             Type::Definition(type_definition) => match type_definition
                 .definition
             {
                 TypeDefinition::CoreType(_core)
                     if type_definition.metadata == TypeMetadata::default() =>
                 {
-                    self.cast::<TypeDefinition>()
-                        .serialize(&type_definition.definition, serializer)
+                    type_definition.definition
+                        .serialize_seed(ctx, serializer)
                 }
-                _ => self
-                    .cast::<TypeDefinitionWithMetadata>()
-                    .serialize(type_definition, serializer),
+                _ => type_definition
+                    .serialize_seed(ctx, serializer),
             },
             Type::Entity(shared_container_containing_nominal_type) => {
-                self.cast::<SharedContainer>().serialize(
-                    shared_container_containing_nominal_type.deref(),
+                shared_container_containing_nominal_type.deref().serialize_seed(
+                    ctx,
                     serializer,
                 )
             }
@@ -55,18 +55,17 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Type> {
-    type Value = Type;
+impl<'de> DeserializeWithSerdeContext<'de> for Type {
 
-    fn deserialize<D: serde::de::Deserializer<'de>>(
-        self,
+    fn deserialize_with_ctx<D: serde::de::Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_any(self)
+    ) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Type> {
     fn expecting(
         &self,
         formatter: &mut core::fmt::Formatter,

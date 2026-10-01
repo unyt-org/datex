@@ -9,7 +9,7 @@ use serde::{
 use crate::{
     dif::serde_context::SerdeContext,
     types::type_definition::tagged_type::TaggedTypeDefinition,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, TaggedTypeDefinition> {
@@ -24,12 +24,12 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TaggedTypeDefinition> {
         seq.serialize_element(&value.tag)?;
         match &value.ty {
             Some(ty) => {
-                seq.serialize_element(&ValueWithSeed::new(
+                seq.serialize_element(&ValueWithSerdeContext::new(
                     ty.as_ref(),
                     self.cast::<Type>(),
                 ))?;
             }
-            None => seq.serialize_element(&ValueWithSeed::new(
+            None => seq.serialize_element(&ValueWithSerdeContext::new(
                 &TypeDefinition::CoreType(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Unit,
                 ))

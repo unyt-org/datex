@@ -1,7 +1,7 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
     values::{
         core_values::map::{BorrowedMapKey, Map, MapEntries},
         value_container::ValueContainer,
@@ -50,12 +50,12 @@ impl<'ctx> SerializeSeed
     {
         let mut tuple = serializer.serialize_tuple(2)?;
 
-        tuple.serialize_element(&ValueWithSeed::new(
+        tuple.serialize_element(&ValueWithSerdeContext::new(
             &value.0,
             self.cast::<ValueContainer>(),
         ))?;
 
-        tuple.serialize_element(&ValueWithSeed::new(
+        tuple.serialize_element(&ValueWithSerdeContext::new(
             &value.1,
             self.cast::<ValueContainer>(),
         ))?;
@@ -124,7 +124,7 @@ impl<'ctx> SerializeSeed
         let mut seq = serializer.serialize_seq(Some(value.len()))?;
 
         for entry in value {
-            seq.serialize_element(&ValueWithSeed::new(
+            seq.serialize_element(&ValueWithSerdeContext::new(
                 entry,
                 self.cast::<(ValueContainer, ValueContainer)>(),
             ))?;
@@ -189,7 +189,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Map> {
 
                 for (key, value) in entries {
                     map.serialize_key(key)?;
-                    map.serialize_value(&ValueWithSeed::new(
+                    map.serialize_value(&ValueWithSerdeContext::new(
                         value,
                         self.cast::<ValueContainer>(),
                     ))?;
@@ -208,7 +208,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Map> {
                 for (key, value) in entries {
                     let entry = (key.clone(), value.clone());
 
-                    seq.serialize_element(&ValueWithSeed::new(
+                    seq.serialize_element(&ValueWithSerdeContext::new(
                         &entry,
                         self.cast::<(ValueContainer, ValueContainer)>(),
                     ))?;

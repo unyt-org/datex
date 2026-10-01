@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::{
     dif::serde_context::SerdeContext, prelude::*,
-    utils::serde_serialize_seed::ValueWithSeed,
+    utils::serde_serialize_seed::ValueWithSerdeContext,
     values::value_container::ValueContainer,
 };
 use serde::{
@@ -39,7 +39,7 @@ impl<'ctx> SerdeContext<'ctx, ListSpliceUpdateData> {
         seq.serialize_element(&value.start)?;
         seq.serialize_element(&value.delete_count)?;
 
-        seq.serialize_element(&ValueWithSeed::new(
+        seq.serialize_element(&ValueWithSerdeContext::new(
             &value.items,
             self.cast::<Vec<ValueContainer>>(),
         ))?;

@@ -5,7 +5,7 @@ use crate::{
         r#type::Type,
         type_definition::callable::{CallableKind, CallableTypeDefinition},
     },
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 use core::ops::Deref;
 use serde::{
@@ -30,14 +30,14 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, CallableTypeDefinition> {
         obj.serialize_value(&value.requires_async)?;
 
         obj.serialize_key("parameters")?;
-        obj.serialize_value(&ValueWithSeed::new(
+        obj.serialize_value(&ValueWithSerdeContext::new(
             &value.parameters,
             self.cast::<Vec<(Option<String>, Type)>>(),
         ))?;
         obj.serialize_key("rest_parameter")?;
         match &value.rest_parameter {
             Some((name, ty)) => {
-                obj.serialize_value(&ValueWithSeed::new(
+                obj.serialize_value(&ValueWithSerdeContext::new(
                     &(name.clone(), ty.deref().clone()),
                     self.cast::<(Option<String>, Type)>(),
                 ))?;
@@ -50,7 +50,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, CallableTypeDefinition> {
         obj.serialize_key("return_type")?;
         match &value.return_type {
             Some(return_type) => {
-                obj.serialize_value(&ValueWithSeed::new(
+                obj.serialize_value(&ValueWithSerdeContext::new(
                     return_type.deref(),
                     self.cast::<Type>(),
                 ))?;
@@ -63,7 +63,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, CallableTypeDefinition> {
         obj.serialize_key("yeet_type")?;
         match &value.yeet_type {
             Some(yeet_type) => {
-                obj.serialize_value(&ValueWithSeed::new(
+                obj.serialize_value(&ValueWithSerdeContext::new(
                     yeet_type.deref(),
                     self.cast::<Type>(),
                 ))?;
@@ -87,7 +87,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Vec<(Option<String>, Type)>> {
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(value.len()))?;
         for (name, ty) in value {
-            seq.serialize_element(&ValueWithSeed::new(
+            seq.serialize_element(&ValueWithSerdeContext::new(
                 &(name.clone(), ty.clone()),
                 self.cast::<(Option<String>, Type)>(),
             ))?;
@@ -106,7 +106,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, (Option<String>, Type)> {
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;
         tuple.serialize_element(&value.0)?;
-        tuple.serialize_element(&ValueWithSeed::new(
+        tuple.serialize_element(&ValueWithSerdeContext::new(
             &value.1,
             self.cast::<Type>(),
         ))?;

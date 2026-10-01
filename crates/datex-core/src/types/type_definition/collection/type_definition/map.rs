@@ -1,6 +1,6 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 use core::fmt::{self, Display};
 use serde::{
@@ -40,11 +40,11 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, MapCollectionTypeDefinition> {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
-        seq.serialize_element(&ValueWithSeed::new(
+        seq.serialize_element(&ValueWithSerdeContext::new(
             &value.key_type as &Type,
             self.cast::<Type>(),
         ))?;
-        seq.serialize_element(&ValueWithSeed::new(
+        seq.serialize_element(&ValueWithSerdeContext::new(
             &value.value_type as &Type,
             self.cast::<Type>(),
         ))?;

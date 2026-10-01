@@ -2,7 +2,7 @@ use core::fmt::Display;
 
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 use serde::{Serializer, de::DeserializeSeed, ser::SerializeSeq};
 
@@ -39,7 +39,7 @@ impl<'ctx> SerializeSeed
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
-        seq.serialize_element(&ValueWithSeed::new(
+        seq.serialize_element(&ValueWithSerdeContext::new(
             &value.item_type as &Type,
             self.cast::<Type>(),
         ))?;
