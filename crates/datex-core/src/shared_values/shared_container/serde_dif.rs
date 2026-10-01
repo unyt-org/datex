@@ -13,19 +13,20 @@ use crate::{
 };
 use alloc::format;
 use serde::{
-    Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
+    Deserialize, Deserializer, Serialize, Serializer,
 };
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
-    type Value = SharedContainer;
-    fn deserialize<D: Deserializer<'de>>(
-        self,
+impl<'de> DeserializeWithSerdeContext<'de> for SharedContainer {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         d: D,
     ) -> Result<SharedContainer, D::Error> {
         let PointerAddressWithOwnership { address, ownership } =
             PointerAddressWithOwnership::deserialize(d)?;
-        let reference = self
+        let reference = ctx
             .shared_container_cache
+            .borrow_mut()
             .try_get_shared_container_with_ownership(&address, ownership)
             .map_err(|e| {
                 serde::de::Error::custom(format!(
@@ -36,10 +37,11 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
         Ok(reference)
     }
 }
-impl<'ctx> SerdeContext<'ctx, SharedContainer> {
-    pub fn pointer_string(&mut self, value: &SharedContainer) -> String {
+impl<'ctx> SerdeContext<'ctx> {
+    pub fn pointer_string(&self, value: &SharedContainer) -> String {
         unsafe {
             self.shared_container_cache
+                .borrow_mut()
                 .store_shared_container(value.clone_unsafe());
         }
 
@@ -58,24 +60,22 @@ impl<'ctx> SerdeContext<'ctx, SharedContainer> {
         format!("{}{}", ownership, value.pointer_address())
     }
 }
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, SharedContainer> {
-    type Value = SharedContainer;
-
+impl<'ctx> SerializeSeed for SharedContainer {
     /// SAFETY:
     /// The caller of the `serialize` method must either
     /// * guarantee that no direct value (accessible without borrow) is an owned shared value
     ///   (this can be guaranteed by calling clone on the top level value before passing it to [SerializeSeed])
     /// * or guarantee that the value is dropped after calling `serialize`, so that the owned shared value
     ///   is not leaked after serialization.
-    fn serialize<S>(
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        self.pointer_string(value).serialize(serializer)
+        ctx.pointer_string(self).serialize(serializer)
     }
 }
 

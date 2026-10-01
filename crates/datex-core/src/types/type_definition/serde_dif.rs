@@ -24,6 +24,8 @@ use serde::{
     de::{self, DeserializeSeed, Visitor},
     ser::SerializeMap,
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeSeed for TypeDefinition {
 
@@ -116,16 +118,15 @@ impl<'ctx> SerializeSeed for TypeDefinition {
 }
 
 /// Deserialization for [TypeDefinition]
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, TypeDefinition> {
-    type Value = TypeDefinition;
-    fn deserialize<D: Deserializer<'de>>(
-        self,
+impl<'de> DeserializeWithSerdeContext<'de> for TypeDefinition {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         d: D,
     ) -> Result<TypeDefinition, D::Error> {
-        d.deserialize_any(self)
+        d.deserialize_any(DeserializeSerdeContext::new(ctx))
     }
 }
-impl<'ctx> SerdeContext<'ctx, TypeDefinition> {
+impl<'de, 'ctx> DeserializeSerdeContext<'de, 'ctx, TypeDefinition> {
     fn deserialize_core_lib_id(
         &self,
         value: u64,
@@ -148,7 +149,7 @@ impl<'ctx> SerdeContext<'ctx, TypeDefinition> {
         }
     }
 }
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, TypeDefinition> {
     type Value = TypeDefinition;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -303,23 +304,22 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
 
 #[cfg(test)]
 mod tests {
+    use core::cell::RefCell;
     use crate::{
         dif::serde_context::SerdeContext,
         libs::core::{
             core_lib_id::CoreLibIdIndex,
-            type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
+            type_id::{CoreLibTypeId},
         },
         prelude::*,
         types::type_definition::TypeDefinition,
-        values::core_values::integer::typed_integer::IntegerTypeVariant,
     };
 
     fn to_json(value: &TypeDefinition) -> String {
-        SerdeContext::new(&mut SharedValuesCache::default())
+        SerdeContext::new(&RefCell::new(SharedValuesCache::default()))
             .serialize_to_json(value)
     }
     use crate::runtime::cache::{
-        shared_references_cache::SharedReferencesCache,
         shared_values_cache::SharedValuesCache,
     };
     use test_case::test_case;
@@ -336,7 +336,7 @@ mod tests {
 
         // Deserialize the JSON back to a TypeDefinition
         let deserialized: TypeDefinition =
-            SerdeContext::new(&mut SharedValuesCache::default())
+            SerdeContext::new(&RefCell::new(SharedValuesCache::default()))
                 .try_deserialize_from_json(&serialized)
                 .unwrap();
         assert_eq!(type_def, deserialized);
