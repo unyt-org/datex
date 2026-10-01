@@ -57,3 +57,16 @@ impl<'ctx> From<&'ctx mut SharedValuesCache> for SerdeContext<'ctx, ()> {
         SerdeContext::new(cache)
     }
 }
+
+#[derive(Debug)]
+pub struct SerdeContext2<'ctx,> {
+    pub shared_container_cache: &'ctx mut SharedValuesCache,
+}
+
+impl<'ctx> From<&'ctx mut SharedValuesCache> for SerdeContext2<'ctx> {
+    fn from(cache: &'ctx mut SharedValuesCache) -> Self {
+        SerdeContext2 {
+            shared_container_cache: cache,
+        }
+    }
+}
