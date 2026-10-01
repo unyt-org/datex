@@ -2,13 +2,13 @@ use crate::{
     prelude::*,
     preludes::derive::{PartsKind, SharedReferencesCache},
     traits::{
-        convert_parts::{FromParts, IntoParts, WithPartsKind},
+        convert_parts::{FromParts, IntoParts, HasPartsKind},
         convert_value_container::ConvertValueContainer,
     },
     values::core_values::list::List,
 };
 
-impl<T> WithPartsKind for Vec<T> {
+impl<T> HasPartsKind for Vec<T> {
     fn parts_kind(&self) -> PartsKind {
         PartsKind::List
     }

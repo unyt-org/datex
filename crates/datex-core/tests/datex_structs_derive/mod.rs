@@ -395,6 +395,8 @@ fn value_to_new_typestruct() {
 
 #[test]
 fn value_to_enum() {
+    let cache = RefCell::new(SharedReferencesCache::default());
+
     let variant_a = Value::new(
         CoreValue::Null,
         ValueClassification::new_with_tag(ValueTag {
@@ -403,7 +405,7 @@ fn value_to_enum() {
         }),
     );
 
-    let example = variant_a.try_into_value::<ExampleEnum>().unwrap();
+    let example = ExampleEnum::try_cast_from_value_container(ValueContainer::from(variant_a), &cache).unwrap();
     assert_matches!(example, ExampleEnum::VariantA);
 
     let variant_b = Value::new(
@@ -414,7 +416,7 @@ fn value_to_enum() {
             is_empty: false,
         }),
     );
-    let example = variant_b.try_into_value::<ExampleEnum>().unwrap();
+    let example = ExampleEnum::try_cast_from_value_container(ValueContainer::from(variant_b), &cache).unwrap();
     assert_matches!(example, ExampleEnum::VariantB(1, 2));
 
     let variant_c = Value::new(
@@ -428,7 +430,7 @@ fn value_to_enum() {
             is_empty: false,
         }),
     );
-    let example = variant_c.try_into_value::<ExampleEnum>().unwrap();
+    let example = ExampleEnum::try_cast_from_value_container(ValueContainer::from(variant_c), &cache).unwrap();
     assert_matches!(example, ExampleEnum::VariantC { x: 3, y } if &y == "Hello" );
 
     let variant_d = Value::new(
@@ -438,7 +440,7 @@ fn value_to_enum() {
             is_empty: false,
         }),
     );
-    let example = variant_d.try_into_value::<ExampleEnum>().unwrap();
+    let example = ExampleEnum::try_cast_from_value_container(ValueContainer::from(variant_d), &cache).unwrap();
     assert_matches!(example, ExampleEnum::VariantD(42));
 }
 

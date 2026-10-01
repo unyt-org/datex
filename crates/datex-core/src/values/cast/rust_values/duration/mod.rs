@@ -5,7 +5,7 @@ pub mod datex_native;
 
 use crate::{
     traits::{
-        convert_parts::{FromParts, IntoParts, WithPartsKind},
+        convert_parts::{FromParts, IntoParts, HasPartsKind},
         datex_native_only_structural::DatexNativeOnlyStructural,
         datex_native_structural::DatexNativeStructural,
         get_core_lib_type_id::GetCoreLibTypeId,
@@ -38,7 +38,7 @@ mod to_datex_expression_data {
 impl ValueAccess for Duration {}
 impl FromParts for Duration {}
 impl IntoParts for Duration {}
-impl WithPartsKind for Duration {}
+impl HasPartsKind for Duration {}
 impl GetCoreLibTypeId for Duration {}
 impl GetDatexType for Duration {}
 impl UpdateHandlerImpl for Duration {}

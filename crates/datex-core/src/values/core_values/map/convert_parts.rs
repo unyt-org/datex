@@ -1,11 +1,11 @@
 use crate::{
     prelude::*,
     preludes::derive::SharedReferencesCache,
-    traits::convert_parts::{FromParts, IntoParts, PartsKind, WithPartsKind},
+    traits::convert_parts::{FromParts, IntoParts, PartsKind, HasPartsKind},
     values::core_values::map::Map,
 };
 
-impl WithPartsKind for Map {
+impl HasPartsKind for Map {
     fn parts_kind(&self) -> PartsKind {
         PartsKind::Map
     }

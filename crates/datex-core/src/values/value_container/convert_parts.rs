@@ -2,7 +2,7 @@ use crate::{
     prelude::*,
     preludes::derive::SharedReferencesCache,
     traits::convert_parts::{
-        BorrowedParts, FromParts, IntoParts, Parts, PartsKind, WithPartsKind,
+        BorrowedParts, FromParts, IntoParts, Parts, PartsKind, HasPartsKind,
     },
     values::{
         core_values::{list::List, map::Map},
@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-impl WithPartsKind for ValueContainer {
+impl HasPartsKind for ValueContainer {
     fn parts_kind(&self) -> PartsKind {
         match self {
             ValueContainer::Local(value) => value.parts_kind(),
@@ -50,6 +50,13 @@ impl IntoParts for ValueContainer {
             ValueContainer::Shared(shared) => Err(()),
         }
     }
+
+    fn try_into_single_value<'a>(self: Box<Self>, _cache: &'a mut SharedReferencesCache) -> Result<ValueContainer, ()>
+    where
+        Self: 'a,
+    {
+        Ok(*self)
+    }
 }
 
 impl FromParts for ValueContainer {
@@ -74,5 +81,12 @@ impl FromParts for ValueContainer {
         Ok(ValueContainer::Local(Value::try_from_list_parts_with_tag(
             parts, tag,
         )?))
+    }
+
+    fn try_from_single_value(value: ValueContainer) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        Ok(value)
     }
 }

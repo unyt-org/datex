@@ -163,7 +163,7 @@ impl Value {
     pub fn is_native(&self) -> bool {
         matches!(&self.inner, CoreValue::Native(_))
     }
-    
+
     pub fn into_inner(self) -> CoreValue {
         self.inner
     }
@@ -227,7 +227,8 @@ impl Value {
     }
 
     pub fn is_null(&self) -> bool {
-        core::matches!(self.inner, CoreValue::Null)
+        matches!(self.inner, CoreValue::Null)
+        // TODO: also handle native null values
     }
 
     /// Tries to get a borrow of the current value as the specified type.
@@ -271,13 +272,13 @@ impl Value {
 
     /// Returns the actual current [TypeDefinition] of the value
     pub fn actual_type(&self) -> TypeDefinition {
-        
+
         let mut types = Vec::<Type>::new();
-        
+
         if let Some(entity_type) = &self.classification.entity_type {
             types.push(Type::Entity(entity_type.clone()));
         }
-        
+
         if let Some(ValueTag { tag, is_empty }) = &self.classification.tag {
             types.push(TypeDefinition::TaggedType(TaggedTypeDefinition {
                 tag: tag.clone(),
@@ -288,11 +289,11 @@ impl Value {
                 },
             }).into());
         }
-        
+
         if !self.classification.impls.is_empty() {
             types.push(TypeDefinition::ImplMarkers(ImplMarkers::new(self.classification.impls.clone())).into());
         }
-        
+
         if types.is_empty() {
             TypeDefinition::CoreType(self.default_core_type())
         } else if types.len() == 1 {

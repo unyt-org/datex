@@ -1,9 +1,9 @@
 use crate::{
-    traits::convert_parts::{FromParts, IntoParts, WithPartsKind},
+    traits::convert_parts::{FromParts, IntoParts, HasPartsKind},
     values::core_values::callable::Callable,
 };
 
 /// Default implementations - cannot be split into parts
 impl IntoParts for Callable {}
 impl FromParts for Callable {}
-impl WithPartsKind for Callable {}
+impl HasPartsKind for Callable {}

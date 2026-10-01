@@ -1,12 +1,13 @@
 use crate::{
     prelude::*,
     preludes::derive::{PartsKind, SharedReferencesCache},
-    traits::convert_parts::{FromParts, IntoParts, WithPartsKind},
+    traits::convert_parts::{FromParts, IntoParts, HasPartsKind},
     values::core_values::{list::List, map::Map},
 };
 use core::ops::Deref;
+use crate::preludes::derive::ValueContainer;
 
-impl<T: WithPartsKind> WithPartsKind for Box<T> {
+impl<T: HasPartsKind> HasPartsKind for Box<T> {
     fn parts_kind(&self) -> PartsKind {
         self.deref().parts_kind()
     }
@@ -34,6 +35,14 @@ impl<T: IntoParts> IntoParts for Box<T> {
         let inner = *self;
         inner.try_into_list_parts(cache)
     }
+
+    fn try_into_single_value<'a>(self: Box<Self>, _cache: &'a mut SharedReferencesCache) -> Result<ValueContainer, ()>
+    where
+        Self: 'a,
+    {
+        let inner = *self;
+        inner.try_into_single_value(_cache)
+    }
 }
 
 impl<T: FromParts> FromParts for Box<T> {
@@ -55,5 +64,12 @@ impl<T: FromParts> FromParts for Box<T> {
         Self: Sized,
     {
         Ok(Box::new(T::try_from_list_parts_with_tag(parts, tag)?))
+    }
+
+    fn try_from_single_value_with_tag(value: ValueContainer, tag: Option<&str>) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        Ok(Box::new(T::try_from_single_value_with_tag(value, tag)?))
     }
 }
