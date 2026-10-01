@@ -2,6 +2,7 @@ mod impls;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
+pub mod dif;
 
 use core::assert_matches;
 use core::cell::RefCell;

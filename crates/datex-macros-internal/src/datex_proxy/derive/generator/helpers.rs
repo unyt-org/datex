@@ -1,11 +1,17 @@
 use crate::datex_proxy::data::{EnumVariant, Fields, Structure};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
+use syn::Path;
 
 /// Represents whether the self value is borrowed or moved in the context of generating code for struct or enum variants.
 pub enum SelfAccess {
     /// Indicates that the self value is borrowed, and field access should use references.
     Borrowed,
+    /// Indicates that the self value is borrowed, but accessed via a specific identifier (e.g., `value`), and field access should use references.
+    BorrowedIdent {
+        self_value: Ident,
+        self_type: Path,
+    },
     /// Indicates that the self value is moved, and field access should take ownership of the fields.
     Moved,
     /// Indicates that the self is passed as a `Box<Self>`
@@ -54,6 +60,11 @@ pub fn map_enum_variants(
     self_access: SelfAccess,
     generate_match_arm_body: impl Fn(&EnumVariant) -> TokenStream,
 ) -> TokenStream {
+    let self_type = match &self_access {
+        SelfAccess::BorrowedIdent { self_type, .. } => quote! { #self_type },
+        _ => quote! { Self },
+    };
+    
     let arms = enum_ty.iter().map(|variant| {
         let variant_ident = Ident::new(&variant.name, Span::call_site());
         let match_arm_body = generate_match_arm_body(variant);
@@ -61,14 +72,14 @@ pub fn map_enum_variants(
         match &variant.fields {
             Fields::Named(_fields) => {
                 quote! {
-                    Self::#variant_ident { #(#field_idents),* } => {
+                    #self_type::#variant_ident { #(#field_idents),* } => {
                         #match_arm_body
                     }
                 }
             }
             Fields::Unnamed(_fields) => {
                 quote! {
-                    Self::#variant_ident(#(#field_idents),*) => {
+                    #self_type::#variant_ident(#(#field_idents),*) => {
                         #match_arm_body
                     }
                 }
@@ -76,14 +87,14 @@ pub fn map_enum_variants(
             Fields::Transparent(_field) => {
                 let first_field_ident = field_idents.first().unwrap();
                 quote! {
-                    Self::#variant_ident(#first_field_ident) => {
+                    #self_type::#variant_ident(#first_field_ident) => {
                         #match_arm_body
                     }
                 }
             }
             Fields::Unit => {
                 quote! {
-                    Self::#variant_ident => {
+                    #self_type::#variant_ident => {
                         #match_arm_body
                     }
                 }
@@ -93,6 +104,7 @@ pub fn map_enum_variants(
     
     let self_access_pattern = match self_access {
         SelfAccess::Borrowed | SelfAccess::Moved => quote! { self },
+        SelfAccess::BorrowedIdent { self_value, .. } => quote! { #self_value },
         SelfAccess::Boxed => quote! { *self },
     };
 
@@ -112,10 +124,15 @@ pub fn generate_struct_field_accessors(
         .field_accessors()
         .iter()
         .zip(fields.normalized_field_idents().iter())
-        .map(|(accessor, normalized_ident)| match self_access {
+        .map(|(accessor, normalized_ident)| match &self_access {
             SelfAccess::Borrowed => {
                 quote! {
                     let #normalized_ident = &self.#accessor;
+                }
+            }
+            SelfAccess::BorrowedIdent { self_value, .. } => {
+                quote! {
+                    let #normalized_ident = &#self_value.#accessor;
                 }
             }
             SelfAccess::Moved | SelfAccess::Boxed => {
