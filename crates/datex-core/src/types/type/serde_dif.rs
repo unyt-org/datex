@@ -95,8 +95,10 @@ impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Type> {
     {
         Ok(Type::Entity(unsafe {
             EntityType::new_unchecked(
-                self.cast::<SharedContainer>()
-                    .deserialize(v.into_deserializer())?,
+                SharedContainer::deserialize_with_ctx(
+                    self.ctx,
+                    v.into_deserializer()
+                )?
             )
         }))
     }

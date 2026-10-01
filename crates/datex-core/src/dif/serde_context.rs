@@ -1,6 +1,7 @@
 use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 use core::cell::RefCell;
 use std::marker::PhantomData;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 #[derive(Debug)]
 pub struct SerdeContext<'ctx> {
@@ -17,15 +18,13 @@ impl<'ctx> SerdeContext<'ctx> {
     /// Try to deserialize a JSON string to a DATEX value using the provided context
     #[cfg(test)]
     pub fn try_deserialize_from_json<T>(
-        self,
+        &self,
         json_string: &'ctx str,
     ) -> Result<T, serde_json::Error>
     where
-        SerdeContext<'ctx>: serde::de::DeserializeSeed<'ctx, Value = T>,
+        T: DeserializeWithSerdeContext<'ctx>,
     {
-        use serde::de::DeserializeSeed;
-
-        DeserializeSeed::deserialize(
+        DeserializeWithSerdeContext::deserialize_with_ctx(
             self,
             &mut serde_json::Deserializer::from_str(json_string),
         )
