@@ -17,8 +17,8 @@ use serde::{
 
 impl<'ctx> SerializeSeed for BorrowedMapKey<'ctx> {
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -37,8 +37,8 @@ impl<'ctx> SerializeSeed
     for (ValueContainer, ValueContainer)
 {
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -108,8 +108,8 @@ impl<'ctx> SerializeSeed
     for Vec<(ValueContainer, ValueContainer)>
 {
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -168,8 +168,8 @@ impl<'de, 'ctx> Visitor<'de>
 
 impl<'ctx> SerializeSeed for Map {
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where

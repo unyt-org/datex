@@ -8,8 +8,8 @@ use crate::{
 
 impl<'ctx> SerializeSeed for UnionTypeDefinition {
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(self.len()))?;

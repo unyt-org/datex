@@ -20,13 +20,12 @@ use serde::{
     de::{DeserializeSeed, IntoDeserializer, Visitor},
 };
 use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::preludes::derive::ListTypeDefinition;
 use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeSeed for Type {
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where

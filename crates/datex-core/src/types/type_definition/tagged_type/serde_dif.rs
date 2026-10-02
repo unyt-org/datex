@@ -14,8 +14,8 @@ use crate::{
 
 impl<'ctx> SerializeSeed for TaggedTypeDefinition {
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
@@ -30,8 +30,7 @@ impl<'ctx> SerializeSeed for TaggedTypeDefinition {
             None => seq.serialize_element(&ValueWithSerdeContext::new(
                 &TypeDefinition::CoreType(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Unit,
-                ))
-                .into(),
+                )),
                 ctx,
             ))?,
         }
@@ -41,8 +40,8 @@ impl<'ctx> SerializeSeed for TaggedTypeDefinition {
 
 impl<'ctx> SerializeSeed for Option<Box<Type>> {
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         match self {

@@ -15,10 +15,7 @@ pub fn generate_serde_dif(
 
     let serialize = generate_struct_or_enum_variants_fields_mapping(
         &structure_data.structure,
-        SelfAccess::BorrowedIdent {
-            self_value: Ident::new("value", proc_macro2::Span::call_site()),
-            self_type: parse_quote!(Self::Value),
-        },
+        SelfAccess::Borrowed,
         generate_dif_serialize_for_fields,
     );
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -26,12 +23,9 @@ pub fn generate_serde_dif(
     // FIXME: this doesnt work because of foreign trait for foreign struct impl
     quote! {
         impl<'ctx> SerializeSeed for #ident #ty_generics #where_clause {
-            type Value = #ident #ty_generics;
-
             fn serialize_seed<S>(
-                &mut self,
-                ctx: &SerdeContext<'ctx>,
-                serializer: S,
+                &self,
+                ctx: &SerdeContext<'_>,
                 serializer: S,
             ) -> Result<S::Ok, S::Error>
             where

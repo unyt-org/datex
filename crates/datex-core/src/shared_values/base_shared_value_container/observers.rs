@@ -164,8 +164,8 @@ impl<'de> DeserializeSeed<'de> for SerdeContext<'de, ObserveOptions> {
 
 impl<'ctx> SerializeSeed for ObserveOptions {
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        _ctx: &SerdeContext<'ctx>,
+        &self,
+        _ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         self.serialize(serializer)

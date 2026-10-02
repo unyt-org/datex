@@ -21,8 +21,8 @@ impl ListCollectionTypeDefinition {
 }
 impl<'ctx> SerializeSeed for ListCollectionTypeDefinition {
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         self.0.serialize_seed(ctx, serializer)

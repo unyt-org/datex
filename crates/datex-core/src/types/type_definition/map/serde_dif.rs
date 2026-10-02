@@ -14,8 +14,8 @@ use serde::{
 /// Serde implementations for [MapTypeDefinition].
 impl<'ctx> SerializeSeed for MapTypeDefinition {
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(self.len()))?;
@@ -34,8 +34,8 @@ impl<'ctx> SerializeSeed for MapTypeDefinition {
 /// Serde implementations for inner tuple type `(Type, Type)`.
 impl<'ctx> SerializeSeed for (Type, Type) {
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;

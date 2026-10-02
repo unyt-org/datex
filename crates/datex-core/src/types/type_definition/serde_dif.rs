@@ -30,7 +30,7 @@ use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 impl<'ctx> SerializeSeed for TypeDefinition {
 
     fn serialize_seed<S>(
-        &mut self,
+        &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>

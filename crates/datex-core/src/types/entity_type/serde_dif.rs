@@ -25,8 +25,8 @@ impl<'ctx> SerializeSeed for EntityType {
     /// * or guarantee that the value is dropped after calling `serialize`, so that the owned shared value
     ///   is not leaked after serialization.
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where

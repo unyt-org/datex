@@ -190,8 +190,8 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueContainer> {
 
 impl<'ctx> SerializeSeed for ValueContainer {
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -216,8 +216,8 @@ impl<'ctx> SerializeSeed for ValueContainer {
 
 impl<'ctx> SerializeSeed for Vec<ValueContainer> {
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
