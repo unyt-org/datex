@@ -51,8 +51,8 @@ impl Display for ValueKey {
 
 impl<'ctx> SerializeSeed for ValueKey {
     fn serialize_seed<S: serde::Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         match self {
@@ -76,8 +76,8 @@ impl<'ctx> SerializeSeed for ValueKey {
 
 impl<'ctx> SerializeSeed for &'ctx [ValueKey] {
     fn serialize_seed<S: serde::Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq_serializer = serializer.serialize_seq(Some(self.len()))?;

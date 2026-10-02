@@ -15,8 +15,8 @@ use serde::{
 
 impl<'ctx> SerializeSeed for BaseSharedValueContainer {
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         // serialize as struct

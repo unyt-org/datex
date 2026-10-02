@@ -14,8 +14,8 @@ use serde::{
 
 impl<'ctx> SerializeSeed for Range {
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where

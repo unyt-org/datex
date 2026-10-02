@@ -104,8 +104,8 @@ impl<'ctx> SerdeContext<'ctx> {
 /// Serialization for [Value].
 impl<'ctx> SerializeSeed for Value {
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &mut SerdeContext<'ctx>,
+        &self,
+        ctx: &mut SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where

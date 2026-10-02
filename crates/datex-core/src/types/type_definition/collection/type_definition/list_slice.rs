@@ -28,22 +28,19 @@ impl Display for ListSliceCollectionTypeDefinition {
     }
 }
 
-impl<'ctx> SerializeSeed
-    for SerdeContext<'ctx, ListSliceCollectionTypeDefinition>
-{
-    type Value = ListSliceCollectionTypeDefinition;
+impl<'ctx> SerializeSeed for ListSliceCollectionTypeDefinition {
 
-    fn serialize<S: Serializer>(
-        &mut self,
-        value: &Self::Value,
+    fn serialize_seed<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
         seq.serialize_element(&ValueWithSerdeContext::new(
-            &value.item_type as &Type,
-            self.cast::<Type>(),
+            &self.item_type as &Type,
+            ctx,
         ))?;
-        seq.serialize_element(&value.size)?;
+        seq.serialize_element(&self.size)?;
         seq.end()
     }
 }

@@ -38,7 +38,7 @@ use serde::{
 
 pub struct CoreValueVisitor<'a, 'ctx> {
     pub core_lib_id: CoreLibTypeId,
-    pub context: &'a mut SerdeContext<'ctx, Value>,
+    pub context: &'a mut SerdeContext<'ctx>,
 }
 
 impl<'de, 'a, 'ctx> DeserializeSeed<'de> for CoreValueVisitor<'a, 'ctx> {

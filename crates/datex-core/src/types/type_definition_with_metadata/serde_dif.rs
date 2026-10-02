@@ -10,8 +10,8 @@ use serde::{Serializer, ser::SerializeSeq};
 impl<'ctx> SerializeSeed for TypeDefinitionWithMetadata {
 
     fn serialize_seed<S>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where

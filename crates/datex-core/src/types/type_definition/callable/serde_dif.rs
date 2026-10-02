@@ -16,8 +16,8 @@ use serde::{
 
 impl<'ctx> SerializeSeed for CallableTypeDefinition {
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut obj = serializer.serialize_map(Some(1))?;
@@ -37,7 +37,7 @@ impl<'ctx> SerializeSeed for CallableTypeDefinition {
             Some((name, ty)) => {
                 obj.serialize_value(&ValueWithSerdeContext::new(
                     &(name.clone(), ty.deref().clone()),
-                    self.cast::<(Option<String>, Type)>(),
+                    ctx,
                 ))?;
             }
             None => {
@@ -77,8 +77,8 @@ impl<'ctx> SerializeSeed for CallableTypeDefinition {
 
 impl<'ctx> SerializeSeed for Vec<(Option<String>, Type)> {
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(self.len()))?;
@@ -95,8 +95,8 @@ impl<'ctx> SerializeSeed for Vec<(Option<String>, Type)> {
 impl<'ctx> SerializeSeed for (Option<String>, Type) {
 
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;

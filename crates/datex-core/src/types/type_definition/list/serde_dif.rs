@@ -15,8 +15,8 @@ use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 impl<'ctx> SerializeSeed for ListTypeDefinition {
 
     fn serialize_seed<S: Serializer>(
-        &mut self,
-        ctx: &SerdeContext<'ctx>,
+        &self,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         ctx.shared_container_cache.borrow_mut().remove_callable_with_hash(45);

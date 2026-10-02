@@ -1,6 +1,6 @@
 use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 use core::cell::RefCell;
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 #[derive(Debug)]
@@ -56,7 +56,7 @@ impl<'a, 'ctx, T> DeserializeSerdeContext<'a, 'ctx, T> {
     pub fn new(ctx: &'a SerdeContext<'ctx>) -> Self {
         Self { ctx, _marker: PhantomData }
     }
-    
+
     pub fn cast<U>(&self) -> DeserializeSerdeContext<'a, 'ctx, U> {
         DeserializeSerdeContext {
             ctx: self.ctx,
