@@ -31,22 +31,20 @@ impl Display for MapCollectionTypeDefinition {
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, MapCollectionTypeDefinition> {
-    type Value = MapCollectionTypeDefinition;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for MapCollectionTypeDefinition {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
         seq.serialize_element(&ValueWithSerdeContext::new(
-            &value.key_type as &Type,
-            self.cast::<Type>(),
+            &self.key_type as &Type,
+            ctx,
         ))?;
         seq.serialize_element(&ValueWithSerdeContext::new(
-            &value.value_type as &Type,
-            self.cast::<Type>(),
+            &self.value_type as &Type,
+            ctx,
         ))?;
         seq.end()
     }

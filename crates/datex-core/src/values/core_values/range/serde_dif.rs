@@ -12,12 +12,10 @@ use serde::{
     ser::{SerializeSeq, SerializeStruct, SerializeTuple},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Range> {
-    type Value = Range;
-
-    fn serialize<S>(
+impl<'ctx> SerializeSeed for Range {
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -25,12 +23,12 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Range> {
     {
         let mut state = serializer.serialize_tuple(2)?;
         state.serialize_element(&ValueWithSerdeContext::new(
-            &*value.start,
-            self.cast::<ValueContainer>(),
+            &*self.start,
+            ctx,
         ))?;
         state.serialize_element(&ValueWithSerdeContext::new(
-            &*value.end,
-            self.cast::<ValueContainer>(),
+            &*self.end,
+            ctx,
         ))?;
         state.end()
     }

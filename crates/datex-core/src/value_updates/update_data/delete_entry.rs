@@ -19,15 +19,15 @@ impl DeleteEntryUpdateData {
     }
 }
 
-impl<'ctx> SerdeContext<'ctx, DeleteEntryUpdateData> {
-    pub fn serialize_fields<S: SerializeSeq>(
+impl<'ctx> SerdeContext<'ctx> {
+    pub fn serialize_delete_entry_fields<S: SerializeSeq>(
         &mut self,
         value: &DeleteEntryUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
         seq.serialize_element(&ValueWithSerdeContext::new(
             &value.key,
-            self.cast::<ValueKey>(),
+            self,
         ))?;
         Ok(())
     }

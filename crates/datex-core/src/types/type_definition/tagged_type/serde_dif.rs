@@ -12,21 +12,19 @@ use crate::{
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, TaggedTypeDefinition> {
-    type Value = TaggedTypeDefinition;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for TaggedTypeDefinition {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
-        seq.serialize_element(&value.tag)?;
-        match &value.ty {
+        seq.serialize_element(&self.tag)?;
+        match &self.ty {
             Some(ty) => {
                 seq.serialize_element(&ValueWithSerdeContext::new(
                     ty.as_ref(),
-                    self.cast::<Type>(),
+                    ctx,
                 ))?;
             }
             None => seq.serialize_element(&ValueWithSerdeContext::new(
@@ -34,25 +32,22 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TaggedTypeDefinition> {
                     CoreLibBaseTypeId::Unit,
                 ))
                 .into(),
-                self.cast::<Type>(),
+                ctx,
             ))?,
         }
         seq.end()
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Box<Type>> {
-    type Value = Option<Box<Type>>;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for Option<Box<Type>> {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        match value {
+        match self {
             Some(ty) => {
-                let mut seed = self.cast::<Type>();
-                seed.serialize(ty, serializer)
+                ty.serialize_seed(ctx, serializer)
             }
             None => serializer.serialize_none(),
         }

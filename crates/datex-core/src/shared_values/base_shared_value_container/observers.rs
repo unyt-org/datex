@@ -162,15 +162,13 @@ impl<'de> DeserializeSeed<'de> for SerdeContext<'de, ObserveOptions> {
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ObserveOptions> {
-    type Value = ObserveOptions;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for ObserveOptions {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        _ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        value.serialize(serializer)
+        self.serialize(serializer)
     }
 }
 

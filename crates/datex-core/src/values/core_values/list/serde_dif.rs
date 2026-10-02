@@ -8,22 +8,21 @@ use serde::{
     ser::{SerializeMap, SerializeSeq},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, List> {
-    type Value = List;
+impl<'ctx> SerializeSeed for List {
 
-    fn serialize<S>(
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_seq(Some(value.len() as usize))?;
-        for value in value.iter() {
+        let mut state = serializer.serialize_seq(Some(self.len() as usize))?;
+        for value in self.iter() {
             state.serialize_element(&ValueWithSerdeContext::new(
                 value,
-                self.cast::<ValueContainer>(),
+                ctx,
             ))?;
         }
         state.end()

@@ -17,51 +17,42 @@ use serde::{
     ser::SerializeSeq,
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Update> {
-    type Value = Update;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for Update {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &mut SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(None)?;
         // serialize the transceiver id and the operation name as a string
-        seq.serialize_element(value.source_id())?;
+        seq.serialize_element(self.source_id())?;
 
         // serialize path, if the path is empty, we pack an empty vec, otherwise we pack the path as a sequence of ValueKeys
         {
-            let val = value.path();
-            let path_val = ValueWithSerdeContext::new(&val, self.cast::<&[ValueKey]>());
+            let val = self.path();
+            let path_val = ValueWithSerdeContext::new(&val, ctx);
             seq.serialize_element(&path_val)?;
         }
 
         // this serializes the name of the operation (e.g. "set_entry", "replace", etc.) as a string
         {
-            seq.serialize_element(&&value.operation().as_ref().to_string())?;
-            match value.operation() {
-                UpdateOperation::SetEntry(data) => self
-                    .cast::<SetEntryUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
-                UpdateOperation::Replace(data) => self
-                    .cast::<ReplaceUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
-                UpdateOperation::DeleteEntry(data) => self
-                    .cast::<DeleteEntryUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
+            seq.serialize_element(&&self.operation().as_ref().to_string())?;
+            match self.operation() {
+                UpdateOperation::SetEntry(data) => ctx
+                    .serialize_set_entry_fields(data, &mut seq)?,
+                UpdateOperation::Replace(data) => ctx
+                    .serialize_replace_fields(data, &mut seq)?,
+                UpdateOperation::DeleteEntry(data) => ctx
+                    .serialize_delete_entry_fields(data, &mut seq)?,
                 UpdateOperation::Clear => {}
-                UpdateOperation::AppendEntry(data) => self
-                    .cast::<AppendEntryUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
-                UpdateOperation::ListSplice(data) => self
-                    .cast::<ListSpliceUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
-                UpdateOperation::Increment(data) => self
-                    .cast::<IncrementUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
-                UpdateOperation::Decrement(data) => self
-                    .cast::<DecrementUpdateData>()
-                    .serialize_fields(data, &mut seq)?,
+                UpdateOperation::AppendEntry(data) => ctx
+                    .serialize_append_entry_fields(data, &mut seq)?,
+                UpdateOperation::ListSplice(data) => ctx
+                    .serialize_list_splice_fields(data, &mut seq)?,
+                UpdateOperation::Increment(data) => ctx
+                    .serialize_increment_fields(data, &mut seq)?,
+                UpdateOperation::Decrement(data) => ctx
+                    .serialize_decrement_fields(data, &mut seq)?,
             };
         }
         seq.end()

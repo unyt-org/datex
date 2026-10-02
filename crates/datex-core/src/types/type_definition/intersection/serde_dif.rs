@@ -8,19 +8,17 @@ use crate::{
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, IntersectionTypeDefinition> {
-    type Value = IntersectionTypeDefinition;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for IntersectionTypeDefinition {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(value.len()))?;
-        for type_def in value.iter() {
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
+        for type_def in self.iter() {
             seq.serialize_element(&ValueWithSerdeContext::new(
                 type_def,
-                self.cast::<Type>(),
+                ctx,
             ))?;
         }
         seq.end()

@@ -10,22 +10,20 @@ use serde::{
     ser::SerializeTuple,
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, RangeTypeDefinition> {
-    type Value = RangeTypeDefinition;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for RangeTypeDefinition {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;
         tuple.serialize_element(&ValueWithSerdeContext::new(
-            &*value.start,
-            self.cast::<Type>(),
+            &*self.start,
+            ctx,
         ))?;
         tuple.serialize_element(&ValueWithSerdeContext::new(
-            &*value.end,
-            self.cast::<Type>(),
+            &*self.end,
+            ctx,
         ))?;
         tuple.end()
     }

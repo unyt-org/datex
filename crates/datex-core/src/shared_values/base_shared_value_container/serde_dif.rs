@@ -13,26 +13,24 @@ use serde::{
     ser::{SerializeSeq, SerializeStruct},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, BaseSharedValueContainer> {
-    type Value = BaseSharedValueContainer;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for BaseSharedValueContainer {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         // serialize as struct
         let mut state = serializer.serialize_seq(Some(3))?;
 
         state.serialize_element(&ValueWithSerdeContext::new(
-            &value.value_container,
-            self.cast::<ValueContainer>(),
+            &self.value_container,
+            ctx,
         ))?;
 
-        state.serialize_element(&value.mutability)?;
+        state.serialize_element(&self.mutability)?;
         state.serialize_element(&ValueWithSerdeContext::new(
-            &value.allowed_type,
-            self.cast::<TypeDefinition>(),
+            &self.allowed_type,
+            ctx,
         ))?;
         state.end()
     }

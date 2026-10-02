@@ -13,6 +13,7 @@ use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
 };
+use crate::utils::serde_serialize_seed::ValueWithSerdeContext;
 
 pub const SHARED_CONTAINER_KEY: &str = "$";
 
@@ -187,48 +188,47 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueContainer> {
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueContainer> {
-    type Value = ValueContainer;
-
-    fn serialize<S>(
+impl<'ctx> SerializeSeed for ValueContainer {
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match value {
+        match self {
             ValueContainer::Shared(shared) => {
                 use serde::ser::SerializeMap;
                 let pointer =
-                    self.cast::<SharedContainer>().pointer_string(shared);
+                    ctx.pointer_string(shared);
 
                 let mut map = serializer.serialize_map(Some(1))?;
                 map.serialize_entry(SHARED_CONTAINER_KEY, &pointer)?;
                 map.end()
             }
             ValueContainer::Local(local) => {
-                self.cast::<Value>().serialize(local, serializer)
+                local.serialize_seed(ctx, serializer)
             }
         }
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Vec<ValueContainer>> {
-    type Value = Vec<ValueContainer>;
-
-    fn serialize<S>(
+impl<'ctx> SerializeSeed for Vec<ValueContainer> {
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut seq = serializer.serialize_seq(Some(value.len()))?;
-        for item in value {
-            seq.serialize_element(&item)?;
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
+        for item in self {
+            seq.serialize_element(&ValueWithSerdeContext::new(
+                item,
+                ctx
+            ))?;
         }
         seq.end()
     }

@@ -20,37 +20,35 @@ use serde::{
     ser::{SerializeMap, SerializeSeq},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, CollectionTypeDefinition> {
-    type Value = CollectionTypeDefinition;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for CollectionTypeDefinition {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut obj = serializer.serialize_map(Some(1))?;
-        obj.serialize_key(value.as_ref())?;
-        match value {
-            CollectionTypeDefinition::List(iten) => {
+        obj.serialize_key(self.as_ref())?;
+        match self {
+            CollectionTypeDefinition::List(item) => {
                 obj.serialize_value(&ValueWithSerdeContext::new(
-                    iten,
-                    self.cast::<ListCollectionTypeDefinition>(),
+                    item,
+                    ctx,
                 ))?
             }
             CollectionTypeDefinition::ListSlice(item) => {
                 obj.serialize_value(&ValueWithSerdeContext::new(
                     item,
-                    self.cast::<ListSliceCollectionTypeDefinition>(),
+                    ctx,
                 ))?
             }
             CollectionTypeDefinition::Map(map) => {
                 obj.serialize_value(&ValueWithSerdeContext::new(
                     map,
-                    self.cast::<MapCollectionTypeDefinition>(),
+                    ctx,
                 ))?
             }
             CollectionTypeDefinition::Range(range) => obj.serialize_value(
-                &ValueWithSerdeContext::new(range, self.cast::<RangeTypeDefinition>()),
+                &ValueWithSerdeContext::new(range, ctx),
             )?,
         }
         obj.end()

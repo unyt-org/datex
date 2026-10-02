@@ -6,13 +6,12 @@ use crate::{
 use serde::Serializer;
 
 /// Serialization for [NativeCoreValue].
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, NativeCoreValue> {
-    type Value = NativeCoreValue;
+impl<'ctx> SerializeSeed for NativeCoreValue {
 
-    fn serialize<S: Serializer>(
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        _value: &Self::Value,
-        _serializer: S,
+        ctx: &SerdeContext<'ctx>,
+        serializer: S,
     ) -> Result<S::Ok, S::Error> {
         todo!()
         // self.cast::<_>().serialize(value.value.deref(), serializer)

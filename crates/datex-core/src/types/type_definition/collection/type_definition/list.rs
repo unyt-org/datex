@@ -19,16 +19,13 @@ impl ListCollectionTypeDefinition {
         Self(Box::new(item))
     }
 }
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ListCollectionTypeDefinition> {
-    type Value = ListCollectionTypeDefinition;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for ListCollectionTypeDefinition {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let mut seed = self.cast::<Type>();
-        seed.serialize(&value.0, serializer)
+        self.0.serialize_seed(ctx, serializer)
     }
 }
 

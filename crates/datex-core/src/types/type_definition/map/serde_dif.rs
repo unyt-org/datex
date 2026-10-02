@@ -12,20 +12,18 @@ use serde::{
 };
 
 /// Serde implementations for [MapTypeDefinition].
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, MapTypeDefinition> {
-    type Value = MapTypeDefinition;
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for MapTypeDefinition {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(value.len()))?;
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
 
-        for (key, value) in value.iter() {
+        for (key, value) in self.iter() {
             seq.serialize_element(&ValueWithSerdeContext::new(
                 &(key.clone(), value.clone()),
-                self.cast::<(Type, Type)>(),
+                ctx,
             ))?;
         }
 
@@ -34,24 +32,22 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, MapTypeDefinition> {
 }
 
 /// Serde implementations for inner tuple type `(Type, Type)`.
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, (Type, Type)> {
-    type Value = (Type, Type);
-
-    fn serialize<S: Serializer>(
+impl<'ctx> SerializeSeed for (Type, Type) {
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut tuple = serializer.serialize_tuple(2)?;
 
         tuple.serialize_element(&ValueWithSerdeContext::new(
-            &value.0,
-            self.cast::<Type>(),
+            &self.0,
+            ctx,
         ))?;
 
         tuple.serialize_element(&ValueWithSerdeContext::new(
-            &value.1,
-            self.cast::<Type>(),
+            &self.1,
+            ctx,
         ))?;
 
         tuple.end()
