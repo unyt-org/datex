@@ -7,16 +7,15 @@ use crate::{
 };
 
 use crate::prelude::*;
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ImplMarkers> {
-    type Value = ImplMarkers;
+impl<'ctx> SerializeSeed for ImplMarkers {
 
-    fn serialize<S: Serializer>(
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(2))?;
-        seq.serialize_element(&value.impl_markers)?;
+        seq.serialize_element(&self.impl_markers)?;
         seq.end()
     }
 }

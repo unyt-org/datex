@@ -10,26 +10,25 @@ use serde::{
     ser::SerializeTuple,
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Callable> {
-    type Value = Callable;
+impl<'ctx> SerializeSeed for Callable {
 
-    fn serialize<S: Serializer>(
+    fn serialize_seed<S: Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         // put callable into cache
-        let hash = self.shared_container_cache.store_callable(value.clone());
+        let hash = ctx.shared_container_cache.borrow_mut().store_callable(self.clone());
         let mut data = serializer.serialize_tuple(3)?;
 
         // store hash
         data.serialize_element(&hash.to_string())?;
 
         // store name
-        data.serialize_element(&value.name)?;
+        data.serialize_element(&self.name)?;
 
         // async bool
-        data.serialize_element(&value.signature.requires_async)?;
+        data.serialize_element(&self.signature.requires_async)?;
 
         data.end()
         // todo: also store function signature information

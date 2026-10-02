@@ -49,15 +49,13 @@ impl Display for ValueKey {
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
-    type Value = ValueKey;
-
-    fn serialize<S: serde::Serializer>(
+impl<'ctx> SerializeSeed for ValueKey {
+    fn serialize_seed<S: serde::Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        match value {
+        match self {
             ValueKey::Text(text) => text.serialize(serializer),
             ValueKey::Index(index) => index.serialize(serializer),
             ValueKey::Value(value_container) => {
@@ -66,7 +64,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
                     "value",
                     &ValueWithSerdeContext::new(
                         value_container,
-                        &mut self.cast::<ValueContainer>(),
+                        ctx,
                     ),
                 )?;
 
@@ -76,19 +74,17 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, &'ctx [ValueKey]> {
-    type Value = &'ctx [ValueKey];
-
-    fn serialize<S: serde::Serializer>(
+impl<'ctx> SerializeSeed for &'ctx [ValueKey] {
+    fn serialize_seed<S: serde::Serializer>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let mut seq_serializer = serializer.serialize_seq(Some(value.len()))?;
-        for key in *value {
+        let mut seq_serializer = serializer.serialize_seq(Some(self.len()))?;
+        for key in *self {
             seq_serializer.serialize_element(&ValueWithSerdeContext::new(
                 key,
-                self.cast::<ValueKey>(),
+                ctx,
             ))?;
         }
         seq_serializer.end()

@@ -17,15 +17,15 @@ impl ReplaceUpdateData {
     }
 }
 
-impl<'ctx> SerdeContext<'ctx, ReplaceUpdateData> {
-    pub fn serialize_fields<S: SerializeSeq>(
+impl<'ctx> SerdeContext<'ctx> {
+    pub fn serialize_replace_fields<S: SerializeSeq>(
         &mut self,
         value: &ReplaceUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
         seq.serialize_element(&ValueWithSerdeContext::new(
             &value.value,
-            self.cast::<ValueContainer>(),
+            self,
         ))?;
 
         Ok(())

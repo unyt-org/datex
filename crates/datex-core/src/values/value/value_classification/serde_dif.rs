@@ -13,12 +13,10 @@ use serde::{
 };
 
 /// Serialization for [ValueClassification].
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueClassification> {
-    type Value = ValueClassification;
-
-    fn serialize<S>(
+impl<'ctx> SerializeSeed for ValueClassification {
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where

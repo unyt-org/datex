@@ -20,20 +20,20 @@ impl SetEntryUpdateData {
     }
 }
 
-impl<'ctx> SerdeContext<'ctx, SetEntryUpdateData> {
-    pub fn serialize_fields<S: SerializeSeq>(
+impl<'ctx> SerdeContext<'ctx> {
+    pub fn serialize_set_entry_fields<S: SerializeSeq>(
         &mut self,
         value: &SetEntryUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
         seq.serialize_element(&ValueWithSerdeContext::new(
             &value.key,
-            self.cast::<ValueKey>(),
+            self,
         ))?;
 
         seq.serialize_element(&ValueWithSerdeContext::new(
             &value.value,
-            self.cast::<ValueContainer>(),
+            self,
         ))?;
 
         Ok(())

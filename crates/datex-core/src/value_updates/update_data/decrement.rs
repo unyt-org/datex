@@ -19,15 +19,15 @@ impl DecrementUpdateData {
     }
 }
 
-impl<'ctx> SerdeContext<'ctx, DecrementUpdateData> {
-    pub fn serialize_fields<S: SerializeSeq>(
+impl<'ctx> SerdeContext<'ctx> {
+    pub fn serialize_decrement_fields<S: SerializeSeq>(
         &mut self,
         value: &DecrementUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
         seq.serialize_element(&ValueWithSerdeContext::new(
             &value.value,
-            self.cast::<ValueContainer>(),
+            self,
         ))?;
         Ok(())
     }

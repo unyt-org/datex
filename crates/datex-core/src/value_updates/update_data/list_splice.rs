@@ -30,8 +30,8 @@ impl ListSpliceUpdateData {
     }
 }
 
-impl<'ctx> SerdeContext<'ctx, ListSpliceUpdateData> {
-    pub fn serialize_fields<S: SerializeSeq>(
+impl<'ctx> SerdeContext<'ctx> {
+    pub fn serialize_list_splice_fields<S: SerializeSeq>(
         &mut self,
         value: &ListSpliceUpdateData,
         seq: &mut S,
@@ -41,7 +41,7 @@ impl<'ctx> SerdeContext<'ctx, ListSpliceUpdateData> {
 
         seq.serialize_element(&ValueWithSerdeContext::new(
             &value.items,
-            self.cast::<Vec<ValueContainer>>(),
+            self,
         ))?;
 
         Ok(())

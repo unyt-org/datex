@@ -25,12 +25,13 @@ pub fn generate_serde_dif(
 
     // FIXME: this doesnt work because of foreign trait for foreign struct impl
     quote! {
-        impl<'ctx> SerializeSeed for SerdeContext<'ctx, #ident #ty_generics> #where_clause {
+        impl<'ctx> SerializeSeed for #ident #ty_generics #where_clause {
             type Value = #ident #ty_generics;
 
-            fn serialize<S>(
+            fn serialize_seed<S>(
                 &mut self,
-                value: &Self::Value,
+                ctx: &SerdeContext<'ctx>,
+                serializer: S,
                 serializer: S,
             ) -> Result<S::Ok, S::Error>
             where

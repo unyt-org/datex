@@ -17,24 +17,22 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, EntityType> {
         })
     }
 }
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, EntityType> {
-    type Value = EntityType;
-
+impl<'ctx> SerializeSeed for EntityType {
     /// SAFETY:
     /// The caller of the `serialize` method must either
     /// * guarantee that no direct value (accessible without borrow) is an owned shared value
     ///   (this can be guaranteed by calling clone on the top level value before passing it to [SerializeSeed])
     /// * or guarantee that the value is dropped after calling `serialize`, so that the owned shared value
     ///   is not leaked after serialization.
-    fn serialize<S>(
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        self.cast::<SharedContainer>()
-            .serialize(&value.0, serializer)
+        self.0
+            .serialize_seed(ctx, serializer)
     }
 }

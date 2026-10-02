@@ -15,34 +15,30 @@ use serde::{
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, BorrowedMapKey<'ctx>> {
-    type Value = BorrowedMapKey<'ctx>;
-
-    fn serialize<S>(
+impl<'ctx> SerializeSeed for BorrowedMapKey<'ctx> {
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match value {
+        match self {
             BorrowedMapKey::Text(s) => serializer.serialize_str(s),
             BorrowedMapKey::Value(v) => {
-                self.cast::<ValueContainer>().serialize(v, serializer)
+                v.serialize_seed(ctx, serializer)
             }
         }
     }
 }
 
 impl<'ctx> SerializeSeed
-    for SerdeContext<'ctx, (ValueContainer, ValueContainer)>
+    for (ValueContainer, ValueContainer)
 {
-    type Value = (ValueContainer, ValueContainer);
-
-    fn serialize<S>(
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -51,13 +47,13 @@ impl<'ctx> SerializeSeed
         let mut tuple = serializer.serialize_tuple(2)?;
 
         tuple.serialize_element(&ValueWithSerdeContext::new(
-            &value.0,
-            self.cast::<ValueContainer>(),
+            &self.0,
+            ctx,
         ))?;
 
         tuple.serialize_element(&ValueWithSerdeContext::new(
-            &value.1,
-            self.cast::<ValueContainer>(),
+            &self.1,
+            ctx,
         ))?;
 
         tuple.end()
@@ -109,24 +105,22 @@ impl<'de, 'ctx> Visitor<'de>
 }
 
 impl<'ctx> SerializeSeed
-    for SerdeContext<'ctx, Vec<(ValueContainer, ValueContainer)>>
+    for Vec<(ValueContainer, ValueContainer)>
 {
-    type Value = Vec<(ValueContainer, ValueContainer)>;
-
-    fn serialize<S>(
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut seq = serializer.serialize_seq(Some(value.len()))?;
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
 
-        for entry in value {
+        for entry in self {
             seq.serialize_element(&ValueWithSerdeContext::new(
                 entry,
-                self.cast::<(ValueContainer, ValueContainer)>(),
+                ctx,
             ))?;
         }
 
@@ -172,18 +166,16 @@ impl<'de, 'ctx> Visitor<'de>
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Map> {
-    type Value = Map;
-
-    fn serialize<S>(
+impl<'ctx> SerializeSeed for Map {
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match &value.entries {
+        match &self.entries {
             MapEntries::StructuralWithStringKeys(entries) => {
                 let mut map = serializer.serialize_map(Some(entries.len()))?;
 
@@ -191,16 +183,15 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Map> {
                     map.serialize_key(key)?;
                     map.serialize_value(&ValueWithSerdeContext::new(
                         value,
-                        self.cast::<ValueContainer>(),
+                        ctx,
                     ))?;
                 }
 
                 map.end()
             }
 
-            MapEntries::Structural(entries) => self
-                .cast::<Vec<(ValueContainer, ValueContainer)>>()
-                .serialize(entries, serializer),
+            MapEntries::Structural(entries) => entries
+                .serialize_seed(ctx, serializer),
 
             MapEntries::Dynamic(entries) => {
                 let mut seq = serializer.serialize_seq(Some(entries.len()))?;
@@ -210,7 +201,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Map> {
 
                     seq.serialize_element(&ValueWithSerdeContext::new(
                         &entry,
-                        self.cast::<(ValueContainer, ValueContainer)>(),
+                        ctx,
                     ))?;
                 }
 

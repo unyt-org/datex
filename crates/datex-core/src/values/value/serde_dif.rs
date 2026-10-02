@@ -21,7 +21,7 @@ use serde::{
     ser::SerializeTuple,
 };
 
-impl<'ctx> SerdeContext<'ctx, Value> {
+impl<'ctx> SerdeContext<'ctx> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
     /// or with a custom type definition (e.g. a nominal type).
     /// ## For no custom type:
@@ -56,7 +56,7 @@ impl<'ctx> SerdeContext<'ctx, Value> {
             // [id, value, classification]
             tuple.serialize_element(&ValueWithSerdeContext::new(
                 classification,
-                &mut self.cast::<ValueClassification>(),
+                self,
             ))?;
         } else {
             // [id, value]
@@ -75,10 +75,10 @@ impl<'ctx> SerdeContext<'ctx, Value> {
     where
         T: Sized,
         Se: Serializer,
-        for<'a> SerdeContext<'a, T>: SerializeSeed<Value = T>,
+        for<'a> T: SerializeSeed,
     {
         if direct && classification.is_none() {
-            return self.cast::<T>().serialize(inner, serializer);
+            return inner.serialize_seed(self, serializer);
         }
         let index = CoreLibIdIndex::from(core_lib_type_id);
         let mut tuple = serializer
@@ -86,13 +86,13 @@ impl<'ctx> SerdeContext<'ctx, Value> {
         tuple.serialize_element(&index.to_u16())?;
         tuple.serialize_element(&ValueWithSerdeContext::new(
             inner,
-            &mut self.cast::<T>(),
+            self,
         ))?;
         if !classification.is_none() {
             // [id, value, classification]
             tuple.serialize_element(&ValueWithSerdeContext::new(
                 classification,
-                &mut self.cast::<ValueClassification>(),
+                self,
             ))?;
         } else {
             // [id, value]
@@ -102,134 +102,132 @@ impl<'ctx> SerdeContext<'ctx, Value> {
 }
 
 /// Serialization for [Value].
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
-    type Value = Value;
-
-    fn serialize<S>(
+impl<'ctx> SerializeSeed for Value {
+    fn serialize_seed<S>(
         &mut self,
-        value: &Self::Value,
+        ctx: &mut SerdeContext<'ctx>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let core_lib_type = value.default_core_type();
-        match &value.inner {
+        let core_lib_type = self.default_core_type();
+        match &self.inner {
             // Direct serializable core values, that can be serialized as they can be unambiguously deserialized without it
-            CoreValue::Boolean(b) => self.serialize_with_core_type(
+            CoreValue::Boolean(b) => ctx.serialize_with_core_type(
                 b,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 true,
             ),
-            CoreValue::Text(s) => self.serialize_with_core_type(
+            CoreValue::Text(s) => ctx.serialize_with_core_type(
                 s,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 true,
             ),
-            CoreValue::Null => self.serialize_with_core_type(
+            CoreValue::Null => ctx.serialize_with_core_type(
                 &(),
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 true,
             ),
-            CoreValue::TypedDecimal(dec @ TypedDecimal::F64(_)) => self
+            CoreValue::TypedDecimal(dec @ TypedDecimal::F64(_)) => ctx
                 .serialize_with_core_type(
                     &dec,
                     core_lib_type,
-                    &value.classification,
+                    &self.classification,
                     serializer,
                     dec.is_finite(),
                 ),
 
             // Core values that require a specific core type id to be serialized for non-ambiguous deserialization
-            CoreValue::Endpoint(endpoint) => self.serialize_with_core_type(
+            CoreValue::Endpoint(endpoint) => ctx.serialize_with_core_type(
                 endpoint,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::Decimal(d) => self.serialize_with_core_type(
+            CoreValue::Decimal(d) => ctx.serialize_with_core_type(
                 d,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::Integer(i) => self.serialize_with_core_type(
+            CoreValue::Integer(i) => ctx.serialize_with_core_type(
                 i,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::TypedInteger(ti) => self.serialize_with_core_type(
+            CoreValue::TypedInteger(ti) => ctx.serialize_with_core_type(
                 ti,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::TypedDecimal(td) => self.serialize_with_core_type(
+            CoreValue::TypedDecimal(td) => ctx.serialize_with_core_type(
                 td,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 false,
             ),
 
             // Complex core values, that can contain nested values
-            CoreValue::List(l) => self.serialize_with_core_type_serde(
+            CoreValue::List(l) => ctx.serialize_with_core_type_serde(
                 l,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::Range(range) => self.serialize_with_core_type_serde(
+            CoreValue::Range(range) => ctx.serialize_with_core_type_serde(
                 range,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 false,
             ),
 
-            CoreValue::Map(map) => self.serialize_with_core_type_serde(
+            CoreValue::Map(map) => ctx.serialize_with_core_type_serde(
                 map,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::Type(ty) => self.serialize_with_core_type_serde(
+            CoreValue::Type(ty) => ctx.serialize_with_core_type_serde(
                 ty,
                 core_lib_type,
-                &value.classification,
+                &self.classification,
                 serializer,
                 false,
             ),
             CoreValue::EntityTypeDefinition(_entity_type_definition) => {
                 todo!()
             }
-            CoreValue::Callable(callable) => self
+            CoreValue::Callable(callable) => ctx
                 .serialize_with_core_type_serde(
                     callable,
                     core_lib_type,
-                    &value.classification,
+                    &self.classification,
                     serializer,
                     false,
                 ),
             CoreValue::Box(inner) => {
-                self.cast::<ValueContainer>().serialize(inner, serializer)
+                inner.serialize_seed(ctx, serializer)
             }
             CoreValue::Uninitialized => panic!("Uninitialized value"),
             CoreValue::Native(native) => {
-                self.cast::<NativeCoreValue>().serialize(native, serializer)
+                native.serialize_seed(ctx, serializer)
             }
         }
     }
