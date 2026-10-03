@@ -9,6 +9,8 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct DeleteEntryUpdateData {
     pub key: ValueKey,
@@ -32,7 +34,7 @@ impl<'ctx> SerdeContext<'ctx> {
         Ok(())
     }
 }
-impl<'de> Visitor<'de> for SerdeContext<'_, DeleteEntryUpdateData> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, DeleteEntryUpdateData> {
     type Value = DeleteEntryUpdateData;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

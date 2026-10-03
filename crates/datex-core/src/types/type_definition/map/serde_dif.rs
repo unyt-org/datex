@@ -61,7 +61,7 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for MapTypeDefinition {
         ctx: &SerdeContext<'_>,
         deserializer: D,
     ) -> Result<Self, D::Error> {
-        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_seq(DeserializeSerdeContext::<MapTypeDefinition>::new(ctx))
     }
 }
 /// Deserialization implementations for inner tuple type `(Type, Type)`.
@@ -70,12 +70,12 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for (Type, Type) {
         ctx: &SerdeContext<'_>,
         deserializer: D,
     ) -> Result<Self, D::Error> {
-        deserializer.deserialize_tuple(2, DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_tuple(2, DeserializeSerdeContext::<(Type, Type)>::new(ctx))
     }
 }
 
 /// Visitor implementations for deserialization of inner tuple type `(Type, Type)`.
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, (Type, Type)> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (Type, Type)> {
     type Value = (Type, Type);
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -103,7 +103,7 @@ impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, (Type, Type)
 }
 
 /// Visitor implementations for deserialization of [MapTypeDefinition].
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, MapTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, MapTypeDefinition> {
     fn expecting(
         &self,
         formatter: &mut core::fmt::Formatter,

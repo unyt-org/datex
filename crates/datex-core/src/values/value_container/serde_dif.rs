@@ -24,11 +24,11 @@ impl<'de> DeserializeWithSerdeContext<'de> for ValueContainer {
         ctx: &SerdeContext<'_>,
         d: D,
     ) -> Result<ValueContainer, D::Error> {
-        d.deserialize_any(DeserializeSerdeContext::new(ctx))
+        d.deserialize_any(DeserializeSerdeContext::<ValueContainer>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, ValueContainer> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ValueContainer> {
     type Value = ValueContainer;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -238,10 +238,10 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<ValueContainer> {
         ctx: &SerdeContext<'_>,
         deserializer: D,
     ) -> Result<Self, D::Error> {
-        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_seq(DeserializeSerdeContext::<Vec<ValueContainer>>::new(ctx))
     }
 }
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Vec<ValueContainer>> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Vec<ValueContainer>> {
     type Value = Vec<ValueContainer>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

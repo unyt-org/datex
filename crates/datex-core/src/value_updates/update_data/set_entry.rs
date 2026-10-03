@@ -40,7 +40,7 @@ impl<'ctx> SerdeContext<'ctx> {
         Ok(())
     }
 }
-impl<'de> Visitor<'de> for DeserializeSerdeContext<'de, '_, SetEntryUpdateData> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, SetEntryUpdateData> {
     type Value = SetEntryUpdateData;
 
     fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {

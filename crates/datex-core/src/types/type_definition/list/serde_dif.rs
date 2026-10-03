@@ -37,11 +37,11 @@ impl<'de> DeserializeWithSerdeContext<'de> for ListTypeDefinition {
         ctx: &SerdeContext<'_>,
         deserializer: D,
     ) -> Result<Self, D::Error> {
-        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_seq(DeserializeSerdeContext::<ListTypeDefinition>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, ListTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ListTypeDefinition> {
     type Value = ListTypeDefinition;
     fn expecting(
         &self,

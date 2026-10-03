@@ -39,12 +39,11 @@ impl<'de> DeserializeWithSerdeContext<'de> for IntersectionTypeDefinition {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_seq(DeserializeSerdeContext::<IntersectionTypeDefinition>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'de, 'ctx, IntersectionTypeDefinition>
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, IntersectionTypeDefinition>
 {
     type Value = IntersectionTypeDefinition;
 

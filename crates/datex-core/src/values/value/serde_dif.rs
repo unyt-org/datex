@@ -21,6 +21,7 @@ use serde::{
     ser::SerializeTuple,
 };
 use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 impl<'ctx> SerdeContext<'ctx> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -33,7 +34,7 @@ impl<'ctx> SerdeContext<'ctx> {
     /// ## For custom type:
     /// {custom_type: LiteralTypeDefinition::Integer(42), value: 42} -> [<core_lib_id>, <type_definition>, 42]
     fn serialize_with_core_type<Se, T>(
-        &mut self,
+        &self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
         classification: &ValueClassification,
@@ -66,7 +67,7 @@ impl<'ctx> SerdeContext<'ctx> {
     }
 
     fn serialize_with_core_type_serde<Se, T>(
-        &mut self,
+        &self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
         classification: &ValueClassification,
@@ -106,7 +107,7 @@ impl<'ctx> SerdeContext<'ctx> {
 impl<'ctx> SerializeSeed for Value {
     fn serialize_seed<S>(
         &self,
-        ctx: &mut SerdeContext<'_>,
+        ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -234,7 +235,7 @@ impl<'ctx> SerializeSeed for Value {
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Value> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     type Value = Value;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -391,7 +392,7 @@ impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Value> {
 
         let visitor = CoreValueVisitor {
             core_lib_id,
-            context: &mut self,
+            context: &self,
         };
         let inner: CoreValue = seq.next_element_seed(visitor)?.ok_or_else(|| {
             serde::de::Error::custom(format!(
@@ -410,14 +411,13 @@ impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Value> {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Value> {
-    type Value = Value;
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Value {
 
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(self)
+        deserializer.deserialize_any(DeserializeSerdeContext::<Value>::new(ctx))
     }
 }
 

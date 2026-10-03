@@ -9,6 +9,8 @@ use serde::{
     de::{DeserializeSeed, SeqAccess, Visitor},
     ser::SerializeTuple,
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeSeed for Callable {
 
@@ -35,18 +37,17 @@ impl<'ctx> SerializeSeed for Callable {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Callable> {
-    type Value = Callable;
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Callable {
 
-    fn deserialize<D>(self, deserializer: D) -> Result<Callable, D::Error>
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Callable, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(self)
+        deserializer.deserialize_any(DeserializeSerdeContext::<Callable>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Callable> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Callable> {
     type Value = Callable;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -54,7 +55,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Callable> {
             "either an object with string keys or a sequence of [key, value] entries",
         )
     }
-    fn visit_seq<A>(self, mut seq: A) -> Result<Callable, A::Error>
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Callable, A::Error>
     where
         A: SeqAccess<'de>,
     {
@@ -69,7 +70,9 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Callable> {
         let _requires_async: Option<bool> = seq.next_element()?;
 
         let callable = self
+            .ctx
             .shared_container_cache
+            .borrow_mut()
             .get_callable(hash_u64)
             .ok_or_else(|| {
                 serde::de::Error::custom(format!(

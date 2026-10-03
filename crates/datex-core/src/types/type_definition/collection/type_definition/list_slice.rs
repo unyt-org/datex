@@ -59,12 +59,12 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for ListSliceCollectionTypeDefi
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_tuple(2, DeserializeSerdeContext::<ListSliceCollectionTypeDefinition>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'de, 'ctx, ListSliceCollectionTypeDefinition>
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, ListSliceCollectionTypeDefinition>
 {
     type Value = ListSliceCollectionTypeDefinition;
 

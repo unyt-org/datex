@@ -37,12 +37,12 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for RangeTypeDefinition {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_seq(DeserializeSerdeContext::<RangeTypeDefinition>::new(ctx))
 
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, RangeTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, RangeTypeDefinition> {
     type Value = RangeTypeDefinition;
 
     fn expecting(

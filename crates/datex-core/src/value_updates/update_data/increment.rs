@@ -9,6 +9,8 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct IncrementUpdateData {
     pub value: ValueContainer,
@@ -32,13 +34,13 @@ impl<'ctx> SerdeContext<'ctx> {
         Ok(())
     }
 }
-impl<'de> Visitor<'de> for SerdeContext<'_, IncrementUpdateData> {
+impl<'de> Visitor<'de> for DeserializeSerdeContext<'de, '_, IncrementUpdateData> {
     type Value = IncrementUpdateData;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "a delete entry update data sequence with 1 element (key)"
+            "an increment update data sequence with 1 element (value)"
         )
     }
 

@@ -63,11 +63,11 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for CollectionTypeDefinition {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_map(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_map(DeserializeSerdeContext::<CollectionTypeDefinition>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, CollectionTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, CollectionTypeDefinition> {
     type Value = CollectionTypeDefinition;
 
     fn expecting(
