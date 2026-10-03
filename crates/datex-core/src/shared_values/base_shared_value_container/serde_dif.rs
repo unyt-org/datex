@@ -12,6 +12,8 @@ use serde::{
     de::{DeserializeSeed, SeqAccess, Visitor},
     ser::{SerializeSeq, SerializeStruct},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeSeed for BaseSharedValueContainer {
     fn serialize_seed<S: Serializer>(
@@ -36,20 +38,17 @@ impl<'ctx> SerializeSeed for BaseSharedValueContainer {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, BaseSharedValueContainer>
+impl<'de> DeserializeWithSerdeContext<'de> for BaseSharedValueContainer
 {
-    type Value = BaseSharedValueContainer;
-
-    fn deserialize<D: serde::Deserializer<'de>>(
-        self,
+    fn deserialize_with_ctx<D: serde::Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_seq(self)
+    ) -> Result<Self, D::Error> {
+        deserializer.deserialize_seq(DeserializeSerdeContext::<BaseSharedValueContainer>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, BaseSharedValueContainer> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, BaseSharedValueContainer> {
     type Value = BaseSharedValueContainer;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

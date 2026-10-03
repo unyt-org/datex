@@ -5,7 +5,7 @@ use serde::{
     de::DeserializeSeed,
     ser::{SerializeMap, SerializeSeq},
 };
-
+use serde::de::Visitor;
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
@@ -98,7 +98,7 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for ValueKey {
         ctx: &SerdeContext<'_>,
         deserializer: D,
     ) -> Result<Self, D::Error> {
-        deserializer.deserialize_any(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_any(DeserializeSerdeContext::<ValueKey>::new(ctx))
     }
 }
 
@@ -107,11 +107,11 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<ValueKey> {
         ctx: &SerdeContext<'_>,
         deserializer: D,
     ) -> Result<Self, D::Error> {
-        deserializer.deserialize_any(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_any(DeserializeSerdeContext::<Vec<ValueKey>>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> serde::de::Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Vec<ValueKey>> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Vec<ValueKey>> {
     type Value = Vec<ValueKey>;
 
     fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -130,7 +130,7 @@ impl<'de, 'ctx> serde::de::Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, V
     }
 }
 
-impl<'de, 'ctx> serde::de::Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, ValueKey> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ValueKey> {
     type Value = ValueKey;
 
     fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {

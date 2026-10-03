@@ -34,11 +34,11 @@ use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for UnionTypeDefinition {
     fn deserialize_with_ctx<D: Deserializer<'de>>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     {
-        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_seq(DeserializeSerdeContext::<UnionTypeDefinition>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, UnionTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, UnionTypeDefinition> {
     type Value = UnionTypeDefinition;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

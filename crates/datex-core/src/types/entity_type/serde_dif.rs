@@ -13,7 +13,7 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for EntityType {
     ) -> Result<Self, D::Error> {
         Ok(unsafe {
             EntityType::new_unchecked(
-                DeserializeSerdeContext::new(ctx).cast::<SharedContainer>().deserialize(deserializer)?,
+                DeserializeSerdeContext::<SharedContainer>::new(ctx).deserialize(deserializer)?,
             )
         })
     }

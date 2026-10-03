@@ -68,12 +68,11 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for (ValueContainer, ValueConta
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_tuple(2, DeserializeSerdeContext::<(ValueContainer, ValueContainer)>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'de, 'ctx, (ValueContainer, ValueContainer)>
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (ValueContainer, ValueContainer)>
 {
     type Value = (ValueContainer, ValueContainer);
 
@@ -127,18 +126,18 @@ impl<'ctx> SerializeSeed
     }
 }
 
-impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<(ValueContainer, ValueContainer)>
+impl<'de, 'a, 'ctx> DeserializeWithSerdeContext<'de> for Vec<(ValueContainer, ValueContainer)>
 {
     fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_seq(DeserializeSerdeContext::<Vec<(ValueContainer, ValueContainer)>>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'de, 'ctx, Vec<(ValueContainer, ValueContainer)>>
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, Vec<(ValueContainer, ValueContainer)>>
 {
     type Value = Vec<(ValueContainer, ValueContainer)>;
 
@@ -212,11 +211,11 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Map {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_any(DeserializeSerdeContext::<Map>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Map> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Map> {
     type Value = Map;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

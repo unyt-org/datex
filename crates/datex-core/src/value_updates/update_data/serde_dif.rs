@@ -66,11 +66,11 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Update {
         ctx: &SerdeContext<'_>,
         deserializer: D,
     ) -> Result<Self, D::Error> {
-        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_seq(DeserializeSerdeContext::<Update>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Update> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Update> {
     type Value = Update;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

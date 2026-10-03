@@ -11,6 +11,8 @@ use serde::{
     de::{DeserializeSeed, SeqAccess, Visitor},
     ser::SerializeSeq,
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 /// Serialization for [ValueClassification].
 impl<'ctx> SerializeSeed for ValueClassification {
@@ -48,19 +50,17 @@ impl<'ctx> SerializeSeed for ValueClassification {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, ValueClassification>
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for ValueClassification
 {
-    type Value = ValueClassification;
-    fn deserialize<D: Deserializer<'de>>(
-        self,
-        d: D,
-    ) -> Result<ValueClassification, D::Error> {
-        d.deserialize_seq(self)
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(DeserializeSerdeContext::<ValueClassification>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueClassification> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ValueClassification> {
     type Value = ValueClassification;
 
     fn expecting(

@@ -35,10 +35,11 @@ use serde::{
     Deserializer,
     de::{DeserializeSeed, SeqAccess, Visitor},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
 
 pub struct CoreValueVisitor<'a, 'ctx> {
     pub core_lib_id: CoreLibTypeId,
-    pub context: &'a mut SerdeContext<'ctx>,
+    pub context: &'a DeserializeSerdeContext<'a, 'ctx, Value>,
 }
 
 impl<'de, 'a, 'ctx> DeserializeSeed<'de> for CoreValueVisitor<'a, 'ctx> {

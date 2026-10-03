@@ -8,6 +8,7 @@ use serde::{
     Deserialize, Serialize,
     de::{Error, Visitor},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
 
 impl Serialize for Endpoint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -30,7 +31,7 @@ impl<'a> Deserialize<'a> for Endpoint {
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Endpoint> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Endpoint> {
     type Value = Endpoint;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

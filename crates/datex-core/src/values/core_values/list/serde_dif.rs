@@ -7,6 +7,9 @@ use serde::{
     Serializer,
     ser::{SerializeMap, SerializeSeq},
 };
+use serde::de::Visitor;
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeSeed for List {
 
@@ -29,18 +32,16 @@ impl<'ctx> SerializeSeed for List {
     }
 }
 
-impl<'de, 'ctx> serde::de::DeserializeSeed<'de> for SerdeContext<'ctx, List> {
-    type Value = List;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<List, D::Error>
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for List {
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<List, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_seq(self)
+        deserializer.deserialize_seq(DeserializeSerdeContext::<List>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, List> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, List> {
     type Value = List;
 
     fn expecting(

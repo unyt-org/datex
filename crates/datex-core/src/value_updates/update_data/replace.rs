@@ -7,6 +7,8 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct ReplaceUpdateData {
     pub value: ValueContainer,
@@ -31,7 +33,7 @@ impl<'ctx> SerdeContext<'ctx> {
         Ok(())
     }
 }
-impl<'de> Visitor<'de> for SerdeContext<'_, ReplaceUpdateData> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ReplaceUpdateData> {
     type Value = ReplaceUpdateData;
 
     fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {

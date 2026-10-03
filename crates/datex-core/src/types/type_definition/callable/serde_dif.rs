@@ -116,10 +116,10 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for CallableTypeDefinition {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_any(DeserializeSerdeContext::<CallableTypeDefinition>::new(ctx))
     }
 }
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, CallableTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, CallableTypeDefinition> {
     type Value = CallableTypeDefinition;
 
     fn expecting(
@@ -199,11 +199,11 @@ impl<'ctx, 'de> DeserializeWithSerdeContext<'de> for (Option<String>, Type) {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_tuple(2, DeserializeSerdeContext::<(Option<String>, Type)>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, (Option<String>, Type)> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (Option<String>, Type)> {
     type Value = (Option<String>, Type);
 
     fn expecting(
@@ -233,12 +233,12 @@ impl<'ctx, 'de> DeserializeWithSerdeContext<'de> for Option<(Option<String>, Typ
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_option(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_option(DeserializeSerdeContext::<Option<(Option<String>, Type)>>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'de, 'ctx, Option<(Option<String>, Type)>>
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, Option<(Option<String>, Type)>>
 {
     type Value = Option<(Option<String>, Type)>;
 
@@ -279,12 +279,12 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<(Option<String>, Type)>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_seq(DeserializeSerdeContext::<Vec<(Option<String>, Type)>>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'de, 'ctx, Vec<(Option<String>, Type)>>
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, Vec<(Option<String>, Type)>>
 {
     type Value = Vec<(Option<String>, Type)>;
 

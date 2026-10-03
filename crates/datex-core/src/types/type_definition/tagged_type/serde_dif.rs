@@ -59,11 +59,11 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for TaggedTypeDefinition {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_tuple(2, DeserializeSerdeContext::<TaggedTypeDefinition>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, TaggedTypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, TaggedTypeDefinition> {
     type Value = TaggedTypeDefinition;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -104,7 +104,7 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Option<Box<Type>> {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_option(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_option(DeserializeSerdeContext::<Option<Box<Type>>>::new(ctx))
     }
 }
 
@@ -114,11 +114,11 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Option<Type> {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_option(DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_option(DeserializeSerdeContext::<Option<Type>>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Option<Type>> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Option<Type>> {
     type Value = Option<Type>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -149,7 +149,7 @@ impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Option<Type>
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Option<Box<Type>>> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Option<Box<Type>>> {
     type Value = Option<Box<Type>>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

@@ -41,7 +41,7 @@ impl<'de> DeserializeWithSerdeContext<'de> for ListCollectionTypeDefinition
     where
         D: Deserializer<'de>,
     {
-        let item_type = DeserializeSerdeContext::new(ctx).cast::<Type>().deserialize(deserializer)?;
+        let item_type = DeserializeSerdeContext::<Type>::new(ctx).deserialize(deserializer)?;
         Ok(ListCollectionTypeDefinition(Box::new(item_type)))
     }
 }

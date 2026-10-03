@@ -59,12 +59,12 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for MapCollectionTypeDefinition
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, DeserializeSerdeContext::new(ctx))
+        deserializer.deserialize_tuple(2, DeserializeSerdeContext::<MapCollectionTypeDefinition>::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'de, 'ctx, MapCollectionTypeDefinition>
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, MapCollectionTypeDefinition>
 {
     type Value = MapCollectionTypeDefinition;
 

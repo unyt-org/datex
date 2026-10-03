@@ -9,6 +9,7 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
 
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct ListSpliceUpdateData {
@@ -47,7 +48,7 @@ impl<'ctx> SerdeContext<'ctx> {
         Ok(())
     }
 }
-impl<'de> Visitor<'de> for SerdeContext<'_, ListSpliceUpdateData> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ListSpliceUpdateData> {
     type Value = ListSpliceUpdateData;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

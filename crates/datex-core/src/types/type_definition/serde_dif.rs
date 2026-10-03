@@ -123,7 +123,7 @@ impl<'de> DeserializeWithSerdeContext<'de> for TypeDefinition {
         ctx: &SerdeContext<'_>,
         d: D,
     ) -> Result<TypeDefinition, D::Error> {
-        d.deserialize_any(DeserializeSerdeContext::new(ctx))
+        d.deserialize_any(DeserializeSerdeContext::<TypeDefinition>::new(ctx))
     }
 }
 impl<'de, 'ctx> DeserializeSerdeContext<'de, 'ctx, TypeDefinition> {
@@ -149,7 +149,7 @@ impl<'de, 'ctx> DeserializeSerdeContext<'de, 'ctx, TypeDefinition> {
         }
     }
 }
-impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, TypeDefinition> {
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, TypeDefinition> {
     type Value = TypeDefinition;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
