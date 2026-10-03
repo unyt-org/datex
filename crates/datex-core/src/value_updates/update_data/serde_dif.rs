@@ -16,6 +16,8 @@ use serde::{
     de::{self, DeserializeSeed, SeqAccess, Visitor},
     ser::SerializeSeq,
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeSeed for Update {
     fn serialize_seed<S: Serializer>(
@@ -59,18 +61,16 @@ impl<'ctx> SerializeSeed for Update {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Update> {
-    type Value = Update;
-
-    fn deserialize<D: Deserializer<'de>>(
-        self,
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Update {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_seq(self)
+    ) -> Result<Self, D::Error> {
+        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Update> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Update> {
     type Value = Update;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -21,6 +21,7 @@ use serde::{
     de::{DeserializeSeed, Error, Visitor},
 };
 use serde_with::__private__::DeError;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -151,13 +152,11 @@ pub struct ObserveOptions {
     pub relay_own_updates: bool,
 }
 
-impl<'de> DeserializeSeed<'de> for SerdeContext<'de, ObserveOptions> {
-    type Value = ObserveOptions;
-
-    fn deserialize<D: Deserializer<'de>>(
-        self,
+impl<'de> DeserializeWithSerdeContext<'de> for ObserveOptions {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
+    ) -> Result<Self, D::Error> {
         ObserveOptions::deserialize(deserializer)
     }
 }

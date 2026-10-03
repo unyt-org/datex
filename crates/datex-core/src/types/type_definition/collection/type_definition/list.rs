@@ -6,6 +6,8 @@ use core::fmt::Display;
 use serde::{Deserializer, Serializer, de::DeserializeSeed};
 
 use crate::{prelude::*, types::r#type::Type};
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct ListCollectionTypeDefinition(pub Box<Type>);
@@ -30,19 +32,16 @@ impl<'ctx> SerializeSeed for ListCollectionTypeDefinition {
 }
 
 /// Deserialization implementations for [ListCollectionTypeDefinition].
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, ListCollectionTypeDefinition>
+impl<'de> DeserializeWithSerdeContext<'de> for ListCollectionTypeDefinition
 {
-    type Value = ListCollectionTypeDefinition;
-
-    fn deserialize<D>(
-        mut self,
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error>
+    ) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let item_type = self.cast::<Type>().deserialize(deserializer)?;
+        let item_type = DeserializeSerdeContext::new(ctx).cast::<Type>().deserialize(deserializer)?;
         Ok(ListCollectionTypeDefinition(Box::new(item_type)))
     }
 }

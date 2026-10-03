@@ -21,7 +21,7 @@ impl IncrementUpdateData {
 
 impl<'ctx> SerdeContext<'ctx> {
     pub fn serialize_increment_fields<S: SerializeSeq>(
-        &mut self,
+        &self,
         value: &IncrementUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {

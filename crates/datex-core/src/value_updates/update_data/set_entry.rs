@@ -8,6 +8,7 @@ use crate::{
     utils::serde_serialize_seed::ValueWithSerdeContext,
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
 
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct SetEntryUpdateData {
@@ -22,7 +23,7 @@ impl SetEntryUpdateData {
 
 impl<'ctx> SerdeContext<'ctx> {
     pub fn serialize_set_entry_fields<S: SerializeSeq>(
-        &mut self,
+        &self,
         value: &SetEntryUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
@@ -39,7 +40,7 @@ impl<'ctx> SerdeContext<'ctx> {
         Ok(())
     }
 }
-impl<'de> Visitor<'de> for SerdeContext<'_, SetEntryUpdateData> {
+impl<'de> Visitor<'de> for DeserializeSerdeContext<'de, '_, SetEntryUpdateData> {
     type Value = SetEntryUpdateData;
 
     fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {

@@ -20,6 +20,7 @@ use serde::{
     de::{DeserializeSeed, Error as DeError, Visitor},
     ser::SerializeTuple,
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
 
 impl<'ctx> SerdeContext<'ctx> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -233,7 +234,7 @@ impl<'ctx> SerializeSeed for Value {
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Value> {
     type Value = Value;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -21,7 +21,7 @@ impl DeleteEntryUpdateData {
 
 impl<'ctx> SerdeContext<'ctx> {
     pub fn serialize_delete_entry_fields<S: SerializeSeq>(
-        &mut self,
+        &self,
         value: &DeleteEntryUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {

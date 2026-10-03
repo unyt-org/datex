@@ -28,21 +28,17 @@ use serde::{
     Deserializer,
     de::{SeqAccess, Visitor},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, UnionTypeDefinition>
-{
-    type Value = UnionTypeDefinition;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for UnionTypeDefinition {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     {
-        deserializer.deserialize_seq(self)
+        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, UnionTypeDefinition> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, UnionTypeDefinition> {
     type Value = UnionTypeDefinition;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

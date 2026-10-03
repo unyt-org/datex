@@ -19,7 +19,7 @@ impl ReplaceUpdateData {
 
 impl<'ctx> SerdeContext<'ctx> {
     pub fn serialize_replace_fields<S: SerializeSeq>(
-        &mut self,
+        &self,
         value: &ReplaceUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {

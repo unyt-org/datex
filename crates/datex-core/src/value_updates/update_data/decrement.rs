@@ -9,6 +9,8 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct DecrementUpdateData {
     pub value: ValueContainer,
@@ -21,7 +23,7 @@ impl DecrementUpdateData {
 
 impl<'ctx> SerdeContext<'ctx> {
     pub fn serialize_decrement_fields<S: SerializeSeq>(
-        &mut self,
+        &self,
         value: &DecrementUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {
@@ -32,7 +34,7 @@ impl<'ctx> SerdeContext<'ctx> {
         Ok(())
     }
 }
-impl<'de> Visitor<'de> for SerdeContext<'_, DecrementUpdateData> {
+impl<'de> Visitor<'de> for DeserializeSerdeContext<'de, '_, DecrementUpdateData> {
     type Value = DecrementUpdateData;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
