@@ -30,22 +30,21 @@ use serde::{
     Deserializer,
     de::{SeqAccess, Visitor},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, IntersectionTypeDefinition>
-{
-    type Value = IntersectionTypeDefinition;
+impl<'de> DeserializeWithSerdeContext<'de> for IntersectionTypeDefinition {
 
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_seq(self)
+        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
     }
 }
 
 impl<'de, 'ctx> Visitor<'de>
-    for SerdeContext<'ctx, IntersectionTypeDefinition>
+    for DeserializeSerdeContext<'de, 'ctx, IntersectionTypeDefinition>
 {
     type Value = IntersectionTypeDefinition;
 

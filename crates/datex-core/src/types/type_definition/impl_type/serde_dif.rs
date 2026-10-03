@@ -25,21 +25,20 @@ use serde::{
     Deserializer,
     de::{self, SeqAccess, Visitor},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, ImplMarkers>
+impl<'de> DeserializeWithSerdeContext<'de> for ImplMarkers
 {
-    type Value = ImplMarkers;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, self)
+        deserializer.deserialize_tuple(2, DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ImplMarkers> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, ImplMarkers> {
     type Value = ImplMarkers;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

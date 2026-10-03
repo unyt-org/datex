@@ -32,7 +32,7 @@ impl ListSpliceUpdateData {
 
 impl<'ctx> SerdeContext<'ctx> {
     pub fn serialize_list_splice_fields<S: SerializeSeq>(
-        &mut self,
+        &self,
         value: &ListSpliceUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {

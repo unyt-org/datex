@@ -19,6 +19,8 @@ use serde::{
     de::{self, DeserializeSeed, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeSeed for CollectionTypeDefinition {
     fn serialize_seed<S: Serializer>(
@@ -56,20 +58,16 @@ impl<'ctx> SerializeSeed for CollectionTypeDefinition {
 }
 
 /// Deserialization implementations for [CollectionTypeDefinition].
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, CollectionTypeDefinition>
-{
-    type Value = CollectionTypeDefinition;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for CollectionTypeDefinition {
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_map(self)
+        deserializer.deserialize_map(DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CollectionTypeDefinition> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, CollectionTypeDefinition> {
     type Value = CollectionTypeDefinition;
 
     fn expecting(

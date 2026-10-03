@@ -13,22 +13,22 @@ use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
 };
-use crate::utils::serde_serialize_seed::ValueWithSerdeContext;
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::{DeserializeWithSerdeContext, ValueWithSerdeContext};
 
 pub const SHARED_CONTAINER_KEY: &str = "$";
 
-/// Deserialization for [ValueContainer] using a [DeserializationContext] to provide access to the memory during deserialization.
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueContainer> {
-    type Value = ValueContainer;
-    fn deserialize<D: Deserializer<'de>>(
-        self,
+/// Deserialization for [ValueContainer] using a [SerdeContext] to provide access to the memory during deserialization.
+impl<'de> DeserializeWithSerdeContext<'de> for ValueContainer {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         d: D,
     ) -> Result<ValueContainer, D::Error> {
-        d.deserialize_any(self)
+        d.deserialize_any(DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueContainer> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, ValueContainer> {
     type Value = ValueContainer;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -233,19 +233,15 @@ impl<'ctx> SerializeSeed for Vec<ValueContainer> {
         seq.end()
     }
 }
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, Vec<ValueContainer>>
-{
-    type Value = Vec<ValueContainer>;
-
-    fn deserialize<D: Deserializer<'de>>(
-        self,
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<ValueContainer> {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_seq(self)
+    ) -> Result<Self, D::Error> {
+        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
     }
 }
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Vec<ValueContainer>> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Vec<ValueContainer>> {
     type Value = Vec<ValueContainer>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

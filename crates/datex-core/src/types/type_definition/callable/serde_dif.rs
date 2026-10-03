@@ -13,6 +13,8 @@ use serde::{
     de::{DeserializeSeed, MapAccess, Visitor},
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeSeed for CallableTypeDefinition {
     fn serialize_seed<S: Serializer>(
@@ -109,19 +111,15 @@ impl<'ctx> SerializeSeed for (Option<String>, Type) {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, CallableTypeDefinition>
-{
-    type Value = CallableTypeDefinition;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for CallableTypeDefinition {
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(self)
+        deserializer.deserialize_any(DeserializeSerdeContext::new(ctx))
     }
 }
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CallableTypeDefinition> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, CallableTypeDefinition> {
     type Value = CallableTypeDefinition;
 
     fn expecting(
@@ -195,20 +193,17 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CallableTypeDefinition> {
     }
 }
 
-impl<'ctx, 'de> DeserializeSeed<'de>
-    for SerdeContext<'ctx, (Option<String>, Type)>
-{
-    type Value = (Option<String>, Type);
+impl<'ctx, 'de> DeserializeWithSerdeContext<'de> for (Option<String>, Type) {
 
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, self)
+        deserializer.deserialize_tuple(2, DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, (Option<String>, Type)> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, (Option<String>, Type)> {
     type Value = (Option<String>, Type);
 
     fn expecting(
@@ -233,21 +228,17 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, (Option<String>, Type)> {
     }
 }
 
-impl<'ctx, 'de> DeserializeSeed<'de>
-    for SerdeContext<'ctx, Option<(Option<String>, Type)>>
-{
-    type Value = Option<(Option<String>, Type)>;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+impl<'ctx, 'de> DeserializeWithSerdeContext<'de> for Option<(Option<String>, Type)> {
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_option(self)
+        deserializer.deserialize_option(DeserializeSerdeContext::new(ctx))
     }
 }
 
 impl<'de, 'ctx> Visitor<'de>
-    for SerdeContext<'ctx, Option<(Option<String>, Type)>>
+    for DeserializeSerdeContext<'de, 'ctx, Option<(Option<String>, Type)>>
 {
     type Value = Option<(Option<String>, Type)>;
 
@@ -283,21 +274,17 @@ impl<'de, 'ctx> Visitor<'de>
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, Vec<(Option<String>, Type)>>
-{
-    type Value = Vec<(Option<String>, Type)>;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<(Option<String>, Type)> {
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_seq(self)
+        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
     }
 }
 
 impl<'de, 'ctx> Visitor<'de>
-    for SerdeContext<'ctx, Vec<(Option<String>, Type)>>
+    for DeserializeSerdeContext<'de, 'ctx, Vec<(Option<String>, Type)>>
 {
     type Value = Vec<(Option<String>, Type)>;
 

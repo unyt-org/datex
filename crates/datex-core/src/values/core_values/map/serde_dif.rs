@@ -14,6 +14,8 @@ use serde::{
     de::{self, DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeSeed for BorrowedMapKey<'ctx> {
     fn serialize_seed<S>(
@@ -60,21 +62,18 @@ impl<'ctx> SerializeSeed
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, (ValueContainer, ValueContainer)>
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for (ValueContainer, ValueContainer)
 {
-    type Value = (ValueContainer, ValueContainer);
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, self)
+        deserializer.deserialize_tuple(2, DeserializeSerdeContext::new(ctx))
     }
 }
 
 impl<'de, 'ctx> Visitor<'de>
-    for SerdeContext<'ctx, (ValueContainer, ValueContainer)>
+    for DeserializeSerdeContext<'de, 'ctx, (ValueContainer, ValueContainer)>
 {
     type Value = (ValueContainer, ValueContainer);
 
@@ -128,21 +127,18 @@ impl<'ctx> SerializeSeed
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, Vec<(ValueContainer, ValueContainer)>>
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<(ValueContainer, ValueContainer)>
 {
-    type Value = Vec<(ValueContainer, ValueContainer)>;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_seq(self)
+        deserializer.deserialize_seq(DeserializeSerdeContext::new(ctx))
     }
 }
 
 impl<'de, 'ctx> Visitor<'de>
-    for SerdeContext<'ctx, Vec<(ValueContainer, ValueContainer)>>
+    for DeserializeSerdeContext<'de, 'ctx, Vec<(ValueContainer, ValueContainer)>>
 {
     type Value = Vec<(ValueContainer, ValueContainer)>;
 
@@ -211,18 +207,16 @@ impl<'ctx> SerializeSeed for Map {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Map> {
-    type Value = Map;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Map, D::Error>
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Map {
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(self)
+        deserializer.deserialize_any(DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Map> {
+impl<'de, 'ctx> Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Map> {
     type Value = Map;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

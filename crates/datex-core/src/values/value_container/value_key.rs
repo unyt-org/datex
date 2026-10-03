@@ -15,6 +15,8 @@ use crate::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ValueKey {
@@ -91,29 +93,25 @@ impl<'ctx> SerializeSeed for &'ctx [ValueKey] {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueKey> {
-    type Value = ValueKey;
-
-    fn deserialize<D: serde::Deserializer<'de>>(
-        self,
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for ValueKey {
+    fn deserialize_with_ctx<D: serde::Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_any(self)
+    ) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Vec<ValueKey>> {
-    type Value = Vec<ValueKey>;
-
-    fn deserialize<D: serde::Deserializer<'de>>(
-        self,
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<ValueKey> {
+    fn deserialize_with_ctx<D: serde::Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
         deserializer: D,
-    ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_any(self)
+    ) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(DeserializeSerdeContext::new(ctx))
     }
 }
 
-impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, Vec<ValueKey>> {
+impl<'de, 'ctx> serde::de::Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, Vec<ValueKey>> {
     type Value = Vec<ValueKey>;
 
     fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -132,7 +130,7 @@ impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, Vec<ValueKey>> {
     }
 }
 
-impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, ValueKey> {
+impl<'de, 'ctx> serde::de::Visitor<'de> for DeserializeSerdeContext<'de, 'ctx, ValueKey> {
     type Value = ValueKey;
 
     fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {

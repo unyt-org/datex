@@ -21,7 +21,7 @@ impl AppendEntryUpdateData {
 
 impl<'ctx> SerdeContext<'ctx> {
     pub fn serialize_append_entry_fields<S: SerializeSeq>(
-        &mut self,
+        &self,
         value: &AppendEntryUpdateData,
         seq: &mut S,
     ) -> Result<(), S::Error> {

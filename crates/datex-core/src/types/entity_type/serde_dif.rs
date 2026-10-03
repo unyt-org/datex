@@ -3,16 +3,17 @@ use crate::{
     types::entity_type::EntityType, utils::serde_serialize_seed::SerializeSeed,
 };
 use serde::{Deserializer, Serialize, Serializer, de::DeserializeSeed};
+use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, EntityType> {
-    type Value = EntityType;
-    fn deserialize<D: Deserializer<'de>>(
-        mut self,
-        d: D,
-    ) -> Result<EntityType, D::Error> {
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for EntityType {
+    fn deserialize_with_ctx<D: Deserializer<'de>>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error> {
         Ok(unsafe {
             EntityType::new_unchecked(
-                self.cast::<SharedContainer>().deserialize(d)?,
+                DeserializeSerdeContext::new(ctx).cast::<SharedContainer>().deserialize(deserializer)?,
             )
         })
     }
