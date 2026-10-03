@@ -9,13 +9,13 @@ use crate::{
         traits::SharedContainerCommon,
     },
     traits::clone_unsafe::CloneUnsafe,
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
 };
 use alloc::format;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 
 impl<'de> DeserializeWithSerdeContext<'de> for SharedContainer {
     fn deserialize_with_ctx<D: Deserializer<'de>>(
@@ -98,7 +98,7 @@ mod tests {
     fn serialize_shared_container_reference() {
         let cache = RefCell::new(SharedValuesCache::default());
         let mut context = SerdeContext::new(&cache);
-        
+
         let owned_shared_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 ValueContainer::from(42),

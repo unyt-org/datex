@@ -6,7 +6,7 @@ use serde::{Serializer, de::SeqAccess, ser::SerializeSeq};
 
 use crate::{
     dif::serde_context::SerdeContext, prelude::*,
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
 };
 use core::fmt;
 use serde::{
@@ -14,8 +14,8 @@ use serde::{
     de::{DeserializeSeed, MapAccess, Visitor},
 };
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 use crate::dif::value_with_serde_context::ValueWithSerdeContext;
-use crate::utils::serde_with_context::{DeserializeWithSerdeContext};
 
 pub const SHARED_CONTAINER_KEY: &str = "$";
 

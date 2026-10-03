@@ -2,7 +2,7 @@ use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
     shared_values::base_shared_value_container::observers::TransceiverId,
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
     value_updates::update_data::{
         AppendEntryUpdateData, DecrementUpdateData, DeleteEntryUpdateData,
         IncrementUpdateData, ListSpliceUpdateData, ReplaceUpdateData,
@@ -18,7 +18,7 @@ use serde::{
 };
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
 use crate::dif::value_with_serde_context::ValueWithSerdeContext;
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeWithSerdeContext for Update {
     fn serialize_with_ctx<S: Serializer>(

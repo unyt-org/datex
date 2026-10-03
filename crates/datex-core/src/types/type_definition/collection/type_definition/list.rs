@@ -1,13 +1,13 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
 };
 use core::fmt::Display;
 use serde::{Deserializer, Serializer, de::DeserializeSeed};
 
 use crate::{prelude::*, types::r#type::Type};
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct ListCollectionTypeDefinition(pub Box<Type>);

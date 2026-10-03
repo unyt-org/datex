@@ -1,6 +1,6 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
     values::core_values::native::NativeCoreValue,
 };
 use serde::Serializer;

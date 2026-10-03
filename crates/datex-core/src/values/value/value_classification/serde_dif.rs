@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     shared_values::PointerAddress,
     types::entity_type::EntityType,
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
     values::value::value_classification::{ValueClassification, ValueTag},
 };
 use serde::{
@@ -12,7 +12,7 @@ use serde::{
     ser::SerializeSeq,
 };
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 
 /// Serialization for [ValueClassification].
 impl<'ctx> SerializeWithSerdeContext for ValueClassification {

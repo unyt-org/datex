@@ -1,6 +1,6 @@
 use crate::{
     dif::serde_context::SerdeContext, prelude::*,
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
     values::core_values::callable::Callable,
 };
 use core::fmt;
@@ -10,7 +10,7 @@ use serde::{
     ser::SerializeTuple,
 };
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeWithSerdeContext for Callable {
 

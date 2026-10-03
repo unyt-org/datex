@@ -1,10 +1,10 @@
 use crate::{
     dif::serde_context::SerdeContext, shared_values::SharedContainer,
-    types::entity_type::EntityType, utils::serde_with_context::SerializeWithSerdeContext,
+    types::entity_type::EntityType, dif::serialize_with_serde_context::SerializeWithSerdeContext,
 };
 use serde::{Deserializer, Serialize, Serializer, de::DeserializeSeed};
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 
 impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for EntityType {
     fn deserialize_with_ctx<D: Deserializer<'de>>(
