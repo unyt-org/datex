@@ -4,7 +4,7 @@ use datex_core::runtime::cache::shared_values_cache::SharedValuesCache;
 use datex_core::values::core_values::endpoint::Endpoint;
 use datex_macros_internal::Datex;
 use datex_core::{prelude::*};
-use datex_core::utils::serde_with_context::SerializeWithSerdeContext;
+use datex_core::dif::serialize_with_serde_context::SerializeWithSerdeContext;
 
 #[derive(Datex, Debug, Clone, PartialEq)]
 #[datex(structural)]

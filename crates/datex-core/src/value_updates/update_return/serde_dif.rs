@@ -1,7 +1,7 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
     value_updates::UpdateReturn,
     values::value_container::ValueContainer,
 };

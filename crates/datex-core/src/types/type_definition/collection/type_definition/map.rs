@@ -1,6 +1,6 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
 };
 use core::fmt::{self, Display};
 use serde::{
@@ -13,7 +13,7 @@ use crate::dif::value_with_serde_context::ValueWithSerdeContext;
 use crate::types::r#type::Type;
 
 use crate::prelude::*;
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct MapCollectionTypeDefinition {

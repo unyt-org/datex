@@ -3,7 +3,6 @@ use crate::{
     prelude::*,
     utils::{
         freemap::{FreeHashMap, NextKey},
-        serde_with_context::SerializeWithSerdeContext,
     },
     value_updates::{
         update_data::Update, update_handler::InternalMutabilityUpdateHandler,
@@ -21,7 +20,8 @@ use serde::{
     de::{DeserializeSeed, Error, Visitor},
 };
 use serde_with::__private__::DeError;
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
+use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
 
 #[derive(Debug)]
 pub enum ObserverError {

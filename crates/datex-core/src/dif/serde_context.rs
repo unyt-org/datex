@@ -1,6 +1,7 @@
 use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 use core::cell::RefCell;
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 
 #[derive(Debug)]
 pub struct SerdeContext<'ctx> {
@@ -34,7 +35,7 @@ impl<'ctx> SerdeContext<'ctx> {
     pub fn serialize_to_json<T>(&mut self, value: &T) -> String
     where
         T:
-            crate::utils::serde_with_context::SerializeWithSerdeContext
+            SerializeWithSerdeContext
     {
         use crate::{prelude::*};
         let mut serializer = serde_json::Serializer::new(Vec::new());

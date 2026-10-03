@@ -11,7 +11,7 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
 };
 use core::ops::Deref;
 use num::ToPrimitive;
@@ -20,7 +20,7 @@ use serde::{
     de::{DeserializeSeed, IntoDeserializer, Visitor},
 };
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 
 impl<'ctx> SerializeWithSerdeContext for Type {
     fn serialize_with_ctx<S>(

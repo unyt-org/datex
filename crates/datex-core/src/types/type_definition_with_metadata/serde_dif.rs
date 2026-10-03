@@ -3,7 +3,7 @@ use crate::{
     types::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
 };
 use serde::{Serializer, ser::SerializeSeq};
 use crate::dif::value_with_serde_context::ValueWithSerdeContext;

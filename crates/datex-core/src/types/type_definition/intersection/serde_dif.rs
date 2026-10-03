@@ -5,7 +5,7 @@ use crate::{
     types::{
         r#type::Type, type_definition::intersection::IntersectionTypeDefinition,
     },
-    utils::serde_with_context::SerializeWithSerdeContext,
+    dif::serialize_with_serde_context::SerializeWithSerdeContext,
 };
 
 impl<'ctx> SerializeWithSerdeContext for IntersectionTypeDefinition {
@@ -32,7 +32,7 @@ use serde::{
 };
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
 use crate::dif::value_with_serde_context::ValueWithSerdeContext;
-use crate::utils::serde_with_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 
 impl<'de> DeserializeWithSerdeContext<'de> for IntersectionTypeDefinition {
 
