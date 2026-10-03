@@ -1,6 +1,6 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
     values::{core_values::list::List, value_container::ValueContainer},
 };
 use serde::{
@@ -8,12 +8,13 @@ use serde::{
     ser::{SerializeMap, SerializeSeq},
 };
 use serde::de::Visitor;
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for List {
+impl<'ctx> SerializeWithSerdeContext for List {
 
-    fn serialize_seed<S>(
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

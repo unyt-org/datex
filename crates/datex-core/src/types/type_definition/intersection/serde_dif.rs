@@ -5,11 +5,11 @@ use crate::{
     types::{
         r#type::Type, type_definition::intersection::IntersectionTypeDefinition,
     },
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 
-impl<'ctx> SerializeSeed for IntersectionTypeDefinition {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for IntersectionTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -30,8 +30,9 @@ use serde::{
     Deserializer,
     de::{SeqAccess, Visitor},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 impl<'de> DeserializeWithSerdeContext<'de> for IntersectionTypeDefinition {
 

@@ -1,13 +1,13 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::ValueWithSerdeContext,
+    dif::value_with_serde_context::ValueWithSerdeContext,
     values::value_container::ValueContainer,
 };
 use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
 
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct ReplaceUpdateData {

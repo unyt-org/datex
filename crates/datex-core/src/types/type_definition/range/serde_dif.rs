@@ -2,18 +2,19 @@ use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
     types::{r#type::Type, type_definition::range::RangeTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use serde::{
     Deserializer, Serializer,
     de::{self, DeserializeSeed, SeqAccess, Visitor},
     ser::SerializeTuple,
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for RangeTypeDefinition {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for RangeTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

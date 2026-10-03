@@ -9,11 +9,11 @@ use serde::{
 use crate::{
     dif::serde_context::SerdeContext,
     types::type_definition::tagged_type::TaggedTypeDefinition,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 
-impl<'ctx> SerializeSeed for TaggedTypeDefinition {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for TaggedTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -38,15 +38,15 @@ impl<'ctx> SerializeSeed for TaggedTypeDefinition {
     }
 }
 
-impl<'ctx> SerializeSeed for Option<Box<Type>> {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for Option<Box<Type>> {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         match self {
             Some(ty) => {
-                ty.serialize_seed(ctx, serializer)
+                ty.serialize_with_ctx(ctx, serializer)
             }
             None => serializer.serialize_none(),
         }
@@ -95,8 +95,9 @@ use crate::{
     prelude::*,
     types::{r#type::Type, type_definition::TypeDefinition},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Option<Box<Type>> {
 

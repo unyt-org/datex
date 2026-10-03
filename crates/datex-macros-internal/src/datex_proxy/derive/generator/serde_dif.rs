@@ -4,7 +4,7 @@ use syn::parse_quote;
 use crate::datex_proxy::data::{Fields, StructureData};
 use crate::datex_proxy::generator::helpers::{generate_struct_or_enum_variants_fields_mapping, SelfAccess};
 
-/// Creates the implementation of the [SerializeSeed] and [DeserializeSeed] trait for the given structure data.
+/// Creates the implementation of the [SerializeWithSerdeContext] and [DeserializeWithSerdeContext] trait for the given structure data.
 /// Returns a TokenStream of the implementation.
 pub fn generate_serde_dif(
     structure_data: &StructureData,
@@ -20,10 +20,9 @@ pub fn generate_serde_dif(
     );
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    // FIXME: this doesnt work because of foreign trait for foreign struct impl
     quote! {
-        impl<'ctx> SerializeSeed for #ident #ty_generics #where_clause {
-            fn serialize_seed<S>(
+        impl<'ctx> SerializeWithSerdeContext for #ident #ty_generics #where_clause {
+            fn serialize_with_ctx<S>(
                 &self,
                 ctx: &SerdeContext<'_>,
                 serializer: S,

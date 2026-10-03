@@ -1,20 +1,21 @@
 use crate::{
     dif::serde_context::SerdeContext,
     types::{r#type::Type, type_definition::list::ListTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use serde::{
     Serializer,
     de::{Visitor},
     ser::SerializeSeq,
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
 use crate::prelude::*;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for ListTypeDefinition {
+impl<'ctx> SerializeWithSerdeContext for ListTypeDefinition {
 
-    fn serialize_seed<S: Serializer>(
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

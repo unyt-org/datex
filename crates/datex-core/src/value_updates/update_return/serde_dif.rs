@@ -1,7 +1,7 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
     value_updates::UpdateReturn,
     values::value_container::ValueContainer,
 };
@@ -10,9 +10,10 @@ use serde::{
     Serializer,
     ser::{SerializeSeq, SerializeStruct},
 };
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
 
-impl<'ctx> SerializeSeed for UpdateReturn {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for UpdateReturn {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

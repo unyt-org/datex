@@ -9,13 +9,13 @@ use crate::{
         traits::SharedContainerCommon,
     },
     traits::clone_unsafe::CloneUnsafe,
-    utils::serde_serialize_seed::SerializeSeed,
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use alloc::format;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 impl<'de> DeserializeWithSerdeContext<'de> for SharedContainer {
     fn deserialize_with_ctx<D: Deserializer<'de>>(
@@ -60,14 +60,14 @@ impl<'ctx> SerdeContext<'ctx> {
         format!("{}{}", ownership, value.pointer_address())
     }
 }
-impl<'ctx> SerializeSeed for SharedContainer {
+impl<'ctx> SerializeWithSerdeContext for SharedContainer {
     /// SAFETY:
     /// The caller of the `serialize` method must either
     /// * guarantee that no direct value (accessible without borrow) is an owned shared value
-    ///   (this can be guaranteed by calling clone on the top level value before passing it to [SerializeSeed])
+    ///   (this can be guaranteed by calling clone on the top level value before passing it to [SerializeWithSerdeContext])
     /// * or guarantee that the value is dropped after calling `serialize`, so that the owned shared value
     ///   is not leaked after serialization.
-    fn serialize_seed<S>(
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

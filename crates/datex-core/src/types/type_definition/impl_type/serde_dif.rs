@@ -3,13 +3,13 @@ use serde::{Serializer, de::DeserializeSeed, ser::SerializeSeq};
 use crate::{
     dif::serde_context::SerdeContext,
     types::{r#type::Type, type_definition::impl_type::ImplMarkers},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 
 use crate::prelude::*;
-impl<'ctx> SerializeSeed for ImplMarkers {
+impl<'ctx> SerializeWithSerdeContext for ImplMarkers {
 
-    fn serialize_seed<S: Serializer>(
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -25,8 +25,8 @@ use serde::{
     Deserializer,
     de::{self, SeqAccess, Visitor},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 impl<'de> DeserializeWithSerdeContext<'de> for ImplMarkers
 {

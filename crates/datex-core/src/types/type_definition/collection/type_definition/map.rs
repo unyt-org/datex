@@ -1,6 +1,6 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use core::fmt::{self, Display};
 use serde::{
@@ -8,11 +8,12 @@ use serde::{
     de::{self, DeserializeSeed, SeqAccess, Visitor},
     ser::SerializeSeq,
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
 use crate::types::r#type::Type;
 
 use crate::prelude::*;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct MapCollectionTypeDefinition {
@@ -33,8 +34,8 @@ impl Display for MapCollectionTypeDefinition {
     }
 }
 
-impl<'ctx> SerializeSeed for MapCollectionTypeDefinition {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for MapCollectionTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

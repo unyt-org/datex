@@ -3,19 +3,20 @@ use core::fmt;
 use crate::{
     dif::serde_context::SerdeContext,
     types::{r#type::Type, type_definition::map::MapTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use serde::{
     Deserializer, Serializer,
     de::{self, DeserializeSeed, SeqAccess, Visitor},
     ser::{SerializeSeq, SerializeTuple},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 /// Serde implementations for [MapTypeDefinition].
-impl<'ctx> SerializeSeed for MapTypeDefinition {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for MapTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -34,8 +35,8 @@ impl<'ctx> SerializeSeed for MapTypeDefinition {
 }
 
 /// Serde implementations for inner tuple type `(Type, Type)`.
-impl<'ctx> SerializeSeed for (Type, Type) {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for (Type, Type) {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

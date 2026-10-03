@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     utils::{
         freemap::{FreeHashMap, NextKey},
-        serde_serialize_seed::SerializeSeed,
+        serde_with_context::SerializeWithSerdeContext,
     },
     value_updates::{
         update_data::Update, update_handler::InternalMutabilityUpdateHandler,
@@ -21,7 +21,7 @@ use serde::{
     de::{DeserializeSeed, Error, Visitor},
 };
 use serde_with::__private__::DeError;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -161,8 +161,8 @@ impl<'de> DeserializeWithSerdeContext<'de> for ObserveOptions {
     }
 }
 
-impl<'ctx> SerializeSeed for ObserveOptions {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for ObserveOptions {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         _ctx: &SerdeContext<'_>,
         serializer: S,

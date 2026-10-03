@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     shared_values::base_shared_value_container::BaseSharedValueContainer,
     types::type_definition::TypeDefinition,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::{SerializeWithSerdeContext},
     values::value_container::ValueContainer,
 };
 use core::fmt;
@@ -12,11 +12,12 @@ use serde::{
     de::{DeserializeSeed, SeqAccess, Visitor},
     ser::{SerializeSeq, SerializeStruct},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for BaseSharedValueContainer {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for BaseSharedValueContainer {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

@@ -6,15 +6,16 @@ use serde::{Serializer, de::SeqAccess, ser::SerializeSeq};
 
 use crate::{
     dif::serde_context::SerdeContext, prelude::*,
-    utils::serde_serialize_seed::SerializeSeed,
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use core::fmt;
 use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::{DeserializeWithSerdeContext, ValueWithSerdeContext};
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::{DeserializeWithSerdeContext};
 
 pub const SHARED_CONTAINER_KEY: &str = "$";
 
@@ -188,8 +189,8 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ValueCont
     }
 }
 
-impl<'ctx> SerializeSeed for ValueContainer {
-    fn serialize_seed<S>(
+impl<'ctx> SerializeWithSerdeContext for ValueContainer {
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -208,14 +209,14 @@ impl<'ctx> SerializeSeed for ValueContainer {
                 map.end()
             }
             ValueContainer::Local(local) => {
-                local.serialize_seed(ctx, serializer)
+                local.serialize_with_ctx(ctx, serializer)
             }
         }
     }
 }
 
-impl<'ctx> SerializeSeed for Vec<ValueContainer> {
-    fn serialize_seed<S>(
+impl<'ctx> SerializeWithSerdeContext for Vec<ValueContainer> {
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -284,7 +285,7 @@ mod tests {
         let mut provider = SelfOwnedPointerAddressProvider::default();
         let cache = RefCell::new(SharedValuesCache::default());
         let mut context = SerdeContext::new(&cache);
-        
+
         let value = ValueContainer::Shared(SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,
@@ -311,7 +312,7 @@ mod tests {
         let mut provider = SelfOwnedPointerAddressProvider::default();
         let cache = RefCell::new(SharedValuesCache::default());
         let mut context = SerdeContext::new(&cache);
-        
+
         let value = ValueContainer::Shared(SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,
@@ -340,7 +341,7 @@ mod tests {
     fn referenced() {
         let cache = RefCell::new(SharedValuesCache::default());
         let mut context = SerdeContext::new(&cache);
-        
+
         let owned_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,

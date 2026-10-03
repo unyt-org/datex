@@ -3,11 +3,11 @@ use serde::{Serializer, de::DeserializeSeed, ser::SerializeSeq};
 use crate::{
     dif::serde_context::SerdeContext,
     types::{r#type::Type, type_definition::union::UnionTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 
-impl<'ctx> SerializeSeed for UnionTypeDefinition {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for UnionTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -28,8 +28,9 @@ use serde::{
     Deserializer,
     de::{SeqAccess, Visitor},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for UnionTypeDefinition {
     fn deserialize_with_ctx<D: Deserializer<'de>>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>

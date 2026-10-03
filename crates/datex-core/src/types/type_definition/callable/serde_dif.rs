@@ -5,7 +5,7 @@ use crate::{
         r#type::Type,
         type_definition::callable::{CallableKind, CallableTypeDefinition},
     },
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::{SerializeWithSerdeContext},
 };
 use core::ops::Deref;
 use serde::{
@@ -13,11 +13,12 @@ use serde::{
     de::{DeserializeSeed, MapAccess, Visitor},
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for CallableTypeDefinition {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for CallableTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -77,8 +78,8 @@ impl<'ctx> SerializeSeed for CallableTypeDefinition {
     }
 }
 
-impl<'ctx> SerializeSeed for Vec<(Option<String>, Type)> {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for Vec<(Option<String>, Type)> {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -94,9 +95,9 @@ impl<'ctx> SerializeSeed for Vec<(Option<String>, Type)> {
     }
 }
 
-impl<'ctx> SerializeSeed for (Option<String>, Type) {
+impl<'ctx> SerializeWithSerdeContext for (Option<String>, Type) {
 
-    fn serialize_seed<S: Serializer>(
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

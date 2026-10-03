@@ -3,13 +3,14 @@ use crate::{
     types::{
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use serde::{Serializer, ser::SerializeSeq};
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
 
-impl<'ctx> SerializeSeed for TypeDefinitionWithMetadata {
+impl<'ctx> SerializeWithSerdeContext for TypeDefinitionWithMetadata {
 
-    fn serialize_seed<S>(
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

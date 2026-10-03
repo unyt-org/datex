@@ -3,7 +3,7 @@ use core::fmt;
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
     values::{core_values::range::Range, value_container::ValueContainer},
 };
 use serde::{
@@ -11,11 +11,12 @@ use serde::{
     de::{DeserializeSeed, Error, IgnoredAny, MapAccess, Visitor},
     ser::{SerializeSeq, SerializeStruct, SerializeTuple},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for Range {
-    fn serialize_seed<S>(
+impl<'ctx> SerializeWithSerdeContext for Range {
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

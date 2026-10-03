@@ -1,13 +1,13 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::SerializeSeed,
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use core::fmt::Display;
 use serde::{Deserializer, Serializer, de::DeserializeSeed};
 
 use crate::{prelude::*, types::r#type::Type};
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct ListCollectionTypeDefinition(pub Box<Type>);
@@ -21,13 +21,13 @@ impl ListCollectionTypeDefinition {
         Self(Box::new(item))
     }
 }
-impl<'ctx> SerializeSeed for ListCollectionTypeDefinition {
-    fn serialize_seed<S: Serializer>(
+impl<'ctx> SerializeWithSerdeContext for ListCollectionTypeDefinition {
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        self.0.serialize_seed(ctx, serializer)
+        self.0.serialize_with_ctx(ctx, serializer)
     }
 }
 

@@ -10,13 +10,14 @@ use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
     preludes::derive::{ConvertCoreValue, Text},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ValueKey {
@@ -51,8 +52,8 @@ impl Display for ValueKey {
     }
 }
 
-impl<'ctx> SerializeSeed for ValueKey {
-    fn serialize_seed<S: serde::Serializer>(
+impl<'ctx> SerializeWithSerdeContext for ValueKey {
+    fn serialize_with_ctx<S: serde::Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -76,8 +77,8 @@ impl<'ctx> SerializeSeed for ValueKey {
     }
 }
 
-impl<'ctx> SerializeSeed for &'ctx [ValueKey] {
-    fn serialize_seed<S: serde::Serializer>(
+impl<'ctx> SerializeWithSerdeContext for &'ctx [ValueKey] {
+    fn serialize_with_ctx<S: serde::Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
