@@ -264,7 +264,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Vec<Value
 
 #[cfg(test)]
 mod tests {
-
+    use std::cell::RefCell;
     use super::*;
     use crate::{
         libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
@@ -282,7 +282,9 @@ mod tests {
     #[test]
     fn pointer_address() {
         let mut provider = SelfOwnedPointerAddressProvider::default();
-        let mut cache = SharedValuesCache::default();
+        let cache = RefCell::new(SharedValuesCache::default());
+        let mut context = SerdeContext::new(&cache);
+        
         let value = ValueContainer::Shared(SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,
@@ -290,8 +292,7 @@ mod tests {
                 &mut provider,
             ),
         ));
-        let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
-            .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
 
         // we expect the JSON to be of the form { "$": "<address>" }
         assert!(
@@ -299,7 +300,7 @@ mod tests {
                 && serialized.ends_with(r#""}"#)
         );
 
-        let deserialized = SerdeContext::<ValueContainer>::new(&mut cache)
+        let deserialized = context
             .try_deserialize_from_json(&serialized)
             .unwrap();
         assert_eq!(value, deserialized);
@@ -308,7 +309,9 @@ mod tests {
     #[test]
     fn owned() {
         let mut provider = SelfOwnedPointerAddressProvider::default();
-        let mut cache = SharedValuesCache::default();
+        let cache = RefCell::new(SharedValuesCache::default());
+        let mut context = SerdeContext::new(&cache);
+        
         let value = ValueContainer::Shared(SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,
@@ -316,8 +319,7 @@ mod tests {
                 &mut provider,
             ),
         ));
-        let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
-            .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
 
         let address_string =
             serde_json::from_str::<serde_json::Value>(&serialized)
@@ -330,13 +332,15 @@ mod tests {
         let addr = PointerAddress::SelfOwned(
             SelfOwnedPointerAddress::try_from(address_string).unwrap(),
         );
-        let container = cache.try_take_owned_shared_container(&addr);
+        let container = cache.borrow_mut().try_take_owned_shared_container(&addr);
         assert!(container.is_ok());
     }
 
     #[test]
     fn referenced() {
-        let cache = &mut SharedValuesCache::default();
+        let cache = RefCell::new(SharedValuesCache::default());
+        let mut context = SerdeContext::new(&cache);
+        
         let owned_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,
@@ -346,16 +350,15 @@ mod tests {
         let referenced_container = SharedContainer::Referenced(
             owned_container.derive_immutable_reference(),
         );
-        cache.store_shared_container(SharedContainer::Referenced(
+        cache.borrow_mut().store_shared_container(SharedContainer::Referenced(
             owned_container.derive_immutable_reference(),
         ));
         let pointer_address = referenced_container.pointer_address();
         let value = ValueContainer::Shared(referenced_container);
-        let json = SerdeContext::<ValueContainer>::new(cache)
-            .serialize_to_json(&value);
+        let json = context.serialize_to_json(&value);
         assert_eq!(json, format!(r#"{{"$":"'{}"}}"#, pointer_address));
 
-        let outer = SerdeContext::<ValueContainer>::new(cache)
+        let outer: ValueContainer = context
             .try_deserialize_from_json(&json)
             .unwrap();
 
@@ -369,7 +372,8 @@ mod tests {
 
     #[test]
     fn deserialize_nested_pointer_address() {
-        let cache = &mut SharedValuesCache::default();
+        let cache = RefCell::new(SharedValuesCache::default());
+        let mut context = SerdeContext::new(&cache);
 
         let owned_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
@@ -381,13 +385,13 @@ mod tests {
             owned_container.derive_immutable_reference(),
         );
         let pointer_address = referenced_container.pointer_address();
-        cache.store_shared_container(referenced_container);
+        cache.borrow_mut().store_shared_container(referenced_container);
         let json = format!(
             r#"[{},[{{"$":"'{}"}}]]"#,
             CoreLibIdIndex::from(CoreLibBaseTypeId::List),
             pointer_address
         );
-        let outer = SerdeContext::<ValueContainer>::new(cache)
+        let outer: ValueContainer = context
             .try_deserialize_from_json(&json)
             .unwrap();
 

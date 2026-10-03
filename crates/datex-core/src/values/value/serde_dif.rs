@@ -442,15 +442,17 @@ mod tests {
         },
     };
     use core::str::FromStr;
+    use std::cell::RefCell;
     use test_case::test_case;
 
     #[test]
     fn endpoint_serialization() {
         let endpoint = Endpoint::from_str("@jonas").unwrap();
         let value = Value::new(CoreValue::Endpoint(endpoint.clone()), None);
-        let mut cache = SharedValuesCache::default();
+        let cache = RefCell::new(SharedValuesCache::default());
+        let mut context = SerdeContext::new(&cache);
         let serialized =
-            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
+            context.serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
@@ -465,8 +467,9 @@ mod tests {
 
     #[test]
     fn serialize_map() {
-        let mut cache = SharedValuesCache::default();
-
+        let cache = RefCell::new(SharedValuesCache::default());
+        let mut context = SerdeContext::new(&cache);
+        
         // { endpoint: "@jonas" } -> [<map-idx>, { endpoint: [<endpoint-idx>, "@jonas"] }]
         let value = Value::from(CoreValue::Map(
             Map::structural_with_string_keys(vec![(
@@ -476,8 +479,7 @@ mod tests {
                 )),
             )]),
         ));
-        let serialized =
-            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
@@ -496,8 +498,7 @@ mod tests {
             "endpoint".to_string().into(),
             Value::from(Endpoint::from_str("@jonas").unwrap()).into(),
         )])));
-        let serialized =
-            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
@@ -514,39 +515,37 @@ mod tests {
 
     #[test]
     fn default_representation() {
+        let cache = RefCell::new(SharedValuesCache::default());
+        let mut context = SerdeContext::new(&cache);
+        
         // text
         let value = Value::from(CoreValue::Text("Hello, world!".into()));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(serialized, r#""Hello, world!""#);
 
         // decimal f64
         let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F64(
             5.14f64.into(),
         )));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(serialized, r#"5.14"#);
 
         // boolean
         let value = Value::from(CoreValue::Boolean(true.into()));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(serialized, r#"true"#);
     }
 
     #[test]
     fn non_default_representation() {
+        let cache = RefCell::new(SharedValuesCache::default());
+        let mut context = SerdeContext::new(&cache);
+        
         // f32
         let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F32(
             5.14f32.into(),
         )));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
 
         assert_eq!(
             serialized,
@@ -560,9 +559,7 @@ mod tests {
 
         // integer
         let value = Value::from(CoreValue::Integer(Integer::new(42)));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
@@ -575,9 +572,7 @@ mod tests {
 
         // typed integer
         let value = Value::from(CoreValue::TypedInteger(42u8.into()));
-        let serialized =
-            SerdeContext::<Value>::new(&mut SharedValuesCache::default())
-                .serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
@@ -653,11 +648,12 @@ mod tests {
         CoreValue::TypedDecimal(TypedDecimal::F32(f32::NEG_INFINITY.into())) ; "negative inf f32"
     )]
     fn roundtrip_no_custom_type(value: CoreValue) {
+        let cache = RefCell::new(SharedValuesCache::default());
+        let mut context = SerdeContext::new(&cache);
+        
         let value = Value::from(value);
-        let mut cache = SharedValuesCache::default();
-        let serialized =
-            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
-        let deserialized: Value = SerdeContext::<Value>::new(&mut cache)
+        let serialized = context.serialize_to_json(&value);
+        let deserialized: Value = context
             .try_deserialize_from_json(&serialized)
             .unwrap();
         assert_eq!(deserialized, value);
