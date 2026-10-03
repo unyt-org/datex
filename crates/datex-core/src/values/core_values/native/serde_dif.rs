@@ -1,14 +1,14 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::SerializeSeed,
+    utils::serde_with_context::SerializeWithSerdeContext,
     values::core_values::native::NativeCoreValue,
 };
 use serde::Serializer;
 
 /// Serialization for [NativeCoreValue].
-impl<'ctx> SerializeSeed for NativeCoreValue {
+impl<'ctx> SerializeWithSerdeContext for NativeCoreValue {
 
-    fn serialize_seed<S: Serializer>(
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

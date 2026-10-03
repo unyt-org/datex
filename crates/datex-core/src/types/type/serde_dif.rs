@@ -11,7 +11,7 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    utils::serde_serialize_seed::SerializeSeed,
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use core::ops::Deref;
 use num::ToPrimitive;
@@ -19,11 +19,11 @@ use serde::{
     Serializer,
     de::{DeserializeSeed, IntoDeserializer, Visitor},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for Type {
-    fn serialize_seed<S>(
+impl<'ctx> SerializeWithSerdeContext for Type {
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -39,13 +39,13 @@ impl<'ctx> SerializeSeed for Type {
                     if type_definition.metadata == TypeMetadata::default() =>
                 {
                     type_definition.definition
-                        .serialize_seed(ctx, serializer)
+                        .serialize_with_ctx(ctx, serializer)
                 }
                 _ => type_definition
-                    .serialize_seed(ctx, serializer),
+                    .serialize_with_ctx(ctx, serializer),
             },
             Type::Entity(shared_container_containing_nominal_type) => {
-                shared_container_containing_nominal_type.deref().serialize_seed(
+                shared_container_containing_nominal_type.deref().serialize_with_ctx(
                     ctx,
                     serializer,
                 )

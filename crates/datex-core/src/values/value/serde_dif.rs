@@ -2,7 +2,7 @@ use crate::{
     dif::serde_context::SerdeContext,
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
     prelude::*,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
     values::{
         core_value::{CoreValue, serde_dif::CoreValueVisitor},
         core_values::{
@@ -20,8 +20,9 @@ use serde::{
     de::{DeserializeSeed, Error as DeError, Visitor},
     ser::SerializeTuple,
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 impl<'ctx> SerdeContext<'ctx> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -77,10 +78,10 @@ impl<'ctx> SerdeContext<'ctx> {
     where
         T: Sized,
         Se: Serializer,
-        for<'a> T: SerializeSeed,
+        for<'a> T: SerializeWithSerdeContext,
     {
         if direct && classification.is_none() {
-            return inner.serialize_seed(self, serializer);
+            return inner.serialize_with_ctx(self, serializer);
         }
         let index = CoreLibIdIndex::from(core_lib_type_id);
         let mut tuple = serializer
@@ -104,8 +105,8 @@ impl<'ctx> SerdeContext<'ctx> {
 }
 
 /// Serialization for [Value].
-impl<'ctx> SerializeSeed for Value {
-    fn serialize_seed<S>(
+impl<'ctx> SerializeWithSerdeContext for Value {
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -225,11 +226,11 @@ impl<'ctx> SerializeSeed for Value {
                     false,
                 ),
             CoreValue::Box(inner) => {
-                inner.serialize_seed(ctx, serializer)
+                inner.serialize_with_ctx(ctx, serializer)
             }
             CoreValue::Uninitialized => panic!("Uninitialized value"),
             CoreValue::Native(native) => {
-                native.serialize_seed(ctx, serializer)
+                native.serialize_with_ctx(ctx, serializer)
             }
         }
     }
@@ -469,7 +470,7 @@ mod tests {
     fn serialize_map() {
         let cache = RefCell::new(SharedValuesCache::default());
         let mut context = SerdeContext::new(&cache);
-        
+
         // { endpoint: "@jonas" } -> [<map-idx>, { endpoint: [<endpoint-idx>, "@jonas"] }]
         let value = Value::from(CoreValue::Map(
             Map::structural_with_string_keys(vec![(
@@ -517,7 +518,7 @@ mod tests {
     fn default_representation() {
         let cache = RefCell::new(SharedValuesCache::default());
         let mut context = SerdeContext::new(&cache);
-        
+
         // text
         let value = Value::from(CoreValue::Text("Hello, world!".into()));
         let serialized = context.serialize_to_json(&value);
@@ -540,7 +541,7 @@ mod tests {
     fn non_default_representation() {
         let cache = RefCell::new(SharedValuesCache::default());
         let mut context = SerdeContext::new(&cache);
-        
+
         // f32
         let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F32(
             5.14f32.into(),
@@ -650,7 +651,7 @@ mod tests {
     fn roundtrip_no_custom_type(value: CoreValue) {
         let cache = RefCell::new(SharedValuesCache::default());
         let mut context = SerdeContext::new(&cache);
-        
+
         let value = Value::from(value);
         let serialized = context.serialize_to_json(&value);
         let deserialized: Value = context

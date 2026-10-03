@@ -17,19 +17,20 @@ use crate::{
             tagged_type::TaggedTypeDefinition, union::UnionTypeDefinition,
         },
     },
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use serde::{
     Deserializer, Serializer,
     de::{self, DeserializeSeed, Visitor},
     ser::SerializeMap,
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for TypeDefinition {
+impl<'ctx> SerializeWithSerdeContext for TypeDefinition {
 
-    fn serialize_seed<S>(
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

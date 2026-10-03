@@ -2,7 +2,7 @@ use core::fmt::Display;
 
 use crate::{
     dif::serde_context::SerdeContext,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
 };
 use serde::{Serializer, de::DeserializeSeed, ser::SerializeSeq};
 
@@ -28,9 +28,9 @@ impl Display for ListSliceCollectionTypeDefinition {
     }
 }
 
-impl<'ctx> SerializeSeed for ListSliceCollectionTypeDefinition {
+impl<'ctx> SerializeWithSerdeContext for ListSliceCollectionTypeDefinition {
 
-    fn serialize_seed<S: Serializer>(
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -50,8 +50,9 @@ use serde::{
     Deserializer,
     de::{self, SeqAccess, Visitor},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for ListSliceCollectionTypeDefinition
 {

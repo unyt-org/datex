@@ -1,6 +1,6 @@
 use crate::{
     dif::serde_context::SerdeContext, prelude::*,
-    utils::serde_serialize_seed::SerializeSeed,
+    utils::serde_with_context::SerializeWithSerdeContext,
     values::core_values::callable::Callable,
 };
 use core::fmt;
@@ -9,12 +9,12 @@ use serde::{
     de::{DeserializeSeed, SeqAccess, Visitor},
     ser::SerializeTuple,
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for Callable {
+impl<'ctx> SerializeWithSerdeContext for Callable {
 
-    fn serialize_seed<S: Serializer>(
+    fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,

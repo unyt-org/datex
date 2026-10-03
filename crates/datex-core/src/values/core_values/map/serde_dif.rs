@@ -1,7 +1,7 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSerdeContext},
+    utils::serde_with_context::SerializeWithSerdeContext,
     values::{
         core_values::map::{BorrowedMapKey, Map, MapEntries},
         value_container::ValueContainer,
@@ -14,11 +14,12 @@ use serde::{
     de::{self, DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
-impl<'ctx> SerializeSeed for BorrowedMapKey<'ctx> {
-    fn serialize_seed<S>(
+impl<'ctx> SerializeWithSerdeContext for BorrowedMapKey<'ctx> {
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -29,16 +30,16 @@ impl<'ctx> SerializeSeed for BorrowedMapKey<'ctx> {
         match self {
             BorrowedMapKey::Text(s) => serializer.serialize_str(s),
             BorrowedMapKey::Value(v) => {
-                v.serialize_seed(ctx, serializer)
+                v.serialize_with_ctx(ctx, serializer)
             }
         }
     }
 }
 
-impl<'ctx> SerializeSeed
+impl<'ctx> SerializeWithSerdeContext
     for (ValueContainer, ValueContainer)
 {
-    fn serialize_seed<S>(
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -102,10 +103,10 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (ValueCon
     }
 }
 
-impl<'ctx> SerializeSeed
+impl<'ctx> SerializeWithSerdeContext
     for Vec<(ValueContainer, ValueContainer)>
 {
-    fn serialize_seed<S>(
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -161,8 +162,8 @@ impl<'de, 'a, 'ctx> Visitor<'de>
     }
 }
 
-impl<'ctx> SerializeSeed for Map {
-    fn serialize_seed<S>(
+impl<'ctx> SerializeWithSerdeContext for Map {
+    fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
@@ -186,7 +187,7 @@ impl<'ctx> SerializeSeed for Map {
             }
 
             MapEntries::Structural(entries) => entries
-                .serialize_seed(ctx, serializer),
+                .serialize_with_ctx(ctx, serializer),
 
             MapEntries::Dynamic(entries) => {
                 let mut seq = serializer.serialize_seq(Some(entries.len()))?;

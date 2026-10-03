@@ -4,3 +4,5 @@ pub mod dif_interface;
 pub mod error;
 pub mod pointer_address;
 pub mod serde_context;
+pub mod value_with_serde_context;
+pub mod deserialize_serde_context;

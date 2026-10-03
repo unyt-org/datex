@@ -8,7 +8,7 @@ use serde::{
     Deserialize, Serialize,
     de::{Error, Visitor},
 };
-use crate::dif::serde_context::DeserializeSerdeContext;
+use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
 
 impl Serialize for Endpoint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

@@ -1,7 +1,6 @@
 use crate::runtime::cache::shared_values_cache::SharedValuesCache;
 use core::cell::RefCell;
-use core::marker::PhantomData;
-use crate::utils::serde_serialize_seed::DeserializeWithSerdeContext;
+use crate::utils::serde_with_context::DeserializeWithSerdeContext;
 
 #[derive(Debug)]
 pub struct SerdeContext<'ctx> {
@@ -35,37 +34,13 @@ impl<'ctx> SerdeContext<'ctx> {
     pub fn serialize_to_json<T>(&mut self, value: &T) -> String
     where
         T:
-            crate::utils::serde_serialize_seed::SerializeSeed
+            crate::utils::serde_with_context::SerializeWithSerdeContext
     {
         use crate::{prelude::*};
         let mut serializer = serde_json::Serializer::new(Vec::new());
-        value.serialize_seed(self, &mut serializer).unwrap();
+        value.serialize_with_ctx(self, &mut serializer).unwrap();
         let bytes = serializer.into_inner();
         String::from_utf8(bytes).unwrap()
     }
 }
 
-
-
-pub struct DeserializeSerdeContext<'a, 'ctx, T> {
-    pub(crate) ctx: &'a SerdeContext<'ctx>,
-    _marker: PhantomData<T>
-}
-
-impl<'a, 'ctx, T> DeserializeSerdeContext<'a, 'ctx, T> {
-    pub fn new(ctx: &'a SerdeContext<'ctx>) -> Self {
-        Self { ctx, _marker: PhantomData }
-    }
-
-    pub fn cast<U>(&self) -> DeserializeSerdeContext<'a, 'ctx, U> {
-        DeserializeSerdeContext {
-            ctx: self.ctx,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<T> Clone for DeserializeSerdeContext<'_, '_, T> {
-    fn clone(&self) -> Self { *self }
-}
-impl<T> Copy for DeserializeSerdeContext<'_, '_, T> {}
