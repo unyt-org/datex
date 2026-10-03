@@ -309,10 +309,11 @@ mod tests {
         dif::serde_context::SerdeContext,
         libs::core::{
             core_lib_id::CoreLibIdIndex,
-            type_id::{CoreLibTypeId},
+            type_id::{CoreLibTypeId, CoreLibBaseTypeId, CoreLibVariantTypeId},
         },
         prelude::*,
         types::type_definition::TypeDefinition,
+        values::core_values::integer::typed_integer::IntegerTypeVariant,
     };
 
     fn to_json(value: &TypeDefinition) -> String {

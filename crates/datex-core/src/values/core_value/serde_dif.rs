@@ -518,6 +518,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
 
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
     use super::*;
 
     use crate::runtime::cache::shared_values_cache::SharedValuesCache;
@@ -529,12 +530,13 @@ mod tests {
         core_lib_id: CoreLibTypeId,
         value: serde_json::Value,
     ) -> Result<CoreValue, serde_json::Error> {
-        let mut cache = SharedValuesCache::default();
-        let mut context = SerdeContext::<Value>::new(&mut cache);
+        let cache = RefCell::new(SharedValuesCache::default());
+        let context = SerdeContext::new(&cache);
+        let mut deserialize_ctx = DeserializeSerdeContext::new(&context);
 
         CoreValueVisitor {
             core_lib_id,
-            context: &mut context,
+            context: &mut deserialize_ctx,
         }
         .deserialize(value)
     }
