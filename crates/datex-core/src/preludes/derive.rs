@@ -73,6 +73,8 @@ pub use crate::{
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
     dif::serialize_with_serde_context::SerializeWithSerdeContext,
+    dif::deserialize_with_serde_context::DeserializeWithSerdeContext,
     dif::serde_context::SerdeContext,
+    dif::value_with_serde_context::ValueWithSerdeContext
 };
-pub use serde::Serializer;
+pub use serde;
