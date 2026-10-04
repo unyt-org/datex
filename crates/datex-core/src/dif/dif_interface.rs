@@ -37,7 +37,7 @@ use core::{cell::RefCell, result::Result};
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
 pub struct DIFInterface {
-    pub cache: SharedValuesCache,
+    pub cache: RefCell<SharedValuesCache>,
     address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     transceiver_id: TransceiverId,
 }
@@ -48,7 +48,7 @@ impl DIFInterface {
         address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     ) -> Self {
         DIFInterface {
-            cache: SharedValuesCache::default(),
+            cache: RefCell::new(SharedValuesCache::default()),
             address_provider,
             transceiver_id,
         }
@@ -63,6 +63,7 @@ impl DIFInterface {
     ) -> Result<Vec<ObserverCallback>, ValueNotFoundInCacheError> {
         let shared_container = self
             .cache
+            .borrow()
             .try_get_shared_container_immutable_reference(address)?;
         Ok(shared_container.get_current_observers(source_id))
     }
@@ -124,6 +125,7 @@ impl DIFInterface {
 
         let pointer_address = container.pointer_address().clone();
         self.cache
+            .borrow_mut()
             .store_shared_container(SharedContainer::Owned(container));
         pointer_address
     }
@@ -134,7 +136,7 @@ impl DIFInterface {
         &mut self,
         address: PointerAddress,
     ) -> Result<SharedContainer, ValueNotFoundInCacheError> {
-        self.cache.try_get_shared_container(&address).cloned()
+        self.cache.borrow().try_get_shared_container(&address).cloned()
     }
 
     pub fn has_address_with_ownership(
@@ -143,6 +145,7 @@ impl DIFInterface {
         ownership: SharedContainerOwnership,
     ) -> bool {
         self.cache
+            .borrow()
             .has_address_with_ownership(pointer_address, ownership)
     }
 
@@ -154,8 +157,8 @@ impl DIFInterface {
         options: ObserveOptions,
         callback: impl Fn(&Update) + 'static,
     ) -> Result<ObserverId, DIFObserveError> {
-        let shared_container_ref = self
-            .cache
+        let cache = self.cache.borrow_mut();
+        let shared_container_ref = cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         Ok(shared_container_ref.observe(Observer {
@@ -173,8 +176,8 @@ impl DIFInterface {
         observer_id: ObserverId,
         options: ObserveOptions,
     ) -> Result<(), DIFObserveError> {
-        let shared_container_ref = self
-            .cache
+        let cache = self.cache.borrow_mut();
+        let shared_container_ref = cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         shared_container_ref.update_observer_options(observer_id, options)?;
@@ -188,8 +191,8 @@ impl DIFInterface {
         address: PointerAddress,
         observer_id: ObserverId,
     ) -> Result<(), DIFObserveError> {
-        let shared_container_ref = self
-            .cache
+        let cache = self.cache.borrow_mut();
+        let shared_container_ref = cache
             .try_get_shared_container(&address)
             .map_err(|_| DIFObserveError::ReferenceNotFound)?;
         shared_container_ref.unobserve(observer_id)?;
