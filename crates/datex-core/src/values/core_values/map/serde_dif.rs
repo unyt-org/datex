@@ -103,65 +103,6 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (ValueCon
     }
 }
 
-impl<'ctx> SerializeWithSerdeContext
-    for Vec<(ValueContainer, ValueContainer)>
-{
-    fn serialize_with_ctx<S>(
-        &self,
-        ctx: &SerdeContext<'_>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(self.len()))?;
-
-        for entry in self {
-            seq.serialize_element(&ValueWithSerdeContext::new(
-                entry,
-                ctx,
-            ))?;
-        }
-
-        seq.end()
-    }
-}
-
-impl<'de, 'a, 'ctx> DeserializeWithSerdeContext<'de> for Vec<(ValueContainer, ValueContainer)>
-{
-    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(DeserializeSerdeContext::<Vec<(ValueContainer, ValueContainer)>>::new(ctx))
-    }
-}
-
-impl<'de, 'a, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'a, 'ctx, Vec<(ValueContainer, ValueContainer)>>
-{
-    type Value = Vec<(ValueContainer, ValueContainer)>;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("a sequence of map entry tuples")
-    }
-
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let mut entries = Vec::new();
-
-        while let Some(entry) = seq.next_element_seed(
-            self.cast::<(ValueContainer, ValueContainer)>(),
-        )? {
-            entries.push(entry);
-        }
-
-        Ok(entries)
-    }
-}
-
 impl<'ctx> SerializeWithSerdeContext for Map {
     fn serialize_with_ctx<S>(
         &self,

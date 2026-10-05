@@ -215,54 +215,6 @@ impl<'ctx> SerializeWithSerdeContext for ValueContainer {
     }
 }
 
-impl<'ctx> SerializeWithSerdeContext for Vec<ValueContainer> {
-    fn serialize_with_ctx<S>(
-        &self,
-        ctx: &SerdeContext<'_>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(self.len()))?;
-        for item in self {
-            seq.serialize_element(&ValueWithSerdeContext::new(
-                item,
-                ctx
-            ))?;
-        }
-        seq.end()
-    }
-}
-impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<ValueContainer> {
-    fn deserialize_with_ctx<D: Deserializer<'de>>(
-        ctx: &SerdeContext<'_>,
-        deserializer: D,
-    ) -> Result<Self, D::Error> {
-        deserializer.deserialize_seq(DeserializeSerdeContext::<Vec<ValueContainer>>::new(ctx))
-    }
-}
-impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Vec<ValueContainer>> {
-    type Value = Vec<ValueContainer>;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("a sequence of value containers")
-    }
-
-    fn visit_seq<A: SeqAccess<'de>>(
-        mut self,
-        mut seq: A,
-    ) -> Result<Self::Value, A::Error> {
-        let mut items = Vec::new();
-        while let Some(item) =
-            seq.next_element_seed(self.cast::<ValueContainer>())?
-        {
-            items.push(item);
-        }
-        Ok(items)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;

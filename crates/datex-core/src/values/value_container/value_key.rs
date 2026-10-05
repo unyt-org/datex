@@ -103,33 +103,6 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for ValueKey {
     }
 }
 
-impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<ValueKey> {
-    fn deserialize_with_ctx<D: serde::Deserializer<'de>>(
-        ctx: &SerdeContext<'_>,
-        deserializer: D,
-    ) -> Result<Self, D::Error> {
-        deserializer.deserialize_any(DeserializeSerdeContext::<Vec<ValueKey>>::new(ctx))
-    }
-}
-
-impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Vec<ValueKey>> {
-    type Value = Vec<ValueKey>;
-
-    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "a sequence of value keys")
-    }
-
-    fn visit_seq<A: serde::de::SeqAccess<'de>>(
-        mut self,
-        mut seq: A,
-    ) -> Result<Self::Value, A::Error> {
-        let mut keys = Vec::new();
-        while let Some(key) = seq.next_element_seed(self.cast::<ValueKey>())? {
-            keys.push(key);
-        }
-        Ok(keys)
-    }
-}
 
 impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ValueKey> {
     type Value = ValueKey;
