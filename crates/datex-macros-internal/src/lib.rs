@@ -1,4 +1,5 @@
 #![feature(deref_patterns)]
+#![feature(gen_blocks)]
 
 use crate::datex_proxy::{generate_item_glue_code, generator, parser};
 use proc_macro::TokenStream;

@@ -1,4 +1,4 @@
-use serde::Serializer;
+use serde::{Serialize, Serializer};
 use crate::dif::serde_context::SerdeContext;
 
 /// A trait for types that can be serialized with a `SerdeContext`.
@@ -29,3 +29,12 @@ impl<T: SerializeWithSerdeContext + ?Sized> SerializeWithSerdeContext for &mut T
         (**self).serialize_with_ctx(ctx, serializer)
     }
 }
+
+
+// pub trait SerializeWithSerdeContextDyn {
+//     fn serialize_with_ctx_dyn(
+//         &self,
+//         ctx: &SerdeContext<'_>,
+//         serializer: &mut dyn Serializer
+//     ) -> Result<<dyn Serializer as Serializer>::Ok, <dyn Serializer as Serializer>::Error>;
+// }

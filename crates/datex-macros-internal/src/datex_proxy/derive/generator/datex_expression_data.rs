@@ -6,6 +6,7 @@ use crate::datex_proxy::{
 };
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
+use crate::datex_proxy::data::FieldIdent;
 
 /// Creates the implementation of the [ToDatexExpressionData] trait for the given structure data.
 /// Returns a TokenStream of the implementation.

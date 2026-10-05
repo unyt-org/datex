@@ -14,6 +14,7 @@ use crate::{
 };
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
+use crate::datex_proxy::data::FieldIdent;
 
 /// Generates the [FromParts] and [IntoParts] implementations
 pub fn generate_convert_parts(structure_data: &StructureData) -> TokenStream {

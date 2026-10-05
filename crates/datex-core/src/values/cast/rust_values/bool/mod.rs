@@ -1,5 +1,6 @@
 pub mod try_from_core_value;
 
+use crate::dif::deserialize_serde_context::impl_serde_with_context;
 use crate::traits::{datex_hash::impl_datex_hash, value_access::ValueAccess};
 mod to_instructions;
 mod try_clone;
@@ -21,3 +22,4 @@ mod to_datex_expression_data {
     }
 }
 impl_datex_hash!(bool);
+impl_serde_with_context!(bool);

@@ -1,11 +1,11 @@
 use core::marker::PhantomData;
 use serde::de::DeserializeSeed;
-use serde::Deserializer;
+use serde::{Deserialize, Deserializer};
 use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 use crate::dif::serde_context::SerdeContext;
 
 pub struct DeserializeSerdeContext<'a, 'ctx, T> {
-    pub(crate) ctx: &'a SerdeContext<'ctx>,
+    pub ctx: &'a SerdeContext<'ctx>,
     _marker: PhantomData<T>
 }
 
@@ -34,5 +34,27 @@ impl<'de, T: DeserializeWithSerdeContext<'de>> DeserializeSeed<'de> for Deserial
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<T, D::Error> {
         T::deserialize_with_ctx(self.ctx, deserializer)
+    }
+}
+
+
+pub macro impl_serde_with_context($t:ty) {
+    impl<'de> DeserializeWithSerdeContext<'de> for $t {
+        fn deserialize_with_ctx<D: Deserializer<'de>>(
+            ctx: &SerdeContext<'_>,
+            deserializer: D,
+        ) -> Result<Self, D::Error> {
+            <$t>::deserialize(deserializer)
+        }
+    }
+
+    impl $crate::dif::serialize_with_serde_context::SerializeWithSerdeContext for $t {
+        fn serialize_with_ctx<S: serde::ser::Serializer>(
+            &self,
+            _ctx: &SerdeContext<'_>,
+            serializer: S,
+        ) -> Result<S::Ok, S::Error> {
+            serde::Serialize::serialize(self, serializer)
+        }
     }
 }

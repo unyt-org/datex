@@ -1,6 +1,7 @@
 mod try_from_core_value;
 pub mod try_from_core_value_sized;
 
+use crate::dif::deserialize_serde_context::impl_serde_with_context;
 use crate::traits::{datex_hash::impl_datex_hash, value_access::ValueAccess};
 mod to_instructions;
 mod try_clone;
@@ -133,3 +134,16 @@ impl_datex_hash!(i64);
 impl_datex_hash!(i128);
 impl_datex_hash!(usize);
 impl_datex_hash!(isize);
+
+impl_serde_with_context!(u8);
+impl_serde_with_context!(u16);
+impl_serde_with_context!(u32);
+impl_serde_with_context!(u64);
+impl_serde_with_context!(u128);
+impl_serde_with_context!(i8);
+impl_serde_with_context!(i16);
+impl_serde_with_context!(i32);
+impl_serde_with_context!(i64);
+impl_serde_with_context!(i128);
+impl_serde_with_context!(usize);
+impl_serde_with_context!(isize);
