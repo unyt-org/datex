@@ -56,6 +56,8 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
     quote! {
         const _: () = {
             use #datex_core_crate_name::preludes::derive::*;
+            use core::fmt;
+
             #datex_native
             #convert_parts
             #datex_type

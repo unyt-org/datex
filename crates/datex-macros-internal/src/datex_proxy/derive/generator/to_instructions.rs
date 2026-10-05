@@ -11,6 +11,7 @@ use crate::datex_proxy::{
         generate_struct_or_enum_variants_fields_mapping, map_enum_variants,
     },
 };
+use crate::datex_proxy::data::FieldIdent;
 
 /// Generates the implementation of the [ToInstructions] trait for the given structure data.
 /// Returns a [TokenStream] containing the generated implementation.

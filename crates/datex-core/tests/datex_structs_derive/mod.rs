@@ -35,6 +35,7 @@ struct Example {
     c: Endpoint,
 }
 
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 struct SerdeExample {
     inner_a: u8,

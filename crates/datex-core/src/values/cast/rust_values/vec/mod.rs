@@ -11,6 +11,8 @@ mod to_instructions;
 mod try_from_core_value;
 mod update_handler;
 mod value_access;
+pub mod serde_dif;
+
 #[cfg(test)]
 mod tests {
     use crate::{

@@ -1,5 +1,5 @@
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::ToTokens;
+use quote::{quote, ToTokens};
 use syn::{Generics, Type};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -64,6 +64,69 @@ pub struct StructureAttributes {
     pub docs: Option<String>,
 }
 
+pub trait FieldIdent {
+    /// Returns a normalized identifier for the field that can be used as a variable name.
+    /// For named fields, it returns the field name as an identifier.
+    /// For unnamed fields, it returns identifiers like `_0`, `_1`, etc.
+    fn normalized_ident(&self) -> Ident;
+    /// Returns the original name of the field as defined in the Rust struct.
+    fn original_name(&self) -> String;
+    /// The actual field accessor of the rust struct, e.g. `field_name` for named fields, or `0`, `1`, etc. for unnamed fields.
+    fn accessor(&self) -> TokenStream;
+}
+
+impl FieldIdent for NamedField {
+    fn normalized_ident(&self) -> Ident {
+        self.ident_accessor()
+    }
+    fn original_name(&self) -> String {
+        self.name.clone()
+    }
+    fn accessor(&self) -> TokenStream {
+        self.ident_accessor().into_token_stream()
+    }
+}
+
+impl FieldIdent for IndexedField {
+    fn normalized_ident(&self) -> Ident {
+        Ident::new(&format!("_{}", self.index), Span::call_site())
+    }
+    fn original_name(&self) -> String {
+        format!("{}", self.index)
+    }
+    fn accessor(&self) -> TokenStream {
+        self.index_accessor().into_token_stream()
+    }
+}
+
+
+pub trait FieldType {
+    fn ty(&self) -> &Type;
+}
+
+impl FieldType for Field {
+    fn ty(&self) -> &Type {
+        &self.ty
+    }
+}
+
+impl FieldType for NamedField {
+    fn ty(&self) -> &Type {
+        self.field.ty()
+    }
+}
+
+
+impl FieldType for IndexedField {
+    fn ty(&self) -> &Type {
+        self.field.ty()
+    }
+}
+
+pub trait AnyField: FieldIdent + FieldType {}
+impl<T> AnyField for T where T: FieldIdent + FieldType {}
+
+
 #[derive(Debug, PartialEq)]
 /// Represents a field in a struct or enum variant, along with its type and attributes.
 pub struct Field {
@@ -82,10 +145,9 @@ impl IndexedField {
     pub fn index_accessor(&self) -> syn::Index {
         syn::Index::from(self.index)
     }
-    pub fn normalized_ident(&self) -> Ident {
-        Ident::new(&format!("_{}", self.index), Span::call_site())
-    }
 }
+
+
 
 #[derive(Debug, PartialEq)]
 /// General attributes that can be applied to any field.
@@ -122,9 +184,6 @@ impl NamedField {
     pub fn ident_accessor(&self) -> Ident {
         Ident::new(&self.name, Span::call_site())
     }
-    pub fn normalized_ident(&self) -> Ident {
-        self.ident_accessor()
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -142,35 +201,62 @@ impl Fields {
     /// For named fields, it returns the field names as identifiers.
     /// For unnamed fields, it returns identifiers like `_0`, `_1`, etc.
     pub fn normalized_field_idents(&self) -> Vec<Ident> {
-        match self {
-            Fields::Named(fields) => {
-                fields.iter().map(|f| f.normalized_ident()).collect()
-            }
-            Fields::Unnamed(fields) => {
-                fields.iter().map(|f| f.normalized_ident()).collect()
-            }
-            Fields::Transparent(field) => {
-                vec![field.normalized_ident()]
-            }
-            Fields::Unit => vec![],
-        }
+        self.iter().map(|f| f.normalized_ident()).collect()
     }
 
     /// Returns a list of all field accessors (field names or indices) as TokenStreams.
     pub fn field_accessors(&self) -> Vec<TokenStream> {
+        self.iter().map(|f| f.accessor()).collect()
+    }
+    
+    pub fn is_named(&self) -> bool {
+        matches!(self, Fields::Named(_))
+    }
+    
+    /// Returns an iterator over all fields as `&dyn AnyField`.
+    pub gen fn iter(&self) -> &dyn AnyField {
         match self {
-            Fields::Named(fields) => fields
-                .iter()
-                .map(|f| f.ident_accessor().into_token_stream())
-                .collect(),
-            Fields::Unnamed(fields) => fields
-                .iter()
-                .map(|f| f.index_accessor().into_token_stream())
-                .collect(),
-            Fields::Transparent(field) => {
-                vec![field.index_accessor().into_token_stream()]
+            Fields::Named(fields) => {
+                for field in fields {
+                    yield field as &dyn AnyField;
+                }
             }
-            Fields::Unit => vec![],
+            Fields::Unnamed(fields) => {
+                for field in fields {
+                    yield field as &dyn AnyField;
+                }
+            }
+            Fields::Transparent(field) => {
+                yield field as &dyn AnyField
+            }
+            Fields::Unit => {
+                return;
+            }
+        }
+    }
+    
+    pub fn wrap_in_initializer(&self, inner: impl Iterator<Item = TokenStream>) -> TokenStream {
+        match self {
+            Fields::Named(fields) => {
+                let field_initializers = fields.iter().zip(inner).map(|(field, initializer)| {
+                    let field_name = field.ident_accessor();
+                    quote! { #field_name: #initializer }
+                });
+                quote! { { #(#field_initializers),* } }
+            }
+            Fields::Unnamed(fields) => {
+                let field_initializers = fields.iter().zip(inner).map(|(_field, initializer)| { 
+                    quote! { #initializer }
+                });
+                quote! { ( #(#field_initializers),* ) }
+            }
+            Fields::Transparent(field) => {
+                let initializer = inner.into_iter().next().expect("Transparent field should have exactly one initializer");
+                quote! { (#initializer) }
+            }
+            Fields::Unit => {
+                quote! {}
+            }
         }
     }
 }
