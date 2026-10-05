@@ -67,7 +67,7 @@ impl<'de, T: DeserializeWithSerdeContextDyn> DeserializeSeed<'de> for ErasedSeed
 pub macro impl_serde_with_context($t:ty) {
     impl<'de> DeserializeWithSerdeContext<'de> for $t {
         fn deserialize_with_ctx<D: Deserializer<'de>>(
-            ctx: &SerdeContext<'_>,
+            _ctx: &SerdeContext<'_>,
             deserializer: D,
         ) -> Result<Self, D::Error> {
             <$t>::deserialize(deserializer)
