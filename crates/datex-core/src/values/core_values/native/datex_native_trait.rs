@@ -20,6 +20,8 @@ use crate::traits::{
     to_datex_expression_data::ToDatexExpressionData
 };
 use core::any::Any;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContextDyn;
+use crate::dif::serialize_with_serde_context::SerializeWithSerdeContextDyn;
 
 #[cfg(feature = "ast")]
 pub trait DatexNativeBase:
@@ -32,6 +34,8 @@ pub trait DatexNativeBase:
     + GetCoreLibTypeId
     + DatexHash
     + ToInstructions
+    + SerializeWithSerdeContextDyn
+    + DeserializeWithSerdeContextDyn
 {
 }
 
@@ -46,6 +50,8 @@ impl<T> DatexNativeBase for T where
         + GetCoreLibTypeId
         + DatexHash
         + ToInstructions
+        + SerializeWithSerdeContextDyn
+        + DeserializeWithSerdeContextDyn
 {
 }
 
@@ -59,6 +65,8 @@ pub trait DatexNativeBase:
     + GetCoreLibTypeId
     + DatexHash
     + ToInstructions
+    + SerializeWithSerdeContextDyn
+    + DeserializeWithSerdeContextDyn
 {
 }
 #[cfg(not(feature = "ast"))]
@@ -71,6 +79,8 @@ impl<T> DatexNativeBase for T where
         + GetCoreLibTypeId
         + DatexHash
         + ToInstructions
+        + SerializeWithSerdeContextDyn
+        + DeserializeWithSerdeContextDyn
 {
 }
 
@@ -92,6 +102,8 @@ pub trait DatexNative:
     + DatexNativeOps
     + UpdateHandlerImpl
     + LocalChildPathResolver
+    + SerializeWithSerdeContextDyn
+    + DeserializeWithSerdeContextDyn
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -116,6 +128,8 @@ pub trait DatexNative:
     + DatexNativeOps
     + UpdateHandlerImpl
     + LocalChildPathResolver
+    + SerializeWithSerdeContextDyn
+    + DeserializeWithSerdeContextDyn
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

@@ -1,5 +1,7 @@
 use serde::{Serialize, Serializer};
 use crate::dif::serde_context::SerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::prelude::*;
 
 /// A trait for types that can be serialized with a `SerdeContext`.
 pub trait SerializeWithSerdeContext {
@@ -31,10 +33,13 @@ impl<T: SerializeWithSerdeContext + ?Sized> SerializeWithSerdeContext for &mut T
 }
 
 
-// pub trait SerializeWithSerdeContextDyn {
-//     fn serialize_with_ctx_dyn(
-//         &self,
-//         ctx: &SerdeContext<'_>,
-//         serializer: &mut dyn Serializer
-//     ) -> Result<<dyn Serializer as Serializer>::Ok, <dyn Serializer as Serializer>::Error>;
-// }
+/// Object-safe version: returns something serde can serialize.
+pub trait SerializeWithSerdeContextDyn {
+    fn with_ctx<'a>(&'a self, ctx: &'a SerdeContext<'a>) -> Box<dyn erased_serde::Serialize + 'a>;
+}
+
+impl<T: SerializeWithSerdeContext> SerializeWithSerdeContextDyn for T {
+    fn with_ctx<'a>(&'a self, ctx: &'a SerdeContext<'a>) -> Box<dyn erased_serde::Serialize + 'a> {
+        Box::new(ValueWithSerdeContext { value: self, ctx })
+    }
+}

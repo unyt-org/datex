@@ -78,22 +78,6 @@ impl<'ctx> SerializeWithSerdeContext for CallableTypeDefinition {
     }
 }
 
-impl<'ctx> SerializeWithSerdeContext for Vec<(Option<String>, Type)> {
-    fn serialize_with_ctx<S: Serializer>(
-        &self,
-        ctx: &SerdeContext<'_>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(self.len()))?;
-        for (name, ty) in self {
-            seq.serialize_element(&ValueWithSerdeContext::new(
-                &(name.clone(), ty.clone()),
-                ctx,
-            ))?;
-        }
-        seq.end()
-    }
-}
 
 impl<'ctx> SerializeWithSerdeContext for (Option<String>, Type) {
 
@@ -272,40 +256,5 @@ impl<'de, 'a, 'ctx> Visitor<'de>
         E: serde::de::Error,
     {
         Ok(None)
-    }
-}
-
-impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Vec<(Option<String>, Type)> {
-    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(DeserializeSerdeContext::<Vec<(Option<String>, Type)>>::new(ctx))
-    }
-}
-
-impl<'de, 'a, 'ctx> Visitor<'de>
-    for DeserializeSerdeContext<'a, 'ctx, Vec<(Option<String>, Type)>>
-{
-    type Value = Vec<(Option<String>, Type)>;
-
-    fn expecting(
-        &self,
-        formatter: &mut core::fmt::Formatter,
-    ) -> core::fmt::Result {
-        formatter.write_str("a sequence of (Option<String>, Type) tuples")
-    }
-
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut vec = Vec::new();
-        while let Some(item) =
-            seq.next_element_seed(self.cast::<(Option<String>, Type)>())?
-        {
-            vec.push(item);
-        }
-        Ok(vec)
     }
 }

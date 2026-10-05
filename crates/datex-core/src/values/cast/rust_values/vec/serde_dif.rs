@@ -1,35 +1,27 @@
-use serde::de::Visitor;
+use serde::de::{SeqAccess, Visitor};
 use serde::ser::SerializeSeq;
-use serde::Serializer;
-use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
+use crate::dif::deserialize_serde_context::{DeserializeSerdeContext, ErasedSeed};
+use crate::dif::deserialize_with_serde_context::{DeserializeWithSerdeContext, DeserializeWithSerdeContextDyn};
 use crate::dif::serde_context::SerdeContext;
-use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
-use crate::dif::value_with_serde_context::ValueWithSerdeContext;
-use crate::values::core_values::native::DatexNativeBase;
+use crate::dif::serialize_with_serde_context::{SerializeWithSerdeContext, SerializeWithSerdeContextDyn};
+use crate::prelude::*;
 
-impl<'ctx, T: DatexNativeBase> SerializeWithSerdeContext for Vec<T> {
+impl<'ctx, T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
 
-    fn serialize_with_ctx<S>(
+    fn serialize_with_ctx<S: serde::Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_seq(Some(self.len()))?;
-        for value in self.iter() {
-            state.serialize_element(&ValueWithSerdeContext::new(
-                value,
-                ctx,
-            ))?;
+    ) -> Result<S::Ok, S::Error> {
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
+        for value in self {
+            seq.serialize_element(&*value.with_ctx(ctx))?;
         }
-        state.end()
+        seq.end()
     }
 }
 
-impl<'de, 'ctx, T: DatexNativeBase> DeserializeWithSerdeContext<'de> for Vec<T> {
+impl<'de, 'ctx, T: DeserializeWithSerdeContextDyn> DeserializeWithSerdeContext<'de> for Vec<T> {
     fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Vec<T>, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -38,28 +30,19 @@ impl<'de, 'ctx, T: DatexNativeBase> DeserializeWithSerdeContext<'de> for Vec<T> 
     }
 }
 
-impl<'de, 'a, 'ctx, T: DatexNativeBase> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Vec<T>> {
+impl<'de, T: DeserializeWithSerdeContextDyn> Visitor<'de> for DeserializeSerdeContext<'_, '_, Vec<T>> {
     type Value = Vec<T>;
 
-    fn expecting(
-        &self,
-        formatter: &mut core::fmt::Formatter,
-    ) -> core::fmt::Result {
-        formatter.write_str("a sequence of values for Vec<T>")
+    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.write_str("a sequence of values for Vec<T>")
     }
 
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Vec<T>, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut list = Vec::new();
-
-        while let Some(value) =
-            seq.next_element_seed(self.cast::<T>())?
-        {
+    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Vec<T>, A::Error> {
+        let seed = ErasedSeed::<T>::new(self.ctx);
+        let mut list = Vec::with_capacity(seq.size_hint().unwrap_or(0).min(4096));
+        while let Some(value) = seq.next_element_seed(seed)? {
             list.push(value);
         }
-
         Ok(list)
     }
 }
