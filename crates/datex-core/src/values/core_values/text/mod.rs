@@ -29,6 +29,7 @@ pub mod ops;
 mod to_datex_expression_data;
 mod try_clone;
 mod value_access;
+pub mod serde_dif;
 
 impl Display for Text {
     // TODO #319: escape string content
