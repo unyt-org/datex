@@ -10,6 +10,7 @@ pub mod get_datex_type;
 mod to_datex_expression_data;
 mod to_instructions;
 mod value_access;
+mod serde_dif;
 
 #[cfg(test)]
 mod tests {

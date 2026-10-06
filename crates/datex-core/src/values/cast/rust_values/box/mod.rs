@@ -12,6 +12,7 @@ mod to_datex_expression_data;
 mod to_instructions;
 mod update_handler;
 mod value_access;
+mod serde_dif;
 
 #[cfg(test)]
 mod tests {

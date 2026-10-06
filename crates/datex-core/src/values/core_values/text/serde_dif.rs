@@ -1,15 +1,30 @@
+use erased_serde::__private::serde::Serialize;
 use serde::{Deserialize, Serializer};
 use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 use crate::dif::serde_context::SerdeContext;
-use crate::preludes::derive::SerializeWithSerdeContext;
+use crate::preludes::derive::{CoreLibBaseTypeId, SerializeWithSerdeContext, ValueClassification};
 use crate::values::core_values::text::Text;
 use crate::prelude::*;
 
-impl SerializeWithSerdeContext for Text {
-    fn serialize_with_ctx<S: Serializer>(&self, _ctx: &SerdeContext<'_>, serializer: S) -> Result<S::Ok, S::Error> {
+
+impl Serialize for Text {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.0)
     }
 }
+
+impl SerializeWithSerdeContext for Text {
+    fn serialize_with_ctx<S: Serializer>(&self, ctx: &SerdeContext<'_>, serializer: S) -> Result<S::Ok, S::Error> {
+        ctx.serialize_core_value(
+            self,
+            CoreLibBaseTypeId::Text.into(),
+            &ValueClassification::default(),
+            serializer,
+            true,
+        )
+    }
+}
+
 
 impl<'de> DeserializeWithSerdeContext<'de> for Text {
     fn deserialize_with_ctx<D: serde::de::Deserializer<'de>>(

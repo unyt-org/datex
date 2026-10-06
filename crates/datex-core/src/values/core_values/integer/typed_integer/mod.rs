@@ -33,6 +33,7 @@ pub mod primitive;
 mod to_datex_expression_data;
 mod try_clone;
 mod value_access;
+pub mod serde_dif;
 
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).
@@ -97,27 +98,6 @@ pub enum TypedInteger {
     U64(u64),
     #[brw(magic = 10u8)]
     U128(u128),
-}
-
-impl Serialize for TypedInteger {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            TypedInteger::IBig(v) => v.serialize(serializer),
-            TypedInteger::I8(v) => v.serialize(serializer),
-            TypedInteger::I16(v) => v.serialize(serializer),
-            TypedInteger::I32(v) => v.serialize(serializer),
-            TypedInteger::I64(v) => v.serialize(serializer),
-            TypedInteger::I128(v) => v.serialize(serializer),
-            TypedInteger::U8(v) => v.serialize(serializer),
-            TypedInteger::U16(v) => v.serialize(serializer),
-            TypedInteger::U32(v) => v.serialize(serializer),
-            TypedInteger::U64(v) => v.serialize(serializer),
-            TypedInteger::U128(v) => v.serialize(serializer),
-        }
-    }
 }
 
 impl From<&TypedInteger> for CoreLibTypeId {

@@ -10,7 +10,7 @@ pub mod equality;
 mod to_instructions;
 
 #[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,
+    Debug, Clone, PartialEq, Eq, Hash, BinRead, BinWrite,
 )]
 pub struct Text(
     #[bw(map=|x| TextData(x.clone()))]

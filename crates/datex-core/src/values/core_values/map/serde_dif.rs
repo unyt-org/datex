@@ -63,46 +63,6 @@ impl<'ctx> SerializeWithSerdeContext
     }
 }
 
-impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for (ValueContainer, ValueContainer)
-{
-    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_tuple(2, DeserializeSerdeContext::<(ValueContainer, ValueContainer)>::new(ctx))
-    }
-}
-
-impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (ValueContainer, ValueContainer)>
-{
-    type Value = (ValueContainer, ValueContainer);
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("a map entry tuple [key, value]")
-    }
-
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let key = seq
-            .next_element_seed(self.cast::<ValueContainer>())?
-            .ok_or_else(|| de::Error::custom("missing map entry key"))?;
-
-        let value = seq
-            .next_element_seed(self.cast::<ValueContainer>())?
-            .ok_or_else(|| de::Error::custom("missing map entry value"))?;
-
-        if seq.next_element::<IgnoredAny>()?.is_some() {
-            return Err(de::Error::custom(
-                "expected map entry tuple with exactly 2 elements",
-            ));
-        }
-
-        Ok((key, value))
-    }
-}
-
 impl<'ctx> SerializeWithSerdeContext for Map {
     fn serialize_with_ctx<S>(
         &self,
