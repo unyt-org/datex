@@ -136,7 +136,7 @@ fn generate_dif_serialize_for_fields(
             let serialize_fields = named_fields.iter().map(|field| {
                 let field_ident = &field.normalized_ident();
                 quote! {
-                    seq.serialize_element(&ValueWithSerdeContext::new(
+                    seq.serialize_entry(stringify!(#field_ident), &ValueWithSerdeContext::new(
                         #field_ident,
                         ctx,
                     ))?;
@@ -144,7 +144,7 @@ fn generate_dif_serialize_for_fields(
             });
             let len = named_fields.len();
             quote! {
-                let mut seq = serializer.serialize_seq(Some(#len))?;
+                let mut seq = serializer.serialize_map(Some(#len))?;
                 // #(#serialize_fields)*
                 seq.end()
             }
