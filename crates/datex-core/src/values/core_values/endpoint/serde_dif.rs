@@ -4,11 +4,15 @@ use crate::{
 };
 use alloc::string::String;
 use core::fmt;
+use erased_serde::__private::serde::Serializer;
 use serde::{
     Deserialize, Serialize,
     de::{Error, Visitor},
 };
-use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::deserialize_serde_context::impl_serde_with_context;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
+use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
+use crate::preludes::derive::{CoreLibBaseTypeId, ValueClassification};
 
 impl Serialize for Endpoint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -21,34 +25,25 @@ impl Serialize for Endpoint {
     }
 }
 
-impl<'a> Deserialize<'a> for Endpoint {
+impl<'de> Deserialize<'de> for Endpoint {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'a>,
+        D: serde::Deserializer<'de>,
     {
-        let s: String = Deserialize::deserialize(deserializer)?;
+        let s = String::deserialize(deserializer)?;
         Endpoint::from_string(&s).map_err(serde::de::Error::custom)
     }
 }
 
-impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Endpoint> {
-    type Value = Endpoint;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("an endpoint string")
-    }
-
-    fn visit_str<E>(self, value: &str) -> Result<Endpoint, E>
-    where
-        E: Error,
-    {
-        Endpoint::from_string(value).map_err(E::custom)
-    }
-
-    fn visit_string<E>(self, value: String) -> Result<Endpoint, E>
-    where
-        E: Error,
-    {
-        Endpoint::from_string(&value).map_err(E::custom)
-    }
-}
+/*
+TODO: handle
+   ctx.serialize_core_value(
+            self,
+            CoreLibBaseTypeId::Endpoint.into(),
+            &ValueClassification::default(),
+            serializer,
+            false,
+        )
+in macro
+ */
+impl_serde_with_context!(Endpoint);

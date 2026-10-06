@@ -20,9 +20,10 @@ pub mod ops;
 mod to_datex_expression_data;
 mod try_clone;
 mod value_access;
+mod serde_dif;
 
 #[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, BinRead, BinWrite,
+    Debug, Clone, PartialEq, Eq, Hash, BinRead, BinWrite,
 )]
 #[brw(little)]
 pub struct Boolean(

@@ -15,7 +15,7 @@ pub fn generate_serde_dif(
     let deserialize_impl = if !structure_data.attributes.no_deserialize {
         generate_serde_deserialize(structure_data)
     } else {
-        quote! {}
+        generate_unimplemented_serde_deserialize(structure_data)
     };
 
     quote! {
@@ -82,6 +82,30 @@ fn generate_serde_deserialize(
         }
     };
 
+    generate_serde_deserialize_skeleton(structure_data, deserialize_impl, visitor_impl)
+}
+
+/// Generates a deserialization implementation that returns an error indicating that deserialization is not implemented for the given structure.
+fn generate_unimplemented_serde_deserialize(
+    struct_data: &StructureData,
+) -> TokenStream {
+    let deserialize_impl = quote! {
+        Err(D::Error::custom("Deserialization is not implemented for this type"))
+    };
+
+    generate_serde_deserialize_skeleton(struct_data, deserialize_impl, quote! { })
+}
+
+/// Generates the skeleton of the deserialization implementation and Visitor for a struct
+fn generate_serde_deserialize_skeleton(
+    structure_data: &StructureData,
+    deserialize_impl: TokenStream,
+    visitor_impl: TokenStream,
+) -> TokenStream {
+    let StructureData {
+        ident, generics, ..
+    } = structure_data;
+
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
@@ -100,6 +124,8 @@ fn generate_serde_deserialize(
         #visitor_impl
     }
 }
+
+
 
 fn generate_dif_serialize_for_fields(
     fields: &Fields,

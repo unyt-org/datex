@@ -34,7 +34,7 @@ impl<'ctx> SerdeContext<'ctx> {
     ///   42f32 -> "42"
     /// ## For custom type:
     /// {custom_type: LiteralTypeDefinition::Integer(42), value: 42} -> [<core_lib_id>, <type_definition>, 42]
-    fn serialize_with_core_type<Se, T>(
+    pub(crate) fn serialize_core_value<Se, T>(
         &self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
@@ -67,7 +67,9 @@ impl<'ctx> SerdeContext<'ctx> {
         tuple.end()
     }
 
-    fn serialize_with_core_type_serde<Se, T>(
+    /// This method is used to serialize a value that requires a context to be serialized (i.e. a value that implements [SerializeWithSerdeContext]).
+    /// It will serialize the value as a tuple of [<core_lib_id>, <value>, <classification>], where the classification is optional.
+    fn serialize_value_with_context<Se, T>(
         &self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
@@ -117,21 +119,21 @@ impl<'ctx> SerializeWithSerdeContext for Value {
         let core_lib_type = self.default_core_type();
         match &self.inner {
             // Direct serializable core values, that can be serialized as they can be unambiguously deserialized without it
-            CoreValue::Boolean(b) => ctx.serialize_with_core_type(
+            CoreValue::Boolean(b) => ctx.serialize_core_value(
                 b,
                 core_lib_type,
                 &self.classification,
                 serializer,
                 true,
             ),
-            CoreValue::Text(s) => ctx.serialize_with_core_type(
+            CoreValue::Text(s) => ctx.serialize_core_value(
                 s,
                 core_lib_type,
                 &self.classification,
                 serializer,
                 true,
             ),
-            CoreValue::Null => ctx.serialize_with_core_type(
+            CoreValue::Null => ctx.serialize_core_value(
                 &(),
                 core_lib_type,
                 &self.classification,
@@ -139,7 +141,7 @@ impl<'ctx> SerializeWithSerdeContext for Value {
                 true,
             ),
             CoreValue::TypedDecimal(dec @ TypedDecimal::F64(_)) => ctx
-                .serialize_with_core_type(
+                .serialize_core_value(
                     &dec,
                     core_lib_type,
                     &self.classification,
@@ -148,35 +150,35 @@ impl<'ctx> SerializeWithSerdeContext for Value {
                 ),
 
             // Core values that require a specific core type id to be serialized for non-ambiguous deserialization
-            CoreValue::Endpoint(endpoint) => ctx.serialize_with_core_type(
+            CoreValue::Endpoint(endpoint) => ctx.serialize_core_value(
                 endpoint,
                 core_lib_type,
                 &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::Decimal(d) => ctx.serialize_with_core_type(
+            CoreValue::Decimal(d) => ctx.serialize_core_value(
                 d,
                 core_lib_type,
                 &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::Integer(i) => ctx.serialize_with_core_type(
+            CoreValue::Integer(i) => ctx.serialize_core_value(
                 i,
                 core_lib_type,
                 &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::TypedInteger(ti) => ctx.serialize_with_core_type(
+            CoreValue::TypedInteger(ti) => ctx.serialize_core_value(
                 ti,
                 core_lib_type,
                 &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::TypedDecimal(td) => ctx.serialize_with_core_type(
+            CoreValue::TypedDecimal(td) => ctx.serialize_core_value(
                 td,
                 core_lib_type,
                 &self.classification,
@@ -185,14 +187,14 @@ impl<'ctx> SerializeWithSerdeContext for Value {
             ),
 
             // Complex core values, that can contain nested values
-            CoreValue::List(l) => ctx.serialize_with_core_type_serde(
+            CoreValue::List(l) => ctx.serialize_value_with_context(
                 l,
                 core_lib_type,
                 &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::Range(range) => ctx.serialize_with_core_type_serde(
+            CoreValue::Range(range) => ctx.serialize_value_with_context(
                 range,
                 core_lib_type,
                 &self.classification,
@@ -200,14 +202,14 @@ impl<'ctx> SerializeWithSerdeContext for Value {
                 false,
             ),
 
-            CoreValue::Map(map) => ctx.serialize_with_core_type_serde(
+            CoreValue::Map(map) => ctx.serialize_value_with_context(
                 map,
                 core_lib_type,
                 &self.classification,
                 serializer,
                 false,
             ),
-            CoreValue::Type(ty) => ctx.serialize_with_core_type_serde(
+            CoreValue::Type(ty) => ctx.serialize_value_with_context(
                 ty,
                 core_lib_type,
                 &self.classification,
@@ -218,7 +220,7 @@ impl<'ctx> SerializeWithSerdeContext for Value {
                 todo!()
             }
             CoreValue::Callable(callable) => ctx
-                .serialize_with_core_type_serde(
+                .serialize_value_with_context(
                     callable,
                     core_lib_type,
                     &self.classification,

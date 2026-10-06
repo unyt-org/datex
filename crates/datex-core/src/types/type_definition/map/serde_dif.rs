@@ -65,43 +65,6 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for MapTypeDefinition {
         deserializer.deserialize_seq(DeserializeSerdeContext::<MapTypeDefinition>::new(ctx))
     }
 }
-/// Deserialization implementations for inner tuple type `(Type, Type)`.
-impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for (Type, Type) {
-    fn deserialize_with_ctx<D: Deserializer<'de>>(
-        ctx: &SerdeContext<'_>,
-        deserializer: D,
-    ) -> Result<Self, D::Error> {
-        deserializer.deserialize_tuple(2, DeserializeSerdeContext::<(Type, Type)>::new(ctx))
-    }
-}
-
-/// Visitor implementations for deserialization of inner tuple type `(Type, Type)`.
-impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (Type, Type)> {
-    type Value = (Type, Type);
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a type-definition key/value tuple")
-    }
-
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let key = seq
-            .next_element_seed(self.cast::<Type>())?
-            .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-
-        let value = seq
-            .next_element_seed(self.cast::<Type>())?
-            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
-
-        if seq.next_element::<de::IgnoredAny>()?.is_some() {
-            return Err(de::Error::invalid_length(3, &self));
-        }
-
-        Ok((key, value))
-    }
-}
 
 /// Visitor implementations for deserialization of [MapTypeDefinition].
 impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, MapTypeDefinition> {
