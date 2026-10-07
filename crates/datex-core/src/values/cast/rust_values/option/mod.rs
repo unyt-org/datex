@@ -6,11 +6,11 @@ pub mod datex_native;
 pub mod datex_native_structural;
 pub mod get_core_lib_type_id;
 pub mod get_datex_type;
+mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
 mod value_access;
-mod serde_dif;
 
 #[cfg(test)]
 mod tests {
@@ -34,14 +34,12 @@ mod tests {
         let some_value: Value = Value::native_structural(some_option);
         let none_value: Value = Value::native_structural(none_option);
 
-        // assert_eq!(some_value.try_as::<Integer>().unwrap(), &Integer::new(1));
-        // assert_eq!(
-        //     some_value.try_into_value::<Option<Integer>>().unwrap(),
-        //     Some(Integer::new(1))
-        // );
-
-        assert_eq!(none_value.try_as::<Option<Integer>>().unwrap(), &None);
-        // assert_eq!(none_value, Value::native_structural(None::<Integer>));
+        // Option<T> is represented as T | Null, not as Option<T> itself,
+        // so it cannot be borrowed as &Option<T>.
+        assert!(some_value.try_as::<Option<Integer>>().is_none());
+        assert!(none_value.try_as::<Option<Integer>>().is_none());
+        assert!(some_value.try_as::<Integer>().is_some());
+        assert!(none_value.try_as::<Integer>().is_none());
     }
 
     #[test]

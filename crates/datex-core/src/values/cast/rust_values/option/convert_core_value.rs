@@ -21,16 +21,20 @@ where
         }
     }
 
-    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
-        // We could return CoreValue::Null => Ok(&None) here, but to make the API consistent with the mutable version and avoid returning a reference to a temporary Option<T>, we simply return an error.
+    fn try_borrow_from_core_value(_value: &CoreValue) -> Result<&Self, ()> {
+        // Option<T> is represented as null | T, so CoreValue never contains
+        // an Option<T> that can be borrowed as &Option<T>.
+        // We could return `Ok(&None)` for the null case here, but to make the API consistent
+        // with the mutable version and avoid returning a reference to a temporary Option<T>,
+        // we simply return an error.
         Err(())
     }
 
     fn try_borrow_mut_from_core_value(
-        value: &mut CoreValue,
+        _value: &mut CoreValue,
     ) -> Result<&mut Self, ()> {
-        // We can not cover the CoreValue::Null here because we need to return a mutable reference to an Option<T>
-        // We can not call value.try_as_mut::<Option<T>>().ok_or(()) and basicially forced, to do nothing here.
+        // Option<T> is represented as null | T, so CoreValue never contains
+        // an Option<T> that can be borrowed as &mut Option<T>.
         Err(())
     }
 }
