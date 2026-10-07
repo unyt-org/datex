@@ -21,9 +21,11 @@ use serde::{
     de::{DeserializeSeed, Error as DeError, Visitor},
     ser::SerializeTuple,
 };
+use serde::ser::SerializeMap;
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
 use crate::dif::value_with_serde_context::ValueWithSerdeContext;
 use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
+use crate::preludes::derive::ValueTag;
 
 impl<'ctx> SerdeContext<'ctx> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -60,7 +62,7 @@ impl<'ctx> SerdeContext<'ctx> {
 
     /// This method is used to serialize a value that requires a context to be serialized (i.e. a value that implements [SerializeWithSerdeContext]).
     /// It will serialize the value as a tuple of [<core_lib_id>, <value>, <classification>], where the classification is optional.
-    fn serialize_value_with_context<Se, T>(
+    pub(crate) fn serialize_value_with_context<Se, T>(
         &self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
@@ -111,115 +113,43 @@ impl SerializeWithSerdeContext for Value {
     where
         S: Serializer,
     {
-        // TODO: serialize optional classification layer + optional tag layer
-        let core_lib_type = self.default_core_type();
-        match &self.inner {
-            // Direct serializable core values, that can be serialized as they can be unambiguously deserialized without it
-            CoreValue::Boolean(b) => ctx.serialize_core_value(
-                b,
-                core_lib_type,
-                serializer,
-                true,
-            ),
-            CoreValue::Text(s) => ctx.serialize_core_value(
-                s,
-                core_lib_type,
-                serializer,
-                true,
-            ),
-            CoreValue::Null => ctx.serialize_core_value(
-                &(),
-                core_lib_type,
-                serializer,
-                true,
-            ),
-            CoreValue::TypedDecimal(dec @ TypedDecimal::F64(_)) => ctx
-                .serialize_core_value(
-                    &dec,
-                    core_lib_type,
-                    serializer,
-                    dec.is_finite(),
-                ),
-
-            // Core values that require a specific core type id to be serialized for non-ambiguous deserialization
-            CoreValue::Endpoint(endpoint) => ctx.serialize_core_value(
-                endpoint,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Decimal(d) => ctx.serialize_core_value(
-                d,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Integer(i) => ctx.serialize_core_value(
-                i,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::TypedInteger(ti) => ctx.serialize_core_value(
-                ti,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::TypedDecimal(td) => ctx.serialize_core_value(
-                td,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-
-            // Complex core values, that can contain nested values
-            CoreValue::List(l) => ctx.serialize_value_with_context(
-                l,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Range(range) => ctx.serialize_value_with_context(
-                range,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-
-            CoreValue::Map(map) => ctx.serialize_value_with_context(
-                map,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Type(ty) => ctx.serialize_value_with_context(
-                ty,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::EntityTypeDefinition(_entity_type_definition) => {
-                todo!()
-            }
-            CoreValue::Callable(callable) => ctx
-                .serialize_value_with_context(
-                    callable,
-                    core_lib_type,
-                    serializer,
-                    false,
-                ),
-            CoreValue::Box(inner) => {
-                inner.serialize_with_ctx(ctx, serializer)
-            }
-            CoreValue::Uninitialized => panic!("Uninitialized value"),
-            CoreValue::Native(native) => {
-                native.serialize_with_ctx(ctx, serializer)
-            }
+        // if default classification, just serialize the core value + tag
+        if self.classification.is_unclassified() {
+            (&self.inner, &self.classification.tag)
+                .serialize_with_ctx(ctx, serializer)
+        }
+        // else serialize as a map with "c" and "v" keys
+        else {
+            let mut map = serializer.serialize_map(Some(2))?;
+            map.serialize_entry("c", &ValueWithSerdeContext::new(&self.classification, ctx))?;
+            map.serialize_entry("v", &ValueWithSerdeContext::new(&(&self.inner, &self.classification.tag), ctx))?;
+            map.end()
         }
     }
 }
 
+impl SerializeWithSerdeContext for (&CoreValue, &Option<ValueTag>) {
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // if no tag, just serialize the core value
+        if self.1.is_none() {
+            self.0.serialize_with_ctx(ctx, serializer)
+        }
+        // else serialize as a map with "t" and "v" keys
+        else {
+            let mut map = serializer.serialize_map(Some(2))?;
+            map.serialize_entry("t", &self.1)?;
+            map.serialize_entry("v", &ValueWithSerdeContext::new(&self.0, ctx))?;
+            map.end()
+        }
+    }
+}
 
 impl<'de> DeserializeWithSerdeContext<'de> for Value {
 
@@ -382,14 +312,14 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
         A: MapAccess<'de>,
     {
         // expect 'v' and optional 'c' key
-        let mut core_value: Option<CoreValue> = None;
+        let mut core_value: Option<(CoreValue, Option<ValueTag>)> = None;
         let mut classification: ValueClassification = ValueClassification::default();
 
         while let Some(field) = map.next_key::<String>()? {
             match field.as_str() {
                 "v" => {
                     core_value = Some(
-                        map.next_value_seed(self.cast::<CoreValue>())?,
+                        map.next_value_seed(self.cast::<(CoreValue, Option<ValueTag>)>())?,
                     );
                 }
 
@@ -406,13 +336,208 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
         }
 
         match core_value {
-            Some(core_value) => Ok(Value::new(core_value, classification)),
+            Some((core_value, tag)) => {
+                // set the tag in the classification if it exists
+                if let Some(tag) = tag {
+                    classification.tag = Some(tag);
+                }
+                Ok(Value::new(core_value, classification))
+            },
             None => Err(A::Error::custom(
                 "Expected a 'v' key for the DIF value",
             )),
         }
     }
 }
+
+impl<'de> DeserializeWithSerdeContext<'de> for (CoreValue, Option<ValueTag>) {
+
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(DeserializeSerdeContext::<(CoreValue, Option<ValueTag>)>::new(ctx))
+    }
+}
+
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (CoreValue, Option<ValueTag>)> {
+    type Value = (CoreValue, Option<ValueTag>);
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("a value with an optional tag, which can be a direct core value (e.g. boolean, text) or a complex value with a custom type definition")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut core_value: Option<CoreValue> = None;
+        let mut tag: Option<ValueTag> = None;
+
+        while let Some(field) = map.next_key::<String>()? {
+            match field.as_str() {
+                "v" => {
+                    core_value = Some(map.next_value_seed(self.cast::<CoreValue>())?);
+                }
+                "t" => {
+                    tag = Some(map.next_value()?);
+                }
+                _ => {
+                    return Err(A::Error::custom(format!(
+                        "Unexpected key for DIF value with tag: {}",
+                        field
+                    )));
+                }
+            }
+        }
+
+        match core_value {
+            Some(core_value) => Ok((core_value, tag)),
+            None => Err(A::Error::custom(
+                "Expected a 'v' key for the DIF value with tag",
+            )),
+        }
+    }
+
+    // fallback for direct core values without a tag
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok((self.cast::<CoreValue>().visit_unit()?, None))
+    }
+
+    /// default mapping for none: null
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_unit()
+    }
+
+    /// default mapping for bool: boolean
+    fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok((self.cast::<CoreValue>().visit_bool(v)?, None))
+    }
+
+    /// default mapping for string: text
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok((self.cast::<CoreValue>().visit_str(v)?, None))
+    }
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_str(&v)
+    }
+
+    /// default mapping for f64: decimal/f64
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok((self.cast::<CoreValue>().visit_f64(v)?, None))
+    }
+
+    // default mapping for integers: decimal/f64 (with a check for overflow)
+    fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "i64 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "u64 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+    fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i128<E>(self, v: i128) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "i128 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+    fn visit_u128<E>(self, v: u128) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "u128 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+
+    /// mapping for [core_lib_type_id, core_value]
+    fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        Ok((self.cast::<CoreValue>().visit_seq(seq)?, None))
+    }
+}
+
 
 
 

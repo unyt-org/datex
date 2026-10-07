@@ -93,7 +93,7 @@ impl ValueClassification {
         }
     }
 
-    pub fn is_none(&self) -> bool {
+    pub fn is_unclassified(&self) -> bool {
         self.entity_type.is_none() && self.impls.is_empty() && self.tag.is_none()
     }
 }

@@ -212,6 +212,12 @@ fn generate_dif_deserialize_for_enum(
             pub __ctx: &'a SerdeContext<'ctx>,
         }
 
+        impl<'a, 'ctx> #collector_ident<'a, 'ctx> {
+            fn new(ctx: &'a SerdeContext<'ctx>) -> Self {
+                #collector_ident { __ctx: ctx }
+            }
+        }
+
         impl<'de, 'a, 'ctx> Visitor<'de> for #collector_ident<'a, 'ctx> {
             type Value = #ident;
 
@@ -221,11 +227,20 @@ fn generate_dif_deserialize_for_enum(
                 )
             }
 
-            fn visit_map<_MapAccess>(self, mut map: _MapAccess) -> Result<Self::Value, _MapAccess::Error> {
-                #ident(...)
+            fn visit_map<_MapAccess>(self, mut map: _MapAccess) -> Result<Self::Value, _MapAccess::Error>
+             where
+                _MapAccess: MapAccess<'de> {
+                // expect "t" and "v" keys
+                todo!()
             }
         }
     };
+
+    let deserialize_impl = quote! {
+        deserializer.deserialize_any(#collector_ident::new(ctx))
+    };
+
+    (deserialize_impl, parent_visitor)
 }
 
 
