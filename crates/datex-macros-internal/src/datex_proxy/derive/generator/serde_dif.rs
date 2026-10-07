@@ -1,8 +1,8 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::parse_quote;
-use crate::datex_proxy::data::{AnyField, FieldIdent, FieldMapping, FieldType, Fields, IndexedField, NamedField, Structure, StructureData};
-use crate::datex_proxy::generator::helpers::{generate_struct_or_enum_variants_fields_mapping, SelfAccess, generate_from_parts_impl, generate_struct_field_accessors, map_enum_variants};
+use crate::datex_proxy::data::{AnyField, EnumVariant, FieldIdent, FieldMapping, FieldType, Fields, IndexedField, NamedField, Structure, StructureData};
+use crate::datex_proxy::generator::helpers::{generate_struct_or_enum_variants_fields_mapping, SelfAccess, generate_from_parts_impl, generate_struct_field_accessors, map_enum_variants, generate_enum_match_from_parts};
 
 /// Creates the implementation of the [SerializeWithSerdeContext] and [DeserializeWithSerdeContext] trait for the given structure data.
 /// Returns a TokenStream of the implementation.
@@ -69,16 +69,15 @@ fn generate_serde_deserialize(
         ident, generics, ..
     } = structure_data;
 
+
     let (deserialize_impl, visitor_impl) = match &structure_data.structure {
-        Structure::Struct(fields) => {
-            generate_dif_deserialize_for_struct(
-                structure_data,
-                fields,
-            )
-        }
+        Structure::Struct(fields) => generate_dif_deserialize_for_struct(
+            structure_data,
+            fields,
+            &Ident::new(&format!("{}DeserializeCollector", ident), Span::call_site())
+        ),
         Structure::Enum(variants) => {
-            // TODO
-            (quote! { todo!() }, quote! { })
+            generate_dif_deserialize_for_enum(structure_data, variants)
         }
     };
 
@@ -197,16 +196,48 @@ fn generate_dif_serialize_for_fields(
     }
 }
 
+fn generate_dif_deserialize_for_enum(
+    structure_data: &StructureData,
+    variants: &[EnumVariant],
+) -> (TokenStream, TokenStream) {
+    let StructureData {
+        ident, ..
+    } = structure_data;
+
+    let collector_ident = Ident::new(&format!("{}EnumDeserializeCollector", ident), Span::call_site());
+
+    let parent_visitor = quote! {
+
+        struct #collector_ident<'a, 'ctx> {
+            pub __ctx: &'a SerdeContext<'ctx>,
+        }
+
+        impl<'de, 'a, 'ctx> Visitor<'de> for #collector_ident<'a, 'ctx> {
+            type Value = #ident;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str(
+                    "either an object with string keys or a sequence of [key, value] entries",
+                )
+            }
+
+            fn visit_map<_MapAccess>(self, mut map: _MapAccess) -> Result<Self::Value, _MapAccess::Error> {
+                #ident(...)
+            }
+        }
+    };
+}
+
+
 /// Generates the deserialization implementation and Visitor for a struct.
 fn generate_dif_deserialize_for_struct(
     structure_data: &StructureData,
     fields: &Fields,
+    collector_ident: &Ident
 ) -> (TokenStream, TokenStream) {
     let StructureData {
         ident, generics, ..
     } = structure_data;
-
-    let collector_ident = Ident::new(&format!("{}DeserializeCollector", ident), ident.span());
 
     let (properties, property_defaults, property_collapses) = generate_property_mappings(fields);
 

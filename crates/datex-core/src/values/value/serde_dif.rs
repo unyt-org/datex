@@ -111,6 +111,7 @@ impl SerializeWithSerdeContext for Value {
     where
         S: Serializer,
     {
+        // TODO: serialize optional classification layer + optional tag layer
         let core_lib_type = self.default_core_type();
         match &self.inner {
             // Direct serializable core values, that can be serialized as they can be unambiguously deserialized without it
