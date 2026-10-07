@@ -24,7 +24,7 @@ impl<'de> DeserializeWithSerdeContext<'de> for SharedContainer {
     ) -> Result<SharedContainer, D::Error> {
         let PointerAddressWithOwnership { address, ownership } =
             PointerAddressWithOwnership::deserialize(d)?;
-        let reference = ctx
+        ctx
             .shared_container_cache
             .borrow_mut()
             .try_get_shared_container_with_ownership(&address, ownership)
@@ -33,12 +33,11 @@ impl<'de> DeserializeWithSerdeContext<'de> for SharedContainer {
                     "Failed to retrieve shared container from cache: {}",
                     e
                 ))
-            })?;
-        Ok(reference)
+            })
     }
 }
 impl<'ctx> SerdeContext<'ctx> {
-    pub fn pointer_string(&self, value: &SharedContainer) -> String {
+    pub unsafe fn pointer_string(&self, value: &SharedContainer) -> String {
         unsafe {
             self.shared_container_cache
                 .borrow_mut()
@@ -60,7 +59,7 @@ impl<'ctx> SerdeContext<'ctx> {
         format!("{}{}", ownership, value.pointer_address())
     }
 }
-impl<'ctx> SerializeWithSerdeContext for SharedContainer {
+impl SerializeWithSerdeContext for SharedContainer {
     /// SAFETY:
     /// The caller of the `serialize` method must either
     /// * guarantee that no direct value (accessible without borrow) is an owned shared value
@@ -75,7 +74,9 @@ impl<'ctx> SerializeWithSerdeContext for SharedContainer {
     where
         S: Serializer,
     {
-        ctx.pointer_string(self).serialize(serializer)
+        unsafe {
+            ctx.pointer_string(self).serialize(serializer)
+        }
     }
 }
 
@@ -144,7 +145,7 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use std::cell::RefCell;
+    use core::cell::RefCell;
 
     #[test]
     fn deserialize_owned_pointer_address_to_shared_container() {
