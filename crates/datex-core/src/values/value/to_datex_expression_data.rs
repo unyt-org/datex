@@ -23,7 +23,7 @@ fn classification_expression(
     mut expression: DatexExpressionData,
     classification: &ValueClassification,
 ) -> DatexExpressionData {
-    if classification.is_none() {
+    if classification.is_unclassified() {
         return expression;
     }
     

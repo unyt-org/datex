@@ -30,6 +30,7 @@ use crate::{
     },
 };
 use core::{fmt, str::FromStr};
+use erased_serde::__private::serde::Serializer;
 use serde::{
     Deserializer,
     de::{DeserializeSeed, SeqAccess, Visitor},
@@ -37,8 +38,122 @@ use serde::{
 use serde_with::__private__::DeError;
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
 use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
+use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
 use crate::libs::core::core_lib_id::CoreLibIdIndex;
 use crate::values::core_values::boolean::Boolean;
+
+
+impl SerializeWithSerdeContext for CoreValue {
+    fn serialize_with_ctx<S: Serializer>(&self, ctx: &SerdeContext<'_>, serializer: S) -> Result<S::Ok, S::Error> {
+        let core_lib_type = self.default_core_type();
+
+        match &self {
+            // Direct serializable core values, that can be serialized as they can be unambiguously deserialized without it
+            CoreValue::Boolean(b) => ctx.serialize_core_value(
+                b,
+                core_lib_type,
+                serializer,
+                true,
+            ),
+            CoreValue::Text(s) => ctx.serialize_core_value(
+                s,
+                core_lib_type,
+                serializer,
+                true,
+            ),
+            CoreValue::Null => ctx.serialize_core_value(
+                &(),
+                core_lib_type,
+                serializer,
+                true,
+            ),
+            CoreValue::TypedDecimal(dec @ TypedDecimal::F64(_)) => ctx
+                .serialize_core_value(
+                    &dec,
+                    core_lib_type,
+                    serializer,
+                    dec.is_finite(),
+                ),
+
+            // Core values that require a specific core type id to be serialized for non-ambiguous deserialization
+            CoreValue::Endpoint(endpoint) => ctx.serialize_core_value(
+                endpoint,
+                core_lib_type,
+                serializer,
+                false,
+            ),
+            CoreValue::Decimal(d) => ctx.serialize_core_value(
+                d,
+                core_lib_type,
+                serializer,
+                false,
+            ),
+            CoreValue::Integer(i) => ctx.serialize_core_value(
+                i,
+                core_lib_type,
+                serializer,
+                false,
+            ),
+            CoreValue::TypedInteger(ti) => ctx.serialize_core_value(
+                ti,
+                core_lib_type,
+                serializer,
+                false,
+            ),
+            CoreValue::TypedDecimal(td) => ctx.serialize_core_value(
+                td,
+                core_lib_type,
+                serializer,
+                false,
+            ),
+
+            // Complex core values, that can contain nested values
+            CoreValue::List(l) => ctx.serialize_value_with_context(
+                l,
+                core_lib_type,
+                serializer,
+                false,
+            ),
+            CoreValue::Range(range) => ctx.serialize_value_with_context(
+                range,
+                core_lib_type,
+                serializer,
+                false,
+            ),
+
+            CoreValue::Map(map) => ctx.serialize_value_with_context(
+                map,
+                core_lib_type,
+                serializer,
+                false,
+            ),
+            CoreValue::Type(ty) => ctx.serialize_value_with_context(
+                ty,
+                core_lib_type,
+                serializer,
+                false,
+            ),
+            CoreValue::EntityTypeDefinition(_entity_type_definition) => {
+                todo!()
+            }
+            CoreValue::Callable(callable) => ctx
+                .serialize_value_with_context(
+                    callable,
+                    core_lib_type,
+                    serializer,
+                    false,
+                ),
+            CoreValue::Box(inner) => {
+                inner.serialize_with_ctx(ctx, serializer)
+            }
+            CoreValue::Uninitialized => panic!("Uninitialized value"),
+            CoreValue::Native(native) => {
+                native.serialize_with_ctx(ctx, serializer)
+            }
+        }
+    }
+}
+
 
 impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for CoreValue {
 
