@@ -201,8 +201,9 @@ impl<'ctx> SerializeWithSerdeContext for ValueContainer {
         match self {
             ValueContainer::Shared(shared) => {
                 use serde::ser::SerializeMap;
-                let pointer =
-                    ctx.pointer_string(shared);
+                let pointer = unsafe {
+                    ctx.pointer_string(shared)
+                };
 
                 let mut map = serializer.serialize_map(Some(1))?;
                 map.serialize_entry(SHARED_CONTAINER_KEY, &pointer)?;

@@ -180,6 +180,19 @@ impl SharedValuesCache {
 
     /// Tries to get a mutable reference to a shared container from the cache at the given pointer address.
     /// If the container for the address is not in the cache, a [ValueNotFoundInCacheError] is returned.
+    pub fn try_get_shared_container_reference(
+        &self,
+        pointer_address: &PointerAddress,
+        mutability: ReferenceMutability,
+    ) -> Result<ReferencedSharedContainer, CacheValueRetrievalError> {
+        match mutability {
+            ReferenceMutability::Mutable => self.try_get_shared_container_mutable_reference(pointer_address),
+            ReferenceMutability::Immutable => Ok(self.try_get_shared_container_immutable_reference(pointer_address)?),
+        }
+    }
+
+    /// Tries to get a mutable reference to a shared container from the cache at the given pointer address.
+    /// If the container for the address is not in the cache, a [ValueNotFoundInCacheError] is returned.
     /// If the container cannot be accessed as a mutable reference, an [UnexpectedImmutableReferenceError] error is returned.
     pub fn try_get_shared_container_mutable_reference(
         &self,
