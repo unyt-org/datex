@@ -35,6 +35,7 @@ mod to_instructions;
 pub mod update_handler;
 mod value_access;
 pub mod value_classification;
+pub mod core_value_with_classification;
 
 use crate::{
     preludes::derive::{
@@ -64,35 +65,51 @@ use core::{
 };
 use crate::types::type_definition::impl_type::ImplMarkers;
 use crate::types::type_definition::intersection::IntersectionTypeDefinition;
+use crate::values::core_values::native::NativeCoreValue;
+use crate::values::value::core_value_with_classification::CoreValueWithClassification;
 
-#[derive(Debug)]
-pub struct Value {
-    /// The inner representation of the value, which is a [CoreValue].
-    pub inner: CoreValue,
-    /// additional extensions for the value, including its entity type, impls, and tag
-    pub classification: ValueClassification,
+#[derive(Debug, Clone)]
+/// Represents a local DATEX value.
+/// This can either be a core value with classification or a
+/// native rust value that provides all trait implementations.
+pub enum Value {
+    /// Core value with classification
+    Core(CoreValueWithClassification),
+    /// Native rust value with DATEX representation
+    Native(NativeCoreValue),
 }
 
-impl Clone for Value {
-    fn clone(&self) -> Self {
-        Value {
-            inner: self.inner.clone(),
-            classification: self.classification.clone(),
-        }
+impl From<CoreValueWithClassification> for Value {
+    fn from(inner: CoreValueWithClassification) -> Self {
+        Value::Core(inner)
+    }
+}
+
+impl From<NativeCoreValue> for Value {
+    fn from(native: NativeCoreValue) -> Self {
+        Value::Native(native)
     }
 }
 
 impl<T: ConvertCoreValue> From<T> for Value {
     fn from(inner: T) -> Self {
         let inner = inner.to_core_value();
-        Value {
+        CoreValueWithClassification {
             inner,
             classification: ValueClassification::new_unclassified(),
-        }
+        }.into()
     }
 }
 
 impl Value {
+    /// Creates a new [Value] from a native value that implements the [DatexNative] trait.
+    pub fn native(value: impl DatexNative) -> Value {
+        Value::Native(NativeCoreValue::new(value))
+    }
+    pub fn native_boxed(value: Box<dyn DatexNative>) -> Value {
+        Value::Native(NativeCoreValue { value })
+    }
+    
     pub fn null() -> Self {
         CoreValue::Null.into()
     }
@@ -105,93 +122,30 @@ impl Value {
         inner: impl ConvertCoreValue,
         classification: impl Into<ValueClassification>,
     ) -> Self {
-        Value {
+        CoreValueWithClassification {
             inner: inner.to_core_value(),
             classification: classification.into(),
-        }
+        }.into()
     }
     
     pub fn new_unclassified(inner: impl ConvertCoreValue) -> Self {
-        Value {
+        CoreValueWithClassification {
             inner: inner.to_core_value(),
             classification: ValueClassification::new_unclassified(),
-        }
+        }.into()
     }
 
-    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
-    /// Since types might be needed to get resolved for entity values, the cache is required.
-    pub fn native<T: DatexNative>(
-        value: T,
-        cache: &mut SharedReferencesCache,
-    ) -> Value {
-        let classification = value.classification(cache);
-        Value::new(CoreValue::native(value), classification)
-    }
-
-    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
-    /// Since types might be needed to get resolved for entity values, the cache is required.
-    pub fn native_boxed<T: DatexNative>(
-        value: Box<T>,
-        cache: &mut SharedReferencesCache,
-    ) -> Value {
-        let classification = value.classification(cache);
-        Value::new(CoreValue::native_boxed(value), classification)
-    }
-
-    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
-    /// Since types might be needed to get resolved for entity values, the cache is required.
-    pub fn native_dyn(
-        value: Box<dyn DatexNative>,
-        cache: &mut SharedReferencesCache,
-    ) -> Value {
-        let classification = value.classification(cache);
-        Value::new(CoreValue::native_boxed(value), classification)
-    }
-
-    /// Creates a new CoreValue from a native value that implements the [DatexNativeStructural] trait.
-    /// Since the type is required to be completely structural without any entity references,
-    /// no cache is needed to resolve types.
-    pub fn native_structural<T: DatexNativeStructural>(value: T) -> Value {
-        let classification = value.classification_without_cache();
-        Value::new(CoreValue::native(value), classification)
-    }
-
-    /// Creates a new CoreValue from a native value that implements the [DatexNativeStructural] trait.
-    /// Since the type is required to be completely structural without any entity references,
-    /// no cache is needed to resolve types.
-    pub fn native_structural_boxed<T: DatexNativeStructural>(
-        value: Box<T>,
-    ) -> Value {
-        let classification = value.classification_without_cache();
-        Value::new(CoreValue::native_boxed(value), classification)
-    }
 
     /// Checks if the inner [CoreValue] of the [Value] is a [CoreValue::Native].
     pub fn is_native(&self) -> bool {
-        matches!(&self.inner, CoreValue::Native(_))
+        matches!(&self, Value::Native(_))
     }
 
-    pub fn into_inner(self) -> CoreValue {
-        self.inner
-    }
     pub fn is_uninitialized(&self) -> bool {
-        matches!(&self.inner, CoreValue::Uninitialized)
-    }
-
-    /// Returns a reference to the inner [CoreValue] of the [Value].
-    /// If the inner [CoreValue] is a [CoreValue::Native], it is first collapsed to a DATEX value.
-    pub fn inner_non_native(
-        &self,
-        _cache: &mut SharedReferencesCache,
-    ) -> Result<Cow<'_, CoreValue>, ()> {
-        Ok(Cow::Borrowed(&self.inner)) // workaround
-        // TODO: implement try_borrowed_boxed_to_value
-        // match &self.inner {
-        //     CoreValue::Native(native) => Ok(
-        //         Cow::Owned(native.value.try_boxed_to_value(cache)?.inner)
-        //     ),
-        //     _ => Ok(Cow::Borrowed(&self.inner)),
-        // }
+        match self {
+            Value::Core(core_value_with_classification) => core_value_with_classification.is_uninitialized(),
+            Value::Native(_) => false,
+        }
     }
 
     /// Strips any local observers from the given value container.
@@ -234,8 +188,12 @@ impl Value {
     }
 
     pub fn is_null(&self) -> bool {
-        matches!(self.inner, CoreValue::Null)
-        // TODO: also handle native null values
+        match self {
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.is_null()
+            }
+            Value::Native(native_core_value) => false, // TODO: handle native null values
+        }
     }
 
     /// Tries to get a borrow of the current value as the specified type.

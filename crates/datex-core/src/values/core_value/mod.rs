@@ -69,8 +69,6 @@ pub enum CoreValue {
     Range(Range),
     /// Used for nested values, e.g. #Tagged (shared 42)
     Box(Box<ValueContainer>),
-    /// Native rust value with DATEX representation
-    Native(NativeCoreValue),
 }
 
 //
@@ -128,7 +126,6 @@ impl From<&CoreValue> for CoreLibTypeId {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
             }
             CoreValue::Box(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Box),
-            CoreValue::Native(native) => native.core_lib_type_id(),
         }
     }
 }
@@ -140,15 +137,7 @@ impl CoreValue {
     {
         value.into()
     }
-
-    /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
-    pub fn native(value: impl DatexNative) -> CoreValue {
-        CoreValue::Native(NativeCoreValue::new(value))
-    }
-    pub fn native_boxed(value: Box<dyn DatexNative>) -> CoreValue {
-        CoreValue::Native(NativeCoreValue { value })
-    }
-
+    
     /// Check if the CoreValue is a combined value type (List, Map)
     /// that contains inner ValueContainers.
     pub fn is_collection_value(&self) -> bool {
