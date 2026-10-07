@@ -27,7 +27,6 @@ use crate::{
     dif::serde_context::SerdeContext,
     values::{
         core_values::{callable::Callable, endpoint::Endpoint},
-        value::Value,
     },
 };
 use core::{fmt, str::FromStr};
@@ -35,11 +34,195 @@ use serde::{
     Deserializer,
     de::{DeserializeSeed, SeqAccess, Visitor},
 };
+use serde_with::__private__::DeError;
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
+use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
+use crate::values::core_values::boolean::Boolean;
+
+impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for CoreValue {
+
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(DeserializeSerdeContext::<CoreValue>::new(ctx))
+    }
+}
+
+
+impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, CoreValue> {
+    type Value = CoreValue;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("a value, which can be a direct core value (e.g. boolean, text) or a complex value with a custom type definition")
+    }
+
+    /// default mapping for unit: null
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok(CoreValue::Null)
+    }
+
+    /// default mapping for none: null
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_unit()
+    }
+
+    /// default mapping for bool: boolean
+    fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok(CoreValue::Boolean(Boolean::new(v)))
+    }
+
+    /// default mapping for string: text
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok(CoreValue::Text(v.into()))
+    }
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_str(&v)
+    }
+
+    /// default mapping for f64: decimal/f64
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok(CoreValue::TypedDecimal(TypedDecimal::F64(
+            v.into(),
+        )))
+    }
+
+    // default mapping for integers: decimal/f64 (with a check for overflow)
+    fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "i64 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "u64 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+    fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i128<E>(self, v: i128) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "i128 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+    fn visit_u128<E>(self, v: u128) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "u128 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+
+    /// mapping for [core_lib_type_id, core_value]
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let core_lib_type_id: u16 = seq.next_element()?.ok_or_else(|| {
+            serde::de::Error::custom("expected a sequence with at least one element for core value deserialization")
+        })?;
+
+        let core_lib_id = CoreLibTypeId::try_from(CoreLibIdIndex(
+            core_lib_type_id,
+        ))
+            .map_err(|_| {
+                serde::de::Error::custom("invalid core lib id index".to_string())
+            })?;
+
+        let visitor = CoreValueVisitor {
+            core_lib_id,
+            context: &self,
+        };
+        seq.next_element_seed(visitor)?.ok_or_else(|| {
+            serde::de::Error::custom(format!(
+                "expected a sequence with at least two elements for core value deserialization, got only one (core lib id: {core_lib_id})"
+            ))
+        })
+    }
+}
+
+
 
 pub struct CoreValueVisitor<'a, 'ctx> {
     pub core_lib_id: CoreLibTypeId,
-    pub context: &'a DeserializeSerdeContext<'a, 'ctx, Value>,
+    pub context: &'a DeserializeSerdeContext<'a, 'ctx, CoreValue>,
 }
 
 impl<'de, 'a, 'ctx> DeserializeSeed<'de> for CoreValueVisitor<'a, 'ctx> {
@@ -518,7 +701,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
+    use core::cell::RefCell;
     use super::*;
 
     use crate::runtime::cache::shared_values_cache::SharedValuesCache;

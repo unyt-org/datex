@@ -13,7 +13,6 @@ impl SerializeWithSerdeContext for TypedDecimal {
         ctx.serialize_core_value(
             self,
             CoreLibVariantTypeId::Decimal(self.variant()).into(),
-            &ValueClassification::default(),
             serializer,
             false,
         )

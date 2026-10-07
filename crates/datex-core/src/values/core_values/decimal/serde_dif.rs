@@ -10,7 +10,6 @@ impl SerializeWithSerdeContext for Decimal {
         ctx.serialize_core_value(
             self, 
             CoreLibBaseTypeId::Decimal.into(),
-            &ValueClassification::default(),
             serializer,
             false,
         )

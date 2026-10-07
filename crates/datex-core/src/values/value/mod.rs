@@ -110,6 +110,13 @@ impl Value {
             classification: classification.into(),
         }
     }
+    
+    pub fn new_unclassified(inner: impl ConvertCoreValue) -> Self {
+        Value {
+            inner: inner.to_core_value(),
+            classification: ValueClassification::new_unclassified(),
+        }
+    }
 
     /// Creates a new CoreValue from a native value that implements the [DatexNative] trait.
     /// Since types might be needed to get resolved for entity values, the cache is required.

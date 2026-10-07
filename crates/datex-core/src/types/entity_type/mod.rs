@@ -61,6 +61,11 @@ impl EntityType {
     pub fn to_shared_container(self) -> SharedContainer {
         self.0
     }
+    
+    /// Returns a reference to the inner [SharedContainer] of the [EntityType].
+    pub fn shared_container(&self) -> &SharedContainer {
+        &self.0
+    }
 
     /// Creates a new [EntityType] from a [SharedContainer] without checking the constraint.
     /// # Safety
