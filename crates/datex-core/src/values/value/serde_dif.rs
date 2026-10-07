@@ -14,6 +14,7 @@ use crate::{
     },
 };
 use core::fmt;
+use erased_serde::__private::serde::de::{IgnoredAny, MapAccess};
 use num::ToPrimitive;
 use serde::{
     Deserializer, Serialize, Serializer,
@@ -38,7 +39,6 @@ impl<'ctx> SerdeContext<'ctx> {
         &self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
-        classification: &ValueClassification,
         serializer: Se,
         direct: bool,
     ) -> Result<Se::Ok, Se::Error>
@@ -46,24 +46,15 @@ impl<'ctx> SerdeContext<'ctx> {
         T: Serialize + ?Sized,
         Se: Serializer,
     {
-        if direct && classification.is_none() {
+        if direct {
             return inner.serialize(serializer);
         }
 
         let index = CoreLibIdIndex::from(core_lib_type_id);
         let mut tuple = serializer
-            .serialize_tuple(if classification.is_none() { 2 } else { 3 })?;
+            .serialize_tuple(2)?;
         tuple.serialize_element(&index.to_u16())?;
         tuple.serialize_element(inner)?;
-        if !classification.is_none() {
-            // [id, value, classification]
-            tuple.serialize_element(&ValueWithSerdeContext::new(
-                classification,
-                self,
-            ))?;
-        } else {
-            // [id, value]
-        }
         tuple.end()
     }
 
@@ -73,7 +64,6 @@ impl<'ctx> SerdeContext<'ctx> {
         &self,
         inner: &T,
         core_lib_type_id: CoreLibTypeId,
-        classification: &ValueClassification,
         serializer: Se,
         direct: bool,
     ) -> Result<Se::Ok, Se::Error>
@@ -82,32 +72,37 @@ impl<'ctx> SerdeContext<'ctx> {
         Se: Serializer,
         for<'a> T: SerializeWithSerdeContext,
     {
-        if direct && classification.is_none() {
+        if direct {
             return inner.serialize_with_ctx(self, serializer);
         }
         let index = CoreLibIdIndex::from(core_lib_type_id);
         let mut tuple = serializer
-            .serialize_tuple(if classification.is_none() { 2 } else { 3 })?;
+            .serialize_tuple(2)?;
         tuple.serialize_element(&index.to_u16())?;
         tuple.serialize_element(&ValueWithSerdeContext::new(
             inner,
             self,
         ))?;
-        if !classification.is_none() {
-            // [id, value, classification]
-            tuple.serialize_element(&ValueWithSerdeContext::new(
-                classification,
-                self,
-            ))?;
-        } else {
-            // [id, value]
-        }
         tuple.end()
+    }
+
+    /// Deserializes into a [CoreValue] using the provided [CoreLibTypeId] to determine the type of the value.
+    pub(crate) fn deserialize_core_value<'de, D>(
+        &self,
+        deserializer: D,
+    ) -> Result<CoreValue, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let deserialize_ctx = DeserializeSerdeContext::<Value>::new(self);
+        deserializer.deserialize_any(deserialize_ctx).map(|v| v.inner)
     }
 }
 
+
+
 /// Serialization for [Value].
-impl<'ctx> SerializeWithSerdeContext for Value {
+impl SerializeWithSerdeContext for Value {
     fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
@@ -122,21 +117,18 @@ impl<'ctx> SerializeWithSerdeContext for Value {
             CoreValue::Boolean(b) => ctx.serialize_core_value(
                 b,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 true,
             ),
             CoreValue::Text(s) => ctx.serialize_core_value(
                 s,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 true,
             ),
             CoreValue::Null => ctx.serialize_core_value(
                 &(),
                 core_lib_type,
-                &self.classification,
                 serializer,
                 true,
             ),
@@ -144,7 +136,6 @@ impl<'ctx> SerializeWithSerdeContext for Value {
                 .serialize_core_value(
                     &dec,
                     core_lib_type,
-                    &self.classification,
                     serializer,
                     dec.is_finite(),
                 ),
@@ -153,35 +144,30 @@ impl<'ctx> SerializeWithSerdeContext for Value {
             CoreValue::Endpoint(endpoint) => ctx.serialize_core_value(
                 endpoint,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 false,
             ),
             CoreValue::Decimal(d) => ctx.serialize_core_value(
                 d,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 false,
             ),
             CoreValue::Integer(i) => ctx.serialize_core_value(
                 i,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 false,
             ),
             CoreValue::TypedInteger(ti) => ctx.serialize_core_value(
                 ti,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 false,
             ),
             CoreValue::TypedDecimal(td) => ctx.serialize_core_value(
                 td,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 false,
             ),
@@ -190,14 +176,12 @@ impl<'ctx> SerializeWithSerdeContext for Value {
             CoreValue::List(l) => ctx.serialize_value_with_context(
                 l,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 false,
             ),
             CoreValue::Range(range) => ctx.serialize_value_with_context(
                 range,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 false,
             ),
@@ -205,14 +189,12 @@ impl<'ctx> SerializeWithSerdeContext for Value {
             CoreValue::Map(map) => ctx.serialize_value_with_context(
                 map,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 false,
             ),
             CoreValue::Type(ty) => ctx.serialize_value_with_context(
                 ty,
                 core_lib_type,
-                &self.classification,
                 serializer,
                 false,
             ),
@@ -223,7 +205,6 @@ impl<'ctx> SerializeWithSerdeContext for Value {
                 .serialize_value_with_context(
                     callable,
                     core_lib_type,
-                    &self.classification,
                     serializer,
                     false,
                 ),
@@ -238,6 +219,18 @@ impl<'ctx> SerializeWithSerdeContext for Value {
     }
 }
 
+
+impl<'de> DeserializeWithSerdeContext<'de> for Value {
+
+    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(DeserializeSerdeContext::<Value>::new(ctx))
+    }
+}
+
+
 impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     type Value = Value;
 
@@ -250,7 +243,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::from(CoreValue::Null))
+        Ok(Value::new_unclassified(self.cast::<CoreValue>().visit_unit()?))
     }
 
     /// default mapping for none: null
@@ -266,7 +259,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::from(CoreValue::Boolean(Boolean::new(v))))
+        Ok(Value::new_unclassified(self.cast::<CoreValue>().visit_bool(v)?))
     }
 
     /// default mapping for string: text
@@ -274,7 +267,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::from(CoreValue::Text(v.into())))
+        Ok(Value::new_unclassified(self.cast::<CoreValue>().visit_str(v)?))
     }
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
     where
@@ -288,9 +281,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::from(CoreValue::TypedDecimal(TypedDecimal::F64(
-            v.into(),
-        ))))
+        Ok(Value::new_unclassified(self.cast::<CoreValue>().visit_f64(v)?))
     }
 
     // default mapping for integers: decimal/f64 (with a check for overflow)
@@ -377,52 +368,52 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
         })?)
     }
 
-    /// mapping for [core_lib_type_id, value, custom_type?]
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    /// mapping for [core_lib_type_id, core_value]
+    fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::SeqAccess<'de>,
     {
-        let core_lib_type_id: u16 = seq.next_element()?.ok_or_else(|| {
-            serde::de::Error::custom("expected a sequence with at least one element for core value deserialization")
-        })?;
-
-        let core_lib_id = CoreLibTypeId::try_from(CoreLibIdIndex(
-            core_lib_type_id,
-        ))
-        .map_err(|_| {
-            serde::de::Error::custom("invalid core lib id index".to_string())
-        })?;
-
-        let visitor = CoreValueVisitor {
-            core_lib_id,
-            context: &self,
-        };
-        let inner: CoreValue = seq.next_element_seed(visitor)?.ok_or_else(|| {
-            serde::de::Error::custom(format!(
-                "expected a sequence with at least two elements for core value deserialization, got only one (core lib id: {core_lib_id})"
-            ))
-        })?;
-
-        let classification: ValueClassification =
-            seq.next_element_seed(self.cast::<ValueClassification>()).map_err(|err| {
-                serde::de::Error::custom(format!(
-                    "error deserializing custom type definition for core value: {err}"
-                ))
-            })?.unwrap_or_default();
-
-        Ok(Value::new(inner, classification))
+        Ok(Value::new_unclassified(self.cast::<CoreValue>().visit_seq(seq)?))
     }
-}
 
-impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for Value {
-
-    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
     where
-        D: Deserializer<'de>,
+        A: MapAccess<'de>,
     {
-        deserializer.deserialize_any(DeserializeSerdeContext::<Value>::new(ctx))
+        // expect 'v' and optional 'c' key
+        let mut core_value: Option<CoreValue> = None;
+        let mut classification: ValueClassification = ValueClassification::default();
+
+        while let Some(field) = map.next_key::<String>()? {
+            match field.as_str() {
+                "v" => {
+                    core_value = Some(
+                        map.next_value_seed(self.cast::<CoreValue>())?,
+                    );
+                }
+
+                "c" => {
+                    classification = map.next_value_seed(self.cast::<ValueClassification>())?;
+                }
+                _ => {
+                    return Err(A::Error::custom(format!(
+                        "Unexpected key for DIF value: {}",
+                        field
+                    )));
+                }
+            }
+        }
+
+        match core_value {
+            Some(core_value) => Ok(Value::new(core_value, classification)),
+            None => Err(A::Error::custom(
+                "Expected a 'v' key for the DIF value",
+            )),
+        }
     }
 }
+
+
 
 #[cfg(test)]
 mod tests {
@@ -445,7 +436,7 @@ mod tests {
         },
     };
     use core::str::FromStr;
-    use std::cell::RefCell;
+    use core::cell::RefCell;
     use test_case::test_case;
 
     #[test]

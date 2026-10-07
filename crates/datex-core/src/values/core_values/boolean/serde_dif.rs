@@ -16,7 +16,6 @@ impl SerializeWithSerdeContext for Boolean {
         ctx.serialize_core_value(
             self,
             CoreLibBaseTypeId::Boolean.into(),
-            &ValueClassification::default(),
             serializer,
             true,
         )

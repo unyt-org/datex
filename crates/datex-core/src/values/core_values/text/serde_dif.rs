@@ -18,7 +18,6 @@ impl SerializeWithSerdeContext for Text {
         ctx.serialize_core_value(
             self,
             CoreLibBaseTypeId::Text.into(),
-            &ValueClassification::default(),
             serializer,
             true,
         )

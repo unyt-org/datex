@@ -6,7 +6,7 @@ use crate::dif::serde_context::SerdeContext;
 use crate::dif::serialize_with_serde_context::{SerializeWithSerdeContext, SerializeWithSerdeContextDyn};
 use crate::prelude::*;
 
-impl<'ctx, T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
+impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
 
     fn serialize_with_ctx<S: serde::Serializer>(
         &self,

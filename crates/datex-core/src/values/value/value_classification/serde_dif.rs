@@ -6,16 +6,15 @@ use crate::{
     dif::serialize_with_serde_context::SerializeWithSerdeContext,
     values::value::value_classification::{ValueClassification, ValueTag},
 };
-use serde::{
-    Deserializer, Serializer,
-    de::{DeserializeSeed, SeqAccess, Visitor},
-    ser::SerializeSeq,
-};
+use serde::{de::{DeserializeSeed, SeqAccess, Visitor}, ser::SerializeSeq, Deserialize, Deserializer, Serializer, Serialize};
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
 use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::preludes::derive::Type;
+use crate::shared_values::SharedContainer;
 
 /// Serialization for [ValueClassification].
-impl<'ctx> SerializeWithSerdeContext for ValueClassification {
+impl SerializeWithSerdeContext for ValueClassification {
     fn serialize_with_ctx<S>(
         &self,
         ctx: &SerdeContext<'_>,
@@ -26,31 +25,43 @@ impl<'ctx> SerializeWithSerdeContext for ValueClassification {
     {
         let mut seq = serializer.serialize_seq(None)?;
 
-        todo!();
-        // seq.serialize_element(value.as_ref())?;
-        //
-        // match value {
-        //     ValueClassification::new_unclassified() => {}
-        //     ValueClassification::Entity(entity_type) => {
-        //         seq.serialize_element(&ValueWithSeed::new(
-        //             entity_type,
-        //             self.cast::<EntityType>(),
-        //         ))?;
-        //     }
-        //     ValueClassification::Impls(impls) => {
-        //         seq.serialize_element(impls)?;
-        //     }
-        //     ValueClassification::Tag(tag) => {
-        //         seq.serialize_element(&tag.tag)?;
-        //         seq.serialize_element(&tag.is_empty)?;
-        //     }
-        // };
+        // Serialize entity_type if it exists
+        if let Some(entity_type) = &self.entity_type {
+            seq.serialize_element(
+                &ValueWithSerdeContext::new(
+                    entity_type.shared_container(),
+                    ctx,
+                )
+            )?;
+            if self.impls.is_empty() && self.tag.is_none() {
+                return seq.end();
+            }
+        }
+        else {
+            seq.serialize_element(&Option::<()>::None)?;
+        }
+
+        // Serialize tag if it exists
+        if let Some(tag) = &self.tag {
+            seq.serialize_element(tag)?;
+
+            if self.impls.is_empty() {
+                return seq.end();
+            }
+        } else {
+            seq.serialize_element(&Option::<()>::None)?;
+        }
+
+        // Serialize impls if they exist
+        if !self.impls.is_empty() {
+            seq.serialize_element(&self.impls)?;
+        }
 
         seq.end()
     }
 }
 
-impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for ValueClassification
+impl<'de> DeserializeWithSerdeContext<'de> for ValueClassification
 {
     fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
     where
@@ -70,46 +81,73 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ValueClas
         formatter.write_str("a value classification")
     }
 
-    fn visit_seq<A>(mut self, seq: A) -> Result<Self::Value, A::Error>
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
     {
-        todo!();
-        // let mut seq = seq;
-        // let classification: String = seq.next_element()?.ok_or_else(|| {
-        //     serde::de::Error::custom("expected a value classification")
-        // })?;
-        //
-        // match classification.as_str() {
-        //     "None" => Ok(ValueClassification::new_unclassified()),
-        //     "Entity" => {
-        //         let entity_type: EntityType = seq
-        //             .next_element_seed(self.cast::<EntityType>())?
-        //             .ok_or_else(|| {
-        //                 serde::de::Error::custom("expected an entity type")
-        //             })?;
-        //         Ok(ValueClassification::Entity(entity_type))
-        //     }
-        //     "Impls" => {
-        //         let impls: Vec<PointerAddress> =
-        //             seq.next_element()?.ok_or_else(|| {
-        //                 serde::de::Error::custom("expected a list of impls")
-        //             })?;
-        //         Ok(ValueClassification::Impls(impls))
-        //     }
-        //     "Tag" => {
-        //         let tag: String = seq.next_element()?.ok_or_else(|| {
-        //             serde::de::Error::custom("expected a tag string")
-        //         })?;
-        //         let is_empty: bool = seq.next_element()?.ok_or_else(|| {
-        //             serde::de::Error::custom("expected a boolean for is_empty")
-        //         })?;
-        //         Ok(ValueClassification::Tag(ValueTag { tag, is_empty }))
-        //     }
-        //     _ => Err(serde::de::Error::custom(format!(
-        //         "unknown value classification: {}",
-        //         classification
-        //     ))),
-        // }
+        // [entity_type?, [tag: string, is_empty?: true]?, impls[]?]
+        let entity_type = seq.next_element_seed(self.cast::<Option<SharedContainer>>())?.flatten()
+            .map(|shared| unsafe { EntityType::new_unchecked(shared) });
+        let tag: Option<ValueTag> = seq.next_element::<Option<ValueTag>>()?.flatten();
+        let impls: Vec<PointerAddress> = seq.next_element::<Option<Vec<PointerAddress>>>()?.flatten().unwrap_or_default();
+
+        Ok(ValueClassification {
+            entity_type,
+            tag,
+            impls,
+        })
+
+    }
+}
+
+
+impl Serialize for ValueTag
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(if self.is_empty { Some(2) } else { Some(1) })?;
+        seq.serialize_element(&self.tag)?;
+        if self.is_empty {
+            seq.serialize_element(&true)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for ValueTag
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(ValueTagVisitor)
+    }
+}
+
+struct ValueTagVisitor;
+
+impl<'de, 'a, 'ctx> Visitor<'de> for ValueTagVisitor {
+    type Value = ValueTag;
+
+    fn expecting(
+        &self,
+        formatter: &mut core::fmt::Formatter,
+    ) -> core::fmt::Result {
+        formatter.write_str("a value tag")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let tag: String = seq.next_element()?.ok_or_else(|| serde::de::Error::custom("Expected a tag string"))?;
+        let is_empty: Option<bool> = seq.next_element()?;
+
+        Ok(ValueTag {
+            tag,
+            is_empty: is_empty.unwrap_or(false),
+        })
     }
 }

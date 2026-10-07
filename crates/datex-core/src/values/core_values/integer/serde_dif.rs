@@ -19,9 +19,8 @@ impl Serialize for Integer {
 impl SerializeWithSerdeContext for Integer {
     fn serialize_with_ctx<S: Serializer>(&self, ctx: &SerdeContext<'_>, serializer: S) -> Result<S::Ok, S::Error> {
         ctx.serialize_core_value(
-            self, 
+            self,
             CoreLibBaseTypeId::Integer.into(),
-            &ValueClassification::default(),
             serializer,
             false,
         )

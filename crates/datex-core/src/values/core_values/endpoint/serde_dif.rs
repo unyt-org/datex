@@ -13,6 +13,7 @@ use crate::dif::deserialize_serde_context::impl_serde_with_context;
 use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
 use crate::preludes::derive::{CoreLibBaseTypeId, ValueClassification};
+use crate::values::core_value::CoreValue;
 
 impl Serialize for Endpoint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -46,4 +47,33 @@ TODO: handle
         )
 in macro
  */
-impl_serde_with_context!(Endpoint);
+
+impl SerializeWithSerdeContext for Endpoint {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        ctx.serialize_core_value(
+            self,
+            CoreLibBaseTypeId::Endpoint.into(),
+            serializer,
+            false,
+        )
+    }
+}
+
+impl<'de> DeserializeWithSerdeContext<'de> for Endpoint {
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        match ctx.deserialize_core_value(deserializer)? {
+            CoreValue::Endpoint(endpoint) => Ok(endpoint),
+            _ => Err(D::Error::custom("Expected CoreValue::Endpoint")),
+        }
+    }
+}

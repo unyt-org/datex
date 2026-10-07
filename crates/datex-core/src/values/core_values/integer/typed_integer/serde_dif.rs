@@ -35,7 +35,6 @@ impl SerializeWithSerdeContext for TypedInteger {
         ctx.serialize_core_value(
             self,
             CoreLibVariantTypeId::Integer(self.variant()).into(),
-            &ValueClassification::default(),
             serializer,
             false,
         )
