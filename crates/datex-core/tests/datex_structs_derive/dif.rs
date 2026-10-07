@@ -95,7 +95,8 @@ fn struct_from_dif() {
 #[test]
 fn enum_variant_1_from_dif() {
     let json_value = serde_json::json!({
-        "Variant1": [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"]
+        "t": "Variant1",
+        "v": [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"]
     });
     let deserialized: ExampleEnum = deserialize_from_json_value_default_ctx(&json_value);
 
