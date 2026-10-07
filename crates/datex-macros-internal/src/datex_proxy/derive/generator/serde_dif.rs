@@ -231,7 +231,18 @@ fn generate_dif_deserialize_for_enum(
              where
                 _MapAccess: MapAccess<'de> {
                 // expect "t" and "v" keys
-                todo!()
+                // tag is the value of "t"
+                let tag: String = if let Some(key) = map.next_key::<String>()? {
+                    if key == "t" {
+                        map.next_value()?
+                    } else {
+                        return Err(_MapAccess::Error::custom(format!("Expected 't' key, found '{}'", key)));
+                    }
+                } else {
+                    return Err(_MapAccess::Error::custom("Expected 't' key, found none"));
+                };
+
+                panic!("handle deserialize for tag: {}", tag);
             }
         }
     };
