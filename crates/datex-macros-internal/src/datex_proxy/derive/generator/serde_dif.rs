@@ -1,7 +1,7 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::parse_quote;
-use crate::datex_proxy::data::{AnyField, FieldIdent, FieldType, Fields, IndexedField, NamedField, Structure, StructureData};
+use crate::datex_proxy::data::{AnyField, FieldIdent, FieldMapping, FieldType, Fields, IndexedField, NamedField, Structure, StructureData};
 use crate::datex_proxy::generator::helpers::{generate_struct_or_enum_variants_fields_mapping, SelfAccess, generate_from_parts_impl, generate_struct_field_accessors, map_enum_variants};
 
 /// Creates the implementation of the [SerializeWithSerdeContext] and [DeserializeWithSerdeContext] trait for the given structure data.
@@ -135,7 +135,16 @@ fn generate_dif_serialize_for_fields(
         Fields::Named(named_fields) => {
             let serialize_fields = named_fields.iter().map(|field| {
                 let field_ident = &field.normalized_ident();
+
+                let val_init = match field.field.attributes.field_mapping {
+                    FieldMapping::Datex => quote! {},
+                    FieldMapping::Serde => quote! {
+                        let #field_ident = &serde_to_value_container(#field_ident);
+                    }
+                };
+
                 quote! {
+                    #val_init
                     map.serialize_entry(stringify!(#field_ident), &ValueWithSerdeContext::new(
                         #field_ident,
                         ctx,
@@ -152,7 +161,16 @@ fn generate_dif_serialize_for_fields(
         Fields::Unnamed(unnamed_fields) => {
             let serialize_fields = unnamed_fields.iter().map(|field| {
                 let field_ident = field.normalized_ident();
+
+                let val_init = match field.field.attributes.field_mapping {
+                    FieldMapping::Datex => quote! {},
+                    FieldMapping::Serde => quote! {
+                        let #field_ident = &serde_to_value_container(#field_ident);
+                    }
+                };
+
                 quote! {
+                    #val_init
                     seq.serialize_element(&ValueWithSerdeContext::new(
                         #field_ident,
                         ctx,
@@ -280,19 +298,29 @@ fn generate_visitor_methods_for_named_fields(
         let field_name = field.datex_field_name();
         let normalized_ident = field.normalized_ident();
         let ty = field.ty();
-        quote! {
-            #field_name => {
-                let value: #ty = map.next_value_seed(DeserializeSerdeContext::<#ty>::new(self.__ctx))?;
-                self.#normalized_ident = Some(value);
+
+        match field.field.attributes.field_mapping {
+            FieldMapping::Datex => quote! {
+                #field_name => {
+                    let value: #ty = map.next_value_seed(DeserializeSerdeContext::<#ty>::new(self.__ctx))?;
+                    self.#normalized_ident = Some(value);
+                }
+            },
+            FieldMapping::Serde => quote! {
+                #field_name => {
+                    let value_container = map.next_value_seed(DeserializeSerdeContext::<ValueContainer>::new(self.__ctx))?;
+                    let value = try_serde_from_value_container(value_container).map_err(|_err| _MapAccess::Error::custom(format!("Failed to deserialize field {}", #field_name)))?;
+                    self.#normalized_ident = Some(value);
+                }
             }
         }
     });
 
 
     quote! {
-        fn visit_map<A>(mut self, mut map: A) -> Result<Self::Value, A::Error>
+        fn visit_map<_MapAccess>(mut self, mut map: _MapAccess) -> Result<Self::Value, _MapAccess::Error>
         where
-            A: MapAccess<'de>,
+            _MapAccess: MapAccess<'de>,
         {
             while let Some(key) = map.next_key::<String>()? {
                 match key {
@@ -304,14 +332,14 @@ fn generate_visitor_methods_for_named_fields(
                 }
             }
 
-            self.collapse().map_err(|err| A::Error::missing_field(err))
+            self.collapse().map_err(|err| _MapAccess::Error::missing_field(err))
         }
 
-        fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+        fn visit_seq<_SeqAccess>(mut self, mut seq: _SeqAccess) -> Result<Self::Value, _SeqAccess::Error>
         where
-            A: SeqAccess<'de>,
+            _SeqAccess: SeqAccess<'de>,
         {
-            self.collapse().map_err(|err| A::Error::missing_field(err))
+            self.collapse().map_err(|err| _SeqAccess::Error::missing_field(err))
         }
     }
 }
