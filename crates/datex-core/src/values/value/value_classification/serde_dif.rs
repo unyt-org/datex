@@ -10,7 +10,6 @@ use serde::{de::{DeserializeSeed, SeqAccess, Visitor}, ser::SerializeSeq, Deseri
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
 use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 use crate::dif::value_with_serde_context::ValueWithSerdeContext;
-use crate::preludes::derive::Type;
 use crate::shared_values::SharedContainer;
 
 /// Serialization for [ValueClassification].
@@ -41,16 +40,7 @@ impl SerializeWithSerdeContext for ValueClassification {
             seq.serialize_element(&Option::<()>::None)?;
         }
 
-        // Serialize tag if it exists
-        if let Some(tag) = &self.tag {
-            seq.serialize_element(tag)?;
-
-            if self.impls.is_empty() {
-                return seq.end();
-            }
-        } else {
-            seq.serialize_element(&Option::<()>::None)?;
-        }
+        // tag is handled in layer below
 
         // Serialize impls if they exist
         if !self.impls.is_empty() {
@@ -88,12 +78,11 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ValueClas
         // [entity_type?, [tag: string, is_empty?: true]?, impls[]?]
         let entity_type = seq.next_element_seed(self.cast::<Option<SharedContainer>>())?.flatten()
             .map(|shared| unsafe { EntityType::new_unchecked(shared) });
-        let tag: Option<ValueTag> = seq.next_element::<Option<ValueTag>>()?.flatten();
         let impls: Vec<PointerAddress> = seq.next_element::<Option<Vec<PointerAddress>>>()?.flatten().unwrap_or_default();
 
         Ok(ValueClassification {
             entity_type,
-            tag,
+            tag: None, // tag is handled in layer below
             impls,
         })
 
