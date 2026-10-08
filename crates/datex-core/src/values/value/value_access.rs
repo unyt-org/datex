@@ -41,7 +41,7 @@ impl ValueAccess for Value {
         key: BorrowedValueKey,
         cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
-        match &mut self {
+        match self {
             Value::Core(core) => core.try_get_property_mut(key, cache),
             Value::Native(native) => native.try_get_property_mut(key, cache),
             _ => {

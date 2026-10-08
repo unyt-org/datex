@@ -9,6 +9,8 @@ use crate::{
 };
 use crate::preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut};
 use crate::values::core_value_with_classification::CoreValueWithClassification;
+use crate::values::value::borrowed_value::BorrowedValue;
+use crate::values::value::borrowed_value::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
 
 macro_rules! impl_pointer_sized_core_value_conversions {
     ($($ty:ident => $variant:ident, $repr:ty, $borrow:ident, $borrow_mut:ident;)* $(,)?) => {
@@ -55,17 +57,17 @@ macro_rules! impl_pointer_sized_core_value_conversions {
                 }
             }
 
-            impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, $ty> {
+            impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, $ty> {
                 type Error = ();
-                fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
+                fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
                     match value {
-                        BorrowedCoreValue::TypedInteger(v) => v
+                        BorrowedValue::Core(BorrowedCoreValueWithClassification {inner: BorrowedCoreValue::TypedInteger(v), ..}) => v
                             // SAFETY: see above.
                             .filter_map(|v| {
                                 v.$borrow().map(|v| unsafe { &*(v as *const $repr as *const $ty) })
                             })
                             .ok_or(()),
-                        BorrowedCoreValue::Native(native) => native
+                        BorrowedValue::Native(native) => native
                             .filter_map(|v| v.as_any().downcast_ref::<$ty>())
                             .ok_or(()),
                         _ => Err(()),
@@ -73,17 +75,17 @@ macro_rules! impl_pointer_sized_core_value_conversions {
                 }
             }
 
-            impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, $ty> {
+            impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, $ty> {
                 type Error = ();
-                fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
+                fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
                     match value {
-                        BorrowedCoreValueMut::TypedInteger(v) => v
+                        BorrowedValueMut::Core(BorrowedCoreValueWithClassificationMut {inner: BorrowedCoreValueMut::TypedInteger(v), ..}) => v
                             // SAFETY: see above.
                             .filter_map(|v| {
                                 v.$borrow_mut().map(|v| unsafe { &mut *(v as *mut $repr as *mut $ty) })
                             })
                             .ok_or(()),
-                        BorrowedCoreValueMut::Native(native) => native
+                        BorrowedValueMut::Native(native) => native
                             .filter_map(|v| v.as_any_mut().downcast_mut::<$ty>())
                             .ok_or(()),
                         _ => Err(()),

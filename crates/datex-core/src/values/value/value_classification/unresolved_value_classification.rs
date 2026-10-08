@@ -1,6 +1,7 @@
 use crate::preludes::derive::{EntityType, ValueTag};
-use crate::shared_values::{PointerAddress, SelfOwnedPointerAddress};
+use crate::shared_values::{PointerAddress};
 use super::ValueClassification;
+use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 /// Similar to [ValueClassification], but contains a [PointerAddress] for the entity type instead of [EntityType].
