@@ -417,7 +417,7 @@ pub gen fn inner_execution_loop(
 
                             RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
                                 Some(RuntimeValue::ValueContainer(
-                                    ValueContainer::Local(Value::new(CoreValue::Null, ValueClassification::new_with_tag(ValueTag {
+                                    ValueContainer::Local(Value::core_with_classification(CoreValue::Null, ValueClassification::new_with_tag(ValueTag {
                                         tag,
                                         is_empty: true,
                                     })))
@@ -886,7 +886,7 @@ pub gen fn inner_execution_loop(
                                     let ty =
                                         collected_results.pop_type();
                                     RuntimeValue::ValueContainer(
-                                        ValueContainer::Local(Value::new(CoreValue::Type(ty), None)), // TODO #648: type for type
+                                        ValueContainer::Local(Value::new(CoreValue::Type(ty))), // TODO #648: type for type
                                     )
                                         .into()
                                 }

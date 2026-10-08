@@ -62,7 +62,7 @@ mod tests {
                 .collect::<Vec<_>>();
 
         let compiled =
-            compile_value(Value::new(CoreValue::Type(ty), None), compile_input);
+            compile_value(Value::new(CoreValue::Type(ty)), compile_input);
         assert_eq!(compiled.shared_values.len(), 0);
         assert_instructions_equal!(&compiled.dxb, vec)
     }
@@ -117,7 +117,7 @@ mod tests {
             .into(),
         );
         assert_regular_instructions_equal(
-            Value::new(CoreValue::Type(ty), None),
+            Value::new(CoreValue::Type(ty)),
             vec![RegularInstruction::GetCoreLibValue(
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean).into(),
             )],

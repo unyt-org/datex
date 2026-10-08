@@ -299,6 +299,7 @@ mod tests {
         },
     };
     use core::{assert_matches, ops::DerefMut};
+    use crate::preludes::derive::CoreValue;
 
     fn owned_shared(
         address_provider: &mut SelfOwnedPointerAddressProvider,
@@ -590,10 +591,11 @@ mod tests {
             match &mut value.deref_mut() {
                 Value::Core(core_value) => {
                     core_value.inner =
-                        List::from(vec![ValueContainer::Shared(
-                            parent.clone(),
-                        )])
-                        .to_value();
+                        CoreValue::List(
+                            List::from(vec![ValueContainer::Shared(
+                                parent.clone(),
+                            )])
+                        );
                 }
                 _ => unreachable!("Expected a core value"),
             }

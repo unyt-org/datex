@@ -609,7 +609,7 @@ impl<'a> TypeInference<'a> {
             let container = SharedContainer::Referenced(container);
             let value = container.collapsed_value();
 
-            if let CoreValue::Type(ty) = &value.borrow().inner {
+            if let Some(CoreValue::Type(ty)) = &value.borrow().try_as_core_value() {
                 Some(ty.clone())
             } else {
                 None
@@ -947,8 +947,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         match &type_def {
             Type::Entity(definition) => {
                 let mut val = definition.collapsed_value_mut();
-                match &mut val.borrow_mut().inner {
-                    CoreValue::EntityTypeDefinition(nominal_def) => {
+                match &mut val.borrow_mut().try_as_core_value_mut() {
+                    Some(CoreValue::EntityTypeDefinition(nominal_def)) => {
                         nominal_def.replace_definition(
                             inferred_type_def.convert_to_definition(),
                         );

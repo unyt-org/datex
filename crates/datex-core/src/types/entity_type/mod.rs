@@ -22,7 +22,9 @@ use crate::{
     },
 };
 use core::{cell::Ref, ops::Deref};
+use crate::shared_values::PointerAddress;
 use crate::values::core_value_with_classification::CoreValueWithClassification;
+use crate::values::value::value_classification::unresolved_value_classification::UnresolvedValueClassification;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct EntityType(SharedContainer);
@@ -132,10 +134,16 @@ impl TypeSuperset<EntityType> for EntityType {
     }
 }
 
+impl TypeSuperset<PointerAddress> for EntityType {
+    fn is_superset_of(&self, other: &PointerAddress) -> bool {
+        &self.pointer_address() == other
+    }
+}
+
 impl TypeSatisfiesValueContainer for EntityType {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
-        match &value.collapsed_value().borrow().classification() {
-            ValueClassification{ entity_type: Some(entity), ..} => self.is_superset_of(entity),
+        match &value.collapsed_value().borrow().unresolved_classification() {
+            UnresolvedValueClassification{ entity_type_address: Some(entity_type_address), ..} => self.is_superset_of(entity_type_address),
             _ => false,
         }
     }

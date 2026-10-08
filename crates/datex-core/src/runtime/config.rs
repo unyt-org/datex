@@ -30,7 +30,7 @@ impl RuntimeConfigInterface {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            config: Value::native_structural(setup_data),
+            config: Value::native(setup_data),
         })
     }
 
@@ -69,7 +69,7 @@ impl RuntimeConfig {
         config: T,
         priority: InterfacePriority,
     ) {
-        let config = Value::native_structural(config);
+        let config = Value::native(config);
         let interface = RuntimeConfigInterface {
             interface_type,
             config,
@@ -183,7 +183,7 @@ pub mod tests {
             42
         );
 
-        let value_container = Value::native_structural(config_interface);
+        let value_container = Value::native(config_interface);
         let parsed_config_interface: RuntimeConfigInterface =
             value_container.try_into_value().unwrap();
         assert_eq!(parsed_config_interface.interface_type, "test");
@@ -192,7 +192,7 @@ pub mod tests {
     #[test]
     fn datex_proxy_runtime_config() {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
-        let value_container = Value::native_structural(config);
+        let value_container = Value::native(config);
         let parsed_config: RuntimeConfig =
             value_container.try_into_value().unwrap();
         assert_eq!(parsed_config.endpoint, Endpoint::new("@test"));

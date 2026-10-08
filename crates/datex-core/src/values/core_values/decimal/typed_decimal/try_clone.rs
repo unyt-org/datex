@@ -5,9 +5,10 @@ use crate::{
         core_values::decimal::typed_decimal::TypedDecimal,
     },
 };
+use crate::values::value::Value;
 
 impl TryClone for TypedDecimal {
-    fn try_clone(&self) -> Result<CoreValue, ()> {
-        Ok(CoreValue::TypedDecimal(self.clone()))
+    fn try_clone(&self) -> Result<Value, ()> {
+        Ok(CoreValue::TypedDecimal(self.clone()).into())
     }
 }

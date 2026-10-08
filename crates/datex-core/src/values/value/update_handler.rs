@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn numeric_property() {
-        let mut list = Value::native_structural(vec![
+        let mut list = Value::native(vec![
             ValueContainer::from(1),
             ValueContainer::from(2),
             ValueContainer::from(3),

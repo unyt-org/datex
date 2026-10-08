@@ -2,11 +2,10 @@ use crate::{
     traits::convert_value::ConvertValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
-        core_value::CoreValue,
-        value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
 use core::time::Duration;
+use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
 use crate::values::value::Value;
 
 impl ConvertValue for Duration {
@@ -39,11 +38,11 @@ impl ConvertValue for Duration {
     }
 }
 
-impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, Duration> {
+impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, Duration> {
     type Error = ();
-    fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
         match value {
-            BorrowedCoreValue::Native(native) => native
+            BorrowedValue::Native(native) => native
                 .filter_map(|v| v.as_any().downcast_ref::<Duration>())
                 .ok_or(()),
             _ => Err(()),
@@ -51,11 +50,11 @@ impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, Duration> {
     }
 }
 
-impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, Duration> {
+impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, Duration> {
     type Error = ();
-    fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
         match value {
-            BorrowedCoreValueMut::Native(native) => native
+            BorrowedValueMut::Native(native) => native
                 .filter_map(|v| v.as_any_mut().downcast_mut::<Duration>())
                 .ok_or(()),
             _ => Err(()),
@@ -69,10 +68,10 @@ mod tests {
         utils::{goat::Goat, goat_mut::GoatMut},
         values::{
             core_value::CoreValue,
-            value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
         },
     };
     use core::time::Duration;
+    use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
 
     #[test]
     fn try_duration_from_native_core_value() {
@@ -100,7 +99,7 @@ mod tests {
 
     #[test]
     fn try_duration_from_wrong_core_value_fails() {
-        let core_value = CoreValue::Null;
+        let core_value = CoreValue::Null.to_value();
         assert!(core_value.try_as::<Duration>().is_none());
         assert!(core_value.try_into_value::<Duration>().is_err());
     }
@@ -109,7 +108,7 @@ mod tests {
     fn try_borrowed_core_value_duration() {
         let duration = Duration::from_secs(10);
         let core_value = duration.to_value();
-        let borrowed = BorrowedCoreValue::from(&core_value);
+        let borrowed = BorrowedValue::from(&core_value);
         let result = Goat::<Duration>::try_from(borrowed).unwrap();
         assert_eq!(*result, duration);
     }
@@ -117,7 +116,7 @@ mod tests {
     #[test]
     fn try_borrowed_core_value_mut_duration() {
         let mut core_value = Duration::from_secs(10).to_value();
-        let borrowed = BorrowedCoreValueMut::from(&mut core_value);
+        let borrowed = BorrowedValueMut::from(&mut core_value);
         let mut result = GoatMut::<Duration>::try_from(borrowed).unwrap();
         *result = Duration::from_secs(20);
         drop(result);

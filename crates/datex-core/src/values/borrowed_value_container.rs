@@ -11,7 +11,7 @@ use crate::{
         value::{
             Value,
             borrowed_value::{
-                BorrowedCoreValue, BorrowedCoreValueMut, BorrowedValue,
+                BorrowedValue,
                 BorrowedValueMut,
             },
         },
@@ -70,10 +70,10 @@ impl<'a> BorrowedValueContainer<'a> {
     /// This only works for local values, not for shared values.
     pub fn try_as<T>(self) -> Option<Goat<'a, T>>
     where
-        Goat<'a, T>: TryFrom<BorrowedCoreValue<'a>>,
+        Goat<'a, T>: TryFrom<BorrowedValue<'a>>,
     {
         match self {
-            BorrowedValueContainer::Local(value) => value.inner.try_as(),
+            BorrowedValueContainer::Local(value) => value.try_as(),
             BorrowedValueContainer::Shared(_) => None,
         }
     }
@@ -142,10 +142,10 @@ impl<'a> BorrowedValueContainerMut<'a> {
     /// This only works for local values, not for shared values.
     pub fn try_as<T>(self) -> Option<Goat<'a, T>>
     where
-        Goat<'a, T>: TryFrom<BorrowedCoreValueMut<'a>>,
+        Goat<'a, T>: TryFrom<BorrowedValueMut<'a>>,
     {
         match self {
-            BorrowedValueContainerMut::Local(value) => value.inner.try_as(),
+            BorrowedValueContainerMut::Local(value) => value.try_as(),
             BorrowedValueContainerMut::Shared(_) => None,
         }
     }
@@ -155,10 +155,10 @@ impl<'a> BorrowedValueContainerMut<'a> {
     /// This only works for local values, not for shared values.
     pub fn try_as_mut<T>(self) -> Option<GoatMut<'a, T>>
     where
-        GoatMut<'a, T>: TryFrom<BorrowedCoreValueMut<'a>>,
+        GoatMut<'a, T>: TryFrom<BorrowedValueMut<'a>>,
     {
         match self {
-            BorrowedValueContainerMut::Local(value) => value.inner.try_as_mut(),
+            BorrowedValueContainerMut::Local(value) => value.try_as_mut(),
             BorrowedValueContainerMut::Shared(_) => None,
         }
     }

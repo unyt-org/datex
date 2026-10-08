@@ -485,8 +485,8 @@ impl TryFrom<ValueContainer> for Type {
             ValueContainer::Shared(shared) => {
                 EntityType::try_from(shared).map(Type::Entity)
             }
-            ValueContainer::Local(value) => match value.inner {
-                CoreValue::Type(ty) => Ok(ty),
+            ValueContainer::Local(value) => match value.try_into_core_value() {
+                Ok(CoreValue::Type(ty)) => Ok(ty),
                 _ => Err(()),
             },
         }

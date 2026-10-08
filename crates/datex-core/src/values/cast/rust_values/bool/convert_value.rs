@@ -3,12 +3,13 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::boolean::Boolean,
-        value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
-use crate::preludes::derive::Value;
+use crate::preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut, Value};
 use crate::traits::convert_value::ConvertValue;
 use crate::values::core_value_with_classification::CoreValueWithClassification;
+use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
+use crate::values::value::borrowed_value::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
 
 impl ConvertValue for bool {
     fn to_value(self) -> Value {
@@ -43,12 +44,12 @@ impl ConvertValue for bool {
     }
 }
 
-impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, bool> {
+impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, bool> {
     type Error = ();
-    fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
         match value {
-            BorrowedCoreValue::Boolean(v) => Ok(v.map(|v| &v.0)),
-            BorrowedCoreValue::Native(native) => native
+            BorrowedValue::Core(BorrowedCoreValueWithClassification {inner: BorrowedCoreValue::Boolean(v), .. }) => Ok(v.map(|v| &v.0)),
+            BorrowedValue::Native(native) => native
                 .filter_map(|v| v.as_any().downcast_ref::<bool>())
                 .ok_or(()),
             _ => Err(()),
@@ -56,12 +57,12 @@ impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, bool> {
     }
 }
 
-impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, bool> {
+impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, bool> {
     type Error = ();
-    fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
         match value {
-            BorrowedCoreValueMut::Boolean(v) => Ok(v.map(|v| &mut v.0)),
-            BorrowedCoreValueMut::Native(native) => native
+            BorrowedValueMut::Core(BorrowedCoreValueWithClassificationMut {inner: BorrowedCoreValueMut::Boolean(v), .. }) => Ok(v.map(|v| &mut v.0)),
+            BorrowedValueMut::Native(native) => native
                 .filter_map(|v| v.as_any_mut().downcast_mut::<bool>())
                 .ok_or(()),
             _ => Err(()),
@@ -77,6 +78,7 @@ mod tests {
         values::{core_value::CoreValue, core_values::boolean::Boolean},
     };
     use crate::traits::convert_value::ConvertValue;
+    use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
 
     #[test]
     fn try_bool_from_core_value() {
@@ -146,34 +148,34 @@ mod tests {
 
     #[test]
     fn try_borrowed_core_value_bool() {
-        let core_value = CoreValue::Boolean(Boolean(true));
+        let value = CoreValue::Boolean(Boolean(true)).to_value();
 
-        let borrowed = BorrowedCoreValue::from(&core_value);
+        let borrowed = BorrowedValue::from(&value);
         let result = Goat::<bool>::try_from(borrowed);
         assert!(*result.unwrap());
     }
 
     #[test]
     fn try_borrowed_core_value_mut_bool() {
-        let mut core_value = CoreValue::Boolean(Boolean(false));
-        let borrowed = BorrowedCoreValueMut::from(&mut core_value);
+        let mut value = CoreValue::Boolean(Boolean(false)).to_value();
+        let borrowed = BorrowedValueMut::from(&mut value);
         let mut result = GoatMut::<bool>::try_from(borrowed).unwrap();
         *result = true;
         drop(result);
-        assert_eq!(core_value, CoreValue::Boolean(Boolean(true)));
+        assert_eq!(value, CoreValue::Boolean(Boolean(true)).to_value());
     }
 
     #[test]
     fn try_borrowed_core_value_wrong_type_fails() {
-        let core_value = CoreValue::Null;
-        let borrowed = BorrowedCoreValue::from(&core_value);
+        let core_value = CoreValue::Null.into();
+        let borrowed = BorrowedValue::from(&core_value);
         assert!(Goat::<bool>::try_from(borrowed).is_err());
     }
 
     #[test]
     fn try_borrowed_core_value_mut_wrong_type_fails() {
-        let mut core_value = CoreValue::Null;
-        let borrowed = BorrowedCoreValueMut::from(&mut core_value);
+        let mut core_value = CoreValue::Null.into();
+        let borrowed = BorrowedValueMut::from(&mut core_value);
         assert!(GoatMut::<bool>::try_from(borrowed).is_err());
     }
 }
