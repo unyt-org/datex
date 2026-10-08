@@ -9,7 +9,7 @@ use crate::{
 };
 use crate::preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut};
 use crate::values::core_value_with_classification::CoreValueWithClassification;
-use crate::values::value::borrowed_value::BorrowedValue;
+use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
 use crate::values::value::borrowed_value::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
 
 macro_rules! impl_pointer_sized_core_value_conversions {

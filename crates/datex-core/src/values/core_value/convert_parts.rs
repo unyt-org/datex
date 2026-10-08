@@ -29,7 +29,7 @@ impl FromParts for CoreValue {
         Self: Sized,
     {
         match value {
-            ValueContainer::Local(value) => Ok(value.inner),
+            ValueContainer::Local(Value::Core(value)) => Ok(value.inner),
             _ => Err(())
         }
     }

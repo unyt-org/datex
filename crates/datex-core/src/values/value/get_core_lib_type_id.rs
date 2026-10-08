@@ -5,6 +5,9 @@ use crate::{
 
 impl GetCoreLibTypeId for Value {
     fn core_lib_type_id(&self) -> CoreLibTypeId {
-        (&self.inner).into()
+        match self {
+            Value::Core(core_value) => core_value.inner.into(),
+            Value::Native(native_value) => native_value.core_lib_type_id(),
+        }
     }
 }
