@@ -31,7 +31,9 @@ use crate::{
             integer::{Integer, typed_integer::TypedInteger},
             text::Text,
         },
-        value::Value,
+        value::{
+            Value, core_value_with_classification::CoreValueWithClassification,
+        },
         value_container::ValueContainer,
     },
 };
@@ -304,10 +306,12 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
             }) => {
                 let value = ValueContainer::try_from(expression.data())?;
                 match value {
-                    ValueContainer::Local(Value {
-                        inner: CoreValue::Integer(_) | CoreValue::Decimal(_),
-                        ..
-                    }) => match operator {
+                    ValueContainer::Local(Value::Core(
+                        CoreValueWithClassification {
+                            inner: CoreValue::Integer(_) | CoreValue::Decimal(_),
+                            ..
+                        },
+                    )) => match operator {
                         UnaryOperator::Arithmetic(
                             ArithmeticUnaryOperator::Plus,
                         ) => value,
