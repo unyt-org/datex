@@ -5,12 +5,18 @@ use crate::{
 
 impl<'a> ChildIterator<'a> for Value {
     fn iter_children(&self) -> impl Iterator<Item = &ValueContainer> {
-        self.inner.iter_children()
+        match self {
+            Value::Core(core_value) => core_value.inner.iter_children(),
+            Value::Native(native_value) => todo!()
+        }
     }
 
     fn iter_children_mut(
         &mut self,
     ) -> impl Iterator<Item = &mut ValueContainer> {
-        self.inner.iter_children_mut()
+        match self {
+            Value::Core(core_value) => core_value.inner.iter_children_mut(),
+            Value::Native(native_value) => todo!()
+        }
     }
 }

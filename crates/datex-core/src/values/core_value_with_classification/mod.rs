@@ -20,6 +20,7 @@ pub mod serde_dif;
 mod to_instructions;
 mod apply;
 mod classification;
+mod convert_parts;
 
 use crate::prelude::*;
 
