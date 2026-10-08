@@ -13,7 +13,9 @@ use crate::{
             callable::{CallableBody, error::CallableError},
             map::Map,
         },
-        value::Value,
+        value::{
+            Value, core_value_with_classification::CoreValueWithClassification,
+        },
         value_container::ValueContainer,
     },
 };
@@ -113,10 +115,12 @@ impl CoreLibraryValues {
         let mut output = String::new();
 
         // if first argument is a string value, print it directly
-        let _value_args = if let Some(ValueContainer::Local(Value {
-            inner: CoreValue::Text(text),
-            ..
-        })) = args.first().map(|v| &v.value)
+        let _value_args = if let Some(ValueContainer::Local(Value::Core(
+            CoreValueWithClassification {
+                inner: CoreValue::Text(text),
+                ..
+            },
+        ))) = args.first().map(|v| &v.value)
         {
             output.push_str(&text.0);
             // if there are still values after the string, add a space

@@ -293,9 +293,12 @@ mod tests {
             PointerAddress, ReferenceMutability, SharedContainer,
             SharedContainerMutability,
         },
-        values::{core_values::list::List, value_container::ValueContainer},
+        values::{
+            core_values::list::List, value::Value,
+            value_container::ValueContainer,
+        },
     };
-    use core::assert_matches;
+    use core::{assert_matches, ops::DerefMut};
 
     fn owned_shared(
         address_provider: &mut SelfOwnedPointerAddressProvider,
@@ -584,10 +587,16 @@ mod tests {
         {
             let mut collapsed = parent.collapsed_value_mut();
             let mut value = collapsed.borrow_mut();
-
-            value.inner =
-                List::from(vec![ValueContainer::Shared(parent.clone())])
-                    .to_core_value();
+            match &mut value.deref_mut() {
+                Value::Core(core_value) => {
+                    core_value.inner =
+                        List::from(vec![ValueContainer::Shared(
+                            parent.clone(),
+                        )])
+                        .to_core_value();
+                }
+                _ => unreachable!("Expected a core value"),
+            }
         }
 
         let parent_index = tracking.register_shared_value(&parent);

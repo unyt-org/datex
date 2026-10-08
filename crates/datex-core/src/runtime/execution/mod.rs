@@ -23,7 +23,10 @@ use crate::{
     },
     values::{
         core_values::endpoint::Endpoint,
-        value::{Value, value_classification::ValueClassification},
+        value::{
+            Value, core_value_with_classification::CoreValueWithClassification,
+            value_classification::ValueClassification,
+        },
         value_container::ValueContainer,
     },
 };
@@ -305,10 +308,14 @@ pub async fn execute_dxb(
 
 fn try_get_entity_type(value: &Value) -> Result<EntityType, ExecutionError> {
     match value {
-        Value {
-            classification: ValueClassification { entity_type: Some(entity_type), ..},
+        Value::Core(CoreValueWithClassification {
+            classification:
+                ValueClassification {
+                    entity_type: Some(entity_type),
+                    ..
+                },
             ..
-        } => Ok(entity_type.clone()),
+        }) => Ok(entity_type.clone()),
         _ => Err(ExecutionError::ExpectedEntityValue),
     }
 }
@@ -485,6 +492,7 @@ mod tests {
             traits::SharedContainerCommon,
         },
         traits::{
+            classification::Classification,
             convert_value_container::ConvertValueContainer,
             structural_eq::{StructuralEq, assert_structural_eq},
             value_eq::{ValueEq, assert_value_eq},
@@ -516,7 +524,6 @@ mod tests {
     use core::assert_matches;
     use indexmap::IndexMap;
     use log::{debug, info};
-    use crate::traits::classification::Classification;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -740,12 +747,11 @@ mod tests {
 
     #[test]
     fn empty_tag() {
-        let cache = &mut SharedReferencesCache::default();
         let result = execute_datex_script_debug_with_result("#Example");
-        if let ValueContainer::Local(value) = result {
+        if let ValueContainer::Local(Value::Core(value)) = result {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(
-                value.classification(cache),
+                value.classification,
                 ValueClassification::new_with_tag(ValueTag {
                     tag: "Example".to_string(),
                     is_empty: true
@@ -758,10 +764,9 @@ mod tests {
 
     #[test]
     fn empty_with_map() {
-        let cache = &mut SharedReferencesCache::default();
         let result =
             execute_datex_script_debug_with_result("#Example {a: true}");
-        if let ValueContainer::Local(value) = result {
+        if let ValueContainer::Local(Value::Core(value)) = result {
             assert_eq!(
                 &value.inner,
                 &CoreValue::Map(Map::structural_with_string_keys(vec![(
@@ -770,7 +775,7 @@ mod tests {
                 )]))
             );
             assert_eq!(
-                value.classification(cache),
+                value.classification,
                 ValueClassification::new_with_tag(ValueTag {
                     tag: "Example".to_string(),
                     is_empty: false

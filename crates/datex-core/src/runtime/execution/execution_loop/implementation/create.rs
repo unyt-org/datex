@@ -11,7 +11,10 @@ use crate::{
         base_shared_value_container::BaseSharedValueContainer,
     },
     values::{
-        value::value_classification::{ValueClassification, ValueTag},
+        value::{
+            Value,
+            value_classification::{ValueClassification, ValueTag},
+        },
         value_container::ValueContainer,
     },
 };
@@ -23,13 +26,14 @@ pub fn create_tagged_value_container(
     tag: String,
 ) -> Result<ValueContainer, ExecutionError> {
     match value_container {
-        ValueContainer::Local(mut value) => {
+        ValueContainer::Local(Value::Core(mut value)) => {
             // add tag type to the value
-            value.classification = ValueClassification::new_with_tag(ValueTag {
-                tag,
-                is_empty: false,
-            });
-            Ok(ValueContainer::Local(value))
+            value.classification =
+                ValueClassification::new_with_tag(ValueTag {
+                    tag,
+                    is_empty: false,
+                });
+            Ok(ValueContainer::Local(Value::Core(value)))
         }
         _ => Err(ExecutionError::ExpectedLocalValue),
     }
