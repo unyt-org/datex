@@ -38,7 +38,6 @@ use crate::{
 use core::fmt::{Debug, Display, Formatter};
 
 mod child_iterator;
-mod classification;
 pub mod convert_core_value;
 mod convert_parts;
 mod datex_hash;
@@ -395,10 +394,5 @@ mod tests {
             .to_string(),
             "11..13"
         );
-    }
-
-    #[test]
-    pub fn native_values() {
-        let native_string = CoreValue::native("Hello DATEX".to_string());
     }
 }

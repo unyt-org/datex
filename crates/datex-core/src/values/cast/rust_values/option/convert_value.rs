@@ -19,7 +19,8 @@ where
     fn try_from_value(value: Value) -> Result<Self, Value> {
         match value {
             Value::Core(CoreValueWithClassification {inner: CoreValue::Null, ..}) => Ok(None),
-            value => value.try_into_value::<T>().map_err(Value::Core),
+            value => value.try_into_value::<T>()
+                .map(Option::Some)
         }
     }
 
@@ -41,27 +42,27 @@ where
     }
 }
 
-impl<'a, T> TryFrom<&'a CoreValue> for Option<&'a T>
+impl<'a, T> TryFrom<&'a Value> for Option<&'a T>
 where
     T: DatexNativeBase + ConvertValue + 'static,
 {
     type Error = ();
-    fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
+    fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
         match value {
-            CoreValue::Null => Ok(None),
+            Value::Core(CoreValueWithClassification {inner: CoreValue::Null, ..}) => Ok(None),
             _ => value.try_as::<T>().map(Some).ok_or(()),
         }
     }
 }
 
-impl<'a, T> TryFrom<&'a mut CoreValue> for Option<&'a mut T>
+impl<'a, T> TryFrom<&'a mut Value> for Option<&'a mut T>
 where
     T: DatexNativeBase + ConvertValue + 'static,
 {
     type Error = ();
-    fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
+    fn try_from(value: &'a mut Value) -> Result<Self, Self::Error> {
         match value {
-            CoreValue::Null => Ok(None),
+            Value::Core(CoreValueWithClassification {inner: CoreValue::Null, ..}) => Ok(None),
             _ => value.try_as_mut::<T>().map(Some).ok_or(()),
         }
     }
@@ -100,7 +101,7 @@ mod tests {
 
     #[test]
     fn try_option_ref_from_null() {
-        let core_value = CoreValue::Null;
+        let core_value = CoreValue::Null.to_value();
         let result = Option::<&u32>::try_from(&core_value);
         assert_eq!(result.unwrap(), None);
     }
@@ -114,14 +115,14 @@ mod tests {
 
     #[test]
     fn try_option_ref_from_wrong_core_value() {
-        let core_value = CoreValue::TypedInteger(TypedInteger::I32(42));
+        let core_value = CoreValue::TypedInteger(TypedInteger::I32(42)).to_value();
         let result = Option::<&u32>::try_from(&core_value);
         assert!(result.is_err());
     }
 
     #[test]
     fn try_option_mut_ref_from_null() {
-        let mut core_value = CoreValue::Null;
+        let mut core_value = CoreValue::Null.to_value();
         let result = Option::<&mut u32>::try_from(&mut core_value);
         assert!(result.unwrap().is_none());
     }
@@ -137,7 +138,7 @@ mod tests {
 
     #[test]
     fn try_option_mut_ref_from_wrong_core_value() {
-        let mut core_value = CoreValue::TypedInteger(TypedInteger::I32(42));
+        let mut core_value = CoreValue::TypedInteger(TypedInteger::I32(42)).to_value();
         let result = Option::<&mut u32>::try_from(&mut core_value);
         assert!(result.is_err());
     }

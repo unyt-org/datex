@@ -19,6 +19,7 @@ mod value_access;
 pub mod serde_dif;
 mod to_instructions;
 mod apply;
+mod classification;
 
 use crate::prelude::*;
 
@@ -38,7 +39,7 @@ impl CoreValueWithClassification {
     pub fn is_null(&self) -> bool {
         matches!(self.inner, CoreValue::Null)
     }
-    
+
 
     /// Returns the actual current [TypeDefinition] of the value
     pub fn actual_type(&self) -> TypeDefinition {

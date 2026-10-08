@@ -3,15 +3,23 @@ use crate::{
     traits::classification::Classification,
     values::value::{Value, value_classification::ValueClassification},
 };
+use crate::values::value::value_classification::unresolved_value_classification::UnresolvedValueClassification;
 
 impl Classification for Value {
-    /// Give back the classification of the value.
-    /// Merges the classification of the inner value with the classification of the [Value].
     fn classification(
         &self,
         cache: &mut SharedReferencesCache,
     ) -> ValueClassification {
-        self.classification
-            .merge(self.inner.classification(cache))
+        match self {
+            Value::Core(core_value) => core_value.classification(cache),
+            Value::Native(custom_value) => custom_value.classification(cache),
+        }
+    }
+
+    fn unresolved_classification(&self) -> UnresolvedValueClassification {
+        match self {
+            Value::Core(core_value) => core_value.unresolved_classification(),
+            Value::Native(custom_value) => custom_value.unresolved_classification(),
+        }
     }
 }

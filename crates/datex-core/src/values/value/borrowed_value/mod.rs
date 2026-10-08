@@ -189,7 +189,7 @@ impl<'a> From<&'a mut Value> for BorrowedValueMut<'a> {
                 BorrowedValueMut::Core(BorrowedCoreValueWithClassificationMut::from(core_value))
             }
             Value::Native(native_value) => {
-                BorrowedValueMut::Native(GoatMut::Borrowed(native_value.value.deref()))
+                BorrowedValueMut::Native(GoatMut::Borrowed(native_value.value.deref_mut()))
             }
         }
     }
