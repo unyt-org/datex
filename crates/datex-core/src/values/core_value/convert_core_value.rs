@@ -12,7 +12,7 @@ impl ConvertValue for CoreValue {
     where
         Self: Sized,
     {
-        Ok(value.into())
+        value.try_into_core_value()
     }
 
     fn try_borrow_from_value(value: &Value) -> Result<&Self, ()> {

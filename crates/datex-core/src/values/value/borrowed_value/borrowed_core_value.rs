@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use core::ops::Deref;
 use crate::preludes::derive::{Callable, CoreValue, DatexNative, EntityTypeDefinition, Goat, GoatMut, List, Map, Text, Type, Value, ValueClassification, ValueContainer};
 use crate::values::core_values::boolean::Boolean;
 use crate::values::core_values::decimal::Decimal;
@@ -9,6 +9,7 @@ use crate::values::core_values::integer::typed_integer::TypedInteger;
 use crate::values::core_values::range::Range;
 use crate::values::value::borrowed_value::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
 use crate::values::value::borrowed_value::BorrowedValue;
+use crate::prelude::*;
 
 
 /// Similar to [CoreValue], but it is a potentially borrowed reference to a [CoreValue] variant instead of owning it.

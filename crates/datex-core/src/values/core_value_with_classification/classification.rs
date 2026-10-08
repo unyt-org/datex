@@ -16,6 +16,6 @@ impl Classification for CoreValueWithClassification {
     }
 
     fn unresolved_classification(&self) -> UnresolvedValueClassification {
-        self.classification.into()
+        self.classification.clone().into()
     }
 }

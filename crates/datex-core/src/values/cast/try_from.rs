@@ -19,10 +19,12 @@ use crate::{
             range::Range,
             text::Text,
         },
-        value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
 use crate::values::core_value_with_classification::CoreValueWithClassification;
+use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
+use crate::values::value::borrowed_value::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
+use crate::values::value::borrowed_value::borrowed_core_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 /// Implements [TryFrom] for each [CoreValue] variant to its corresponding type.
 /// This allows to convert e.g. [CoreValue::Integer] to [Integer].
@@ -70,21 +72,22 @@ macro_rules! impl_try_from_core_value {
                 }
             }
 
-            impl<'a> TryFrom<BorrowedCoreValue<'a>> for Goat<'a, $type> {
+            impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, $type> {
                 type Error = ();
-                fn try_from(value: BorrowedCoreValue<'a>) -> Result<Self, Self::Error> {
+                fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
                     match value {
-                        BorrowedCoreValue::$variant(v) => Ok(v),
+                        // BorrowedCoreValue::$variant(v) => Ok(v),
+                        BorrowedValue::Core(BorrowedCoreValueWithClassification {inner: BorrowedCoreValue::$variant(v), ..}) => Ok(v),
                         _ => Err(()),
                     }
                 }
             }
 
-            impl<'a> TryFrom<BorrowedCoreValueMut<'a>> for GoatMut<'a, $type> {
+            impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, $type> {
                 type Error = ();
-                fn try_from(value: BorrowedCoreValueMut<'a>) -> Result<Self, Self::Error> {
+                fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
                     match value {
-                        BorrowedCoreValueMut::$variant(v) => Ok(v),
+                        BorrowedValueMut::Core(BorrowedCoreValueWithClassificationMut {inner: BorrowedCoreValueMut::$variant(v), ..}) => Ok(v),
                         _ => Err(()),
                     }
                 }
@@ -129,40 +132,40 @@ mod tests {
 
     #[test]
     fn try_from_value() {
-        let int_value = CoreValue::Integer(Integer::new(42));
+        let int_value = CoreValue::Integer(Integer::new(42)).to_value();
         let int: Integer = int_value.try_into_value().unwrap();
         assert_eq!(int, Integer::new(42));
 
-        let text_value = CoreValue::Text(Text::new("Hello, DATEX!"));
+        let text_value = CoreValue::Text(Text::new("Hello, DATEX!")).to_value();
         let text: Text = text_value.try_into_value().unwrap();
         assert_eq!(text, Text::new("Hello, DATEX!"));
     }
 
     #[test]
     fn try_from_core_value_wrong_type() {
-        let int_value = CoreValue::Integer(Integer::new(42));
+        let int_value = CoreValue::Integer(Integer::new(42)).to_value();
         let result = int_value.try_into_value::<Text>();
         assert_matches!(result, Err(_));
     }
 
     #[test]
     fn try_from_core_value_ref() {
-        let int_value = CoreValue::Integer(Integer::new(42));
+        let int_value = CoreValue::Integer(Integer::new(42)).to_value();
         let int_ref = int_value.try_as::<Integer>().unwrap();
         assert_eq!(*int_ref, Integer::new(42));
 
-        let text_value = CoreValue::Text(Text::new("Hello, DATEX!"));
+        let text_value = CoreValue::Text(Text::new("Hello, DATEX!")).to_value();
         let text_ref: &Text = text_value.try_as().unwrap();
         assert_eq!(*text_ref, Text::new("Hello, DATEX!"));
     }
 
     #[test]
     fn try_from_core_value_mut_ref() {
-        let mut int_value = CoreValue::Integer(Integer::new(42));
+        let mut int_value = CoreValue::Integer(Integer::new(42)).to_value();
         let int_mut_ref = int_value.try_as_mut::<Integer>().unwrap();
         *int_mut_ref = Integer::new(100);
         assert_eq!(*int_mut_ref, Integer::new(100));
-        assert_eq!(int_value, CoreValue::Integer(Integer::new(100)));
+        assert_eq!(int_value, CoreValue::Integer(Integer::new(100)).to_value());
     }
 
     #[test]
@@ -181,7 +184,7 @@ mod tests {
     #[test]
     fn try_borrow_from_core_value_native() {
         let mut native_endpoint =
-            CoreValue::Native(NativeCoreValue::new(Endpoint::new("@test")));
+            Value::Native(NativeCoreValue::new(Endpoint::new("@test")));
         let endpoint_ref: &Endpoint =
             Endpoint::try_borrow_from_value(&native_endpoint).unwrap();
         assert_eq!(*endpoint_ref, Endpoint::new("@test"));
@@ -194,7 +197,7 @@ mod tests {
 
         assert_eq!(
             native_endpoint,
-            CoreValue::Native(NativeCoreValue::new(Endpoint::new("@test2")))
+            Value::Native(NativeCoreValue::new(Endpoint::new("@test2")))
         );
     }
 }
