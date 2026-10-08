@@ -40,7 +40,6 @@ impl HasPartsKind for CoreValue {
         match self {
             CoreValue::Map(_) => PartsKind::Map,
             CoreValue::List(_) => PartsKind::List,
-            CoreValue::Native(native) => native.value.parts_kind(),
             _ => PartsKind::SingleValue,
         }
     }
@@ -56,7 +55,6 @@ impl IntoParts for CoreValue {
     {
         match self {
             CoreValue::Map(map) => Ok(map),
-            CoreValue::Native(native) => native.value.try_into_map_parts(cache),
             _ => Err(()),
         }
     }
@@ -70,9 +68,6 @@ impl IntoParts for CoreValue {
     {
         match self {
             CoreValue::List(list) => Ok(list),
-            CoreValue::Native(native) => {
-                native.value.try_into_list_parts(cache)
-            }
             _ => Err(()),
         }
     }
@@ -82,11 +77,8 @@ impl IntoParts for CoreValue {
         Self: 'a,
     {
         match self {
-            CoreValue::Native(native) => {
-                native.value.try_into_single_value(cache)
-            }
             _ => {
-                Ok(ValueContainer::Local(Value::new(*self, ValueClassification::new_unclassified())))
+                Ok(ValueContainer::Local(Value::new(*self)))
             }
         }
     }

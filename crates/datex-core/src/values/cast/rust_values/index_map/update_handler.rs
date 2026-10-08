@@ -1,7 +1,7 @@
 use crate::{
     preludes::derive::{
         AccessError::{self},
-        ConvertCoreValue, KeyNotFoundError,
+        ConvertValue, KeyNotFoundError,
     },
     random::RandomState,
     values::core_values::map::MapAccessError,
@@ -83,6 +83,6 @@ where
         _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<ValueContainer, UpdateError> {
         let previous = core::mem::take(self);
-        Ok(ValueContainer::Local(previous.to_core_value().into()))
+        Ok(ValueContainer::Local(previous.to_value().into()))
     }
 }

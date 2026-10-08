@@ -9,7 +9,7 @@ use crate::{
             datex_native::generate_datex_native,
             datex_type::{generate_core_lib_type_id, generate_datex_type},
             to_instructions::generate_to_instructions,
-            try_from_core_value::generate_try_from_core_value,
+            convert_value::generate_convert_value,
             value_access::generate_value_access,
         },
     },
@@ -26,7 +26,7 @@ pub mod datex_hash;
 mod datex_native;
 mod datex_type;
 mod to_instructions;
-pub mod try_from_core_value;
+pub mod convert_value;
 pub mod value_access;
 pub mod helpers;
 pub mod serde_dif;
@@ -38,7 +38,7 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
     let convert_parts = generate_convert_parts(&structure_data);
     let datex_type = generate_datex_type(&structure_data);
     let core_lib_type_id = generate_core_lib_type_id(&structure_data);
-    let try_from_core_value = generate_try_from_core_value(&structure_data);
+    let convert_value = generate_convert_value(&structure_data);
     let classification = generate_classification(&structure_data);
     let value_access = generate_value_access(&structure_data);
     let datex_hash = generate_datex_hash(&structure_data);
@@ -62,7 +62,7 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
             #convert_parts
             #datex_type
             #core_lib_type_id
-            #try_from_core_value
+            #convert_value
             #classification
             #value_access
             #datex_hash

@@ -4,7 +4,7 @@ pub mod callable;
 pub mod child_iterator;
 pub mod classification;
 pub mod clone_unsafe;
-pub mod convert_core_value;
+pub mod convert_value;
 pub mod convert_parts;
 pub mod convert_value_container;
 pub mod datex_hash;

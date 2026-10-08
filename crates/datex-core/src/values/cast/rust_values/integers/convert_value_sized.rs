@@ -1,12 +1,14 @@
 use crate::{
-    traits::convert_core_value::ConvertCoreValue,
+    traits::convert_value::ConvertValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
+        value::Value,
         core_values::integer::typed_integer::TypedInteger,
         value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
+use crate::values::core_value_with_classification::CoreValueWithClassification;
 
 macro_rules! impl_pointer_sized_core_value_conversions {
     ($($ty:ident => $variant:ident, $repr:ty, $borrow:ident, $borrow_mut:ident;)* $(,)?) => {
@@ -16,38 +18,38 @@ macro_rules! impl_pointer_sized_core_value_conversions {
                 assert!(core::mem::align_of::<$ty>() == core::mem::align_of::<$repr>());
             };
 
-            impl ConvertCoreValue for $ty {
-                fn to_core_value(self) -> CoreValue {
-                    CoreValue::TypedInteger(TypedInteger::$variant(self as $repr))
+            impl ConvertValue for $ty {
+                fn to_value(self) -> Value {
+                    CoreValue::TypedInteger(TypedInteger::$variant(self as $repr)).into()
                 }
-                fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
+                fn try_from_value(value: Value) -> Result<Self, Value> {
                     match value {
-                        CoreValue::TypedInteger(TypedInteger::$variant(v)) => Ok(v as $ty),
-                        CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
+                        Value::Core(CoreValueWithClassification {inner: CoreValue::TypedInteger(TypedInteger::$variant(v)), ..}) => Ok(v as $ty),
+                        Value::Native(native) => native.try_into_value().map_err(Value::Native),
                         _ => Err(value),
                     }
                 }
 
-                fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
+                fn try_borrow_from_value(value: &Value) -> Result<&Self, ()> {
                     match value {
                         // SAFETY: checked above to have identical size and alignment,
                         // and both are plain integers with no padding or niches.
-                        CoreValue::TypedInteger(TypedInteger::$variant(v)) => {
+                        Value::Core(CoreValueWithClassification {inner: CoreValue::TypedInteger(TypedInteger::$variant(v)), ..}) => {
                             Ok(unsafe { &*(v as *const $repr as *const $ty) })
                         }
-                        CoreValue::Native(native) => native.try_as().ok_or(()),
+                        Value::Native(native) => native.try_as().ok_or(()),
                         _ => Err(()),
                     }
                 }
 
-                fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()> {
+                fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut Self, ()> {
                     match value {
                         // SAFETY: as above; every bit pattern is valid for both types,
                         // so writes through the resulting reference are also fine.
-                        CoreValue::TypedInteger(TypedInteger::$variant(v)) => {
+                        Value::Core(CoreValueWithClassification {inner: CoreValue::TypedInteger(TypedInteger::$variant(v)), ..}) => {
                             Ok(unsafe { &mut *(v as *mut $repr as *mut $ty) })
                         }
-                        CoreValue::Native(native) => native.try_as_mut().ok_or(()),
+                        Value::Native(native) => native.try_as_mut().ok_or(()),
                         _ => Err(()),
                     }
                 }

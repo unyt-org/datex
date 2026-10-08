@@ -1,11 +1,12 @@
 //! Implements [TryFrom] for DATEX [CoreValue] and [Value] types. This allows to convert e.g. [CoreValue::Integer] to [Integer].
 use crate::{
-    traits::convert_core_value::ConvertCoreValue,
+    traits::convert_value::ConvertValue,
     types::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
     },
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
+        value::Value,
         core_value::CoreValue,
         core_values::{
             boolean::Boolean,
@@ -21,6 +22,7 @@ use crate::{
         value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
+use crate::values::core_value_with_classification::CoreValueWithClassification;
 
 /// Implements [TryFrom] for each [CoreValue] variant to its corresponding type.
 /// This allows to convert e.g. [CoreValue::Integer] to [Integer].
@@ -29,38 +31,38 @@ use crate::{
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
         $(
-            impl ConvertCoreValue for $type {
-                fn to_core_value(self) -> CoreValue {
-                    CoreValue::$variant(self)
+            impl ConvertValue for $type {
+                fn to_value(self) -> Value {
+                    CoreValue::$variant(self).into()
                 }
 
-                fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
+                fn try_from_value(value: Value) -> Result<Self, Value> {
                     match value {
-                        CoreValue::Native(native) => {
+                        Value::Native(native) => {
                             match native.try_into_value() {
                                 Ok(v) => Ok(v),
-                                Err(native) => Err(CoreValue::Native(native)),
+                                Err(native) => Err(Value::Native(native)),
                             }
                         },
-                        CoreValue::$variant(v) => Ok(v),
+                        Value::Core(CoreValueWithClassification {inner: CoreValue::$variant(v), ..}) => Ok(v),
                         _ => Err(value),
                     }
                 }
 
-                fn try_borrow_from_core_value(value: &CoreValue) -> Result<&$type, ()> {
+                fn try_borrow_from_value(value: &Value) -> Result<&$type, ()> {
                     match value {
-                        CoreValue::$variant(v) => Ok(v),
-                        CoreValue::Native(native) => {
+                        Value::Core(CoreValueWithClassification {inner: CoreValue::$variant(v), ..}) => Ok(v),
+                        Value::Native(native) => {
                             native.try_as::<$type>().ok_or(())
                         },
                         _ => Err(()),
                     }
                 }
 
-                fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut $type, ()> {
+                fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut $type, ()> {
                     match value {
-                        CoreValue::$variant(v) => Ok(v),
-                        CoreValue::Native(native) => {
+                        Value::Core(CoreValueWithClassification {inner: CoreValue::$variant(v), ..}) => Ok(v),
+                        Value::Native(native) => {
                             native.try_as_mut::<$type>().ok_or(())
                         },
                         _ => Err(()),
@@ -114,7 +116,7 @@ mod tests {
 
     use crate::{
         prelude::*,
-        preludes::derive::ConvertCoreValue,
+        preludes::derive::ConvertValue,
         values::{
             core_value::CoreValue,
             core_values::{
@@ -126,7 +128,7 @@ mod tests {
     };
 
     #[test]
-    fn try_from_core_value() {
+    fn try_from_value() {
         let int_value = CoreValue::Integer(Integer::new(42));
         let int: Integer = int_value.try_into_value().unwrap();
         assert_eq!(int, Integer::new(42));
@@ -181,11 +183,11 @@ mod tests {
         let mut native_endpoint =
             CoreValue::Native(NativeCoreValue::new(Endpoint::new("@test")));
         let endpoint_ref: &Endpoint =
-            Endpoint::try_borrow_from_core_value(&native_endpoint).unwrap();
+            Endpoint::try_borrow_from_value(&native_endpoint).unwrap();
         assert_eq!(*endpoint_ref, Endpoint::new("@test"));
 
         let endpoint_mut_ref: &mut Endpoint =
-            Endpoint::try_borrow_mut_from_core_value(&mut native_endpoint)
+            Endpoint::try_borrow_mut_from_value(&mut native_endpoint)
                 .unwrap();
         *endpoint_mut_ref = Endpoint::new("@test2");
         assert_eq!(*endpoint_mut_ref, Endpoint::new("@test2"));

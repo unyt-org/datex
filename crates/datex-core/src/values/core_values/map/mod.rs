@@ -51,6 +51,7 @@ use crate::{
 use indexmap::{IndexMap, map::MutableKeys};
 use crate::preludes::derive::SharedReferencesCache;
 use crate::traits::convert_parts::{FromParts, IntoParts, PartsKind};
+use crate::values::core_value_with_classification::CoreValueWithClassification;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MapEntries {
@@ -269,10 +270,10 @@ impl Map {
             }
             MapEntries::Dynamic(entries) => {
                 for (key, _) in entries {
-                    if let ValueContainer::Local(Value {
+                    if let ValueContainer::Local(Value::Core(CoreValueWithClassification {
                         inner: CoreValue::Text(text),
                         ..
-                    }) = key
+                    })) = key
                     {
                         if !allowed.contains(&text.0.as_str()) {
                             return Err(UnexpectedPropertyError {
@@ -533,10 +534,10 @@ impl<'a> Iterator for MapIterator<'a> {
                 self.index += 1;
                 item.map(|(k, v)| {
                     let key = match k {
-                        ValueContainer::Local(Value {
+                        ValueContainer::Local(Value::Core(CoreValueWithClassification {
                             inner: CoreValue::Text(text),
                             ..
-                        }) => BorrowedMapKey::Text(&text.0),
+                        })) => BorrowedMapKey::Text(&text.0),
                         _ => BorrowedMapKey::Value(k),
                     };
                     (key, v)
@@ -547,10 +548,10 @@ impl<'a> Iterator for MapIterator<'a> {
                     let item = &vec[self.index];
                     self.index += 1;
                     let key = match &item.0 {
-                        ValueContainer::Local(Value {
+                        ValueContainer::Local(Value::Core(CoreValueWithClassification {
                             inner: CoreValue::Text(text),
                             ..
-                        }) => BorrowedMapKey::Text(&text.0),
+                        })) => BorrowedMapKey::Text(&text.0),
                         _ => BorrowedMapKey::Value(&item.0),
                     };
                     Some((key, &item.1))
@@ -584,20 +585,20 @@ impl<'a> Iterator for MapMutIterator<'a> {
         match self {
             MapMutIterator::Dynamic(iter) => iter.next().map(|(k, v)| {
                 let key = match k {
-                    ValueContainer::Local(Value {
+                    ValueContainer::Local(Value::Core(CoreValueWithClassification {
                         inner: CoreValue::Text(text),
                         ..
-                    }) => BorrowedMutMapKey::Text(&mut text.0),
+                    })) => BorrowedMutMapKey::Text(&mut text.0),
                     _ => BorrowedMutMapKey::Value(k),
                 };
                 (key, v)
             }),
             MapMutIterator::Fixed(iter) => iter.next().map(|(k, v)| {
                 let key = match k {
-                    ValueContainer::Local(Value {
+                    ValueContainer::Local(Value::Core(CoreValueWithClassification {
                         inner: CoreValue::Text(text),
                         ..
-                    }) => BorrowedMutMapKey::Text(&mut text.0),
+                    })) => BorrowedMutMapKey::Text(&mut text.0),
                     _ => BorrowedMutMapKey::Value(k),
                 };
                 (key, v)
@@ -622,20 +623,20 @@ impl Iterator for IntoMapIterator {
         match self {
             IntoMapIterator::Dynamic(iter) => iter.next().map(|(k, v)| {
                 let key = match k {
-                    ValueContainer::Local(Value {
+                    ValueContainer::Local(Value::Core(CoreValueWithClassification {
                         inner: CoreValue::Text(text),
                         ..
-                    }) => MapKey::Text(text.0),
+                    })) => MapKey::Text(text.0),
                     _ => MapKey::Value(k),
                 };
                 (key, v)
             }),
             IntoMapIterator::Fixed(iter) => iter.next().map(|(k, v)| {
                 let key = match k {
-                    ValueContainer::Local(Value {
+                    ValueContainer::Local(Value::Core(CoreValueWithClassification {
                         inner: CoreValue::Text(text),
                         ..
-                    }) => MapKey::Text(text.0),
+                    })) => MapKey::Text(text.0),
                     _ => MapKey::Value(k),
                 };
                 (key, v)
@@ -735,10 +736,10 @@ impl From<Vec<(MapKey, ValueContainer)>> for Map {
             matches!(k, MapKey::Text(_))
                 || matches!(
                     k,
-                    MapKey::Value(ValueContainer::Local(Value {
+                    MapKey::Value(ValueContainer::Local(Value::Core(CoreValueWithClassification {
                         inner: CoreValue::Text(_),
                         ..
-                    }))
+                    })))
                 )
         });
         if has_only_text_keys {
@@ -750,10 +751,10 @@ impl From<Vec<(MapKey, ValueContainer)>> for Map {
                         entries.push((text, v));
                     }
                     MapKey::Value(value) => {
-                        if let ValueContainer::Local(Value {
+                        if let ValueContainer::Local(Value::Core(CoreValueWithClassification {
                             inner: CoreValue::Text(text),
                             ..
-                        }) = value
+                        })) = value
                         {
                             entries.push((text.0, v));
                         } else {

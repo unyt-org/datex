@@ -1,4 +1,4 @@
-pub mod try_from_core_value;
+pub mod convert_value;
 
 use crate::dif::deserialize_serde_context::impl_serde_with_context;
 use crate::traits::{datex_hash::impl_datex_hash, value_access::ValueAccess};

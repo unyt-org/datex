@@ -9,7 +9,7 @@ use crate::{
         value_with_serde_context::ValueWithSerdeContext,
     },
     prelude::*,
-    preludes::derive::{ConvertCoreValue, Text},
+    preludes::derive::{ConvertValue, Text},
     values::{
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
@@ -33,10 +33,10 @@ impl ValueKey {
     pub fn into_value_container(self) -> ValueContainer {
         match self {
             ValueKey::Text(text) => {
-                ValueContainer::Local(text.to_core_value().into())
+                ValueContainer::Local(text.to_value().into())
             }
             ValueKey::Index(index) => {
-                ValueContainer::Local(index.to_core_value().into())
+                ValueContainer::Local(index.to_value().into())
             }
             ValueKey::Value(value_container) => value_container,
         }

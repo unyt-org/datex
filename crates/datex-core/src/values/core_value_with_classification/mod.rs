@@ -2,7 +2,7 @@ use core::cell::RefCell;
 
 use crate::{
     preludes::derive::{
-        AccessError, BorrowedValueKey, ConvertCoreValue, CoreValue,
+        AccessError, BorrowedValueKey, ConvertValue, CoreValue,
         SharedReferencesCache, TaggedTypeDefinition, ValueClassification,
         ValueContainer, ValueTag,
     },
@@ -16,6 +16,9 @@ use crate::{
     values::value::Value,
 };
 mod value_access;
+pub mod serde_dif;
+
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct CoreValueWithClassification {
@@ -34,31 +37,15 @@ impl CoreValueWithClassification {
         matches!(self.inner, CoreValue::Null)
     }
 
-    /// Tries to get a borrow of the current value as the specified type.
-    /// Does not perform any type conversion.
-    pub fn try_as<T>(&self) -> Option<&T>
-    where
-        T: ConvertCoreValue,
-    {
-        T::try_borrow_from_core_value(&self.inner).ok()
-    }
-
-    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
-    where
-        T: ConvertCoreValue,
-    {
-        T::try_borrow_mut_from_core_value(&mut self.inner).ok()
-    }
-
     /// Tries to convert the current value into the specific specified type.
     /// Does not perform any type conversion.
     pub fn try_into_core_value_with_classification<T>(
         self,
     ) -> Result<T, CoreValueWithClassification>
     where
-        T: ConvertCoreValue,
+        T: ConvertValue,
     {
-        T::try_from_core_value(self.inner).map_err(|inner| {
+        T::try_from_value(self.inner).map_err(|inner| {
             CoreValueWithClassification {
                 inner,
                 classification: self.classification,

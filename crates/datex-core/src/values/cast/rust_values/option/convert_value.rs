@@ -1,27 +1,29 @@
 use crate::{
     preludes::derive::DatexNative,
-    traits::convert_core_value::ConvertCoreValue,
+    traits::convert_value::ConvertValue,
     values::{core_value::CoreValue, core_values::native::DatexNativeBase},
 };
+use crate::values::core_value_with_classification::CoreValueWithClassification;
+use crate::values::value::Value;
 
-impl<T> ConvertCoreValue for Option<T>
+impl<T> ConvertValue for Option<T>
 where
-    T: DatexNative + ConvertCoreValue + 'static,
+    T: DatexNative + ConvertValue + 'static,
 {
-    fn to_core_value(self) -> CoreValue {
+    fn to_value(self) -> Value {
         match self {
-            Some(value) => CoreValue::native(value),
-            None => CoreValue::Null,
+            Some(value) => Value::native(value),
+            None => CoreValue::Null.into(),
         }
     }
-    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
+    fn try_from_value(value: Value) -> Result<Self, Value> {
         match value {
-            CoreValue::Null => Ok(None),
-            value => value.try_into_value::<T>().map(Some),
+            Value::Core(CoreValueWithClassification {inner: CoreValue::Null, ..}) => Ok(None),
+            value => value.try_into_value::<T>().map_err(Value::Core),
         }
     }
 
-    fn try_borrow_from_core_value(_value: &CoreValue) -> Result<&Self, ()> {
+    fn try_borrow_from_value(_value: &Value) -> Result<&Self, ()> {
         // Option<T> is represented as null | T, so CoreValue never contains
         // an Option<T> that can be borrowed as &Option<T>.
         // We could return `Ok(&None)` for the null case here, but to make the API consistent
@@ -30,8 +32,8 @@ where
         Err(())
     }
 
-    fn try_borrow_mut_from_core_value(
-        _value: &mut CoreValue,
+    fn try_borrow_mut_from_value(
+        _value: &mut Value,
     ) -> Result<&mut Self, ()> {
         // Option<T> is represented as null | T, so CoreValue never contains
         // an Option<T> that can be borrowed as &mut Option<T>.
@@ -41,7 +43,7 @@ where
 
 impl<'a, T> TryFrom<&'a CoreValue> for Option<&'a T>
 where
-    T: DatexNativeBase + ConvertCoreValue + 'static,
+    T: DatexNativeBase + ConvertValue + 'static,
 {
     type Error = ();
     fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
@@ -54,7 +56,7 @@ where
 
 impl<'a, T> TryFrom<&'a mut CoreValue> for Option<&'a mut T>
 where
-    T: DatexNativeBase + ConvertCoreValue + 'static,
+    T: DatexNativeBase + ConvertValue + 'static,
 {
     type Error = ();
     fn try_from(value: &'a mut CoreValue) -> Result<Self, Self::Error> {
@@ -68,7 +70,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        traits::convert_core_value::ConvertCoreValue,
+        traits::convert_value::ConvertValue,
         values::{
             core_value::CoreValue,
             core_values::integer::typed_integer::TypedInteger,
@@ -78,21 +80,21 @@ mod tests {
     #[test]
     fn try_option_from_null() {
         let core_value = CoreValue::Null;
-        let result = Option::<u32>::try_from_core_value(core_value);
+        let result = Option::<u32>::try_from_value(core_value.into());
         assert_eq!(result.unwrap(), None);
     }
 
     #[test]
     fn try_option_from_native() {
-        let core_value = 42u32.to_core_value();
-        let result = Option::<u32>::try_from_core_value(core_value);
+        let core_value = 42u32.to_value();
+        let result = Option::<u32>::try_from_value(core_value.into());
         assert_eq!(result.unwrap(), Some(42));
     }
 
     #[test]
     fn try_option_from_wrong_core_value() {
         let core_value = CoreValue::TypedInteger(TypedInteger::I32(42));
-        let result = Option::<u32>::try_from_core_value(core_value);
+        let result = Option::<u32>::try_from_value(core_value.into());
         assert!(result.is_err());
     }
 
@@ -105,7 +107,7 @@ mod tests {
 
     #[test]
     fn try_option_ref_from_native() {
-        let core_value = 42u32.to_core_value();
+        let core_value = 42u32.to_value();
         let result = Option::<&u32>::try_from(&core_value);
         assert_eq!(*result.unwrap().unwrap(), 42);
     }
@@ -126,7 +128,7 @@ mod tests {
 
     #[test]
     fn try_option_mut_ref_from_native() {
-        let mut core_value = 42u32.to_core_value();
+        let mut core_value = 42u32.to_value();
         let result = Option::<&mut u32>::try_from(&mut core_value);
         let value = result.unwrap().unwrap();
         *value = 100;

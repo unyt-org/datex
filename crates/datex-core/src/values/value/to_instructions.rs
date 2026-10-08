@@ -19,21 +19,19 @@ impl ToInstructions for Value {
     where
         'ctx: 'a,
     {
+        let classification = self.unresolved_classification();
         Box::new(gen move {
-            if let Some(entity_type) = &self.classification.entity_type {
-                yield RegularInstruction::EntityValue(
-                    entity_type.pointer_address(),
-                )
-                    .into()
+            if let Some(entity_type_address) = &classification.entity_type_address {
+                yield RegularInstruction::EntityValue(entity_type_address.clone()).into()
             }
 
-            for impl_address in &self.classification.impls {
+            for impl_address in &classification.impls {
                 todo!(
                     "Compiling values with Impls classification is not yet implemented"
                 )
             }
             
-            if let Some(ValueTag {tag, is_empty}) = &self.classification.tag {
+            if let Some(ValueTag {tag, is_empty}) = &classification.tag {
                 yield RegularInstruction::tagged_value(
                     tag.clone(),
                     *is_empty,
@@ -46,8 +44,17 @@ impl ToInstructions for Value {
             }
 
             // append inner instructions
-            for instruction in self.inner.to_instructions(ctx) {
-                yield instruction;
+            match self {
+                Value::Native(native) => {
+                    for instruction in native.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
+                Value::Core(core) => {
+                    for instruction in core.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
             }
         })
     }

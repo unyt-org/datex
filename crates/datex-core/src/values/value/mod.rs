@@ -39,19 +39,13 @@ pub mod value_classification;
 
 use crate::{
     preludes::derive::{
-        ConvertCoreValue, DatexNativeStructural, TaggedTypeDefinition,
+        ConvertValue, DatexNativeStructural, TaggedTypeDefinition,
     },
     shared_values::errors::AccessError,
     traits::{
         convert_value_container::ConvertValueContainer,
         datex_native_only_structural::DatexNativeOnlyStructural,
         value_access::ValueAccess,
-    },
-    types::{
-        r#type::Type,
-        type_definition::{
-            impl_type::ImplMarkers, intersection::IntersectionTypeDefinition,
-        },
     },
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
@@ -68,6 +62,8 @@ use core::{
     fmt::{Debug, Formatter},
     result::Result,
 };
+use crate::traits::classification::Classification;
+use crate::values::value::value_classification::unresolved_value_classification::UnresolvedValueClassification;
 
 #[derive(Debug, Clone)]
 /// Represents a local DATEX value.
@@ -92,14 +88,9 @@ impl From<NativeCoreValue> for Value {
     }
 }
 
-impl<T: ConvertCoreValue> From<T> for Value {
+impl<T: ConvertValue> From<T> for Value {
     fn from(inner: T) -> Self {
-        let inner = inner.to_core_value();
-        CoreValueWithClassification {
-            inner,
-            classification: ValueClassification::new_unclassified(),
-        }
-        .into()
+        inner.to_value()
     }
 }
 
@@ -124,32 +115,32 @@ impl Value {
         CoreValue::Uninitialized.into()
     }
 
-    pub fn classification(&self) -> Option<&ValueClassification> {
+    /// Returns the classification of the value, which includes its entity type, impls, and tag.
+    pub fn classification(&self, cache: &mut SharedReferencesCache) -> ValueClassification {
         match self {
             Value::Core(core_value_with_classification) => {
-                Some(&core_value_with_classification.classification)
+                core_value_with_classification.classification.clone()
             }
-            Value::Native(_) => None,
+            Value::Native(native) => native.classification(cache),
+        }
+    }
+
+    /// Returns the unresolved classification of the value, which includes its entity type, impls, and tag.
+    /// In contrast to `classification`, this method does not require a mutable reference to a cache
+    /// and only returns an address for an entity type if it is present, without resolving it to a full type.
+    pub fn unresolved_classification(&self) -> UnresolvedValueClassification {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.classification.clone().into()
+            }
+            Value::Native(native) => native.unresolved_classification(),
         }
     }
 
     pub fn new(
-        inner: impl ConvertCoreValue,
-        classification: impl Into<ValueClassification>,
+        inner: impl ConvertValue,
     ) -> Self {
-        CoreValueWithClassification {
-            inner: inner.to_core_value(),
-            classification: classification.into(),
-        }
-        .into()
-    }
-
-    pub fn new_unclassified(inner: impl ConvertCoreValue) -> Self {
-        CoreValueWithClassification {
-            inner: inner.to_core_value(),
-            classification: ValueClassification::new_unclassified(),
-        }
-        .into()
+        inner.to_value()
     }
 
     /// Checks if the inner [CoreValue] of the [Value] is a [CoreValue::Native].
@@ -190,6 +181,39 @@ impl Value {
             _ => Err(self),
         }
     }
+
+    /// Tries to get a borrow of the current value as the specified type.
+    /// Does not perform any type conversion.
+    pub fn try_as<T>(&self) -> Option<&T>
+    where
+        T: ConvertValue,
+    {
+        T::try_borrow_from_value(self).ok()
+    }
+
+    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
+    where
+        T: ConvertValue,
+    {
+        T::try_borrow_mut_from_value(self).ok()
+    }
+
+    /// Tries to convert the current value into the specific specified type.
+    /// Does not perform any type conversion.
+    pub fn try_into_value<T>(self) -> Result<T, Value>
+    where
+        T: ConvertValue,
+    {
+        T::try_from_value(self)
+    }
+
+    /// Tries to get a reference to the inner [CoreValue] if the [Value] is a [Value::Core] variant.
+    pub fn try_as_core_value(&self) -> Option<&CoreValue> {
+        match self {
+            Value::Core(core_value_with_classification) => Some(&core_value_with_classification.inner),
+            Value::Native(native) => None,
+        }
+    }
 }
 
 impl Value {
@@ -206,7 +230,6 @@ impl Value {
                 body,
                 creator,
             }),
-            ValueClassification::new_unclassified(),
         )
     }
 
@@ -271,7 +294,7 @@ impl_display_for_datex_value!(
     Value,
     impl core::fmt::Display for Value {
         fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
-            core::write!(f, "{}", self.inner)
+            core::write!(f, "{}", self)
         }
     }
 );
@@ -402,7 +425,7 @@ mod tests {
         let null_value = Value::from(maybe_value);
         assert_eq!(*null_value.try_as::<Option<i8>>().unwrap(), None);
         assert_eq!(
-            null_value.inner.try_into_value::<Option<i8>>().unwrap(),
+            null_value.try_into_value::<Option<i8>>().unwrap(),
             None
         );
     }
@@ -421,7 +444,7 @@ mod tests {
     fn string_concatenation() {
         let a = Value::from("Hello ".to_string());
         let b = Value::from(TypedInteger::I8(42i8));
-        assert!(matches!(a.inner, CoreValue::Text(_)));
+        assert!(matches!(a.try_as_core_value().unwrap(), CoreValue::Text(_)));
         assert!(matches!(
             b.try_as::<TypedInteger>().unwrap(),
             TypedInteger::I8(_)
@@ -430,8 +453,8 @@ mod tests {
         let a_plus_b = (&a + &b).unwrap();
         let b_plus_a = (&b + &a).unwrap();
 
-        assert!(matches!(a_plus_b.inner, CoreValue::Text(_)));
-        assert!(matches!(b_plus_a.inner, CoreValue::Text(_)));
+        assert!(matches!(a_plus_b.try_as_core_value().unwrap(), CoreValue::Text(_)));
+        assert!(matches!(b_plus_a.try_as_core_value().unwrap(), CoreValue::Text(_)));
 
         assert_eq!(a_plus_b, Value::from("Hello 42".to_string()));
         assert_eq!(b_plus_a, Value::from("42Hello ".to_string()));
@@ -444,8 +467,8 @@ mod tests {
     fn structural_equality() {
         let a = Value::from(42_i8);
         let b = Value::from(42_i32);
-        assert_matches!(a.inner, CoreValue::TypedInteger(TypedInteger::I8(_)));
-        assert_matches!(b.inner, CoreValue::TypedInteger(TypedInteger::I32(_)));
+        assert_matches!(a.try_as_core_value().unwrap(), CoreValue::TypedInteger(TypedInteger::I8(_)));
+        assert_matches!(b.try_as_core_value().unwrap(), CoreValue::TypedInteger(TypedInteger::I32(_)));
         assert_ne!(a, b);
 
         assert_structural_eq!(a, b);

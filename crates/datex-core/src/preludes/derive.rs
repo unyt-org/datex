@@ -24,7 +24,7 @@ pub use crate::{
         errors::{AccessError, KeyNotFoundError},
     },
     traits::classification::Classification,
-    traits::convert_core_value::ConvertCoreValue,
+    traits::convert_value::ConvertValue,
     traits::convert_parts::FromParts,
     traits::convert_parts::IntoParts,
     traits::convert_parts::HasPartsKind,

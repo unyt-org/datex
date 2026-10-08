@@ -1,6 +1,6 @@
 //! Implements [DatexValueProxy] for [Box<T>] where T: [DatexValueProxy].
 pub mod classification;
-mod convert_core_value;
+mod convert_value;
 mod convert_parts;
 pub mod datex_hash;
 mod datex_native;
