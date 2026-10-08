@@ -411,13 +411,6 @@ mod tests {
 
     #[test]
     fn try_from_value() {
-        let value = CoreValue::Text(Text("Hello, World!".to_string())).to_value();
-        let result = value.try_into_value::<String>();
-        assert_eq!(result.unwrap(), "Hello, World!");
-    }
-
-    #[test]
-    fn try_from_value() {
         let value =
             Value::from(CoreValue::Text(Text("Hello, World!".to_string())));
         let result = value.try_into_value::<String>();

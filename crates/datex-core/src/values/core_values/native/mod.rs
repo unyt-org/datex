@@ -37,6 +37,7 @@ use crate::{
 };
 pub use datex_native_trait::*;
 use crate::traits::classification::Classification;
+use crate::utils::goat::Goat;
 use crate::values::core_value_with_classification::CoreValueWithClassification;
 
 impl<T: DatexNative + ConvertValue + Classification>
@@ -53,8 +54,7 @@ impl<T: DatexNative + ConvertValue + Classification>
         &self,
         cache: &mut SharedReferencesCache,
     ) -> BorrowedValueContainer<'_> {
-        let classification = self.classification(cache);
-        BorrowedValueContainer::Local(BorrowedValue::new(self, classification))
+        BorrowedValueContainer::Local(BorrowedValue::Native(Goat::Borrowed(self)))
     }
 
     fn try_from_value_container(

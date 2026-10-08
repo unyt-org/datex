@@ -5,9 +5,9 @@ use crate::{
         core_value::CoreValue,
         value::Value,
         core_values::integer::typed_integer::TypedInteger,
-        value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
+use crate::preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut};
 use crate::values::core_value_with_classification::CoreValueWithClassification;
 
 macro_rules! impl_pointer_sized_core_value_conversions {

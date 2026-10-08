@@ -42,9 +42,9 @@ mod tests {
     fn to_value() {
         let vec = vec![Integer::new(1), Integer::new(2), Integer::new(3)];
         let vec_clone = vec.clone();
-        let value: Value = Value::new(vec, ValueClassification::new_unclassified());
+        let value: Value = Value::new(vec);
         assert_eq!(
-            value.inner.try_into_value::<Vec<Integer>>(),
+            value.try_into_value::<Vec<Integer>>(),
             Ok(vec_clone)
         );
     }

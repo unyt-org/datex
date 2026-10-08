@@ -35,7 +35,6 @@ impl ToDatexExpressionData for CoreValue {
             }
             CoreValue::Uninitialized => todo!(),
             CoreValue::Box(inner) => inner.to_datex_expression_data(),
-            CoreValue::Native(value) => value.to_datex_expression_data(),
         }
     }
 }

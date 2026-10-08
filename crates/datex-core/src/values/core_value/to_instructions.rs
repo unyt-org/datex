@@ -103,11 +103,6 @@ impl ToInstructions for CoreValue {
                         yield instruction;
                     }
                 }
-                CoreValue::Native(native_core_value) => {
-                    for instruction in native_core_value.to_instructions(ctx) {
-                        yield instruction;
-                    }
-                }
             }
         })
     }

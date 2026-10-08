@@ -109,11 +109,6 @@ impl PartialEq for CoreValue {
             (CoreValue::Callable(c1), CoreValue::Callable(c2)) => c1 == c2,
             (CoreValue::Range(r1), CoreValue::Range(r2)) => r1 == r2,
             (CoreValue::Box(b1), CoreValue::Box(b2)) => *b1 == *b2,
-            (CoreValue::Native(n1), CoreValue::Native(n2)) => {
-                (*n1.value).dyn_eq(&*n2.value)
-            }
-            (CoreValue::Native(n), other) => other.dyn_eq_native(&*n.value),
-            (other, CoreValue::Native(n)) => other.dyn_eq_native(&*n.value),
             _ => false,
         }
     }
@@ -139,9 +134,6 @@ impl CoreValue {
             CoreValue::Uninitialized => todo!(),
             CoreValue::EntityTypeDefinition(_entity_type_definition) => todo!(),
             CoreValue::Box(value_container) => value_container.dyn_eq(native), // FIXME
-            CoreValue::Native(_native_core_value) => {
-                unreachable!("covered above")
-            }
         }
     }
 }
@@ -156,36 +148,37 @@ mod tests {
         },
     };
 
-    #[test]
-    fn native_eq() {
-        let native = CoreValue::Native(NativeCoreValue::new(Boolean(true)));
-        let non_native = CoreValue::Boolean(Boolean(true));
-        assert_eq!(native, non_native);
-
-        let native =
-            CoreValue::Native(NativeCoreValue::new(Endpoint::new("@jonas")));
-        let non_native = CoreValue::Endpoint(Endpoint::new("@jonas"));
-        assert_eq!(native, non_native);
-
-        let native = CoreValue::native(TypedInteger::I8(42));
-        let non_native = CoreValue::TypedInteger(TypedInteger::I8(42));
-        assert_eq!(native, non_native);
-    }
-
-    // FIXME
-    #[test]
-    fn native_eq_rust() {
-        let native = CoreValue::native(42);
-        let non_native = CoreValue::TypedInteger(TypedInteger::I8(42));
-        assert_eq!(native, non_native);
-    }
-
-    #[test]
-    fn native_ne() {
-        let native = CoreValue::Native(NativeCoreValue::new(Boolean(true)));
-        let value = CoreValue::Boolean(Boolean(false));
-
-        assert_ne!(native, value);
-        assert_ne!(value, native);
-    }
+    // TODO: on Value level
+    // #[test]
+    // fn native_eq() {
+    //     let native = CoreValue::Native(NativeCoreValue::new(Boolean(true)));
+    //     let non_native = CoreValue::Boolean(Boolean(true));
+    //     assert_eq!(native, non_native);
+    //
+    //     let native =
+    //         CoreValue::Native(NativeCoreValue::new(Endpoint::new("@jonas")));
+    //     let non_native = CoreValue::Endpoint(Endpoint::new("@jonas"));
+    //     assert_eq!(native, non_native);
+    //
+    //     let native = CoreValue::native(TypedInteger::I8(42));
+    //     let non_native = CoreValue::TypedInteger(TypedInteger::I8(42));
+    //     assert_eq!(native, non_native);
+    // }
+    //
+    // // FIXME
+    // #[test]
+    // fn native_eq_rust() {
+    //     let native = CoreValue::native(42);
+    //     let non_native = CoreValue::TypedInteger(TypedInteger::I8(42));
+    //     assert_eq!(native, non_native);
+    // }
+    //
+    // #[test]
+    // fn native_ne() {
+    //     let native = CoreValue::Native(NativeCoreValue::new(Boolean(true)));
+    //     let value = CoreValue::Boolean(Boolean(false));
+    //
+    //     assert_ne!(native, value);
+    //     assert_ne!(value, native);
+    // }
 }
