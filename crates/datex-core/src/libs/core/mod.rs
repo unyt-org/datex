@@ -9,13 +9,12 @@ use crate::{
     types::type_definition::callable::CallableTypeDefinition,
     values::{
         core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
         core_values::{
             callable::{CallableBody, error::CallableError},
             map::Map,
         },
-        value::{
-            Value, core_value_with_classification::CoreValueWithClassification,
-        },
+        value::Value,
         value_container::ValueContainer,
     },
 };

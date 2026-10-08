@@ -78,7 +78,7 @@ use crate::{
         update_data::{AppendEntryUpdateData, DeleteEntryUpdateData},
         update_handler::UpdateHandler,
     }, values::{
-        core_value::CoreValue, core_values::{
+        core_value::CoreValue, core_value_with_classification::CoreValueWithClassification, core_values::{
             boolean::Boolean,
             callable::{Callable, CallableBody, CoreStub},
             decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -86,7 +86,7 @@ use crate::{
             integer::{Integer, typed_integer::TypedInteger},
             list::List,
             map::{Map, MapKey},
-        }, value::{Value, core_value_with_classification::CoreValueWithClassification}, value_container::{
+        }, value::Value, value_container::{
             ValueContainer, error::ValueError, value_key::ValueKey,
         },
     },

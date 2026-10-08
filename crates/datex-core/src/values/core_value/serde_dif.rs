@@ -24,9 +24,15 @@ use num::ToPrimitive;
 use serde::de::{Error, MapAccess};
 
 use crate::{
-    dif::serde_context::SerdeContext,
-    values::{
-        core_values::{callable::Callable, endpoint::Endpoint},
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+    },
+    libs::core::core_lib_id::CoreLibIdIndex,
+    values::core_values::{
+        boolean::Boolean, callable::Callable, endpoint::Endpoint,
     },
 };
 use core::{fmt, str::FromStr};
@@ -36,37 +42,26 @@ use serde::{
     de::{DeserializeSeed, SeqAccess, Visitor},
 };
 use serde_with::__private__::DeError;
-use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
-use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
-use crate::values::core_values::boolean::Boolean;
-
 
 impl SerializeWithSerdeContext for CoreValue {
-    fn serialize_with_ctx<S: Serializer>(&self, ctx: &SerdeContext<'_>, serializer: S) -> Result<S::Ok, S::Error> {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         let core_lib_type = self.default_core_type();
 
         match &self {
             // Direct serializable core values, that can be serialized as they can be unambiguously deserialized without it
-            CoreValue::Boolean(b) => ctx.serialize_core_value(
-                b,
-                core_lib_type,
-                serializer,
-                true,
-            ),
-            CoreValue::Text(s) => ctx.serialize_core_value(
-                s,
-                core_lib_type,
-                serializer,
-                true,
-            ),
-            CoreValue::Null => ctx.serialize_core_value(
-                &(),
-                core_lib_type,
-                serializer,
-                true,
-            ),
+            CoreValue::Boolean(b) => {
+                ctx.serialize_core_value(b, core_lib_type, serializer, true)
+            }
+            CoreValue::Text(s) => {
+                ctx.serialize_core_value(s, core_lib_type, serializer, true)
+            }
+            CoreValue::Null => {
+                ctx.serialize_core_value(&(), core_lib_type, serializer, true)
+            }
             CoreValue::TypedDecimal(dec @ TypedDecimal::F64(_)) => ctx
                 .serialize_core_value(
                     &dec,
@@ -82,30 +77,18 @@ impl SerializeWithSerdeContext for CoreValue {
                 serializer,
                 false,
             ),
-            CoreValue::Decimal(d) => ctx.serialize_core_value(
-                d,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Integer(i) => ctx.serialize_core_value(
-                i,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::TypedInteger(ti) => ctx.serialize_core_value(
-                ti,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::TypedDecimal(td) => ctx.serialize_core_value(
-                td,
-                core_lib_type,
-                serializer,
-                false,
-            ),
+            CoreValue::Decimal(d) => {
+                ctx.serialize_core_value(d, core_lib_type, serializer, false)
+            }
+            CoreValue::Integer(i) => {
+                ctx.serialize_core_value(i, core_lib_type, serializer, false)
+            }
+            CoreValue::TypedInteger(ti) => {
+                ctx.serialize_core_value(ti, core_lib_type, serializer, false)
+            }
+            CoreValue::TypedDecimal(td) => {
+                ctx.serialize_core_value(td, core_lib_type, serializer, false)
+            }
 
             // Complex core values, that can contain nested values
             CoreValue::List(l) => ctx.serialize_value_with_context(
@@ -136,37 +119,34 @@ impl SerializeWithSerdeContext for CoreValue {
             CoreValue::EntityTypeDefinition(_entity_type_definition) => {
                 todo!()
             }
-            CoreValue::Callable(callable) => ctx
-                .serialize_value_with_context(
-                    callable,
-                    core_lib_type,
-                    serializer,
-                    false,
-                ),
-            CoreValue::Box(inner) => {
-                inner.serialize_with_ctx(ctx, serializer)
-            }
+            CoreValue::Callable(callable) => ctx.serialize_value_with_context(
+                callable,
+                core_lib_type,
+                serializer,
+                false,
+            ),
+            CoreValue::Box(inner) => inner.serialize_with_ctx(ctx, serializer),
             CoreValue::Uninitialized => panic!("Uninitialized value"),
-            CoreValue::Native(native) => {
-                native.serialize_with_ctx(ctx, serializer)
-            }
         }
     }
 }
 
-
 impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for CoreValue {
-
-    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(DeserializeSerdeContext::<CoreValue>::new(ctx))
+        deserializer
+            .deserialize_any(DeserializeSerdeContext::<CoreValue>::new(ctx))
     }
 }
 
-
-impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, CoreValue> {
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, CoreValue>
+{
     type Value = CoreValue;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -216,9 +196,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, CoreValue
     where
         E: DeError,
     {
-        Ok(CoreValue::TypedDecimal(TypedDecimal::F64(
-            v.into(),
-        )))
+        Ok(CoreValue::TypedDecimal(TypedDecimal::F64(v.into())))
     }
 
     // default mapping for integers: decimal/f64 (with a check for overflow)
@@ -317,9 +295,9 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, CoreValue
         let core_lib_id = CoreLibTypeId::try_from(CoreLibIdIndex(
             core_lib_type_id,
         ))
-            .map_err(|_| {
-                serde::de::Error::custom("invalid core lib id index".to_string())
-            })?;
+        .map_err(|_| {
+            serde::de::Error::custom("invalid core lib id index".to_string())
+        })?;
 
         let visitor = CoreValueVisitor {
             core_lib_id,
@@ -332,8 +310,6 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, CoreValue
         })
     }
 }
-
-
 
 pub struct CoreValueVisitor<'a, 'ctx> {
     pub core_lib_id: CoreLibTypeId,
@@ -816,8 +792,8 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
 
 #[cfg(test)]
 mod tests {
-    use core::cell::RefCell;
     use super::*;
+    use core::cell::RefCell;
 
     use crate::runtime::cache::shared_values_cache::SharedValuesCache;
     use serde::de::DeserializeSeed;

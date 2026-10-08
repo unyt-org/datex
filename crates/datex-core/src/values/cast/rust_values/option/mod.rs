@@ -3,7 +3,6 @@ mod convert_core_value;
 pub mod convert_parts;
 mod datex_hash;
 pub mod datex_native;
-pub mod datex_native_structural;
 pub mod get_core_lib_type_id;
 pub mod get_datex_type;
 mod serde_dif;
@@ -14,6 +13,8 @@ mod value_access;
 
 #[cfg(test)]
 mod tests {
+    use core::assert_matches;
+
     use crate::{
         preludes::derive::{CoreValue, SharedReferencesCache},
         traits::get_datex_type::GetDatexType,
@@ -31,8 +32,8 @@ mod tests {
         let some_option: Option<Integer> = Some(Integer::new(1));
         let none_option: Option<Integer> = None;
 
-        let some_value: Value = Value::native_structural(some_option);
-        let none_value: Value = Value::native_structural(none_option);
+        let some_value: Value = Value::native(some_option);
+        let none_value: Value = Value::native(none_option);
 
         // Option<T> is represented as T | Null, not as Option<T> itself,
         // so it cannot be borrowed as &Option<T>.
@@ -44,13 +45,12 @@ mod tests {
 
     #[test]
     fn from_value() {
-        let some_value =
-            Value::boxed(Value::native_structural(Integer::new(1)));
+        let some_value = Value::boxed(Value::native(Integer::new(1)));
         let some_option =
             some_value.try_into_value::<Option<Integer>>().unwrap();
         assert_eq!(some_option, Some(Integer::new(1)));
 
-        let none_value: Value = Value::native_structural(None::<Integer>);
+        let none_value: Value = Value::native(None::<Integer>);
         let none_option =
             none_value.try_into_value::<Option<Integer>>().unwrap();
         assert_eq!(none_option, None);
@@ -69,10 +69,10 @@ mod tests {
     fn endpoint_in_option() {
         let endpoint = Endpoint::new("@jonas");
         let boxed_endpoint = Some(endpoint.clone());
-        let value: Value = Value::native_structural(boxed_endpoint);
+        let value: Value = Value::native(boxed_endpoint);
         assert_eq!(
-            value.inner,
-            CoreValue::Native(NativeCoreValue::new(Some(endpoint.clone())))
+            value,
+            Value::Native(NativeCoreValue::new(Some(endpoint.clone())))
         );
         assert_eq!(
             value.try_as::<Endpoint>().expect("Expected Endpoint"),

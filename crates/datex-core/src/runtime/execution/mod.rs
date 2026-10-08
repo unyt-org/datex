@@ -22,11 +22,9 @@ use crate::{
         entities::entity_impls::EntityImplMethod, entity_type::EntityType,
     },
     values::{
+        core_value_with_classification::CoreValueWithClassification,
         core_values::endpoint::Endpoint,
-        value::{
-            Value, core_value_with_classification::CoreValueWithClassification,
-            value_classification::ValueClassification,
-        },
+        value::{Value, value_classification::ValueClassification},
         value_container::ValueContainer,
     },
 };

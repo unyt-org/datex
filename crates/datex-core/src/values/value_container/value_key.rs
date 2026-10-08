@@ -12,10 +12,8 @@ use crate::{
     preludes::derive::{ConvertCoreValue, Text},
     values::{
         core_value::CoreValue,
-        value::{
-            Value, core_value_with_classification::CoreValueWithClassification,
-        },
-        value_container::ValueContainer,
+        core_value_with_classification::CoreValueWithClassification,
+        value::Value, value_container::ValueContainer,
     },
 };
 use serde::{
@@ -307,10 +305,12 @@ impl<'a> BorrowedValueKey<'a> {
         if let BorrowedValueKey::Text(text) = self {
             Some(text)
         } else if let BorrowedValueKey::Value(val) = self
-            && let ValueContainer::Local(Value {
-                inner: CoreValue::Text(text),
-                ..
-            }) = val.as_ref()
+            && let ValueContainer::Local(Value::Core(
+                CoreValueWithClassification {
+                    inner: CoreValue::Text(text),
+                    ..
+                },
+            )) = val.as_ref()
         {
             Some(&text.0)
         } else {
@@ -331,10 +331,12 @@ impl<'a> BorrowedValueKey<'a> {
         {
             index.as_i64()
         } else if let BorrowedValueKey::Value(value) = self
-            && let ValueContainer::Local(Value {
-                inner: CoreValue::TypedInteger(index),
-                ..
-            }) = value.as_ref()
+            && let ValueContainer::Local(Value::Core(
+                CoreValueWithClassification {
+                    inner: CoreValue::TypedInteger(index),
+                    ..
+                },
+            )) = value.as_ref()
         {
             index.as_i64()
         } else {
