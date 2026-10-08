@@ -2,8 +2,8 @@ use crate::datex_proxy::data::{Structure, StructureData};
 use proc_macro2::TokenStream;
 use quote::quote;
 
-/// Generates the from core value traits
-pub fn generate_try_from_core_value(
+/// Generates the [ConvertValue] trait
+pub fn generate_convert_value(
     structure_data: &StructureData,
 ) -> TokenStream {
     let StructureData {
@@ -13,28 +13,28 @@ pub fn generate_try_from_core_value(
 
     quote! {
         #[automatically_derived]
-        impl #impl_generics ConvertCoreValue for #ident #ty_generics #where_clause {
-            fn to_core_value(self) -> CoreValue {
-                CoreValue::native(self)
+        impl #impl_generics ConvertValue for #ident #ty_generics #where_clause {
+            fn to_value(self) -> Value {
+                Value::native(self)
             }
 
-            fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
+            fn try_from_value(value: Value) -> Result<Self, Value> {
                 match value {
-                    CoreValue::Native(native) => native.try_into_value().map_err(CoreValue::Native),
+                    Value::Native(native) => native.try_into_value().map_err(Value::Native),
                     _ => Err(value),
                 }
             }
 
-            fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> { // FIXME: generics
+            fn try_borrow_from_value(value: &Value) -> Result<&Self, ()> { // FIXME: generics
                 match value {
-                    CoreValue::Native(native) => native.try_as().ok_or(()),
+                    Value::Native(native) => native.try_as().ok_or(()),
                     _ => Err(()),
                 }
             }
 
-            fn try_borrow_mut_from_core_value(value: &mut CoreValue) -> Result<&mut Self, ()> {
+            fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut Self, ()> {
                 match value {
-                    CoreValue::Native(native) => native.try_as_mut().ok_or(()),
+                    Value::Native(native) => native.try_as_mut().ok_or(()),
                     _ => Err(()),
                 }
             }

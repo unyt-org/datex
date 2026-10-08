@@ -1,26 +1,33 @@
 use crate::{
-    traits::convert_core_value::ConvertCoreValue, values::core_value::CoreValue,
+    traits::convert_value::ConvertValue, values::core_value::CoreValue,
 };
+use crate::values::value::Value;
 
-impl ConvertCoreValue for CoreValue {
-    fn to_core_value(self) -> CoreValue {
-        self
+impl ConvertValue for CoreValue {
+    fn to_value(self) -> Value {
+        self.into()
     }
 
-    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue>
+    fn try_from_value(value: Value) -> Result<Self, Value>
     where
         Self: Sized,
     {
-        Ok(value)
+        Ok(value.into())
     }
 
-    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
-        Ok(value)
+    fn try_borrow_from_value(value: &Value) -> Result<&Self, ()> {
+        match value {
+            Value::Core(core_value) => Ok(&core_value.inner),
+            _ => Err(()),
+        }
     }
 
-    fn try_borrow_mut_from_core_value(
-        value: &mut CoreValue,
+    fn try_borrow_mut_from_value(
+        value: &mut Value,
     ) -> Result<&mut Self, ()> {
-        Ok(value)
+        match value {
+            Value::Core(core_value) => Ok(&mut core_value.inner),
+            _ => Err(()),
+        }
     }
 }

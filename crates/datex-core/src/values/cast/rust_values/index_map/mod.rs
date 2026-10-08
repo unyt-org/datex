@@ -10,10 +10,10 @@ pub mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
-mod try_from_core_value;
 mod update_handler;
 mod value_access;
 mod serde_dif;
+mod convert_value;
 
 #[cfg(test)]
 mod tests {
@@ -54,7 +54,7 @@ mod tests {
             Value::from(Integer::from(1)),
             Value::from(Endpoint::new("@jonas")),
         );
-        let value: Value = Value::native(map.clone(), cache);
+        let value: Value = Value::native(map.clone());
         let map_from_value: IndexMap<Value, Value> =
             value.try_into_value().unwrap();
         assert_eq!(map, map_from_value);
@@ -65,7 +65,7 @@ mod tests {
             ValueContainer::from(Integer::from(1)),
             ValueContainer::from(Endpoint::new("@jonas")),
         );
-        let value: Value = Value::native(map.clone(), cache);
+        let value: Value = Value::native(map.clone());
         let map_from_value = value
             .try_into_value::<IndexMap<ValueContainer, ValueContainer>>()
             .unwrap();
@@ -74,7 +74,7 @@ mod tests {
         // map with [Integer, Endpoint] as key and value
         let mut map = IndexMap::new();
         map.insert(Integer::from(1), Endpoint::new("@jonas"));
-        let value: Value = Value::native(map.clone(), cache);
+        let value: Value = Value::native(map.clone());
         let map_from_value = value
             .try_into_value::<IndexMap<Integer, Endpoint>>()
             .unwrap();

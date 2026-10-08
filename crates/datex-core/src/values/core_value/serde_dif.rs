@@ -49,6 +49,7 @@ impl SerializeWithSerdeContext for CoreValue {
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
+        
         let core_lib_type = self.default_core_type();
 
         match &self {

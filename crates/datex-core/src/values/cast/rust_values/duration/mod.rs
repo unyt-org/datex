@@ -1,5 +1,5 @@
 pub mod classification;
-mod convert_core_value;
+mod convert_value;
 pub mod datex_hash;
 pub mod datex_native;
 

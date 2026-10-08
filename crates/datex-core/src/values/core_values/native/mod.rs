@@ -30,23 +30,23 @@ use crate::{
     libs::core::type_id::CoreLibTypeId,
     preludes::derive::{BorrowedValueContainer},
     traits::{
-        convert_core_value::ConvertCoreValue,
+        convert_value::ConvertValue,
         convert_value_container::ConvertValueContainer, try_clone::TryClone,
     },
     values::{core_value::CoreValue, value::borrowed_value::BorrowedValue},
 };
 pub use datex_native_trait::*;
 use crate::traits::classification::Classification;
+use crate::values::core_value_with_classification::CoreValueWithClassification;
 
-impl<T: DatexNative + ConvertCoreValue + Classification>
+impl<T: DatexNative + ConvertValue + Classification>
     ConvertValueContainer for T
 {
     fn to_value_container(
         self,
         cache: &mut SharedReferencesCache,
     ) -> ValueContainer {
-        let classification = self.classification(cache);
-        ValueContainer::Local(Value::new(self, classification))
+        ValueContainer::Local(Value::new(self))
     }
 
     fn as_borrowed_value_container(
@@ -65,12 +65,9 @@ impl<T: DatexNative + ConvertCoreValue + Classification>
     {
         match value_container {
             ValueContainer::Local(value) => {
-                Self::try_from_core_value(value.inner).map_err(
+                Self::try_from_value(value).map_err(
                     |inner| {
-                        ValueContainer::Local(Value {
-                            inner,
-                            classification: value.classification,
-                        })
+                        ValueContainer::Local(inner)
                     },
                 )
             }
@@ -86,7 +83,7 @@ impl<T: DatexNative + ConvertCoreValue + Classification>
     {
         match value_container {
             ValueContainer::Local(value) => {
-                Self::try_borrow_from_core_value(&value.inner)
+                Self::try_borrow_from_value(value)
             }
             _ => Err(()),
         }
@@ -100,7 +97,7 @@ impl<T: DatexNative + ConvertCoreValue + Classification>
     {
         match value_container {
             ValueContainer::Local(value) => {
-                Self::try_borrow_mut_from_core_value(&mut value.inner)
+                Self::try_borrow_mut_from_value(value)
             }
             _ => Err(()),
         }
@@ -112,7 +109,7 @@ pub struct NativeCoreValue {
 }
 
 impl TryClone for NativeCoreValue {
-    fn try_clone(&self) -> Result<CoreValue, ()> {
+    fn try_clone(&self) -> Result<Value, ()> {
         self.value.deref().try_clone()
     }
 }
@@ -136,14 +133,7 @@ impl NativeCoreValue {
     pub fn into_any(self) -> Box<dyn Any> {
         self.value
     }
-
-    pub fn to_datex_native_value(
-        self,
-        cache: &mut SharedReferencesCache,
-    ) -> Value {
-        Value::native_dyn(self.value, cache)
-    }
-
+    
     pub fn core_lib_type_id(&self) -> CoreLibTypeId {
         self.value.core_lib_type_id()
     }
@@ -204,7 +194,7 @@ impl NativeCoreValue {
 impl Clone for NativeCoreValue {
     fn clone(&self) -> Self {
         match self.try_clone().unwrap() {
-            CoreValue::Native(n) => n,
+            Value::Native(n) => n,
             _ => unreachable!(),
         }
     }
@@ -226,18 +216,17 @@ mod tests {
     use crate::{
         prelude::*, values::value::value_classification::ValueClassification,
     };
-    use crate::traits::classification::Classification;
+    use crate::values::value::Value;
 
     #[test]
     fn serde() {
         let cache = &mut SharedReferencesCache::default();
         let val = NativeCoreValue::new("xx".to_string());
-        let ser =
-            val.to_datex_native_value(cache);
+        let ser = Value::Native(val);
         assert_eq!(ser.classification(cache), ValueClassification::new_unclassified(),);
         assert_eq!(
-            ser.inner,
-            CoreValue::Native(NativeCoreValue::new("xx".to_string()))
+            ser,
+            Value::Native(NativeCoreValue::new("xx".to_string()))
         );
     }
 }

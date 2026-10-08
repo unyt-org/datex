@@ -1,6 +1,5 @@
 use crate::{
     random::RandomState,
-    traits::convert_core_value::ConvertCoreValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
@@ -10,34 +9,36 @@ use crate::{
 };
 use core::hash::Hash;
 use indexmap::IndexMap;
+use crate::traits::convert_value::ConvertValue;
+use crate::values::value::Value;
 
 impl<K: DatexNativeBase + Eq + Hash + 'static, V: DatexNativeBase + 'static>
-    ConvertCoreValue for IndexMap<K, V, RandomState>
+    ConvertValue for IndexMap<K, V, RandomState>
 {
-    fn to_core_value(self) -> CoreValue {
-        CoreValue::native(self)
+    fn to_value(self) -> Value {
+        Value::native(self)
     }
-    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
+    fn try_from_value(value: Value) -> Result<Self, Value> {
         match value {
-            CoreValue::Native(native) => {
-                native.try_into_value().map_err(CoreValue::Native)
+            Value::Native(native) => {
+                native.try_into_value().map_err(Value::Native)
             }
             _ => Err(value),
         }
     }
 
-    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
+    fn try_borrow_from_value(value: &Value) -> Result<&Self, ()> {
         match value {
-            CoreValue::Native(native) => native.try_as().ok_or(()),
+            Value::Native(native) => native.try_as().ok_or(()),
             _ => Err(()),
         }
     }
 
-    fn try_borrow_mut_from_core_value(
-        value: &mut CoreValue,
+    fn try_borrow_mut_from_value(
+        value: &mut Value,
     ) -> Result<&mut Self, ()> {
         match value {
-            CoreValue::Native(native) => native.try_as_mut().ok_or(()),
+            Value::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
         }
     }
@@ -88,6 +89,8 @@ mod tests {
         },
     };
     use indexmap::IndexMap;
+    use crate::values::value::Value;
+
     type TestMap = IndexMap<i32, i32, RandomState>;
 
     #[test]
@@ -96,7 +99,7 @@ mod tests {
         map.insert(1, 10);
         map.insert(2, 20);
 
-        let core_value = CoreValue::native(map.clone());
+        let core_value = Value::native(map.clone());
         assert_eq!(core_value.try_as::<TestMap>().unwrap(), &map);
     }
     #[test]
@@ -105,7 +108,7 @@ mod tests {
         map.insert(1, 10);
         map.insert(2, 20);
 
-        let core_value = CoreValue::native(map.clone());
+        let core_value = Value::native(map.clone());
         assert_eq!(core_value.try_into_value::<TestMap>().unwrap(), map);
     }
 
@@ -114,7 +117,7 @@ mod tests {
         let mut map = TestMap::default();
         map.insert(1, 10);
 
-        let mut core_value = CoreValue::native(map);
+        let mut core_value = Value::native(map);
         let map = core_value.try_as_mut::<TestMap>().unwrap();
         map.insert(2, 20);
         assert_eq!(core_value.try_as::<TestMap>().unwrap().get(&2), Some(&20));
@@ -131,7 +134,7 @@ mod tests {
     fn try_borrowed_index_map() {
         let mut map = TestMap::default();
         map.insert(1, 10);
-        let core_value = CoreValue::native(map.clone());
+        let core_value = Value::native(map.clone());
         let borrowed = BorrowedCoreValue::from(&core_value);
         let result = Goat::<TestMap>::try_from(borrowed).unwrap();
         assert_eq!(*result, map);
@@ -141,7 +144,7 @@ mod tests {
     fn try_borrowed_index_map_mut() {
         let mut map = TestMap::default();
         map.insert(1, 10);
-        let mut core_value = CoreValue::native(map);
+        let mut core_value = Value::native(map);
         let borrowed = BorrowedCoreValueMut::from(&mut core_value);
         let mut result = GoatMut::<TestMap>::try_from(borrowed).unwrap();
         result.insert(2, 20);
@@ -152,7 +155,7 @@ mod tests {
     #[test]
     fn try_borrowed_index_map_wrong_type_fails() {
         let core_value =
-            CoreValue::native(
+            Value::native(
                 IndexMap::<String, String, RandomState>::default(),
             );
         let borrowed = BorrowedCoreValue::from(&core_value);
@@ -162,7 +165,7 @@ mod tests {
     #[test]
     fn try_borrowed_index_map_mut_wrong_type_fails() {
         let mut core_value =
-            CoreValue::native(
+            Value::native(
                 IndexMap::<String, String, RandomState>::default(),
             );
         let borrowed = BorrowedCoreValueMut::from(&mut core_value);

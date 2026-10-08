@@ -1,6 +1,5 @@
 use crate::{
     prelude::*,
-    traits::convert_core_value::ConvertCoreValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
@@ -8,32 +7,34 @@ use crate::{
         value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
+use crate::traits::convert_value::ConvertValue;
+use crate::values::value::Value;
 
-impl<T: DatexNativeBase + 'static> ConvertCoreValue for Vec<T> {
-    fn to_core_value(self) -> CoreValue {
-        CoreValue::native(self)
+impl<T: DatexNativeBase + 'static> ConvertValue for Vec<T> {
+    fn to_value(self) -> Value {
+        Value::native(self)
     }
-    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
+    fn try_from_value(value: Value) -> Result<Self, Value> {
         match value {
-            CoreValue::Native(native) => {
-                native.try_into_value().map_err(CoreValue::Native)
+            Value::Native(native) => {
+                native.try_into_value().map_err(Value::Native)
             }
             _ => Err(value),
         }
     }
 
-    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
+    fn try_borrow_from_value(value: &Value) -> Result<&Self, ()> {
         match value {
-            CoreValue::Native(native) => native.try_as().ok_or(()),
+            Value::Native(native) => native.try_as().ok_or(()),
             _ => Err(()),
         }
     }
 
-    fn try_borrow_mut_from_core_value(
-        value: &mut CoreValue,
+    fn try_borrow_mut_from_value(
+        value: &mut Value,
     ) -> Result<&mut Self, ()> {
         match value {
-            CoreValue::Native(native) => native.try_as_mut().ok_or(()),
+            Value::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
         }
     }
@@ -77,11 +78,12 @@ mod tests {
             value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
         },
     };
+    use crate::preludes::derive::Value;
 
     #[test]
     fn try_vec_from_core_value() {
         let values = vec![1, 2, 3];
-        let core_value = CoreValue::native(values.clone());
+        let core_value = Value::native(values.clone());
 
         assert_eq!(core_value.try_as::<Vec<i32>>().unwrap(), &values);
         assert_eq!(core_value.try_into_value::<Vec<i32>>().unwrap(), values);
@@ -89,7 +91,7 @@ mod tests {
 
     #[test]
     fn try_vec_mut_from_core_value() {
-        let mut core_value = CoreValue::native(vec![1, 2, 3]);
+        let mut core_value = Value::native(vec![1, 2, 3]);
 
         let values = core_value.try_as_mut::<Vec<i32>>().unwrap();
         values.push(4);
@@ -108,7 +110,7 @@ mod tests {
     #[test]
     fn try_borrowed_vec() {
         let values = vec![1, 2, 3];
-        let core_value = CoreValue::native(values.clone());
+        let core_value = Value::native(values.clone());
 
         let borrowed = BorrowedCoreValue::from(&core_value);
         let result = Goat::<Vec<i32>>::try_from(borrowed).unwrap();
@@ -117,7 +119,7 @@ mod tests {
 
     #[test]
     fn try_borrowed_vec_mut() {
-        let mut core_value = CoreValue::native(vec![1, 2, 3]);
+        let mut core_value = Value::native(vec![1, 2, 3]);
 
         let borrowed = BorrowedCoreValueMut::from(&mut core_value);
         let mut result = GoatMut::<Vec<i32>>::try_from(borrowed).unwrap();
@@ -131,7 +133,7 @@ mod tests {
     fn try_borrowed_vec_wrong_type_fails() {
         // FIXME allow vec!["aaa", "bbb"] refs
         let core_value =
-            CoreValue::native(vec!["hello".to_string(), "world".to_string()]);
+            Value::native(vec!["hello".to_string(), "world".to_string()]);
         let borrowed = BorrowedCoreValue::from(&core_value);
 
         assert!(Goat::<Vec<i32>>::try_from(borrowed).is_err());

@@ -360,7 +360,7 @@ impl<'a> TryFrom<&'a Value> for &'a str {
     type Error = ();
 
     fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
-        (&value.inner).try_into()
+        value.try_as::<String>().map(|s| s.as_str()).ok_or(())
     }
 }
 impl<'a> TryFrom<&'a ValueContainer> for &'a str {
@@ -393,7 +393,7 @@ impl GetDatexType for str {
 mod tests {
     use super::*;
     use crate::{
-        traits::convert_core_value::ConvertCoreValue,
+        traits::convert_value::ConvertValue,
         values::{
             core_value::CoreValue,
             core_values::{boolean::Boolean, text::Text},
@@ -404,14 +404,14 @@ mod tests {
     #[test]
     fn try_without_context() {
         // core rust types like String should be convertible to value without cache
-        let _ = Value::native_structural("test".to_string());
-        let _ = "test".to_string().to_core_value();
+        let _ = Value::native("test".to_string());
+        let _ = "test".to_string().to_value();
         let _ = Value::from("test".to_string());
     }
 
     #[test]
-    fn try_from_core_value() {
-        let value = CoreValue::Text(Text("Hello, World!".to_string()));
+    fn try_from_value() {
+        let value = CoreValue::Text(Text("Hello, World!".to_string())).to_value();
         let result = value.try_into_value::<String>();
         assert_eq!(result.unwrap(), "Hello, World!");
     }
@@ -435,7 +435,7 @@ mod tests {
     #[test]
     fn try_boxed_to_value() {
         let value = Box::new(true);
-        let result = Value::native_structural_boxed(value);
+        let result = Value::native_boxed(value);
         assert_eq!(result, Value::from(CoreValue::Boolean(Boolean(true))));
     }
 }

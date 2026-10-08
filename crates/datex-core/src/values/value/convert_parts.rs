@@ -14,7 +14,10 @@ use crate::preludes::derive::ValueContainer;
 
 impl HasPartsKind for Value {
     fn parts_kind(&self) -> PartsKind {
-        self.inner.parts_kind()
+        match self {
+            Value::Native(native) => native.value.parts_kind(),
+            Value::Core(core) => core.inner.parts_kind(),
+        }
     }
 }
 

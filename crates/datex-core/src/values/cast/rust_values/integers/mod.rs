@@ -1,10 +1,10 @@
-mod try_from_core_value;
-pub mod try_from_core_value_sized;
+pub mod convert_value_sized;
 
 use crate::dif::deserialize_serde_context::impl_serde_with_context;
 use crate::traits::{datex_hash::impl_datex_hash, value_access::ValueAccess};
 mod to_instructions;
 mod try_clone;
+mod convert_value;
 
 #[cfg(feature = "ast")]
 mod to_datex_expression_data {

@@ -47,8 +47,12 @@ fn generate_classification_methods(structure_data: &StructureData) -> TokenStrea
             quote! {
                 fn entity_type(
                     &self,
-                    _cache: &mut SharedReferencesCache,
+                    cache: &mut SharedReferencesCache,
                 ) -> Option<EntityType> {
+                    todo!()
+                }
+                
+                fn entity_type_address(&self) -> Option<SelfOwnedPointerAddress> {
                     todo!()
                 }
             }

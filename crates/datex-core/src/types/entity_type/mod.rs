@@ -22,6 +22,7 @@ use crate::{
     },
 };
 use core::{cell::Ref, ops::Deref};
+use crate::values::core_value_with_classification::CoreValueWithClassification;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct EntityType(SharedContainer);
@@ -80,10 +81,10 @@ impl EntityType {
     pub fn entity_definition(&self) -> Ref<'_, EntityTypeDefinition> {
         let val = self.0.value_container();
         Ref::map(val, |v| match v {
-            ValueContainer::Local(Value {
+            ValueContainer::Local(Value::Core(CoreValueWithClassification {
                 inner: CoreValue::EntityTypeDefinition(ty),
                 ..
-            }) => ty,
+            })) => ty,
             _ => unreachable!(
                 "The constraint for SharedContainerContainingEntityType guarantees that the inner value is always a CoreValue::EntityTypeDefinition"
             ),
@@ -110,7 +111,7 @@ impl TryFrom<SharedContainer> for EntityType {
             let is_nominal = {
                 let val = value.collapsed_value();
                 let val_sheep = val.borrow();
-                matches!(&val_sheep.inner, CoreValue::EntityTypeDefinition(_))
+                matches!(*val_sheep, Value::Core(CoreValueWithClassification {inner: CoreValue::EntityTypeDefinition(_), ..}))
             };
 
             if is_nominal {
@@ -133,7 +134,7 @@ impl TypeSuperset<EntityType> for EntityType {
 
 impl TypeSatisfiesValueContainer for EntityType {
     fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
-        match &value.collapsed_value().borrow().classification {
+        match &value.collapsed_value().borrow().classification() {
             ValueClassification{ entity_type: Some(entity), ..} => self.is_superset_of(entity),
             _ => false,
         }

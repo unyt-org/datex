@@ -12,7 +12,7 @@ use crate::{
 };
 pub mod serde_dif;
 use crate::{
-    preludes::derive::ConvertCoreValue,
+    preludes::derive::ConvertValue,
     types::r#type::Type,
     values::{
         core_values::{
@@ -152,30 +152,6 @@ impl CoreValue {
         CoreLibTypeId::from(self)
     }
 
-    /// Tries to get a borrow of the current value as the specified type.
-    /// Does not perform any type conversion.
-    pub fn try_as<T>(&self) -> Option<&T>
-    where
-        T: ConvertCoreValue,
-    {
-        T::try_borrow_from_core_value(self).ok()
-    }
-
-    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
-    where
-        T: ConvertCoreValue,
-    {
-        T::try_borrow_mut_from_core_value(self).ok()
-    }
-
-    /// Tries to convert the current value into the specific specified type.
-    /// Does not perform any type conversion.
-    pub fn try_into_value<T>(self) -> Result<T, CoreValue>
-    where
-        T: ConvertCoreValue,
-    {
-        T::try_from_core_value(self)
-    }
 
     /// Casts the value to a [Text] value
     /// Note: in contrast to [try_cast_to], [Text] values are not wrapped in quotation marks.
@@ -369,9 +345,6 @@ impl Display for CoreValue {
             }
             CoreValue::Uninitialized => write!(f, "[[ uninitialized ]]"),
             CoreValue::Box(inner) => write!(f, "({})", inner),
-            CoreValue::Native(native) => {
-                write!(f, "{native}")
-            }
         }
     }
 }
@@ -387,17 +360,17 @@ mod tests {
 
     #[test]
     fn type_construct() {
-        let a = 42i32.to_core_value();
+        let a = 42i32.to_value();
         assert_eq!(a.default_core_type().to_string(), "integer/i32");
     }
 
     #[test]
     fn addition() {
-        let a = 42i32.to_core_value();
-        let b = 11i32.to_core_value();
+        let a = 42i32.to_value();
+        let b = 11i32.to_value();
 
         let a_plus_b = (a.clone() + b.clone()).unwrap();
-        assert_eq!(a_plus_b.clone(), 53i32.to_core_value());
+        assert_eq!(a_plus_b.clone(), 53i32.to_value());
         info!("{} + {} = {}", a.clone(), b.clone(), a_plus_b.clone());
     }
 
@@ -405,7 +378,7 @@ mod tests {
     fn endpoint() {
         let endpoint: Endpoint = "@test"
             .to_string()
-            .to_core_value()
+            .to_value()
             .cast_to_endpoint()
             .unwrap();
         debug!("Endpoint: {endpoint}");

@@ -8,6 +8,7 @@ use crate::{
     },
 };
 use core::hash::{Hash, Hasher};
+use crate::values::core_value_with_classification::CoreValueWithClassification;
 
 impl PartialEq for Map {
     fn eq(&self, other: &Self) -> bool {
@@ -35,10 +36,10 @@ impl StructuralEq for BorrowedMapKey<'_> {
             }
             (BorrowedMapKey::Text(a), BorrowedMapKey::Value(b))
             | (BorrowedMapKey::Value(b), BorrowedMapKey::Text(a)) => {
-                if let ValueContainer::Local(Value {
+                if let ValueContainer::Local(Value::Core(CoreValueWithClassification {
                     inner: CoreValue::Text(text),
                     ..
-                }) = b
+                })) = b
                 {
                     a == &text.0
                 } else {

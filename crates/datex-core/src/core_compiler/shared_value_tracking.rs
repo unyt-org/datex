@@ -287,7 +287,7 @@ mod tests {
         },
         global::stack_index::StackIndex,
         prelude::*,
-        preludes::derive::ConvertCoreValue,
+        preludes::derive::ConvertValue,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             PointerAddress, ReferenceMutability, SharedContainer,
@@ -593,7 +593,7 @@ mod tests {
                         List::from(vec![ValueContainer::Shared(
                             parent.clone(),
                         )])
-                        .to_core_value();
+                        .to_value();
                 }
                 _ => unreachable!("Expected a core value"),
             }

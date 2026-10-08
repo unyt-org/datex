@@ -1,43 +1,45 @@
 use crate::{
     prelude::*,
     preludes::derive::Text,
-    traits::convert_core_value::ConvertCoreValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
         value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     },
 };
+use crate::traits::convert_value::ConvertValue;
+use crate::values::core_value_with_classification::CoreValueWithClassification;
+use crate::values::value::Value;
 
-impl ConvertCoreValue for String {
-    fn to_core_value(self) -> CoreValue {
-        CoreValue::Text(Text(self))
+impl ConvertValue for String {
+    fn to_value(self) -> Value {
+        CoreValue::Text(Text(self)).into()
     }
 
-    fn try_from_core_value(value: CoreValue) -> Result<Self, CoreValue> {
+    fn try_from_value(value: Value) -> Result<Self, Value> {
         match value {
-            CoreValue::Text(Text(string)) => Ok(string),
-            CoreValue::Native(native) => {
-                native.try_into_value().map_err(CoreValue::Native)
+            Value::Core(CoreValueWithClassification {inner: CoreValue::Text(Text(string)), ..}) => Ok(string),
+            Value::Native(native) => {
+                native.try_into_value().map_err(Value::Core)
             }
             _ => Err(value),
         }
     }
 
-    fn try_borrow_from_core_value(value: &CoreValue) -> Result<&Self, ()> {
+    fn try_borrow_from_value(value: &Value) -> Result<&Self, ()> {
         match value {
-            CoreValue::Text(Text(string)) => Ok(string),
-            CoreValue::Native(native) => native.try_as().ok_or(()),
+            Value::Core(CoreValueWithClassification {inner: CoreValue::Text(Text(string)), ..}) => Ok(string),
+            Value::Native(native) => native.try_as().ok_or(()),
             _ => Err(()),
         }
     }
 
-    fn try_borrow_mut_from_core_value(
-        value: &mut CoreValue,
+    fn try_borrow_mut_from_value(
+        value: &mut Value,
     ) -> Result<&mut Self, ()> {
         match value {
-            CoreValue::Text(Text(string)) => Ok(string),
-            CoreValue::Native(native) => native.try_as_mut().ok_or(()),
+            Value::Core(CoreValueWithClassification {inner: CoreValue::Text(Text(string)), ..}) => Ok(string),
+            Value::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
         }
     }
@@ -94,7 +96,7 @@ mod tests {
 
     #[test]
     fn try_borrow_mut_string_from_core_value() {
-        let mut core_value = Text("Hello, World!".to_string()).to_core_value();
+        let mut core_value = Text("Hello, World!".to_string()).to_value();
         let result = core_value.try_as_mut::<String>();
 
         let value = result.unwrap();
@@ -104,14 +106,14 @@ mod tests {
 
     #[test]
     fn try_string_from_native_core_value() {
-        let core_value = "Hello, World!".to_string().to_core_value();
+        let core_value = "Hello, World!".to_string().to_value();
         let result = core_value.try_as::<String>();
         assert_eq!(result.unwrap(), "Hello, World!");
     }
 
     #[test]
     fn try_borrow_mut_string_from_native_core_value() {
-        let mut core_value = "Hello, World!".to_string().to_core_value();
+        let mut core_value = "Hello, World!".to_string().to_value();
         let result = core_value.try_as_mut::<String>();
         result.unwrap().push('!');
         assert_eq!(core_value.try_as::<String>().unwrap(), "Hello, World!!");
@@ -119,7 +121,7 @@ mod tests {
 
     #[test]
     fn try_owned_string_from_native_core_value() {
-        let core_value = "Hello, World!".to_string().to_core_value();
+        let core_value = "Hello, World!".to_string().to_value();
         let result = core_value.try_into_value::<String>();
         assert_eq!(result.unwrap(), "Hello, World!");
     }

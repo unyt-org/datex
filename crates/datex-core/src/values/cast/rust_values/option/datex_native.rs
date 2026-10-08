@@ -1,6 +1,6 @@
 use crate::{
     preludes::derive::{
-        AccessError, ConvertCoreValue, SharedReferencesCache, ValueContainer,
+        AccessError, ConvertValue, SharedReferencesCache, ValueContainer,
     },
     traits::local_child_path_resolver::LocalChildPathResolver,
     value_updates::{
@@ -13,7 +13,7 @@ use crate::{
 };
 use core::{any::Any, cell::RefCell};
 
-impl<T: DatexNative + ConvertCoreValue + 'static> DatexNative for Option<T> {
+impl<T: DatexNative + ConvertValue + 'static> DatexNative for Option<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -21,17 +21,17 @@ impl<T: DatexNative + ConvertCoreValue + 'static> DatexNative for Option<T> {
         self
     }
 }
-impl<T: DatexNative + ConvertCoreValue + 'static> DatexNativeOps for Option<T> {}
-impl<T: DatexNative + ConvertCoreValue + 'static> LocalChildPathResolver
+impl<T: DatexNative + ConvertValue + 'static> DatexNativeOps for Option<T> {}
+impl<T: DatexNative + ConvertValue + 'static> LocalChildPathResolver
     for Option<T>
 {
 }
 
-impl<T: DatexNative + ConvertCoreValue + 'static> UpdateCallbackDataAccess
+impl<T: DatexNative + ConvertValue + 'static> UpdateCallbackDataAccess
     for Option<T>
 {
 }
-impl<T: DatexNative + ConvertCoreValue + 'static> UpdateHandlerImpl
+impl<T: DatexNative + ConvertValue + 'static> UpdateHandlerImpl
     for Option<T>
 {
     fn try_append_entry(

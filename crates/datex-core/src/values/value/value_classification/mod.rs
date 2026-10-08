@@ -1,4 +1,5 @@
 pub mod serde_dif;
+pub mod unresolved_value_classification;
 
 use crate::{
     prelude::*, shared_values::PointerAddress, types::entity_type::EntityType,

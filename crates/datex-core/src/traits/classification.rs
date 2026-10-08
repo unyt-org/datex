@@ -4,7 +4,8 @@ use crate::{
     values::value::value_classification::{ValueClassification, ValueTag},
     prelude::*,
 };
-use crate::shared_values::PointerAddress;
+use crate::shared_values::{PointerAddress, SelfOwnedPointerAddress};
+use crate::values::value::value_classification::unresolved_value_classification::UnresolvedValueClassification;
 
 pub trait Classification {
     /// Returns the DATEX [EntityType] of the native value if it has an entity type.
@@ -14,6 +15,13 @@ pub trait Classification {
         &self,
         _cache: &mut SharedReferencesCache,
     ) -> Option<EntityType> {
+        None
+    }
+    
+    /// Returns the [PointerAddress] of the entity type if it has one.
+    /// The default implementation returns None, indicating that the value does not have an entity type address.
+    /// It must be ensured that the entity type for the given address is already registered in the runtime.
+    fn entity_type_address(&self) -> Option<PointerAddress> {
         None
     }
 
@@ -36,11 +44,27 @@ pub trait Classification {
         cache: &mut SharedReferencesCache,
     ) -> ValueClassification {
         let impls = self.impls();
-        let entity = self.entity_type(cache);
+        let entity_type = self.entity_type(cache);
         let tag = self.tag();
 
         ValueClassification {
-            entity_type: entity,
+            entity_type,
+            impls,
+            tag,
+        }
+    }
+    
+    /// Returns the unresolved DATEX [UnresolvedValueClassification] of the native value.
+    /// This does not try to resolve the entity, but instead returns the address of the entity type if it has one.
+    fn unresolved_classification(
+        &self,
+    ) -> UnresolvedValueClassification {
+        let impls = self.impls();
+        let entity_type_address = self.entity_type_address();
+        let tag = self.tag();
+
+        UnresolvedValueClassification {
+            entity_type_address,
             impls,
             tag,
         }

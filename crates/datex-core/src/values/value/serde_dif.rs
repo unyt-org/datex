@@ -113,17 +113,13 @@ impl SerializeWithSerdeContext for Value {
     where
         S: Serializer,
     {
-        // if default classification, just serialize the core value + tag
-        if self.classification.is_unclassified() {
-            (&self.inner, &self.classification.tag)
-                .serialize_with_ctx(ctx, serializer)
-        }
-        // else serialize as a map with "c" and "v" keys
-        else {
-            let mut map = serializer.serialize_map(Some(2))?;
-            map.serialize_entry("c", &ValueWithSerdeContext::new(&self.classification, ctx))?;
-            map.serialize_entry("v", &ValueWithSerdeContext::new(&(&self.inner, &self.classification.tag), ctx))?;
-            map.end()
+        match self {
+            Value::Native(native) => {
+                native.serialize_with_ctx(ctx, serializer)
+            }
+            Value::Core(core) => {
+                core.serialize_with_ctx(ctx, serializer)
+            }
         }
     }
 }
@@ -174,7 +170,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::new_unclassified(self.cast::<CoreValue>().visit_unit()?))
+        Ok(Value::new(self.cast::<CoreValue>().visit_unit()?))
     }
 
     /// default mapping for none: null
@@ -190,7 +186,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::new_unclassified(self.cast::<CoreValue>().visit_bool(v)?))
+        Ok(Value::new(self.cast::<CoreValue>().visit_bool(v)?))
     }
 
     /// default mapping for string: text
@@ -198,7 +194,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::new_unclassified(self.cast::<CoreValue>().visit_str(v)?))
+        Ok(Value::new(self.cast::<CoreValue>().visit_str(v)?))
     }
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
     where
@@ -212,7 +208,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     where
         E: DeError,
     {
-        Ok(Value::new_unclassified(self.cast::<CoreValue>().visit_f64(v)?))
+        Ok(Value::new(self.cast::<CoreValue>().visit_f64(v)?))
     }
 
     // default mapping for integers: decimal/f64 (with a check for overflow)
@@ -304,7 +300,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     where
         A: serde::de::SeqAccess<'de>,
     {
-        Ok(Value::new_unclassified(self.cast::<CoreValue>().visit_seq(seq)?))
+        Ok(Value::new(self.cast::<CoreValue>().visit_seq(seq)?))
     }
 
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
