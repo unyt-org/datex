@@ -1,5 +1,6 @@
 use crate::{
     prelude::*,
+    preludes::derive::SerializeWithSerdeContext,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -37,7 +38,12 @@ impl Serialize for Value {
     where
         S: Serializer,
     {
-        self.inner.serialize(serializer)
+        match &self {
+            Value::Core(value) => value.inner.serialize(serializer),
+            Value::Native(native) => {
+                unreachable!("Cannot serialize native value without ctx")
+            }
+        }
     }
 }
 

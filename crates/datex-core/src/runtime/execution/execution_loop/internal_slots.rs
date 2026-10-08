@@ -19,9 +19,9 @@ pub fn get_root_property(
             ValueContainer::from(runtime_state.caller_metadata.endpoint.clone())
         }
         RootProperty::ENV => ValueContainer::from(runtime.internal.get_env()),
-        RootProperty::CONFIG => ValueContainer::Local(
-            Value::native_structural(runtime_state.runtime.config().clone()),
-        ),
+        RootProperty::CONFIG => ValueContainer::Local(Value::native(
+            runtime_state.runtime.config().clone(),
+        )),
     };
     Ok(res)
 }

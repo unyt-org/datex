@@ -11,7 +11,11 @@ use crate::{
         entity_type::EntityType, r#type::Type,
     },
     values::{
-        core_value::CoreValue, value::Value, value_container::ValueContainer,
+        core_value::CoreValue,
+        value::{
+            Value, core_value_with_classification::CoreValueWithClassification,
+        },
+        value_container::ValueContainer,
     },
 };
 use core::{any::TypeId, fmt::Display, ops::Deref};
@@ -162,10 +166,12 @@ impl SharedReferencesCache {
             .get_owned_reference(&PointerAddress::SelfOwned(address.clone()))
         {
             match value.value_container().deref() {
-                ValueContainer::Local(Value {
-                    inner: CoreValue::EntityTypeDefinition(_),
-                    ..
-                }) => {}
+                ValueContainer::Local(Value::Core(
+                    CoreValueWithClassification {
+                        inner: CoreValue::EntityTypeDefinition(_),
+                        ..
+                    },
+                )) => {}
                 _ => {
                     panic!(
                         "Expected a shared container containing an EntityTypeDefinition, but found a different type for address: {}",

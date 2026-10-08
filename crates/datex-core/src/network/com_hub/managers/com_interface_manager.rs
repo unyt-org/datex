@@ -469,10 +469,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface_sync(
                 "mock",
-                Value::native(
-                    setup_data,
-                    &mut SharedReferencesCache::default(),
-                ),
+                Value::native(setup_data),
                 InterfacePriority::None,
             )
             .unwrap();
@@ -510,10 +507,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                Value::native(
-                    setup_data,
-                    &mut SharedReferencesCache::default(),
-                ),
+                Value::native(setup_data),
                 InterfacePriority::None,
             )
             .await
@@ -560,10 +554,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                Value::native(
-                    setup_data,
-                    &mut SharedReferencesCache::default(),
-                ),
+                Value::native(setup_data),
                 InterfacePriority::None,
             )
             .await

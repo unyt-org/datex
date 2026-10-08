@@ -11,17 +11,14 @@ use crate::{
     core_compiler::{
         core_compilation_context::{CompileInput, DXBWithSharedValues},
         injected_values::compile_injected_values,
-    },
-    dxb_parser::{
+    }, dxb_parser::{
         body::{DXBParserError, SeekRequest, iterate_instructions_with_seek},
         instruction_collector::{
             CollectionResultsPopper, FullOrPartialResult, InstructionCollector,
             LastUnboundedResultCollector, ResultCollector,
             StatementResultCollectionStrategy,
         },
-    },
-    global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-    instruction::{
+    }, global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator}, instruction::{
         Instruction, NestedInstructionResolutionStrategy,
         instruction_data::{
             ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
@@ -32,10 +29,7 @@ use crate::{
         },
         regular_instruction::RegularInstruction,
         type_instruction::TypeInstruction,
-    },
-    libs::core::type_id::CoreLibBaseTypeId,
-    prelude::*,
-    runtime::{
+    }, libs::core::type_id::CoreLibBaseTypeId, prelude::*, runtime::{
         Runtime,
         cache::shared_values_cache::{
             CacheValueRetrievalError, ValueNotFoundInCacheError,
@@ -55,14 +49,12 @@ use crate::{
                 interrupt, interrupt_with_maybe_value, interrupt_with_value,
             },
         },
-    },
-    shared_values::{
+    }, shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
         RemotePointerAddress, SharedContainer, SharedContainerMutability,
         SharedContainerOwnership,
         base_shared_value_container::BaseSharedValueContainer,
-    },
-    types::{
+    }, types::{
         r#type::Type,
         type_definition::{
             TypeDefinition,
@@ -82,14 +74,11 @@ use crate::{
             union::UnionTypeDefinition,
         },
         type_definition_with_metadata::TypeDefinitionWithMetadata,
-    },
-    value_updates::{
+    }, value_updates::{
         update_data::{AppendEntryUpdateData, DeleteEntryUpdateData},
         update_handler::UpdateHandler,
-    },
-    values::{
-        core_value::CoreValue,
-        core_values::{
+    }, values::{
+        core_value::CoreValue, core_values::{
             boolean::Boolean,
             callable::{Callable, CallableBody, CoreStub},
             decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -97,9 +86,7 @@ use crate::{
             integer::{Integer, typed_integer::TypedInteger},
             list::List,
             map::{Map, MapKey},
-        },
-        value::Value,
-        value_container::{
+        }, value::{Value, core_value_with_classification::CoreValueWithClassification}, value_container::{
             ValueContainer, error::ValueError, value_key::ValueKey,
         },
     },
@@ -574,10 +561,10 @@ pub gen fn inner_execution_loop(
 
                             match val {
                                 // simple Type value
-                                Some(ValueContainer::Local(Value {
+                                Some(ValueContainer::Local(Value::Core(CoreValueWithClassification {
                                     inner: CoreValue::Type(_ty),
                                     ..
-                                })) => todo!(),
+                                }))) => todo!(),
                                 // FIXME:
                                 // // Type Reference
                                 // Some(ValueContainer::Shared(SharedContainer {
@@ -883,7 +870,7 @@ pub gen fn inner_execution_loop(
                                         .map_err(|_| ExecutionError::invalid_program(InvalidProgramError::InvalidType))?;
 
                                     match &mut value_container {
-                                        ValueContainer::Local(value) => {
+                                        ValueContainer::Local(Value::Core(value)) => {
                                             value.classification = ValueClassification::new_with_entity(entity_type);
                                         }
                                         _ => return yield Err(ExecutionError::invalid_program(InvalidProgramError::InvalidType)),
@@ -1063,7 +1050,7 @@ pub gen fn inner_execution_loop(
                                     // value must be a list value
                                     // push all entries onto the stack
                                     match value {
-                                        ValueContainer::Local(Value { inner: CoreValue::List(list), .. }) => {
+                                        ValueContainer::Local(Value::Core(CoreValueWithClassification{ inner: CoreValue::List(list), .. })) => {
                                             for value in list {
                                                 state.stack
                                                     .push(value);
@@ -1287,7 +1274,7 @@ pub gen fn inner_execution_loop(
 
                                     // ensure receiver is single endpoint
                                     let receivers_list: Vec<Endpoint> = match receivers {
-                                        ValueContainer::Local(Value { inner: CoreValue::Endpoint(endpoint), .. }) => vec![endpoint],
+                                        ValueContainer::Local(Value::Core(CoreValueWithClassification { inner: CoreValue::Endpoint(endpoint), .. })) => vec![endpoint],
                                         // TODO: support advanced receivers
                                         _ => return yield Err(ExecutionError::value_error(ValueError::InvalidOperation))
                                     };
@@ -1334,7 +1321,7 @@ pub gen fn inner_execution_loop(
                                     let callee = args.remove(args.len() - 1);
 
                                     // special handling for panic function - abort execution
-                                    if let RuntimeValue::ValueContainer(ValueContainer::Local(Value { inner: CoreValue::Callable(Callable { body: CallableBody::CoreStub(CoreStub::Panic), .. }), .. })) = &callee
+                                    if let RuntimeValue::ValueContainer(ValueContainer::Local(Value::Core(CoreValueWithClassification { inner: CoreValue::Callable(Callable { body: CallableBody::CoreStub(CoreStub::Panic), .. }), .. }))) = &callee
                                     {
                                         // assert for now that single string arg
                                         let error = args

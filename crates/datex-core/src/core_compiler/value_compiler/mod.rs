@@ -17,7 +17,9 @@ use crate::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
             integer::{Integer, typed_integer::TypedInteger},
         },
-        value::Value,
+        value::{
+            Value, core_value_with_classification::CoreValueWithClassification,
+        },
         value_container::ValueContainer,
     },
 };
@@ -162,197 +164,199 @@ pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx> + 'ctx>(
     context: &mut T,
     value: &Value,
 ) {
-    // append classified type information
-    if let Some(entity_type) =
-        value.classification().and_then(|c| c.entity_type.as_ref())
-    {
-        context.write(RegularInstruction::EntityValue(
-            entity_type.pointer_address(),
-        ))
-    }
+    todo!("Use toInstructions");
 
-    for impl_address in
-        value.classification().map(|c| &c.impls).unwrap_or(&vec![])
-    {
-        todo!(
-            "Compiling values with Impls classification is not yet implemented"
-        )
-    }
+    // // append classified type information
+    // if let Some(entity_type) =
+    //     value.classification().and_then(|c| c.entity_type.as_ref())
+    // {
+    //     context.write(RegularInstruction::EntityValue(
+    //         entity_type.pointer_address(),
+    //     ))
+    // }
 
-    if let Some(ValueTag { tag, is_empty }) =
-        &value.classification().and_then(|c| c.tag.as_ref())
-    {
-        context.write(RegularInstruction::tagged_value(tag.clone(), *is_empty));
-        if *is_empty {
-            // early return, don't append null value; TODO: assert that value is actually null?
-            return;
-        };
-    }
+    // for impl_address in
+    //     value.classification().map(|c| &c.impls).unwrap_or(&vec![])
+    // {
+    //     todo!(
+    //         "Compiling values with Impls classification is not yet implemented"
+    //     )
+    // }
 
-    let _: () = match &value.inner {
-        CoreValue::Type(ty) => {
-            if let Some(core_id) = ty.try_as_core_lib_type() {
-                append_get_core_lib_value(
-                    context.cursor_mut(),
-                    CoreLibId::Type(core_id),
-                );
-            } else {
-                context.write(RegularInstruction::type_expression());
-                context.visit_type(ty);
-            }
-        }
-        CoreValue::Callable(callable) => {
-            let (body, injected_values) = match &callable.body {
-                CallableBody::DatexBytecode(datex_bytecode) => (
-                    CallableDataBody {
-                        injected_value_count: datex_bytecode
-                            .injected_values
-                            .len()
-                            as u32,
-                        length: datex_bytecode.body.len() as u32,
-                        body: datex_bytecode.body.clone(),
-                    },
-                    datex_bytecode.injected_values.clone(), // FIXME avoid clone!
-                ),
-                _ => (
-                    CallableDataBody {
-                        injected_value_count: 0,
-                        length: 0,
-                        body: vec![],
-                    },
-                    vec![],
-                ),
-            };
+    // if let Some(ValueTag { tag, is_empty }) =
+    //     &value.classification().and_then(|c| c.tag.as_ref())
+    // {
+    //     context.write(RegularInstruction::tagged_value(tag.clone(), *is_empty));
+    //     if *is_empty {
+    //         // early return, don't append null value; TODO: assert that value is actually null?
+    //         return;
+    //     };
+    // }
 
-            context.write(RegularInstruction::Callable(CallableData {
-                signature: CallableSignatureData {
-                    name: ShortTextData(
-                        callable.name.clone().unwrap_or_default(),
-                    ),
-                    kind: callable.signature.kind,
-                    requires_async: callable.signature.requires_async,
-                    parameter_count: callable.signature.parameters.len() as u8,
-                    has_rest_parameter: callable
-                        .signature
-                        .rest_parameter
-                        .is_some(),
-                    has_return_type: callable.signature.return_type.is_some(),
-                    has_yeet_type: callable.signature.yeet_type.is_some(),
-                    parameter_names: callable
-                        .signature
-                        .parameters
-                        .iter()
-                        .map(|(name, _)| {
-                            ShortTextData(name.clone().unwrap_or_default())
-                        })
-                        .collect(),
-                    rest_parameter_name: callable
-                        .signature
-                        .rest_parameter
-                        .as_ref()
-                        .map(|(name, _)| {
-                            ShortTextData(name.clone().unwrap_or_default())
-                        }),
-                },
-                body,
-            }));
+    // let _: () = match &value.inner {
+    //     CoreValue::Type(ty) => {
+    //         if let Some(core_id) = ty.try_as_core_lib_type() {
+    //             append_get_core_lib_value(
+    //                 context.cursor_mut(),
+    //                 CoreLibId::Type(core_id),
+    //             );
+    //         } else {
+    //             context.write(RegularInstruction::type_expression());
+    //             context.visit_type(ty);
+    //         }
+    //     }
+    //     CoreValue::Callable(callable) => {
+    //         let (body, injected_values) = match &callable.body {
+    //             CallableBody::DatexBytecode(datex_bytecode) => (
+    //                 CallableDataBody {
+    //                     injected_value_count: datex_bytecode
+    //                         .injected_values
+    //                         .len()
+    //                         as u32,
+    //                     length: datex_bytecode.body.len() as u32,
+    //                     body: datex_bytecode.body.clone(),
+    //                 },
+    //                 datex_bytecode.injected_values.clone(), // FIXME avoid clone!
+    //             ),
+    //             _ => (
+    //                 CallableDataBody {
+    //                     injected_value_count: 0,
+    //                     length: 0,
+    //                     body: vec![],
+    //                 },
+    //                 vec![],
+    //             ),
+    //         };
 
-            // add parameter types
-            for (_, param) in &callable.signature.parameters {
-                context.visit_type(param);
-            }
-            // add rest parameter type
-            if let Some((_, param)) = &callable.signature.rest_parameter {
-                context.visit_type(param);
-            }
-            // add return type
-            if let Some(ty) = &callable.signature.return_type {
-                context.visit_type(ty);
-            }
-            // add yield type
-            if let Some(ty) = &callable.signature.yeet_type {
-                context.visit_type(ty);
-            }
+    //         context.write(RegularInstruction::Callable(CallableData {
+    //             signature: CallableSignatureData {
+    //                 name: ShortTextData(
+    //                     callable.name.clone().unwrap_or_default(),
+    //                 ),
+    //                 kind: callable.signature.kind,
+    //                 requires_async: callable.signature.requires_async,
+    //                 parameter_count: callable.signature.parameters.len() as u8,
+    //                 has_rest_parameter: callable
+    //                     .signature
+    //                     .rest_parameter
+    //                     .is_some(),
+    //                 has_return_type: callable.signature.return_type.is_some(),
+    //                 has_yeet_type: callable.signature.yeet_type.is_some(),
+    //                 parameter_names: callable
+    //                     .signature
+    //                     .parameters
+    //                     .iter()
+    //                     .map(|(name, _)| {
+    //                         ShortTextData(name.clone().unwrap_or_default())
+    //                     })
+    //                     .collect(),
+    //                 rest_parameter_name: callable
+    //                     .signature
+    //                     .rest_parameter
+    //                     .as_ref()
+    //                     .map(|(name, _)| {
+    //                         ShortTextData(name.clone().unwrap_or_default())
+    //                     }),
+    //             },
+    //             body,
+    //         }));
 
-            for value in injected_values {
-                context.visit_value_container(&value);
-            }
-        }
-        CoreValue::Integer(integer) => {
-            // NOTE: we might optimize this later, but using INT with big integer encoding
-            // for all integers for now
-            // let integer = integer.to_smallest_fitting();
-            // append_encoded_integer(buffer, &integer);
-            context.write(RegularInstruction::integer(integer.clone()));
-        }
-        CoreValue::TypedInteger(integer) => {
-            append_encoded_integer(context.cursor_mut(), integer)
-        }
+    //         // add parameter types
+    //         for (_, param) in &callable.signature.parameters {
+    //             context.visit_type(param);
+    //         }
+    //         // add rest parameter type
+    //         if let Some((_, param)) = &callable.signature.rest_parameter {
+    //             context.visit_type(param);
+    //         }
+    //         // add return type
+    //         if let Some(ty) = &callable.signature.return_type {
+    //             context.visit_type(ty);
+    //         }
+    //         // add yield type
+    //         if let Some(ty) = &callable.signature.yeet_type {
+    //             context.visit_type(ty);
+    //         }
 
-        CoreValue::Endpoint(endpoint) => {
-            context.write(RegularInstruction::endpoint(endpoint.clone()));
-        }
-        CoreValue::Decimal(decimal) => {
-            append_decimal(context.cursor_mut(), decimal)
-        }
-        CoreValue::TypedDecimal(val) => {
-            append_encoded_decimal(context.cursor_mut(), val)
-        }
-        CoreValue::Boolean(val) => append_boolean(context.cursor_mut(), val.0),
-        CoreValue::Null => context.write(RegularInstruction::null()),
-        CoreValue::Text(val) => {
-            context.write(RegularInstruction::text(val.0.clone()))
-        }
-        CoreValue::List(val) => {
-            // if list size < 256, use SHORT_LIST
-            context.write(RegularInstruction::list(val.len()));
+    //         for value in injected_values {
+    //             context.visit_value_container(&value);
+    //         }
+    //     }
+    //     CoreValue::Integer(integer) => {
+    //         // NOTE: we might optimize this later, but using INT with big integer encoding
+    //         // for all integers for now
+    //         // let integer = integer.to_smallest_fitting();
+    //         // append_encoded_integer(buffer, &integer);
+    //         context.write(RegularInstruction::integer(integer.clone()));
+    //     }
+    //     CoreValue::TypedInteger(integer) => {
+    //         append_encoded_integer(context.cursor_mut(), integer)
+    //     }
 
-            for item in val.into_iter() {
-                context.visit_value_container(item);
-            }
-        }
-        CoreValue::Map(val) => {
-            context.write(RegularInstruction::map(val.size() as u32));
-            for (key, value) in val.iter() {
-                append_key_value_pair(
-                    context,
-                    &ValueContainer::from(key),
-                    value,
-                );
-            }
-        }
-        CoreValue::Range(range) => {
-            context.write(RegularInstruction::range());
-            context.visit_value_container(&range.start);
-            context.visit_value_container(&range.end);
-        }
-        CoreValue::EntityTypeDefinition(_) => {
-            todo!()
-        }
-        CoreValue::Box(inner) => {
-            context.write(RegularInstruction::boxed_value());
-            context.visit_value_container(inner);
-        }
-        CoreValue::Uninitialized => {
-            panic!("Tried to compile uninitialized value")
-        }
-        CoreValue::Native(native) => {
-            let instructions = (*native.value)
-                .to_instructions(context)
-                .collect::<Vec<Instruction>>();
+    //     CoreValue::Endpoint(endpoint) => {
+    //         context.write(RegularInstruction::endpoint(endpoint.clone()));
+    //     }
+    //     CoreValue::Decimal(decimal) => {
+    //         append_decimal(context.cursor_mut(), decimal)
+    //     }
+    //     CoreValue::TypedDecimal(val) => {
+    //         append_encoded_decimal(context.cursor_mut(), val)
+    //     }
+    //     CoreValue::Boolean(val) => append_boolean(context.cursor_mut(), val.0),
+    //     CoreValue::Null => context.write(RegularInstruction::null()),
+    //     CoreValue::Text(val) => {
+    //         context.write(RegularInstruction::text(val.0.clone()))
+    //     }
+    //     CoreValue::List(val) => {
+    //         // if list size < 256, use SHORT_LIST
+    //         context.write(RegularInstruction::list(val.len()));
 
-            for instruction in instructions {
-                match instruction {
-                    Instruction::Regular(instruction) => {
-                        context.write(instruction);
-                    }
-                    Instruction::Type(instruction) => {
-                        context.write(instruction);
-                    }
-                }
-            }
-        }
-    };
+    //         for item in val.into_iter() {
+    //             context.visit_value_container(item);
+    //         }
+    //     }
+    //     CoreValue::Map(val) => {
+    //         context.write(RegularInstruction::map(val.size() as u32));
+    //         for (key, value) in val.iter() {
+    //             append_key_value_pair(
+    //                 context,
+    //                 &ValueContainer::from(key),
+    //                 value,
+    //             );
+    //         }
+    //     }
+    //     CoreValue::Range(range) => {
+    //         context.write(RegularInstruction::range());
+    //         context.visit_value_container(&range.start);
+    //         context.visit_value_container(&range.end);
+    //     }
+    //     CoreValue::EntityTypeDefinition(_) => {
+    //         todo!()
+    //     }
+    //     CoreValue::Box(inner) => {
+    //         context.write(RegularInstruction::boxed_value());
+    //         context.visit_value_container(inner);
+    //     }
+    //     CoreValue::Uninitialized => {
+    //         panic!("Tried to compile uninitialized value")
+    //     }
+    //     CoreValue::Native(native) => {
+    //         let instructions = (*native.value)
+    //             .to_instructions(context)
+    //             .collect::<Vec<Instruction>>();
+
+    //         for instruction in instructions {
+    //             match instruction {
+    //                 Instruction::Regular(instruction) => {
+    //                     context.write(instruction);
+    //                 }
+    //                 Instruction::Type(instruction) => {
+    //                     context.write(instruction);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // };
 }
 
 pub fn append_core_type_cast(
@@ -542,10 +546,10 @@ pub fn append_key_value_pair<'ctx, T: BufferProvider + ValueVisitor<'ctx>>(
     // insert key
     match key {
         // if text, append_key_string, else dynamic
-        ValueContainer::Local(Value {
+        ValueContainer::Local(Value::Core(CoreValueWithClassification {
             inner: CoreValue::Text(text),
             ..
-        }) => {
+        })) => {
             append_key_string(context, &text.0);
         }
         _ => {

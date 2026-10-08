@@ -25,7 +25,11 @@ use crate::{
         pointer_availability_lookup::PointerAvailabilityLookup,
     },
     values::{
-        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
+        core_value::CoreValue,
+        core_values::endpoint::Endpoint,
+        value::{
+            Value, core_value_with_classification::CoreValueWithClassification,
+        },
         value_container::ValueContainer,
     },
 };
@@ -553,10 +557,12 @@ impl ComHub {
         );
         let hops_datex =
             execute_dxb_sync(exec_input).expect("Failed to execute DATEX");
-        if let Some(ValueContainer::Local(Value {
-            inner: CoreValue::List(list),
-            ..
-        })) = hops_datex
+        if let Some(ValueContainer::Local(Value::Core(
+            CoreValueWithClassification {
+                inner: CoreValue::List(list),
+                ..
+            },
+        ))) = hops_datex
         {
             let hops: Vec<NetworkTraceHop> = list
                 .into_iter()
@@ -617,7 +623,7 @@ impl ComHub {
         // convert hops to DATEX
         let hops_datex = hops
             .into_iter()
-            .map(|hop| ValueContainer::Local(Value::native_structural(hop)))
+            .map(|hop| ValueContainer::Local(Value::native(hop)))
             .collect::<Vec<ValueContainer>>();
 
         let pointer_lookup = PointerAvailabilityLookup::default();
