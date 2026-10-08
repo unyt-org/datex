@@ -36,7 +36,7 @@ impl<T: DatexNative> Shared<T> {
             match value_container {
                 ValueContainer::Local(value) => {
                     // inner should always contain value castable to T
-                    value.inner.downcast_native_ref::<T>().unwrap()
+                    value.downcast_native_ref::<T>().unwrap()
                 }
                 // inner should never contain a shared value
                 ValueContainer::Shared(_) => {
@@ -51,7 +51,7 @@ impl<T: DatexNative> Shared<T> {
             match value_container {
                 ValueContainer::Local(value) => {
                     // inner should always contain value castable to T
-                    value.inner.downcast_native_mut::<T>().unwrap()
+                    value.downcast_native_mut::<T>().unwrap()
                 }
                 // inner should never contain a shared value
                 ValueContainer::Shared(_) => {
@@ -65,13 +65,9 @@ impl<T: DatexNative> Shared<T> {
 impl<T: DatexNative + 'static> Shared<T> {
     pub fn try_new(
         value: Box<T>,
-        classification: impl Into<ValueClassification>,
         address_provider: &mut SelfOwnedPointerAddressProvider,
     ) -> Result<Self, ()> {
-        let value_container = ValueContainer::from(Value::new(
-            CoreValue::native_boxed(value),
-            classification.into(),
-        ));
+        let value_container = ValueContainer::from(Value::native(*value));
         Ok(Self {
             container: SharedContainer::new_owned_with_inferred_allowed_type(
                 value_container,
@@ -86,13 +82,9 @@ impl<T: DatexNative + 'static> Shared<T> {
 impl<T: DatexNative + 'static> Shared<T> {
     pub fn new(
         value: T,
-        classification: impl Into<ValueClassification>,
         address_provider: &mut SelfOwnedPointerAddressProvider,
     ) -> Self {
-        let value_container = ValueContainer::from(Value::new(
-            CoreValue::Native(NativeCoreValue::new(value)),
-            classification.into(),
-        ));
+        let value_container = ValueContainer::from(Value::native(value));
         Self {
             container: SharedContainer::new_owned_with_inferred_allowed_type(
                 value_container,
@@ -111,7 +103,7 @@ impl<T: DatexNative + 'static> TryFrom<SharedContainer> for Shared<T> {
         // check if the container contains a local value of type T
         match container.value_container().deref() {
             ValueContainer::Local(value) => {
-                if value.inner.downcast_native_ref::<T>().is_none() {
+                if value.downcast_native_ref::<T>().is_none() {
                     return Err(());
                 }
             }
@@ -135,6 +127,7 @@ mod test {
     };
 
     use crate::{prelude::*, values::core_value::CoreValue};
+    use crate::values::value::Value;
 
     #[test]
     fn string_shared() {
@@ -143,7 +136,7 @@ mod test {
         // TODO: also allow conversion to Shared<String> from CoreValue::Text
         let shared_container =
             SharedContainer::new_owned_with_inferred_allowed_type(
-                CoreValue::native("Hello DATEX".to_string()),
+                Value::native("Hello DATEX".to_string()),
                 SharedContainerMutability::Mutable,
                 address_provider,
             );

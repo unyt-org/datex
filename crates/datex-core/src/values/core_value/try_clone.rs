@@ -1,10 +1,11 @@
 use crate::{traits::try_clone::TryClone, values::core_value::CoreValue};
+use crate::values::value::Value;
 
 impl TryClone for CoreValue {
-    fn try_clone(&self) -> Result<CoreValue, ()> {
+    fn try_clone(&self) -> Result<Value, ()> {
         match self {
-            CoreValue::Uninitialized => Ok(CoreValue::Uninitialized),
-            CoreValue::Null => Ok(CoreValue::Null),
+            CoreValue::Uninitialized => Ok(CoreValue::Uninitialized.into()),
+            CoreValue::Null => Ok(CoreValue::Null.into()),
             CoreValue::Boolean(bool_value) => bool_value.try_clone(),
             CoreValue::Integer(int_value) => int_value.try_clone(),
             CoreValue::TypedInteger(typed_int_value) => {
@@ -25,7 +26,6 @@ impl TryClone for CoreValue {
             CoreValue::Callable(callable_value) => callable_value.try_clone(),
             CoreValue::Range(range_value) => range_value.try_clone(),
             CoreValue::Box(box_value) => box_value.try_clone(),
-            CoreValue::Native(native_value) => native_value.try_clone(),
         }
     }
 }

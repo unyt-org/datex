@@ -12,8 +12,6 @@ use crate::{
         core_value::CoreValue,
         value::{
             Value,
-            borrowed_value::{BorrowedCoreValue, BorrowedValue},
-            value_classification::ValueClassification,
         },
         value_container::value_key::BorrowedValueKey,
     },

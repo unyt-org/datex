@@ -669,7 +669,7 @@ mod tests {
 
     #[test]
     fn compile_tagged_empty_value() {
-        let value = Value::new(
+        let value = Value::core_with_classification(
             CoreValue::Null,
             ValueClassification::new_with_tag(ValueTag {
                 tag: "Example".to_string(),
@@ -688,7 +688,7 @@ mod tests {
 
     #[test]
     fn compile_tagged_value() {
-        let value = Value::new(
+        let value = Value::core_with_classification(
             CoreValue::Null,
             ValueClassification::new_with_tag(ValueTag {
                 tag: "Example".to_string(),

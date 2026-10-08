@@ -39,8 +39,8 @@ impl SharedContainerContainingType {
     ) -> R {
         let val = self.0.collapsed_value();
         let val_sheep = val.borrow();
-        let ty = match &val_sheep.inner {
-            CoreValue::Type(ty) => ty,
+        let ty = match val_sheep.try_as_core_value() {
+            Some(CoreValue::Type(ty)) => ty,
             _ => unreachable!(
                 "The constraint for SharedContainerContainingType guarantees that the inner value is always a CoreValue::Type"
             ),
@@ -55,7 +55,7 @@ impl TryFrom<SharedContainer> for SharedContainerContainingType {
     fn try_from(value: SharedContainer) -> Result<Self, Self::Error> {
         let is_type = {
             let val = value.collapsed_value();
-            matches!(&val.borrow().inner, CoreValue::Type(_))
+            matches!(&val.borrow().try_as_core_value(), Some(CoreValue::Type(_)))
         };
         if is_type {
             Ok(SharedContainerContainingType(value))

@@ -1,0 +1,280 @@
+use std::ops::Deref;
+use crate::preludes::derive::{Callable, CoreValue, DatexNative, EntityTypeDefinition, Goat, GoatMut, List, Map, Text, Type, Value, ValueClassification, ValueContainer};
+use crate::values::core_values::boolean::Boolean;
+use crate::values::core_values::decimal::Decimal;
+use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
+use crate::values::core_values::endpoint::Endpoint;
+use crate::values::core_values::integer::Integer;
+use crate::values::core_values::integer::typed_integer::TypedInteger;
+use crate::values::core_values::range::Range;
+use crate::values::value::borrowed_value::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
+use crate::values::value::borrowed_value::BorrowedValue;
+
+
+/// Similar to [CoreValue], but it is a potentially borrowed reference to a [CoreValue] variant instead of owning it.
+#[derive(Debug, Default)]
+pub enum BorrowedCoreValue<'a> {
+    #[default]
+    Uninitialized,
+    Null,
+    Boolean(Goat<'a, Boolean>),
+    Integer(Goat<'a, Integer>),
+    TypedInteger(Goat<'a, TypedInteger>),
+    Decimal(Goat<'a, Decimal>),
+    TypedDecimal(Goat<'a, TypedDecimal>),
+    Text(Goat<'a, Text>),
+    Endpoint(Goat<'a, Endpoint>),
+    List(Goat<'a, List>),
+    Map(Goat<'a, Map>),
+    Type(Goat<'a, Type>),
+    EntityTypeDefinition(Goat<'a, EntityTypeDefinition>),
+    Callable(Goat<'a, Callable>),
+    Range(Goat<'a, Range>),
+    Box(Goat<'a, Box<ValueContainer>>),
+}
+
+impl<'a> BorrowedCoreValue<'a> {
+    pub fn try_clone_to_core_value(self) -> Result<CoreValue, ()> {
+        match self {
+            BorrowedCoreValue::Uninitialized => Ok(CoreValue::Uninitialized),
+            BorrowedCoreValue::Null => Ok(CoreValue::Null),
+            BorrowedCoreValue::Boolean(boolean) => {
+                Ok(CoreValue::Boolean(boolean.deref().clone()))
+            }
+            BorrowedCoreValue::Integer(integer) => {
+                Ok(CoreValue::Integer(integer.deref().clone()))
+            }
+            BorrowedCoreValue::TypedInteger(typed_integer) => {
+                Ok(CoreValue::TypedInteger(typed_integer.deref().clone()))
+            }
+            BorrowedCoreValue::Decimal(decimal) => {
+                Ok(CoreValue::Decimal(decimal.deref().clone()))
+            }
+            BorrowedCoreValue::TypedDecimal(typed_decimal) => {
+                Ok(CoreValue::TypedDecimal(typed_decimal.deref().clone()))
+            }
+            BorrowedCoreValue::Text(text) => {
+                Ok(CoreValue::Text(text.deref().clone()))
+            }
+            BorrowedCoreValue::Endpoint(endpoint) => {
+                Ok(CoreValue::Endpoint(endpoint.deref().clone()))
+            }
+            BorrowedCoreValue::List(list) => {
+                Ok(CoreValue::List(list.deref().clone()))
+            }
+            BorrowedCoreValue::Map(map) => {
+                Ok(CoreValue::Map(map.deref().clone()))
+            }
+            BorrowedCoreValue::Type(type_value) => {
+                Ok(CoreValue::Type(type_value.deref().clone()))
+            }
+            BorrowedCoreValue::EntityTypeDefinition(entity_type_definition) => {
+                Ok(CoreValue::EntityTypeDefinition(
+                    entity_type_definition.deref().clone(),
+                ))
+            }
+            BorrowedCoreValue::Callable(callable) => {
+                Ok(CoreValue::Callable(callable.deref().clone()))
+            }
+            BorrowedCoreValue::Range(range) => {
+                Ok(CoreValue::Range(range.deref().clone()))
+            }
+            BorrowedCoreValue::Box(boxed_value) => {
+                Ok(CoreValue::Box(boxed_value.deref().clone()))
+            }
+        }
+    }
+}
+
+impl<'a> From<&'a CoreValue> for BorrowedCoreValue<'a> {
+    fn from(core_value: &'a CoreValue) -> Self {
+        match core_value {
+            CoreValue::Callable(callable) => {
+                BorrowedCoreValue::Callable(Goat::Borrowed(callable))
+            }
+            CoreValue::Uninitialized => BorrowedCoreValue::Uninitialized,
+            CoreValue::Null => BorrowedCoreValue::Null,
+            CoreValue::Boolean(boolean) => {
+                BorrowedCoreValue::Boolean(Goat::Borrowed(boolean))
+            }
+            CoreValue::Integer(integer) => {
+                BorrowedCoreValue::Integer(Goat::Borrowed(integer))
+            }
+            CoreValue::TypedInteger(typed_integer) => {
+                BorrowedCoreValue::TypedInteger(Goat::Borrowed(typed_integer))
+            }
+            CoreValue::Decimal(decimal) => {
+                BorrowedCoreValue::Decimal(Goat::Borrowed(decimal))
+            }
+            CoreValue::TypedDecimal(typed_decimal) => {
+                BorrowedCoreValue::TypedDecimal(Goat::Borrowed(typed_decimal))
+            }
+            CoreValue::Text(text) => {
+                BorrowedCoreValue::Text(Goat::Borrowed(text))
+            }
+            CoreValue::Endpoint(endpoint) => {
+                BorrowedCoreValue::Endpoint(Goat::Borrowed(endpoint))
+            }
+            CoreValue::List(list) => {
+                BorrowedCoreValue::List(Goat::Borrowed(list))
+            }
+            CoreValue::Map(map) => BorrowedCoreValue::Map(Goat::Borrowed(map)),
+            CoreValue::Type(type_value) => {
+                BorrowedCoreValue::Type(Goat::Borrowed(type_value))
+            }
+            CoreValue::EntityTypeDefinition(entity_type_definition) => {
+                BorrowedCoreValue::EntityTypeDefinition(Goat::Borrowed(
+                    entity_type_definition,
+                ))
+            }
+            CoreValue::Range(range) => {
+                BorrowedCoreValue::Range(Goat::Borrowed(range))
+            }
+            CoreValue::Box(boxed_value) => {
+                BorrowedCoreValue::Box(Goat::Borrowed(boxed_value))
+            }
+        }
+    }
+}
+
+impl<'a> From<BorrowedCoreValue<'a>> for BorrowedValue<'a> {
+    fn from(borrowed_core_value: BorrowedCoreValue<'a>) -> Self {
+        BorrowedValue::Core(BorrowedCoreValueWithClassification {
+            inner: borrowed_core_value,
+            classification: ValueClassification::new_unclassified(),
+        })
+    }
+}
+
+
+
+#[derive(Default, Debug)]
+pub enum BorrowedCoreValueMut<'a> {
+    #[default]
+    Uninitialized,
+    Null,
+    Boolean(GoatMut<'a, Boolean>),
+    Integer(GoatMut<'a, Integer>),
+    TypedInteger(GoatMut<'a, TypedInteger>),
+    Decimal(GoatMut<'a, Decimal>),
+    TypedDecimal(GoatMut<'a, TypedDecimal>),
+    Text(GoatMut<'a, Text>),
+    Endpoint(GoatMut<'a, Endpoint>),
+    List(GoatMut<'a, List>),
+    Map(GoatMut<'a, Map>),
+    Type(GoatMut<'a, Type>),
+    EntityTypeDefinition(GoatMut<'a, EntityTypeDefinition>),
+    Callable(GoatMut<'a, Callable>),
+    Range(GoatMut<'a, Range>),
+    Box(GoatMut<'a, Box<ValueContainer>>),
+}
+
+impl<'a> BorrowedCoreValueMut<'a> {
+    pub fn try_clone_to_core_value(self) -> Result<CoreValue, ()> {
+        match self {
+            BorrowedCoreValueMut::Uninitialized => Ok(CoreValue::Uninitialized),
+            BorrowedCoreValueMut::Null => Ok(CoreValue::Null),
+            BorrowedCoreValueMut::Boolean(boolean) => {
+                Ok(CoreValue::Boolean(boolean.deref().clone()))
+            }
+            BorrowedCoreValueMut::Integer(integer) => {
+                Ok(CoreValue::Integer(integer.deref().clone()))
+            }
+            BorrowedCoreValueMut::TypedInteger(typed_integer) => {
+                Ok(CoreValue::TypedInteger(typed_integer.deref().clone()))
+            }
+            BorrowedCoreValueMut::Decimal(decimal) => {
+                Ok(CoreValue::Decimal(decimal.deref().clone()))
+            }
+            BorrowedCoreValueMut::TypedDecimal(typed_decimal) => {
+                Ok(CoreValue::TypedDecimal(typed_decimal.deref().clone()))
+            }
+            BorrowedCoreValueMut::Text(text) => {
+                Ok(CoreValue::Text(text.deref().clone()))
+            }
+            BorrowedCoreValueMut::Endpoint(endpoint) => {
+                Ok(CoreValue::Endpoint(endpoint.deref().clone()))
+            }
+            BorrowedCoreValueMut::List(list) => {
+                Ok(CoreValue::List(list.deref().clone()))
+            }
+            BorrowedCoreValueMut::Map(map) => {
+                Ok(CoreValue::Map(map.deref().clone()))
+            }
+            BorrowedCoreValueMut::Type(type_value) => {
+                Ok(CoreValue::Type(type_value.deref().clone()))
+            }
+            BorrowedCoreValueMut::EntityTypeDefinition(entity_type_definition) => {
+                Ok(CoreValue::EntityTypeDefinition(
+                    entity_type_definition.deref().clone(),
+                ))
+            }
+            BorrowedCoreValueMut::Callable(callable) => {
+                Ok(CoreValue::Callable(callable.deref().clone()))
+            }
+            BorrowedCoreValueMut::Range(range) => {
+                Ok(CoreValue::Range(range.deref().clone()))
+            }
+            BorrowedCoreValueMut::Box(boxed_value) => {
+                Ok(CoreValue::Box(boxed_value.deref().clone()))
+            }
+        }
+    }
+}
+
+impl<'a> From<&'a mut CoreValue> for BorrowedCoreValueMut<'a> {
+    fn from(core_value: &'a mut CoreValue) -> Self {
+        match core_value {
+            CoreValue::Callable(callable) => {
+                BorrowedCoreValueMut::Callable(GoatMut::Borrowed(callable))
+            }
+            CoreValue::Uninitialized => BorrowedCoreValueMut::Uninitialized,
+            CoreValue::Null => BorrowedCoreValueMut::Null,
+            CoreValue::Boolean(boolean) => {
+                BorrowedCoreValueMut::Boolean(GoatMut::Borrowed(boolean))
+            }
+            CoreValue::Integer(integer) => {
+                BorrowedCoreValueMut::Integer(GoatMut::Borrowed(integer))
+            }
+            CoreValue::TypedInteger(typed_integer) => {
+                BorrowedCoreValueMut::TypedInteger(GoatMut::Borrowed(
+                    typed_integer,
+                ))
+            }
+            CoreValue::Decimal(decimal) => {
+                BorrowedCoreValueMut::Decimal(GoatMut::Borrowed(decimal))
+            }
+            CoreValue::TypedDecimal(typed_decimal) => {
+                BorrowedCoreValueMut::TypedDecimal(GoatMut::Borrowed(
+                    typed_decimal,
+                ))
+            }
+            CoreValue::Text(text) => {
+                BorrowedCoreValueMut::Text(GoatMut::Borrowed(text))
+            }
+            CoreValue::Endpoint(endpoint) => {
+                BorrowedCoreValueMut::Endpoint(GoatMut::Borrowed(endpoint))
+            }
+            CoreValue::List(list) => {
+                BorrowedCoreValueMut::List(GoatMut::Borrowed(list))
+            }
+            CoreValue::Map(map) => {
+                BorrowedCoreValueMut::Map(GoatMut::Borrowed(map))
+            }
+            CoreValue::Type(type_value) => {
+                BorrowedCoreValueMut::Type(GoatMut::Borrowed(type_value))
+            }
+            CoreValue::EntityTypeDefinition(entity_type_definition) => {
+                BorrowedCoreValueMut::EntityTypeDefinition(GoatMut::Borrowed(
+                    entity_type_definition,
+                ))
+            }
+            CoreValue::Range(range) => {
+                BorrowedCoreValueMut::Range(GoatMut::Borrowed(range))
+            }
+            CoreValue::Box(boxed_value) => {
+                BorrowedCoreValueMut::Box(GoatMut::Borrowed(boxed_value))
+            }
+        }
+    }
+}

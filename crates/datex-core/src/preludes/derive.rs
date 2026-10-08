@@ -58,7 +58,7 @@ pub use crate::{
         UpdateCallbackDataAccess, UpdateHandlerImpl,
     },
     values::core_values::callable::{Callable, CallableBody},
-    values::value::borrowed_value::{BorrowedCoreValue, BorrowedCoreValueMut},
+    values::value::borrowed_value::borrowed_core_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     values::{
         borrowed_value_container::{
             AsBorrowed, AsBorrowedMut, BorrowedValueContainer,

@@ -17,6 +17,8 @@ use crate::{
 };
 mod value_access;
 pub mod serde_dif;
+mod to_instructions;
+mod apply;
 
 use crate::prelude::*;
 
@@ -36,22 +38,7 @@ impl CoreValueWithClassification {
     pub fn is_null(&self) -> bool {
         matches!(self.inner, CoreValue::Null)
     }
-
-    /// Tries to convert the current value into the specific specified type.
-    /// Does not perform any type conversion.
-    pub fn try_into_core_value_with_classification<T>(
-        self,
-    ) -> Result<T, CoreValueWithClassification>
-    where
-        T: ConvertValue,
-    {
-        T::try_from_value(self.inner).map_err(|inner| {
-            CoreValueWithClassification {
-                inner,
-                classification: self.classification,
-            }
-        })
-    }
+    
 
     /// Returns the actual current [TypeDefinition] of the value
     pub fn actual_type(&self) -> TypeDefinition {

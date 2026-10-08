@@ -916,7 +916,7 @@ mod tests {
     fn map() {
         let result =
             execute_datex_script_debug_with_result("{x: 1, y: 2, z: 42}");
-        let map: CoreValue = result.get_cloned_value().inner;
+        let map = result.get_cloned_value();
         let map = map.try_into_value::<Map>().unwrap();
 
         // form and size
@@ -953,7 +953,7 @@ mod tests {
     #[test]
     fn empty_map() {
         let result = execute_datex_script_debug_with_result("{}");
-        let map: CoreValue = result.clone().get_cloned_value().inner;
+        let map = result.clone().get_cloned_value();
         let map = map.try_into_value::<Map>().unwrap();
 
         // form and size

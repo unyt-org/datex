@@ -7,13 +7,15 @@ use crate::{
     values::{
         borrowed_value_container::BorrowedValueContainer,
         value::{
-            borrowed_value::{BorrowedCoreValue, BorrowedValue},
+            borrowed_value::{BorrowedValue},
             value_classification::ValueClassification,
         },
         value_container::value_key::BorrowedValueKey,
     },
 };
 use core::cell::{Ref, RefCell};
+use crate::preludes::derive::BorrowedCoreValue;
+use crate::values::value::borrowed_value::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
 
 impl ValueAccess for EntityType {
     fn try_get_property(
@@ -31,10 +33,10 @@ impl ValueAccess for EntityType {
                     key.to_string().into(),
                 ))
             })?;
-            Ok(BorrowedValueContainer::Local(BorrowedValue {
+            Ok(BorrowedValueContainer::Local(BorrowedValue::Core(BorrowedCoreValueWithClassification {
                 inner: BorrowedCoreValue::Callable(callable_ref.into()),
                 classification: ValueClassification::new_unclassified(),
-            }))
+            })))
         } else {
             Err(AccessError::InvalidIndexKey)
         }

@@ -106,6 +106,13 @@ impl Value {
     pub fn core(inner: impl Into<CoreValueWithClassification>) -> Self {
         Value::Core(inner.into())
     }
+    
+    pub fn core_with_classification(inner: impl Into<CoreValue>, classification: ValueClassification) -> Self {
+        Value::Core(CoreValueWithClassification {
+            inner: inner.into(),
+            classification,
+        })
+    }
 
     pub fn null() -> Self {
         CoreValue::Null.into()
@@ -214,6 +221,22 @@ impl Value {
             Value::Native(native) => None,
         }
     }
+    
+    /// Tries to get a mutable reference to the inner [CoreValue] if the [Value] is a [Value::Core] variant.
+    pub fn try_as_core_value_mut(&mut self) -> Option<&mut CoreValue> {
+        match self {
+            Value::Core(core_value_with_classification) => Some(&mut core_value_with_classification.inner),
+            Value::Native(native) => None,
+        }
+    }
+    
+    /// Tries to convert the current value into a [CoreValue] if the [Value] is a [Value::Core] variant.
+    pub fn try_into_core_value(self) -> Result<CoreValue, Value> {
+        match self {
+            Value::Core(core_value_with_classification) => Ok(core_value_with_classification.inner),
+            Value::Native(native) => Err(Value::Native(native)),
+        }
+    }
 }
 
 impl Value {
@@ -287,6 +310,16 @@ impl Value {
         cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         <Self as ValueAccess>::try_get_property_mut(self, key.into(), cache)
+    }
+
+    /// Returns the actual current [TypeDefinition] of the value
+    pub fn actual_type(&self) -> TypeDefinition {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.actual_type()
+            }
+            Value::Native(native) => todo!(),
+        }
     }
 }
 

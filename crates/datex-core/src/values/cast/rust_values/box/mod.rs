@@ -46,10 +46,10 @@ mod tests {
     fn endpoint_boxed() {
         let endpoint = Endpoint::new("@jonas");
         let boxed_endpoint = Box::new(endpoint.clone());
-        let value: Value = Value::native_structural(boxed_endpoint);
+        let value: Value = Value::native(boxed_endpoint);
         assert_eq!(
-            value.inner,
-            CoreValue::Native(NativeCoreValue::new(Box::new(endpoint.clone())))
+            value,
+            Value::Native(NativeCoreValue::new(Box::new(endpoint.clone())))
         );
         assert_eq!(
             value.try_as::<Endpoint>().expect("Expected Endpoint"),

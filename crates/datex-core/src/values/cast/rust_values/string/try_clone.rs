@@ -1,9 +1,10 @@
 use crate::{
     prelude::*, traits::try_clone::TryClone, values::core_value::CoreValue,
 };
+use crate::values::value::Value;
 
 impl TryClone for String {
-    fn try_clone(&self) -> Result<CoreValue, ()> {
-        Ok(CoreValue::Text(self.clone().into()))
+    fn try_clone(&self) -> Result<Value, ()> {
+        Ok(CoreValue::Text(self.clone().into()).into())
     }
 }
