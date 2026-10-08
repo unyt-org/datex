@@ -21,6 +21,7 @@ mod child_iterator;
 pub mod classification;
 pub mod convert_parts;
 pub mod convert_value_container;
+pub mod core_value_with_classification;
 mod datex_hash;
 mod datex_native;
 pub mod equality;
@@ -35,7 +36,6 @@ mod to_instructions;
 pub mod update_handler;
 mod value_access;
 pub mod value_classification;
-pub mod core_value_with_classification;
 
 use crate::{
     preludes::derive::{
@@ -44,29 +44,33 @@ use crate::{
     shared_values::errors::AccessError,
     traits::{
         convert_value_container::ConvertValueContainer,
-        datex_native_only_structural::DatexNativeOnlyStructural, 
+        datex_native_only_structural::DatexNativeOnlyStructural,
         value_access::ValueAccess,
     },
-    types::r#type::Type,
+    types::{
+        r#type::Type,
+        type_definition::{
+            impl_type::ImplMarkers, intersection::IntersectionTypeDefinition,
+        },
+    },
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
     values::{
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
-        core_values::{endpoint::Endpoint},
-        value::value_classification::{ValueClassification, ValueTag},
+        core_values::{endpoint::Endpoint, native::NativeCoreValue},
+        value::{
+            core_value_with_classification::CoreValueWithClassification,
+            value_classification::{ValueClassification, ValueTag},
+        },
     },
 };
 use core::{
     cell::RefCell,
-    fmt::{Debug, Display, Formatter},
+    fmt::{Debug, Formatter},
     result::Result,
 };
-use crate::types::type_definition::impl_type::ImplMarkers;
-use crate::types::type_definition::intersection::IntersectionTypeDefinition;
-use crate::values::core_values::native::NativeCoreValue;
-use crate::values::value::core_value_with_classification::CoreValueWithClassification;
 
 #[derive(Debug, Clone)]
 /// Represents a local DATEX value.
@@ -97,7 +101,8 @@ impl<T: ConvertCoreValue> From<T> for Value {
         CoreValueWithClassification {
             inner,
             classification: ValueClassification::new_unclassified(),
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -109,13 +114,26 @@ impl Value {
     pub fn native_boxed(value: Box<dyn DatexNative>) -> Value {
         Value::Native(NativeCoreValue { value })
     }
-    
+
+    pub fn core(inner: impl Into<CoreValueWithClassification>) -> Self {
+        Value::Core(inner.into())
+    }
+
     pub fn null() -> Self {
         CoreValue::Null.into()
     }
 
     pub fn uninitialized() -> Self {
         CoreValue::Uninitialized.into()
+    }
+
+    pub fn classification(&self) -> Option<&ValueClassification> {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                Some(&core_value_with_classification.classification)
+            }
+            Value::Native(_) => None,
+        }
     }
 
     pub fn new(
@@ -125,16 +143,17 @@ impl Value {
         CoreValueWithClassification {
             inner: inner.to_core_value(),
             classification: classification.into(),
-        }.into()
+        }
+        .into()
     }
-    
+
     pub fn new_unclassified(inner: impl ConvertCoreValue) -> Self {
         CoreValueWithClassification {
             inner: inner.to_core_value(),
             classification: ValueClassification::new_unclassified(),
-        }.into()
+        }
+        .into()
     }
-
 
     /// Checks if the inner [CoreValue] of the [Value] is a [CoreValue::Native].
     pub fn is_native(&self) -> bool {
@@ -143,7 +162,9 @@ impl Value {
 
     pub fn is_uninitialized(&self) -> bool {
         match self {
-            Value::Core(core_value_with_classification) => core_value_with_classification.is_uninitialized(),
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.is_uninitialized()
+            }
             Value::Native(_) => false,
         }
     }
@@ -162,8 +183,13 @@ impl Value {
         Value::from(CoreValue::Box(Box::new(value.into())))
     }
     pub fn unbox(self) -> Result<ValueContainer, Value> {
-        match self.inner {
-            CoreValue::Box(boxed) => Ok(*boxed),
+        match self {
+            Value::Core(core_value_with_classification) => {
+                match core_value_with_classification.inner {
+                    CoreValue::Box(boxed) => Ok(*boxed),
+                    _ => Err(Value::Core(core_value_with_classification)),
+                }
+            }
             _ => Err(self),
         }
     }
@@ -226,7 +252,6 @@ impl Value {
 
     /// Returns the actual current [TypeDefinition] of the value
     pub fn actual_type(&self) -> TypeDefinition {
-
         let mut types = Vec::<Type>::new();
 
         if let Some(entity_type) = &self.classification.entity_type {
@@ -234,18 +259,26 @@ impl Value {
         }
 
         if let Some(ValueTag { tag, is_empty }) = &self.classification.tag {
-            types.push(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                tag: tag.clone(),
-                ty: if *is_empty {
-                    None
-                } else {
-                    Some(Box::new(Type::core(self.default_core_type())))
-                },
-            }).into());
+            types.push(
+                TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: tag.clone(),
+                    ty: if *is_empty {
+                        None
+                    } else {
+                        Some(Box::new(Type::core(self.default_core_type())))
+                    },
+                })
+                .into(),
+            );
         }
 
         if !self.classification.impls.is_empty() {
-            types.push(TypeDefinition::ImplMarkers(ImplMarkers::new(self.classification.impls.clone())).into());
+            types.push(
+                TypeDefinition::ImplMarkers(ImplMarkers::new(
+                    self.classification.impls.clone(),
+                ))
+                .into(),
+            );
         }
 
         if types.is_empty() {

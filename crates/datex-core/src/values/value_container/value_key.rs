@@ -1,23 +1,28 @@
 use core::fmt::Display;
 
-use serde::{
-    Serialize,
-    de::DeserializeSeed,
-    ser::{SerializeMap, SerializeSeq},
-};
-use serde::de::Visitor;
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
     prelude::*,
     preludes::derive::{ConvertCoreValue, Text},
-    dif::serialize_with_serde_context::SerializeWithSerdeContext,
     values::{
-        core_value::CoreValue, value::Value, value_container::ValueContainer,
+        core_value::CoreValue,
+        value::{
+            Value, core_value_with_classification::CoreValueWithClassification,
+        },
+        value_container::ValueContainer,
     },
 };
-use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
-use crate::dif::value_with_serde_context::ValueWithSerdeContext;
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
+use serde::{
+    Serialize,
+    de::{DeserializeSeed, Visitor},
+    ser::{SerializeMap, SerializeSeq},
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ValueKey {
@@ -65,10 +70,7 @@ impl<'ctx> SerializeWithSerdeContext for ValueKey {
                 let mut map_serializer = serializer.serialize_map(Some(1))?;
                 map_serializer.serialize_entry(
                     "value",
-                    &ValueWithSerdeContext::new(
-                        value_container,
-                        ctx,
-                    ),
+                    &ValueWithSerdeContext::new(value_container, ctx),
                 )?;
 
                 map_serializer.end()
@@ -85,10 +87,8 @@ impl<'ctx> SerializeWithSerdeContext for &'ctx [ValueKey] {
     ) -> Result<S::Ok, S::Error> {
         let mut seq_serializer = serializer.serialize_seq(Some(self.len()))?;
         for key in *self {
-            seq_serializer.serialize_element(&ValueWithSerdeContext::new(
-                key,
-                ctx,
-            ))?;
+            seq_serializer
+                .serialize_element(&ValueWithSerdeContext::new(key, ctx))?;
         }
         seq_serializer.end()
     }
@@ -99,12 +99,14 @@ impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for ValueKey {
         ctx: &SerdeContext<'_>,
         deserializer: D,
     ) -> Result<Self, D::Error> {
-        deserializer.deserialize_any(DeserializeSerdeContext::<ValueKey>::new(ctx))
+        deserializer
+            .deserialize_any(DeserializeSerdeContext::<ValueKey>::new(ctx))
     }
 }
 
-
-impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ValueKey> {
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, ValueKey>
+{
     type Value = ValueKey;
 
     fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -320,10 +322,12 @@ impl<'a> BorrowedValueKey<'a> {
         if let BorrowedValueKey::Index(index) = self {
             Some(*index)
         } else if let BorrowedValueKey::Value(value) = self
-            && let ValueContainer::Local(Value {
-                inner: CoreValue::Integer(index),
-                ..
-            }) = value.as_ref()
+            && let ValueContainer::Local(Value::Core(
+                CoreValueWithClassification {
+                    inner: CoreValue::Integer(index),
+                    ..
+                },
+            )) = value.as_ref()
         {
             index.as_i64()
         } else if let BorrowedValueKey::Value(value) = self

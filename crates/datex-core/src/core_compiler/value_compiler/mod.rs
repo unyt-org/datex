@@ -163,23 +163,26 @@ pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx> + 'ctx>(
     value: &Value,
 ) {
     // append classified type information
-    if let Some(entity_type) = &value.classification.entity_type {
+    if let Some(entity_type) =
+        value.classification().and_then(|c| c.entity_type.as_ref())
+    {
         context.write(RegularInstruction::EntityValue(
             entity_type.pointer_address(),
         ))
     }
 
-    for impl_address in &value.classification.impls {
+    for impl_address in
+        value.classification().map(|c| &c.impls).unwrap_or(&vec![])
+    {
         todo!(
             "Compiling values with Impls classification is not yet implemented"
         )
     }
 
-    if let Some(ValueTag {tag, is_empty}) = &value.classification.tag {
-        context.write(RegularInstruction::tagged_value(
-            tag.clone(),
-            *is_empty,
-        ));
+    if let Some(ValueTag { tag, is_empty }) =
+        &value.classification().and_then(|c| c.tag.as_ref())
+    {
+        context.write(RegularInstruction::tagged_value(tag.clone(), *is_empty));
         if *is_empty {
             // early return, don't append null value; TODO: assert that value is actually null?
             return;
