@@ -8,6 +8,7 @@ use crate::{
     },
     values::{
         core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
         core_values::{
             callable::{Callable, CallableBody},
             native::DatexNative,
@@ -21,7 +22,6 @@ mod child_iterator;
 pub mod classification;
 pub mod convert_parts;
 pub mod convert_value_container;
-pub mod core_value_with_classification;
 mod datex_hash;
 mod datex_native;
 pub mod equality;
@@ -60,10 +60,7 @@ use crate::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
         core_values::{endpoint::Endpoint, native::NativeCoreValue},
-        value::{
-            core_value_with_classification::CoreValueWithClassification,
-            value_classification::{ValueClassification, ValueTag},
-        },
+        value::value_classification::{ValueClassification, ValueTag},
     },
 };
 use core::{
@@ -222,71 +219,33 @@ impl Value {
         }
     }
 
-    /// Tries to get a borrow of the current value as the specified type.
-    /// Does not perform any type conversion.
-    pub fn try_as<T>(&self) -> Option<&T>
-    where
-        T: ConvertCoreValue,
-    {
-        T::try_borrow_from_core_value(&self.inner).ok()
-    }
-
-    pub fn try_as_mut<T>(&mut self) -> Option<&mut T>
-    where
-        T: ConvertCoreValue,
-    {
-        T::try_borrow_mut_from_core_value(&mut self.inner).ok()
-    }
-
-    /// Tries to convert the current value into the specific specified type.
-    /// Does not perform any type conversion.
-    pub fn try_into_value<T>(self) -> Result<T, Value>
-    where
-        T: ConvertCoreValue,
-    {
-        T::try_from_core_value(self.inner).map_err(|inner| Value {
-            inner,
-            classification: self.classification,
-        })
-    }
-
-    /// Returns the actual current [TypeDefinition] of the value
-    pub fn actual_type(&self) -> TypeDefinition {
-        let mut types = Vec::<Type>::new();
-
-        if let Some(entity_type) = &self.classification.entity_type {
-            types.push(Type::Entity(entity_type.clone()));
-        }
-
-        if let Some(ValueTag { tag, is_empty }) = &self.classification.tag {
-            types.push(
-                TypeDefinition::TaggedType(TaggedTypeDefinition {
-                    tag: tag.clone(),
-                    ty: if *is_empty {
-                        None
-                    } else {
-                        Some(Box::new(Type::core(self.default_core_type())))
-                    },
-                })
-                .into(),
-            );
-        }
-
-        if !self.classification.impls.is_empty() {
-            types.push(
-                TypeDefinition::ImplMarkers(ImplMarkers::new(
-                    self.classification.impls.clone(),
-                ))
-                .into(),
-            );
-        }
-
-        if types.is_empty() {
-            TypeDefinition::CoreType(self.default_core_type())
-        } else if types.len() == 1 {
-            types.into_iter().next().unwrap().convert_to_definition()
+    /// Tries to downcast the CoreValue to a native value of type T.
+    /// This method will return Some(Box<T>) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native<T: DatexNative>(self) -> Option<Box<T>> {
+        if let Value::Native(native_value) = self {
+            native_value.into_any().downcast::<T>().ok()
         } else {
-            TypeDefinition::Intersection(IntersectionTypeDefinition::new(types))
+            None
+        }
+    }
+
+    /// Tries to downcast the CoreValue to a reference of a native value of type T.
+    /// This method will return Some(&T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native_ref<T: DatexNative>(&self) -> Option<&T> {
+        if let Value::Native(native_value) = self {
+            native_value.as_any().downcast_ref::<T>()
+        } else {
+            None
+        }
+    }
+
+    /// Tries to downcast the CoreValue to a mutable reference of a native value of type T.
+    /// This method will return Some(&mut T) if the CoreValue is a Native variant and the underlying value can be downcast to T.
+    pub fn downcast_native_mut<T: DatexNative>(&mut self) -> Option<&mut T> {
+        if let Value::Native(native_value) = self {
+            native_value.as_any_mut().downcast_mut::<T>()
+        } else {
+            None
         }
     }
 
@@ -305,124 +264,6 @@ impl Value {
         cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         <Self as ValueAccess>::try_get_property_mut(self, key.into(), cache)
-    }
-
-    /// Takes (removes) a property from the value if applicable (e.g. for map and structs)
-    pub fn try_take_property<'a>(
-        &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
-        _cache: &RefCell<SharedReferencesCache>,
-    ) -> Result<ValueContainer, AccessError> {
-        // TODO
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                // If the value is a map, get the property
-                Ok(map.try_delete(key)?)
-            }
-            CoreValue::List(ref mut list) => {
-                if let Some(index) = key.into().try_as_index() {
-                    Ok(list.try_delete(index)?)
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            CoreValue::Text(ref text) => {
-                if let Some(index) = key.into().try_as_index() {
-                    let char = text.char_at(index)?;
-                    Ok(ValueContainer::from(char.to_string()))
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            _ => {
-                // If the value is not an map, we cannot get a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot get property".to_string(),
-                ))
-            }
-        }
-    }
-
-    pub fn try_delete_property<'a>(
-        &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
-    ) -> Result<(), AccessError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                // If the value is a map, delete the property
-                map.try_delete(key)?;
-                Ok(())
-            }
-            CoreValue::List(ref mut list) => {
-                if let Some(index) = key.into().try_as_index() {
-                    list.try_delete(index)?;
-                    Ok(())
-                } else {
-                    Err(AccessError::InvalidIndexKey)
-                }
-            }
-            CoreValue::Text(_) => Err(AccessError::InvalidOperation(
-                "Cannot delete property on text".to_string(),
-            )),
-            _ => {
-                // If the value is not a map, we cannot delete a property
-                Err(AccessError::InvalidOperation(
-                    "Cannot delete property".to_string(),
-                ))
-            }
-        }
-    }
-
-    /// Sets a property on the value if applicable (e.g. for maps)
-    pub fn try_set_property<'a>(
-        &mut self,
-        key: impl Into<BorrowedValueKey<'a>>,
-        val: ValueContainer,
-    ) -> Result<(), AccessError> {
-        let key = key.into();
-
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                // If the value is an map, set the property
-                map.try_set(key, val)?;
-            }
-            CoreValue::List(ref mut list) => {
-                if let Some(index) = key.try_as_index() {
-                    list.try_set(index, val)
-                        .map_err(AccessError::IndexOutOfBounds)?;
-                } else {
-                    return Err(AccessError::InvalidIndexKey);
-                }
-            }
-            CoreValue::Text(ref mut text) => {
-                if let Some(index) = key.try_as_index() {
-                    if let ValueContainer::Local(v) = &val
-                        && let CoreValue::Text(new_char) = &v.inner
-                        && new_char.0.len() == 1
-                    {
-                        let char = new_char.0.chars().next().unwrap_or('\0');
-                        text.set_char_at(index, char).map_err(|err| {
-                            AccessError::IndexOutOfBounds(err)
-                        })?;
-                    } else {
-                        return Err(AccessError::InvalidOperation(
-                            "Can only set char character in text".to_string(),
-                        ));
-                    }
-                } else {
-                    return Err(AccessError::InvalidIndexKey);
-                }
-            }
-            _ => {
-                // If the value is not a map, we cannot set a property
-                return Err(AccessError::InvalidOperation(format!(
-                    "Cannot set property '{}' on non-map value: {:?}",
-                    key, self
-                )));
-            }
-        }
-
-        Ok(())
     }
 }
 

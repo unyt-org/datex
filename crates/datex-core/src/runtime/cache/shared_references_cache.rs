@@ -12,10 +12,8 @@ use crate::{
     },
     values::{
         core_value::CoreValue,
-        value::{
-            Value, core_value_with_classification::CoreValueWithClassification,
-        },
-        value_container::ValueContainer,
+        core_value_with_classification::CoreValueWithClassification,
+        value::Value, value_container::ValueContainer,
     },
 };
 use core::{any::TypeId, fmt::Display, ops::Deref};

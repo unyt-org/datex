@@ -26,10 +26,8 @@ use crate::{
     },
     values::{
         core_value::CoreValue,
-        core_values::endpoint::Endpoint,
-        value::{
-            Value, core_value_with_classification::CoreValueWithClassification,
-        },
+        core_value_with_classification::CoreValueWithClassification,
+        core_values::endpoint::Endpoint, value::Value,
         value_container::ValueContainer,
     },
 };

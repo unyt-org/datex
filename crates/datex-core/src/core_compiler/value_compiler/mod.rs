@@ -12,14 +12,13 @@ use crate::{
     utils::buffers::{append_i16, append_i32},
     values::{
         core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
         core_values::{
             Instant,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             integer::{Integer, typed_integer::TypedInteger},
         },
-        value::{
-            Value, core_value_with_classification::CoreValueWithClassification,
-        },
+        value::Value,
         value_container::ValueContainer,
     },
 };

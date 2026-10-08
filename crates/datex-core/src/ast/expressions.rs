@@ -23,6 +23,7 @@ use crate::{
     },
     values::{
         core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
         core_values::{
             self, Instant,
             boolean::Boolean,
@@ -31,9 +32,7 @@ use crate::{
             integer::{Integer, typed_integer::TypedInteger},
             text::Text,
         },
-        value::{
-            Value, core_value_with_classification::CoreValueWithClassification,
-        },
+        value::Value,
         value_container::ValueContainer,
     },
 };
