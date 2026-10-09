@@ -5,7 +5,12 @@ use crate::values::{value::Value, value_container::error::ValueError};
 impl Add for &Value {
     type Output = Result<Value, ValueError>;
     fn add(self, rhs: &Value) -> Self::Output {
-        Ok((&self.inner + &rhs.inner)?.into())
+        match (self, rhs) {
+            (Value::Core(lhs), Value::Core(rhs)) => {
+                (lhs + rhs).map(|value| Value::Core(value))
+            },
+            (_, _) => todo!("Handle add for non-Core values"),
+        }
     }
 }
 

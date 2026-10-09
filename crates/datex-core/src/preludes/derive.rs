@@ -37,6 +37,7 @@ macro_rules! derive_prelude {
                 serde_to_value_container, try_serde_from_value_container,
             },
             shared_values::{
+                PointerAddress,
                 SelfOwnedPointerAddress,
                 errors::{AccessError, KeyNotFoundError},
             },

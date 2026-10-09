@@ -6,9 +6,10 @@ impl Not for &Value {
     type Output = Option<Value>;
 
     fn not(self) -> Self::Output {
-        let inner = &self.inner;
-        let neg = !inner;
-        neg.map(Value::from)
+        match self {
+            Value::Core(core_value) => core_value.not().map(Value::Core),
+            Value::Native(native_value) => todo!(),
+        }
     }
 }
 impl Not for Value {

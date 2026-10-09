@@ -98,6 +98,9 @@ use datex_core::{
     },
 };
 use test_case::test_case;
+use datex_core::traits::convert_value_container::ConvertValueContainer;
+use datex_core::values::core_values::integer::typed_integer::TypedInteger;
+use datex_core::values::core_values::list::List;
 
 #[test_case(
     Example {
@@ -419,7 +422,7 @@ fn value_to_new_typestruct() {
 fn value_to_empty_enum_variant() {
     let cache = RefCell::new(SharedReferencesCache::default());
 
-    let variant_a = Value::new(
+    let variant_a = Value::core_with_classification(
         CoreValue::Null,
         ValueClassification::new_with_tag(ValueTag {
             tag: "VariantA".to_string(),
@@ -439,8 +442,8 @@ fn value_to_empty_enum_variant() {
 fn value_to_list_enum_variant() {
     let cache = RefCell::new(SharedReferencesCache::default());
 
-    let variant_b = Value::new(
-        vec![ValueContainer::from(1u8), ValueContainer::from(2u8)].to_value(),
+    let variant_b = Value::core_with_classification(
+        List::new(vec![ValueContainer::from(1u8), ValueContainer::from(2u8)]),
         ValueClassification::new_with_tag(ValueTag {
             tag: "VariantB".to_string(),
             is_empty: false,
@@ -458,12 +461,11 @@ fn value_to_list_enum_variant() {
 fn value_to_map_enum_variant() {
     let cache = RefCell::new(SharedReferencesCache::default());
 
-    let variant_c = Value::new(
+    let variant_c = Value::core_with_classification(
         Map::from(vec![
             ("x".to_string(), ValueContainer::from(3u8)),
             ("y".to_string(), ValueContainer::from("Hello".to_string())),
-        ])
-        .to_value(),
+        ]),
         ValueClassification::new_with_tag(ValueTag {
             tag: "VariantC".to_string(),
             is_empty: false,
@@ -481,8 +483,8 @@ fn value_to_map_enum_variant() {
 fn value_to_transparent_enum_variant() {
     let cache = RefCell::new(SharedReferencesCache::default());
 
-    let variant_d = Value::new(
-        42u8.to_value(),
+    let variant_d = Value::core_with_classification(
+        TypedInteger::U8(42),
         ValueClassification::new_with_tag(ValueTag {
             tag: "VariantD".to_string(),
             is_empty: false,
@@ -499,8 +501,8 @@ fn value_to_transparent_enum_variant() {
 
 #[test]
 fn value_to_enum_failure() {
-    let invalid_variant = Value::new(
-        vec![ValueContainer::from(1u8), ValueContainer::from(2u8)].to_value(),
+    let invalid_variant = Value::core_with_classification(
+        List::new(vec![ValueContainer::from(1u8), ValueContainer::from(2u8)]),
         ValueClassification::new_with_tag(ValueTag {
             tag: "VariantX".to_string(),
             is_empty: false,
@@ -508,8 +510,8 @@ fn value_to_enum_failure() {
     );
     assert!(invalid_variant.try_into_value::<ExampleEnum>().is_err());
 
-    let invalid_variant = Value::new(
-        42u8.to_value(),
+    let invalid_variant = Value::core_with_classification(
+        TypedInteger::U8(42),
         ValueClassification::new_with_tag(ValueTag {
             tag: "VariantA".to_string(),
             is_empty: false,

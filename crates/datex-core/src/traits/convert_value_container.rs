@@ -1,3 +1,4 @@
+use crate::traits::convert_parts::{HasPartsKind, IntoParts};
 #[cfg(feature = "compiler")]
 use crate::compiler::error::SpannedCompilerError;
 #[cfg(feature = "parser")]
@@ -17,6 +18,7 @@ use crate::{
     },
 };
 use core::cell::RefCell;
+use crate::traits::classification::Classification;
 
 #[derive(Debug)]
 pub enum DeserializationError {
