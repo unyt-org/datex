@@ -8,14 +8,16 @@ use crate::{
     },
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
     prelude::*,
-    preludes::derive::ValueTag,
     values::{
         core_value::{CoreValue, serde_dif::CoreValueVisitor},
         core_values::{
             boolean::Boolean, decimal::typed_decimal::TypedDecimal,
             native::NativeCoreValue,
         },
-        value::{Value, value_classification::ValueClassification},
+        value::{
+            Value,
+            value_classification::{ValueClassification, ValueTag},
+        },
         value_container::ValueContainer,
     },
 };

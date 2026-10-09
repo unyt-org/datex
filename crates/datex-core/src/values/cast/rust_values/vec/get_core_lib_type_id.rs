@@ -1,6 +1,5 @@
 use crate::{
-    prelude::*,
-    preludes::derive::{CoreLibBaseTypeId, CoreLibTypeId},
+    libs::core::type_id::CoreLibBaseTypeId, prelude::*,
     traits::get_core_lib_type_id::GetCoreLibTypeId,
 };
 

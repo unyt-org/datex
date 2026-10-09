@@ -5,8 +5,10 @@ pub mod datex_native;
 
 use crate::{
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::{
-        convert_parts::{FromParts, IntoParts, HasPartsKind},
+        convert_parts::{FromParts, HasPartsKind, IntoParts},
+        convert_value_container::ConvertValueContainer,
         datex_native_only_structural::DatexNativeOnlyStructural,
         datex_native_structural::DatexNativeStructural,
         get_core_lib_type_id::GetCoreLibTypeId,
@@ -16,10 +18,9 @@ use crate::{
     value_updates::update_handler::{
         UpdateCallbackDataAccess, UpdateHandlerImpl,
     },
+    values::value_container::ValueContainer,
 };
 use core::time::Duration;
-use crate::preludes::derive::{SharedReferencesCache, ValueContainer};
-use crate::traits::convert_value_container::ConvertValueContainer;
 
 mod to_instructions;
 #[cfg(feature = "ast")]
@@ -41,7 +42,10 @@ mod to_datex_expression_data {
 
 impl ValueAccess for Duration {}
 impl FromParts for Duration {
-    fn try_from_single_value_with_tag(value: ValueContainer, _tag: Option<&str>) -> Result<Self, ()>
+    fn try_from_single_value_with_tag(
+        value: ValueContainer,
+        _tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {

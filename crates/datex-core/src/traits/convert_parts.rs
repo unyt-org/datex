@@ -1,13 +1,13 @@
 use crate::{
     prelude::*,
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::convert_value_container::ConvertValueContainer,
     values::{
         borrowed_value_container::BorrowedValueContainer,
         core_values::{list::List, map::Map},
         value_container::ValueContainer,
     },
 };
-use crate::traits::convert_value_container::ConvertValueContainer;
 
 /// Represents the different parts of a disassembled value
 /// that can be used to reconstruct the original value.

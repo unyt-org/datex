@@ -3,8 +3,10 @@ use core::cell::RefCell;
 
 use crate::{
     prelude::*,
-    preludes::derive::SharedReferencesCache,
-    runtime::execution::ExecutionError,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        execution::ExecutionError,
+    },
     shared_values::base_shared_value_container::observers::TransceiverId,
     value_updates::{
         update_data::{SetEntryUpdateData, UpdateOperation},

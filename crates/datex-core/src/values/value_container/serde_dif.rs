@@ -12,7 +12,7 @@ use crate::{
         serialize_with_serde_context::SerializeWithSerdeContext,
     },
     prelude::*,
-    preludes::derive::CoreValue,
+    values::core_value::CoreValue,
 };
 use core::fmt;
 use serde::{

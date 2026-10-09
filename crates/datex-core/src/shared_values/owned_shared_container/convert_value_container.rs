@@ -1,10 +1,12 @@
 use crate::{
-    preludes::derive::BorrowedValueContainer,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::{OwnedSharedContainer, SharedContainer},
     traits::convert_value_container::ConvertValueContainer,
-    values::value_container::ValueContainer,
+    values::{
+        borrowed_value_container::BorrowedValueContainer,
+        value_container::ValueContainer,
+    },
 };
-use crate::shared_values::{OwnedSharedContainer, SharedContainer};
 
 impl ConvertValueContainer for OwnedSharedContainer {
     fn to_value_container(
@@ -18,7 +20,9 @@ impl ConvertValueContainer for OwnedSharedContainer {
         &self,
         _cache: &mut SharedReferencesCache,
     ) -> BorrowedValueContainer<'_> {
-        BorrowedValueContainer::Shared(SharedContainer::Referenced(self.derive_with_max_mutability()))
+        BorrowedValueContainer::Shared(SharedContainer::Referenced(
+            self.derive_with_max_mutability(),
+        ))
     }
 
     fn try_from_value_container(
@@ -28,9 +32,9 @@ impl ConvertValueContainer for OwnedSharedContainer {
         Self: Sized,
     {
         match value_container {
-            ValueContainer::Shared(SharedContainer::Owned(owned_shared_container)) => {
-                Ok(owned_shared_container)
-            }
+            ValueContainer::Shared(SharedContainer::Owned(
+                owned_shared_container,
+            )) => Ok(owned_shared_container),
             _ => Err(value_container),
         }
     }
@@ -42,9 +46,9 @@ impl ConvertValueContainer for OwnedSharedContainer {
         Self: Sized,
     {
         match value_container {
-            ValueContainer::Shared(SharedContainer::Owned(owned_shared_container)) => {
-                Ok(owned_shared_container)
-            }
+            ValueContainer::Shared(SharedContainer::Owned(
+                owned_shared_container,
+            )) => Ok(owned_shared_container),
             _ => Err(()),
         }
     }
@@ -56,9 +60,9 @@ impl ConvertValueContainer for OwnedSharedContainer {
         Self: Sized,
     {
         match value_container {
-            ValueContainer::Shared(SharedContainer::Owned(owned_shared_container)) => {
-                Ok(owned_shared_container)
-            }
+            ValueContainer::Shared(SharedContainer::Owned(
+                owned_shared_container,
+            )) => Ok(owned_shared_container),
             _ => Err(()),
         }
     }

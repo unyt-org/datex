@@ -1,7 +1,7 @@
 use crate::{
+    core_compiler::to_instructions::ToInstructions,
     instruction::Instruction,
     prelude::*,
-    preludes::derive::{ToInstructions, ValueVisitor},
     shared_values::{OwnedSharedContainer, SharedContainer},
 };
 

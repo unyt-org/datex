@@ -1,8 +1,5 @@
 use crate::{
-    preludes::derive::List,
-    traits::{
-        classification::Classification,
-    },
+    traits::classification::Classification, values::core_values::list::List,
 };
 
 impl Classification for List {}

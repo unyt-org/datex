@@ -54,8 +54,7 @@ pub fn register_inspector_namespace(runtime: &Runtime) {
 #[cfg(test)]
 mod tests {
     use crate::{
-        preludes::derive::CoreValue, traits::apply::Apply,
-        types::type_definition::callable::CallableKind,
+        traits::apply::Apply, types::type_definition::callable::CallableKind,
         values::core_values::callable::native_sync_callable,
     };
     // FIXME

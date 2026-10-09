@@ -6,8 +6,8 @@ use crate::{
     },
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
-        value::Value,
         core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
         core_values::{
             boolean::Boolean,
             callable::Callable,
@@ -19,12 +19,21 @@ use crate::{
             range::Range,
             text::Text,
         },
+        value::{
+            Value,
+            borrowed_value::{
+                BorrowedValue, BorrowedValueMut,
+                borrowed_core_value::{
+                    BorrowedCoreValue, BorrowedCoreValueMut,
+                },
+                borrowed_core_value_with_classification::{
+                    BorrowedCoreValueWithClassification,
+                    BorrowedCoreValueWithClassificationMut,
+                },
+            },
+        },
     },
 };
-use crate::values::core_value_with_classification::CoreValueWithClassification;
-use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
-use crate::values::value::borrowed_value::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
-use crate::values::value::borrowed_value::borrowed_core_value::{BorrowedCoreValue, BorrowedCoreValueMut};
 
 /// Implements [TryFrom] for each [CoreValue] variant to its corresponding type.
 /// This allows to convert e.g. [CoreValue::Integer] to [Integer].
@@ -119,7 +128,6 @@ mod tests {
 
     use crate::{
         prelude::*,
-        preludes::derive::ConvertValue,
         values::{
             core_value::CoreValue,
             core_values::{
@@ -190,8 +198,7 @@ mod tests {
         assert_eq!(*endpoint_ref, Endpoint::new("@test"));
 
         let endpoint_mut_ref: &mut Endpoint =
-            Endpoint::try_borrow_mut_from_value(&mut native_endpoint)
-                .unwrap();
+            Endpoint::try_borrow_mut_from_value(&mut native_endpoint).unwrap();
         *endpoint_mut_ref = Endpoint::new("@test2");
         assert_eq!(*endpoint_mut_ref, Endpoint::new("@test2"));
 

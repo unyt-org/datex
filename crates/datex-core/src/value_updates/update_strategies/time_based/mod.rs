@@ -4,7 +4,7 @@ use core::{
 };
 
 use crate::{
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     value_updates::{errors::UpdateError, update_handler::UpdateHandler},
     values::value_container::ValueContainer,

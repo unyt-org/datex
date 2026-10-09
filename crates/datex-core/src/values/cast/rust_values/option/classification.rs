@@ -1,9 +1,9 @@
 use crate::{
-    preludes::derive::{DatexNative, SharedReferencesCache},
-    traits::{
-        classification::Classification,
+    traits::classification::Classification,
+    values::{
+        core_values::native::DatexNative,
+        value::value_classification::ValueClassification,
     },
-    values::value::value_classification::ValueClassification,
 };
 
 impl<T> Classification for Option<T>

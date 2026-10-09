@@ -3,7 +3,7 @@ pub mod borrowed_core_value_with_classification;
 
 use crate::{
     prelude::*,
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::datex_native_structural::DatexNativeStructural,
     types::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,

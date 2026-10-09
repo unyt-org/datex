@@ -1,11 +1,12 @@
-
 use crate::{
-    preludes::derive::BorrowedValueContainer,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::SharedContainer,
     traits::convert_value_container::ConvertValueContainer,
-    values::value_container::ValueContainer,
+    values::{
+        borrowed_value_container::BorrowedValueContainer,
+        value_container::ValueContainer,
+    },
 };
-use crate::shared_values::{SharedContainer};
 
 impl ConvertValueContainer for SharedContainer {
     fn to_value_container(
@@ -29,9 +30,7 @@ impl ConvertValueContainer for SharedContainer {
         Self: Sized,
     {
         match value_container {
-            ValueContainer::Shared(shared_container) => {
-                Ok(shared_container)
-            }
+            ValueContainer::Shared(shared_container) => Ok(shared_container),
             _ => Err(value_container),
         }
     }
@@ -43,9 +42,7 @@ impl ConvertValueContainer for SharedContainer {
         Self: Sized,
     {
         match value_container {
-            ValueContainer::Shared(shared_container) => {
-                Ok(shared_container)
-            }
+            ValueContainer::Shared(shared_container) => Ok(shared_container),
             _ => Err(()),
         }
     }
@@ -57,9 +54,7 @@ impl ConvertValueContainer for SharedContainer {
         Self: Sized,
     {
         match value_container {
-            ValueContainer::Shared(shared_container) => {
-                Ok(shared_container)
-            }
+            ValueContainer::Shared(shared_container) => Ok(shared_container),
             _ => Err(()),
         }
     }

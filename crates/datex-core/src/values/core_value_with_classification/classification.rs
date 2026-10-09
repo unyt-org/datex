@@ -1,11 +1,18 @@
 use crate::{
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::classification::Classification,
-    values::value::{Value, value_classification::ValueClassification},
+    values::{
+        core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
+        value::{
+            Value,
+            value_classification::{
+                ValueClassification,
+                unresolved_value_classification::UnresolvedValueClassification,
+            },
+        },
+    },
 };
-use crate::preludes::derive::CoreValue;
-use crate::values::core_value_with_classification::CoreValueWithClassification;
-use crate::values::value::value_classification::unresolved_value_classification::UnresolvedValueClassification;
 
 impl Classification for CoreValueWithClassification {
     fn classification(

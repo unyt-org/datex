@@ -1,16 +1,29 @@
+use crate::{
+    prelude::*,
+    types::{
+        entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
+    },
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            boolean::Boolean,
+            callable::Callable,
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            integer::{Integer, typed_integer::TypedInteger},
+            list::List,
+            map::Map,
+            range::Range,
+            text::Text,
+        },
+        value::borrowed_value::{
+            BorrowedValue,
+            borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
+        },
+        value_container::ValueContainer,
+    },
+};
 use core::ops::Deref;
-use crate::preludes::derive::{Callable, CoreValue, DatexNative, EntityTypeDefinition, Goat, GoatMut, List, Map, Text, Type, Value, ValueClassification, ValueContainer};
-use crate::values::core_values::boolean::Boolean;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::core_values::range::Range;
-use crate::values::value::borrowed_value::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
-use crate::values::value::borrowed_value::BorrowedValue;
-use crate::prelude::*;
-
 
 /// Similar to [CoreValue], but it is a potentially borrowed reference to a [CoreValue] variant instead of owning it.
 #[derive(Debug, Default)]
@@ -147,8 +160,6 @@ impl<'a> From<BorrowedCoreValue<'a>> for BorrowedValue<'a> {
     }
 }
 
-
-
 #[derive(Default, Debug)]
 pub enum BorrowedCoreValueMut<'a> {
     #[default]
@@ -205,11 +216,11 @@ impl<'a> BorrowedCoreValueMut<'a> {
             BorrowedCoreValueMut::Type(type_value) => {
                 Ok(CoreValue::Type(type_value.deref().clone()))
             }
-            BorrowedCoreValueMut::EntityTypeDefinition(entity_type_definition) => {
-                Ok(CoreValue::EntityTypeDefinition(
-                    entity_type_definition.deref().clone(),
-                ))
-            }
+            BorrowedCoreValueMut::EntityTypeDefinition(
+                entity_type_definition,
+            ) => Ok(CoreValue::EntityTypeDefinition(
+                entity_type_definition.deref().clone(),
+            )),
             BorrowedCoreValueMut::Callable(callable) => {
                 Ok(CoreValue::Callable(callable.deref().clone()))
             }

@@ -11,8 +11,8 @@ use crate::{
         },
     },
     prelude::*,
-    preludes::derive::{ConvertValue},
     std_sync::Mutex,
+    traits::convert_value::ConvertValue,
     utils::async_callback::AsyncCallback,
     values::{core_values::endpoint::Endpoint, value::Value},
 };

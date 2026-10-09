@@ -140,9 +140,9 @@ impl CoreValue {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        preludes::derive::CoreValue,
-        values::core_values::{
+    use crate::values::{
+        core_value::CoreValue,
+        core_values::{
             boolean::Boolean, endpoint::Endpoint,
             integer::typed_integer::TypedInteger, native::NativeCoreValue,
         },

@@ -49,7 +49,7 @@ use crate::{
     values::value_container::value_key::ValueKey,
 };
 use indexmap::{IndexMap, map::MutableKeys};
-use crate::preludes::derive::SharedReferencesCache;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::traits::convert_parts::{FromParts, IntoParts, PartsKind};
 use crate::values::core_value_with_classification::CoreValueWithClassification;
 

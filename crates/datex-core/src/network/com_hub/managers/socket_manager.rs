@@ -6,7 +6,6 @@ use crate::{
         },
         com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
     },
-    preludes::derive::ToInstructions,
 };
 use core::cell::{Ref, RefCell, RefMut};
 use datex_macros_internal::Datex;

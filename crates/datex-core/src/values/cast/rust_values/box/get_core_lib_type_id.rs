@@ -1,5 +1,5 @@
 use crate::{
-    prelude::*, preludes::derive::CoreLibTypeId,
+    libs::core::type_id::CoreLibTypeId, prelude::*,
     traits::get_core_lib_type_id::GetCoreLibTypeId,
 };
 use core::ops::Deref;

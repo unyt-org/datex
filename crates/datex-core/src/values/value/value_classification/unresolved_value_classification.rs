@@ -1,7 +1,5 @@
-use crate::preludes::derive::{EntityType, ValueTag};
-use crate::shared_values::{PointerAddress};
 use super::ValueClassification;
-use crate::prelude::*;
+use crate::{prelude::*, shared_values::PointerAddress};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 /// Similar to [ValueClassification], but contains a [PointerAddress] for the entity type instead of [EntityType].
@@ -17,13 +15,17 @@ pub struct UnresolvedValueClassification {
 
 impl UnresolvedValueClassification {
     pub fn is_unclassified(&self) -> bool {
-        self.entity_type_address.is_none() && self.impls.is_empty() && self.tag.is_none()
+        self.entity_type_address.is_none()
+            && self.impls.is_empty()
+            && self.tag.is_none()
     }
 }
 
 impl From<ValueClassification> for UnresolvedValueClassification {
     fn from(classification: ValueClassification) -> Self {
-        let entity_type_address = classification.entity_type.map(|entity| entity.pointer_address());
+        let entity_type_address = classification
+            .entity_type
+            .map(|entity| entity.pointer_address());
         UnresolvedValueClassification {
             entity_type_address,
             impls: classification.impls,

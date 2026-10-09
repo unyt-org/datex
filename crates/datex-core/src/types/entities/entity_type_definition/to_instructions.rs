@@ -4,7 +4,7 @@ use crate::{
     },
     instruction::Instruction,
     prelude::*,
-    preludes::derive::EntityTypeDefinition,
+    types::entities::entity_type_definition::EntityTypeDefinition,
 };
 
 impl ToInstructions for EntityTypeDefinition {

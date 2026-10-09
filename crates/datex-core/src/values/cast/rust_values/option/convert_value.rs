@@ -1,10 +1,12 @@
 use crate::{
-    preludes::derive::DatexNative,
     traits::convert_value::ConvertValue,
-    values::{core_value::CoreValue, core_values::native::DatexNativeBase},
+    values::{
+        core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
+        core_values::native::{DatexNative, DatexNativeBase},
+        value::Value,
+    },
 };
-use crate::values::core_value_with_classification::CoreValueWithClassification;
-use crate::values::value::Value;
 
 impl<T> ConvertValue for Option<T>
 where
@@ -18,9 +20,11 @@ where
     }
     fn try_from_value(value: Value) -> Result<Self, Value> {
         match value {
-            Value::Core(CoreValueWithClassification {inner: CoreValue::Null, ..}) => Ok(None),
-            value => value.try_into_value::<T>()
-                .map(Option::Some)
+            Value::Core(CoreValueWithClassification {
+                inner: CoreValue::Null,
+                ..
+            }) => Ok(None),
+            value => value.try_into_value::<T>().map(Option::Some),
         }
     }
 
@@ -33,9 +37,7 @@ where
         Err(())
     }
 
-    fn try_borrow_mut_from_value(
-        _value: &mut Value,
-    ) -> Result<&mut Self, ()> {
+    fn try_borrow_mut_from_value(_value: &mut Value) -> Result<&mut Self, ()> {
         // Option<T> is represented as null | T, so CoreValue never contains
         // an Option<T> that can be borrowed as &mut Option<T>.
         Err(())
@@ -49,7 +51,10 @@ where
     type Error = ();
     fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
         match value {
-            Value::Core(CoreValueWithClassification {inner: CoreValue::Null, ..}) => Ok(None),
+            Value::Core(CoreValueWithClassification {
+                inner: CoreValue::Null,
+                ..
+            }) => Ok(None),
             _ => value.try_as::<T>().map(Some).ok_or(()),
         }
     }
@@ -62,7 +67,10 @@ where
     type Error = ();
     fn try_from(value: &'a mut Value) -> Result<Self, Self::Error> {
         match value {
-            Value::Core(CoreValueWithClassification {inner: CoreValue::Null, ..}) => Ok(None),
+            Value::Core(CoreValueWithClassification {
+                inner: CoreValue::Null,
+                ..
+            }) => Ok(None),
             _ => value.try_as_mut::<T>().map(Some).ok_or(()),
         }
     }
@@ -115,7 +123,8 @@ mod tests {
 
     #[test]
     fn try_option_ref_from_wrong_core_value() {
-        let core_value = CoreValue::TypedInteger(TypedInteger::I32(42)).to_value();
+        let core_value =
+            CoreValue::TypedInteger(TypedInteger::I32(42)).to_value();
         let result = Option::<&u32>::try_from(&core_value);
         assert!(result.is_err());
     }
@@ -138,7 +147,8 @@ mod tests {
 
     #[test]
     fn try_option_mut_ref_from_wrong_core_value() {
-        let mut core_value = CoreValue::TypedInteger(TypedInteger::I32(42)).to_value();
+        let mut core_value =
+            CoreValue::TypedInteger(TypedInteger::I32(42)).to_value();
         let result = Option::<&mut u32>::try_from(&mut core_value);
         assert!(result.is_err());
     }

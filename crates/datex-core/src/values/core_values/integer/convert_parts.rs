@@ -1,10 +1,12 @@
 use crate::{
-    traits::convert_parts::{FromParts, IntoParts, HasPartsKind},
-    values::core_values::integer::Integer,
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::{
+        convert_parts::{FromParts, HasPartsKind, IntoParts},
+        convert_value_container::ConvertValueContainer,
+    },
+    values::{core_values::integer::Integer, value_container::ValueContainer},
 };
-use crate::preludes::derive::{SharedReferencesCache, ValueContainer};
-use crate::traits::convert_value_container::ConvertValueContainer;
 
 /// Default implementations - cannot be split into parts
 impl IntoParts for Integer {
@@ -19,7 +21,10 @@ impl IntoParts for Integer {
     }
 }
 impl FromParts for Integer {
-    fn try_from_single_value_with_tag(value: ValueContainer, _tag: Option<&str>) -> Result<Self, ()>
+    fn try_from_single_value_with_tag(
+        value: ValueContainer,
+        _tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {

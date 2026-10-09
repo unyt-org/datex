@@ -1,4 +1,4 @@
-use crate::preludes::derive::{CoreLibBaseTypeId, CoreLibTypeId};
+use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
 
 // Returns the DATEX [CoreLibTypeId] for the target
 pub trait GetCoreLibTypeId {

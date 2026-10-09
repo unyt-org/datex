@@ -1,8 +1,10 @@
 use crate::{
-    preludes::derive::BorrowedValueContainer,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::convert_value_container::ConvertValueContainer,
-    values::value_container::ValueContainer,
+    values::{
+        borrowed_value_container::BorrowedValueContainer,
+        value_container::ValueContainer,
+    },
 };
 
 impl ConvertValueContainer for ValueContainer {

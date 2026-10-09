@@ -475,9 +475,9 @@ mod tests {
         instruction::Instruction,
         libs::core::type_id::CoreLibBaseTypeId,
         prelude::*,
-        preludes::derive::SharedReferencesCache,
         runtime::{
             Runtime, RuntimeConfig, RuntimeRunner,
+            cache::shared_references_cache::SharedReferencesCache,
             execution::{
                 context::{ExecutionContext, LocalExecutionContext},
                 execution_input::{ExecutionCallerMetadata, ExecutionOptions},

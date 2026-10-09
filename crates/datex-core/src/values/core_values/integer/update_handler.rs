@@ -1,5 +1,5 @@
 use crate::{
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     value_updates::update_data::IncrementUpdateData,
     values::core_values::integer::Integer,
 };

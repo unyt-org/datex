@@ -1,7 +1,9 @@
 use crate::{
-    preludes::derive::DatexNative,
     traits::local_child_path_resolver::LocalChildPathResolver,
-    values::core_values::{native::DatexNativeOps, text::Text},
+    values::core_values::{
+        native::{DatexNative, DatexNativeOps},
+        text::Text,
+    },
 };
 use core::any::Any;
 

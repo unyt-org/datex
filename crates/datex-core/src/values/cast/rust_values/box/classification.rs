@@ -1,10 +1,11 @@
 use crate::{
     prelude::*,
-    preludes::derive::{DatexNative, SharedReferencesCache},
-    traits::{
-        classification::Classification, get_datex_type::GetDatexType,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::{classification::Classification, get_datex_type::GetDatexType},
+    values::{
+        core_values::native::DatexNative,
+        value::value_classification::ValueClassification,
     },
-    values::value::value_classification::ValueClassification,
 };
 
 impl<T: DatexNative + GetDatexType> Classification for Box<T> {

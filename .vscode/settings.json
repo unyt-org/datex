@@ -2,6 +2,7 @@
     "deno.enable": true,
     "editor.formatOnSave": true,
     "rust-analyzer.cargo.features": [
+        "disable_prelude",
         "decompiler",
         "std",
         "compiler",

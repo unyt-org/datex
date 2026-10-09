@@ -1,5 +1,5 @@
 use crate::{
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::{
         core_values::map::Map,
         value_container::{ValueContainer, value_key::BorrowedValueKey},

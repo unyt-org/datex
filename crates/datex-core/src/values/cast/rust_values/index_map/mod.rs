@@ -2,18 +2,18 @@
 
 pub mod classification;
 mod convert_parts;
+mod convert_value;
 mod datex_hash;
 mod datex_native;
 mod datex_native_structural;
 mod get_core_lib_type_id;
 pub mod get_datex_type;
+mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
 mod update_handler;
 mod value_access;
-mod serde_dif;
-mod convert_value;
 
 #[cfg(test)]
 mod tests {
@@ -21,12 +21,11 @@ mod tests {
         traits::get_datex_type::GetDatexType,
         values::{
             core_values::{endpoint::Endpoint, integer::Integer, map::Map},
-            value::Value,
+            value::{Value, value_classification::ValueClassification},
             value_container::ValueContainer,
         },
     };
     use indexmap::IndexMap;
-    use crate::values::value::value_classification::ValueClassification;
 
     #[test]
     #[cfg(feature = "std")]
@@ -36,7 +35,9 @@ mod tests {
         let index_map_clone = index_map.clone();
         let value = Value::new(index_map);
         assert_eq!(
-            value.try_into_value::<IndexMap<Integer, Endpoint>>().unwrap(),
+            value
+                .try_into_value::<IndexMap<Integer, Endpoint>>()
+                .unwrap(),
             index_map_clone,
         );
     }
@@ -45,7 +46,7 @@ mod tests {
     #[allow(clippy::mutable_key_type)]
     #[cfg(feature = "std")]
     fn from_value() {
-        use crate::preludes::derive::SharedReferencesCache;
+        use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
         let cache = &mut SharedReferencesCache::default();
         // map with [Value], [Value] as key and value
@@ -84,15 +85,15 @@ mod tests {
     #[test]
     #[cfg(feature = "std")]
     fn datex_type() {
-        use crate::preludes::derive::SharedReferencesCache;
+        use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
         let map_type = IndexMap::<Integer, Endpoint>::datex_type(
             &mut SharedReferencesCache::default(),
         );
         map_type.with_collapsed_type_definition(|d| {
-            use crate::{
-                preludes::derive::TypeDefinition,
-                types::type_definition::collection::{
+            use crate::types::type_definition::{
+                TypeDefinition,
+                collection::{
                     CollectionTypeDefinition,
                     type_definition::map::MapCollectionTypeDefinition,
                 },
