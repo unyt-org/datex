@@ -54,6 +54,7 @@ use crate::{
         value::value_classification::{ValueClassification, ValueTag},
     },
 };
+use crate::core_compiler::to_instructions::ToInstructions;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -163,7 +164,11 @@ pub fn append_value<'ctx, T: BufferProvider + ValueVisitor<'ctx> + 'ctx>(
     context: &mut T,
     value: &Value,
 ) {
-    todo!("Use toInstructions");
+    // TODO: optimize without collect?
+    let instructions: Vec<_> = value.to_instructions(context).collect();
+    for instruction in instructions {
+        context.write(instruction);
+    }
 
     // // append classified type information
     // if let Some(entity_type) =

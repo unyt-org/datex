@@ -1,11 +1,12 @@
 use crate::{
     traits::convert_value::ConvertValue, values::core_value::CoreValue,
 };
+use crate::values::core_value_with_classification::CoreValueWithClassification;
 use crate::values::value::Value;
 
 impl ConvertValue for CoreValue {
     fn to_value(self) -> Value {
-        self.into()
+        Value::Core(CoreValueWithClassification::new(self))
     }
 
     fn try_from_value(value: Value) -> Result<Self, Value>

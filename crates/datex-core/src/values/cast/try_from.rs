@@ -44,7 +44,7 @@ macro_rules! impl_try_from_core_value {
         $(
             impl ConvertValue for $type {
                 fn to_value(self) -> Value {
-                    CoreValue::$variant(self).into()
+                    Value::Core(CoreValueWithClassification::new(CoreValue::$variant(self)))
                 }
 
                 fn try_from_value(value: Value) -> Result<Self, Value> {

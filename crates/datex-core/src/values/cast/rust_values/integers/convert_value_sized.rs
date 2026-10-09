@@ -30,7 +30,7 @@ macro_rules! impl_pointer_sized_core_value_conversions {
 
             impl ConvertValue for $ty {
                 fn to_value(self) -> Value {
-                    CoreValue::TypedInteger(TypedInteger::$variant(self as $repr)).into()
+                    Value::Core(CoreValueWithClassification::new(CoreValue::TypedInteger(TypedInteger::$variant(self as $repr))))
                 }
                 fn try_from_value(value: Value) -> Result<Self, Value> {
                     match value {

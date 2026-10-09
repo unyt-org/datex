@@ -13,6 +13,9 @@ use crate::{
     prelude::*,
 };
 use core::{fmt::Display, prelude::rust_2024::*};
+use std::io::{Seek, Write};
+use binrw::{BinResult, BinWrite, Endian};
+use binrw::meta::{EndianKind, ReadEndian, WriteEndian};
 use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -41,6 +44,26 @@ impl Instruction {
             Instruction::Type(instr) => instr.metadata_string(),
         }
     }
+}
+
+impl BinWrite for Instruction {
+    type Args<'a> = ();
+
+    fn write_options<W: Write + Seek>(
+        &self,
+        writer: &mut W,
+        endian: Endian,
+        _: Self::Args<'_>,
+    ) -> BinResult<()> {
+        match self {
+            Instruction::Regular(instr) => instr.write_options(writer, endian, ()),
+            Instruction::Type(instr) => instr.write_options(writer, endian, ()),
+        }
+    }
+}
+
+impl WriteEndian for Instruction {
+    const ENDIAN: EndianKind = EndianKind::Endian(Endian::Little);
 }
 
 impl Display for Instruction {

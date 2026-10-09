@@ -323,7 +323,14 @@ impl_display_for_datex_value!(
     Value,
     impl core::fmt::Display for Value {
         fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
-            core::write!(f, "{}", self)
+            match self {
+                Value::Core(core_value_with_classification) => {
+                    core::write!(f, "{}", core_value_with_classification)
+                }
+                Value::Native(native) => {
+                    core::write!(f, "{}", native)
+                }
+            }
         }
     }
 );

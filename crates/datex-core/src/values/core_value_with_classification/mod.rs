@@ -1,5 +1,5 @@
 use core::cell::RefCell;
-
+use core::fmt::Display;
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::AccessError,
@@ -31,6 +31,7 @@ mod value_access;
 use crate::prelude::*;
 mod hash;
 mod ops;
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 
 #[derive(Debug, Clone)]
@@ -44,6 +45,15 @@ pub struct CoreValueWithClassification {
 impl From<CoreValue> for CoreValueWithClassification {
     fn from(value: CoreValue) -> Self {
         CoreValueWithClassification::new(value)
+    }
+}
+
+impl Display for CoreValueWithClassification {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        if !self.classification.is_unclassified() {
+            write!(f, "{:?}", self.classification)?; // TODO: better display for classification?
+        }
+        write!(f, "{}", self.inner)
     }
 }
 
