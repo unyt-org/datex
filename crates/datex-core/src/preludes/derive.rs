@@ -1,17 +1,6 @@
 #[macro_export]
 macro_rules! derive_prelude {
     () => {
-        #[cfg(feature = "ast")]
-        #[allow(unused_imports)]
-        use $crate::{
-            ast,
-            ast::{
-                expressions::DatexExpressionData, expressions::Statements,
-                spanned::Spanned,
-            },
-            traits::to_datex_expression_data::ToDatexExpressionData,
-        };
-
         #[allow(unused_imports)]
         use $crate::{
             core_compiler::{
@@ -103,8 +92,25 @@ macro_rules! derive_prelude {
             },
         };
 
-        use serde;
+        use $crate::serde;
     };
 }
 
+#[macro_export]
+macro_rules! derive_prelude_ast {
+    () => {
+        #[cfg(feature = "ast")]
+        #[allow(unused_imports)]
+        use $crate::{
+            ast,
+            ast::{
+                expressions::DatexExpressionData, expressions::Statements,
+                spanned::Spanned,
+            },
+            traits::to_datex_expression_data::ToDatexExpressionData,
+        };
+    }
+}
+
 pub(crate) use derive_prelude;
+pub(crate) use derive_prelude_ast;

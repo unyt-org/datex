@@ -88,6 +88,8 @@ pub mod shared_wrappers;
 
 pub use inventory;
 
+pub use serde;
+
 /// HashMap and HashSet that work in both std and no_std environments.
 pub mod collections {
     cfg_if::cfg_if! {
