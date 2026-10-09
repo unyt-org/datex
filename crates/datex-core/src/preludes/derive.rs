@@ -99,7 +99,6 @@ macro_rules! derive_prelude {
 #[macro_export]
 macro_rules! derive_prelude_ast {
     () => {
-        #[cfg(feature = "ast")]
         #[allow(unused_imports)]
         use $crate::{
             ast,

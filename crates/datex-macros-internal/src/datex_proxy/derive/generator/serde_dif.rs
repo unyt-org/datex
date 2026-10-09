@@ -380,7 +380,7 @@ fn generate_visitor_methods_for_named_fields(
             _MapAccess: MapAccess<'de>,
         {
             while let Some(key) = map.next_key::<String>()? {
-                match key {
+                match key.as_str() {
                     #(#map_key_deserializers),*
                     _ => {
                         // Ignore unknown keys
