@@ -1,6 +1,9 @@
 use crate::{
     datex_proxy::native_callable::generate_native_callable_from_impl_fn,
-    utils::{get_datex_core_crate_name, get_project_relative_file_path},
+    utils::{
+        derive_datex_prelude, get_datex_core_crate_name,
+        get_project_relative_file_path,
+    },
 };
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
@@ -51,13 +54,13 @@ pub fn generate_impl_glue_code(
             .to_string()
     };
     let name = item.self_ty.to_token_stream().to_string();
+    let prelude = derive_datex_prelude();
 
     quote! {
         #input
 
         const _: () = {
-            use #datex_core_crate_name::preludes::*;
-            derive_prelude!();
+            #prelude
 
             #datex_core_crate_name::inventory::submit! {
                 #datex_core_crate_name::datex_registry::DatexImplRegistration {

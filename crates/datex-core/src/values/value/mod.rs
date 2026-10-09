@@ -3,6 +3,7 @@
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::convert_value::ConvertValue,
     types::type_definition::{
         TypeDefinition, callable::CallableTypeDefinition,
     },
@@ -21,7 +22,7 @@ pub mod borrowed_value;
 mod child_iterator;
 pub mod classification;
 pub mod convert_parts;
-pub mod convert_value_container;
+pub mod convert_value;
 mod datex_hash;
 mod datex_native;
 pub mod equality;
@@ -73,18 +74,6 @@ pub enum Value {
     Core(CoreValueWithClassification),
     /// Native rust value with DATEX representation
     Native(NativeCoreValue),
-}
-
-impl From<CoreValueWithClassification> for Value {
-    fn from(inner: CoreValueWithClassification) -> Self {
-        Value::Core(inner)
-    }
-}
-
-impl From<NativeCoreValue> for Value {
-    fn from(native: NativeCoreValue) -> Self {
-        Value::Native(native)
-    }
 }
 
 impl<T: ConvertValue> From<T> for Value {

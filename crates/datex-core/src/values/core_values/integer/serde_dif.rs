@@ -2,6 +2,7 @@ use crate::{
     dif::{
         deserialize_with_serde_context::DeserializeWithSerdeContext,
         serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
     },
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,

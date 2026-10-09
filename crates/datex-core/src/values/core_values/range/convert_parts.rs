@@ -5,7 +5,7 @@ use crate::{
         convert_parts::{FromParts, HasPartsKind, IntoParts},
         convert_value_container::ConvertValueContainer,
     },
-    values::core_values::range::Range,
+    values::{core_values::range::Range, value_container::ValueContainer},
 };
 
 impl FromParts for Range {

@@ -94,10 +94,9 @@ impl<'ctx> SerdeContext<'ctx> {
     where
         D: Deserializer<'de>,
     {
-        let deserialize_ctx = DeserializeSerdeContext::<Value>::new(self);
-        deserializer
-            .deserialize_any(deserialize_ctx)
-            .map(|v| v.inner)
+        todo!("Deserialization of core value not implemented yet")
+        // let deserialize_ctx = DeserializeSerdeContext::<Value>::new(self);
+        // deserializer.deserialize_any(deserialize_ctx).map(|v| v)
     }
 }
 
@@ -339,7 +338,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
                 if let Some(tag) = tag {
                     classification.tag = Some(tag);
                 }
-                Ok(Value::new(core_value, classification))
+                Ok(Value::new(core_value)) // TODO classification serde
             }
             None => {
                 Err(A::Error::custom("Expected a 'v' key for the DIF value"))

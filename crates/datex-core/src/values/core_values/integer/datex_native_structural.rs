@@ -6,4 +6,4 @@ use crate::{
     values::core_values::integer::Integer,
 };
 impl DatexNativeStructural for Integer {}
-impl DatexNativeOnlyStructural for IntegerTypeVariant {}
+impl DatexNativeOnlyStructural for Integer {}

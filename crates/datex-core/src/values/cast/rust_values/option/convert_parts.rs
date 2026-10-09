@@ -1,6 +1,9 @@
 use crate::{
     prelude::*,
-    traits::convert_parts::{FromParts, HasPartsKind, IntoParts, Parts},
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::convert_parts::{
+        FromParts, HasPartsKind, IntoParts, Parts, PartsKind,
+    },
     values::{
         core_values::{list::List, map::Map},
         value::Value,

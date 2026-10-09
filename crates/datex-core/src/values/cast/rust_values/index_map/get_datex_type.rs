@@ -2,9 +2,15 @@ use crate::{
     random::RandomState,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::get_datex_type::GetDatexType,
-    types::type_definition::collection::{
-        CollectionTypeDefinition,
-        type_definition::map::MapCollectionTypeDefinition,
+    types::{
+        r#type::Type,
+        type_definition::{
+            TypeDefinition,
+            collection::{
+                CollectionTypeDefinition,
+                type_definition::map::MapCollectionTypeDefinition,
+            },
+        },
     },
 };
 use core::hash::Hash;

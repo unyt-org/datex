@@ -1,5 +1,8 @@
 use super::ValueClassification;
-use crate::{prelude::*, shared_values::PointerAddress};
+use crate::{
+    prelude::*, shared_values::PointerAddress,
+    values::value::value_classification::ValueTag,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 /// Similar to [ValueClassification], but contains a [PointerAddress] for the entity type instead of [EntityType].

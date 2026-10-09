@@ -17,6 +17,7 @@ mod value_access;
 mod tests {
     use crate::{
         prelude::*,
+        runtime::cache::shared_references_cache::SharedReferencesCache,
         types::{
             r#type::Type,
             type_definition::collection::{

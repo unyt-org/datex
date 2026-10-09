@@ -1,98 +1,109 @@
-pub macro derive_prelude() {
-    #[cfg(feature = "ast")]
-    use $crate::{
-        ast,
-        ast::{
-            expressions::DatexExpressionData, expressions::Statements,
-            spanned::Spanned,
-        },
-        traits::to_datex_expression_data::ToDatexExpressionData,
-    };
+#[macro_export]
+macro_rules! derive_prelude {
+    () => {
+        #[cfg(feature = "ast")]
+        #[allow(unused_imports)]
+        use $crate::{
+            ast,
+            ast::{
+                expressions::DatexExpressionData, expressions::Statements,
+                spanned::Spanned,
+            },
+            traits::to_datex_expression_data::ToDatexExpressionData,
+        };
 
-    use $crate::{
-        core_compiler::{
-            to_instructions::ToInstructions, value_visitor::ValueVisitor,
-        },
-        datex_registry::get_impls_for,
-        dif::{
-            deserialize_serde_context::DeserializeSerdeContext,
-            deserialize_with_serde_context::DeserializeWithSerdeContext,
-            serde_context::SerdeContext,
-            serialize_with_serde_context::SerializeWithSerdeContext,
-            value_with_serde_context::ValueWithSerdeContext,
-        },
-        instruction::{Instruction, regular_instruction::RegularInstruction},
-        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-        prelude::*,
-        runtime::cache::shared_references_cache::{
-            SharedReferencesCache, SharedTypeReservation,
-        },
-        serde_compat::{
-            serde_to_value_container, try_serde_from_value_container,
-        },
-        shared_values::{
-            SelfOwnedPointerAddress,
-            errors::{AccessError, KeyNotFoundError},
-        },
-        traits::{
-            classification::Classification,
-            convert_parts::{
-                FromParts, HasPartsKind, IntoParts, Parts, PartsKind,
+        #[allow(unused_imports)]
+        use $crate::{
+            core_compiler::{
+                to_instructions::ToInstructions, value_visitor::ValueVisitor,
             },
-            convert_value::ConvertValue,
-            convert_value_container::ConvertValueContainer,
-            datex_hash::DatexHash,
-            datex_native_only_structural::DatexNativeOnlyStructural,
-            datex_native_structural::DatexNativeStructural,
-            get_core_lib_type_id::GetCoreLibTypeId,
-            get_datex_type::GetDatexType,
-            local_child_path_resolver::LocalChildPathResolver,
-            value_access::ValueAccess,
-        },
-        types::{
-            entities::{
-                entity_impls::{EntityImpl, EntityImplMethod},
-                entity_type_definition::EntityTypeDefinition,
+            datex_registry::get_impls_for,
+            dif::{
+                deserialize_serde_context::DeserializeSerdeContext,
+                deserialize_with_serde_context::DeserializeWithSerdeContext,
+                serde_context::SerdeContext,
+                serialize_with_serde_context::SerializeWithSerdeContext,
+                value_with_serde_context::ValueWithSerdeContext,
             },
-            entity_type::EntityType,
-            literal_type_definition::LiteralTypeDefinition,
-            r#type::Type,
-            type_definition::{
-                TypeDefinition,
-                callable::{CallableKind, CallableTypeDefinition},
-                list::ListTypeDefinition,
-                map::MapTypeDefinition,
-                tagged_type::TaggedTypeDefinition,
-                union::UnionTypeDefinition,
+            instruction::{
+                Instruction, regular_instruction::RegularInstruction,
             },
-        },
-        utils::{goat::Goat, goat_mut::GoatMut},
-        value_updates::update_handler::{
-            UpdateCallbackDataAccess, UpdateHandlerImpl,
-        },
-        values::{
-            borrowed_value_container::{
-                AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
-                BorrowedValueContainerMut,
+            libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+            prelude::*,
+            runtime::cache::shared_references_cache::{
+                SharedReferencesCache, SharedTypeReservation,
             },
-            core_value::CoreValue,
-            core_values::{
-                callable::{Callable, CallableBody},
-                list::List,
-                map::Map,
-                native::{DatexNative, DatexNativeOps},
-                text::Text,
+            serde_compat::{
+                serde_to_value_container, try_serde_from_value_container,
             },
-            value::{
-                Value,
-                borrowed_value::borrowed_core_value::{
-                    BorrowedCoreValue, BorrowedCoreValueMut,
+            shared_values::{
+                SelfOwnedPointerAddress,
+                errors::{AccessError, KeyNotFoundError},
+            },
+            traits::{
+                classification::Classification,
+                convert_parts::{
+                    FromParts, HasPartsKind, IntoParts, Parts, PartsKind,
                 },
-                value_classification::{ValueClassification, ValueTag},
+                convert_value::ConvertValue,
+                convert_value_container::ConvertValueContainer,
+                datex_hash::DatexHash,
+                datex_native_only_structural::DatexNativeOnlyStructural,
+                datex_native_structural::DatexNativeStructural,
+                get_core_lib_type_id::GetCoreLibTypeId,
+                get_datex_type::GetDatexType,
+                local_child_path_resolver::LocalChildPathResolver,
+                value_access::ValueAccess,
             },
-            value_container::{ValueContainer, value_key::BorrowedValueKey},
-        },
-    };
+            types::{
+                entities::{
+                    entity_impls::{EntityImpl, EntityImplMethod},
+                    entity_type_definition::EntityTypeDefinition,
+                },
+                entity_type::EntityType,
+                literal_type_definition::LiteralTypeDefinition,
+                r#type::Type,
+                type_definition::{
+                    TypeDefinition,
+                    callable::{CallableKind, CallableTypeDefinition},
+                    list::ListTypeDefinition,
+                    map::MapTypeDefinition,
+                    tagged_type::TaggedTypeDefinition,
+                    union::UnionTypeDefinition,
+                },
+            },
+            utils::{goat::Goat, goat_mut::GoatMut},
+            value_updates::update_handler::{
+                UpdateCallbackDataAccess, UpdateHandlerImpl,
+            },
+            values::{
+                borrowed_value_container::{
+                    AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
+                    BorrowedValueContainerMut,
+                },
+                core_value::CoreValue,
+                core_values::{
+                    callable::{Callable, CallableBody},
+                    list::List,
+                    map::Map,
+                    native::{DatexNative, DatexNativeOps},
+                    text::Text,
+                },
+                value::{
+                    Value,
+                    borrowed_value::borrowed_core_value::{
+                        BorrowedCoreValue, BorrowedCoreValueMut,
+                    },
+                    value_classification::{ValueClassification, ValueTag},
+                },
+                value_container::{
+                    ValueContainer, value_key::BorrowedValueKey,
+                },
+            },
+        };
 
-    use serde;
+        use serde;
+    };
 }
+
+pub(crate) use derive_prelude;

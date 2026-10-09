@@ -44,37 +44,37 @@ where
     }
 }
 
-impl<'a, T> TryFrom<&'a Value> for Option<&'a T>
-where
-    T: DatexNativeBase + ConvertValue + 'static,
-{
-    type Error = ();
-    fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Core(CoreValueWithClassification {
-                inner: CoreValue::Null,
-                ..
-            }) => Ok(None),
-            _ => value.try_as::<T>().map(Some).ok_or(()),
-        }
-    }
-}
+// impl<'a, T> TryFrom<&'a Value> for Option<&'a T>
+// where
+//     T: DatexNativeBase + ConvertValue + 'static,
+// {
+//     type Error = ();
+//     fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
+//         match value {
+//             Value::Core(CoreValueWithClassification {
+//                 inner: CoreValue::Null,
+//                 ..
+//             }) => Ok(None),
+//             _ => value.try_as::<T>().map(Some).ok_or(()),
+//         }
+//     }
+// }
 
-impl<'a, T> TryFrom<&'a mut Value> for Option<&'a mut T>
-where
-    T: DatexNativeBase + ConvertValue + 'static,
-{
-    type Error = ();
-    fn try_from(value: &'a mut Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Core(CoreValueWithClassification {
-                inner: CoreValue::Null,
-                ..
-            }) => Ok(None),
-            _ => value.try_as_mut::<T>().map(Some).ok_or(()),
-        }
-    }
-}
+// impl<'a, T> TryFrom<&'a mut Value> for Option<&'a mut T>
+// where
+//     T: DatexNativeBase + ConvertValue + 'static,
+// {
+//     type Error = ();
+//     fn try_from(value: &'a mut Value) -> Result<Self, Self::Error> {
+//         match value {
+//             Value::Core(CoreValueWithClassification {
+//                 inner: CoreValue::Null,
+//                 ..
+//             }) => Ok(None),
+//             _ => value.try_as_mut::<T>().map(Some).ok_or(()),
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

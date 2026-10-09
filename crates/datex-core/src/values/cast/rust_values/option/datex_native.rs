@@ -1,6 +1,7 @@
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::errors::AccessError,
     traits::{
         convert_value::ConvertValue,
         local_child_path_resolver::LocalChildPathResolver,

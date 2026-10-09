@@ -1,6 +1,7 @@
 use crate::{
     prelude::*,
     random::RandomState,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::{
         convert_parts::{
             BorrowedParts, FromParts, HasPartsKind, IntoParts, Parts, PartsKind,

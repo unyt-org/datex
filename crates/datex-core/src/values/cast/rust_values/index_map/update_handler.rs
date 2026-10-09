@@ -1,6 +1,11 @@
 use crate::{
     random::RandomState,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::errors::{AccessError, KeyNotFoundError},
+    traits::{
+        convert_value::ConvertValue,
+        convert_value_container::ConvertValueContainer,
+    },
     values::{
         core_values::map::MapAccessError, value_container::ValueContainer,
     },

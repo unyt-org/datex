@@ -1,5 +1,7 @@
 use crate::{
-    core_compiler::to_instructions::ToInstructions,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
+    },
     instruction::Instruction,
     prelude::*,
     shared_values::{OwnedSharedContainer, SharedContainer},

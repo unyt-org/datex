@@ -2,12 +2,13 @@ use crate::{
     dif::{
         deserialize_with_serde_context::DeserializeWithSerdeContext,
         serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
     },
+    libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     values::core_values::text::Text,
 };
-use erased_serde::__private::serde::Serialize;
-use serde::{Deserialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 
 impl Serialize for Text {
     fn serialize<S: Serializer>(

@@ -13,9 +13,8 @@ mod value_access;
 
 #[cfg(test)]
 mod tests {
-    use core::assert_matches;
-
     use crate::{
+        runtime::cache::shared_references_cache::SharedReferencesCache,
         traits::get_datex_type::GetDatexType,
         types::type_definition::TypeDefinition,
         values::{

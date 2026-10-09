@@ -5,7 +5,9 @@ use crate::{
         convert_parts::{FromParts, HasPartsKind, IntoParts},
         convert_value_container::ConvertValueContainer,
     },
-    values::core_values::endpoint::Endpoint,
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
 };
 
 /// Default implementations - cannot be split into parts
