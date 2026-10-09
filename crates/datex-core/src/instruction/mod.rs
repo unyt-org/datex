@@ -13,9 +13,9 @@ use crate::{
     prelude::*,
 };
 use core::{fmt::Display, prelude::rust_2024::*};
-use std::io::{Seek, Write};
+use binrw::io::{Seek, Write};
 use binrw::{BinResult, BinWrite, Endian};
-use binrw::meta::{EndianKind, ReadEndian, WriteEndian};
+use binrw::meta::{EndianKind, WriteEndian};
 use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq)]
