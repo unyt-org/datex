@@ -1,2 +1,3 @@
 #[doc(hidden)]
-pub mod derive;
+mod derive;
+pub use derive::*;

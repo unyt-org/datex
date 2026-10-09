@@ -29,9 +29,22 @@
 extern crate alloc;
 extern crate num_integer;
 
-#[cfg(not(feature = "disable_prelude"))]
+// #[cfg(not(feature = "disable_prelude"))]
 #[doc(hidden)]
-pub mod preludes;
+// exclude to import
+mod preludes;
+
+pub mod __preludes {
+    pub mod __0 {
+        pub mod __1 {
+            pub mod __2 {
+                pub mod __3 {
+                    pub mod __4 {}
+                }
+            }
+        }
+    }
+}
 
 #[doc = include_str!("../README.md")]
 #[cfg(doctest)]

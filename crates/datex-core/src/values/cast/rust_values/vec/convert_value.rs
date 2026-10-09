@@ -70,8 +70,6 @@ impl<'a, T: DatexNativeBase + 'static> TryFrom<BorrowedValueMut<'a>>
 
 #[cfg(test)]
 mod tests {
-    use json_syntax::Value;
-
     use crate::{
         prelude::*,
         traits::convert_value::ConvertValue,

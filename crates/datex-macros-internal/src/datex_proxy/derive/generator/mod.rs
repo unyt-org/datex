@@ -4,12 +4,13 @@ use crate::{
         generator::{
             classification::generate_classification,
             convert_parts::generate_convert_parts,
+            convert_value::generate_convert_value,
             datex_expression_data::generate_datex_expression_data,
             datex_hash::generate_datex_hash,
             datex_native::generate_datex_native,
             datex_type::{generate_core_lib_type_id, generate_datex_type},
+            serde_dif::generate_serde_dif,
             to_instructions::generate_to_instructions,
-            convert_value::generate_convert_value,
             value_access::generate_value_access,
         },
     },
@@ -17,19 +18,18 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::quote;
-use crate::datex_proxy::generator::serde_dif::generate_serde_dif;
 
 pub mod classification;
 mod convert_parts;
+pub mod convert_value;
 mod datex_expression_data;
 pub mod datex_hash;
 mod datex_native;
 mod datex_type;
-mod to_instructions;
-pub mod convert_value;
-pub mod value_access;
 pub mod helpers;
 pub mod serde_dif;
+mod to_instructions;
+pub mod value_access;
 
 /// Generates the code for the derive macro based on the provided structure data.
 pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
@@ -55,7 +55,9 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
 
     quote! {
         const _: () = {
-            use #datex_core_crate_name::preludes::derive::*;
+            use #datex_core_crate_name::preludes::*;
+            derive_prelude!();
+
             use core::fmt;
 
             #datex_native
