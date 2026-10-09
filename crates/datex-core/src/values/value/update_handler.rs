@@ -2,16 +2,14 @@ use core::cell::RefCell;
 
 use crate::{
     prelude::*,
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::base_shared_value_container::observers::TransceiverId,
     traits::local_child_path_resolver::LocalChildPathResolver,
     value_updates::{
-        errors::UpdateError,
         update_data::UpdateOperation,
         update_handler::{
             InternalMutabilityUpdateHandler, UpdateCallbackData,
-            UpdateCallbackDataAccess, UpdateHandler, UpdateHandlerImpl,
-            UpdateResult,
+            UpdateCallbackDataAccess, UpdateHandlerImpl, UpdateResult,
         },
     },
     values::{
@@ -25,22 +23,20 @@ impl InternalMutabilityUpdateHandler for Value {
         &mut self,
         observe_data: Option<UpdateCallbackData>,
     ) {
-        match &mut self.inner {
-            CoreValue::Map(map) => map.set_update_callback_data(observe_data),
-            CoreValue::List(list) => {
-                list.set_update_callback_data(observe_data)
+        match self {
+            Value::Core(core) => core.set_update_callback_data(observe_data),
+            Value::Native(native) => {
+                todo!()
             }
-            _ => {}
         }
     }
 }
 
 impl UpdateCallbackDataAccess for Value {
     fn get_update_callback_data(&self) -> Option<&UpdateCallbackData> {
-        match &self.inner {
-            CoreValue::Map(map) => map.get_update_callback_data(),
-            CoreValue::List(list) => list.get_update_callback_data(),
-            _ => None,
+        match &self {
+            Value::Core(core) => core.get_update_callback_data(),
+            Value::Native(native) => native.get_update_callback_data(),
         }
     }
 }
@@ -75,28 +71,11 @@ impl UpdateHandlerImpl for Value {
         source_id: Option<TransceiverId>,
         cache: &RefCell<SharedReferencesCache>,
     ) -> UpdateResult {
-        match &mut self.inner {
-            // collections
-            CoreValue::Map(map) => map.try_update(operation, source_id, cache),
-            CoreValue::List(list) => {
-                list.try_update(operation, source_id, cache)
-            }
-            CoreValue::Integer(integer) => {
-                integer.try_update(operation, source_id, cache)
-            }
-            CoreValue::Decimal(decimal) => {
-                decimal.try_update(operation, source_id, cache)
-            }
-            CoreValue::TypedInteger(integer) => {
-                integer.try_update(operation, source_id, cache)
-            }
-            CoreValue::TypedDecimal(decimal) => {
-                decimal.try_update(operation, source_id, cache)
-            }
-            CoreValue::Native(native) => {
+        match self {
+            Value::Core(core) => core.try_update(operation, source_id, cache),
+            Value::Native(native) => {
                 native.try_update(operation, source_id, cache)
             }
-            _ => Err(UpdateError::InvalidUpdate),
         }
     }
 }

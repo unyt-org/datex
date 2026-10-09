@@ -287,7 +287,6 @@ mod tests {
         },
         global::stack_index::StackIndex,
         prelude::*,
-        preludes::derive::ConvertValue,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             PointerAddress, ReferenceMutability, SharedContainer,
@@ -299,7 +298,6 @@ mod tests {
         },
     };
     use core::{assert_matches, ops::DerefMut};
-    use crate::preludes::derive::CoreValue;
 
     fn owned_shared(
         address_provider: &mut SelfOwnedPointerAddressProvider,
@@ -590,12 +588,9 @@ mod tests {
             let mut value = collapsed.borrow_mut();
             match &mut value.deref_mut() {
                 Value::Core(core_value) => {
-                    core_value.inner =
-                        CoreValue::List(
-                            List::from(vec![ValueContainer::Shared(
-                                parent.clone(),
-                            )])
-                        );
+                    core_value.inner = CoreValue::List(List::from(vec![
+                        ValueContainer::Shared(parent.clone()),
+                    ]));
                 }
                 _ => unreachable!("Expected a core value"),
             }

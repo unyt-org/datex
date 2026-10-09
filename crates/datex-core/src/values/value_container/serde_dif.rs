@@ -5,17 +5,20 @@ use crate::{
 use serde::{Serializer, de::SeqAccess, ser::SerializeSeq};
 
 use crate::{
-    dif::serde_context::SerdeContext, prelude::*,
-    dif::serialize_with_serde_context::SerializeWithSerdeContext,
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+    },
+    prelude::*,
+    preludes::derive::CoreValue,
 };
 use core::fmt;
 use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
 };
-use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
-use crate::preludes::derive::CoreValue;
 
 pub const SHARED_CONTAINER_KEY: &str = "$";
 
@@ -29,7 +32,9 @@ impl<'de> DeserializeWithSerdeContext<'de> for ValueContainer {
     }
 }
 
-impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, ValueContainer> {
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, ValueContainer>
+{
     type Value = ValueContainer;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -201,9 +206,7 @@ impl<'ctx> SerializeWithSerdeContext for ValueContainer {
         match self {
             ValueContainer::Shared(shared) => {
                 use serde::ser::SerializeMap;
-                let pointer = unsafe {
-                    ctx.pointer_string(shared)
-                };
+                let pointer = unsafe { ctx.pointer_string(shared) };
 
                 let mut map = serializer.serialize_map(Some(1))?;
                 map.serialize_entry(SHARED_CONTAINER_KEY, &pointer)?;
@@ -218,7 +221,6 @@ impl<'ctx> SerializeWithSerdeContext for ValueContainer {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
     use super::*;
     use crate::{
         libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
@@ -232,6 +234,7 @@ mod tests {
         },
         values::{core_value::CoreValue, core_values::list::List},
     };
+    use core::cell::RefCell;
 
     #[test]
     fn pointer_address() {
@@ -254,9 +257,8 @@ mod tests {
                 && serialized.ends_with(r#""}"#)
         );
 
-        let deserialized = context
-            .try_deserialize_from_json(&serialized)
-            .unwrap();
+        let deserialized =
+            context.try_deserialize_from_json(&serialized).unwrap();
         assert_eq!(value, deserialized);
     }
 
@@ -286,7 +288,8 @@ mod tests {
         let addr = PointerAddress::SelfOwned(
             SelfOwnedPointerAddress::try_from(address_string).unwrap(),
         );
-        let container = cache.borrow_mut().try_take_owned_shared_container(&addr);
+        let container =
+            cache.borrow_mut().try_take_owned_shared_container(&addr);
         assert!(container.is_ok());
     }
 
@@ -304,17 +307,18 @@ mod tests {
         let referenced_container = SharedContainer::Referenced(
             owned_container.derive_immutable_reference(),
         );
-        cache.borrow_mut().store_shared_container(SharedContainer::Referenced(
-            owned_container.derive_immutable_reference(),
-        ));
+        cache
+            .borrow_mut()
+            .store_shared_container(SharedContainer::Referenced(
+                owned_container.derive_immutable_reference(),
+            ));
         let pointer_address = referenced_container.pointer_address();
         let value = ValueContainer::Shared(referenced_container);
         let json = context.serialize_to_json(&value);
         assert_eq!(json, format!(r#"{{"$":"'{}"}}"#, pointer_address));
 
-        let outer: ValueContainer = context
-            .try_deserialize_from_json(&json)
-            .unwrap();
+        let outer: ValueContainer =
+            context.try_deserialize_from_json(&json).unwrap();
 
         assert_eq!(
             outer,
@@ -339,15 +343,16 @@ mod tests {
             owned_container.derive_immutable_reference(),
         );
         let pointer_address = referenced_container.pointer_address();
-        cache.borrow_mut().store_shared_container(referenced_container);
+        cache
+            .borrow_mut()
+            .store_shared_container(referenced_container);
         let json = format!(
             r#"[{},[{{"$":"'{}"}}]]"#,
             CoreLibIdIndex::from(CoreLibBaseTypeId::List),
             pointer_address
         );
-        let outer: ValueContainer = context
-            .try_deserialize_from_json(&json)
-            .unwrap();
+        let outer: ValueContainer =
+            context.try_deserialize_from_json(&json).unwrap();
 
         assert_eq!(
             outer,
