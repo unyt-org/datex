@@ -94,9 +94,8 @@ impl<'ctx> SerdeContext<'ctx> {
     where
         D: Deserializer<'de>,
     {
-        todo!("Deserialization of core value not implemented yet")
-        // let deserialize_ctx = DeserializeSerdeContext::<Value>::new(self);
-        // deserializer.deserialize_any(deserialize_ctx).map(|v| v)
+        let deserialize_ctx = DeserializeSerdeContext::<CoreValue>::new(self);
+        deserializer.deserialize_any(deserialize_ctx)
     }
 }
 
