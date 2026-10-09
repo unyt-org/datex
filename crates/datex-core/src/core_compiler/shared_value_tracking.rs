@@ -293,7 +293,7 @@ mod tests {
             SharedContainerMutability,
         },
         values::{
-            core_values::list::List, value::Value,
+            core_value::CoreValue, core_values::list::List, value::Value,
             value_container::ValueContainer,
         },
     };

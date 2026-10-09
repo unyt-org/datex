@@ -56,7 +56,8 @@ pub fn generate_impl_glue_code(
         #input
 
         const _: () = {
-            use #datex_core_crate_name::preludes::derive::*;
+            use #datex_core_crate_name::preludes::*;
+            derive_prelude!();
 
             #datex_core_crate_name::inventory::submit! {
                 #datex_core_crate_name::datex_registry::DatexImplRegistration {

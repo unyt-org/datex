@@ -134,7 +134,10 @@ pub mod tests {
             cache::shared_references_cache::SharedReferencesCache,
         },
         traits::try_clone::TryClone,
-        values::core_values::{endpoint::Endpoint, map::Map},
+        values::{
+            core_values::{endpoint::Endpoint, map::Map},
+            value::Value,
+        },
     };
 
     #[derive(Datex, Clone)]

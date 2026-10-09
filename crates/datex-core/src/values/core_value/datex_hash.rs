@@ -1,6 +1,6 @@
 use crate::{
-    preludes::derive::CoreValue,
     traits::datex_hash::{DatexHash, impl_datex_hash},
+    values::core_value::CoreValue,
 };
 use core::hash::{Hash, Hasher};
 
