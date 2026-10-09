@@ -6,7 +6,9 @@ use crate::{
     value_updates::{
         errors::UpdateError,
         update_data::*,
-        update_handler::{UpdateCallbackData, UpdateHandlerImpl},
+        update_handler::{
+            UpdateCallbackData, UpdateCallbackDataAccess, UpdateHandlerImpl,
+        },
     },
     values::core_values::native::NativeCoreValue,
 };

@@ -1,5 +1,8 @@
 use crate::{
-    traits::classification::Classification,
+    traits::{
+        classification::Classification,
+        local_child_path_resolver::LocalChildPathResolver,
+    },
     types::r#type::Type,
     values::core_values::native::{DatexNative, DatexNativeOps},
 };

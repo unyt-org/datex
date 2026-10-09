@@ -1,5 +1,8 @@
 use crate::{
     traits::local_child_path_resolver::LocalChildPathResolver,
+    value_updates::update_handler::{
+        UpdateCallbackDataAccess, UpdateHandlerImpl,
+    },
     values::core_values::{
         boolean::Boolean,
         native::{DatexNative, DatexNativeOps},
