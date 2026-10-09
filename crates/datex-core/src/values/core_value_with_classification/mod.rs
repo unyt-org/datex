@@ -31,6 +31,8 @@ mod value_access;
 use crate::prelude::*;
 mod hash;
 mod ops;
+mod to_datex_expression_data;
+
 #[derive(Debug, Clone)]
 pub struct CoreValueWithClassification {
     /// The inner representation of the value, which is a [CoreValue].
@@ -86,7 +88,7 @@ impl CoreValueWithClassification {
                         None
                     } else {
                         Some(Box::new(Type::core(
-                            self.inner.default_core_type(),
+                            self.inner.core_lib_type_id(),
                         )))
                     },
                 })
@@ -104,7 +106,7 @@ impl CoreValueWithClassification {
         }
 
         if types.is_empty() {
-            TypeDefinition::CoreType(self.inner.default_core_type())
+            TypeDefinition::CoreType(self.inner.core_lib_type_id())
         } else if types.len() == 1 {
             types.into_iter().next().unwrap().convert_to_definition()
         } else {

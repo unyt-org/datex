@@ -102,7 +102,7 @@ fn try_clone() {
     42u8.try_clone().unwrap();
 
     // rust core types that implement Clone should also be able to be cloned via try_clone
-    let u8_value = CoreValue::native(42u8);
+    let u8_value = Value::native(42u8);
     u8_value.try_clone().unwrap();
 }
 
@@ -112,7 +112,7 @@ fn call_instance_method_from_runtime() {
     let mut cache = runtime.shared_references_cache_refcell();
 
     let example = Example::new(1, 2);
-    let example_vc = Value::native(example, cache.borrow_mut().deref_mut());
+    let example_vc = Value::native(example);
 
     let example_type = Example::datex_type(cache.borrow_mut().deref_mut());
     let set_a = example_type
@@ -139,7 +139,6 @@ fn call_instance_method_from_runtime() {
         // a was updated to 10
         ValueContainer::from(Value::native(
             Example { a: 10, b: 2 },
-            cache.borrow_mut().deref_mut()
         ))
     );
 }
@@ -151,7 +150,6 @@ async fn call_async_instance_method_from_runtime() {
     let example = Example::new(1, 2);
     let example_vc = Value::native(
         example,
-        runtime.shared_references_cache_mut().deref_mut(),
     );
 
     let example_type =
@@ -182,8 +180,7 @@ async fn call_async_instance_method_from_runtime() {
     assert_eq!(
         borrows.remove(0),
         ValueContainer::from(Value::native(
-            Example::new(1, 2),
-            runtime.shared_references_cache_mut().deref_mut()
+            Example::new(1, 2)
         ))
     );
 }
@@ -217,10 +214,7 @@ fn signatures() {
                 .unwrap();
             assert_eq!(
                 result,
-                ValueContainer::Local(Value::new(
-                    CoreValue::native(3u8),
-                    ValueClassification::new_unclassified(),
-                ))
+                ValueContainer::Local(Value::native(3u8))
             );
         }
         _ => {
@@ -232,7 +226,6 @@ fn signatures() {
     let example_instance = Box::new(Example { a: 1, b: 2 });
     let example_instance_vc = ValueContainer::from(Value::native(
         example_instance,
-        cache.deref_mut(),
     ));
     // TODO: also store type in value container (this will require passing cache to the ValueContainer::from function somehow)
     // Then we can access methods on the type definition here

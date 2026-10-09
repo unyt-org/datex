@@ -74,12 +74,6 @@ pub enum CoreValue {
     Box(Box<ValueContainer>),
 }
 
-//
-// impl From<&str> for CoreValue {
-//     fn from(value: &str) -> Self {
-//         CoreValue::Text(value.into())
-//     }
-// }
 
 impl<T> FromIterator<T> for CoreValue
 where
@@ -151,7 +145,7 @@ impl CoreValue {
     /// This method uses the CoreLibPointerId to retrieve the corresponding
     /// type reference from the core library.
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
-    pub fn default_core_type(&self) -> CoreLibTypeId {
+    pub fn core_lib_type_id(&self) -> CoreLibTypeId {
         CoreLibTypeId::from(self)
     }
 
@@ -351,6 +345,86 @@ impl Display for CoreValue {
     }
 }
 
+
+impl From<Text> for CoreValue {
+    fn from(value: Text) -> Self {
+        CoreValue::Text(value)
+    }
+}
+
+impl From<Endpoint> for CoreValue {
+    fn from(value: Endpoint) -> Self {
+        CoreValue::Endpoint(value)
+    }
+}
+
+impl From<Range> for CoreValue {
+    fn from(value: Range) -> Self {
+        CoreValue::Range(value)
+    }
+}
+
+impl From<Callable> for CoreValue {
+    fn from(value: Callable) -> Self {
+        CoreValue::Callable(value)
+    }
+}
+
+impl From<Type> for CoreValue {
+    fn from(value: Type) -> Self {
+        CoreValue::Type(value)
+    }
+}
+
+impl From<EntityTypeDefinition> for CoreValue {
+    fn from(value: EntityTypeDefinition) -> Self {
+        CoreValue::EntityTypeDefinition(value)
+    }
+}
+
+impl From<Map> for CoreValue {
+    fn from(value: Map) -> Self {
+        CoreValue::Map(value)
+    }
+}
+
+impl From<List> for CoreValue {
+    fn from(value: List) -> Self {
+        CoreValue::List(value)
+    }
+}
+
+impl From<Decimal> for CoreValue {
+    fn from(value: Decimal) -> Self {
+        CoreValue::Decimal(value)
+    }
+}
+
+impl From<TypedDecimal> for CoreValue {
+    fn from(value: TypedDecimal) -> Self {
+        CoreValue::TypedDecimal(value)
+    }
+}
+
+impl From<Integer> for CoreValue {
+    fn from(value: Integer) -> Self {
+        CoreValue::Integer(value)
+    }
+}
+
+impl From<TypedInteger> for CoreValue {
+    fn from(value: TypedInteger) -> Self {
+        CoreValue::TypedInteger(value)
+    }
+}
+
+impl From<Boolean> for CoreValue {
+    fn from(value: Boolean) -> Self {
+        CoreValue::Boolean(value)
+    }
+}
+
+
 #[cfg(test)]
 /// This module contains tests for the CoreValue struct.
 /// Each CoreValue is a representation of an underlying native value.
@@ -359,13 +433,13 @@ mod tests {
     use log::{debug, info};
 
     use crate::traits::convert_value::ConvertValue;
-
+    use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
     use super::*;
 
     #[test]
     fn type_construct() {
         let a = 42i32.to_value();
-        assert_eq!(a.default_core_type().to_string(), "integer/i32");
+        assert_eq!(a.core_lib_type_id().to_string(), "integer/i32");
     }
 
     #[test]
@@ -381,7 +455,7 @@ mod tests {
     #[test]
     fn endpoint() {
         let endpoint: Endpoint =
-            "@test".to_string().to_value().cast_to_endpoint().unwrap();
+            "@test".to_string().to_value().try_into_core_value().unwrap().cast_to_endpoint().unwrap();
         debug!("Endpoint: {endpoint}");
         assert_eq!(endpoint.to_string(), "@test");
     }

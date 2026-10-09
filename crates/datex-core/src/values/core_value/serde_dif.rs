@@ -50,7 +50,7 @@ impl SerializeWithSerdeContext for CoreValue {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         
-        let core_lib_type = self.default_core_type();
+        let core_lib_type = self.core_lib_type_id();
 
         match &self {
             // Direct serializable core values, that can be serialized as they can be unambiguously deserialized without it
