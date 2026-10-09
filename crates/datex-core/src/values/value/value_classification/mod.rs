@@ -1,6 +1,6 @@
+mod equality;
 pub mod serde_dif;
 pub mod unresolved_value_classification;
-
 use crate::{
     prelude::*, shared_values::PointerAddress, types::entity_type::EntityType,
 };
@@ -14,13 +14,19 @@ pub struct ValueTag {
 
 impl From<String> for ValueTag {
     fn from(tag: String) -> Self {
-        ValueTag { tag, is_empty: false }
+        ValueTag {
+            tag,
+            is_empty: false,
+        }
     }
 }
 
 impl From<&str> for ValueTag {
     fn from(tag: &str) -> Self {
-        ValueTag { tag: tag.to_string(), is_empty: false }
+        ValueTag {
+            tag: tag.to_string(),
+            is_empty: false,
+        }
     }
 }
 
@@ -47,7 +53,7 @@ impl ValueClassification {
             ..Default::default()
         }
     }
-    
+
     /// Creates a new [ValueClassification] with the specified impls.
     pub fn new_with_impls(impls: Vec<PointerAddress>) -> Self {
         ValueClassification {
@@ -55,7 +61,7 @@ impl ValueClassification {
             ..Default::default()
         }
     }
-    
+
     /// Creates a new [ValueClassification] with the specified tag.
     pub fn new_with_tag(tag: impl Into<ValueTag>) -> Self {
         ValueClassification {
@@ -63,8 +69,8 @@ impl ValueClassification {
             ..Default::default()
         }
     }
-    
-    /// Creates a new [ValueClassification] with an optional tag. 
+
+    /// Creates a new [ValueClassification] with an optional tag.
     /// If the tag is None, the classification will be unclassified.
     pub fn new_with_maybe_tag(tag: Option<impl Into<ValueTag>>) -> Self {
         ValueClassification {
@@ -72,7 +78,7 @@ impl ValueClassification {
             ..Default::default()
         }
     }
-    
+
     /// Merges the current [ValueClassification] with another one, combining their entity, impls, and tag.
     /// Prioritizes the current entity and tag if they exist; otherwise, uses the other classification's values.
     pub fn merge(&self, other: ValueClassification) -> ValueClassification {
@@ -95,10 +101,11 @@ impl ValueClassification {
     }
 
     pub fn is_unclassified(&self) -> bool {
-        self.entity_type.is_none() && self.impls.is_empty() && self.tag.is_none()
+        self.entity_type.is_none()
+            && self.impls.is_empty()
+            && self.tag.is_none()
     }
 }
-
 
 impl From<EntityType> for ValueClassification {
     fn from(entity_type: EntityType) -> Self {

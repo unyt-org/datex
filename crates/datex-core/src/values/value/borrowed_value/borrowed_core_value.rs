@@ -3,6 +3,7 @@ use crate::{
     types::{
         entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
     },
+    utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
         core_values::{
@@ -16,9 +17,12 @@ use crate::{
             range::Range,
             text::Text,
         },
-        value::borrowed_value::{
-            BorrowedValue,
-            borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
+        value::{
+            borrowed_value::{
+                BorrowedValue,
+                borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
+            },
+            value_classification::ValueClassification,
         },
         value_container::ValueContainer,
     },

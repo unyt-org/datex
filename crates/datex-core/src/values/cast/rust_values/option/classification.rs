@@ -1,4 +1,5 @@
 use crate::{
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::classification::Classification,
     values::{
         core_values::native::DatexNative,

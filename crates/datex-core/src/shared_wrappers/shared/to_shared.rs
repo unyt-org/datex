@@ -5,6 +5,7 @@ use crate::{
     },
     shared_values::{SharedContainer, SharedContainerMutability},
     shared_wrappers::shared::Shared,
+    values::core_values::native::DatexNative,
 };
 
 pub trait ToShared: DatexNative + Sized {

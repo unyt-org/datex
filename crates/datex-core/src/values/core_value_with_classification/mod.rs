@@ -1,8 +1,8 @@
 use core::cell::RefCell;
-use std::thread::AccessError;
 
 use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    shared_values::errors::AccessError,
     types::{
         r#type::Type,
         type_definition::{
@@ -13,20 +13,24 @@ use crate::{
     },
     values::{
         core_value::CoreValue,
-        value::{Value, value_classification::ValueTag},
+        value::{
+            Value,
+            value_classification::{ValueClassification, ValueTag},
+        },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 mod apply;
 mod classification;
 mod convert_parts;
+mod equality;
 pub mod serde_dif;
 mod to_instructions;
 mod update_handler;
 mod value_access;
-
 use crate::prelude::*;
-
+mod hash;
+mod ops;
 #[derive(Debug, Clone)]
 pub struct CoreValueWithClassification {
     /// The inner representation of the value, which is a [CoreValue].
@@ -35,7 +39,29 @@ pub struct CoreValueWithClassification {
     pub classification: ValueClassification,
 }
 
+impl From<CoreValue> for CoreValueWithClassification {
+    fn from(value: CoreValue) -> Self {
+        CoreValueWithClassification::new(value)
+    }
+}
+
 impl CoreValueWithClassification {
+    pub fn new(inner: CoreValue) -> Self {
+        CoreValueWithClassification {
+            inner,
+            classification: ValueClassification::default(),
+        }
+    }
+    pub fn new_with_classification(
+        inner: CoreValue,
+        classification: ValueClassification,
+    ) -> Self {
+        CoreValueWithClassification {
+            inner,
+            classification,
+        }
+    }
+
     pub fn is_uninitialized(&self) -> bool {
         matches!(&self.inner, CoreValue::Uninitialized)
     }

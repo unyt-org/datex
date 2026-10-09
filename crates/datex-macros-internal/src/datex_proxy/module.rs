@@ -1,6 +1,6 @@
 use crate::{
     datex_proxy::native_callable::generate_native_callable_from_fn,
-    utils::get_datex_core_crate_name,
+    utils::{derive_datex_prelude, get_datex_core_crate_name},
 };
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
@@ -64,12 +64,11 @@ pub fn generate_mod_glue_code(
     // map items to their token streams
     let datex_items: Vec<TokenStream> =
         items.iter().filter_map(map_to_datex_item).collect();
-
+    let prelude = derive_datex_prelude();
     quote! {
         #(#attrs)*
         #vis mod #ident {
-            use #datex_core_crate_name::preludes::*;
-            derive_prelude!();
+            #prelude
 
             #(#items)*
 

@@ -1,8 +1,12 @@
 use crate::{
-    prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
+    prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::get_datex_type::GetDatexType,
+    types::{
+        r#type::Type,
+        type_definition::{TypeDefinition, union::UnionTypeDefinition},
+    },
 };
-
 /// TODO: only wrap nested Option<Option<T>> into container. Single option can be mapped directly to X|null
 impl<T> GetDatexType for Option<T>
 where

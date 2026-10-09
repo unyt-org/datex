@@ -1,7 +1,10 @@
 use core::hash::{Hash, Hasher};
 
 use crate::{
-    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+    traits::{
+        datex_hash::DatexHash, dyn_eq::DynEq, structural_eq::StructuralEq,
+        value_eq::ValueEq,
+    },
     values::value::Value,
 };
 
@@ -9,7 +12,17 @@ use crate::{
 /// of the actual_type of the values
 impl StructuralEq for Value {
     fn structural_eq(&self, other: &Self) -> bool {
-        self.inner.structural_eq(&other.inner)
+        match (self, other) {
+            (Value::Core(core_self), Value::Core(core_other)) => {
+                core_self.structural_eq(core_other)
+            }
+            (Value::Native(native_self), Value::Native(native_other)) => {
+                native_self.dyn_eq(native_other) // TODO, structural_dyn_eq
+            }
+            _ => {
+                todo!("Structural equality not implemented for these variants")
+            }
+        }
     }
 }
 
@@ -23,15 +36,20 @@ impl ValueEq for Value {
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
-        self.inner == other.inner
-            && self.actual_type().as_ref() == other.actual_type().as_ref()
+        self.value_eq(other)
     }
 }
 
 impl Eq for Value {}
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.inner.hash(state);
-        self.actual_type().hash(state);
+        match self {
+            Value::Core(core_self) => {
+                core_self.hash(state);
+            }
+            Value::Native(native_self) => {
+                native_self.datex_hash(state);
+            }
+        }
     }
 }

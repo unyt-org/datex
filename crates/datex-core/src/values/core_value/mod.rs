@@ -7,8 +7,13 @@ use crate::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
     },
     prelude::*,
+    traits::convert_value::ConvertValue,
     types::entities::entity_type_definition::EntityTypeDefinition,
-    values::core_values::native::{DatexNative, NativeCoreValue},
+    values::{
+        core_value_with_classification::CoreValueWithClassification,
+        core_values::native::{DatexNative, NativeCoreValue},
+        value::Value,
+    },
 };
 pub mod serde_dif;
 use crate::{
@@ -352,6 +357,8 @@ impl Display for CoreValue {
 /// The tests cover addition, casting, and type conversions.
 mod tests {
     use log::{debug, info};
+
+    use crate::traits::convert_value::ConvertValue;
 
     use super::*;
 

@@ -26,6 +26,7 @@ pub mod update_handler;
 pub mod value_key;
 use crate::{
     shared_values::{
+        OwnedSharedContainer, ReferencedSharedContainer,
         collapsed_container_value::{
             CollapsedContainerValue, CollapsedContainerValueMut,
         },
@@ -44,7 +45,6 @@ use core::{
     ops::FnOnce,
 };
 use serde::Serialize;
-use crate::shared_values::{OwnedSharedContainer, ReferencedSharedContainer};
 
 pub mod classification;
 pub mod convert_parts;

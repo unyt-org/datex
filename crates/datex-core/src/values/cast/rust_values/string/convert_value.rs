@@ -10,6 +10,9 @@ use crate::{
             Value,
             borrowed_value::{
                 BorrowedValue, BorrowedValueMut,
+                borrowed_core_value::{
+                    BorrowedCoreValue, BorrowedCoreValueMut,
+                },
                 borrowed_core_value_with_classification::{
                     BorrowedCoreValueWithClassification,
                     BorrowedCoreValueWithClassificationMut,

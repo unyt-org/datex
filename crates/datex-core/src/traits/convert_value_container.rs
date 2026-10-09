@@ -10,8 +10,11 @@ use crate::{
         cache::shared_references_cache::SharedReferencesCache,
         execution::{ExecutionError, context::ScriptExecutionError},
     },
-    traits::convert_parts::FromParts,
-    values::borrowed_value_container::BorrowedValueContainer,
+    traits::convert_parts::{FromParts, PartsKind},
+    values::{
+        borrowed_value_container::BorrowedValueContainer,
+        value_container::ValueContainer,
+    },
 };
 use core::cell::RefCell;
 

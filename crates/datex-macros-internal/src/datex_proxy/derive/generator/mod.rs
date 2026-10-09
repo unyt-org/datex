@@ -14,7 +14,7 @@ use crate::{
             value_access::generate_value_access,
         },
     },
-    utils::get_datex_core_crate_name_with_options,
+    utils::{derive_datex_prelude, get_datex_core_crate_name_with_options},
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -52,11 +52,10 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
         };
     let datex_core_crate_name =
         get_datex_core_crate_name_with_options(&structure_data.attributes);
-
+    let prelude = derive_datex_prelude();
     quote! {
         const _: () = {
-            use #datex_core_crate_name::preludes::*;
-            derive_prelude!();
+            #prelude
 
             use core::fmt;
 

@@ -2,8 +2,8 @@ use std::{env, path::PathBuf, str::FromStr};
 
 use crate::datex_proxy::data::StructureAttributes;
 use proc_macro_crate::{FoundCrate, crate_name};
-use proc_macro2::{Ident, Span};
-use quote::format_ident;
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::{format_ident, quote};
 use syn::{Path, PathSegment, punctuated::Punctuated};
 
 /// Gets the absolute file path of the source file where the macro is invoked.
@@ -45,6 +45,28 @@ pub fn get_datex_core_crate_name() -> Path {
         FoundCrate::Itself => PathSegment::from(format_ident!("crate")).into(),
         FoundCrate::Name(name) => {
             PathSegment::from(Ident::new(&name, Span::call_site())).into()
+        }
+    }
+}
+
+pub fn derive_datex_prelude() -> TokenStream {
+    let datex_core_crate_name = get_datex_core_crate_name();
+    if datex_core_crate_name
+        .segments
+        .first()
+        .expect("Failed to get first segment")
+        .ident
+        .to_string()
+        == "crate"
+    {
+        quote! {
+            use #datex_core_crate_name::preludes::derive_prelude;
+            derive_prelude!();
+        }
+    } else {
+        quote! {
+            use #datex_core_crate_name::derive_prelude;
+            derive_prelude!();
         }
     }
 }

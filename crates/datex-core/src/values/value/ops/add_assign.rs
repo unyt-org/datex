@@ -9,11 +9,19 @@ where
 {
     fn add_assign(&mut self, rhs: T) {
         let rhs: Value = rhs.into();
-        let res = self.inner.clone() + rhs.inner;
-        if let Ok(res) = res {
-            self.inner = res;
-        } else {
-            todo!("Handle add assign error")
+        match (self, rhs) {
+            (Value::Core(lhs), Value::Core(rhs)) => {
+                *lhs += rhs;
+            }
+            (Value::Core(lhs), Value::Native(rhs)) => {
+                *lhs += rhs;
+            }
+            (_, Value::Core(_)) => {
+                todo!("Handle add assign for non-Core and Core values")
+            }
+            (_, _) => {
+                todo!("Handle add assign for non-Core values")
+            }
         }
     }
 }

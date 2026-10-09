@@ -128,6 +128,7 @@ mod tests {
 
     use crate::{
         prelude::*,
+        traits::convert_value::ConvertValue,
         values::{
             core_value::CoreValue,
             core_values::{
