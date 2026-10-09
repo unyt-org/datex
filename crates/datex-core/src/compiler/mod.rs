@@ -355,6 +355,7 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
             })
         )
     };
+
     debug!(" [parse took {} ms]", parse_start.elapsed().as_millis());
     let precompile_start = TimingInstant::now();
     let res = precompile_to_rich_ast(

@@ -17,7 +17,7 @@ macro_rules! impl_integer_core_value_conversions {
         $(
             impl ConvertValue for $ty {
                 fn to_value(self) -> Value {
-                    CoreValue::TypedInteger(TypedInteger::$variant(self)).into()
+                    Value::Core(CoreValueWithClassification::new(CoreValue::TypedInteger(TypedInteger::$variant(self))))
                 }
                 fn try_from_value(value: Value) -> Result<Self, Value> {
                     match value {

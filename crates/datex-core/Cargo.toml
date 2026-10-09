@@ -303,9 +303,3 @@ lsp_wasm = ["lsp"]
 ### interface-related features ################################################
 
 webrtc = ["dep:webrtc"]
-
-
-### Others
-
-# Disable Prelude for IDE, recommended to enable for development in IDE
-disable_prelude = []
