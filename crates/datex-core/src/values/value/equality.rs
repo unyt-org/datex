@@ -30,7 +30,15 @@ impl StructuralEq for Value {
 /// Both type and inner value are the same
 impl ValueEq for Value {
     fn value_eq(&self, other: &Self) -> bool {
-        self == other
+        match (self, other) {
+            (Value::Core(core_self), Value::Core(core_other)) => {
+                core_self.value_eq(core_other)
+            }
+            (Value::Native(native_self), Value::Native(native_other)) => {
+                native_self.dyn_eq(native_other)
+            }
+            _ => todo!()
+        }
     }
 }
 
