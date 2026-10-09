@@ -1,14 +1,17 @@
 use core::cell::RefCell;
-use serde::de::IntoDeserializer;
-use datex_core::dif::serde_context::SerdeContext;
-use datex_core::runtime::cache::shared_values_cache::SharedValuesCache;
-use datex_core::values::core_values::endpoint::Endpoint;
+use datex_core::{
+    dif::{
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+    },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
+    prelude::*,
+    runtime::cache::shared_values_cache::SharedValuesCache,
+    values::core_values::endpoint::Endpoint,
+};
 use datex_macros_internal::Datex;
-use datex_core::{prelude::*};
-use datex_core::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
-use datex_core::dif::serialize_with_serde_context::SerializeWithSerdeContext;
-use datex_core::libs::core::core_lib_id::CoreLibIdIndex;
-use datex_core::preludes::derive::CoreLibBaseTypeId;
+use serde::de::IntoDeserializer;
 
 #[derive(Datex, Debug, Clone, PartialEq)]
 #[datex(structural)]
@@ -26,7 +29,6 @@ enum ExampleEnum {
     Variant3,
 }
 
-
 /// TODO: general helper function in datex_core
 fn serialize_to_json_value(
     context: &SerdeContext,
@@ -37,7 +39,9 @@ fn serialize_to_json_value(
 }
 
 /// Generates a serialized DIF JSON string from a value using a default SerdeContext and SharedValuesCache.
-fn serialize_to_json_value_default_ctx(value: &impl SerializeWithSerdeContext) -> serde_json::Value {
+fn serialize_to_json_value_default_ctx(
+    value: &impl SerializeWithSerdeContext,
+) -> serde_json::Value {
     let cache = RefCell::new(SharedValuesCache::default());
     let context = SerdeContext::new(&cache);
     serialize_to_json_value(&context, value)
@@ -51,12 +55,16 @@ fn deserialize_from_json_value<'de, T: DeserializeWithSerdeContext<'de>>(
     T::deserialize_with_ctx(context, deserializer).unwrap()
 }
 
-fn deserialize_from_json_value_default_ctx<'de, T: DeserializeWithSerdeContext<'de>>(json_value: &'de serde_json::Value) -> T {
+fn deserialize_from_json_value_default_ctx<
+    'de,
+    T: DeserializeWithSerdeContext<'de>,
+>(
+    json_value: &'de serde_json::Value,
+) -> T {
     let cache = RefCell::new(SharedValuesCache::default());
     let context = SerdeContext::new(&cache);
     deserialize_from_json_value(&context, json_value)
 }
-
 
 #[test]
 fn struct_to_dif() {
@@ -65,8 +73,7 @@ fn struct_to_dif() {
         b: "Hello, Datex!".to_string(),
         c: Endpoint::new("@jonas"),
     };
-    let serialized =
-        serialize_to_json_value_default_ctx(&example);
+    let serialized = serialize_to_json_value_default_ctx(&example);
 
     assert_eq!(
         serialized,
@@ -85,7 +92,8 @@ fn struct_from_dif() {
         "b": "Hello, Datex!",
         "c": [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"]
     });
-    let deserialized: Example = deserialize_from_json_value_default_ctx(&json_value);
+    let deserialized: Example =
+        deserialize_from_json_value_default_ctx(&json_value);
 
     assert_eq!(deserialized.a, 42);
     assert_eq!(deserialized.b, "Hello, Datex!");
@@ -98,7 +106,8 @@ fn enum_variant_1_from_dif() {
         "t": "Variant1",
         "v": [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"]
     });
-    let deserialized: ExampleEnum = deserialize_from_json_value_default_ctx(&json_value);
+    let deserialized: ExampleEnum =
+        deserialize_from_json_value_default_ctx(&json_value);
 
     assert_eq!(deserialized, ExampleEnum::Variant1(Endpoint::new("@jonas")));
 }

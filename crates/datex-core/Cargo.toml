@@ -192,10 +192,10 @@ flexi_logger = { version = "0.31.8" }
 # it includes no_std-specific dependencies
 default = ["no_std", "dep:async-timer", "disassembler"]
 
-no_std = ["prelude", "dep:hashbrown", "dep:async-unsync", "dep:spin"]
+no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
 # Full feature, includes all optional features except those for specific targets (native, wasm)
-full = ["prelude", "compiler", "decompiler", "disassembler"]
+full = ["compiler", "decompiler", "disassembler"]
 
 ### features for specific targets #############################################
 
@@ -256,7 +256,6 @@ value_display = ["ast"]
 
 # Configuration for std
 std = [
-    "prelude",
     "dep:internment",
     "serde/std",
     "serde_with/std",
@@ -305,7 +304,8 @@ lsp_wasm = ["lsp"]
 
 webrtc = ["dep:webrtc"]
 
+
 ### Others
 
-# Used to disable import from prelude, prefer to disable in IDE when working on datex-core
-prelude = []
+# Disable Prelude for IDE, recommended to enable for development in IDE
+disable_prelude = []

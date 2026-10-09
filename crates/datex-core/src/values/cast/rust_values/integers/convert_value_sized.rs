@@ -3,14 +3,20 @@ use crate::{
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
-        value::Value,
+        core_value_with_classification::CoreValueWithClassification,
         core_values::integer::typed_integer::TypedInteger,
+        value::{
+            Value,
+            borrowed_value::{
+                BorrowedValue, BorrowedValueMut,
+                borrowed_core_value_with_classification::{
+                    BorrowedCoreValueWithClassification,
+                    BorrowedCoreValueWithClassificationMut,
+                },
+            },
+        },
     },
 };
-use crate::preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut};
-use crate::values::core_value_with_classification::CoreValueWithClassification;
-use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
-use crate::values::value::borrowed_value::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
 
 macro_rules! impl_pointer_sized_core_value_conversions {
     ($($ty:ident => $variant:ident, $repr:ty, $borrow:ident, $borrow_mut:ident;)* $(,)?) => {

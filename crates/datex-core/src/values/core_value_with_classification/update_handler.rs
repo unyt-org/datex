@@ -2,7 +2,7 @@ use core::cell::RefCell;
 
 use crate::{
     prelude::*,
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::base_shared_value_container::observers::TransceiverId,
     value_updates::{
         errors::UpdateError,

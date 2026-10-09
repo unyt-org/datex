@@ -1,4 +1,7 @@
-use crate::preludes::derive::{CoreLibBaseTypeId, SharedReferencesCache, Type};
+use crate::{
+    libs::core::type_id::CoreLibBaseTypeId,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+};
 
 // Returns the DATEX [Type] for the target
 pub trait GetDatexType {

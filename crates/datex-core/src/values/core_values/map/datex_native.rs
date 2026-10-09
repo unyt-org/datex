@@ -1,6 +1,6 @@
-use crate::{
-    preludes::derive::DatexNative,
-    values::core_values::{map::Map, native::DatexNativeOps},
+use crate::values::core_values::{
+    map::Map,
+    native::{DatexNative, DatexNativeOps},
 };
 use core::any::Any;
 

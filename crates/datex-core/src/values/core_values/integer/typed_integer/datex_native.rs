@@ -1,9 +1,8 @@
 use crate::{
-    preludes::derive::DatexNative,
     traits::local_child_path_resolver::LocalChildPathResolver,
     values::core_values::{
         integer::typed_integer::TypedInteger,
-        native::{DatexNativeOps, add_native_impl_option},
+        native::{DatexNative, DatexNativeOps, add_native_impl_option},
     },
 };
 use core::any::Any;

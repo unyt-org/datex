@@ -5,12 +5,9 @@ use crate::parser::errors::SpannedParserError;
 use crate::{
     core_compiler::core_compilation_context::DXBWithSharedValues,
     prelude::*,
-    preludes::derive::{
-        Classification, IntoParts, PartsKind, SharedReferencesCache,
-        ValueContainer, HasPartsKind,
-    },
     runtime::{
         Runtime,
+        cache::shared_references_cache::SharedReferencesCache,
         execution::{ExecutionError, context::ScriptExecutionError},
     },
     traits::convert_parts::FromParts,
@@ -215,7 +212,10 @@ pub trait ConvertValueContainer {
                         let single_value_parts = Box::new(value_container)
                             .try_into_single_value(&mut cache.borrow_mut());
                         if let Ok(single_value) = single_value_parts {
-                            Self::try_from_single_value_with_tag(single_value, tag)
+                            Self::try_from_single_value_with_tag(
+                                single_value,
+                                tag,
+                            )
                         } else {
                             Err(())
                         }

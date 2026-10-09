@@ -1,6 +1,12 @@
-use crate::preludes::derive::{CoreValue, Value, ValueClassification};
-use crate::values::core_value_with_classification::CoreValueWithClassification;
-use crate::values::value::borrowed_value::borrowed_core_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::values::{
+    core_value_with_classification::CoreValueWithClassification,
+    value::{
+        borrowed_value::borrowed_core_value::{
+            BorrowedCoreValue, BorrowedCoreValueMut,
+        },
+        value_classification::ValueClassification,
+    },
+};
 
 /// Similar to [CoreValueWithClassification], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.
@@ -11,7 +17,9 @@ pub struct BorrowedCoreValueWithClassification<'a> {
 }
 
 impl<'a> BorrowedCoreValueWithClassification<'a> {
-    pub(crate) fn try_clone_to_core_value_with_classification(self) -> Result<CoreValueWithClassification, ()> {
+    pub(crate) fn try_clone_to_core_value_with_classification(
+        self,
+    ) -> Result<CoreValueWithClassification, ()> {
         let inner = self.inner.try_clone_to_core_value()?;
         Ok(CoreValueWithClassification {
             inner,
@@ -20,11 +28,16 @@ impl<'a> BorrowedCoreValueWithClassification<'a> {
     }
 }
 
-impl<'a> From<&'a CoreValueWithClassification> for BorrowedCoreValueWithClassification<'a> {
+impl<'a> From<&'a CoreValueWithClassification>
+    for BorrowedCoreValueWithClassification<'a>
+{
     fn from(value: &'a CoreValueWithClassification) -> Self {
         let inner = BorrowedCoreValue::from(&value.inner);
         let classification = value.classification.clone();
-        BorrowedCoreValueWithClassification { inner, classification }
+        BorrowedCoreValueWithClassification {
+            inner,
+            classification,
+        }
     }
 }
 
@@ -37,7 +50,9 @@ pub struct BorrowedCoreValueWithClassificationMut<'a> {
 }
 
 impl<'a> BorrowedCoreValueWithClassificationMut<'a> {
-    pub(crate) fn try_clone_to_core_value_with_classification(self) -> Result<CoreValueWithClassification, ()> {
+    pub(crate) fn try_clone_to_core_value_with_classification(
+        self,
+    ) -> Result<CoreValueWithClassification, ()> {
         let inner = self.inner.try_clone_to_core_value()?;
         Ok(CoreValueWithClassification {
             inner,
@@ -46,10 +61,15 @@ impl<'a> BorrowedCoreValueWithClassificationMut<'a> {
     }
 }
 
-impl<'a> From<&'a mut CoreValueWithClassification> for BorrowedCoreValueWithClassificationMut<'a> {
+impl<'a> From<&'a mut CoreValueWithClassification>
+    for BorrowedCoreValueWithClassificationMut<'a>
+{
     fn from(value: &'a mut CoreValueWithClassification) -> Self {
         let inner = BorrowedCoreValueMut::from(&mut value.inner);
         let classification = value.classification.clone();
-        BorrowedCoreValueWithClassificationMut { inner, classification }
+        BorrowedCoreValueWithClassificationMut {
+            inner,
+            classification,
+        }
     }
 }

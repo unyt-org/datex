@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::convert_parts::{
         BorrowedParts, FromParts, IntoParts, Parts, PartsKind, HasPartsKind,
     },

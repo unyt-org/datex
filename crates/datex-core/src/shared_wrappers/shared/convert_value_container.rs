@@ -1,9 +1,11 @@
 use crate::{
-    preludes::derive::{BorrowedValueContainer, DatexNative},
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_wrappers::shared::Shared,
     traits::convert_value_container::ConvertValueContainer,
-    values::value_container::ValueContainer,
+    values::{
+        borrowed_value_container::BorrowedValueContainer,
+        value_container::ValueContainer,
+    },
 };
 
 impl<T> ConvertValueContainer for Shared<T>

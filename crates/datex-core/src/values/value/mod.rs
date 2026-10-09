@@ -38,11 +38,9 @@ mod value_access;
 pub mod value_classification;
 
 use crate::{
-    preludes::derive::{
-        ConvertValue, DatexNativeStructural, TaggedTypeDefinition,
-    },
     shared_values::errors::AccessError,
     traits::{
+        classification::Classification,
         convert_value_container::ConvertValueContainer,
         datex_native_only_structural::DatexNativeOnlyStructural,
         value_access::ValueAccess,
@@ -54,7 +52,10 @@ use crate::{
             BorrowedValueContainer, BorrowedValueContainerMut,
         },
         core_values::{endpoint::Endpoint, native::NativeCoreValue},
-        value::value_classification::{ValueClassification, ValueTag},
+        value::value_classification::{
+            ValueClassification, ValueTag,
+            unresolved_value_classification::UnresolvedValueClassification,
+        },
     },
 };
 use core::{
@@ -62,8 +63,6 @@ use core::{
     fmt::{Debug, Formatter},
     result::Result,
 };
-use crate::traits::classification::Classification;
-use crate::values::value::value_classification::unresolved_value_classification::UnresolvedValueClassification;
 
 #[derive(Debug, Clone)]
 /// Represents a local DATEX value.
@@ -106,8 +105,11 @@ impl Value {
     pub fn core(inner: impl Into<CoreValueWithClassification>) -> Self {
         Value::Core(inner.into())
     }
-    
-    pub fn core_with_classification(inner: impl Into<CoreValue>, classification: ValueClassification) -> Self {
+
+    pub fn core_with_classification(
+        inner: impl Into<CoreValue>,
+        classification: ValueClassification,
+    ) -> Self {
         Value::Core(CoreValueWithClassification {
             inner: inner.into(),
             classification,
@@ -123,7 +125,10 @@ impl Value {
     }
 
     /// Returns the classification of the value, which includes its entity type, impls, and tag.
-    pub fn classification(&self, cache: &mut SharedReferencesCache) -> ValueClassification {
+    pub fn classification(
+        &self,
+        cache: &mut SharedReferencesCache,
+    ) -> ValueClassification {
         match self {
             Value::Core(core_value_with_classification) => {
                 core_value_with_classification.classification.clone()
@@ -144,9 +149,7 @@ impl Value {
         }
     }
 
-    pub fn new(
-        inner: impl ConvertValue,
-    ) -> Self {
+    pub fn new(inner: impl ConvertValue) -> Self {
         inner.to_value()
     }
 
@@ -217,23 +220,29 @@ impl Value {
     /// Tries to get a reference to the inner [CoreValue] if the [Value] is a [Value::Core] variant.
     pub fn try_as_core_value(&self) -> Option<&CoreValue> {
         match self {
-            Value::Core(core_value_with_classification) => Some(&core_value_with_classification.inner),
+            Value::Core(core_value_with_classification) => {
+                Some(&core_value_with_classification.inner)
+            }
             Value::Native(native) => None,
         }
     }
-    
+
     /// Tries to get a mutable reference to the inner [CoreValue] if the [Value] is a [Value::Core] variant.
     pub fn try_as_core_value_mut(&mut self) -> Option<&mut CoreValue> {
         match self {
-            Value::Core(core_value_with_classification) => Some(&mut core_value_with_classification.inner),
+            Value::Core(core_value_with_classification) => {
+                Some(&mut core_value_with_classification.inner)
+            }
             Value::Native(native) => None,
         }
     }
-    
+
     /// Tries to convert the current value into a [CoreValue] if the [Value] is a [Value::Core] variant.
     pub fn try_into_core_value(self) -> Result<CoreValue, Value> {
         match self {
-            Value::Core(core_value_with_classification) => Ok(core_value_with_classification.inner),
+            Value::Core(core_value_with_classification) => {
+                Ok(core_value_with_classification.inner)
+            }
             Value::Native(native) => Err(Value::Native(native)),
         }
     }
@@ -246,14 +255,12 @@ impl Value {
         body: CallableBody,
         creator: Endpoint,
     ) -> Self {
-        Value::new(
-            CoreValue::Callable(Callable {
-                name,
-                signature,
-                body,
-                creator,
-            }),
-        )
+        Value::new(CoreValue::Callable(Callable {
+            name,
+            signature,
+            body,
+            creator,
+        }))
     }
 
     pub fn is_null(&self) -> bool {
@@ -457,10 +464,7 @@ mod tests {
         let maybe_value: Option<i8> = None;
         let null_value = Value::from(maybe_value);
         assert_eq!(*null_value.try_as::<Option<i8>>().unwrap(), None);
-        assert_eq!(
-            null_value.try_into_value::<Option<i8>>().unwrap(),
-            None
-        );
+        assert_eq!(null_value.try_into_value::<Option<i8>>().unwrap(), None);
     }
 
     #[test]
@@ -486,8 +490,14 @@ mod tests {
         let a_plus_b = (&a + &b).unwrap();
         let b_plus_a = (&b + &a).unwrap();
 
-        assert!(matches!(a_plus_b.try_as_core_value().unwrap(), CoreValue::Text(_)));
-        assert!(matches!(b_plus_a.try_as_core_value().unwrap(), CoreValue::Text(_)));
+        assert!(matches!(
+            a_plus_b.try_as_core_value().unwrap(),
+            CoreValue::Text(_)
+        ));
+        assert!(matches!(
+            b_plus_a.try_as_core_value().unwrap(),
+            CoreValue::Text(_)
+        ));
 
         assert_eq!(a_plus_b, Value::from("Hello 42".to_string()));
         assert_eq!(b_plus_a, Value::from("42Hello ".to_string()));
@@ -500,8 +510,14 @@ mod tests {
     fn structural_equality() {
         let a = Value::from(42_i8);
         let b = Value::from(42_i32);
-        assert_matches!(a.try_as_core_value().unwrap(), CoreValue::TypedInteger(TypedInteger::I8(_)));
-        assert_matches!(b.try_as_core_value().unwrap(), CoreValue::TypedInteger(TypedInteger::I32(_)));
+        assert_matches!(
+            a.try_as_core_value().unwrap(),
+            CoreValue::TypedInteger(TypedInteger::I8(_))
+        );
+        assert_matches!(
+            b.try_as_core_value().unwrap(),
+            CoreValue::TypedInteger(TypedInteger::I32(_))
+        );
         assert_ne!(a, b);
 
         assert_structural_eq!(a, b);

@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    preludes::derive::{SharedReferencesCache, Type, TypeDefinition},
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::get_datex_type::GetDatexType,
     types::type_definition::collection::{
         CollectionTypeDefinition,

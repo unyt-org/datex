@@ -1,6 +1,8 @@
 use crate::{
-    preludes::derive::{DatexNative, SharedReferencesCache},
-    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
+    },
     shared_values::{SharedContainer, SharedContainerMutability},
     shared_wrappers::shared::Shared,
 };

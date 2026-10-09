@@ -1,36 +1,46 @@
 use crate::{
     prelude::*,
-    preludes::derive::{CoreValue, SharedReferencesCache},
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::convert_parts::{
-        FromParts, IntoParts, Parts, PartsKind, HasPartsKind,
+        FromParts, HasPartsKind, IntoParts, Parts, PartsKind,
     },
-    values::core_values::{list::List, map::Map},
+    values::{
+        core_values::{list::List, map::Map},
+        value::Value,
+    },
 };
-use crate::preludes::derive::{ValueClassification, ValueContainer};
-use crate::values::value::Value;
 
 impl FromParts for CoreValue {
-    fn try_from_map_parts_with_tag(parts: Map, _tag: Option<&str>) -> Result<Self, ()>
+    fn try_from_map_parts_with_tag(
+        parts: Map,
+        _tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {
         Ok(CoreValue::Map(parts))
     }
 
-    fn try_from_list_parts_with_tag(parts: List, _tag: Option<&str>) -> Result<Self, ()>
+    fn try_from_list_parts_with_tag(
+        parts: List,
+        _tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {
         Ok(CoreValue::List(parts))
     }
 
-    fn try_from_single_value_with_tag(value: ValueContainer, _tag: Option<&str>) -> Result<Self, ()>
+    fn try_from_single_value_with_tag(
+        value: ValueContainer,
+        _tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {
         match value {
             ValueContainer::Local(Value::Core(value)) => Ok(value.inner),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -72,14 +82,15 @@ impl IntoParts for CoreValue {
         }
     }
 
-    fn try_into_single_value<'a>(self: Box<Self>, cache: &'a mut SharedReferencesCache) -> Result<ValueContainer, ()>
+    fn try_into_single_value<'a>(
+        self: Box<Self>,
+        cache: &'a mut SharedReferencesCache,
+    ) -> Result<ValueContainer, ()>
     where
         Self: 'a,
     {
         match self {
-            _ => {
-                Ok(ValueContainer::Local(Value::new(*self)))
-            }
+            _ => Ok(ValueContainer::Local(Value::new(*self))),
         }
     }
 }

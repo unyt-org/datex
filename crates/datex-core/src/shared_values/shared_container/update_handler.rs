@@ -1,7 +1,7 @@
 use core::cell::RefCell;
 
 use crate::{
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     value_updates::{
         errors::UpdateError,

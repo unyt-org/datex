@@ -1,9 +1,10 @@
 use crate::{
-    prelude::*, preludes::derive::DatexNative,
+    prelude::*,
     traits::convert_value::ConvertValue,
-    values::core_value::CoreValue,
+    values::{
+        core_value::CoreValue, core_values::native::DatexNative, value::Value,
+    },
 };
-use crate::preludes::derive::Value;
 
 impl<T> ConvertValue for Box<T>
 where
@@ -28,13 +29,9 @@ where
         }
     }
 
-    fn try_borrow_mut_from_value(
-        value: &mut Value,
-    ) -> Result<&mut Self, ()> {
+    fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut Self, ()> {
         match value {
-            Value::Native(native) => {
-                native.try_as_mut::<Box<T>>().ok_or(())
-            }
+            Value::Native(native) => native.try_as_mut::<Box<T>>().ok_or(()),
             _ => Err(()),
         }
     }

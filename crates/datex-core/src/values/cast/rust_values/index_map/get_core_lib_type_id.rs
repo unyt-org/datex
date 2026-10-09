@@ -1,6 +1,5 @@
 use crate::{
-    preludes::derive::{CoreLibBaseTypeId, CoreLibTypeId},
-    random::RandomState,
+    libs::core::type_id::CoreLibBaseTypeId, random::RandomState,
     traits::get_core_lib_type_id::GetCoreLibTypeId,
 };
 use core::hash::Hash;

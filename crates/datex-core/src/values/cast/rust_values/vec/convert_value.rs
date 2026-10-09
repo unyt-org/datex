@@ -1,14 +1,16 @@
 use crate::{
     prelude::*,
+    traits::convert_value::ConvertValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
         core_values::native::DatexNativeBase,
+        value::{
+            Value,
+            borrowed_value::{BorrowedValue, BorrowedValueMut},
+        },
     },
 };
-use crate::traits::convert_value::ConvertValue;
-use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
-use crate::values::value::Value;
 
 impl<T: DatexNativeBase + 'static> ConvertValue for Vec<T> {
     fn to_value(self) -> Value {
@@ -30,9 +32,7 @@ impl<T: DatexNativeBase + 'static> ConvertValue for Vec<T> {
         }
     }
 
-    fn try_borrow_mut_from_value(
-        value: &mut Value,
-    ) -> Result<&mut Self, ()> {
+    fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut Self, ()> {
         match value {
             Value::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
@@ -70,16 +70,20 @@ impl<'a, T: DatexNativeBase + 'static> TryFrom<BorrowedValueMut<'a>>
 
 #[cfg(test)]
 mod tests {
+    use json_syntax::Value;
+
     use crate::{
         prelude::*,
+        traits::convert_value::ConvertValue,
         utils::{goat::Goat, goat_mut::GoatMut},
         values::{
             core_value::CoreValue,
+            value::{
+                Value,
+                borrowed_value::{BorrowedValue, BorrowedValueMut},
+            },
         },
     };
-    use crate::preludes::derive::Value;
-    use crate::traits::convert_value::ConvertValue;
-    use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
 
     #[test]
     fn try_vec_from_core_value() {

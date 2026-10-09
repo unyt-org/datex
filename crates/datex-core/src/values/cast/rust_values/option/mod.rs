@@ -1,6 +1,6 @@
 pub mod classification;
-mod convert_value;
 pub mod convert_parts;
+mod convert_value;
 mod datex_hash;
 pub mod datex_native;
 pub mod get_core_lib_type_id;
@@ -16,7 +16,6 @@ mod tests {
     use core::assert_matches;
 
     use crate::{
-        preludes::derive::{CoreValue, SharedReferencesCache},
         traits::get_datex_type::GetDatexType,
         types::type_definition::TypeDefinition,
         values::{

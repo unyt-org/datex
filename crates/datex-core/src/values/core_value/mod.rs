@@ -12,7 +12,6 @@ use crate::{
 };
 pub mod serde_dif;
 use crate::{
-    preludes::derive::ConvertValue,
     types::r#type::Type,
     values::{
         core_values::{
@@ -150,7 +149,6 @@ impl CoreValue {
     pub fn default_core_type(&self) -> CoreLibTypeId {
         CoreLibTypeId::from(self)
     }
-
 
     /// Casts the value to a [Text] value
     /// Note: in contrast to [try_cast_to], [Text] values are not wrapped in quotation marks.
@@ -375,11 +373,8 @@ mod tests {
 
     #[test]
     fn endpoint() {
-        let endpoint: Endpoint = "@test"
-            .to_string()
-            .to_value()
-            .cast_to_endpoint()
-            .unwrap();
+        let endpoint: Endpoint =
+            "@test".to_string().to_value().cast_to_endpoint().unwrap();
         debug!("Endpoint: {endpoint}");
         assert_eq!(endpoint.to_string(), "@test");
     }

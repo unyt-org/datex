@@ -1,16 +1,22 @@
 use crate::{
-    preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut},
+    traits::convert_value::ConvertValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
         core_values::decimal::typed_decimal::TypedDecimal,
+        value::{
+            Value,
+            borrowed_value::{
+                BorrowedValue, BorrowedValueMut,
+                borrowed_core_value_with_classification::{
+                    BorrowedCoreValueWithClassification,
+                    BorrowedCoreValueWithClassificationMut,
+                },
+            },
+        },
     },
 };
-use crate::traits::convert_value::ConvertValue;
-use crate::values::core_value_with_classification::CoreValueWithClassification;
-use crate::values::value::borrowed_value::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
-use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
-use crate::values::value::Value;
 
 impl ConvertValue for f32 {
     fn to_value(self) -> Value {
@@ -18,7 +24,10 @@ impl ConvertValue for f32 {
     }
     fn try_from_value(value: Value) -> Result<Self, Value> {
         match value {
-            Value::Core(CoreValueWithClassification {inner: CoreValue::TypedDecimal(TypedDecimal::F32(value)), ..}) => Ok(value.0),
+            Value::Core(CoreValueWithClassification {
+                inner: CoreValue::TypedDecimal(TypedDecimal::F32(value)),
+                ..
+            }) => Ok(value.0),
             Value::Native(native) => {
                 native.try_into_value().map_err(Value::Native)
             }
@@ -28,19 +37,21 @@ impl ConvertValue for f32 {
 
     fn try_borrow_from_value(value: &Value) -> Result<&Self, ()> {
         match value {
-            Value::Core(CoreValueWithClassification {inner: CoreValue::TypedDecimal(TypedDecimal::F32(value)), ..}) => Ok(&value.0),
+            Value::Core(CoreValueWithClassification {
+                inner: CoreValue::TypedDecimal(TypedDecimal::F32(value)),
+                ..
+            }) => Ok(&value.0),
             Value::Native(native) => native.try_as().ok_or(()),
             _ => Err(()),
         }
     }
 
-    fn try_borrow_mut_from_value(
-        value: &mut Value,
-    ) -> Result<&mut Self, ()> {
+    fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut Self, ()> {
         match value {
-            Value::Core(CoreValueWithClassification {inner: CoreValue::TypedDecimal(TypedDecimal::F32(value)), ..}) => {
-                Ok(&mut value.0)
-            }
+            Value::Core(CoreValueWithClassification {
+                inner: CoreValue::TypedDecimal(TypedDecimal::F32(value)),
+                ..
+            }) => Ok(&mut value.0),
             Value::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
         }
@@ -51,9 +62,10 @@ impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, f32> {
     type Error = ();
     fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
         match value {
-            BorrowedValue::Core(BorrowedCoreValueWithClassification {inner: BorrowedCoreValue::TypedDecimal(value), ..}) => {
-                value.filter_map(|v| v.borrow_as_f32()).ok_or(())
-            }
+            BorrowedValue::Core(BorrowedCoreValueWithClassification {
+                inner: BorrowedCoreValue::TypedDecimal(value),
+                ..
+            }) => value.filter_map(|v| v.borrow_as_f32()).ok_or(()),
             BorrowedValue::Native(native) => native
                 .filter_map(|v| v.as_any().downcast_ref::<f32>())
                 .ok_or(()),
@@ -66,9 +78,12 @@ impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, f32> {
     type Error = ();
     fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
         match value {
-            BorrowedValueMut::Core(BorrowedCoreValueWithClassificationMut {inner: BorrowedCoreValueMut::TypedDecimal(value), ..}) => {
-                value.filter_map(|v| v.borrow_mut_as_f32()).ok_or(())
-            }
+            BorrowedValueMut::Core(
+                BorrowedCoreValueWithClassificationMut {
+                    inner: BorrowedCoreValueMut::TypedDecimal(value),
+                    ..
+                },
+            ) => value.filter_map(|v| v.borrow_mut_as_f32()).ok_or(()),
             BorrowedValueMut::Native(native) => native
                 .filter_map(|v| v.as_any_mut().downcast_mut::<f32>())
                 .ok_or(()),
@@ -83,7 +98,10 @@ impl ConvertValue for f64 {
     }
     fn try_from_value(value: Value) -> Result<Self, Value> {
         match value {
-            Value::Core(CoreValueWithClassification {inner: CoreValue::TypedDecimal(TypedDecimal::F64(value)), ..}) => Ok(value.0),
+            Value::Core(CoreValueWithClassification {
+                inner: CoreValue::TypedDecimal(TypedDecimal::F64(value)),
+                ..
+            }) => Ok(value.0),
             Value::Native(native) => {
                 native.try_into_value().map_err(Value::Native)
             }
@@ -93,19 +111,21 @@ impl ConvertValue for f64 {
 
     fn try_borrow_from_value(value: &Value) -> Result<&Self, ()> {
         match value {
-            Value::Core(CoreValueWithClassification {inner: CoreValue::TypedDecimal(TypedDecimal::F64(value)), ..}) => Ok(&value.0),
+            Value::Core(CoreValueWithClassification {
+                inner: CoreValue::TypedDecimal(TypedDecimal::F64(value)),
+                ..
+            }) => Ok(&value.0),
             Value::Native(native) => native.try_as().ok_or(()),
             _ => Err(()),
         }
     }
 
-    fn try_borrow_mut_from_value(
-        value: &mut Value,
-    ) -> Result<&mut Self, ()> {
+    fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut Self, ()> {
         match value {
-            Value::Core(CoreValueWithClassification {inner: CoreValue::TypedDecimal(TypedDecimal::F64(value)), ..}) => {
-                Ok(&mut value.0)
-            }
+            Value::Core(CoreValueWithClassification {
+                inner: CoreValue::TypedDecimal(TypedDecimal::F64(value)),
+                ..
+            }) => Ok(&mut value.0),
             Value::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
         }
@@ -116,9 +136,10 @@ impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, f64> {
     type Error = ();
     fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
         match value {
-            BorrowedValue::Core(BorrowedCoreValueWithClassification {inner: BorrowedCoreValue::TypedDecimal(value), ..}) => {
-                value.filter_map(|v| v.borrow_as_f64()).ok_or(())
-            }
+            BorrowedValue::Core(BorrowedCoreValueWithClassification {
+                inner: BorrowedCoreValue::TypedDecimal(value),
+                ..
+            }) => value.filter_map(|v| v.borrow_as_f64()).ok_or(()),
             BorrowedValue::Native(native) => native
                 .filter_map(|v| v.as_any().downcast_ref::<f64>())
                 .ok_or(()),
@@ -131,9 +152,12 @@ impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, f64> {
     type Error = ();
     fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
         match value {
-            BorrowedValueMut::Core(BorrowedCoreValueWithClassificationMut {inner: BorrowedCoreValueMut::TypedDecimal(value), ..}) => {
-                value.filter_map(|v| v.borrow_mut_as_f64()).ok_or(())
-            }
+            BorrowedValueMut::Core(
+                BorrowedCoreValueWithClassificationMut {
+                    inner: BorrowedCoreValueMut::TypedDecimal(value),
+                    ..
+                },
+            ) => value.filter_map(|v| v.borrow_mut_as_f64()).ok_or(()),
             BorrowedValueMut::Native(native) => native
                 .filter_map(|v| v.as_any_mut().downcast_mut::<f64>())
                 .ok_or(()),
@@ -144,30 +168,32 @@ impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, f64> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        preludes::derive::{BorrowedCoreValue, BorrowedCoreValueMut},
+        traits::convert_value::ConvertValue,
         utils::{goat::Goat, goat_mut::GoatMut},
         values::{
             core_value::CoreValue,
             core_values::decimal::typed_decimal::TypedDecimal,
+            value::borrowed_value::{BorrowedValue, BorrowedValueMut},
         },
     };
-    use crate::traits::convert_value::ConvertValue;
-    use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
 
     #[test]
     fn try_f32_from_core_value() {
-        let core_value = CoreValue::TypedDecimal(TypedDecimal::F32(1.5.into())).to_value();
+        let core_value =
+            CoreValue::TypedDecimal(TypedDecimal::F32(1.5.into())).to_value();
         let result = core_value.try_as::<f32>();
         assert_eq!(*result.unwrap(), 1.5);
 
-        let core_value = CoreValue::TypedDecimal(TypedDecimal::F32(1.5.into())).to_value();
+        let core_value =
+            CoreValue::TypedDecimal(TypedDecimal::F32(1.5.into())).to_value();
         let result = core_value.try_into_value::<f32>();
         assert_eq!(result.unwrap(), 1.5);
     }
 
     #[test]
     fn try_borrow_f32_from_core_value() {
-        let core_value = CoreValue::TypedDecimal(TypedDecimal::F32(1.5.into())).to_value();
+        let core_value =
+            CoreValue::TypedDecimal(TypedDecimal::F32(1.5.into())).to_value();
 
         let result = core_value.try_as::<f32>();
         assert_eq!(*result.unwrap(), 1.5);
@@ -221,7 +247,8 @@ mod tests {
 
     #[test]
     fn try_borrowed_core_value_f32() {
-        let core_value = CoreValue::TypedDecimal(TypedDecimal::F32(1.5.into())).to_value();
+        let core_value =
+            CoreValue::TypedDecimal(TypedDecimal::F32(1.5.into())).to_value();
         let borrowed = BorrowedValue::from(&core_value);
         let result = Goat::<f32>::try_from(borrowed);
         assert_eq!(*result.unwrap(), 1.5);
@@ -239,17 +266,20 @@ mod tests {
 
     #[test]
     fn try_f64_from_core_value() {
-        let core_value = CoreValue::TypedDecimal(TypedDecimal::F64(1.5.into())).to_value();
+        let core_value =
+            CoreValue::TypedDecimal(TypedDecimal::F64(1.5.into())).to_value();
         let result = core_value.try_as::<f64>();
         assert_eq!(*result.unwrap(), 1.5);
-        let core_value = CoreValue::TypedDecimal(TypedDecimal::F64(1.5.into())).to_value();
+        let core_value =
+            CoreValue::TypedDecimal(TypedDecimal::F64(1.5.into())).to_value();
         let result = core_value.try_into_value::<f64>();
         assert_eq!(result.unwrap(), 1.5);
     }
 
     #[test]
     fn try_borrow_f64_from_core_value() {
-        let core_value = CoreValue::TypedDecimal(TypedDecimal::F64(1.5.into())).to_value();
+        let core_value =
+            CoreValue::TypedDecimal(TypedDecimal::F64(1.5.into())).to_value();
         let result = core_value.try_as::<f64>();
         assert_eq!(*result.unwrap(), 1.5);
     }

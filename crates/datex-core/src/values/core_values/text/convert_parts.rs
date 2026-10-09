@@ -1,10 +1,12 @@
 use crate::{
-    preludes::derive::Text,
-    traits::convert_parts::{FromParts, IntoParts, HasPartsKind},
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
+    traits::{
+        convert_parts::{FromParts, HasPartsKind, IntoParts},
+        convert_value_container::ConvertValueContainer,
+    },
+    values::{core_values::text::Text, value_container::ValueContainer},
 };
-use crate::preludes::derive::{SharedReferencesCache, ValueContainer};
-use crate::traits::convert_value_container::ConvertValueContainer;
 
 /// Default implementations - cannot be split into parts
 impl IntoParts for Text {
@@ -19,7 +21,10 @@ impl IntoParts for Text {
     }
 }
 impl FromParts for Text {
-    fn try_from_single_value_with_tag(value: ValueContainer, _tag: Option<&str>) -> Result<Self, ()>
+    fn try_from_single_value_with_tag(
+        value: ValueContainer,
+        _tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {

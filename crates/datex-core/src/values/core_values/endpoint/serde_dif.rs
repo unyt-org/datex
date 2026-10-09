@@ -1,6 +1,13 @@
 use crate::{
-    dif::serde_context::SerdeContext, prelude::*,
-    values::core_values::endpoint::Endpoint,
+    dif::{
+        deserialize_serde_context::impl_serde_with_context,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+    },
+    libs::core::type_id::CoreLibBaseTypeId,
+    prelude::*,
+    values::{core_value::CoreValue, core_values::endpoint::Endpoint},
 };
 use alloc::string::String;
 use core::fmt;
@@ -9,11 +16,6 @@ use serde::{
     Deserialize, Serialize,
     de::{Error, Visitor},
 };
-use crate::dif::deserialize_serde_context::impl_serde_with_context;
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
-use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
-use crate::preludes::derive::{CoreLibBaseTypeId, ValueClassification};
-use crate::values::core_value::CoreValue;
 
 impl Serialize for Endpoint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

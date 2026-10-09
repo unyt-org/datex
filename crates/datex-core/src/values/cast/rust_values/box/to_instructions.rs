@@ -2,9 +2,8 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::Instruction,
+    instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
-    preludes::derive::RegularInstruction,
 };
 
 impl<V> ToInstructions for Box<V>

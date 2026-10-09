@@ -1,9 +1,7 @@
 use core::{cell::RefCell, mem, ops::DerefMut};
 
 use crate::{
-    preludes::derive::{
-        BorrowedValueKey, SharedReferencesCache, ValueContainer,
-    },
+    prelude::*,
     shared_values::errors::{AccessError, IndexOutOfBoundsError},
     types::error::TypeError,
     value_updates::{
@@ -14,8 +12,10 @@ use crate::{
         },
         update_handler::{UpdateCallbackDataAccess, UpdateHandlerImpl},
     },
-    values::core_values::native::DatexNativeBase,
-    prelude::*,
+    values::{
+        core_values::native::DatexNativeBase,
+        value_container::value_key::BorrowedValueKey,
+    },
 };
 impl<T: DatexNativeBase + 'static> UpdateCallbackDataAccess for Vec<T> {}
 impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {

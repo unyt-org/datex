@@ -2,13 +2,15 @@ use core::cell::RefCell;
 
 use crate::{
     prelude::*,
-    preludes::derive::{SharedReferencesCache, ValueContainer},
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     value_updates::{
         errors::UpdateError,
         update_data::*,
         update_handler::{UpdateCallbackDataAccess, UpdateHandlerImpl},
     },
-    values::core_values::native::DatexNative,
+    values::{
+        core_values::native::DatexNative, value_container::ValueContainer,
+    },
 };
 
 impl<T: DatexNative> UpdateCallbackDataAccess for Box<T> {}

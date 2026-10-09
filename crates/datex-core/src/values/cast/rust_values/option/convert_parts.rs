@@ -1,11 +1,12 @@
 use crate::{
     prelude::*,
-    preludes::derive::{List, PartsKind, SharedReferencesCache},
-    traits::convert_parts::{FromParts, IntoParts, Parts, HasPartsKind},
-    values::core_values::map::Map,
+    traits::convert_parts::{FromParts, HasPartsKind, IntoParts, Parts},
+    values::{
+        core_values::{list::List, map::Map},
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
-use crate::preludes::derive::ValueContainer;
-use crate::values::value::Value;
 
 impl<T: HasPartsKind> HasPartsKind for Option<T> {
     fn parts_kind(&self) -> PartsKind {
@@ -42,13 +43,16 @@ impl<T: IntoParts> IntoParts for Option<T> {
         }
     }
 
-    fn try_into_single_value<'a>(self: Box<Self>, _cache: &'a mut SharedReferencesCache) -> Result<ValueContainer, ()>
+    fn try_into_single_value<'a>(
+        self: Box<Self>,
+        _cache: &'a mut SharedReferencesCache,
+    ) -> Result<ValueContainer, ()>
     where
         Self: 'a,
     {
         match *self {
             Some(value) => Box::new(value).try_into_single_value(_cache),
-            None => Ok(ValueContainer::Local(Value::null()))
+            None => Ok(ValueContainer::Local(Value::null())),
         }
     }
 }
@@ -74,7 +78,10 @@ impl<T: FromParts> FromParts for Option<T> {
         Ok(Some(T::try_from_list_parts_with_tag(parts, tag)?))
     }
 
-    fn try_from_single_value_with_tag(value: ValueContainer, tag: Option<&str>) -> Result<Self, ()>
+    fn try_from_single_value_with_tag(
+        value: ValueContainer,
+        tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {

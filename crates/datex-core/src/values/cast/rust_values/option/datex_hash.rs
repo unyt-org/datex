@@ -1,5 +1,6 @@
-use crate::{preludes::derive::CoreValue, traits::datex_hash::DatexHash};
 use core::hash::Hasher;
+
+use crate::{traits::datex_hash::DatexHash, values::core_value::CoreValue};
 
 impl<T> DatexHash for Option<T>
 where

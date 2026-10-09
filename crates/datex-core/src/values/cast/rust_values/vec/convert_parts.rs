@@ -1,8 +1,8 @@
 use crate::{
     prelude::*,
-    preludes::derive::{PartsKind, SharedReferencesCache},
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::{
-        convert_parts::{FromParts, IntoParts, HasPartsKind},
+        convert_parts::{FromParts, HasPartsKind, IntoParts, PartsKind},
         convert_value_container::ConvertValueContainer,
     },
     values::core_values::list::List,

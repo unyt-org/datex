@@ -1,5 +1,5 @@
 use crate::{
-    preludes::derive::SharedReferencesCache,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::classification::Classification,
     values::value::{Value, value_classification::ValueClassification},
 };

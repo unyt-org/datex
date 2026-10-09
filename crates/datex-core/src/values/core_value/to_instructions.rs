@@ -2,10 +2,9 @@ use crate::{
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
-    instruction::Instruction,
+    instruction::{Instruction, regular_instruction::RegularInstruction},
     libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex},
     prelude::*,
-    preludes::derive::RegularInstruction,
     values::core_value::CoreValue,
 };
 

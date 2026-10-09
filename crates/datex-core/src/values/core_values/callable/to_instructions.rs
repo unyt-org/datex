@@ -11,8 +11,7 @@ use crate::{
         regular_instruction::RegularInstruction,
     },
     prelude::*,
-    preludes::derive::CallableBody,
-    values::core_values::callable::Callable,
+    values::core_values::callable::{Callable, CallableBody},
 };
 impl ToInstructions for Callable {
     fn to_instructions<'ctx, 'a>(

@@ -18,7 +18,7 @@ mod serde_dif;
 mod tests {
     use crate::{
         prelude::*,
-        preludes::derive::SharedReferencesCache,
+        runtime::cache::shared_references_cache::SharedReferencesCache,
         traits::get_datex_type::GetDatexType,
         values::{
             core_value::CoreValue,

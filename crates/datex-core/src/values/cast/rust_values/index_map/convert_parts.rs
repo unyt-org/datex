@@ -1,10 +1,9 @@
 use crate::{
     prelude::*,
-    preludes::derive::{PartsKind, SharedReferencesCache},
     random::RandomState,
     traits::{
         convert_parts::{
-            BorrowedParts, FromParts, IntoParts, Parts, HasPartsKind,
+            BorrowedParts, FromParts, HasPartsKind, IntoParts, Parts, PartsKind,
         },
         convert_value_container::ConvertValueContainer,
     },
@@ -46,7 +45,10 @@ impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts
 impl<K: ConvertValueContainer + Eq + Hash, V: ConvertValueContainer> FromParts
     for IndexMap<K, V, RandomState>
 {
-    fn try_from_map_parts_with_tag(parts: Map, _tag: Option<&str>) -> Result<Self, ()>
+    fn try_from_map_parts_with_tag(
+        parts: Map,
+        _tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {
