@@ -15,12 +15,13 @@ use crate::{
     },
     values::value::Value,
 };
-mod value_access;
-pub mod serde_dif;
-mod to_instructions;
 mod apply;
 mod classification;
 mod convert_parts;
+pub mod serde_dif;
+mod to_instructions;
+mod update_handler;
+mod value_access;
 
 use crate::prelude::*;
 
@@ -40,7 +41,6 @@ impl CoreValueWithClassification {
     pub fn is_null(&self) -> bool {
         matches!(self.inner, CoreValue::Null)
     }
-
 
     /// Returns the actual current [TypeDefinition] of the value
     pub fn actual_type(&self) -> TypeDefinition {

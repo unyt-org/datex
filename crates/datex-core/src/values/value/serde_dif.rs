@@ -1,8 +1,14 @@
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
     libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
     prelude::*,
-    dif::serialize_with_serde_context::SerializeWithSerdeContext,
+    preludes::derive::ValueTag,
     values::{
         core_value::{CoreValue, serde_dif::CoreValueVisitor},
         core_values::{
@@ -19,13 +25,8 @@ use num::ToPrimitive;
 use serde::{
     Deserializer, Serialize, Serializer,
     de::{DeserializeSeed, Error as DeError, Visitor},
-    ser::SerializeTuple,
+    ser::{SerializeMap, SerializeTuple},
 };
-use serde::ser::SerializeMap;
-use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
-use crate::dif::value_with_serde_context::ValueWithSerdeContext;
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
-use crate::preludes::derive::ValueTag;
 
 impl<'ctx> SerdeContext<'ctx> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -53,8 +54,7 @@ impl<'ctx> SerdeContext<'ctx> {
         }
 
         let index = CoreLibIdIndex::from(core_lib_type_id);
-        let mut tuple = serializer
-            .serialize_tuple(2)?;
+        let mut tuple = serializer.serialize_tuple(2)?;
         tuple.serialize_element(&index.to_u16())?;
         tuple.serialize_element(inner)?;
         tuple.end()
@@ -78,13 +78,9 @@ impl<'ctx> SerdeContext<'ctx> {
             return inner.serialize_with_ctx(self, serializer);
         }
         let index = CoreLibIdIndex::from(core_lib_type_id);
-        let mut tuple = serializer
-            .serialize_tuple(2)?;
+        let mut tuple = serializer.serialize_tuple(2)?;
         tuple.serialize_element(&index.to_u16())?;
-        tuple.serialize_element(&ValueWithSerdeContext::new(
-            inner,
-            self,
-        ))?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(inner, self))?;
         tuple.end()
     }
 
@@ -97,11 +93,11 @@ impl<'ctx> SerdeContext<'ctx> {
         D: Deserializer<'de>,
     {
         let deserialize_ctx = DeserializeSerdeContext::<Value>::new(self);
-        deserializer.deserialize_any(deserialize_ctx).map(|v| v.inner)
+        deserializer
+            .deserialize_any(deserialize_ctx)
+            .map(|v| v.inner)
     }
 }
-
-
 
 /// Serialization for [Value].
 impl SerializeWithSerdeContext for Value {
@@ -114,12 +110,8 @@ impl SerializeWithSerdeContext for Value {
         S: Serializer,
     {
         match self {
-            Value::Native(native) => {
-                native.serialize_with_ctx(ctx, serializer)
-            }
-            Value::Core(core) => {
-                core.serialize_with_ctx(ctx, serializer)
-            }
+            Value::Native(native) => native.serialize_with_ctx(ctx, serializer),
+            Value::Core(core) => core.serialize_with_ctx(ctx, serializer),
         }
     }
 }
@@ -141,22 +133,26 @@ impl SerializeWithSerdeContext for (&CoreValue, &Option<ValueTag>) {
         else {
             let mut map = serializer.serialize_map(Some(2))?;
             map.serialize_entry("t", &self.1)?;
-            map.serialize_entry("v", &ValueWithSerdeContext::new(&self.0, ctx))?;
+            map.serialize_entry(
+                "v",
+                &ValueWithSerdeContext::new(&self.0, ctx),
+            )?;
             map.end()
         }
     }
 }
 
 impl<'de> DeserializeWithSerdeContext<'de> for Value {
-
-    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         deserializer.deserialize_any(DeserializeSerdeContext::<Value>::new(ctx))
     }
 }
-
 
 impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     type Value = Value;
@@ -309,18 +305,22 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
     {
         // expect 'v' and optional 'c' key
         let mut core_value: Option<(CoreValue, Option<ValueTag>)> = None;
-        let mut classification: ValueClassification = ValueClassification::default();
+        let mut classification: ValueClassification =
+            ValueClassification::default();
 
         while let Some(field) = map.next_key::<String>()? {
             match field.as_str() {
                 "v" => {
-                    core_value = Some(
-                        map.next_value_seed(self.cast::<(CoreValue, Option<ValueTag>)>())?,
-                    );
+                    core_value = Some(map.next_value_seed(self.cast::<(
+                        CoreValue,
+                        Option<ValueTag>,
+                    )>(
+                    ))?);
                 }
 
                 "c" => {
-                    classification = map.next_value_seed(self.cast::<ValueClassification>())?;
+                    classification = map
+                        .next_value_seed(self.cast::<ValueClassification>())?;
                 }
                 _ => {
                     return Err(A::Error::custom(format!(
@@ -338,25 +338,32 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Value> {
                     classification.tag = Some(tag);
                 }
                 Ok(Value::new(core_value, classification))
-            },
-            None => Err(A::Error::custom(
-                "Expected a 'v' key for the DIF value",
-            )),
+            }
+            None => {
+                Err(A::Error::custom("Expected a 'v' key for the DIF value"))
+            }
         }
     }
 }
 
 impl<'de> DeserializeWithSerdeContext<'de> for (CoreValue, Option<ValueTag>) {
-
-    fn deserialize_with_ctx<D>(ctx: &SerdeContext<'_>, deserializer: D) -> Result<Self, D::Error>
+    fn deserialize_with_ctx<D>(
+        ctx: &SerdeContext<'_>,
+        deserializer: D,
+    ) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(DeserializeSerdeContext::<(CoreValue, Option<ValueTag>)>::new(ctx))
+        deserializer.deserialize_any(DeserializeSerdeContext::<(
+            CoreValue,
+            Option<ValueTag>,
+        )>::new(ctx))
     }
 }
 
-impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (CoreValue, Option<ValueTag>)> {
+impl<'de, 'a, 'ctx> Visitor<'de>
+    for DeserializeSerdeContext<'a, 'ctx, (CoreValue, Option<ValueTag>)>
+{
     type Value = (CoreValue, Option<ValueTag>);
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -373,7 +380,8 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (CoreValu
         while let Some(field) = map.next_key::<String>()? {
             match field.as_str() {
                 "v" => {
-                    core_value = Some(map.next_value_seed(self.cast::<CoreValue>())?);
+                    core_value =
+                        Some(map.next_value_seed(self.cast::<CoreValue>())?);
                 }
                 "t" => {
                     tag = Some(map.next_value()?);
@@ -534,9 +542,6 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, (CoreValu
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -557,18 +562,16 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use core::str::FromStr;
-    use core::cell::RefCell;
+    use core::{cell::RefCell, str::FromStr};
     use test_case::test_case;
 
     #[test]
     fn endpoint_serialization() {
         let endpoint = Endpoint::from_str("@jonas").unwrap();
-        let value = Value::new(CoreValue::Endpoint(endpoint.clone()), None);
+        let value = Value::new(CoreValue::Endpoint(endpoint.clone()));
         let cache = RefCell::new(SharedValuesCache::default());
         let mut context = SerdeContext::new(&cache);
-        let serialized =
-            context.serialize_to_json(&value);
+        let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
@@ -769,9 +772,8 @@ mod tests {
 
         let value = Value::from(value);
         let serialized = context.serialize_to_json(&value);
-        let deserialized: Value = context
-            .try_deserialize_from_json(&serialized)
-            .unwrap();
+        let deserialized: Value =
+            context.try_deserialize_from_json(&serialized).unwrap();
         assert_eq!(deserialized, value);
     }
 }

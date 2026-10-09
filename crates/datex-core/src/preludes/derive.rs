@@ -7,11 +7,19 @@ pub use crate::{
     },
     traits::to_datex_expression_data::ToDatexExpressionData,
 };
-#[doc(hidden)]
+
 pub use crate::{
-    core_compiler::to_instructions::ToInstructions,
-    core_compiler::value_visitor::ValueVisitor,
+    core_compiler::{
+        to_instructions::ToInstructions, value_visitor::ValueVisitor,
+    },
     datex_registry::{get_impls, get_impls_for},
+    dif::{
+        deserialize_serde_context::DeserializeSerdeContext,
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serde_context::SerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+        value_with_serde_context::ValueWithSerdeContext,
+    },
     instruction::{Instruction, regular_instruction::RegularInstruction},
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
@@ -23,42 +31,40 @@ pub use crate::{
         SelfOwnedPointerAddress,
         errors::{AccessError, KeyNotFoundError},
     },
-    traits::classification::Classification,
-    traits::convert_value::ConvertValue,
-    traits::convert_parts::FromParts,
-    traits::convert_parts::IntoParts,
-    traits::convert_parts::HasPartsKind,
-    traits::convert_parts::{Parts, PartsKind},
-    traits::convert_value_container::ConvertValueContainer,
-    traits::datex_hash::DatexHash,
-    traits::datex_native_only_structural::DatexNativeOnlyStructural,
-    traits::datex_native_structural::DatexNativeStructural,
-    traits::get_core_lib_type_id::GetCoreLibTypeId,
-    traits::get_datex_type::GetDatexType,
-    traits::local_child_path_resolver::LocalChildPathResolver,
-    traits::value_access::ValueAccess,
-    types::type_definition::callable::{CallableKind, CallableTypeDefinition},
+    traits::{
+        classification::Classification,
+        convert_parts::{FromParts, HasPartsKind, IntoParts, Parts, PartsKind},
+        convert_value::ConvertValue,
+        convert_value_container::ConvertValueContainer,
+        datex_hash::DatexHash,
+        datex_native_only_structural::DatexNativeOnlyStructural,
+        datex_native_structural::DatexNativeStructural,
+        get_core_lib_type_id::GetCoreLibTypeId,
+        get_datex_type::GetDatexType,
+        local_child_path_resolver::LocalChildPathResolver,
+        value_access::ValueAccess,
+    },
     types::{
-        entities::entity_impls::EntityImpl,
-        entities::entity_impls::EntityImplMethod,
-        entities::entity_type_definition::EntityTypeDefinition,
+        entities::{
+            entity_impls::{EntityImpl, EntityImplMethod},
+            entity_type_definition::EntityTypeDefinition,
+        },
+        entity_type::EntityType,
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
         type_definition::{
-            TypeDefinition, list::ListTypeDefinition, map::MapTypeDefinition,
-            tagged_type::TaggedTypeDefinition, union::UnionTypeDefinition,
+            TypeDefinition,
+            callable::{CallableKind, CallableTypeDefinition},
+            list::ListTypeDefinition,
+            map::MapTypeDefinition,
+            tagged_type::TaggedTypeDefinition,
+            union::UnionTypeDefinition,
         },
-        entity_type::EntityType,
-    },
-    values::value::{
-        value_classification::{ValueClassification, ValueTag},
     },
     utils::{goat::Goat, goat_mut::GoatMut},
     value_updates::update_handler::{
         UpdateCallbackDataAccess, UpdateHandlerImpl,
     },
-    values::core_values::callable::{Callable, CallableBody},
-    values::value::borrowed_value::borrowed_core_value::{BorrowedCoreValue, BorrowedCoreValueMut},
     values::{
         borrowed_value_container::{
             AsBorrowed, AsBorrowedMut, BorrowedValueContainer,
@@ -66,16 +72,21 @@ pub use crate::{
         },
         core_value::CoreValue,
         core_values::{
-            list::List, map::Map, native::DatexNative, native::DatexNativeOps,
+            callable::{Callable, CallableBody},
+            list::List,
+            map::Map,
+            native::{DatexNative, DatexNativeOps},
             text::Text,
         },
-        value::Value,
+        value::{
+            Value,
+            borrowed_value::borrowed_core_value::{
+                BorrowedCoreValue, BorrowedCoreValueMut,
+            },
+            value_classification::{ValueClassification, ValueTag},
+        },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
-    dif::serialize_with_serde_context::SerializeWithSerdeContext,
-    dif::deserialize_with_serde_context::DeserializeWithSerdeContext,
-    dif::deserialize_serde_context::DeserializeSerdeContext,
-    dif::serde_context::SerdeContext,
-    dif::value_with_serde_context::ValueWithSerdeContext
 };
+
 pub use serde;

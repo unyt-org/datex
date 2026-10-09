@@ -1,15 +1,21 @@
-use crate::runtime::cache::shared_values_cache::SharedValuesCache;
+use crate::{
+    dif::{
+        deserialize_with_serde_context::DeserializeWithSerdeContext,
+        serialize_with_serde_context::SerializeWithSerdeContext,
+    },
+    prelude::*,
+    runtime::cache::shared_values_cache::SharedValuesCache,
+};
 use core::cell::RefCell;
-use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
-
 #[derive(Debug)]
 pub struct SerdeContext<'ctx> {
     pub shared_container_cache: &'ctx RefCell<SharedValuesCache>,
 }
 
 impl<'ctx> SerdeContext<'ctx> {
-    pub fn new(shared_container_cache: &'ctx RefCell<SharedValuesCache>) -> Self {
+    pub fn new(
+        shared_container_cache: &'ctx RefCell<SharedValuesCache>,
+    ) -> Self {
         Self {
             shared_container_cache,
         }
@@ -34,14 +40,12 @@ impl<'ctx> SerdeContext<'ctx> {
     #[cfg(test)]
     pub fn serialize_to_json<T>(&mut self, value: &T) -> String
     where
-        T:
-            SerializeWithSerdeContext
+        T: SerializeWithSerdeContext,
     {
-        use crate::{prelude::*};
+        use crate::prelude::*;
         let mut serializer = serde_json::Serializer::new(Vec::new());
         value.serialize_with_ctx(self, &mut serializer).unwrap();
         let bytes = serializer.into_inner();
         String::from_utf8(bytes).unwrap()
     }
 }
-

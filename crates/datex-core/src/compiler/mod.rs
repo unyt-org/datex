@@ -1856,7 +1856,6 @@ pub mod tests {
             type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         },
         prelude::*,
-        preludes::derive::SharedReferencesCache,
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
         shared_values::PointerAddress,
         traits::convert_value_container::ConvertValueContainer,

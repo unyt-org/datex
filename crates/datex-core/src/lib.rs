@@ -29,6 +29,7 @@
 extern crate alloc;
 extern crate num_integer;
 
+#[cfg(feature = "prelude")]
 #[doc(hidden)]
 pub mod preludes;
 
