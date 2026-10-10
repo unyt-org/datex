@@ -3,10 +3,6 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{PointerAddress, SelfOwnedPointerAddress},
     types::entity_type::EntityType,
-    values::value::value_classification::{
-        ValueClassification, ValueTag,
-        unresolved_value_classification::UnresolvedValueClassification,
-    },
 };
 
 pub trait Classification {

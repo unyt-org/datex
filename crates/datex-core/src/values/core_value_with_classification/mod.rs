@@ -11,10 +11,7 @@ use crate::{
     },
     values::{
         core_value::CoreValue,
-        value::{
-            Value,
-            value_classification::{ValueClassification, ValueTag},
-        },
+        value::Value,
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
@@ -30,10 +27,9 @@ mod to_instructions;
 mod update_handler;
 mod value_access;
 use crate::prelude::*;
+pub mod borrowed_core_value_with_classification;
 mod hash;
 mod ops;
-#[cfg(feature = "ast")]
-mod to_datex_expression_data;
 mod try_clone;
 
 #[derive(Debug, Clone)]

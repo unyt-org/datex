@@ -44,16 +44,15 @@ use crate::{
 };
 use core::fmt::{Debug, Display, Formatter};
 
-mod iter_parts;
+pub mod borrowed_core_value;
 pub mod convert_core_value;
 mod convert_parts;
 mod datex_hash;
-pub mod equality;
-pub mod ops;
-#[cfg(feature = "ast")]
-mod to_datex_expression_data;
+mod equality;
+mod iter_parts;
+mod ops;
 mod to_instructions;
-pub mod try_clone;
+mod try_clone;
 
 #[derive(Default, Clone, Debug)]
 pub enum CoreValue {

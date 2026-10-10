@@ -17,26 +17,26 @@ use crate::{
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
-pub mod apply;
+mod apply;
 pub mod borrowed_value;
-pub mod classification;
-pub mod convert_parts;
-pub mod convert_value;
+mod classification;
+mod convert_parts;
+mod convert_value;
 mod datex_hash;
 mod datex_native;
-pub mod equality;
-pub mod get_core_lib_type_id;
-pub mod get_datex_type;
+mod equality;
+mod get_core_lib_type_id;
+mod get_datex_type;
 mod iter_parts;
 mod local_child_path_resolver;
-pub mod ops;
-pub mod serde_dif;
+mod ops;
+mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
-pub mod update_handler;
+mod update_handler;
 mod value_access;
-pub mod value_classification;
+mod value_classification;
 
 use crate::{
     shared_values::errors::AccessError,

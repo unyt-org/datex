@@ -7,12 +7,12 @@ use crate::{
     },
     traits::to_datex_expression_data::ToDatexExpressionData,
     values::value::{
+        borrowed_value::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
         value_classification::{ValueClassification, ValueTag},
     },
 };
-use crate::values::core_value_with_classification::CoreValueWithClassification;
 
-impl ToDatexExpressionData for CoreValueWithClassification {
+impl<'a> ToDatexExpressionData for BorrowedCoreValueWithClassification<'a> {
     fn to_datex_expression_data(&self) -> DatexExpressionData {
         let core_value_expression = self.inner.to_datex_expression_data();
         classification_expression(core_value_expression, &self.classification)
@@ -26,11 +26,11 @@ fn classification_expression(
     if classification.is_unclassified() {
         return expression;
     }
-    
+
     if !classification.impls.is_empty() {
         todo!()
     }
-    
+
     if let Some(ValueTag { tag, is_empty }) = &classification.tag {
         expression = DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),
@@ -41,7 +41,7 @@ fn classification_expression(
             },
         });
     }
-    
+
     if let Some(entity_type) = &classification.entity_type {
         let name = entity_type.entity_definition().name.clone();
         expression = DatexExpressionData::EntityValue(EntityValueExpression {
@@ -50,6 +50,6 @@ fn classification_expression(
             value: expression.with_default_span(),
         })
     }
-    
+
     expression
 }

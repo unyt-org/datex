@@ -24,7 +24,7 @@ impl IterParts for Map {
         Some(Box::new(gen move {
             for (key, value) in self.iter() {
                 if let BorrowedMapKey::Value(v) = key {
-                    yield v.into();
+                    v.into();
                 };
                 yield value.into();
             }

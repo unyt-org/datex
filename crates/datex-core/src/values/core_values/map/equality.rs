@@ -2,13 +2,11 @@ use crate::{
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
-        core_values::map::{BorrowedMapKey, Map},
-        value::Value,
-        value_container::ValueContainer,
+        core_value_with_classification::CoreValueWithClassification,
+        core_values::map::Map, value::Value, value_container::ValueContainer,
     },
 };
 use core::hash::{Hash, Hasher};
-use crate::values::core_value_with_classification::CoreValueWithClassification;
 
 impl PartialEq for Map {
     fn eq(&self, other: &Self) -> bool {
@@ -23,29 +21,6 @@ impl Hash for Map {
         for (k, v) in self.iter() {
             k.hash(state);
             v.hash(state);
-        }
-    }
-}
-
-impl StructuralEq for BorrowedMapKey<'_> {
-    fn structural_eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (BorrowedMapKey::Text(a), BorrowedMapKey::Text(b)) => a == b,
-            (BorrowedMapKey::Value(a), BorrowedMapKey::Value(b)) => {
-                a.structural_eq(b)
-            }
-            (BorrowedMapKey::Text(a), BorrowedMapKey::Value(b))
-            | (BorrowedMapKey::Value(b), BorrowedMapKey::Text(a)) => {
-                if let ValueContainer::Local(Value::Core(CoreValueWithClassification {
-                    inner: CoreValue::Text(text),
-                    ..
-                })) = b
-                {
-                    a == &text.0
-                } else {
-                    false
-                }
-            }
         }
     }
 }

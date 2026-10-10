@@ -22,6 +22,7 @@ macro_rules! derive_prelude {
             runtime::cache::shared_references_cache::{
                 SharedReferencesCache, SharedTypeReservation,
             },
+            serde,
             serde_compat::{
                 serde_to_value_container, try_serde_from_value_container,
             },
@@ -30,7 +31,6 @@ macro_rules! derive_prelude {
                 errors::{AccessError, KeyNotFoundError},
             },
             traits::{
-                child_iterator::ChildIterator,
                 classification::Classification,
                 convert_parts::{
                     FromParts, HasPartsKind, IntoParts, PartsKind,
@@ -42,6 +42,7 @@ macro_rules! derive_prelude {
                 datex_native_structural::DatexNativeStructural,
                 get_core_lib_type_id::GetCoreLibTypeId,
                 get_datex_type::GetDatexType,
+                iter_parts::IterParts,
                 local_child_path_resolver::LocalChildPathResolver,
                 value_access::ValueAccess,
             },
@@ -91,8 +92,6 @@ macro_rules! derive_prelude {
                 },
             },
         };
-
-        use $crate::serde;
     };
 }
 

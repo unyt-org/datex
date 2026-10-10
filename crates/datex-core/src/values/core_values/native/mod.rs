@@ -1,6 +1,5 @@
 use crate::{
     prelude::*,
-    runtime::cache::shared_references_cache::SharedReferencesCache,
     utils::goat_mut::GoatMut,
     values::{
         borrowed_value_container::{
@@ -13,7 +12,7 @@ use crate::{
 use core::{
     any::Any,
     fmt::{Debug, Formatter},
-    ops::Deref,
+    ops::{Deref, DerefMut},
 };
 mod datex_native_ops;
 pub use datex_native_ops::*;
@@ -103,6 +102,12 @@ impl Deref for NativeCoreValue {
 
     fn deref(&self) -> &Self::Target {
         &*self.value
+    }
+}
+
+impl DerefMut for NativeCoreValue {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.value
     }
 }
 
