@@ -32,7 +32,10 @@ impl Instant {
     }
 
     pub fn from_duration(duration: Duration) -> Self {
-        Self(duration.as_millis() as i128)
+        Self::from_millis(duration.as_millis() as i128)
+    }
+    pub fn from_millis(ms: i128) -> Self {
+        Self(ms)
     }
 
     /// Return ISO 8601 UTC string with millisecond precision (always ends with 'Z')

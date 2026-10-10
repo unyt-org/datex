@@ -10,6 +10,7 @@ use crate::{
                 Decimal,
                 typed_decimal::{DecimalTypeVariant, TypedDecimal},
             },
+            instant::Instant,
             integer::{
                 Integer,
                 typed_integer::{IntegerTypeVariant, TypedInteger},
@@ -137,7 +138,7 @@ impl SerializeWithSerdeContext for CoreValue {
     }
 }
 
-impl<'de, 'ctx> DeserializeWithSerdeContext<'de> for CoreValue {
+impl<'de> DeserializeWithSerdeContext<'de> for CoreValue {
     fn deserialize_with_ctx<D>(
         ctx: &SerdeContext<'_>,
         deserializer: D,
@@ -454,6 +455,15 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
                     })?,
                 ))
             }
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Instant) => {
+                Ok(CoreValue::Instant(Instant::from_millis(
+                    v.to_i128().ok_or_else(|| {
+                        E::custom(format!(
+                            "failed to convert integer to i128 for Instant: {v}"
+                        ))
+                    })?,
+                )))
+            }
 
             // decimal
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
@@ -582,6 +592,15 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
                         E::custom(format!("failed to parse decimal: {e}"))
                     })?,
                 ))
+            }
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Instant) => {
+                Ok(CoreValue::Instant(Instant::from_millis(
+                    v.to_i128().ok_or_else(|| {
+                        E::custom(format!(
+                            "failed to convert integer to i128 for Instant: {v}"
+                        ))
+                    })?,
+                )))
             }
 
             // decimal

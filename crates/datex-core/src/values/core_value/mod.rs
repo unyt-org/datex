@@ -430,6 +430,12 @@ impl From<Boolean> for CoreValue {
     }
 }
 
+impl From<Instant> for CoreValue {
+    fn from(value: Instant) -> Self {
+        CoreValue::Instant(value)
+    }
+}
+
 #[cfg(test)]
 /// This module contains tests for the CoreValue struct.
 /// Each CoreValue is a representation of an underlying native value.
