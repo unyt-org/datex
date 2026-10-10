@@ -100,10 +100,7 @@ fn generate_iter_list_parts(fields: &Fields, is_mut: bool) -> TokenStream {
     } else {
         Ident::new("iter_list_parts", Span::call_site())
     };
-    let (
-        as_borrowed_value_container_with_mutability,
-        borrowed_value_container_with_mutability,
-    ) = borrowed_names(is_mut);
+    let as_borrowed_value_container_with_mutability = borrowed_name(is_mut);
     match fields {
         Fields::Unnamed(unnnamed) => {
             let fields = unnnamed
@@ -135,19 +132,12 @@ fn generate_iter_list_parts(fields: &Fields, is_mut: bool) -> TokenStream {
     }
 }
 
-fn borrowed_names(is_mut: bool) -> (Ident, Ident) {
-    (
-        if is_mut {
-            Ident::new("as_borrowed_value_container_mut", Span::call_site())
-        } else {
-            Ident::new("as_borrowed_value_container", Span::call_site())
-        },
-        if is_mut {
-            Ident::new("BorrowedValueContainerMut", Span::call_site())
-        } else {
-            Ident::new("BorrowedValueContainer", Span::call_site())
-        },
-    )
+fn borrowed_name(is_mut: bool) -> Ident {
+    if is_mut {
+        Ident::new("as_borrowed_value_container_mut", Span::call_site())
+    } else {
+        Ident::new("as_borrowed_value_container", Span::call_site())
+    }
 }
 
 fn generate_iter_map_parts(fields: &Fields, is_mut: bool) -> TokenStream {
@@ -157,14 +147,13 @@ fn generate_iter_map_parts(fields: &Fields, is_mut: bool) -> TokenStream {
         Ident::new("iter_map_parts", Span::call_site())
     };
 
-    let (
-        as_borrowed_value_container_with_mutability,
-        borrowed_value_container_with_mutability,
-    ) = borrowed_names(is_mut);
+    let as_borrowed_value_container_with_mutability = borrowed_name(is_mut);
     match fields {
         Fields::Named(named) => {
             let fields_with_names = named
                 .iter()
+                // FIXME: skips serde fields for now (cannot be borrowed as value containers)
+                .filter(|field| field.field.attributes.field_mapping.is_datex())
                 .map(|(field)| {
                     let name = field.datex_field_name();
                     let ident = field.normalized_ident();
