@@ -22,7 +22,6 @@ where
     fn try_get_property(
         &self,
         _key: BorrowedValueKey,
-        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         todo!()
     }
@@ -30,7 +29,6 @@ where
     fn try_get_property_mut(
         &mut self,
         _key: BorrowedValueKey,
-        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         todo!()
     }

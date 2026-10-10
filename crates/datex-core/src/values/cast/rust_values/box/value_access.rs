@@ -17,15 +17,13 @@ impl<T: ValueAccess> ValueAccess for Box<T> {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
-        self.deref().try_get_property(key, cache)
+        self.deref().try_get_property(key)
     }
     fn try_get_property_mut(
         &mut self,
         key: BorrowedValueKey,
-        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
-        self.deref_mut().try_get_property_mut(key, cache)
+        self.deref_mut().try_get_property_mut(key)
     }
 }

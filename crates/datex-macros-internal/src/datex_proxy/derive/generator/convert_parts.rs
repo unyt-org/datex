@@ -75,7 +75,6 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
 
             fn try_into_map_parts<'a>(
                 self: Box<Self>,
-                cache: &'a mut SharedReferencesCache,
             ) -> Result<Map, ()>
             where
                 Self: 'a,
@@ -85,7 +84,6 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
 
             fn try_into_list_parts<'a>(
                 self: Box<Self>,
-                cache: &'a mut SharedReferencesCache
             ) -> Result<List, ()>
             where
                 Self: 'a,
@@ -95,7 +93,6 @@ fn generate_into_parts(structure_data: &StructureData) -> TokenStream {
 
             fn try_into_single_value<'a>(
                 self: Box<Self>,
-                cache: &'a mut SharedReferencesCache,
             ) -> Result<ValueContainer, ()>
             where
                 Self: 'a,
@@ -149,7 +146,7 @@ fn generate_into_map_parts_for_fields(
         Fields::Unit | Fields::Unnamed(_) => quote! { Err(()) }, // cannot be converted into map parts
         Fields::Transparent(field) => {
             let accessor = field.normalized_ident();
-            quote! { Box::new(#accessor).try_into_map_parts(cache) } // delegate to the single field's implementation
+            quote! { Box::new(#accessor).try_into_map_parts() } // delegate to the single field's implementation
         }
     }
 }
@@ -180,7 +177,7 @@ fn generate_into_list_parts_for_fields(
         Fields::Unit | Fields::Named(_) => quote! { Err(()) }, // cannot be converted into list parts
         Fields::Transparent(field) => {
             let accessor = field.normalized_ident();
-            quote! { Box::new(#accessor).try_into_list_parts(cache) } // delegate to the single field's implementation
+            quote! { Box::new(#accessor).try_into_list_parts() } // delegate to the single field's implementation
         }
     }
 }
@@ -192,7 +189,7 @@ fn generate_into_single_value_for_fields(
     match fields {
         Fields::Transparent(field) => {
             let accessor = field.normalized_ident();
-            quote! { Box::new(#accessor).try_into_single_value(cache) } // delegate to the single field's implementation
+            quote! { Box::new(#accessor).try_into_single_value() } // delegate to the single field's implementation
         }
         Fields::Unit => quote! { Ok(ValueContainer::Local(Value::null())) }, // unit structs can be represented as null
         Fields::Named(_) | Fields::Unnamed(_) => quote! { Err(()) }, // only transparent structs can be converted into a single value

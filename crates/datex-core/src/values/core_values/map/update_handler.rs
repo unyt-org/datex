@@ -28,7 +28,7 @@ impl InternalMutabilityUpdateHandler for Map {
             child.set_update_callback_data(
                 observe_data
                     .as_ref()
-                    .map(|data| data.with_child_path(MapKey::from(key))),
+                    .map(|data| data.with_child_path(key.try_clone_to_value_container().unwrap())), // TODO: what happens if key can't be cloned here? (should not be allowed)
             );
         }
         // Update the update callback data for the list itself

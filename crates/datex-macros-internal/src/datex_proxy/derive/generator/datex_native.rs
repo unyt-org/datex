@@ -3,7 +3,7 @@ use quote::quote;
 
 use crate::datex_proxy::data::{StructureData, TypeKind};
 
-/// Generates the [DatexNative] implementation, including [AsBorrowed] and [AsBorrowedMut] implementations for the given structure data.
+/// Generates the [DatexNative] implementation for the given structure data.
 /// Returns a TokenStream of the implementations.
 pub fn generate_datex_native(structure_data: &StructureData) -> TokenStream {
     let StructureData {

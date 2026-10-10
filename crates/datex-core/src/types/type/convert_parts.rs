@@ -13,7 +13,6 @@ use crate::{
 impl IntoParts for Type {
     fn try_into_single_value<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<ValueContainer, ()>
     where
         Self: 'a,

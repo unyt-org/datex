@@ -19,7 +19,11 @@ impl IterParts for Map {
                 > + 'a,
         >,
     > {
-        Some(Box::new(self.iter()))
+        Some(Box::new(gen move {
+            for (key, value) in self.iter() {
+                yield (key, value.into());
+            }
+        }))
     }
 
     fn iter_map_parts_mut<'a>(

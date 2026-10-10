@@ -24,7 +24,6 @@ impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts
 {
     fn try_into_map_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<Map, ()>
     where
         Self: 'a,

@@ -18,11 +18,10 @@ impl ValueAccess for Value {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         match &self {
-            Value::Core(core) => core.try_get_property(key, cache),
-            Value::Native(native) => native.try_get_property(key, cache),
+            Value::Core(core) => core.try_get_property(key),
+            Value::Native(native) => native.try_get_property(key),
             _ => {
                 // If the value is not a map, we cannot get a property
                 Err(AccessError::InvalidOperation(
@@ -35,11 +34,10 @@ impl ValueAccess for Value {
     fn try_get_property_mut(
         &mut self,
         key: BorrowedValueKey,
-        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         match self {
-            Value::Core(core) => core.try_get_property_mut(key, cache),
-            Value::Native(native) => native.try_get_property_mut(key, cache),
+            Value::Core(core) => core.try_get_property_mut(key),
+            Value::Native(native) => native.try_get_property_mut(key),
             _ => {
                 // If the value is not a map, we cannot get a property
                 Err(AccessError::InvalidOperation(

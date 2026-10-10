@@ -16,7 +16,6 @@ impl<T> HasPartsKind for Vec<T> {
 impl<T: ConvertValueContainer> IntoParts for Vec<T> {
     fn try_into_list_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<List, ()>
     where
         Self: 'a,

@@ -304,17 +304,15 @@ impl Value {
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
-        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
-        <Self as ValueAccess>::try_get_property(self, key.into(), cache)
+        <Self as ValueAccess>::try_get_property(self, key.into())
     }
 
     pub fn try_get_property_mut<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
-        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
-        <Self as ValueAccess>::try_get_property_mut(self, key.into(), cache)
+        <Self as ValueAccess>::try_get_property_mut(self, key.into())
     }
 
     /// Returns the actual current [TypeDefinition] of the value

@@ -65,40 +65,37 @@ impl FromParts for Value {
 impl IntoParts for Value {
     fn try_into_map_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<Map, ()>
     where
         Self: 'a,
     {
         match self {
-            Value::Core(core) => Box::new(core).try_into_map_parts(cache),
-            Value::Native(native) => native.value.try_into_map_parts(cache),
+            Value::Core(core) => Box::new(core).try_into_map_parts(),
+            Value::Native(native) => native.value.try_into_map_parts(),
         }
     }
 
     fn try_into_list_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<List, ()>
     where
         Self: 'a,
     {
         match self {
-            Value::Core(core) => Box::new(core).try_into_list_parts(cache),
-            Value::Native(native) => native.value.try_into_list_parts(cache),
+            Value::Core(core) => Box::new(core).try_into_list_parts(),
+            Value::Native(native) => native.value.try_into_list_parts(),
         }
     }
 
     fn try_into_single_value<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<ValueContainer, ()>
     where
         Self: 'a,
     {
         match self {
-            Value::Core(core) => Box::new(core).try_into_single_value(cache),
-            Value::Native(native) => native.value.try_into_single_value(cache),
+            Value::Core(core) => Box::new(core).try_into_single_value(),
+            Value::Native(native) => native.value.try_into_single_value(),
         }
     }
 }

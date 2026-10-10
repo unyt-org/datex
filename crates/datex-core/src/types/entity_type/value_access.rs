@@ -23,7 +23,6 @@ impl ValueAccess for EntityType {
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         if let Some(key) = key.try_as_text() {
             let callable_ref = Ref::filter_map(

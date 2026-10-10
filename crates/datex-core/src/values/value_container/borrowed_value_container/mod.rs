@@ -27,6 +27,7 @@ mod identity;
 mod ops;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+pub mod hash;
 
 use core::fmt::Debug;
 

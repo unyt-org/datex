@@ -35,7 +35,7 @@ fn generate_child_property_methods(structure: &Structure) -> TokenStream {
     );
     let iter_list_parts_mut = generate_struct_or_enum_variants_fields_mapping(
         structure,
-        SelfAccess::Borrowed,
+        SelfAccess::BorrowedMut,
         |fields, _| generate_iter_list_parts(fields, true),
     );
     let iter_map_parts = generate_struct_or_enum_variants_fields_mapping(
@@ -45,7 +45,7 @@ fn generate_child_property_methods(structure: &Structure) -> TokenStream {
     );
     let iter_map_parts_mut = generate_struct_or_enum_variants_fields_mapping(
         structure,
-        SelfAccess::Borrowed,
+        SelfAccess::BorrowedMut,
         |fields, _| generate_iter_map_parts(fields, true),
     );
     quote! {
@@ -95,6 +95,11 @@ fn generate_child_property_methods(structure: &Structure) -> TokenStream {
 }
 
 fn generate_iter_list_parts(fields: &Fields, is_mut: bool) -> TokenStream {
+    let iter_list_parts = if is_mut {
+        Ident::new("iter_list_parts_mut", Span::call_site())
+    } else {
+        Ident::new("iter_list_parts", Span::call_site())
+    };
     let (
         as_borrowed_value_container_with_mutability,
         borrowed_value_container_with_mutability,
@@ -119,7 +124,7 @@ fn generate_iter_list_parts(fields: &Fields, is_mut: bool) -> TokenStream {
         Fields::Transparent(inner) => {
             let inner = inner.normalized_ident();
             quote! {
-                #inner.iter_children()
+                #inner.#iter_list_parts()
             }
         }
         Fields::Unit | Fields::Named(_) => {
@@ -146,6 +151,12 @@ fn borrowed_names(is_mut: bool) -> (Ident, Ident) {
 }
 
 fn generate_iter_map_parts(fields: &Fields, is_mut: bool) -> TokenStream {
+    let iter_map_parts = if is_mut {
+        Ident::new("iter_map_parts_mut", Span::call_site())
+    } else {
+        Ident::new("iter_map_parts", Span::call_site())
+    };
+
     let (
         as_borrowed_value_container_with_mutability,
         borrowed_value_container_with_mutability,
@@ -158,8 +169,10 @@ fn generate_iter_map_parts(fields: &Fields, is_mut: bool) -> TokenStream {
                     let name = field.datex_field_name();
                     let ident = field.normalized_ident();
                     quote! {
-                        yield #borrowed_value_container_with_mutability::from(#name);
-                        yield #ident.#as_borrowed_value_container_with_mutability();
+                        yield (
+                            BorrowedValueContainer::from(#name),
+                            #ident.#as_borrowed_value_container_with_mutability()
+                        );
                     }
                 })
                 .collect::<Vec<_>>();
@@ -172,7 +185,7 @@ fn generate_iter_map_parts(fields: &Fields, is_mut: bool) -> TokenStream {
         Fields::Transparent(inner) => {
             let inner = inner.normalized_ident();
             quote! {
-                #inner.iter_children()
+                #inner.#iter_map_parts()
             }
         }
         Fields::Unit | Fields::Unnamed(_) => {

@@ -14,7 +14,6 @@ impl HasPartsKind for Map {
 impl IntoParts for Map {
     fn try_into_map_parts<'a>(
         self: Box<Self>,
-        _cache: &'a mut SharedReferencesCache,
     ) -> Result<Map, ()>
     where
         Self: 'a,
