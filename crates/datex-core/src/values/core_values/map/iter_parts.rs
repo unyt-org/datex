@@ -1,12 +1,10 @@
 use crate::{
     traits::iter_parts::IterParts,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
-        core_values::map::{BorrowedMapKey, BorrowedMutMapKey, Map},
+        core_values::map::{Map},
     },
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl IterParts for Map {
     fn iter_map_parts<'a>(
@@ -21,14 +19,7 @@ impl IterParts for Map {
                 > + 'a,
         >,
     > {
-        Some(Box::new(gen move {
-            for (key, value) in self.iter() {
-                if let BorrowedMapKey::Value(v) = key {
-                    v.into();
-                };
-                yield value.into();
-            }
-        }))
+        Some(Box::new(self.iter()))
     }
 
     fn iter_map_parts_mut<'a>(
@@ -44,11 +35,8 @@ impl IterParts for Map {
         >,
     > {
         Some(Box::new(gen move {
-            for (key, value) in self.into_iter() {
-                if let BorrowedMutMapKey::Value(v) = key {
-                    yield v.into();
-                };
-                yield value.into();
+            for (key, value) in self.iter_mut() {
+                yield (key, value.into());
             }
         }))
     }

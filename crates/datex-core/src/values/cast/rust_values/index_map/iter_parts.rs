@@ -5,18 +5,17 @@ use crate::{
         convert_value_container::ConvertValueContainer,
     },
     values::{
-        borrowed_value_container::BorrowedValueContainer,
-        core_values::native::DatexNativeBase,
     },
 };
 use indexmap::IndexMap;
+use crate::values::value_container::borrowed_value_container::BorrowedValueContainer;
 
 impl<K: ConvertValueContainer, V: ConvertValueContainer> IterParts
     for IndexMap<K, V, RandomState>
 {
     fn iter_list_parts<'a>(
 		&'a self,
-	) -> Option<Box<dyn Iterator<Item = crate::values::borrowed_value_container::BorrowedValueContainer<'a>> + 'a>>
+	) -> Option<Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>>
 {
         Some(Box::new(self.iter().flat_map(|(k, v)| {
             vec![

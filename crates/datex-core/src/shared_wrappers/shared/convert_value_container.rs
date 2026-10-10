@@ -1,15 +1,12 @@
 use crate::{
-    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_wrappers::shared::Shared,
     traits::convert_value_container::ConvertValueContainer,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         core_values::native::DatexNative,
         value_container::ValueContainer,
     },
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl<T> ConvertValueContainer for Shared<T>
 where

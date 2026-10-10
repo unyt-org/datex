@@ -4,6 +4,8 @@ use crate::{
     shared_values::{PointerAddress, SelfOwnedPointerAddress},
     types::entity_type::EntityType,
 };
+use crate::values::value::value_classification::{ValueClassification, ValueTag};
+use crate::values::value::value_classification::unresolved_value_classification::UnresolvedValueClassification;
 
 pub trait Classification {
     /// Returns the DATEX [EntityType] of the native value if it has an entity type.

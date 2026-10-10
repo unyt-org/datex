@@ -18,7 +18,6 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-mod apply;
 mod classification;
 mod datex_hash;
 mod equality;
@@ -38,7 +37,7 @@ pub enum BorrowedValueContainer<'a> {
 }
 
 impl_display_for_datex_value!(
-    BorrowedValueContainer,
+    BorrowedValueContainer<_>,
     impl<'a> core::fmt::Display for BorrowedValueContainer<'a> {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             core::write!(f, "[[ BorrowedValueContainer ]]")
@@ -130,6 +129,19 @@ impl<'a> From<BorrowedValue<'a>> for BorrowedValueContainer<'a> {
 
 impl<'a> From<&'a ValueContainer> for BorrowedValueContainer<'a> {
     fn from(value_container: &'a ValueContainer) -> Self {
+        match value_container {
+            ValueContainer::Shared(shared_container) => {
+                BorrowedValueContainer::Shared(shared_container.clone())
+            }
+            ValueContainer::Local(local_value) => {
+                BorrowedValueContainer::Local(BorrowedValue::from(local_value))
+            }
+        }
+    }
+}
+
+impl<'a> From<&'a mut ValueContainer> for BorrowedValueContainer<'a> {
+    fn from(value_container: &'a mut ValueContainer) -> Self {
         match value_container {
             ValueContainer::Shared(shared_container) => {
                 BorrowedValueContainer::Shared(shared_container.clone())

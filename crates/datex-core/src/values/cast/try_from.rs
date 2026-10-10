@@ -8,6 +8,12 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
+        core_value_with_classification::borrowed_core_value_with_classification::{
+            BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut,
+        },
+        core_value::borrowed_core_value::{
+            BorrowedCoreValue, BorrowedCoreValueMut,
+        },
         core_values::{
             boolean::Boolean,
             callable::Callable,
@@ -24,13 +30,6 @@ use crate::{
             Value,
             borrowed_value::{
                 BorrowedValue, BorrowedValueMut,
-                borrowed_core_value::{
-                    BorrowedCoreValue, BorrowedCoreValueMut,
-                },
-                borrowed_core_value_with_classification::{
-                    BorrowedCoreValueWithClassification,
-                    BorrowedCoreValueWithClassificationMut,
-                },
             },
         },
     },

@@ -7,14 +7,12 @@ use crate::{
         value_access::ValueAccess,
     },
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         value_container::value_key::BorrowedValueKey,
     },
 };
 use core::{cell::RefCell, hash::Hash};
 use indexmap::IndexMap;
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl<K, V> ValueAccess for IndexMap<K, V, RandomState>
 where

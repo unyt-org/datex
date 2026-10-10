@@ -17,6 +17,9 @@ pub struct UnresolvedValueClassification {
 }
 
 impl UnresolvedValueClassification {
+    pub fn new_unclassified() -> Self {
+        UnresolvedValueClassification::default()
+    }
     pub fn is_unclassified(&self) -> bool {
         self.entity_type_address.is_none()
             && self.impls.is_empty()

@@ -22,6 +22,7 @@ use crate::{
     },
 };
 use core::fmt;
+use std::ops::Deref;
 use erased_serde::__private::serde::de::{IgnoredAny, MapAccess};
 use num::ToPrimitive;
 use serde::{
@@ -110,7 +111,7 @@ impl SerializeWithSerdeContext for Value {
         S: Serializer,
     {
         match self {
-            Value::Native(native) => native.serialize_with_ctx(ctx, serializer),
+            Value::Native(native) => native.deref().serialize_with_ctx(ctx, serializer),
             Value::Core(core) => core.serialize_with_ctx(ctx, serializer),
         }
     }

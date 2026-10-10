@@ -9,17 +9,12 @@ use crate::{
             Value,
             borrowed_value::{
                 BorrowedValue, BorrowedValueMut,
-                borrowed_core_value::{
-                    BorrowedCoreValue, BorrowedCoreValueMut,
-                },
-                borrowed_core_value_with_classification::{
-                    BorrowedCoreValueWithClassification,
-                    BorrowedCoreValueWithClassificationMut,
-                },
             },
         },
     },
 };
+use crate::values::core_value::borrowed_core_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::values::core_value_with_classification::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
 
 impl ConvertValue for f32 {
     fn to_value(self) -> Value {

@@ -36,7 +36,7 @@ mod to_datex_expression_data;
 mod to_instructions;
 mod update_handler;
 mod value_access;
-mod value_classification;
+pub mod value_classification;
 
 use crate::{
     shared_values::errors::AccessError,
@@ -49,9 +49,6 @@ use crate::{
     utils::impl_display_for_datex_value::impl_display_for_datex_value,
     value_updates::update_handler::InternalMutabilityUpdateHandler,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         core_values::{endpoint::Endpoint, native::NativeCoreValue},
         value::value_classification::{
             ValueClassification, ValueTag,
@@ -64,6 +61,8 @@ use core::{
     fmt::{Debug, Formatter},
     result::Result,
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
+
 mod try_clone;
 
 #[derive(Debug, Clone)]

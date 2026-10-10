@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     dif::serialize_with_serde_context::SerializeWithSerdeContext,
     values::{
-        core_values::map::{BorrowedMapKey, Map, MapEntries},
+        core_values::map::{Map, MapEntries},
         value_container::ValueContainer,
     },
 };
@@ -11,30 +11,12 @@ use core::fmt;
 use indexmap::IndexMap;
 use serde::{
     Deserializer, Serializer,
-    de::{self, DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor},
+    de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
 use crate::dif::value_with_serde_context::ValueWithSerdeContext;
 use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
-
-impl<'ctx> SerializeWithSerdeContext for BorrowedMapKey<'ctx> {
-    fn serialize_with_ctx<S>(
-        &self,
-        ctx: &SerdeContext<'_>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            BorrowedMapKey::Text(s) => serializer.serialize_str(s),
-            BorrowedMapKey::Value(v) => {
-                v.serialize_with_ctx(ctx, serializer)
-            }
-        }
-    }
-}
 
 impl<'ctx> SerializeWithSerdeContext
     for (ValueContainer, ValueContainer)

@@ -20,10 +20,9 @@ use crate::{
     },
 };
 
-mod borrowed_value_container;
+pub mod borrowed_value_container;
 
 mod apply;
-mod ops;
 mod update_handler;
 pub mod value_key;
 use crate::{

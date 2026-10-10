@@ -2,9 +2,6 @@ use crate::{
     prelude::*,
     utils::goat_mut::GoatMut,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         value::{Value, borrowed_value::BorrowedValueMut},
         value_container::ValueContainer,
     },
@@ -32,6 +29,7 @@ use crate::{
 };
 pub use datex_native_trait::*;
 pub use ops::*;
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl<T: DatexNative + ConvertValue + Classification> ConvertValueContainer
     for T

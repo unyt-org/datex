@@ -1,9 +1,6 @@
 use crate::{
     traits::get_core_lib_type_id::GetCoreLibTypeId,
-    values::{
-        borrowed_value_container::BorrowedValueContainer,
-        value_container::ValueContainer,
-    },
 };
+use crate::values::value_container::borrowed_value_container::BorrowedValueContainer;
 
 impl<'a> GetCoreLibTypeId for BorrowedValueContainer<'a> {}

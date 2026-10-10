@@ -1,12 +1,10 @@
 use crate::{
     traits::iter_parts::IterParts,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         core_values::range::Range,
     },
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl IterParts for Range {
     fn iter_list_parts<'a>(

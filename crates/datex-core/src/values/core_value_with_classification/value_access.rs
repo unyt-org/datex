@@ -6,15 +6,11 @@ use crate::{
     types::r#type::Type,
     utils::goat::Goat,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
         value::{
             borrowed_value::{
-                BorrowedValue, borrowed_core_value::BorrowedCoreValue,
-                borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
+                BorrowedValue, BorrowedValueMut,
             },
             value_classification::ValueClassification,
         },
@@ -22,6 +18,9 @@ use crate::{
     },
 };
 use core::cell::{Ref, RefCell};
+use crate::values::core_value::borrowed_core_value::BorrowedCoreValue;
+use crate::values::core_value_with_classification::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl ValueAccess for CoreValueWithClassification {
     fn try_get_property(

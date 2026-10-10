@@ -9,17 +9,13 @@ use crate::{
             Value,
             borrowed_value::{
                 BorrowedValue, BorrowedValueMut,
-                borrowed_core_value::{
-                    BorrowedCoreValue, BorrowedCoreValueMut,
-                },
-                borrowed_core_value_with_classification::{
-                    BorrowedCoreValueWithClassification,
-                    BorrowedCoreValueWithClassificationMut,
-                },
             },
         },
     },
 };
+use crate::values::core_value_with_classification::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
+use crate::values::core_value::borrowed_core_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+
 macro_rules! impl_pointer_sized_core_value_conversions {
     ($($ty:ident => $variant:ident, $repr:ty, $borrow:ident, $borrow_mut:ident;)* $(,)?) => {
         $(

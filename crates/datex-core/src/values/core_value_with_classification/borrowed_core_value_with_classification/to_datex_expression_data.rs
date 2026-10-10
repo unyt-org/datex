@@ -7,10 +7,10 @@ use crate::{
     },
     traits::to_datex_expression_data::ToDatexExpressionData,
     values::value::{
-        borrowed_value::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
         value_classification::{ValueClassification, ValueTag},
     },
 };
+use crate::values::core_value_with_classification::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
 
 impl<'a> ToDatexExpressionData for BorrowedCoreValueWithClassification<'a> {
     fn to_datex_expression_data(&self) -> DatexExpressionData {

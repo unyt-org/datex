@@ -5,11 +5,9 @@ use crate::{
     traits::value_access::ValueAccess,
     types::entity_type::EntityType,
     values::{
-        borrowed_value_container::BorrowedValueContainer,
         value::{
             borrowed_value::{
-                BorrowedValue, borrowed_core_value::BorrowedCoreValue,
-                borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
+                BorrowedValue,
             },
             value_classification::ValueClassification,
         },
@@ -17,6 +15,9 @@ use crate::{
     },
 };
 use core::cell::{Ref, RefCell};
+use crate::values::core_value::borrowed_core_value::BorrowedCoreValue;
+use crate::values::core_value_with_classification::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
+use crate::values::value_container::borrowed_value_container::BorrowedValueContainer;
 
 impl ValueAccess for EntityType {
     fn try_get_property(

@@ -3,10 +3,8 @@ use crate::{
         iter_parts::IterParts,
         convert_value_container::ConvertValueContainer,
     },
-    values::borrowed_value_container::{
-        BorrowedValueContainer, BorrowedValueContainerMut,
-    },
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl<T: ConvertValueContainer> IterParts for Vec<T> {
     fn iter_list_parts<'a>(

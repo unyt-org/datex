@@ -3,23 +3,22 @@ use crate::{
     traits::convert_value::ConvertValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
+        value_container:: borrowed_value_container::{
+          BorrowedValueContainer, BorrowedValueContainerMut,
         },
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
         core_values::text::Text,
+        core_value::borrowed_core_value::{
+            BorrowedCoreValue, BorrowedCoreValueMut,
+        },
+        core_value_with_classification::borrowed_core_value_with_classification::{
+            BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut,
+        },
         value::{
             Value,
             borrowed_value::{
                 BorrowedValue, BorrowedValueMut,
-                borrowed_core_value::{
-                    BorrowedCoreValue, BorrowedCoreValueMut,
-                },
-                borrowed_core_value_with_classification::{
-                    BorrowedCoreValueWithClassification,
-                    BorrowedCoreValueWithClassificationMut,
-                },
             },
         },
     },

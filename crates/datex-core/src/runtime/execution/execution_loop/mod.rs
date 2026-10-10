@@ -85,7 +85,7 @@ use crate::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
             list::List,
-            map::{Map, MapKey},
+            map::{Map},
         }, value::Value, value_container::{
             ValueContainer, error::ValueError, value_key::ValueKey,
         },
@@ -106,13 +106,13 @@ use crate::{
         DecrementUpdateData, IncrementUpdateData, ListSpliceUpdateData,
     },
     values::{
-        borrowed_value_container::BorrowedValueContainer,
         core_values::callable::DatexBytecodeCallable,
         value::value_classification::{ValueClassification, ValueTag},
     },
 };
 use collected_execution_result::CollectedExecutionResult;
 use crate::instruction::instruction_data::ImplMarkersData;
+use crate::values::value_container::borrowed_value_container::BorrowedValueContainer;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -659,7 +659,7 @@ pub gen fn inner_execution_loop(
                                     let key = collected_results
                                         .try_pop_value_container(&mut state)?;
                                     CollectedExecutionResult::key_value_pair(
-                                        MapKey::Value(key),
+                                        key,
                                         value,
                                     )
                                 }
@@ -668,7 +668,7 @@ pub gen fn inner_execution_loop(
                                     short_text_data,
                                 ) => {
                                     let value = collected_results.try_pop_value_container(&mut state)?;
-                                    let key = MapKey::Text(short_text_data.0);
+                                    let key = ValueContainer::from(short_text_data.0);
                                     CollectedExecutionResult::key_value_pair(
                                         key, value,
                                     )

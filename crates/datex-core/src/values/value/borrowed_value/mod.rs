@@ -1,31 +1,17 @@
 use crate::{
     prelude::*,
-    runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::{
         classification::Classification,
         datex_native_structural::DatexNativeStructural,
-    },
-    types::{
-        entities::entity_type_definition::EntityTypeDefinition, r#type::Type,
     },
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
         core_value::CoreValue,
         core_values::{
-            boolean::Boolean,
-            callable::Callable,
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
-            list::List,
-            map::Map,
             native::DatexNative,
-            range::Range,
-            text::Text,
         },
         value,
         value::{Value, value_classification::ValueClassification},
-        value_container::ValueContainer,
     },
 };
 use core::{
@@ -33,9 +19,12 @@ use core::{
     fmt::{Debug, Display},
     ops::{Deref, DerefMut},
 };
+use crate::values::core_value::borrowed_core_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::values::core_value_with_classification::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
 
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+pub mod classification;
 
 /// Similar to [Value], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.
@@ -118,6 +107,19 @@ impl<'a> BorrowedValue<'a> {
 
 impl<'a> From<&'a Value> for BorrowedValue<'a> {
     fn from(value: &'a Value) -> Self {
+        match value {
+            Value::Core(core_value) => BorrowedValue::Core(
+                BorrowedCoreValueWithClassification::from(core_value),
+            ),
+            Value::Native(native_value) => BorrowedValue::Native(
+                Goat::Borrowed(native_value.value.deref()),
+            ),
+        }
+    }
+}
+
+impl<'a> From<&'a mut Value> for BorrowedValue<'a> {
+    fn from(value: &'a mut Value) -> Self {
         match value {
             Value::Core(core_value) => BorrowedValue::Core(
                 BorrowedCoreValueWithClassification::from(core_value),

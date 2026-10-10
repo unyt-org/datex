@@ -1,12 +1,10 @@
 use crate::{
     traits::iter_parts::IterParts,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         core_value_with_classification::CoreValueWithClassification,
     },
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl IterParts for CoreValueWithClassification {
     fn iter_list_parts<'a>(
