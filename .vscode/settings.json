@@ -7,7 +7,6 @@
         "compiler",
         "crypto_enabled"
     ],
-    "rust-analyzer.cargo.noDefaultFeatures": true,
     "rust-analyzer.imports.preferPrelude": false,
     "rust-analyzer.imports.preferNoStd": true,
     "rust-analyzer.imports.granularity.enforce": true,

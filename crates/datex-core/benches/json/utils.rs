@@ -8,10 +8,7 @@ use datex_core::{
         core_compilation_context::{CompileInput, DXBWithSharedValues},
         value_compiler::compile_value_container,
     },
-    decompiler::{
-        DecompileOptions,
-        dxb_to_source_code::{self, dxb_to_source_code},
-    },
+    decompiler::{DecompileOptions, dxb_to_source_code},
     runtime::{
         Runtime,
         execution::{
@@ -77,7 +74,7 @@ pub fn json_to_runtime_value_baseline_json_syntax(json: &str) {
     assert!(json_value.is_object(), "Expected JSON to be an object");
 }
 
-pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
+pub fn json_to_runtime_value_datex(json: &str) {
     let runtime = Runtime::stub();
 
     let (dxb, _) = compile_script(
@@ -123,7 +120,7 @@ pub fn json_to_runtime_value_datex_force_static_value(
     dxb.expect("Static Value should not be empty")
 }
 
-pub fn json_to_dxb<'a>(json: &'a str) {
+pub fn json_to_dxb(json: &str) {
     let (dxb, _) = compile_script(
         json,
         CompileOptions {

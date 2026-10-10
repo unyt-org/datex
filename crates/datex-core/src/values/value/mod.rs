@@ -64,6 +64,7 @@ use core::{
     fmt::{Debug, Formatter},
     result::Result,
 };
+mod try_clone;
 
 #[derive(Debug, Clone)]
 /// Represents a local DATEX value.
@@ -103,6 +104,15 @@ impl Value {
             inner: inner.into(),
             classification,
         })
+    }
+
+    pub fn is_collection_value(&self) -> bool {
+        match self {
+            Value::Core(core_value_with_classification) => {
+                core_value_with_classification.is_collection_value()
+            }
+            Value::Native(_) => false,
+        }
     }
 
     pub fn null() -> Self {
