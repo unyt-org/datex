@@ -100,11 +100,11 @@ impl<'a> BorrowedValue<'a> {
 
     /// Tries to get a borrow of the current value as the specified type.
     /// Does not perform any type conversion.
-    pub fn try_as<T: ?Sized>(self) -> Option<Goat<'a, T>>
+    pub fn try_as<T: ?Sized>(self) -> Result<Goat<'a, T>, Self>
     where
-        Goat<'a, T>: TryFrom<BorrowedValue<'a>>,
+        Goat<'a, T>: TryFrom<BorrowedValue<'a>, Error = Self>,
     {
-        Goat::try_from(self).ok()
+        Goat::try_from(self)
     }
 }
 

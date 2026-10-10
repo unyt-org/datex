@@ -17,6 +17,7 @@ mod datex_native_trait;
 pub mod display;
 mod get_datex_type;
 mod ops;
+pub mod goat_helpers;
 
 use crate::{
     libs::core::type_id::CoreLibTypeId,

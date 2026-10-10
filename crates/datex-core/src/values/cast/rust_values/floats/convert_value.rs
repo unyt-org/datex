@@ -57,35 +57,43 @@ impl ConvertValue for f32 {
 }
 
 impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, f32> {
-    type Error = ();
+    type Error = BorrowedValue<'a>;
     fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
         match value {
             BorrowedValue::Core(BorrowedCoreValueWithClassification {
                 inner: BorrowedCoreValue::TypedDecimal(value),
-                ..
-            }) => value.filter_map(|v| v.borrow_as_f32()).ok_or(()),
+                classification
+            }) => value.try_filter_map(|v| v.borrow_as_f32())
+                .map_err(|v| BorrowedValue::Core(BorrowedCoreValueWithClassification {
+                    inner: BorrowedCoreValue::TypedDecimal(v),
+                    classification,
+                })),
             BorrowedValue::Native(native) => native
-                .filter_map(|v| v.as_any().downcast_ref::<f32>())
-                .ok_or(()),
-            _ => Err(()),
+                .try_as()
+                .map_err(|v| BorrowedValue::Native(v)),
+            _ => Err(value),
         }
     }
 }
 
 impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, f32> {
-    type Error = ();
+    type Error = BorrowedValueMut<'a>;
     fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
         match value {
             BorrowedValueMut::Core(
                 BorrowedCoreValueWithClassificationMut {
                     inner: BorrowedCoreValueMut::TypedDecimal(value),
-                    ..
+                    classification
                 },
-            ) => value.filter_map(|v| v.borrow_mut_as_f32()).ok_or(()),
+            ) => value.try_filter_map(|v| v.borrow_mut_as_f32())
+                    .map_err(|v| BorrowedValueMut::Core(BorrowedCoreValueWithClassificationMut {
+                    inner: BorrowedCoreValueMut::TypedDecimal(v),
+                    classification,
+                })),
             BorrowedValueMut::Native(native) => native
-                .filter_map(|v| v.as_any_mut().downcast_mut::<f32>())
-                .ok_or(()),
-            _ => Err(()),
+                .try_as_mut()
+                .map_err(|v| BorrowedValueMut::Native(v)),
+            _ => Err(value),
         }
     }
 }

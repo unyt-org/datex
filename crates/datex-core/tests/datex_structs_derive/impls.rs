@@ -31,7 +31,6 @@ use datex_core::{
         },
     },
     values::{
-        borrowed_value_container::BorrowedValueContainer,
         core_value::CoreValue,
         core_values::{
             callable::Callable,

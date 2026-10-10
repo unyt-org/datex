@@ -47,25 +47,25 @@ impl ConvertValue for Duration {
 }
 
 impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, Duration> {
-    type Error = ();
+    type Error = BorrowedValue<'a>;
     fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
         match value {
             BorrowedValue::Native(native) => native
-                .filter_map(|v| v.as_any().downcast_ref::<Duration>())
-                .ok_or(()),
-            _ => Err(()),
+                .try_as()
+                .map_err(|v| BorrowedValue::Native(v)),
+            _ => Err(value),
         }
     }
 }
 
 impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, Duration> {
-    type Error = ();
+    type Error = BorrowedValueMut<'a>;
     fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
         match value {
             BorrowedValueMut::Native(native) => native
-                .filter_map(|v| v.as_any_mut().downcast_mut::<Duration>())
-                .ok_or(()),
-            _ => Err(()),
+                .try_as_mut()
+                .map_err(|v| BorrowedValueMut::Native(v)),
+            _ => Err(value),
         }
     }
 }
