@@ -19,7 +19,6 @@ use crate::{
 };
 pub mod apply;
 pub mod borrowed_value;
-mod child_iterator;
 pub mod classification;
 pub mod convert_parts;
 pub mod convert_value;
@@ -28,6 +27,7 @@ mod datex_native;
 pub mod equality;
 pub mod get_core_lib_type_id;
 pub mod get_datex_type;
+mod iter_parts;
 mod local_child_path_resolver;
 pub mod ops;
 pub mod serde_dif;

@@ -1,7 +1,7 @@
 use crate::{
     random::RandomState,
     traits::{
-        child_iterator::ChildIterator, convert_value::ConvertValue,
+        iter_parts::IterParts, convert_value::ConvertValue,
         convert_value_container::ConvertValueContainer,
     },
     values::{
@@ -11,10 +11,10 @@ use crate::{
 };
 use indexmap::IndexMap;
 
-impl<K: ConvertValueContainer, V: ConvertValueContainer> ChildIterator
+impl<K: ConvertValueContainer, V: ConvertValueContainer> IterParts
     for IndexMap<K, V, RandomState>
 {
-    fn iter_children<'a>(
+    fn iter_list_parts<'a>(
 		&'a self,
 	) -> Option<Box<dyn Iterator<Item = crate::values::borrowed_value_container::BorrowedValueContainer<'a>> + 'a>>
 {

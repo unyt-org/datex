@@ -1,7 +1,6 @@
 #[cfg(feature = "ast")]
 use crate::traits::{
-    child_iterator::ChildIterator,
-    to_datex_expression_data::ToDatexExpressionData,
+    iter_parts::IterParts, to_datex_expression_data::ToDatexExpressionData,
 };
 use crate::{
     core_compiler::to_instructions::ToInstructions,
@@ -107,7 +106,7 @@ pub trait DatexNative:
     + LocalChildPathResolver
     + SerializeWithSerdeContextDyn
     + DeserializeWithSerdeContextDyn
-    + ChildIterator
+    + IterParts
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

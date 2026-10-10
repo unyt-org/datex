@@ -1,4 +1,3 @@
-mod child_iterator;
 pub mod classification;
 pub mod convert_parts;
 mod convert_value;
@@ -6,6 +5,7 @@ mod datex_hash;
 pub mod datex_native;
 pub mod get_core_lib_type_id;
 pub mod get_datex_type;
+mod iter_parts;
 mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;

@@ -21,7 +21,6 @@ use core::{
     result::Result,
 };
 
-mod child_iterator;
 mod classification;
 mod convert_parts;
 mod datex_hash;
@@ -29,6 +28,7 @@ mod datex_native;
 mod datex_native_structural;
 mod get_core_lib_type_id;
 mod get_datex_type;
+mod iter_parts;
 pub mod local_child_path_resolver;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;

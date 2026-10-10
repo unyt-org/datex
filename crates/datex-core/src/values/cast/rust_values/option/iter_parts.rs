@@ -1,25 +1,25 @@
 use crate::{
-    traits::child_iterator::ChildIterator,
+    traits::iter_parts::IterParts,
     values::borrowed_value_container::{
         BorrowedValueContainer, BorrowedValueContainerMut,
     },
 };
 
-impl<T: ChildIterator> ChildIterator for Option<T> {
-    fn iter_children<'a>(
+impl<T: IterParts> IterParts for Option<T> {
+    fn iter_list_parts<'a>(
         &'a self,
     ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>> {
         match self {
-            Some(value) => value.iter_children(),
+            Some(value) => value.iter_list_parts(),
             None => None,
         }
     }
-    fn iter_children_mut<'a>(
+    fn iter_list_parts_mut<'a>(
         &'a mut self,
     ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainerMut<'a>> + 'a>>
     {
         match self {
-            Some(value) => value.iter_children_mut(),
+            Some(value) => value.iter_list_parts_mut(),
             None => None,
         }
     }

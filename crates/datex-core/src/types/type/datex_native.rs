@@ -1,6 +1,6 @@
 use crate::{
     traits::{
-        child_iterator::ChildIterator, classification::Classification,
+        classification::Classification, iter_parts::IterParts,
         local_child_path_resolver::LocalChildPathResolver,
     },
     types::r#type::Type,
@@ -23,4 +23,4 @@ impl Classification for Type {}
 
 impl DatexNativeOps for Type {}
 impl LocalChildPathResolver for Type {}
-impl ChildIterator for Type {}
+impl IterParts for Type {}

@@ -44,7 +44,7 @@ use crate::{
 };
 use core::fmt::{Debug, Display, Formatter};
 
-mod child_iterator;
+mod iter_parts;
 pub mod convert_core_value;
 mod convert_parts;
 mod datex_hash;

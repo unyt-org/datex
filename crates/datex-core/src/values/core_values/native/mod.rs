@@ -17,23 +17,11 @@ use core::{
 };
 mod datex_native_ops;
 pub use datex_native_ops::*;
-mod child_iterator;
-mod classification;
-mod datex_hash;
 mod datex_native_trait;
 pub mod display;
-mod get_core_lib_type_id;
 mod get_datex_type;
-mod local_child_path_resolver;
 mod ops;
 
-pub use ops::*;
-mod serde_dif;
-#[cfg(feature = "ast")]
-mod to_datex_expression_data;
-mod to_instructions;
-mod value_access;
-mod value_update;
 use crate::{
     libs::core::type_id::CoreLibTypeId,
     traits::{
@@ -44,6 +32,7 @@ use crate::{
     values::value::borrowed_value::BorrowedValue,
 };
 pub use datex_native_trait::*;
+pub use ops::*;
 
 impl<T: DatexNative + ConvertValue + Classification> ConvertValueContainer
     for T
@@ -107,6 +96,14 @@ impl<T: DatexNative + ConvertValue + Classification> ConvertValueContainer
 
 pub struct NativeCoreValue {
     pub value: Box<dyn DatexNative + 'static>,
+}
+
+impl Deref for NativeCoreValue {
+    type Target = dyn DatexNative + 'static;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.value
+    }
 }
 
 impl TryClone for NativeCoreValue {

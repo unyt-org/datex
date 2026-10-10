@@ -21,7 +21,7 @@ use core::{
     result::Result,
 };
 
-mod child_iterator;
+mod iter_parts;
 pub mod classification;
 mod convert_parts;
 mod datex_hash;
