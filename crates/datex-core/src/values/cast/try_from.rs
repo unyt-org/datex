@@ -40,71 +40,80 @@ use crate::{
 /// This allows to convert e.g. [CoreValue::Integer] to [Integer].
 /// This also allows to borrow or mutably borrow the corresponding type from a [CoreValue].
 /// Implementation for the try from core value methods is also done for [CoreValue::Native] branch.
-macro_rules! impl_try_from_core_value {
-    ($($variant:ident => $type:ty),* $(,)?) => {
-        $(
-            impl ConvertValue for $type {
-                fn to_value(self) -> Value {
-                    Value::Core(CoreValueWithClassification::new(CoreValue::$variant(self)))
-                }
+macro impl_convert_value($($variant:ident => $type:ty),* $(,)?) {
+    $(
+        impl ConvertValue for $type {
+            fn to_value(self) -> Value {
+                Value::Core(CoreValueWithClassification::new(CoreValue::$variant(self)))
+            }
 
-                fn try_from_value(value: Value) -> Result<Self, Value> {
-                    match value {
-                        Value::Native(native) => {
-                            match native.try_into_value() {
-                                Ok(v) => Ok(v),
-                                Err(native) => Err(Value::Native(native)),
-                            }
-                        },
-                        Value::Core(CoreValueWithClassification {inner: CoreValue::$variant(v), ..}) => Ok(v),
-                        _ => Err(value),
-                    }
-                }
-
-                fn try_borrow_from_value(value: &Value) -> Result<&$type, ()> {
-                    match value {
-                        Value::Core(CoreValueWithClassification {inner: CoreValue::$variant(v), ..}) => Ok(v),
-                        Value::Native(native) => {
-                            native.try_as::<$type>().ok_or(())
-                        },
-                        _ => Err(()),
-                    }
-                }
-
-                fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut $type, ()> {
-                    match value {
-                        Value::Core(CoreValueWithClassification {inner: CoreValue::$variant(v), ..}) => Ok(v),
-                        Value::Native(native) => {
-                            native.try_as_mut::<$type>().ok_or(())
-                        },
-                        _ => Err(()),
-                    }
+            fn try_from_value(value: Value) -> Result<Self, Value> {
+                match value {
+                    Value::Native(native) => {
+                        match native.try_into_value() {
+                            Ok(v) => Ok(v),
+                            Err(native) => Err(Value::Native(native)),
+                        }
+                    },
+                    Value::Core(CoreValueWithClassification {inner: CoreValue::$variant(v), ..}) => Ok(v),
+                    _ => Err(value),
                 }
             }
 
-            impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, $type> {
-                type Error = ();
-                fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
-                    match value {
-                        // BorrowedCoreValue::$variant(v) => Ok(v),
-                        BorrowedValue::Core(BorrowedCoreValueWithClassification {inner: BorrowedCoreValue::$variant(v), ..}) => Ok(v),
-                        _ => Err(()),
-                    }
+            fn try_borrow_from_value(value: &Value) -> Result<&$type, ()> {
+                match value {
+                    Value::Core(CoreValueWithClassification {inner: CoreValue::$variant(v), ..}) => Ok(v),
+                    Value::Native(native) => {
+                        native.try_as::<$type>().ok_or(())
+                    },
+                    _ => Err(()),
                 }
             }
 
-            impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, $type> {
-                type Error = ();
-                fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
-                    match value {
-                        BorrowedValueMut::Core(BorrowedCoreValueWithClassificationMut {inner: BorrowedCoreValueMut::$variant(v), ..}) => Ok(v),
-                        _ => Err(()),
-                    }
+            fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut $type, ()> {
+                match value {
+                    Value::Core(CoreValueWithClassification {inner: CoreValue::$variant(v), ..}) => Ok(v),
+                    Value::Native(native) => {
+                        native.try_as_mut::<$type>().ok_or(())
+                    },
+                    _ => Err(()),
                 }
             }
+        }
+    )*
+}
 
-        )*
-    };
+macro impl_try_from_core_value($($variant:ident => $type:ty),* $(,)?) {
+    $(
+        impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, $type> {
+            type Error = ();
+            fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
+                match value {
+                    // BorrowedCoreValue::$variant(v) => Ok(v),
+                    BorrowedValue::Core(BorrowedCoreValueWithClassification {
+                        inner: BorrowedCoreValue::$variant(v),
+                        ..
+                    }) => Ok(v),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, $type> {
+            type Error = ();
+            fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
+                match value {
+                    BorrowedValueMut::Core(
+                        BorrowedCoreValueWithClassificationMut {
+                            inner: BorrowedCoreValueMut::$variant(v),
+                            ..
+                        },
+                    ) => Ok(v),
+                    _ => Err(()),
+                }
+            }
+        }
+    )*
 }
 
 impl_try_from_core_value! {
@@ -114,9 +123,25 @@ impl_try_from_core_value! {
     TypedDecimal        => TypedDecimal,
     Boolean             => Boolean,
     Endpoint            => Endpoint,
-    Text                => Text,
     List                => List,
     Map                 => Map,
+    Type                => Type,
+    EntityTypeDefinition => EntityTypeDefinition,
+    Range               => Range,
+    Callable            => Callable,
+    Instant              => Instant,
+}
+
+impl_convert_value! {
+    Integer             => Integer,
+    TypedInteger        => TypedInteger,
+    Decimal             => Decimal,
+    TypedDecimal        => TypedDecimal,
+    Boolean             => Boolean,
+    Endpoint            => Endpoint,
+    List                => List,
+    Map                 => Map,
+    Text                => Text,
     Type                => Type,
     EntityTypeDefinition => EntityTypeDefinition,
     Range               => Range,

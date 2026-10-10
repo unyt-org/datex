@@ -1,3 +1,4 @@
+mod child_iterator;
 pub mod classification;
 mod convert_parts;
 mod convert_value;

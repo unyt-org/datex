@@ -32,7 +32,7 @@ impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {
             .map(|previous| {
                 let new = data.value.try_into_value::<T>().map_err(|_| ())?;
                 let previous = mem::replace(previous, new);
-                Ok(previous.to_value_container(cache.borrow_mut().deref_mut()))
+                Ok(previous.to_value_container())
             })
             .transpose()
             .map_err(|_: ()| UpdateError::type_error(TypeError::Invalid))?
@@ -57,7 +57,7 @@ impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {
                 IndexOutOfBoundsError { index: key as u32 },
             ))
         })?;
-        Ok(removed.to_value_container(cache.borrow_mut().deref_mut()))
+        Ok(removed.to_value_container())
     }
 
     fn try_append_entry(
@@ -105,7 +105,7 @@ impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {
         let cache = cache.deref_mut();
         Ok(res
             .into_iter()
-            .map(|item| itemto_value_container())
+            .map(|item| item.to_value_container())
             .collect())
     }
 }

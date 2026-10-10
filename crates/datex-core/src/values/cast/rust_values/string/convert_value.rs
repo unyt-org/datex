@@ -3,6 +3,9 @@ use crate::{
     traits::convert_value::ConvertValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
         core_values::text::Text,
@@ -62,23 +65,25 @@ impl ConvertValue for String {
     }
 }
 
-impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, String> {
+impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, str> {
     type Error = ();
     fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
         match value {
             BorrowedValue::Core(BorrowedCoreValueWithClassification {
                 inner: BorrowedCoreValue::Text(v),
                 ..
-            }) => Ok(v.map(|v| &v.0)),
+            }) => Ok(v),
             BorrowedValue::Native(native) => native
-                .filter_map(|v| v.as_any().downcast_ref::<String>())
+                .filter_map(|v| {
+                    v.as_any().downcast_ref::<String>().map(|s| s.as_str())
+                })
                 .ok_or(()),
             _ => Err(()),
         }
     }
 }
 
-impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, String> {
+impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, str> {
     type Error = ();
     fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
         match value {
@@ -87,12 +92,34 @@ impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, String> {
                     inner: BorrowedCoreValueMut::Text(v),
                     ..
                 },
-            ) => Ok(v.map(|v| &mut v.0)),
+            ) => Ok(v),
             BorrowedValueMut::Native(native) => native
-                .filter_map(|v| v.as_any_mut().downcast_mut::<String>())
+                .filter_map(|v| {
+                    v.as_any_mut()
+                        .downcast_mut::<String>()
+                        .map(|s| s.as_mut_str())
+                })
                 .ok_or(()),
             _ => Err(()),
         }
+    }
+}
+
+impl<'a, T: ?Sized> From<&'a T> for BorrowedValueContainer<'a>
+where
+    &'a T: Into<BorrowedCoreValue<'a>>,
+{
+    fn from(s: &'a T) -> Self {
+        BorrowedValueContainer::Local(BorrowedValue::core(s))
+    }
+}
+
+impl<'a, T: ?Sized> From<&'a T> for BorrowedValueContainerMut<'a>
+where
+    &'a T: Into<BorrowedCoreValueMut<'a>>,
+{
+    fn from(s: &'a T) -> Self {
+        BorrowedValueContainerMut::Local(BorrowedValueMut::core(s))
     }
 }
 

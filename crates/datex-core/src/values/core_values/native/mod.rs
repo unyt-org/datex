@@ -1,8 +1,12 @@
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
+    utils::goat_mut::GoatMut,
     values::{
-        borrowed_value_container::BorrowedValueContainer, value::Value,
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
+        value::{Value, borrowed_value::BorrowedValueMut},
         value_container::ValueContainer,
     },
 };
@@ -52,6 +56,13 @@ impl<T: DatexNative + ConvertValue + Classification> ConvertValueContainer
         BorrowedValueContainer::Local(BorrowedValue::Native(Goat::Borrowed(
             self,
         )))
+    }
+    fn as_borrowed_value_container_mut(
+        &mut self,
+    ) -> BorrowedValueContainerMut<'_> {
+        BorrowedValueContainerMut::Local(BorrowedValueMut::Native(
+            GoatMut::Borrowed(self),
+        ))
     }
 
     fn try_from_value_container(

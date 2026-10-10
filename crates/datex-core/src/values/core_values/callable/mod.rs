@@ -228,18 +228,11 @@ where
             return_type: Some(Box::new(return_type)),
             yeet_type: None,
         },
-        body: CallableBody::Native(NativeCallable::new_sync(
-            move |args, runtime| {
-                let result =
-                    func.invoke(args.into_iter().map(|v| v.value).collect())?;
-                Ok((
-                    Some(result.to_value_container(
-                        runtime.shared_references_cache_mut().deref_mut(),
-                    )),
-                    vec![],
-                ))
-            },
-        )),
+        body: CallableBody::Native(NativeCallable::new_sync(move |args, _| {
+            let result =
+                func.invoke(args.into_iter().map(|v| v.value).collect())?;
+            Ok((Some(result.to_value_container()), vec![]))
+        })),
         creator: Default::default(),
     }
 }
@@ -268,19 +261,13 @@ where
             yeet_type: None,
         },
         body: CallableBody::Native(NativeCallable::new_async(
-            move |args, runtime| {
+            move |args, _| {
                 // TODO: async invoke
                 let result =
                     func.invoke(args.into_iter().map(|v| v.value).collect());
-                let runtime = runtime.clone();
                 Box::pin(async move {
                     let result = result?;
-                    Ok((
-                        Some(result.to_value_container(
-                            runtime.shared_references_cache_mut().deref_mut(),
-                        )),
-                        vec![],
-                    ))
+                    Ok((Some(result.to_value_container()), vec![]))
                 })
             },
         )),

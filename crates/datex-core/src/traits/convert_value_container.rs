@@ -15,7 +15,9 @@ use crate::{
         convert_parts::{FromParts, HasPartsKind, IntoParts, PartsKind},
     },
     values::{
-        borrowed_value_container::BorrowedValueContainer,
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
         value_container::ValueContainer,
     },
 };
@@ -69,6 +71,11 @@ pub trait ConvertValueContainer {
 
     /// Borrow the value as a [BorrowedValueContainer]
     fn as_borrowed_value_container(&self) -> BorrowedValueContainer<'_>;
+
+    /// Borrow the value as a mutable [BorrowedValueContainer]
+    fn as_borrowed_value_container_mut(
+        &mut self,
+    ) -> BorrowedValueContainerMut<'_>;
 
     /// Tries to downcast a [ValueContainer] into [Self]
     fn try_from_value_container(

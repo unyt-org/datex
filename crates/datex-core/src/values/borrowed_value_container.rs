@@ -65,7 +65,7 @@ impl<'a> BorrowedValueContainer<'a> {
     /// Tries to get an immutable reference to the value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_as<T>(self) -> Option<Goat<'a, T>>
+    pub fn try_as<T: ?Sized>(self) -> Option<Goat<'a, T>>
     where
         Goat<'a, T>: TryFrom<BorrowedValue<'a>>,
     {
@@ -137,7 +137,7 @@ impl<'a> BorrowedValueContainerMut<'a> {
     /// Tries to get an immutable reference to the value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_as<T>(self) -> Option<Goat<'a, T>>
+    pub fn try_as<T: ?Sized>(self) -> Option<Goat<'a, T>>
     where
         Goat<'a, T>: TryFrom<BorrowedValueMut<'a>>,
     {

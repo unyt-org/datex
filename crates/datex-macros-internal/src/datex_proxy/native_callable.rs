@@ -219,7 +219,6 @@ pub fn generate_native_callable(
 
             let mut result_value = ConvertValueContainer::to_value_container(
                 #method_call_body,
-                core::ops::DerefMut::deref_mut(&mut runtime.shared_references_cache_mut())
             );
 
             (Some(result_value), vec![#(#call_argument_collections),*].into_iter().filter_map(|v| v).collect())

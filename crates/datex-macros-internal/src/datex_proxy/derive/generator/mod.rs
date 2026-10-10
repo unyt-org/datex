@@ -14,22 +14,24 @@ use crate::{
             value_access::generate_value_access,
         },
     },
+    generator::child_iterator::generate_child_iterator,
     utils::derive_datex_prelude,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
 
-pub mod classification;
+mod child_iterator;
+mod classification;
 mod convert_parts;
-pub mod convert_value;
+mod convert_value;
 mod datex_expression_data;
-pub mod datex_hash;
+mod datex_hash;
 mod datex_native;
 mod datex_type;
-pub mod helpers;
-pub mod serde_dif;
+mod helpers;
+mod serde_dif;
 mod to_instructions;
-pub mod value_access;
+mod value_access;
 
 /// Generates the code for the derive macro based on the provided structure data.
 pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
@@ -44,6 +46,7 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
     let datex_hash = generate_datex_hash(&structure_data);
     let to_instructions = generate_to_instructions(&structure_data);
     let serde_dif = generate_serde_dif(&structure_data);
+    let child_iterator = generate_child_iterator(&structure_data);
 
     let datex_expression_data =
         cfg_select! {
@@ -69,6 +72,7 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
             #to_instructions
             #serde_dif
             #datex_expression_data
+            #child_iterator
         };
     }
 }

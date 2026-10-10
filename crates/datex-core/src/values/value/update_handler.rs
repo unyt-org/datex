@@ -238,7 +238,7 @@ mod tests {
             )
             .expect("Failed to set existing property");
         let name = struct_val.try_get_property("name", &cache).unwrap();
-        assert_eq!(name.try_as::<String>().unwrap().deref(), &"Bob");
+        assert_eq!(name.try_as::<str>().unwrap().deref(), "Bob");
 
         // Try to set non-existing property
         let result = struct_val.try_update_collapsed_local_inner(

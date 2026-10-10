@@ -494,10 +494,10 @@ impl Display for SharedContainer {
 
 pub mod clone_unsafe;
 mod common;
+mod convert_value_container;
 pub mod equality;
 pub mod get_datex_type;
 pub mod update_handler;
-mod convert_value_container;
 
 impl From<OwnedSharedContainer> for SharedContainer {
     fn from(value: OwnedSharedContainer) -> Self {

@@ -3,7 +3,9 @@ use crate::{
     shared_values::{OwnedSharedContainer, SharedContainer},
     traits::convert_value_container::ConvertValueContainer,
     values::{
-        borrowed_value_container::BorrowedValueContainer,
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
         value_container::ValueContainer,
     },
 };
@@ -15,6 +17,13 @@ impl ConvertValueContainer for OwnedSharedContainer {
 
     fn as_borrowed_value_container(&self) -> BorrowedValueContainer<'_> {
         BorrowedValueContainer::Shared(SharedContainer::Referenced(
+            self.derive_with_max_mutability(),
+        ))
+    }
+    fn as_borrowed_value_container_mut(
+        &mut self,
+    ) -> BorrowedValueContainerMut<'_> {
+        BorrowedValueContainerMut::Shared(SharedContainer::Referenced(
             self.derive_with_max_mutability(),
         ))
     }

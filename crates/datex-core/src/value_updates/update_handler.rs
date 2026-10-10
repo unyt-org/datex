@@ -312,6 +312,8 @@ pub trait UpdateHandlerImpl: UpdateCallbackDataAccess {
         &mut self,
         operation: UpdateOperation,
         source_id: Option<TransceiverId>,
+        // TODO - Do we really need cache here? Probably only for type checks, that can not be made on pointer addr only
+        // such as type impl constraint checks or sub type checks. TBD
         cache: &RefCell<SharedReferencesCache>,
     ) -> UpdateResult {
         let maybe_callback_data = if let Some(callback_data) =

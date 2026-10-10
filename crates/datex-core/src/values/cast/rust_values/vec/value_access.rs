@@ -26,9 +26,7 @@ where
         match key {
             BorrowedValueKey::Index(index) => {
                 if let Some(value) = self.get(index as usize) {
-                    Ok(value.as_borrowed_value_container(
-                        cache.borrow_mut().deref_mut(),
-                    ))
+                    Ok(value.as_borrowed_value_container())
                 } else {
                     Err(AccessError::IndexOutOfBounds(IndexOutOfBoundsError {
                         index: index as u32,

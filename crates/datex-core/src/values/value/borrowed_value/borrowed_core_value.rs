@@ -41,7 +41,7 @@ pub enum BorrowedCoreValue<'a> {
     TypedInteger(Goat<'a, TypedInteger>),
     Decimal(Goat<'a, Decimal>),
     TypedDecimal(Goat<'a, TypedDecimal>),
-    Text(Goat<'a, Text>),
+    Text(Goat<'a, str>),
     Endpoint(Goat<'a, Endpoint>),
     List(Goat<'a, List>),
     Map(Goat<'a, Map>),
@@ -74,7 +74,7 @@ impl<'a> BorrowedCoreValue<'a> {
                 Ok(CoreValue::TypedDecimal(typed_decimal.deref().clone()))
             }
             BorrowedCoreValue::Text(text) => {
-                Ok(CoreValue::Text(text.deref().clone()))
+                Ok(CoreValue::Text(text.to_string().into()))
             }
             BorrowedCoreValue::Endpoint(endpoint) => {
                 Ok(CoreValue::Endpoint(endpoint.deref().clone()))
@@ -133,7 +133,7 @@ impl<'a> From<&'a CoreValue> for BorrowedCoreValue<'a> {
                 BorrowedCoreValue::TypedDecimal(Goat::Borrowed(typed_decimal))
             }
             CoreValue::Text(text) => {
-                BorrowedCoreValue::Text(Goat::Borrowed(text))
+                BorrowedCoreValue::Text(Goat::Borrowed(&text.0))
             }
             CoreValue::Endpoint(endpoint) => {
                 BorrowedCoreValue::Endpoint(Goat::Borrowed(endpoint))
@@ -182,7 +182,7 @@ pub enum BorrowedCoreValueMut<'a> {
     TypedInteger(GoatMut<'a, TypedInteger>),
     Decimal(GoatMut<'a, Decimal>),
     TypedDecimal(GoatMut<'a, TypedDecimal>),
-    Text(GoatMut<'a, Text>),
+    Text(GoatMut<'a, str>),
     Endpoint(GoatMut<'a, Endpoint>),
     List(GoatMut<'a, List>),
     Map(GoatMut<'a, Map>),
@@ -215,7 +215,7 @@ impl<'a> BorrowedCoreValueMut<'a> {
                 Ok(CoreValue::TypedDecimal(typed_decimal.deref().clone()))
             }
             BorrowedCoreValueMut::Text(text) => {
-                Ok(CoreValue::Text(text.deref().clone()))
+                Ok(CoreValue::Text(text.to_string().into()))
             }
             BorrowedCoreValueMut::Endpoint(endpoint) => {
                 Ok(CoreValue::Endpoint(endpoint.deref().clone()))
@@ -278,7 +278,7 @@ impl<'a> From<&'a mut CoreValue> for BorrowedCoreValueMut<'a> {
                 ))
             }
             CoreValue::Text(text) => {
-                BorrowedCoreValueMut::Text(GoatMut::Borrowed(text))
+                BorrowedCoreValueMut::Text(GoatMut::Borrowed(&mut text.0))
             }
             CoreValue::Endpoint(endpoint) => {
                 BorrowedCoreValueMut::Endpoint(GoatMut::Borrowed(endpoint))
@@ -307,5 +307,17 @@ impl<'a> From<&'a mut CoreValue> for BorrowedCoreValueMut<'a> {
                 BorrowedCoreValueMut::Instant(GoatMut::Borrowed(instant))
             }
         }
+    }
+}
+
+impl<'a> From<&'a mut str> for BorrowedCoreValueMut<'a> {
+    fn from(s: &'a mut str) -> Self {
+        BorrowedCoreValueMut::Text(GoatMut::Borrowed(s))
+    }
+}
+
+impl<'a> From<&'a str> for BorrowedCoreValue<'a> {
+    fn from(s: &'a str) -> Self {
+        BorrowedCoreValue::Text(Goat::Borrowed(s))
     }
 }

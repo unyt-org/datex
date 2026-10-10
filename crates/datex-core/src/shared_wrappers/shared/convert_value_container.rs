@@ -3,8 +3,11 @@ use crate::{
     shared_wrappers::shared::Shared,
     traits::convert_value_container::ConvertValueContainer,
     values::{
-        borrowed_value_container::BorrowedValueContainer,
-        core_values::native::DatexNative, value_container::ValueContainer,
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
+        core_values::native::DatexNative,
+        value_container::ValueContainer,
     },
 };
 
@@ -18,6 +21,11 @@ where
 
     fn as_borrowed_value_container<'a>(&'a self) -> BorrowedValueContainer<'a> {
         BorrowedValueContainer::Shared(self.container.clone())
+    }
+    fn as_borrowed_value_container_mut(
+        &mut self,
+    ) -> BorrowedValueContainerMut<'_> {
+        BorrowedValueContainerMut::Shared(self.container.clone())
     }
 
     fn try_from_value_container(

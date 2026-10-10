@@ -13,7 +13,7 @@ use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     prelude::*,
     traits::{
-        convert_parts::HasPartsKind,
+        child_iterator::ChildIterator, convert_parts::HasPartsKind,
         convert_value_container::ConvertValueContainer,
         local_child_path_resolver::LocalChildPathResolver,
     },
@@ -65,6 +65,7 @@ macro_rules! implement_rust_native_traits {
         impl LocalChildPathResolver for $type {}
         impl UpdateHandlerImpl for $type {}
         impl UpdateCallbackDataAccess for $type {}
+        impl ChildIterator for $type {}
 
         impl FromParts for $type {
             fn try_from_single_value_with_tag(

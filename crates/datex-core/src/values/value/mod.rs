@@ -193,7 +193,7 @@ impl Value {
 
     /// Tries to get a borrow of the current value as the specified type.
     /// Does not perform any type conversion.
-    pub fn try_as<T>(&self) -> Option<&T>
+    pub fn try_as<T: ?Sized>(&self) -> Option<&T>
     where
         T: ConvertValue,
     {
