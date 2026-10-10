@@ -7,6 +7,8 @@ use crate::values::{
         value_classification::ValueClassification,
     },
 };
+#[cfg(feature = "ast")]
+mod to_datex_expression_data;
 
 /// Similar to [CoreValueWithClassification], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.

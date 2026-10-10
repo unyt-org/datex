@@ -7,9 +7,16 @@ use crate::{
     collections::HashMap,
     prelude::*,
     random::RandomState,
+    traits::convert_value_container::ConvertValueContainer,
     values::{
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
         core_value::CoreValue,
-        value::Value,
+        value::{
+            Value,
+            borrowed_value::{BorrowedValue, BorrowedValueMut},
+        },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
@@ -18,10 +25,10 @@ use crate::shared_values::errors::KeyNotFoundError;
 use core::{
     fmt::{self, Display},
     hash::{Hash, Hasher},
+    ops::Deref,
     result::Result,
 };
 
-mod iter_parts;
 pub mod classification;
 mod convert_parts;
 mod datex_hash;
@@ -29,6 +36,7 @@ mod datex_native;
 mod datex_native_structural;
 mod get_core_lib_type_id;
 mod get_datex_type;
+mod iter_parts;
 pub mod local_child_path_resolver;
 pub mod serde_dif;
 #[cfg(feature = "ast")]
@@ -255,13 +263,14 @@ impl Map {
         match &self.entries {
             MapEntries::Structural(_) => {
                 for (key, _) in self.iter() {
-                    if let BorrowedMapKey::Text(text) = key {
-                        if !allowed.contains(&text) {
+                    if let Some(text) = key.try_as::<str>() {
+                        if !allowed.contains(&text.as_ref()) {
                             return Err(UnexpectedPropertyError {
-                                key: text.to_string(),
+                                key: (*text).to_string(),
                             });
                         }
                     } else {
+                        let vc = key.try_clone_to_value_container();
                         return Err(UnexpectedPropertyError {
                             key: format!("{key}"),
                         });
@@ -318,9 +327,10 @@ impl Map {
     /// skipping any children that have a [ValueContainer::Shared] value
     pub fn iter_local_values_mut(
         &mut self,
-    ) -> impl Iterator<Item = (BorrowedMutMapKey<'_>, &mut Value)> {
+    ) -> impl Iterator<Item = (BorrowedValueContainer<'_>, BorrowedValueMut<'_>)>
+    {
         self.iter_mut().filter_map(|(key, item)| {
-            if let ValueContainer::Local(local_value) = item {
+            if let BorrowedValueContainerMut::Local(local_value) = item {
                 Some((key, local_value))
             } else {
                 None
@@ -378,189 +388,26 @@ impl Map {
     }
 }
 
-#[derive(Clone)]
-pub enum BorrowedMapKey<'a> {
-    Text(&'a str),
-    Value(&'a ValueContainer),
-}
-
-impl<'a> From<&'a MapKey> for BorrowedMapKey<'a> {
-    fn from(key: &'a MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => BorrowedMapKey::Text(text),
-            MapKey::Value(value) => BorrowedMapKey::Value(value),
-        }
-    }
-}
-
-impl<'a> From<BorrowedMapKey<'a>> for ValueContainer {
-    fn from(key: BorrowedMapKey) -> Self {
-        match key {
-            BorrowedMapKey::Text(text) => {
-                ValueContainer::Local(Value::from(text.to_string()))
-            }
-            BorrowedMapKey::Value(value) => value.clone(),
-        }
-    }
-}
-
-impl Hash for BorrowedMapKey<'_> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            BorrowedMapKey::Text(text) => text.hash(state),
-            BorrowedMapKey::Value(value) => value.hash(state),
-        }
-    }
-}
-
-impl Display for BorrowedMapKey<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            // TODO #331: escape string
-            BorrowedMapKey::Text(string) => core::write!(f, "\"{}\"", string),
-            BorrowedMapKey::Value(value) => core::write!(f, "{value}"),
-        }
-    }
-}
-
-pub enum BorrowedMutMapKey<'a> {
-    Text(&'a mut str),
-    Value(&'a mut ValueContainer),
-}
-
-impl<'a> From<&'a mut MapKey> for BorrowedMutMapKey<'a> {
-    fn from(key: &'a mut MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => BorrowedMutMapKey::Text(text),
-            MapKey::Value(value) => BorrowedMutMapKey::Value(value),
-        }
-    }
-}
-impl<'a> From<BorrowedMutMapKey<'a>> for MapKey {
-    fn from(key: BorrowedMutMapKey<'a>) -> Self {
-        match key {
-            BorrowedMutMapKey::Text(text) => MapKey::Text(text.to_string()),
-            BorrowedMutMapKey::Value(value) => MapKey::Value(value.clone()),
-        }
-    }
-}
-
-impl<'a> From<BorrowedMutMapKey<'a>> for ValueContainer {
-    fn from(key: BorrowedMutMapKey) -> Self {
-        match key {
-            BorrowedMutMapKey::Text(text) => {
-                ValueContainer::Local(Value::from(text.to_string()))
-            }
-            BorrowedMutMapKey::Value(value) => value.clone(),
-        }
-    }
-}
-
-impl Hash for BorrowedMutMapKey<'_> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            BorrowedMutMapKey::Text(text) => text.hash(state),
-            BorrowedMutMapKey::Value(value) => value.hash(state),
-        }
-    }
-}
-
-impl Display for BorrowedMutMapKey<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            // TODO #331: escape string
-            BorrowedMutMapKey::Text(string) => {
-                core::write!(f, "\"{}\"", string)
-            }
-            BorrowedMutMapKey::Value(value) => core::write!(f, "{value}"),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub enum MapKey {
-    Text(String),
-    Value(ValueContainer),
-}
-
-impl From<MapKey> for ValueContainer {
-    fn from(key: MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => ValueContainer::Local(Value::from(text)),
-            MapKey::Value(value) => value,
-        }
-    }
-}
-
-impl From<MapKey> for ValueKey {
-    fn from(key: MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => ValueKey::Text(text),
-            MapKey::Value(value) => ValueKey::Value(value),
-        }
-    }
-}
-
-impl<'a> From<&'a MapKey> for BorrowedValueKey<'a> {
-    fn from(key: &'a MapKey) -> Self {
-        match key {
-            MapKey::Text(text) => BorrowedValueKey::Text(Cow::Borrowed(text)),
-            MapKey::Value(value) => {
-                BorrowedValueKey::Value(Cow::Borrowed(value))
-            }
-        }
-    }
-}
-
-impl Display for MapKey {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            MapKey::Text(text) => core::write!(f, "{text}"),
-            MapKey::Value(value) => core::write!(f, "{value}"),
-        }
-    }
-}
-
 pub struct MapIterator<'a> {
     map: &'a Map,
     index: usize,
 }
 
 impl<'a> Iterator for MapIterator<'a> {
-    type Item = (BorrowedMapKey<'a>, &'a ValueContainer);
+    type Item = (BorrowedValueContainer<'a>, BorrowedValueContainer<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         match &self.map.entries {
             MapEntries::Dynamic(map) => {
                 let item = map.iter().nth(self.index);
                 self.index += 1;
-                item.map(|(k, v)| {
-                    let key = match k {
-                        ValueContainer::Local(Value::Core(
-                            CoreValueWithClassification {
-                                inner: CoreValue::Text(text),
-                                ..
-                            },
-                        )) => BorrowedMapKey::Text(&text.0),
-                        _ => BorrowedMapKey::Value(k),
-                    };
-                    (key, v)
-                })
+                item.map(|(k, v)| (k.into(), v.into()))
             }
             MapEntries::Structural(vec) => {
                 if self.index < vec.len() {
                     let item = &vec[self.index];
                     self.index += 1;
-                    let key = match &item.0 {
-                        ValueContainer::Local(Value::Core(
-                            CoreValueWithClassification {
-                                inner: CoreValue::Text(text),
-                                ..
-                            },
-                        )) => BorrowedMapKey::Text(&text.0),
-                        _ => BorrowedMapKey::Value(&item.0),
-                    };
-                    Some((key, &item.1))
+                    Some(((&item.0).into(), (&item.1).into()))
                 } else {
                     None
                 }
@@ -569,7 +416,7 @@ impl<'a> Iterator for MapIterator<'a> {
                 if self.index < vec.len() {
                     let item = &vec[self.index];
                     self.index += 1;
-                    Some((BorrowedMapKey::Text(&item.0), &item.1))
+                    Some(((&item.0).into(), (&item.1).into()))
                 } else {
                     None
                 }
@@ -585,36 +432,18 @@ pub enum MapMutIterator<'a> {
 }
 
 impl<'a> Iterator for MapMutIterator<'a> {
-    type Item = (BorrowedMutMapKey<'a>, &'a mut ValueContainer);
+    type Item = (BorrowedValueContainer<'a>, BorrowedValueContainerMut<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            MapMutIterator::Dynamic(iter) => iter.next().map(|(k, v)| {
-                let key = match k {
-                    ValueContainer::Local(Value::Core(
-                        CoreValueWithClassification {
-                            inner: CoreValue::Text(text),
-                            ..
-                        },
-                    )) => BorrowedMutMapKey::Text(&mut text.0),
-                    _ => BorrowedMutMapKey::Value(k),
-                };
-                (key, v)
-            }),
-            MapMutIterator::Fixed(iter) => iter.next().map(|(k, v)| {
-                let key = match k {
-                    ValueContainer::Local(Value::Core(
-                        CoreValueWithClassification {
-                            inner: CoreValue::Text(text),
-                            ..
-                        },
-                    )) => BorrowedMutMapKey::Text(&mut text.0),
-                    _ => BorrowedMutMapKey::Value(k),
-                };
-                (key, v)
-            }),
+            MapMutIterator::Dynamic(iter) => {
+                iter.next().map(|(k, v)| (k.into(), v.into()))
+            }
+            MapMutIterator::Fixed(iter) => {
+                iter.next().map(|(k, v)| (k.into(), v.into()))
+            }
             MapMutIterator::Structural(iter) => {
-                iter.next().map(|(k, v)| (BorrowedMutMapKey::Text(k), v))
+                iter.next().map(|(k, v)| (k.into(), v.into()))
             }
         }
     }
@@ -627,36 +456,14 @@ pub enum IntoMapIterator {
 }
 
 impl Iterator for IntoMapIterator {
-    type Item = (MapKey, ValueContainer);
+    type Item = (ValueContainer, ValueContainer);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            IntoMapIterator::Dynamic(iter) => iter.next().map(|(k, v)| {
-                let key = match k {
-                    ValueContainer::Local(Value::Core(
-                        CoreValueWithClassification {
-                            inner: CoreValue::Text(text),
-                            ..
-                        },
-                    )) => MapKey::Text(text.0),
-                    _ => MapKey::Value(k),
-                };
-                (key, v)
-            }),
-            IntoMapIterator::Fixed(iter) => iter.next().map(|(k, v)| {
-                let key = match k {
-                    ValueContainer::Local(Value::Core(
-                        CoreValueWithClassification {
-                            inner: CoreValue::Text(text),
-                            ..
-                        },
-                    )) => MapKey::Text(text.0),
-                    _ => MapKey::Value(k),
-                };
-                (key, v)
-            }),
+            IntoMapIterator::Dynamic(iter) => iter.next(),
+            IntoMapIterator::Fixed(iter) => iter.next(),
             IntoMapIterator::Structural(iter) => {
-                iter.next().map(|(k, v)| (MapKey::Text(k), v))
+                iter.next().map(|(k, v)| (ValueContainer::from(k), v))
             }
         }
     }

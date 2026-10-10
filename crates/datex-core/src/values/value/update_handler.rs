@@ -98,7 +98,7 @@ mod tests {
             },
         },
         values::{
-            borrowed_value_container::{AsBorrowed, BorrowedValueContainer},
+            borrowed_value_container::BorrowedValueContainer,
             core_values::{list::List, map::Map},
             value::Value,
             value_container::{ValueContainer, value_key::ValueKey},

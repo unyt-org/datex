@@ -3,10 +3,10 @@
 use crate::{
     utils::sheep::Sheep, values::value_container::value_key::BorrowedValueKey,
 };
-pub mod equality;
-pub mod identity;
+mod equality;
+mod identity;
 use core::ops::Deref;
-pub mod serde_dif;
+mod serde_dif;
 use super::value::Value;
 use crate::{
     prelude::*,
@@ -20,9 +20,11 @@ use crate::{
     },
 };
 
-pub mod apply;
-pub mod ops;
-pub mod update_handler;
+mod borrowed_value_container;
+
+mod apply;
+mod ops;
+mod update_handler;
 pub mod value_key;
 use crate::{
     shared_values::{

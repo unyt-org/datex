@@ -28,6 +28,8 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+#[cfg(feature = "ast")]
+mod to_datex_expression_data;
 use core::ops::Deref;
 
 /// Similar to [CoreValue], but it is a potentially borrowed reference to a [CoreValue] variant instead of owning it.

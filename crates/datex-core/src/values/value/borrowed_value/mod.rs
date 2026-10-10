@@ -1,6 +1,3 @@
-pub mod borrowed_core_value;
-pub mod borrowed_core_value_with_classification;
-
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -26,27 +23,19 @@ use crate::{
             range::Range,
             text::Text,
         },
-        value::{
-            Value,
-            borrowed_value::{
-                borrowed_core_value::{
-                    BorrowedCoreValue, BorrowedCoreValueMut,
-                },
-                borrowed_core_value_with_classification::{
-                    BorrowedCoreValueWithClassification,
-                    BorrowedCoreValueWithClassificationMut,
-                },
-            },
-            value_classification::ValueClassification,
-        },
+        value,
+        value::{Value, value_classification::ValueClassification},
         value_container::ValueContainer,
     },
 };
 use core::{
     cell::{Ref, RefMut},
-    fmt::Debug,
+    fmt::{Debug, Display},
     ops::{Deref, DerefMut},
 };
+
+#[cfg(feature = "ast")]
+mod to_datex_expression_data;
 
 /// Similar to [Value], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.
@@ -98,16 +87,6 @@ impl<'a> BorrowedValue<'a> {
 
     /// Creates a new [BorrowedValue] from a reference to a native value.
     pub fn native_borrowed<T: DatexNative>(
-        val: impl Into<Goat<'a, T>>,
-        cache: &mut SharedReferencesCache,
-    ) -> Self {
-        let val = val.into();
-        let val = into_dyn_goat(val);
-        BorrowedValue::Native(val)
-    }
-
-    /// Creates a new [BorrowedValue] from a reference to a native value.
-    pub fn native_borrowed_structural<T: DatexNativeStructural>(
         val: impl Into<Goat<'a, T>>,
     ) -> Self {
         let val = val.into();
@@ -167,16 +146,6 @@ impl<'a> BorrowedValueMut<'a> {
 
     /// Creates a new [BorrowedValueMut] from a reference to a native value.
     pub fn native_borrowed<T: DatexNative>(
-        val: impl Into<GoatMut<'a, T>>,
-        cache: &mut SharedReferencesCache,
-    ) -> Self {
-        let val = val.into();
-        let val = into_dyn_goat_mut(val);
-        BorrowedValueMut::Native(val)
-    }
-
-    /// Creates a new [BorrowedValueMut] from a reference to a native value.
-    pub fn native_borrowed_structural<T: DatexNativeStructural>(
         val: impl Into<GoatMut<'a, T>>,
     ) -> Self {
         let val = val.into();
