@@ -4,6 +4,6 @@ use crate::{
 
 impl DatexHash for NativeCoreValue {
     fn datex_hash(&self, hasher: &mut dyn core::hash::Hasher) {
-        self.value.datex_hash(hasher)
+        (*self.value).datex_hash(hasher)
     }
 }
