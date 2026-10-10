@@ -1,6 +1,8 @@
+use core::ops::Deref;
 use crate::{
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
 };
+use crate::values::value::borrowed_value::BorrowedValue;
 use crate::values::value_container::borrowed_value_container::BorrowedValueContainer;
 
 /// Partial equality for ValueContainer is identical to Hash behavior:
@@ -32,7 +34,7 @@ impl StructuralEq for BorrowedValueContainer<'_> {
             | (
                 BorrowedValueContainer::Shared(b),
                 BorrowedValueContainer::Local(a),
-            ) => &*b.collapsed_value().borrow() == a,
+            ) => &BorrowedValue::from(b.collapsed_value().borrow().deref()) == a,
         }
     }
 }
@@ -57,7 +59,7 @@ impl ValueEq for BorrowedValueContainer<'_> {
             | (
                 BorrowedValueContainer::Shared(b),
                 BorrowedValueContainer::Local(a),
-            ) => a.value_eq(&*b.collapsed_value().borrow()),
+            ) => a.value_eq(&BorrowedValue::from(b.collapsed_value().borrow().deref())),
         }
     }
 }

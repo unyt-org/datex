@@ -26,6 +26,8 @@ use crate::values::core_value_with_classification::borrowed_core_value_with_clas
 mod to_datex_expression_data;
 pub mod classification;
 pub mod hash;
+pub mod to_instructions;
+pub mod equality;
 
 /// Similar to [Value], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.
@@ -89,9 +91,9 @@ impl<'a> BorrowedValue<'a> {
         CoreValue: Clone,
     {
         match self {
-            BorrowedValue::Core(borrowed_core_value) => borrowed_core_value
-                .try_clone_to_core_value_with_classification()
-                .map(Value::Core),
+            BorrowedValue::Core(borrowed_core_value) => Ok(Value::Core(
+                borrowed_core_value.clone_to_core_value_with_classification()
+            )),
             BorrowedValue::Native(native) => native.deref().try_clone(),
         }
     }
