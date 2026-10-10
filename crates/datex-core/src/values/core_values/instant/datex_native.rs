@@ -1,6 +1,6 @@
 use crate::{
     traits::{
-        child_iterator::ChildIterator,
+        iter_parts::IterParts,
         local_child_path_resolver::LocalChildPathResolver,
     },
     value_updates::update_handler::{
@@ -29,4 +29,4 @@ impl LocalChildPathResolver for Instant {}
 impl UpdateHandlerImpl for Instant {}
 impl UpdateCallbackDataAccess for Instant {}
 
-impl ChildIterator for Instant {}
+impl IterParts for Instant {}

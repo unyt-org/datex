@@ -1,19 +1,19 @@
-use crate::traits::child_iterator::ChildIterator;
+use crate::traits::iter_parts::IterParts;
 
-impl<T> ChildIterator for Box<T>
+impl<T> IterParts for Box<T>
 where
-    T: ChildIterator,
+    T: IterParts,
 {
-    fn iter_children<'a>(
+    fn iter_list_parts<'a>(
 		&'a self,
 	) -> Option<Box<dyn Iterator<Item = crate::values::borrowed_value_container::BorrowedValueContainer<'a>> + 'a>>
 {
-        self.as_ref().iter_children()
+        self.as_ref().iter_list_parts()
     }
-	fn iter_children_mut<'a>(
+	fn iter_list_parts_mut<'a>(
 		&'a mut self,
 	) -> Option<Box<dyn Iterator<Item = crate::values::borrowed_value_container::BorrowedValueContainerMut<'a>> + 'a>>
 {
-        self.as_mut().iter_children_mut()
+        self.as_mut().iter_list_parts_mut()
     }
 }

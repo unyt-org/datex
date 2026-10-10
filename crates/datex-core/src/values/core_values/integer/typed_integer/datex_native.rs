@@ -1,6 +1,6 @@
 use crate::{
     traits::{
-        child_iterator::ChildIterator,
+        iter_parts::IterParts,
         local_child_path_resolver::LocalChildPathResolver,
     },
     values::core_values::{
@@ -45,4 +45,4 @@ impl DatexNativeOps for TypedInteger {
 }
 impl LocalChildPathResolver for TypedInteger {}
 
-impl ChildIterator for TypedInteger {}
+impl IterParts for TypedInteger {}

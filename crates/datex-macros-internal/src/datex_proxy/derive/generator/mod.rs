@@ -14,13 +14,12 @@ use crate::{
             value_access::generate_value_access,
         },
     },
-    generator::child_iterator::generate_child_iterator,
+    generator::iter_parts::generate_child_iterator,
     utils::derive_datex_prelude,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
 
-mod child_iterator;
 mod classification;
 mod convert_parts;
 mod convert_value;
@@ -29,6 +28,7 @@ mod datex_hash;
 mod datex_native;
 mod datex_type;
 mod helpers;
+mod iter_parts;
 mod serde_dif;
 mod to_instructions;
 mod value_access;

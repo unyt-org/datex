@@ -1,6 +1,6 @@
 use crate::{
     traits::{
-        child_iterator::ChildIterator,
+        iter_parts::IterParts,
         convert_value_container::ConvertValueContainer,
     },
     values::borrowed_value_container::{
@@ -8,15 +8,15 @@ use crate::{
     },
 };
 
-impl<T: ConvertValueContainer> ChildIterator for Vec<T> {
-    fn iter_children<'a>(
+impl<T: ConvertValueContainer> IterParts for Vec<T> {
+    fn iter_list_parts<'a>(
         &'a self,
     ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>> {
         Some(Box::new(
             self.iter().map(|item| item.as_borrowed_value_container()),
         ))
     }
-    fn iter_children_mut<'a>(
+    fn iter_list_parts_mut<'a>(
         &'a mut self,
     ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainerMut<'a>> + 'a>>
     {

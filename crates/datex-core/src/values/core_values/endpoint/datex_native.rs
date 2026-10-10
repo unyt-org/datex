@@ -1,6 +1,6 @@
 use crate::{
     traits::{
-        child_iterator::ChildIterator,
+        iter_parts::IterParts,
         local_child_path_resolver::LocalChildPathResolver,
     },
     values::core_values::{
@@ -29,4 +29,4 @@ use crate::value_updates::update_handler::{
 impl UpdateHandlerImpl for Endpoint {}
 impl UpdateCallbackDataAccess for Endpoint {}
 
-impl ChildIterator for Endpoint {}
+impl IterParts for Endpoint {}

@@ -4,7 +4,7 @@ use crate::{
     random::RandomState,
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     shared_values::{SharedContainer, traits::SharedContainerCommon},
-    traits::child_iterator::ChildIterator,
+    traits::iter_parts::IterParts,
     values::{
         borrowed_value_container::BorrowedValueContainerMut,
         core_values::endpoint::Endpoint, value_container::ValueContainer,
@@ -230,7 +230,7 @@ impl<'a> SharedValueTracking<'a> {
                     _ => {
                         let mut value = inner_container.collapsed_value_mut();
                         if let Some(children) =
-                            value.borrow_mut().iter_children_mut()
+                            value.borrow_mut().iter_list_parts_mut()
                         {
                             for child in children {
                                 if let BorrowedValueContainerMut::Shared(

@@ -1,7 +1,7 @@
 use core::borrow::Borrow;
 
 use crate::{
-    traits::child_iterator::ChildIterator,
+    traits::iter_parts::IterParts,
     values::{
         borrowed_value_container::{
             BorrowedValueContainer, BorrowedValueContainerMut,
@@ -10,8 +10,8 @@ use crate::{
     },
 };
 
-impl ChildIterator for List {
-    fn iter_children<'a>(
+impl IterParts for List {
+    fn iter_list_parts<'a>(
         &'a self,
     ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>> {
         Some(Box::new(gen {
@@ -21,7 +21,7 @@ impl ChildIterator for List {
         }))
     }
 
-    fn iter_children_mut<'a>(
+    fn iter_list_parts_mut<'a>(
         &'a mut self,
     ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainerMut<'a>> + 'a>>
     {

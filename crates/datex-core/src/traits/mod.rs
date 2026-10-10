@@ -1,11 +1,10 @@
 //! This module contains various traits that are shared on different levels such as [apply], [identity], [structural_eq] and [value_eq].
 pub mod apply;
 pub mod callable;
-pub mod child_iterator;
 pub mod classification;
 pub mod clone_unsafe;
-pub mod convert_value;
 pub mod convert_parts;
+pub mod convert_value;
 pub mod convert_value_container;
 pub mod datex_hash;
 pub mod datex_native_only_structural;
@@ -14,6 +13,7 @@ pub mod dyn_eq;
 pub mod get_core_lib_type_id;
 pub mod get_datex_type;
 pub mod identity;
+pub mod iter_parts;
 pub mod local_child_path_resolver;
 pub mod structural_eq;
 #[cfg(feature = "ast")]
