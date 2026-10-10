@@ -27,7 +27,7 @@ impl IntoParts for Range {
     where
         Self: 'a,
     {
-        Ok(self.to_value_container(cache))
+        Ok(self.to_value_container())
     }
 }
 impl HasPartsKind for Range {}

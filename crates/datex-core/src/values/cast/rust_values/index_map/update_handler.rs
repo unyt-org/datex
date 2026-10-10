@@ -48,9 +48,9 @@ where
             .value
             .try_into_value()
             .map_err(|_| UpdateError::type_error(TypeError::Invalid))?;
-        Ok(self.insert(key, value).map(|previous| {
-            previous.to_value_container(cache.borrow_mut().deref_mut())
-        }))
+        Ok(self
+            .insert(key, value)
+            .map(|previous| previous.to_value_container()))
     }
 
     fn try_delete_entry(

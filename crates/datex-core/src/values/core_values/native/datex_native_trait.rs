@@ -1,5 +1,14 @@
+#[cfg(feature = "ast")]
+use crate::traits::{
+    child_iterator::ChildIterator,
+    to_datex_expression_data::ToDatexExpressionData,
+};
 use crate::{
     core_compiler::to_instructions::ToInstructions,
+    dif::{
+        deserialize_with_serde_context::DeserializeWithSerdeContextDyn,
+        serialize_with_serde_context::SerializeWithSerdeContextDyn,
+    },
     traits::{
         classification::Classification,
         convert_parts::{FromParts, IntoParts},
@@ -8,20 +17,14 @@ use crate::{
         dyn_eq::DynEq,
         get_core_lib_type_id::GetCoreLibTypeId,
         get_datex_type::GetDatexType,
+        local_child_path_resolver::LocalChildPathResolver,
         try_clone::TryClone,
         value_access::ValueAccess,
-        local_child_path_resolver::LocalChildPathResolver,
     },
-    values::core_values::native::DatexNativeOps,
     value_updates::update_handler::UpdateHandlerImpl,
-};
-#[cfg(feature = "ast")]
-use crate::traits::{
-    to_datex_expression_data::ToDatexExpressionData
+    values::core_values::native::DatexNativeOps,
 };
 use core::any::Any;
-use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContextDyn;
-use crate::dif::serialize_with_serde_context::SerializeWithSerdeContextDyn;
 
 #[cfg(feature = "ast")]
 pub trait DatexNativeBase:
@@ -104,6 +107,7 @@ pub trait DatexNative:
     + LocalChildPathResolver
     + SerializeWithSerdeContextDyn
     + DeserializeWithSerdeContextDyn
+    + ChildIterator
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

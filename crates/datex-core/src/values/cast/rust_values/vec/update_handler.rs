@@ -105,7 +105,7 @@ impl<T: DatexNativeBase + 'static> UpdateHandlerImpl for Vec<T> {
         let cache = cache.deref_mut();
         Ok(res
             .into_iter()
-            .map(|item| item.to_value_container(cache))
+            .map(|item| itemto_value_container())
             .collect())
     }
 }

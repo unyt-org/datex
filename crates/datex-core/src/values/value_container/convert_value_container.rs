@@ -8,17 +8,11 @@ use crate::{
 };
 
 impl ConvertValueContainer for ValueContainer {
-    fn to_value_container(
-        self,
-        _cache: &mut SharedReferencesCache,
-    ) -> ValueContainer {
+    fn to_value_container(self) -> ValueContainer {
         self
     }
 
-    fn as_borrowed_value_container(
-        &self,
-        _cache: &mut SharedReferencesCache,
-    ) -> BorrowedValueContainer<'_> {
+    fn as_borrowed_value_container(&self) -> BorrowedValueContainer<'_> {
         BorrowedValueContainer::from(self)
     }
 

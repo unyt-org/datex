@@ -1,35 +1,38 @@
 use crate::{
     traits::child_iterator::ChildIterator,
     values::{
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
         core_values::map::{BorrowedMapKey, BorrowedMutMapKey, Map},
-        value_container::ValueContainer,
     },
 };
 
-impl<'a> ChildIterator<'a> for Map {
-    fn iter_children(
+impl ChildIterator for Map {
+    fn iter_children<'a>(
         &'a self,
-    ) -> impl Iterator<Item = &'a ValueContainer> + 'a {
-        gen {
+    ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>> {
+        Some(Box::new(gen move {
             for (key, value) in self.iter() {
                 if let BorrowedMapKey::Value(v) = key {
-                    yield v
+                    yield v.into();
                 };
-                yield value;
+                yield value.into();
             }
-        }
+        }))
     }
 
-    fn iter_children_mut(
+    fn iter_children_mut<'a>(
         &'a mut self,
-    ) -> impl Iterator<Item = &'a mut ValueContainer> + 'a {
-        gen {
+    ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainerMut<'a>> + 'a>>
+    {
+        Some(Box::new(gen move {
             for (key, value) in self.into_iter() {
                 if let BorrowedMutMapKey::Value(v) = key {
-                    yield v
+                    yield v.into();
                 };
-                yield value;
+                yield value.into();
             }
-        }
+        }))
     }
 }

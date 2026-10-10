@@ -1,5 +1,6 @@
 //! Implements [DatexValueProxy] for [IndexMap<K, V, RandomState>] where K: [DatexValueProxy] + Eq + Hash and V: [DatexValueProxy].
 
+mod child_iterator;
 pub mod classification;
 mod convert_parts;
 mod convert_value;

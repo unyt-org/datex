@@ -14,6 +14,7 @@ use crate::{
     prelude::*,
     traits::{
         convert_parts::HasPartsKind,
+        convert_value_container::ConvertValueContainer,
         local_child_path_resolver::LocalChildPathResolver,
     },
     types::r#type::Type,
@@ -24,7 +25,6 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use crate::traits::convert_value_container::ConvertValueContainer;
 use core::any::Any;
 
 use crate::{
@@ -67,9 +67,12 @@ macro_rules! implement_rust_native_traits {
         impl UpdateCallbackDataAccess for $type {}
 
         impl FromParts for $type {
-             fn try_from_single_value_with_tag(value: ValueContainer, _tag: Option<&str>) -> Result<Self, ()>
-                where
-                    Self: Sized,
+            fn try_from_single_value_with_tag(
+                value: ValueContainer,
+                _tag: Option<&str>,
+            ) -> Result<Self, ()>
+            where
+                Self: Sized,
             {
                 Self::try_from_value_container(value).map_err(|_| ())
             }
@@ -82,7 +85,7 @@ macro_rules! implement_rust_native_traits {
             where
                 Self: 'a,
             {
-                Ok(self.to_value_container(cache))
+                Ok(self.to_value_container())
             }
         }
         impl HasPartsKind for $type {}

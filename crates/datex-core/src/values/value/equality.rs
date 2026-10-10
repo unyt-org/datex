@@ -44,8 +44,8 @@ impl ValueEq for Value {
             // core vs native equality
             (Value::Core(core_self), Value::Native(native_other))
             | (Value::Native(native_other), Value::Core(core_self)) => {
-                core_self.datex_hash_default()
-                    == native_other.datex_hash_default()
+                todo!()
+                // native_other.value.try_into_map_parts(cache)
             }
         }
     }

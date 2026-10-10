@@ -3,9 +3,7 @@ use crate::{
     random::RandomState,
     runtime::cache::shared_references_cache::SharedReferencesCache,
     traits::{
-        convert_parts::{
-            BorrowedParts, FromParts, HasPartsKind, IntoParts, Parts, PartsKind,
-        },
+        convert_parts::{FromParts, HasPartsKind, IntoParts, PartsKind},
         convert_value_container::ConvertValueContainer,
     },
     values::core_values::map::Map,
@@ -34,10 +32,7 @@ impl<K: ConvertValueContainer, V: ConvertValueContainer> IntoParts
         Ok(self
             .into_iter()
             .map(|(key, value)| {
-                (
-                    key.to_value_container(cache),
-                    value.to_value_container(cache),
-                )
+                (key.to_value_container(), value.to_value_container())
             })
             .collect::<Map>())
     }

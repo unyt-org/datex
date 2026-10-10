@@ -26,14 +26,13 @@ macro_rules! derive_prelude {
                 serde_to_value_container, try_serde_from_value_container,
             },
             shared_values::{
-                PointerAddress,
-                SelfOwnedPointerAddress,
+                PointerAddress, SelfOwnedPointerAddress,
                 errors::{AccessError, KeyNotFoundError},
             },
             traits::{
                 classification::Classification,
                 convert_parts::{
-                    FromParts, HasPartsKind, IntoParts, Parts, PartsKind,
+                    FromParts, HasPartsKind, IntoParts, PartsKind,
                 },
                 convert_value::ConvertValue,
                 convert_value_container::ConvertValueContainer,
@@ -108,7 +107,7 @@ macro_rules! derive_prelude_ast {
             },
             traits::to_datex_expression_data::ToDatexExpressionData,
         };
-    }
+    };
 }
 
 pub(crate) use derive_prelude;

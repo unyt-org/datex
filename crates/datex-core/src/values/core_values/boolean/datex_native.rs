@@ -20,6 +20,8 @@ impl DatexNative for Boolean {
     }
 }
 impl DatexNativeOps for Boolean {}
-impl LocalChildPathResolver for Boolean {}
+impl LocalChildPathResolver for Boolean { }
+use crate::traits::child_iterator::ChildIterator;
+impl ChildIterator for Boolean { }
 impl UpdateHandlerImpl for Boolean {}
 impl UpdateCallbackDataAccess for Boolean {}

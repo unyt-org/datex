@@ -1,6 +1,9 @@
 use crate::{
     prelude::*,
-    traits::local_child_path_resolver::LocalChildPathResolver,
+    traits::{
+        child_iterator::ChildIterator,
+        local_child_path_resolver::LocalChildPathResolver,
+    },
     values::core_values::{
         decimal::Decimal,
         native::{DatexNative, DatexNativeOps, add_native_impl},
@@ -27,3 +30,5 @@ impl DatexNativeOps for Decimal {
     }
 }
 impl LocalChildPathResolver for Decimal {}
+
+impl ChildIterator for Decimal {}

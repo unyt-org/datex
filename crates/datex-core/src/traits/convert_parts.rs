@@ -1,3 +1,5 @@
+use alloc::collections::binary_heap::Iter;
+
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
@@ -8,30 +10,6 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-
-/// Represents the different parts of a disassembled value
-/// that can be used to reconstruct the original value.
-pub enum Parts<'a> {
-    /// The parts of a list value (a struct without named fields).
-    List(Box<dyn Iterator<Item = ValueContainer> + 'a>),
-    /// The parts of a map value (a struct with named fields).
-    Map(Box<dyn Iterator<Item = (ValueContainer, ValueContainer)> + 'a>),
-}
-
-/// Represents the different parts of a disassembled borrowed value.
-pub enum BorrowedParts<'a> {
-    List(Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>),
-    Map(
-        Box<
-            dyn Iterator<
-                    Item = (
-                        BorrowedValueContainer<'a>,
-                        BorrowedValueContainer<'a>,
-                    ),
-                > + 'a,
-        >,
-    ),
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Represents the kind of parts that a value can be converted into.

@@ -20,7 +20,7 @@ impl IntoParts for TypedDecimal {
     where
         Self: 'a,
     {
-        Ok(self.to_value_container(cache))
+        Ok(self.to_value_container())
     }
 }
 impl FromParts for TypedDecimal {

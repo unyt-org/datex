@@ -1,4 +1,5 @@
 //! Implements [DatexValueProxy] for [Box<T>] where T: [DatexValueProxy].
+mod child_iterator;
 pub mod classification;
 mod convert_parts;
 mod convert_value;

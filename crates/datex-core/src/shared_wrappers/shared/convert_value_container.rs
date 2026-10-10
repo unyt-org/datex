@@ -12,17 +12,11 @@ impl<T> ConvertValueContainer for Shared<T>
 where
     T: ConvertValueContainer + DatexNative,
 {
-    fn to_value_container(
-        self,
-        _cache: &mut SharedReferencesCache,
-    ) -> ValueContainer {
+    fn to_value_container(self) -> ValueContainer {
         ValueContainer::Shared(self.container)
     }
 
-    fn as_borrowed_value_container<'a>(
-        &'a self,
-        _cache: &mut SharedReferencesCache,
-    ) -> BorrowedValueContainer<'a> {
+    fn as_borrowed_value_container<'a>(&'a self) -> BorrowedValueContainer<'a> {
         BorrowedValueContainer::Shared(self.container.clone())
     }
 

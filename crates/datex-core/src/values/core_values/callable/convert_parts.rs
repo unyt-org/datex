@@ -19,7 +19,7 @@ impl IntoParts for Callable {
     where
         Self: 'a,
     {
-        Ok(self.to_value_container(cache))
+        Ok(self.to_value_container())
     }
 }
 impl FromParts for Callable {
