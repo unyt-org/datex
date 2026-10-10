@@ -30,6 +30,7 @@ use crate::{
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod hash;
+pub mod equality;
 
 use core::ops::Deref;
 use crate::values::core_value_with_classification::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
@@ -58,56 +59,56 @@ pub enum BorrowedCoreValue<'a> {
 }
 
 impl<'a> BorrowedCoreValue<'a> {
-    pub fn try_clone_to_core_value(self) -> Result<CoreValue, ()> {
+    pub(crate) fn clone_to_core_value(&self) -> CoreValue {
         match self {
-            BorrowedCoreValue::Uninitialized => Ok(CoreValue::Uninitialized),
-            BorrowedCoreValue::Null => Ok(CoreValue::Null),
+            BorrowedCoreValue::Uninitialized => CoreValue::Uninitialized,
+            BorrowedCoreValue::Null => CoreValue::Null,
             BorrowedCoreValue::Boolean(boolean) => {
-                Ok(CoreValue::Boolean(boolean.deref().clone()))
+                CoreValue::Boolean(boolean.deref().clone())
             }
             BorrowedCoreValue::Integer(integer) => {
-                Ok(CoreValue::Integer(integer.deref().clone()))
+                CoreValue::Integer(integer.deref().clone())
             }
             BorrowedCoreValue::TypedInteger(typed_integer) => {
-                Ok(CoreValue::TypedInteger(typed_integer.deref().clone()))
+                CoreValue::TypedInteger(typed_integer.deref().clone())
             }
             BorrowedCoreValue::Decimal(decimal) => {
-                Ok(CoreValue::Decimal(decimal.deref().clone()))
+                CoreValue::Decimal(decimal.deref().clone())
             }
             BorrowedCoreValue::TypedDecimal(typed_decimal) => {
-                Ok(CoreValue::TypedDecimal(typed_decimal.deref().clone()))
+                CoreValue::TypedDecimal(typed_decimal.deref().clone())
             }
             BorrowedCoreValue::Text(text) => {
-                Ok(CoreValue::Text(text.to_string().into()))
+                CoreValue::Text(text.to_string().into())
             }
             BorrowedCoreValue::Endpoint(endpoint) => {
-                Ok(CoreValue::Endpoint(endpoint.deref().clone()))
+                CoreValue::Endpoint(endpoint.deref().clone())
             }
             BorrowedCoreValue::List(list) => {
-                Ok(CoreValue::List(list.deref().clone()))
+                CoreValue::List(list.deref().clone())
             }
             BorrowedCoreValue::Map(map) => {
-                Ok(CoreValue::Map(map.deref().clone()))
+                CoreValue::Map(map.deref().clone())
             }
             BorrowedCoreValue::Type(type_value) => {
-                Ok(CoreValue::Type(type_value.deref().clone()))
+                CoreValue::Type(type_value.deref().clone())
             }
             BorrowedCoreValue::EntityTypeDefinition(entity_type_definition) => {
-                Ok(CoreValue::EntityTypeDefinition(
+                CoreValue::EntityTypeDefinition(
                     entity_type_definition.deref().clone(),
-                ))
+                )
             }
             BorrowedCoreValue::Callable(callable) => {
-                Ok(CoreValue::Callable(callable.deref().clone()))
+                CoreValue::Callable(callable.deref().clone())
             }
             BorrowedCoreValue::Range(range) => {
-                Ok(CoreValue::Range(range.deref().clone()))
+                CoreValue::Range(range.deref().clone())
             }
             BorrowedCoreValue::Box(boxed_value) => {
-                Ok(CoreValue::Box(boxed_value.deref().clone()))
+                CoreValue::Box(boxed_value.deref().clone())
             }
             BorrowedCoreValue::Instant(instant) => {
-                Ok(CoreValue::Instant(instant.deref().clone()))
+                CoreValue::Instant(instant.deref().clone())
             }
         }
     }

@@ -1,6 +1,6 @@
 #[cfg(feature = "ast")]
 use crate::traits::{
-    iter_parts::IterParts, to_datex_expression_data::ToDatexExpressionData,
+    to_datex_expression_data::ToDatexExpressionData,
 };
 use crate::{
     core_compiler::to_instructions::ToInstructions,
@@ -19,6 +19,7 @@ use crate::{
         local_child_path_resolver::LocalChildPathResolver,
         try_clone::TryClone,
         value_access::ValueAccess,
+        iter_parts::IterParts,
     },
     value_updates::update_handler::UpdateHandlerImpl,
     values::core_values::native::DatexNativeOps,
@@ -133,6 +134,7 @@ pub trait DatexNative:
     + LocalChildPathResolver
     + SerializeWithSerdeContextDyn
     + DeserializeWithSerdeContextDyn
+    + IterParts
 {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

@@ -1,5 +1,4 @@
 use crate::{
-    alloc::string::ToString,
     core_compiler::{
         to_instructions::ToInstructions, value_visitor::ValueVisitor,
     },
@@ -19,8 +18,8 @@ impl ToInstructions for Map {
             yield RegularInstruction::map(self.size() as u32).into();
 
             for (key, value) in self.iter() {
-                let key_instructions: Vec<Instruction> =
-                    key.to_instructions(ctx).collect();
+                let key_instructions =
+                    key.to_instructions(ctx).collect::<Vec<_>>();
                 for instr in key_instructions {
                     yield instr;
                 }

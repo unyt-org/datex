@@ -10,6 +10,7 @@ use crate::values::core_value::borrowed_core_value::{BorrowedCoreValue, Borrowed
 mod to_datex_expression_data;
 pub mod classification;
 pub mod hash;
+mod equality;
 
 /// Similar to [CoreValueWithClassification], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.
@@ -20,14 +21,14 @@ pub struct BorrowedCoreValueWithClassification<'a> {
 }
 
 impl<'a> BorrowedCoreValueWithClassification<'a> {
-    pub(crate) fn try_clone_to_core_value_with_classification(
-        self,
-    ) -> Result<CoreValueWithClassification, ()> {
-        let inner = self.inner.try_clone_to_core_value()?;
-        Ok(CoreValueWithClassification {
+    pub(crate) fn clone_to_core_value_with_classification(
+        &self,
+    ) -> CoreValueWithClassification {
+        let inner = self.inner.clone_to_core_value();
+        CoreValueWithClassification {
             inner,
             classification: self.classification.clone(),
-        })
+        }
     }
 }
 
