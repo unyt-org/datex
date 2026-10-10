@@ -1,18 +1,18 @@
 //! Implements [DatexValueProxy] for [Box<T>] where T: [DatexValueProxy].
 pub mod classification;
-mod convert_value;
 mod convert_parts;
+mod convert_value;
 pub mod datex_hash;
 mod datex_native;
 mod datex_native_structural;
 mod get_core_lib_type_id;
 mod get_datex_type;
+mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
 mod update_handler;
 mod value_access;
-mod serde_dif;
 
 #[cfg(test)]
 mod tests {

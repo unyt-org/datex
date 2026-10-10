@@ -12,6 +12,7 @@ where
     T: Any,
 {
     default fn dyn_eq(&self, _other: &dyn Any) -> bool {
+        todo!("Dynamic equality not implemented for this type");
         false
     }
 }
