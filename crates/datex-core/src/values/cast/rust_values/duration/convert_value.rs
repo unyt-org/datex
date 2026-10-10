@@ -2,21 +2,35 @@ use crate::{
     traits::convert_value::ConvertValue,
     utils::{goat::Goat, goat_mut::GoatMut},
     values::{
+        core_value::CoreValue,
+        core_value_with_classification::CoreValueWithClassification,
+        core_values::instant::Instant,
+        value::{
+            Value,
+            borrowed_value::{
+                BorrowedValue, BorrowedValueMut,
+                borrowed_core_value::BorrowedCoreValue,
+                borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
+            },
+        },
     },
 };
 use core::time::Duration;
-use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
-use crate::values::value::Value;
 
 impl ConvertValue for Duration {
     fn to_value(self) -> Value {
-        todo!()
+        Value::native(self)
+        //CoreValue::Instant(Instant::from_duration(self)).into()
     }
     fn try_from_value(value: Value) -> Result<Self, Value> {
         match value {
             Value::Native(native) => {
                 native.try_into_value().map_err(Value::Native)
             }
+            Value::Core(CoreValueWithClassification {
+                inner: CoreValue::Instant(instant),
+                ..
+            }) => Ok(instant.to_duration()),
             _ => Err(value),
         }
     }
@@ -28,9 +42,7 @@ impl ConvertValue for Duration {
         }
     }
 
-    fn try_borrow_mut_from_value(
-        value: &mut Value,
-    ) -> Result<&mut Self, ()> {
+    fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut Self, ()> {
         match value {
             Value::Native(native) => native.try_as_mut().ok_or(()),
             _ => Err(()),
@@ -68,10 +80,10 @@ mod tests {
         utils::{goat::Goat, goat_mut::GoatMut},
         values::{
             core_value::CoreValue,
+            value::borrowed_value::{BorrowedValue, BorrowedValueMut},
         },
     };
     use core::time::Duration;
-    use crate::values::value::borrowed_value::{BorrowedValue, BorrowedValueMut};
 
     #[test]
     fn try_duration_from_native_core_value() {

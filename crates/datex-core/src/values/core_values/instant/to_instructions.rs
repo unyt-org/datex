@@ -4,7 +4,7 @@ use crate::{
     },
     instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
-    values::core_values::Instant,
+    values::core_values::instant::Instant,
 };
 
 impl ToInstructions for Instant {

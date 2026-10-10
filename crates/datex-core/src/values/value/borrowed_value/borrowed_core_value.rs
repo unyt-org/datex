@@ -11,6 +11,7 @@ use crate::{
             callable::Callable,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
+            instant::Instant,
             integer::{Integer, typed_integer::TypedInteger},
             list::List,
             map::Map,
@@ -49,6 +50,7 @@ pub enum BorrowedCoreValue<'a> {
     Callable(Goat<'a, Callable>),
     Range(Goat<'a, Range>),
     Box(Goat<'a, Box<ValueContainer>>),
+    Instant(Goat<'a, Instant>),
 }
 
 impl<'a> BorrowedCoreValue<'a> {
@@ -99,6 +101,9 @@ impl<'a> BorrowedCoreValue<'a> {
             }
             BorrowedCoreValue::Box(boxed_value) => {
                 Ok(CoreValue::Box(boxed_value.deref().clone()))
+            }
+            BorrowedCoreValue::Instant(instant) => {
+                Ok(CoreValue::Instant(instant.deref().clone()))
             }
         }
     }
@@ -151,6 +156,9 @@ impl<'a> From<&'a CoreValue> for BorrowedCoreValue<'a> {
             CoreValue::Box(boxed_value) => {
                 BorrowedCoreValue::Box(Goat::Borrowed(boxed_value))
             }
+            CoreValue::Instant(instant) => {
+                BorrowedCoreValue::Instant(Goat::Borrowed(instant))
+            }
         }
     }
 }
@@ -183,6 +191,7 @@ pub enum BorrowedCoreValueMut<'a> {
     Callable(GoatMut<'a, Callable>),
     Range(GoatMut<'a, Range>),
     Box(GoatMut<'a, Box<ValueContainer>>),
+    Instant(GoatMut<'a, Instant>),
 }
 
 impl<'a> BorrowedCoreValueMut<'a> {
@@ -233,6 +242,9 @@ impl<'a> BorrowedCoreValueMut<'a> {
             }
             BorrowedCoreValueMut::Box(boxed_value) => {
                 Ok(CoreValue::Box(boxed_value.deref().clone()))
+            }
+            BorrowedCoreValueMut::Instant(instant) => {
+                Ok(CoreValue::Instant(instant.deref().clone()))
             }
         }
     }
@@ -290,6 +302,9 @@ impl<'a> From<&'a mut CoreValue> for BorrowedCoreValueMut<'a> {
             }
             CoreValue::Box(boxed_value) => {
                 BorrowedCoreValueMut::Box(GoatMut::Borrowed(boxed_value))
+            }
+            CoreValue::Instant(instant) => {
+                BorrowedCoreValueMut::Instant(GoatMut::Borrowed(instant))
             }
         }
     }

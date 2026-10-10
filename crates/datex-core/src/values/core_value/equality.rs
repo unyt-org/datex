@@ -88,6 +88,7 @@ impl PartialEq for CoreValue {
         match (self, other) {
             (CoreValue::Uninitialized, CoreValue::Uninitialized) => true,
             (CoreValue::Null, CoreValue::Null) => true,
+            (CoreValue::Instant(i1), CoreValue::Instant(i2)) => i1 == i2,
             (CoreValue::Boolean(b1), CoreValue::Boolean(b2)) => b1 == b2,
             (CoreValue::Integer(i1), CoreValue::Integer(i2)) => i1 == i2,
             (CoreValue::TypedInteger(ti1), CoreValue::TypedInteger(ti2)) => {
@@ -131,6 +132,7 @@ impl CoreValue {
             CoreValue::Callable(v) => native.dyn_eq(v),
             CoreValue::Range(v) => native.dyn_eq(v),
             CoreValue::Null => native.dyn_eq(&()), //FIXME or false?
+            CoreValue::Instant(v) => native.dyn_eq(v),
             CoreValue::Uninitialized => todo!(),
             CoreValue::EntityTypeDefinition(_entity_type_definition) => todo!(),
             CoreValue::Box(value_container) => value_container.dyn_eq(native), // FIXME

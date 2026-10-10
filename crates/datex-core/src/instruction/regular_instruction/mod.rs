@@ -35,7 +35,7 @@ use crate::{
         SelfOwnedPointerAddress,
     },
     values::core_values::{
-        Instant,
+        instant::Instant,
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
         integer::Integer,

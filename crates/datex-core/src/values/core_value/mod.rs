@@ -11,7 +11,10 @@ use crate::{
     types::entities::entity_type_definition::EntityTypeDefinition,
     values::{
         core_value_with_classification::CoreValueWithClassification,
-        core_values::native::{DatexNative, NativeCoreValue},
+        core_values::{
+            instant::Instant,
+            native::{DatexNative, NativeCoreValue},
+        },
         value::Value,
     },
 };
@@ -70,10 +73,10 @@ pub enum CoreValue {
     EntityTypeDefinition(EntityTypeDefinition),
     Callable(Callable),
     Range(Range),
+    Instant(Instant),
     /// Used for nested values, e.g. #Tagged (shared 42)
     Box(Box<ValueContainer>),
 }
-
 
 impl<T> FromIterator<T> for CoreValue
 where
@@ -118,6 +121,9 @@ impl From<&CoreValue> for CoreLibTypeId {
             }
             CoreValue::EntityTypeDefinition(_nominal_type) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never) // TODO: what is the type of nominal type? do we even need to handle this?
+            }
+            CoreValue::Instant(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Instant)
             }
             CoreValue::Uninitialized => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
@@ -321,6 +327,7 @@ impl CoreValue {
 impl Display for CoreValue {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
         match self {
+            CoreValue::Instant(instant) => write!(f, "{instant}"),
             CoreValue::Type(ty) => write!(f, "{ty}"),
             CoreValue::Boolean(bool) => write!(f, "{bool}"),
             CoreValue::TypedInteger(int) => write!(f, "{int}"),
@@ -344,7 +351,6 @@ impl Display for CoreValue {
         }
     }
 }
-
 
 impl From<Text> for CoreValue {
     fn from(value: Text) -> Self {
@@ -424,7 +430,6 @@ impl From<Boolean> for CoreValue {
     }
 }
 
-
 #[cfg(test)]
 /// This module contains tests for the CoreValue struct.
 /// Each CoreValue is a representation of an underlying native value.
@@ -432,9 +437,10 @@ impl From<Boolean> for CoreValue {
 mod tests {
     use log::{debug, info};
 
-    use crate::traits::convert_value::ConvertValue;
-    use crate::traits::get_core_lib_type_id::GetCoreLibTypeId;
     use super::*;
+    use crate::traits::{
+        convert_value::ConvertValue, get_core_lib_type_id::GetCoreLibTypeId,
+    };
 
     #[test]
     fn type_construct() {
@@ -454,8 +460,13 @@ mod tests {
 
     #[test]
     fn endpoint() {
-        let endpoint: Endpoint =
-            "@test".to_string().to_value().try_into_core_value().unwrap().cast_to_endpoint().unwrap();
+        let endpoint: Endpoint = "@test"
+            .to_string()
+            .to_value()
+            .try_into_core_value()
+            .unwrap()
+            .cast_to_endpoint()
+            .unwrap();
         debug!("Endpoint: {endpoint}");
         assert_eq!(endpoint.to_string(), "@test");
     }

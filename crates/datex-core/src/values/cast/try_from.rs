@@ -13,6 +13,7 @@ use crate::{
             callable::Callable,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
+            instant::Instant,
             integer::{Integer, typed_integer::TypedInteger},
             list::List,
             map::Map,
@@ -120,6 +121,7 @@ impl_try_from_core_value! {
     EntityTypeDefinition => EntityTypeDefinition,
     Range               => Range,
     Callable            => Callable,
+    Instant              => Instant,
 }
 
 #[cfg(test)]

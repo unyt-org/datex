@@ -47,6 +47,7 @@ pub enum CoreLibBaseTypeId {
     Decimal,  // #core.decimal
     Text,     // #core.text
     Endpoint, // #core.endpoint
+    Instant,  // #core.instant
     #[strum(serialize = "Unit")]
     Unit, // #core.Unit
     #[strum(serialize = "Never")]

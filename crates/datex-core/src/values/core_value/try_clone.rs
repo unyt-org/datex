@@ -1,5 +1,7 @@
-use crate::{traits::try_clone::TryClone, values::core_value::CoreValue};
-use crate::values::value::Value;
+use crate::{
+    traits::try_clone::TryClone,
+    values::{core_value::CoreValue, value::Value},
+};
 
 impl TryClone for CoreValue {
     fn try_clone(&self) -> Result<Value, ()> {
@@ -26,6 +28,7 @@ impl TryClone for CoreValue {
             CoreValue::Callable(callable_value) => callable_value.try_clone(),
             CoreValue::Range(range_value) => range_value.try_clone(),
             CoreValue::Box(box_value) => box_value.try_clone(),
+            CoreValue::Instant(instant_value) => instant_value.try_clone(),
         }
     }
 }

@@ -102,6 +102,11 @@ impl ToInstructions for CoreValue {
                         yield instruction;
                     }
                 }
+                CoreValue::Instant(instant) => {
+                    for instruction in instant.to_instructions(ctx) {
+                        yield instruction;
+                    }
+                }
             }
         })
     }

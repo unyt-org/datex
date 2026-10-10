@@ -556,8 +556,9 @@ mod tests {
             core_values::{
                 decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
                 endpoint::Endpoint,
+                instant::Instant,
                 integer::{Integer, typed_integer::IntegerTypeVariant},
-                map::{Map, MapEntries},
+                map::Map,
             },
             value_container::ValueContainer,
         },
@@ -765,6 +766,9 @@ mod tests {
     )]
     #[test_case(
         CoreValue::TypedDecimal(TypedDecimal::F32(f32::NEG_INFINITY.into())) ; "negative inf f32"
+    )]
+    #[test_case(
+        CoreValue::Instant(Instant::now()) ; "instant"
     )]
     fn roundtrip_no_custom_type(value: CoreValue) {
         let cache = RefCell::new(SharedValuesCache::default());
