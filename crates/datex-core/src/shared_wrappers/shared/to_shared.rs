@@ -15,7 +15,7 @@ pub trait ToShared: DatexNative + Sized {
         provider: &mut SelfOwnedPointerAddressProvider,
     ) -> Shared<Self> {
         Shared::try_from(SharedContainer::new_owned_with_inferred_allowed_type(
-            self.to_value_container(cache),
+            self.to_value_container(),
             SharedContainerMutability::Mutable,
             provider,
         ))

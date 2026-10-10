@@ -17,7 +17,9 @@ impl DatexNative for Text {
     }
 }
 impl DatexNativeOps for Text {}
-impl LocalChildPathResolver for Text {}
+impl LocalChildPathResolver for Text { }
+use crate::traits::child_iterator::ChildIterator;
+impl ChildIterator for Text { }
 
 use crate::value_updates::update_handler::{
     UpdateCallbackDataAccess, UpdateHandlerImpl,

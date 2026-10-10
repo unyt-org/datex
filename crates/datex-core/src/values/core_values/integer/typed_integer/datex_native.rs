@@ -1,5 +1,8 @@
 use crate::{
-    traits::local_child_path_resolver::LocalChildPathResolver,
+    traits::{
+        child_iterator::ChildIterator,
+        local_child_path_resolver::LocalChildPathResolver,
+    },
     values::core_values::{
         integer::typed_integer::TypedInteger,
         native::{DatexNative, DatexNativeOps, add_native_impl_option},
@@ -41,3 +44,5 @@ impl DatexNativeOps for TypedInteger {
     }
 }
 impl LocalChildPathResolver for TypedInteger {}
+
+impl ChildIterator for TypedInteger {}

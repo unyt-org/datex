@@ -13,6 +13,7 @@ use core::{
 };
 mod datex_native_ops;
 pub use datex_native_ops::*;
+mod child_iterator;
 mod classification;
 mod datex_hash;
 mod datex_native_trait;
@@ -36,28 +37,18 @@ use crate::{
         convert_value_container::ConvertValueContainer, try_clone::TryClone,
     },
     utils::goat::Goat,
-    values::{
-        core_value::CoreValue,
-        core_value_with_classification::CoreValueWithClassification,
-        value::borrowed_value::BorrowedValue,
-    },
+    values::value::borrowed_value::BorrowedValue,
 };
 pub use datex_native_trait::*;
 
 impl<T: DatexNative + ConvertValue + Classification> ConvertValueContainer
     for T
 {
-    fn to_value_container(
-        self,
-        cache: &mut SharedReferencesCache,
-    ) -> ValueContainer {
+    fn to_value_container(self) -> ValueContainer {
         ValueContainer::Local(Value::new(self))
     }
 
-    fn as_borrowed_value_container(
-        &self,
-        cache: &mut SharedReferencesCache,
-    ) -> BorrowedValueContainer<'_> {
+    fn as_borrowed_value_container(&self) -> BorrowedValueContainer<'_> {
         BorrowedValueContainer::Local(BorrowedValue::Native(Goat::Borrowed(
             self,
         )))

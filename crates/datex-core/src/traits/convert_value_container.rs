@@ -1,4 +1,3 @@
-use crate::traits::convert_parts::{HasPartsKind, IntoParts};
 #[cfg(feature = "compiler")]
 use crate::compiler::error::SpannedCompilerError;
 #[cfg(feature = "parser")]
@@ -11,14 +10,16 @@ use crate::{
         cache::shared_references_cache::SharedReferencesCache,
         execution::{ExecutionError, context::ScriptExecutionError},
     },
-    traits::convert_parts::{FromParts, PartsKind},
+    traits::{
+        classification::Classification,
+        convert_parts::{FromParts, HasPartsKind, IntoParts, PartsKind},
+    },
     values::{
         borrowed_value_container::BorrowedValueContainer,
         value_container::ValueContainer,
     },
 };
 use core::cell::RefCell;
-use crate::traits::classification::Classification;
 
 #[derive(Debug)]
 pub enum DeserializationError {
@@ -64,16 +65,10 @@ impl From<ScriptExecutionError> for DeserializationError {
 /// No value conversions are performed, only downcasts to more specific types or upcasts to more general types are performed
 pub trait ConvertValueContainer {
     /// Convert the value to a [ValueContainer]
-    fn to_value_container(
-        self,
-        cache: &mut SharedReferencesCache,
-    ) -> ValueContainer;
+    fn to_value_container(self) -> ValueContainer;
 
     /// Borrow the value as a [BorrowedValueContainer]
-    fn as_borrowed_value_container(
-        &self,
-        cache: &mut SharedReferencesCache,
-    ) -> BorrowedValueContainer<'_>;
+    fn as_borrowed_value_container(&self) -> BorrowedValueContainer<'_>;
 
     /// Tries to downcast a [ValueContainer] into [Self]
     fn try_from_value_container(

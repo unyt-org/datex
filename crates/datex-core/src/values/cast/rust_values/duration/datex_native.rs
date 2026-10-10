@@ -14,4 +14,6 @@ impl DatexNative for Duration {
     }
 }
 impl DatexNativeOps for Duration {}
-impl LocalChildPathResolver for Duration {}
+impl LocalChildPathResolver for Duration { }
+use crate::traits::child_iterator::ChildIterator;
+impl ChildIterator for Duration { }

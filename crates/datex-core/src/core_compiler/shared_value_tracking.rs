@@ -6,6 +6,7 @@ use crate::{
     shared_values::{SharedContainer, traits::SharedContainerCommon},
     traits::child_iterator::ChildIterator,
     values::{
+        borrowed_value_container::BorrowedValueContainerMut,
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
@@ -228,13 +229,20 @@ impl<'a> SharedValueTracking<'a> {
                     }
                     _ => {
                         let mut value = inner_container.collapsed_value_mut();
-                        for child in value.borrow_mut().iter_children_mut() {
-                            if let ValueContainer::Shared(child) = child {
-                                self.register_child(
-                                    parent_moved,
-                                    child,
-                                    parents,
-                                );
+                        if let Some(children) =
+                            value.borrow_mut().iter_children_mut()
+                        {
+                            for child in children {
+                                if let BorrowedValueContainerMut::Shared(
+                                    mut child,
+                                ) = child
+                                {
+                                    self.register_child(
+                                        parent_moved,
+                                        &mut child,
+                                        parents,
+                                    );
+                                }
                             }
                         }
                     }

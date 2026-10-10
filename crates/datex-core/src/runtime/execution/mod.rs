@@ -738,8 +738,7 @@ mod tests {
         assert_eq!(list.len(), 0);
         assert_eq!(
             result,
-            List::new(Vec::<ValueContainer>::new())
-                .to_value_container(&mut SharedReferencesCache::default())
+            List::new(Vec::<ValueContainer>::new()).to_value_container()
         );
     }
 
@@ -795,15 +794,10 @@ mod tests {
         ];
         assert_eq!(list.len(), 3);
         assert_eq!(result, expected.into());
-        assert_eq!(
-            result,
-            List::new(vec![1i8, 2i8, 3i8])
-                .to_value_container(&mut SharedReferencesCache::default())
-        );
+        assert_eq!(result, List::new(vec![1i8, 2i8, 3i8]).to_value_container());
         assert_structural_eq!(
             result,
-            List::new(vec![1i8, 2i8, 3i8])
-                .to_value_container(&mut SharedReferencesCache::default())
+            List::new(vec![1i8, 2i8, 3i8]).to_value_container()
         );
     }
 
@@ -820,8 +814,7 @@ mod tests {
         assert_ne!(result, ValueContainer::from(vec![1_u8, 5_u8, 4_u8]));
         assert_structural_eq!(
             result,
-            List::new(vec![1_u8, 5_u8, 4_u8])
-                .to_value_container(&mut SharedReferencesCache::default())
+            List::new(vec![1_u8, 5_u8, 4_u8]).to_value_container()
         );
     }
 

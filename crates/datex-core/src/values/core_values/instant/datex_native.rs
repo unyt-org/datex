@@ -1,11 +1,17 @@
 use crate::{
-    traits::local_child_path_resolver::LocalChildPathResolver,
+    traits::{
+        child_iterator::ChildIterator,
+        local_child_path_resolver::LocalChildPathResolver,
+    },
+    value_updates::update_handler::{
+        UpdateCallbackDataAccess, UpdateHandlerImpl,
+    },
     values::core_values::{
-        endpoint::Endpoint,
         instant::Instant,
         native::{DatexNative, DatexNativeOps},
     },
 };
+
 use core::any::Any;
 
 impl DatexNative for Instant {
@@ -20,9 +26,7 @@ impl DatexNative for Instant {
 impl DatexNativeOps for Instant {}
 impl LocalChildPathResolver for Instant {}
 
-use crate::value_updates::update_handler::{
-    UpdateCallbackDataAccess, UpdateHandlerImpl,
-};
-
 impl UpdateHandlerImpl for Instant {}
 impl UpdateCallbackDataAccess for Instant {}
+
+impl ChildIterator for Instant {}

@@ -1,22 +1,29 @@
 use crate::{
     traits::child_iterator::ChildIterator,
-    values::{core_values::range::Range, value_container::ValueContainer},
+    values::{
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
+        core_values::range::Range,
+    },
 };
 
-impl<'a> ChildIterator<'a> for Range {
-    fn iter_children(&self) -> impl Iterator<Item = &ValueContainer> {
-        gen {
-            yield self.start.as_ref();
-            yield self.end.as_ref();
-        }
+impl ChildIterator for Range {
+    fn iter_children<'a>(
+        &'a self,
+    ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>> {
+        Some(gen {
+            yield self.start.as_ref().into();
+            yield self.end.as_ref().into();
+        })
     }
 
-    fn iter_children_mut(
+    fn iter_children_mut<'a>(
         &'a mut self,
-    ) -> impl Iterator<Item = &'a mut ValueContainer> + 'a {
-        gen {
-            yield self.start.as_mut();
-            yield self.end.as_mut();
-        }
+    ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainerMut<'a>> +'a>> {
+        Some(gen {
+            yield self.start.as_mut().into();
+            yield self.end.as_mut().into();
+        })
     }
 }

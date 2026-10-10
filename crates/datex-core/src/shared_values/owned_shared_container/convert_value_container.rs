@@ -9,17 +9,11 @@ use crate::{
 };
 
 impl ConvertValueContainer for OwnedSharedContainer {
-    fn to_value_container(
-        self,
-        _cache: &mut SharedReferencesCache,
-    ) -> ValueContainer {
+    fn to_value_container(self) -> ValueContainer {
         ValueContainer::Shared(SharedContainer::Owned(self))
     }
 
-    fn as_borrowed_value_container(
-        &self,
-        _cache: &mut SharedReferencesCache,
-    ) -> BorrowedValueContainer<'_> {
+    fn as_borrowed_value_container(&self) -> BorrowedValueContainer<'_> {
         BorrowedValueContainer::Shared(SharedContainer::Referenced(
             self.derive_with_max_mutability(),
         ))

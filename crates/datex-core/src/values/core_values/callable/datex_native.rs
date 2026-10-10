@@ -20,6 +20,8 @@ impl DatexNative for Callable {
     }
 }
 impl DatexNativeOps for Callable {}
-impl LocalChildPathResolver for Callable {}
+impl LocalChildPathResolver for Callable { }
+use crate::traits::child_iterator::ChildIterator;
+impl ChildIterator for Callable { }
 impl UpdateHandlerImpl for Callable {}
 impl UpdateCallbackDataAccess for Callable {}

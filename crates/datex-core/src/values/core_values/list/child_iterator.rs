@@ -1,26 +1,34 @@
+use core::borrow::Borrow;
+
 use crate::{
     traits::child_iterator::ChildIterator,
-    values::{core_values::list::List, value_container::ValueContainer},
+    values::{
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
+        core_values::list::List,
+    },
 };
 
-impl<'a> ChildIterator<'a> for List {
-    fn iter_children(
+impl ChildIterator for List {
+    fn iter_children<'a>(
         &'a self,
-    ) -> impl Iterator<Item = &'a ValueContainer> + 'a {
-        gen {
+    ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>> {
+        Some(Box::new(gen {
             for value in self.iter() {
-                yield value;
+                yield value.into();
             }
-        }
+        }))
     }
 
-    fn iter_children_mut(
+    fn iter_children_mut<'a>(
         &'a mut self,
-    ) -> impl Iterator<Item = &'a mut ValueContainer> + 'a {
-        gen {
+    ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainerMut<'a>> + 'a>>
+    {
+        Some(Box::new(gen {
             for value in self.iter_mut() {
-                yield value;
+                yield value.into();
             }
-        }
+        }))
     }
 }

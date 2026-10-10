@@ -1,9 +1,7 @@
 use crate::{
     prelude::*,
     runtime::cache::shared_references_cache::SharedReferencesCache,
-    traits::convert_parts::{
-        BorrowedParts, FromParts, IntoParts, Parts, PartsKind, HasPartsKind,
-    },
+    traits::convert_parts::{FromParts, HasPartsKind, IntoParts, PartsKind},
     values::{
         core_values::{list::List, map::Map},
         value::Value,
@@ -51,7 +49,10 @@ impl IntoParts for ValueContainer {
         }
     }
 
-    fn try_into_single_value<'a>(self: Box<Self>, _cache: &'a mut SharedReferencesCache) -> Result<ValueContainer, ()>
+    fn try_into_single_value<'a>(
+        self: Box<Self>,
+        _cache: &'a mut SharedReferencesCache,
+    ) -> Result<ValueContainer, ()>
     where
         Self: 'a,
     {
@@ -83,7 +84,10 @@ impl FromParts for ValueContainer {
         )?))
     }
 
-    fn try_from_single_value_with_tag(value: ValueContainer, _tag: Option<&str>) -> Result<Self, ()>
+    fn try_from_single_value_with_tag(
+        value: ValueContainer,
+        _tag: Option<&str>,
+    ) -> Result<Self, ()>
     where
         Self: Sized,
     {
