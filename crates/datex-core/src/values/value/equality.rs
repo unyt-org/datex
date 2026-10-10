@@ -31,13 +31,22 @@ impl StructuralEq for Value {
 impl ValueEq for Value {
     fn value_eq(&self, other: &Self) -> bool {
         match (self, other) {
+            // core vs core equality
             (Value::Core(core_self), Value::Core(core_other)) => {
                 core_self.value_eq(core_other)
             }
+
+            // native vs native equality
             (Value::Native(native_self), Value::Native(native_other)) => {
                 native_self.dyn_eq(native_other)
             }
-            _ => todo!()
+
+            // core vs native equality
+            (Value::Core(core_self), Value::Native(native_other))
+            | (Value::Native(native_other), Value::Core(core_self)) => {
+                core_self.datex_hash_default()
+                    == native_other.datex_hash_default()
+            }
         }
     }
 }
