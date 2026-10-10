@@ -14,7 +14,7 @@ use crate::{
             value_access::generate_value_access,
         },
     },
-    utils::{derive_datex_prelude, get_datex_core_crate_name_with_options},
+    utils::derive_datex_prelude,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -50,7 +50,7 @@ pub fn generate_derive_code(structure_data: StructureData) -> TokenStream {
             feature = "ast" => generate_datex_expression_data(&structure_data),
             _ => quote! {},
         };
-    
+
     let prelude = derive_datex_prelude();
     quote! {
         const _: () = {
