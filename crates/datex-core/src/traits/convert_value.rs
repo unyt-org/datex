@@ -7,13 +7,7 @@ pub trait ConvertValue {
     where
         Self: Sized;
 
-    fn try_borrow_from_value(value: &Value) -> Result<&Self, ()>
-    where
-        Self: Sized;
+    fn try_borrow_from_value(value: &Value) -> Result<&Self, ()>;
 
-    fn try_borrow_mut_from_value(
-        value: &mut Value,
-    ) -> Result<&mut Self, ()>
-    where
-        Self: Sized;
+    fn try_borrow_mut_from_value(value: &mut Value) -> Result<&mut Self, ()>;
 }

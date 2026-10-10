@@ -1,9 +1,10 @@
 use crate::{
-    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{ReferencedSharedContainer, SharedContainer},
     traits::convert_value_container::ConvertValueContainer,
     values::{
-        borrowed_value_container::BorrowedValueContainer,
+        borrowed_value_container::{
+            BorrowedValueContainer, BorrowedValueContainerMut,
+        },
         value_container::ValueContainer,
     },
 };
@@ -15,6 +16,13 @@ impl ConvertValueContainer for ReferencedSharedContainer {
 
     fn as_borrowed_value_container(&self) -> BorrowedValueContainer<'_> {
         BorrowedValueContainer::Shared(SharedContainer::Referenced(
+            self.clone(),
+        ))
+    }
+    fn as_borrowed_value_container_mut(
+        &mut self,
+    ) -> BorrowedValueContainerMut<'_> {
+        BorrowedValueContainerMut::Shared(SharedContainer::Referenced(
             self.clone(),
         ))
     }

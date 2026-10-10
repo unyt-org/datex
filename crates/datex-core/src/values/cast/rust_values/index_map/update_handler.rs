@@ -65,14 +65,10 @@ where
             .map_err(|_| UpdateError::type_error(TypeError::Invalid))?;
 
         self.shift_remove(&key)
-            .map(|previous| {
-                previous.to_value_container(cache.borrow_mut().deref_mut())
-            })
+            .map(|previous| previous.to_value_container())
             .ok_or_else(|| {
                 AccessError::MapAccessError(MapAccessError::KeyNotFound(
-                    KeyNotFoundError::new(
-                        key.to_value_container(cache.borrow_mut().deref_mut()),
-                    ),
+                    KeyNotFoundError::new(key.to_value_container()),
                 ))
                 .into()
             })

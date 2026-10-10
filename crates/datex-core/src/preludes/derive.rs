@@ -30,6 +30,7 @@ macro_rules! derive_prelude {
                 errors::{AccessError, KeyNotFoundError},
             },
             traits::{
+                child_iterator::ChildIterator,
                 classification::Classification,
                 convert_parts::{
                     FromParts, HasPartsKind, IntoParts, PartsKind,

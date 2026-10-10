@@ -1,11 +1,9 @@
-use crate::datex_proxy::data::{Structure, StructureData};
+use crate::datex_proxy::data::StructureData;
 use proc_macro2::TokenStream;
 use quote::quote;
 
 /// Generates the [ConvertValue] trait
-pub fn generate_convert_value(
-    structure_data: &StructureData,
-) -> TokenStream {
+pub fn generate_convert_value(structure_data: &StructureData) -> TokenStream {
     let StructureData {
         ident, generics, ..
     } = structure_data;

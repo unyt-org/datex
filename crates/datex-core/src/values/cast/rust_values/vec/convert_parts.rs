@@ -23,7 +23,7 @@ impl<T: ConvertValueContainer> IntoParts for Vec<T> {
     {
         let mut list = List::default();
         for item in *self {
-            list.push(itemto_value_container());
+            list.push(item.to_value_container());
         }
         Ok(list)
     }
