@@ -20,7 +20,7 @@ use crate::{
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
-        time::Instant,
+        instant::Instant,
     },
 };
 use core::str::FromStr;
@@ -380,6 +380,7 @@ mod tests {
         values::core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::{Endpoint, InvalidEndpointError},
+            instant::Instant,
             integer::typed_integer::TypedInteger,
         },
     };
@@ -743,11 +744,9 @@ mod tests {
         let expr = parse("2026-04-13T18:28:09.415Z");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Instant(
-                crate::values::core_values::time::Instant::instant_from_iso(
-                    "2026-04-13T18:28:09.415Z"
-                )
-            )
+            &DatexExpressionData::Instant(Instant::instant_from_iso(
+                "2026-04-13T18:28:09.415Z"
+            ))
         );
     }
 
@@ -756,11 +755,9 @@ mod tests {
         let expr = parse("2026-04-13T18:28:09Z");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Instant(
-                crate::values::core_values::time::Instant::instant_from_iso(
-                    "2026-04-13T18:28:09Z"
-                )
-            )
+            &DatexExpressionData::Instant(Instant::instant_from_iso(
+                "2026-04-13T18:28:09Z"
+            ))
         );
     }
 
@@ -770,23 +767,16 @@ mod tests {
         let expr = parse("2026-04-13T18:28Z");
         assert_eq!(
             expr.data(),
-            &DatexExpressionData::Instant(
-                crate::values::core_values::time::Instant::instant_from_iso(
-                    "2026-04-13T18:28Z"
-                )
-            )
+            &DatexExpressionData::Instant(Instant::instant_from_iso(
+                "2026-04-13T18:28Z"
+            ))
         );
     }
 
     #[test]
     fn parse_iso_datetime_epoch() {
         let expr = parse("1970-01-01T00:00:00.000Z");
-        assert_eq!(
-            expr.data(),
-            &DatexExpressionData::Instant(
-                crate::values::core_values::time::Instant(0)
-            )
-        );
+        assert_eq!(expr.data(), &DatexExpressionData::Instant(Instant(0)));
     }
 
     #[test]

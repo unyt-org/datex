@@ -14,8 +14,8 @@ use crate::{
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
         core_values::{
-            Instant,
             decimal::{Decimal, typed_decimal::TypedDecimal},
+            instant::Instant,
             integer::{Integer, typed_integer::TypedInteger},
         },
         value::Value,
@@ -28,8 +28,9 @@ use binrw::{
 };
 
 use crate::{
-    core_compiler::core_compilation_context::{
-        ByteCursor, CoreCompilationContext,
+    core_compiler::{
+        core_compilation_context::{ByteCursor, CoreCompilationContext},
+        to_instructions::ToInstructions,
     },
     instruction::{
         Instruction,
@@ -54,7 +55,6 @@ use crate::{
         value::value_classification::{ValueClassification, ValueTag},
     },
 };
-use crate::core_compiler::to_instructions::ToInstructions;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {

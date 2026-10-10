@@ -18,7 +18,7 @@ use crate::{
     },
     values::{
         core_values::{
-            endpoint::Endpoint, integer::Integer, list::List, time::Instant,
+            endpoint::Endpoint, instant::Instant, integer::Integer, list::List,
         },
         value_container::ValueContainer,
     },

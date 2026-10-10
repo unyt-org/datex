@@ -23,6 +23,7 @@ use crate::{
     types::literal_type_definition::LiteralTypeDefinition,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
+        instant::Instant,
         integer::{Integer, typed_integer::TypedInteger},
     },
 };
@@ -168,7 +169,7 @@ pub fn ast_from_bytecode(
                         }
                         RegularInstruction::Instant(instant_data) => {
                             DatexExpressionData::Instant(
-                                crate::values::core_values::time::Instant(
+                                Instant(
                                     instant_data.0,
                                 ),
                             )

@@ -25,10 +25,11 @@ use crate::{
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
         core_values::{
-            self, Instant,
+            self,
             boolean::Boolean,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
+            instant::Instant,
             integer::{Integer, typed_integer::TypedInteger},
             text::Text,
         },

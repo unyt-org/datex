@@ -49,7 +49,6 @@ impl SerializeWithSerdeContext for CoreValue {
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        
         let core_lib_type = self.core_lib_type_id();
 
         match &self {
@@ -87,6 +86,12 @@ impl SerializeWithSerdeContext for CoreValue {
             CoreValue::TypedInteger(ti) => {
                 ctx.serialize_core_value(ti, core_lib_type, serializer, false)
             }
+            CoreValue::Instant(instant) => ctx.serialize_core_value(
+                &instant,
+                core_lib_type,
+                serializer,
+                false,
+            ),
             CoreValue::TypedDecimal(td) => {
                 ctx.serialize_core_value(td, core_lib_type, serializer, false)
             }

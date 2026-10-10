@@ -1,18 +1,39 @@
-use crate::prelude::{String, format, *};
+use crate::{
+    prelude::{String, format, *},
+    time,
+};
 use chrono::*;
-use core::fmt;
+use core::{fmt, time::Duration};
+mod classification;
+mod convert_parts;
+mod datex_hash;
+mod datex_native;
+mod datex_native_structural;
+mod equality;
+mod get_core_lib_type_id;
+mod get_datex_type;
+mod serde_dif;
+mod to_datex_expression_data;
 mod to_instructions;
+mod try_clone;
 mod value_access;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Instant(pub i128);
 
 impl Instant {
-    // FIXME: make compatible with nostd/embedded
     // /// Returns the current UTC time
-    // pub fn now() -> Self {
-    //     Self(Utc::now().timestamp_millis() as i128) // Current system time
-    // }
+    pub fn now() -> Self {
+        Self(time::now_ms() as i128)
+    }
+
+    pub fn to_duration(&self) -> Duration {
+        Duration::from_millis(self.0 as u64)
+    }
+
+    pub fn from_duration(duration: Duration) -> Self {
+        Self(duration.as_millis() as i128)
+    }
 
     /// Return ISO 8601 UTC string with millisecond precision (always ends with 'Z')
     pub fn to_iso_string(&self) -> String {
