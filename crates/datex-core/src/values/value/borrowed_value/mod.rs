@@ -141,6 +141,19 @@ pub enum BorrowedValueMut<'a> {
     Native(GoatMut<'a, dyn DatexNative>),
 }
 
+impl Debug for BorrowedValueMut<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            BorrowedValueMut::Core(core) => {
+                write!(f, "BorrowedValueMut::Core({:?})", core)
+            }
+            BorrowedValueMut::Native(native) => {
+                write!(f, "BorrowedValueMut::Native(...)")
+            }
+        }
+    }
+}
+
 impl<'a> BorrowedValueMut<'a> {
     pub fn core(core: impl Into<BorrowedCoreValueMut<'a>>) -> Self {
         BorrowedValueMut::Core(BorrowedCoreValueWithClassificationMut {
