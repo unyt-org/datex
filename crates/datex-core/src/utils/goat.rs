@@ -32,6 +32,28 @@ impl<'a, T: ?Sized> Goat<'a, T> {
             Goat::Borrowed(b) => f(b).map(Goat::Borrowed),
         }
     }
+
+    pub fn try_filter_map<U: ?Sized, F>(self, f: F) -> Result<Goat<'a, U>, Self>
+    where
+        F: FnOnce(&T) -> Option<&U>,
+    {
+        match self {
+            Goat::Ref(r) => Ref::filter_map(r, f)
+                .map(Goat::Ref)
+                .map_err(Goat::Ref),
+            Goat::Borrowed(b) => {
+                let ptr: *const T = b;
+                // SAFETY: `F` is higher-ranked over the borrow's lifetime
+                // (`for<'x> FnOnce(&'x mut T) -> Option<&'x mut U>`), so `f`
+                // cannot keep the reference beyond the call. If it returns
+                // `None`, the reborrow is dead and we may create a new one.
+                match f(unsafe { &*ptr }) {
+                    Some(u) => Ok(Goat::Borrowed(u)),
+                    None => Err(Goat::Borrowed(unsafe { &*ptr })),
+                }
+            }
+        }
+    }
 }
 
 impl<T> Debug for Goat<'_, T>

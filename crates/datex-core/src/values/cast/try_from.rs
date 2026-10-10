@@ -85,7 +85,7 @@ macro impl_convert_value($($variant:ident => $type:ty),* $(,)?) {
 macro impl_try_from_core_value($($variant:ident => $type:ty),* $(,)?) {
     $(
         impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, $type> {
-            type Error = ();
+            type Error = BorrowedValue<'a>;
             fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
                 match value {
                     // BorrowedCoreValue::$variant(v) => Ok(v),
@@ -93,13 +93,13 @@ macro impl_try_from_core_value($($variant:ident => $type:ty),* $(,)?) {
                         inner: BorrowedCoreValue::$variant(v),
                         ..
                     }) => Ok(v),
-                    _ => Err(()),
+                    _ => Err(value),
                 }
             }
         }
 
         impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, $type> {
-            type Error = ();
+            type Error = BorrowedValueMut<'a>;
             fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
                 match value {
                     BorrowedValueMut::Core(
@@ -108,7 +108,7 @@ macro impl_try_from_core_value($($variant:ident => $type:ty),* $(,)?) {
                             ..
                         },
                     ) => Ok(v),
-                    _ => Err(()),
+                    _ => Err(value),
                 }
             }
         }

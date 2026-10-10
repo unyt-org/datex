@@ -7,7 +7,6 @@ use crate::{
     collections::HashMap,
     prelude::*,
     random::RandomState,
-    traits::convert_value_container::ConvertValueContainer,
     values::{
         core_value::CoreValue,
         value::{
@@ -260,17 +259,21 @@ impl Map {
         match &self.entries {
             MapEntries::Structural(_) => {
                 for (key, _) in self.iter() {
-                    if let Some(text) = key.try_as::<str>() {
-                        if !allowed.contains(&text.as_ref()) {
+                    match key.try_as::<str>() {
+                        Ok(string) => {
+                            if !allowed.contains(&string.as_ref()) {
+                                return Err(UnexpectedPropertyError {
+                                    key: string.to_string(),
+                                });
+                            }
+                        }
+                        Err(key) => {
                             return Err(UnexpectedPropertyError {
-                                key: (*text).to_string(),
+                                key: format!("{key}"),
                             });
                         }
-                    } else {
-                        return Err(UnexpectedPropertyError {
-                            key: format!("{key}"),
-                        });
                     }
+                   
                 }
             }
             MapEntries::Dynamic(entries) => {

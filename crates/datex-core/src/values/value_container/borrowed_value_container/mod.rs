@@ -58,13 +58,13 @@ impl<'a> BorrowedValueContainer<'a> {
     /// Tries to get an immutable reference to the value as a specified type.
     /// Does not perform any type conversion.
     /// This only works for local values, not for shared values.
-    pub fn try_as<T: ?Sized>(self) -> Option<Goat<'a, T>>
+    pub fn try_as<T: ?Sized>(self) -> Result<Goat<'a, T>, Self>
     where
-        Goat<'a, T>: TryFrom<BorrowedValue<'a>>,
+        Goat<'a, T>: TryFrom<BorrowedValue<'a>, Error = BorrowedValue<'a>>,
     {
         match self {
-            BorrowedValueContainer::Local(value) => value.try_as(),
-            BorrowedValueContainer::Shared(_) => None,
+            BorrowedValueContainer::Local(value) => value.try_as().map_err(|v| BorrowedValueContainer::Local(v)),
+            BorrowedValueContainer::Shared(_) => Err(self),
         }
     }
 

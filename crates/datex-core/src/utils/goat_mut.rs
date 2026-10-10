@@ -32,6 +32,28 @@ impl<'a, T: ?Sized> GoatMut<'a, T> {
             GoatMut::Borrowed(b) => f(b).map(GoatMut::Borrowed),
         }
     }
+
+    pub fn try_filter_map<U: ?Sized, F>(self, f: F) -> Result<GoatMut<'a, U>, Self>
+    where
+        F: FnOnce(&mut T) -> Option<&mut U>,
+    {
+        match self {
+            GoatMut::Ref(r) => RefMut::filter_map(r, f)
+                .map(GoatMut::Ref)
+                .map_err(GoatMut::Ref),
+            GoatMut::Borrowed(b) => {
+                let ptr: *mut T = b;
+                // SAFETY: `F` is higher-ranked over the borrow's lifetime
+                // (`for<'x> FnOnce(&'x mut T) -> Option<&'x mut U>`), so `f`
+                // cannot keep the reference beyond the call. If it returns
+                // `None`, the reborrow is dead and we may create a new one.
+                match f(unsafe { &mut *ptr }) {
+                    Some(u) => Ok(GoatMut::Borrowed(u)),
+                    None => Err(GoatMut::Borrowed(unsafe { &mut *ptr })),
+                }
+            }
+        }
+    }
 }
 
 impl<T: ?Sized> Debug for GoatMut<'_, T>

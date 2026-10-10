@@ -65,7 +65,7 @@ impl ConvertValue for String {
 }
 
 impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, str> {
-    type Error = ();
+    type Error = BorrowedValue<'a>;
     fn try_from(value: BorrowedValue<'a>) -> Result<Self, Self::Error> {
         match value {
             BorrowedValue::Core(BorrowedCoreValueWithClassification {
@@ -73,17 +73,16 @@ impl<'a> TryFrom<BorrowedValue<'a>> for Goat<'a, str> {
                 ..
             }) => Ok(v),
             BorrowedValue::Native(native) => native
-                .filter_map(|v| {
-                    v.as_any().downcast_ref::<String>().map(|s| s.as_str())
-                })
-                .ok_or(()),
-            _ => Err(()),
+                .try_as::<String>()
+                .map(|s| s.map(|s| s.as_str()))
+                .map_err(|v| BorrowedValue::Native(v)),
+            _ => Err(value),
         }
     }
 }
 
 impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, str> {
-    type Error = ();
+    type Error = BorrowedValueMut<'a>;
     fn try_from(value: BorrowedValueMut<'a>) -> Result<Self, Self::Error> {
         match value {
             BorrowedValueMut::Core(
@@ -93,13 +92,10 @@ impl<'a> TryFrom<BorrowedValueMut<'a>> for GoatMut<'a, str> {
                 },
             ) => Ok(v),
             BorrowedValueMut::Native(native) => native
-                .filter_map(|v| {
-                    v.as_any_mut()
-                        .downcast_mut::<String>()
-                        .map(|s| s.as_mut_str())
-                })
-                .ok_or(()),
-            _ => Err(()),
+                .try_as_mut::<String>()
+                .map(|s| s.map(|s| s.as_mut_str()))
+                .map_err(|v| BorrowedValueMut::Native(v)),
+            _ => Err(value),
         }
     }
 }
