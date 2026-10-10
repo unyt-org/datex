@@ -25,6 +25,7 @@ use crate::values::core_value_with_classification::borrowed_core_value_with_clas
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 pub mod classification;
+pub mod hash;
 
 /// Similar to [Value], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.

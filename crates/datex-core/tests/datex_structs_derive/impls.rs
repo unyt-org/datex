@@ -116,7 +116,7 @@ fn call_instance_method_from_runtime() {
 
     let example_type = Example::datex_type(cache.borrow_mut().deref_mut());
     let set_a = example_type
-        .try_get_property("set_a".into(), cache)
+        .try_get_property("set_a".into())
         .unwrap();
     let set_a_callable = set_a.try_as::<Callable>().unwrap();
 
@@ -157,7 +157,6 @@ async fn call_async_instance_method_from_runtime() {
     let async_test = example_type
         .try_get_property(
             "async_test".into(),
-            runtime.shared_references_cache_refcell(),
         )
         .unwrap();
     let async_test_callable = async_test.try_as::<Callable>().unwrap();

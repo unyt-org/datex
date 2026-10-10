@@ -81,7 +81,6 @@ macro_rules! implement_rust_native_traits {
         impl IntoParts for $type {
             fn try_into_single_value<'a>(
                 self: Box<Self>,
-                cache: &'a mut SharedReferencesCache,
             ) -> Result<ValueContainer, ()>
             where
                 Self: 'a,

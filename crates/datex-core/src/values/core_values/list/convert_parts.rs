@@ -14,7 +14,6 @@ impl HasPartsKind for List {
 impl IntoParts for List {
     fn try_into_list_parts<'a>(
         self: Box<Self>,
-        _cache: &'a mut SharedReferencesCache,
     ) -> Result<List, ()>
     where
         Self: 'a,

@@ -1088,7 +1088,6 @@ pub gen fn inner_execution_loop(
                                         let collapsed_value = target.collapsed_value();
                                         collapsed_value.borrow().try_get_property(
                                             &property_name,
-                                            state.runtime.shared_references_cache_refcell(),
                                         )
                                             .map(BorrowedValueContainer::try_clone_to_value_container)  // FIXME: no clone?
                                             .map_err(ExecutionError::access_error)?
@@ -1109,7 +1108,7 @@ pub gen fn inner_execution_loop(
                                     let collapsed_value = value_container.collapsed_value();
                                     let res = collapsed_value.borrow()
                                         .try_get_property(
-                                            property_index, state.runtime.shared_references_cache_refcell()
+                                            property_index
                                         )
                                         .map(BorrowedValueContainer::try_clone_to_value_container) // FIXME: no clone?
                                         .map_err(ExecutionError::access_error)?
@@ -1126,7 +1125,7 @@ pub gen fn inner_execution_loop(
                                     let value_container = target.as_value_container(&state.stack)?;
                                     let collapsed_value = value_container.collapsed_value();
                                     let res = collapsed_value.borrow()
-                                        .try_get_property(&key, state.runtime.shared_references_cache_refcell())
+                                        .try_get_property(&key)
                                         .map(BorrowedValueContainer::try_clone_to_value_container)  // FIXME: no clone?
                                         .map_err(ExecutionError::access_error)?
                                         .map_err(|_| ExecutionError::UnclonableValue)?;

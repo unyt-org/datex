@@ -23,14 +23,14 @@ use crate::values::core_value_with_classification::borrowed_core_value_with_clas
 use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl ValueAccess for CoreValueWithClassification {
+    
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         match &self.inner {
-            CoreValue::Map(map) => map.try_get_property(key, cache),
-            CoreValue::List(list) => list.try_get_property(key, cache),
+            CoreValue::Map(map) => map.try_get_property(key),
+            CoreValue::List(list) => list.try_get_property(key),
             CoreValue::Type(Type::Entity(container)) => {
                 if let Some(key) = key.try_as_text() {
                     let reference = Ref::filter_map(
@@ -69,11 +69,10 @@ impl ValueAccess for CoreValueWithClassification {
     fn try_get_property_mut(
         &mut self,
         key: BorrowedValueKey,
-        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         match &mut self.inner {
-            CoreValue::Map(map) => map.try_get_property_mut(key, cache),
-            CoreValue::List(list) => list.try_get_property_mut(key, cache),
+            CoreValue::Map(map) => map.try_get_property_mut(key),
+            CoreValue::List(list) => list.try_get_property_mut(key),
             _ => {
                 // If the value is not a map, we cannot get a property
                 Err(AccessError::InvalidOperation(

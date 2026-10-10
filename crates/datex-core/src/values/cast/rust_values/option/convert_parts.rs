@@ -20,39 +20,36 @@ impl<T: HasPartsKind> HasPartsKind for Option<T> {
 impl<T: IntoParts> IntoParts for Option<T> {
     fn try_into_map_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<Map, ()>
     where
         Self: 'a,
     {
         match *self {
-            Some(value) => Box::new(value).try_into_map_parts(cache),
+            Some(value) => Box::new(value).try_into_map_parts(),
             None => Err(()),
         }
     }
 
     fn try_into_list_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<List, ()>
     where
         Self: 'a,
     {
         match *self {
-            Some(value) => Box::new(value).try_into_list_parts(cache),
+            Some(value) => Box::new(value).try_into_list_parts(),
             None => Err(()),
         }
     }
 
     fn try_into_single_value<'a>(
         self: Box<Self>,
-        _cache: &'a mut SharedReferencesCache,
     ) -> Result<ValueContainer, ()>
     where
         Self: 'a,
     {
         match *self {
-            Some(value) => Box::new(value).try_into_single_value(_cache),
+            Some(value) => Box::new(value).try_into_single_value(),
             None => Ok(ValueContainer::Local(Value::null())),
         }
     }

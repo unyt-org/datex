@@ -10,7 +10,12 @@ pub trait IterParts: HasPartsKind {
     ) -> Option<Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>> {
         match self.parts_kind() {
             PartsKind::List => self.iter_list_parts(),
-            PartsKind::Map => self.iter_map_parts().map(|iter| iter.collect()),
+            PartsKind::Map => Some(Box::new(gen move {
+                for (key, value) in self.iter_map_parts().unwrap() {
+                    yield key;
+                    yield value;
+                }
+            })),
             _ => None,
         }
     }

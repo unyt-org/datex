@@ -267,7 +267,6 @@ impl Map {
                             });
                         }
                     } else {
-                        let vc = key.try_clone_to_value_container();
                         return Err(UnexpectedPropertyError {
                             key: format!("{key}"),
                         });

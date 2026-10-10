@@ -29,6 +29,8 @@ use crate::{
 };
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+pub mod hash;
+
 use core::ops::Deref;
 use crate::values::core_value_with_classification::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
 

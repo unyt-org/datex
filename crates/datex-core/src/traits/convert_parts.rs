@@ -100,7 +100,6 @@ pub trait IntoParts: HasPartsKind {
     /// and checking if it returns `PartsKind::Map`.
     fn try_into_map_parts<'a>(
         self: Box<Self>,
-        _cache: &'a mut SharedReferencesCache,
     ) -> Result<Map, ()>
     where
         Self: 'a,
@@ -114,7 +113,6 @@ pub trait IntoParts: HasPartsKind {
     /// and checking if it returns `PartsKind::List`.
     fn try_into_list_parts<'a>(
         self: Box<Self>,
-        _cache: &'a mut SharedReferencesCache,
     ) -> Result<List, ()>
     where
         Self: 'a,
@@ -128,7 +126,6 @@ pub trait IntoParts: HasPartsKind {
     /// and checking if it returns `PartsKind::SingleValue`.
     fn try_into_single_value<'a>(
         self: Box<Self>,
-        _cache: &'a mut SharedReferencesCache,
     ) -> Result<ValueContainer, ()>
     where
         Self: 'a,

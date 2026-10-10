@@ -8,17 +8,7 @@ use crate::values::value_container::borrowed_value_container::BorrowedValueConta
 /// A pointer and a value are never partially equal.
 impl PartialEq for BorrowedValueContainer<'_> {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                BorrowedValueContainer::Local(a),
-                BorrowedValueContainer::Local(b),
-            ) => a == b,
-            (
-                BorrowedValueContainer::Shared(a),
-                BorrowedValueContainer::Shared(b),
-            ) => a == b,
-            _ => false,
-        }
+        self.value_eq(other)
     }
 }
 

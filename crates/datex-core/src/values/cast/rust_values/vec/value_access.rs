@@ -19,7 +19,6 @@ where
     fn try_get_property(
         &self,
         key: BorrowedValueKey,
-        cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         match key {
             BorrowedValueKey::Index(index) => {
@@ -41,7 +40,6 @@ where
     fn try_get_property_mut(
         &mut self,
         _key: BorrowedValueKey,
-        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         todo!()
     }

@@ -21,14 +21,13 @@ impl HasPartsKind for ValueContainer {
 impl IntoParts for ValueContainer {
     fn try_into_map_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<Map, ()>
     where
         Self: 'a,
     {
         match self {
             ValueContainer::Local(value) => {
-                Box::new(value).try_into_map_parts(cache)
+                Box::new(value).try_into_map_parts()
             }
             ValueContainer::Shared(shared) => Err(()),
         }
@@ -36,14 +35,13 @@ impl IntoParts for ValueContainer {
 
     fn try_into_list_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<List, ()>
     where
         Self: 'a,
     {
         match self {
             ValueContainer::Local(value) => {
-                Box::new(value).try_into_list_parts(cache)
+                Box::new(value).try_into_list_parts()
             }
             ValueContainer::Shared(shared) => Err(()),
         }
@@ -51,7 +49,6 @@ impl IntoParts for ValueContainer {
 
     fn try_into_single_value<'a>(
         self: Box<Self>,
-        _cache: &'a mut SharedReferencesCache,
     ) -> Result<ValueContainer, ()>
     where
         Self: 'a,

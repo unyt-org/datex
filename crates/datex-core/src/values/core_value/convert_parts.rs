@@ -58,7 +58,6 @@ impl HasPartsKind for CoreValue {
 impl IntoParts for CoreValue {
     fn try_into_map_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<Map, ()>
     where
         Self: 'a,
@@ -71,7 +70,6 @@ impl IntoParts for CoreValue {
 
     fn try_into_list_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<List, ()>
     where
         Self: 'a,
@@ -84,7 +82,6 @@ impl IntoParts for CoreValue {
 
     fn try_into_single_value<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<ValueContainer, ()>
     where
         Self: 'a,

@@ -17,7 +17,6 @@ pub trait ValueAccess {
     fn try_get_property(
         &self,
         _key: BorrowedValueKey,
-        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         Err(AccessError::InvalidOperation(
             "Cannot get property".to_string(),
@@ -28,7 +27,6 @@ pub trait ValueAccess {
     fn try_get_property_mut(
         &mut self,
         _key: BorrowedValueKey,
-        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainerMut<'_>, AccessError> {
         Err(AccessError::InvalidOperation(
             "Cannot get property".to_string(),

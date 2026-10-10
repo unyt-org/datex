@@ -18,35 +18,32 @@ impl<T: HasPartsKind> HasPartsKind for Box<T> {
 impl<T: IntoParts> IntoParts for Box<T> {
     fn try_into_map_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<Map, ()>
     where
         Self: 'a,
     {
         let inner = *self;
-        inner.try_into_map_parts(cache)
+        inner.try_into_map_parts()
     }
 
     fn try_into_list_parts<'a>(
         self: Box<Self>,
-        cache: &'a mut SharedReferencesCache,
     ) -> Result<List, ()>
     where
         Self: 'a,
     {
         let inner = *self;
-        inner.try_into_list_parts(cache)
+        inner.try_into_list_parts()
     }
 
     fn try_into_single_value<'a>(
         self: Box<Self>,
-        _cache: &'a mut SharedReferencesCache,
     ) -> Result<ValueContainer, ()>
     where
         Self: 'a,
     {
         let inner = *self;
-        inner.try_into_single_value(_cache)
+        inner.try_into_single_value()
     }
 }
 

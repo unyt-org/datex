@@ -15,7 +15,6 @@ impl ValueAccess for EntityTypeDefinition {
     fn try_get_property(
         &self,
         _key: BorrowedValueKey,
-        _cache: &RefCell<SharedReferencesCache>,
     ) -> Result<BorrowedValueContainer<'_>, AccessError> {
         todo!()
     }

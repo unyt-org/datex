@@ -7,6 +7,8 @@ use syn::Path;
 pub enum SelfAccess {
     /// Indicates that the self value is borrowed, and field access should use references.
     Borrowed,
+    /// Indicates that the self value is mutably borrowed, and field access should use mutable references.
+    BorrowedMut,
     /// Indicates that the self value is borrowed, but accessed via a specific identifier (e.g., `value`), and field access should use references.
     BorrowedIdent {
         self_value: Ident,
@@ -103,7 +105,7 @@ pub fn map_enum_variants(
     });
     
     let self_access_pattern = match self_access {
-        SelfAccess::Borrowed | SelfAccess::Moved => quote! { self },
+        SelfAccess::Borrowed | SelfAccess::Moved | SelfAccess::BorrowedMut => quote! { self },
         SelfAccess::BorrowedIdent { self_value, .. } => quote! { #self_value },
         SelfAccess::Boxed => quote! { *self },
     };
@@ -128,6 +130,11 @@ pub fn generate_struct_field_accessors(
             SelfAccess::Borrowed => {
                 quote! {
                     let #normalized_ident = &self.#accessor;
+                }
+            }
+            SelfAccess::BorrowedMut => {
+                quote! {
+                    let #normalized_ident = &mut self.#accessor;
                 }
             }
             SelfAccess::BorrowedIdent { self_value, .. } => {
