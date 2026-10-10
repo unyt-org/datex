@@ -30,7 +30,7 @@ mod to_datex_expression_data;
 pub mod hash;
 pub mod to_instructions;
 
-use core::fmt::Debug;
+use core::fmt::{Debug, Display, Formatter};
 
 #[derive(Debug)]
 pub enum BorrowedValueContainer<'a> {
@@ -38,14 +38,23 @@ pub enum BorrowedValueContainer<'a> {
     Shared(SharedContainer),
 }
 
-impl_display_for_datex_value!(
-    BorrowedValueContainer<_>,
-    impl<'a> core::fmt::Display for BorrowedValueContainer<'a> {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-            core::write!(f, "[[ BorrowedValueContainer ]]")
-        }
+
+#[cfg(feature = "value_display")]
+impl Display for BorrowedValueContainer<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        use crate::decompiler::ast_to_source_code::value_to_source_code_default;
+
+        write!(f, "{}", value_to_source_code_default(self))
     }
-);
+}
+#[cfg(not(feature = "value_display"))]
+impl Display for BorrowedValueContainer<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "[[ BorrowedValueContainer ]]")
+    }
+}
+
+
 
 impl<'a> BorrowedValueContainer<'a> {
     /// Creates a new `BorrowedValueContainer` from a reference to a native value.
