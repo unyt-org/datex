@@ -1,18 +1,13 @@
 // TODO: move tests
 #[cfg(test)]
 mod tests {
-    use crate::values::{
-        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
-    };
+    use crate::values::{core_values::endpoint::Endpoint, value::Value};
 
     #[test]
     fn to_value() {
         let endpoint = Endpoint::new("@jonas");
         let value = Value::native(endpoint.clone());
-        assert!(matches!(
-            value.try_into_core_value().unwrap(),
-            CoreValue::Endpoint(ref e) if e == &endpoint
-        ));
+        assert_eq!(value.try_into_value::<Endpoint>().unwrap(), endpoint);
     }
 
     #[test]
