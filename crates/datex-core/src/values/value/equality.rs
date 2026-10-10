@@ -38,10 +38,6 @@ impl ValueEq for Value {
 
             // native vs native equality
             (Value::Native(native_self), Value::Native(native_other)) => {
-                println!(
-                    "Comparing core vs native: core_self = {:?}, native_other = {:?}",
-                    native_self, native_other
-                );
                 native_self.dyn_eq(native_other)
             }
 

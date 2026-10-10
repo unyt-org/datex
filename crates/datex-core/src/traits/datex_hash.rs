@@ -8,7 +8,7 @@ pub trait DatexHash {
     fn datex_hash(&self, state: &mut dyn Hasher);
 
     fn datex_hash_default(&self) -> u64 {
-        let mut hasher = collections::DefaultHasher::new();
+        let mut hasher = collections::DefaultHasher::new(); // FIXME no_std support
         self.datex_hash(&mut hasher);
         hasher.finish()
     }
