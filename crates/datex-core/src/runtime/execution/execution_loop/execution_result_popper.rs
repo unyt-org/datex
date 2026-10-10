@@ -11,14 +11,14 @@ use crate::{
         },
     },
     types::{r#type::Type, type_definition::TypeDefinition},
-    values::{core_values::map::MapKey, value_container::ValueContainer},
+    values::{value_container::ValueContainer},
 };
 
 impl
     CollectionResultsPopper<
         CollectedExecutionResult,
         Option<RuntimeValue>,
-        MapKey,
+        ValueContainer,
         ValueContainer,
         Type,
         TypeDefinition,
@@ -56,7 +56,7 @@ impl
 
     fn try_extract_key_value_pair(
         result: CollectedExecutionResult,
-    ) -> Option<(MapKey, ValueContainer)> {
+    ) -> Option<(ValueContainer, ValueContainer)> {
         match result {
             CollectedExecutionResult::KeyValuePair(deref!((key, value))) => {
                 Some((key, value))
@@ -115,7 +115,7 @@ impl CollectedResults<CollectedExecutionResult> {
     /// Pops a key-value pair result, returning an error if none exists
     pub fn try_collect_key_value_pair(
         mut self,
-    ) -> Result<Vec<(MapKey, ValueContainer)>, ExecutionError> {
+    ) -> Result<Vec<(ValueContainer, ValueContainer)>, ExecutionError> {
         let count = self.len();
         let mut pairs = Vec::with_capacity(count);
         for _ in 0..count {

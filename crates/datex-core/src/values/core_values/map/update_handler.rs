@@ -15,7 +15,6 @@ use crate::{
             UpdateCallbackDataAccess, UpdateHandlerImpl,
         },
     },
-    values::core_values::map::MapKey,
 };
 use core::{cell::RefCell, result::Result};
 

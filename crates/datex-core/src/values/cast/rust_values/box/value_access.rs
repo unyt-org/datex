@@ -4,9 +4,6 @@ use crate::{
     shared_values::errors::AccessError,
     traits::value_access::ValueAccess,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         value_container::value_key::BorrowedValueKey,
     },
 };
@@ -14,6 +11,7 @@ use core::{
     cell::RefCell,
     ops::{Deref, DerefMut},
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl<T: ValueAccess> ValueAccess for Box<T> {
     fn try_get_property(

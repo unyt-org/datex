@@ -1,14 +1,14 @@
 use crate::values::{
     core_value_with_classification::CoreValueWithClassification,
     value::{
-        borrowed_value::borrowed_core_value::{
-            BorrowedCoreValue, BorrowedCoreValueMut,
-        },
         value_classification::ValueClassification,
     },
 };
+use crate::values::core_value::borrowed_core_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
+pub mod classification;
 
 /// Similar to [CoreValueWithClassification], but contains a [BorrowedCoreValue] instead of a [CoreValue].
 /// It is used to represent a potentially borrowed reference to a [CoreValue] variant instead of owning it.
@@ -34,6 +34,19 @@ impl<'a> From<&'a CoreValueWithClassification>
     for BorrowedCoreValueWithClassification<'a>
 {
     fn from(value: &'a CoreValueWithClassification) -> Self {
+        let inner = BorrowedCoreValue::from(&value.inner);
+        let classification = value.classification.clone();
+        BorrowedCoreValueWithClassification {
+            inner,
+            classification,
+        }
+    }
+}
+
+impl<'a> From<&'a mut CoreValueWithClassification>
+    for BorrowedCoreValueWithClassification<'a>
+{
+    fn from(value: &'a mut CoreValueWithClassification) -> Self {
         let inner = BorrowedCoreValue::from(&value.inner);
         let classification = value.classification.clone();
         BorrowedCoreValueWithClassification {

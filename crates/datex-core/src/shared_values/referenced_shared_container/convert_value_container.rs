@@ -2,12 +2,10 @@ use crate::{
     shared_values::{ReferencedSharedContainer, SharedContainer},
     traits::convert_value_container::ConvertValueContainer,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         value_container::ValueContainer,
     },
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl ConvertValueContainer for ReferencedSharedContainer {
     fn to_value_container(self) -> ValueContainer {

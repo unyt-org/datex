@@ -3,12 +3,7 @@ use crate::{
     runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::errors::{AccessError, KeyNotFoundError},
     traits::value_access::ValueAccess,
-    types::r#type::Type,
-    utils::goat::Goat,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         core_value::CoreValue,
         value::{
             Value,
@@ -17,6 +12,7 @@ use crate::{
     },
 };
 use core::cell::{Ref, RefCell};
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl ValueAccess for Value {
     fn try_get_property(

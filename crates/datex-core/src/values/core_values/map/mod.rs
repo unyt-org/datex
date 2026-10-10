@@ -9,13 +9,9 @@ use crate::{
     random::RandomState,
     traits::convert_value_container::ConvertValueContainer,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         core_value::CoreValue,
         value::{
             Value,
-            borrowed_value::{BorrowedValue, BorrowedValueMut},
         },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
@@ -60,6 +56,7 @@ use crate::{
     },
 };
 use indexmap::{IndexMap, map::MutableKeys};
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MapEntries {
@@ -327,10 +324,10 @@ impl Map {
     /// skipping any children that have a [ValueContainer::Shared] value
     pub fn iter_local_values_mut(
         &mut self,
-    ) -> impl Iterator<Item = (BorrowedValueContainer<'_>, BorrowedValueMut<'_>)>
+    ) -> impl Iterator<Item = (BorrowedValueContainer<'_>, &mut Value)>
     {
         self.iter_mut().filter_map(|(key, item)| {
-            if let BorrowedValueContainerMut::Local(local_value) = item {
+            if let ValueContainer::Local(local_value) = item {
                 Some((key, local_value))
             } else {
                 None
@@ -394,14 +391,14 @@ pub struct MapIterator<'a> {
 }
 
 impl<'a> Iterator for MapIterator<'a> {
-    type Item = (BorrowedValueContainer<'a>, BorrowedValueContainer<'a>);
+    type Item = (BorrowedValueContainer<'a>, &'a ValueContainer);
 
     fn next(&mut self) -> Option<Self::Item> {
         match &self.map.entries {
             MapEntries::Dynamic(map) => {
                 let item = map.iter().nth(self.index);
                 self.index += 1;
-                item.map(|(k, v)| (k.into(), v.into()))
+                item.map(|(k, v)| (k.into(), v))
             }
             MapEntries::Structural(vec) => {
                 if self.index < vec.len() {
@@ -416,7 +413,7 @@ impl<'a> Iterator for MapIterator<'a> {
                 if self.index < vec.len() {
                     let item = &vec[self.index];
                     self.index += 1;
-                    Some(((&item.0).into(), (&item.1).into()))
+                    Some((item.0.as_str().into(), &item.1))
                 } else {
                     None
                 }
@@ -432,18 +429,18 @@ pub enum MapMutIterator<'a> {
 }
 
 impl<'a> Iterator for MapMutIterator<'a> {
-    type Item = (BorrowedValueContainer<'a>, BorrowedValueContainerMut<'a>);
+    type Item = (BorrowedValueContainer<'a>, &'a mut ValueContainer);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             MapMutIterator::Dynamic(iter) => {
-                iter.next().map(|(k, v)| (k.into(), v.into()))
+                iter.next().map(|(k, v)| (k.into(), v))
             }
             MapMutIterator::Fixed(iter) => {
-                iter.next().map(|(k, v)| (k.into(), v.into()))
+                iter.next().map(|(k, v)| (k.into(), v))
             }
             MapMutIterator::Structural(iter) => {
-                iter.next().map(|(k, v)| (k.into(), v.into()))
+                iter.next().map(|(k, v)| (k.as_str().into(), v))
             }
         }
     }
@@ -496,7 +493,7 @@ where
 }
 
 impl IntoIterator for Map {
-    type Item = (MapKey, ValueContainer);
+    type Item = (ValueContainer, ValueContainer);
     type IntoIter = IntoMapIterator;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -515,7 +512,7 @@ impl IntoIterator for Map {
 }
 
 impl<'a> IntoIterator for &'a mut Map {
-    type Item = (BorrowedMutMapKey<'a>, &'a mut ValueContainer);
+    type Item = (BorrowedValueContainer<'a>, &'a mut ValueContainer);
     type IntoIter = MapMutIterator<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -548,54 +545,6 @@ impl From<Vec<(String, ValueContainer)>> for Map {
                 .map(|(k, v)| (k.into(), v))
                 .collect::<IndexMap<ValueContainer, ValueContainer, RandomState>>(),
         )
-    }
-}
-
-impl From<Vec<(MapKey, ValueContainer)>> for Map {
-    fn from(vec: Vec<(MapKey, ValueContainer)>) -> Self {
-        let has_only_text_keys = vec.iter().all(|(k, _)| {
-            matches!(k, MapKey::Text(_))
-                || matches!(
-                    k,
-                    MapKey::Value(ValueContainer::Local(Value::Core(
-                        CoreValueWithClassification {
-                            inner: CoreValue::Text(_),
-                            ..
-                        }
-                    )))
-                )
-        });
-        if has_only_text_keys {
-            let mut entries: Vec<(String, ValueContainer)> =
-                Vec::with_capacity(vec.len());
-            for (k, v) in vec {
-                match k {
-                    MapKey::Text(text) => {
-                        entries.push((text, v));
-                    }
-                    MapKey::Value(value) => {
-                        if let ValueContainer::Local(Value::Core(
-                            CoreValueWithClassification {
-                                inner: CoreValue::Text(text),
-                                ..
-                            },
-                        )) = value
-                        {
-                            entries.push((text.0, v));
-                        } else {
-                            unreachable!(); // already checked above
-                        }
-                    }
-                }
-            }
-            MapEntries::StructuralWithStringKeys(entries).into()
-        } else {
-            let mut map = Map::default();
-            for (k, v) in vec {
-                map.set_unchecked(&k, v);
-            }
-            map
-        }
     }
 }
 

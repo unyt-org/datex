@@ -1,4 +1,5 @@
 use crate::traits::iter_parts::IterParts;
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl<T> IterParts for Box<T>
 where
@@ -6,13 +7,13 @@ where
 {
     fn iter_list_parts<'a>(
 		&'a self,
-	) -> Option<Box<dyn Iterator<Item = crate::values::borrowed_value_container::BorrowedValueContainer<'a>> + 'a>>
+	) -> Option<Box<dyn Iterator<Item = BorrowedValueContainer<'a>> + 'a>>
 {
         self.as_ref().iter_list_parts()
     }
 	fn iter_list_parts_mut<'a>(
 		&'a mut self,
-	) -> Option<Box<dyn Iterator<Item = crate::values::borrowed_value_container::BorrowedValueContainerMut<'a>> + 'a>>
+	) -> Option<Box<dyn Iterator<Item = BorrowedValueContainerMut<'a>> + 'a>>
 {
         self.as_mut().iter_list_parts_mut()
     }

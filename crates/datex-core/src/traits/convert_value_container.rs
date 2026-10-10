@@ -15,13 +15,11 @@ use crate::{
         convert_parts::{FromParts, HasPartsKind, IntoParts, PartsKind},
     },
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         value_container::ValueContainer,
     },
 };
 use core::cell::RefCell;
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 #[derive(Debug)]
 pub enum DeserializationError {

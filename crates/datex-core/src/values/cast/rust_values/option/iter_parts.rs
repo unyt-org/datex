@@ -1,9 +1,7 @@
 use crate::{
     traits::iter_parts::IterParts,
-    values::borrowed_value_container::{
-        BorrowedValueContainer, BorrowedValueContainerMut,
-    },
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl<T: IterParts> IterParts for Option<T> {
     fn iter_list_parts<'a>(

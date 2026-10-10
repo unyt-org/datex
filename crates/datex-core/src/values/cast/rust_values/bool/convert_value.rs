@@ -8,18 +8,13 @@ use crate::{
         value::{
             Value,
             borrowed_value::{
-                BorrowedValue, BorrowedValueMut,
-                borrowed_core_value::{
-                    BorrowedCoreValue, BorrowedCoreValueMut,
-                },
-                borrowed_core_value_with_classification::{
-                    BorrowedCoreValueWithClassification,
-                    BorrowedCoreValueWithClassificationMut,
-                },
-            },
+                BorrowedValue, BorrowedValueMut
+            }
         },
     },
 };
+use crate::values::core_value::borrowed_core_value::{BorrowedCoreValue, BorrowedCoreValueMut};
+use crate::values::core_value_with_classification::borrowed_core_value_with_classification::{BorrowedCoreValueWithClassification, BorrowedCoreValueWithClassificationMut};
 
 impl ConvertValue for bool {
     fn to_value(self) -> Value {

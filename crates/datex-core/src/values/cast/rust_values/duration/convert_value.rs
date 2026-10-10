@@ -4,13 +4,10 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_value_with_classification::CoreValueWithClassification,
-        core_values::instant::Instant,
         value::{
             Value,
             borrowed_value::{
                 BorrowedValue, BorrowedValueMut,
-                borrowed_core_value::BorrowedCoreValue,
-                borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
             },
         },
     },
@@ -20,7 +17,6 @@ use core::time::Duration;
 impl ConvertValue for Duration {
     fn to_value(self) -> Value {
         Value::native(self)
-        //CoreValue::Instant(Instant::from_duration(self)).into()
     }
     fn try_from_value(value: Value) -> Result<Self, Value> {
         match value {

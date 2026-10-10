@@ -1,12 +1,10 @@
 use crate::{
     traits::iter_parts::IterParts,
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         value::Value,
     },
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl IterParts for Value {
     fn iter_map_parts<'a>(

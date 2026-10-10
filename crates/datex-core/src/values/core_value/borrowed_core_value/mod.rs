@@ -21,7 +21,6 @@ use crate::{
         value::{
             borrowed_value::{
                 BorrowedValue,
-                borrowed_core_value_with_classification::BorrowedCoreValueWithClassification,
             },
             value_classification::ValueClassification,
         },
@@ -31,6 +30,7 @@ use crate::{
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 use core::ops::Deref;
+use crate::values::core_value_with_classification::borrowed_core_value_with_classification::BorrowedCoreValueWithClassification;
 
 /// Similar to [CoreValue], but it is a potentially borrowed reference to a [CoreValue] variant instead of owning it.
 #[derive(Debug, Default)]

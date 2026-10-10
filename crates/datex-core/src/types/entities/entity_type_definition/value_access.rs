@@ -6,10 +6,10 @@ use crate::{
     traits::value_access::ValueAccess,
     types::entities::entity_type_definition::EntityTypeDefinition,
     values::{
-        borrowed_value_container::BorrowedValueContainer,
         value_container::value_key::BorrowedValueKey,
     },
 };
+use crate::values::value_container::borrowed_value_container::BorrowedValueContainer;
 
 impl ValueAccess for EntityTypeDefinition {
     fn try_get_property(

@@ -6,13 +6,11 @@ use crate::{
     shared_values::errors::{AccessError, IndexOutOfBoundsError},
     traits::{get_datex_type::GetDatexType, value_access::ValueAccess},
     values::{
-        borrowed_value_container::{
-            BorrowedValueContainer, BorrowedValueContainerMut,
-        },
         core_values::native::DatexNativeBase,
         value_container::value_key::BorrowedValueKey,
     },
 };
+use crate::values::value_container::borrowed_value_container::{BorrowedValueContainer, BorrowedValueContainerMut};
 
 impl<T> ValueAccess for Vec<T>
 where

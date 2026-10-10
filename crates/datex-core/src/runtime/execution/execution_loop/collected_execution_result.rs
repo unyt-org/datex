@@ -3,7 +3,7 @@
 use crate::{
     runtime::execution::execution_loop::runtime_value::RuntimeValue,
     types::{r#type::Type, type_definition::TypeDefinition},
-    values::{core_values::map::MapKey, value_container::ValueContainer},
+    values::{value_container::ValueContainer},
 };
 
 use crate::prelude::*;
@@ -16,7 +16,7 @@ pub enum CollectedExecutionResult {
     /// contains a [TypeDefinition] that is intercepted by a consumer of a type definition value
     TypeDefinition(Box<TypeDefinition>),
     /// contains a key-value pair that is intercepted by a map construction operation
-    KeyValuePair(Box<(MapKey, ValueContainer)>),
+    KeyValuePair(Box<(ValueContainer, ValueContainer)>),
 }
 
 impl CollectedExecutionResult {
@@ -26,7 +26,7 @@ impl CollectedExecutionResult {
     pub fn type_value(ty: Type) -> Self {
         CollectedExecutionResult::Type(Box::new(ty))
     }
-    pub fn key_value_pair(key: MapKey, value: ValueContainer) -> Self {
+    pub fn key_value_pair(key: ValueContainer, value: ValueContainer) -> Self {
         CollectedExecutionResult::KeyValuePair(Box::new((key, value)))
     }
     pub fn value(value: Option<RuntimeValue>) -> Self {
@@ -62,8 +62,8 @@ impl From<TypeDefinition> for CollectedExecutionResult {
     }
 }
 
-impl From<(MapKey, ValueContainer)> for CollectedExecutionResult {
-    fn from(value: (MapKey, ValueContainer)) -> Self {
+impl From<(ValueContainer, ValueContainer)> for CollectedExecutionResult {
+    fn from(value: (ValueContainer, ValueContainer)) -> Self {
         CollectedExecutionResult::KeyValuePair(Box::new(value))
     }
 }

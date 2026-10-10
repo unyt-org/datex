@@ -1,10 +1,7 @@
 use crate::{
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-    values::{
-        borrowed_value_container::BorrowedValueContainer,
-        value_container::ValueContainer,
-    },
 };
+use crate::values::value_container::borrowed_value_container::BorrowedValueContainer;
 
 /// Partial equality for ValueContainer is identical to Hash behavior:
 /// Identical references are partially equal, value-equal values are also partially equal.

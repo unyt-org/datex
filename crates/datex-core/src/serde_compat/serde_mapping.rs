@@ -6,7 +6,7 @@ use crate::{
             decimal::typed_decimal::TypedDecimal,
             integer::typed_integer::TypedInteger,
             list::List,
-            map::{BorrowedMapKey, Map},
+            map::{Map},
         },
         value::Value,
         value_container::ValueContainer,
@@ -89,14 +89,7 @@ impl Serialize for CoreValue {
                 let mut map_state =
                     serializer.serialize_map(Some(map.size()))?;
                 for (key, value) in map.iter() {
-                    match key {
-                        BorrowedMapKey::Text(text) => {
-                            map_state.serialize_key(text)?
-                        }
-                        BorrowedMapKey::Value(value) => {
-                            map_state.serialize_key(&value)?
-                        }
-                    }
+                    map_state.serialize_key(key)?;
                     map_state.serialize_value(value)?;
                 }
                 map_state.end()

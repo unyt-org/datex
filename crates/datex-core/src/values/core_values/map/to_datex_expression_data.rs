@@ -10,7 +10,7 @@ impl ToDatexExpressionData for Map {
             self.iter()
                 .map(|(key, value)| {
                     (
-                        ValueContainer::from(key)
+                        key
                             .to_datex_expression_data()
                             .with_default_span(),
                         value.to_datex_expression_data().with_default_span(),
