@@ -23,6 +23,20 @@ pub fn generate_datex_expression_data(
     );
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+    // add EntityName (...) for entity types
+    let datex_expression_data = if structure_data.attributes.type_kind.is_entity() {
+        let entity_name = structure_data.ident.to_string();
+        quote! {
+            DatexExpressionData::EntityValue(EntityValueExpression {
+                entity_name: #entity_name.to_string(),
+                entity_address: None,
+                value: #datex_expression_data.with_default_span()
+            })
+        }
+    }  else {
+        datex_expression_data
+    };
+
     quote! {
         impl #impl_generics ToDatexExpressionData for #ident #ty_generics #where_clause {
             fn to_datex_expression_data(&self) -> DatexExpressionData {

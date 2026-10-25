@@ -105,7 +105,7 @@ impl CoreLibraryValues {
     }
 
     fn print_impl(
-        args: Vec<ApplyArgument>,
+        mut args: Vec<ApplyArgument>,
         _runtime: &Runtime,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), CallableError>
     {
@@ -114,7 +114,7 @@ impl CoreLibraryValues {
         let mut output = String::new();
 
         // if first argument is a string value, print it directly
-        let _value_args = if let Some(ValueContainer::Local(Value::Core(
+        if let Some(ValueContainer::Local(Value::Core(
             CoreValueWithClassification {
                 inner: CoreValue::Text(text),
                 ..
@@ -125,11 +125,10 @@ impl CoreLibraryValues {
             // if there are still values after the string, add a space
             if args.len() > 1 {
                 output.push(' ');
-            }
-            &args[1..]
-        } else {
-            &args
-        };
+            };
+            // remove the first argument from the list of arguments to be printed
+            args.remove(0);
+        }
 
         #[cfg(feature = "decompiler")]
         let args_string = args
