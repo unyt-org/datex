@@ -12,6 +12,7 @@ use crate::{
 use crate::shared_values::PointerAddress;
 use crate::types::entity_type::EntityType;
 use crate::values::value::value_classification::ValueTag;
+use crate::prelude::*;
 
 impl Classification for CoreValueWithClassification {
     fn entity_type(&self, _cache: &mut SharedReferencesCache) -> Option<EntityType> {
