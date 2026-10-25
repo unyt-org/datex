@@ -16,7 +16,7 @@ impl<V> ToInstructions for V
 where
     V: ToRegularInstruction,
 {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         _visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {

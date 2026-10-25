@@ -27,7 +27,7 @@ pub fn compile_instructions_to_dxb(
     input: &impl ToInstructions,
 ) -> Vec<u8> {
     let mut buffer = ByteCursor::new(Vec::new());
-    for instruction in input.to_bytecode_item(visitor) {
+    for instruction in input.to_bytecode_items(visitor) {
         match &instruction {
             BytecodeItem::Instruction(item) => {
                 item.write(&mut buffer).unwrap();

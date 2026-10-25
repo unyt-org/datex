@@ -8,13 +8,13 @@ use crate::{
 };
 
 impl ToInstructions for OwnedSharedContainer {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         let reference =
             SharedContainer::Referenced(self.clone_with_move_indicator());
-        let instructions: Vec<_> = reference.to_bytecode_item(visitor).collect(); // FIXME: no collect
+        let instructions: Vec<_> = reference.to_bytecode_items(visitor).collect(); // FIXME: no collect
         Box::new(instructions.into_iter())
     }
 }

@@ -9,7 +9,7 @@ use crate::{
 };
 
 impl ToInstructions for Type {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
@@ -17,7 +17,7 @@ impl ToInstructions for Type {
             match self {
                 Type::Entity(entity_type) => todo!(),
                 Type::Definition(def) => {
-                    yield_all!(def.to_bytecode_item(visitor));
+                    yield_all!(def.to_bytecode_items(visitor));
                 }
             }
         })

@@ -12,7 +12,7 @@ where
     K: ToInstructions,
     V: ToInstructions,
 {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
@@ -21,8 +21,8 @@ where
 
             for (key, value) in self.iter() {
                 yield RegularInstruction::key_value_dynamic().into();
-                yield_all_collected!(key.to_bytecode_item(visitor));
-                yield_all!(value.to_bytecode_item(visitor));
+                yield_all_collected!(key.to_bytecode_items(visitor));
+                yield_all!(value.to_bytecode_items(visitor));
             }
         })
     }

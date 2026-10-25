@@ -50,7 +50,7 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
 
     quote! {
         impl #impl_generics ToInstructions for #ident #ty_generics #where_clause {
-            fn to_bytecode_item<'a>(
+            fn to_bytecode_items<'a>(
                 &'a self,
                 visitor: &'a mut dyn ValueVisitor,
             ) -> Box<dyn Iterator<Item = BytecodeItem> + 'a>
@@ -155,7 +155,7 @@ fn field_to_instructions(
     match field_mapping {
         FieldMapping::Datex => {
             quote! {
-                for i in (#accessor).to_bytecode_item(visitor) {
+                for i in (#accessor).to_bytecode_items(visitor) {
                     yield i;
                 }
             }
@@ -165,7 +165,7 @@ fn field_to_instructions(
             // and this leads to lifetime issues if we don't collect the instructions first
             // but try to yield on the fly
             quote! {
-                let value = serde_to_value_container(&(#accessor)).to_bytecode_item(visitor).collect::<Vec<_>>();
+                let value = serde_to_value_container(&(#accessor)).to_bytecode_items(visitor).collect::<Vec<_>>();
                 for i in value {
                     yield i;
                 }

@@ -8,16 +8,16 @@ use crate::{
 };
 
 impl ToInstructions for BorrowedValueContainer<'_> {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         match self {
             BorrowedValueContainer::Local(value) => {
-                value.to_bytecode_item(visitor)
+                value.to_bytecode_items(visitor)
             }
             BorrowedValueContainer::Shared(shared_container) => {
-                shared_container.to_bytecode_item(visitor)
+                shared_container.to_bytecode_items(visitor)
             }
         }
     }

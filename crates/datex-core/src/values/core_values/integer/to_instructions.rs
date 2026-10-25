@@ -7,7 +7,7 @@ use crate::{
     values::core_values::integer::Integer,
 };
 impl ToInstructions for Integer {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         _ctx: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {

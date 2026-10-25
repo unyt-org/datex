@@ -38,7 +38,7 @@ pub fn compile_updates(
 }
 
 impl ToInstructions for (&SharedContainer, &[&UpdateData]) {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
@@ -117,7 +117,7 @@ gen fn append_set_entry<'a>(
         &set_entry_update_data.key
     ));
     // value
-    yield_all!(set_entry_update_data.value.to_bytecode_item(visitor));
+    yield_all!(set_entry_update_data.value.to_bytecode_items(visitor));
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
 
@@ -130,7 +130,7 @@ gen fn append_replace<'a>(
     replace_update_data: &ReplaceUpdateData,
 ) -> crate::instruction::BytecodeItem {
     yield RegularInstruction::set_shared_container_value().into();
-    yield_all!(replace_update_data.value.to_bytecode_item(visitor));
+    yield_all!(replace_update_data.value.to_bytecode_items(visitor));
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
     return;
@@ -142,7 +142,7 @@ gen fn append_append_entry<'a>(
     append_entry_update_data: &AppendEntryUpdateData,
 ) -> crate::instruction::BytecodeItem {
     yield RegularInstruction::append_entry().into();
-    yield_all!(append_entry_update_data.value.to_bytecode_item(visitor));
+    yield_all!(append_entry_update_data.value.to_bytecode_items(visitor));
 
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
@@ -162,7 +162,7 @@ gen fn append_list_splice<'a>(
     .into();
 
     for item in &list_splice_update_data.items {
-        yield_all!(item.to_bytecode_item(visitor));
+        yield_all!(item.to_bytecode_items(visitor));
     }
 
     // target
@@ -202,7 +202,7 @@ pub gen fn append_set_property_value_key<'a>(
         yield RegularInstruction::set_entry_index(*index).into();
     } else {
         yield RegularInstruction::set_entry_dynamic().into();
-        yield_all!(value_key.to_bytecode_item(visitor));
+        yield_all!(value_key.to_bytecode_items(visitor));
     }
 
     return;

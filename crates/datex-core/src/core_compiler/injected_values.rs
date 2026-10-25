@@ -78,7 +78,7 @@ pub fn compile_injected_values(
 /// # Safety
 /// The caller must ensure that minimum a single injected value is provided, as this function assumes that the injected values are not empty
 impl ToInstructions for InjectedValues {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
@@ -89,7 +89,7 @@ impl ToInstructions for InjectedValues {
             yield RegularInstruction::list(self.values.len() as u32).into();
 
             for value_container in &self.values {
-                yield_all!(value_container.to_bytecode_item(visitor));
+                yield_all!(value_container.to_bytecode_items(visitor));
             }
         })
     }

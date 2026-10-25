@@ -7,7 +7,7 @@ use crate::{
     values::core_values::decimal::typed_decimal::TypedDecimal,
 };
 impl ToInstructions for TypedDecimal {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         _ctx: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {

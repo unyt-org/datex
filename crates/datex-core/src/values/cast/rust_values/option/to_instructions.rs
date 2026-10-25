@@ -10,7 +10,7 @@ impl<K> ToInstructions for Option<K>
 where
     K: ToInstructions,
 {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         _ctx: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
@@ -18,7 +18,7 @@ where
             match self {
                 None => yield RegularInstruction::Null.into(),
                 Some(value) => {
-                    for instruction in value.to_bytecode_item(_ctx) {
+                    for instruction in value.to_bytecode_items(_ctx) {
                         yield instruction;
                     }
                 }

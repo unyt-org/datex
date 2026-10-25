@@ -97,41 +97,41 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
                 DatexExpressionData::TypedInteger(typed_integer) => {
                     yield_all_ok!(
-                        typed_integer.to_bytecode_item(compilation_context)
+                        typed_integer.to_bytecode_items(compilation_context)
                     );
                 }
 
                 DatexExpressionData::Instant(instant) => {
                     yield_all_ok!(
-                        instant.to_bytecode_item(compilation_context)
+                        instant.to_bytecode_items(compilation_context)
                     );
                 }
 
                 DatexExpressionData::Decimal(decimal) => {
                     yield_all_ok!(
-                        decimal.to_bytecode_item(compilation_context)
+                        decimal.to_bytecode_items(compilation_context)
                     );
                 }
 
                 DatexExpressionData::TypedDecimal(typed_decimal) => {
                     yield_all_ok!(
-                        typed_decimal.to_bytecode_item(compilation_context)
+                        typed_decimal.to_bytecode_items(compilation_context)
                     );
                 }
 
                 DatexExpressionData::Text(text) => {
-                    yield_all_ok!(text.to_bytecode_item(compilation_context));
+                    yield_all_ok!(text.to_bytecode_items(compilation_context));
                 }
 
                 DatexExpressionData::Boolean(boolean) => {
                     yield_all_ok!(
-                        boolean.to_bytecode_item(compilation_context)
+                        boolean.to_bytecode_items(compilation_context)
                     );
                 }
 
                 DatexExpressionData::Endpoint(endpoint) => {
                     yield_all_ok!(
-                        endpoint.to_bytecode_item(compilation_context)
+                        endpoint.to_bytecode_items(compilation_context)
                     );
                 }
 
@@ -435,17 +435,17 @@ impl AstNodeToInstructions for ValueAccessType {
                         }
                         ValueAccessType::MoveOrCopy => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_item(compilation_context)
+                                value.to_bytecode_items(compilation_context)
                             );
                         }
                         ValueAccessType::Clone => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_item(compilation_context)
+                                value.to_bytecode_items(compilation_context)
                             );
                         }
                         ValueAccessType::Borrow => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_item(compilation_context)
+                                value.to_bytecode_items(compilation_context)
                             );
                         }
                     },
@@ -457,16 +457,16 @@ impl AstNodeToInstructions for ValueAccessType {
                                     .try_derive_mutable_reference()
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)
                                 );
-                                yield_all_ok_collected!(shared_container_mut_ref.to_bytecode_item(compilation_context));
+                                yield_all_ok_collected!(shared_container_mut_ref.to_bytecode_items(compilation_context));
                             }
                             ValueAccessType::SharedRef => {
                                 let shared_container_immut_ref = shared_container.derive_immutable_reference();
-                                yield_all_ok_collected!(shared_container_immut_ref.to_bytecode_item(compilation_context));
+                                yield_all_ok_collected!(shared_container_immut_ref.to_bytecode_items(compilation_context));
                             },
                             ValueAccessType::MoveOrCopy => {
                                 match shared_container {
                                     SharedContainer::Owned(shared_container) => {
-                                        yield_all_ok_collected!(shared_container.to_bytecode_item(compilation_context));
+                                        yield_all_ok_collected!(shared_container.to_bytecode_items(compilation_context));
                                     }
                                     _ => return yield Err(CompilerError::InvalidConversionFromRefToOwnedValue),
                                 }
@@ -475,16 +475,16 @@ impl AstNodeToInstructions for ValueAccessType {
                                 let cloned = shared_container.inner().base_shared_container().value_container().clone();
                                 match cloned {
                                     ValueContainer::Local(value) => {
-                                        yield_all_ok_collected!(value.to_bytecode_item(compilation_context));
+                                        yield_all_ok_collected!(value.to_bytecode_items(compilation_context));
                                     }
                                     ValueContainer::Shared(shared_container) => {
-                                        yield_all_ok_collected!(shared_container.to_bytecode_item(compilation_context));
+                                        yield_all_ok_collected!(shared_container.to_bytecode_items(compilation_context));
                                     }
                                 }
                             },
                             ValueAccessType::Borrow => {
                                 let reference = shared_container.derive_reference_with_max_mutability();
-                                yield_all_ok_collected!(reference.to_bytecode_item(compilation_context));
+                                yield_all_ok_collected!(reference.to_bytecode_items(compilation_context));
                             }
                         };
                     }

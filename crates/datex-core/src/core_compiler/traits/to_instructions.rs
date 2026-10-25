@@ -5,20 +5,20 @@ use crate::{
 };
 
 pub trait ToInstructions {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a>;
 
     #[deprecated(
-        note = "Use to_bytecode_item instead. This will panic, if the item is not an instruction (such as if else)"
+        note = "Use to_bytecode_items instead. This will panic, if the item is not an instruction (such as if else)"
     )]
     fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = Instruction> + 'a> {
         Box::new(gen move {
-            for item in self.to_bytecode_item(visitor) {
+            for item in self.to_bytecode_items(visitor) {
                 match item {
                     BytecodeItem::Instruction(instruction) => yield instruction,
                     _ => unreachable!(),

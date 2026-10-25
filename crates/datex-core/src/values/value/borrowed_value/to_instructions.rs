@@ -9,17 +9,17 @@ use crate::{
 use itertools::Itertools;
 
 impl ToInstructions for BorrowedValue<'_> {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         match self {
-            BorrowedValue::Native(native) => native.to_bytecode_item(visitor),
+            BorrowedValue::Native(native) => native.to_bytecode_items(visitor),
             BorrowedValue::Core(core) => {
                 let core = core.clone_to_core_value_with_classification();
                 // FIXME: get this to work without collect
                 Box::new(
-                    core.to_bytecode_item(visitor).collect_vec().into_iter(),
+                    core.to_bytecode_items(visitor).collect_vec().into_iter(),
                 )
             }
         }

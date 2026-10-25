@@ -9,7 +9,7 @@ use crate::{
 };
 
 impl ToInstructions for Map {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
@@ -35,11 +35,11 @@ impl ToInstructions for Map {
                     // other -> insert key as dynamic
                     None => {
                         yield RegularInstruction::key_value_dynamic().into();
-                        yield_all_collected!(key.to_bytecode_item(visitor));
+                        yield_all_collected!(key.to_bytecode_items(visitor));
                     }
                 }
 
-                yield_all!(value.to_bytecode_item(visitor));
+                yield_all!(value.to_bytecode_items(visitor));
             }
         })
     }

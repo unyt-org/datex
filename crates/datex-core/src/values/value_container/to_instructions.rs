@@ -8,12 +8,12 @@ use crate::{
 };
 
 impl ToInstructions for ValueContainer {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         match self {
-            ValueContainer::Local(value) => value.to_bytecode_item(visitor),
+            ValueContainer::Local(value) => value.to_bytecode_items(visitor),
             ValueContainer::Shared(shared) => {
                 visitor.visit_shared_container(shared)
             }

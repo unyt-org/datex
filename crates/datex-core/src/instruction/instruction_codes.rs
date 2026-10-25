@@ -98,6 +98,8 @@ pub enum InstructionCode {
     CALLABLE,             // for functions/procedures
     CALLABLE_DECLARATION, // for inline DATEX script function/procedure declarations
 
+    ENTITY_TYPE_DEFINITION,
+
     // Note: fix to sync with PointerAddress
     REQUEST_REMOTE_SHARED_REF,     // '$x
     REQUEST_REMOTE_SHARED_REF_MUT, // 'mut $x

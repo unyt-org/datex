@@ -9,7 +9,7 @@ use crate::{
 use core::ops::Deref;
 
 impl ToInstructions for SharedContainerContainingType {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {

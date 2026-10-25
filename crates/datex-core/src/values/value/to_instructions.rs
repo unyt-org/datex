@@ -9,7 +9,7 @@ use crate::{
 };
 
 impl ToInstructions for Value {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
@@ -17,10 +17,10 @@ impl ToInstructions for Value {
             // append inner instructions
             match self {
                 Value::Native(native) => {
-                    yield_all!(native.to_bytecode_item(visitor));
+                    yield_all!(native.to_bytecode_items(visitor));
                 }
                 Value::Core(core) => {
-                    yield_all!(core.to_bytecode_item(visitor));
+                    yield_all!(core.to_bytecode_items(visitor));
                 }
             }
         })
