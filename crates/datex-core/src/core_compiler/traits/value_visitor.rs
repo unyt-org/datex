@@ -14,6 +14,7 @@ pub trait ValueVisitor {
     fn visit_shared_container<'a>(
         &'a mut self,
         value_container: &'a SharedContainer,
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a>;
 }
 

@@ -34,6 +34,7 @@ impl Label {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum BytecodeItem {
     Instruction(Instruction),
     Label(Label),

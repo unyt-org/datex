@@ -32,17 +32,16 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
         quote! {
             yield RegularInstruction::EntityValue.into();
             // try to resolve the entity type via visitor cache as shared container
-            let entity_shared_container = {
-                let ty = Self::datex_type(cache);
-                let entity_type = match ty {
-                    Type::Entity(entity_type) => entity_type,
-                    _ => unreachable!(),
-                };
-
-                for item in visitor.visit_shared_container(entity_type.shared_container()) {
-                    yield item;
-                }
+            let ty = Self::datex_type(cache);
+            let entity_type = match ty {
+                Type::Entity(entity_type) => entity_type,
+                _ => unreachable!(),
             };
+
+            // FIXME: no collect
+            for item in visitor.visit_shared_container(entity_type.shared_container(), cache).collect::<Vec<_>>() {
+                yield item;
+            }
             #body
         }
     } else {

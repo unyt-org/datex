@@ -39,6 +39,7 @@ impl ValueVisitor for PreambleContext {
     fn visit_shared_container<'a>(
         &'a mut self,
         shared_container: &'a SharedContainer,
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         match self.self_referencing_containers.get(shared_container) {
             // not self referencing
