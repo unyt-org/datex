@@ -256,6 +256,12 @@ pub struct CallableDeclarationData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
+pub struct EntityTypeDefinitionData {
+    pub name: ShortTextData,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
 pub struct CallableData {
     pub signature: CallableSignatureData,
     pub body: CallableDataBody,

@@ -6,14 +6,21 @@ use crate::{
     prelude::*,
     types::entities::entity_type_definition::EntityTypeDefinition,
 };
+use crate::instruction::regular_instruction::RegularInstruction;
 
 impl ToInstructions for EntityTypeDefinition {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
-        _visitor: &'a mut dyn ValueVisitor,
+        visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
-            todo!("Implement ToInstructions for EntityTypeDefinition")
+            yield RegularInstruction::entity_type_definition(
+                self.name.to_string(),
+            ).into();
+
+            for item in self.definition.to_bytecode_items(visitor) {
+                yield item;
+            }
         })
     }
 }

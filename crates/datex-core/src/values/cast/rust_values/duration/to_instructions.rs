@@ -16,7 +16,7 @@ use crate::{
 // }
 
 impl ToInstructions for Duration {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         _ctx: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {

@@ -112,7 +112,7 @@ pub struct ApplyWithArgs {
 }
 
 impl ToInstructions for ApplyWithArgs {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
@@ -133,7 +133,7 @@ gen fn append_apply<'a>(
 ) -> crate::instruction::BytecodeItem {
     yield RegularInstruction::apply(args.len() as u8).into();
     for arg in args {
-        yield_all_collected!(arg.to_bytecode_item(visitor)); // FIXME: don't collect
+        yield_all_collected!(arg.to_bytecode_items(visitor)); // FIXME: don't collect
     }
     yield callee.into();
     return;

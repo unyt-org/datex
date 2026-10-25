@@ -9,10 +9,10 @@ use crate::{
 };
 
 impl ToInstructions for Boolean {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
-        self.0.to_bytecode_item(visitor)
+        self.0.to_bytecode_items(visitor)
     }
 }

@@ -327,7 +327,7 @@ gen fn append_self_referencing_shared_container_to_stack(
         container
             .value_container()
             .deref()
-            .to_bytecode_item(context)
+            .to_bytecode_items(context)
     );
     yield RegularInstruction::borrow_stack_value(uninitialized_index).into();
     return;
@@ -416,7 +416,7 @@ gen fn append_move_with_value(
     .into();
 
     if let Some(value_container) = value_container {
-        yield_all!(value_container.to_bytecode_item(context));
+        yield_all!(value_container.to_bytecode_items(context));
     } else {
         yield RegularInstruction::Uninitialized.into();
     }
@@ -476,7 +476,7 @@ gen fn append_referenced_shared_container_with_value(
                     referenced_container
                         .value_container()
                         .deref()
-                        .to_bytecode_item(context)
+                        .to_bytecode_items(context)
                 );
             }
         }

@@ -47,7 +47,7 @@ pub fn core_compile(
                         yield BytecodeItem::Instruction(instruction)
                     }
                     InstructionInput::ValueContainer(value_container) => {
-                        yield_all_collected!(value_container.to_bytecode_item(
+                        yield_all_collected!(value_container.to_bytecode_items(
                             ctx.shared_value_tracking.get_mut()
                         ))
                     }

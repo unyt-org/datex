@@ -13,7 +13,7 @@ use crate::{
 };
 
 impl ToInstructions for CoreValueWithClassification {
-    fn to_bytecode_item<'a>(
+    fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
@@ -43,7 +43,7 @@ impl ToInstructions for CoreValueWithClassification {
                 };
             }
 
-            yield_all!(self.inner.to_bytecode_item(visitor));
+            yield_all!(self.inner.to_bytecode_items(visitor));
         })
     }
 }

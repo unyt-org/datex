@@ -110,6 +110,14 @@ impl RegularInstruction {
         RegularInstruction::Instant(InstantData(value))
     }
 
+    pub fn entity_type_definition(
+        name: String,
+    ) -> Self {
+        RegularInstruction::EntityTypeDefinition(EntityTypeDefinitionData {
+            name: ShortTextData(name)
+        })
+    }
+
     /// Creates a text instruction, choosing between the short and default variant based on the length of the string.
     pub fn text(value: String) -> Self {
         match value.len() {
@@ -734,6 +742,9 @@ pub enum RegularInstruction {
 
     #[magic(InstructionCode::CALLABLE_DECLARATION)]
     CallableDeclaration(CallableDeclarationData),
+
+    #[magic(InstructionCode::ENTITY_TYPE_DEFINITION)]
+    EntityTypeDefinition(EntityTypeDefinitionData),
 
     #[magic(InstructionCode::CALLABLE)]
     Callable(CallableData),
@@ -1383,12 +1394,11 @@ impl RegularInstruction {
     }
 }
 
-use crate::instruction::instruction_data::{
-    CallMethodData, CallableData, CallableDeclarationData,
-};
+use crate::instruction::instruction_data::{CallMethodData, CallableData, CallableDeclarationData, EntityTypeDefinitionData};
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
 #[cfg(feature = "disassembler")]
 use serde::{Serialize, Serializer, ser::SerializeTuple};
+use crate::types::entities::entity_impls::EntityImpl;
 
 #[cfg(feature = "disassembler")]
 impl Serialize for RegularInstruction {
