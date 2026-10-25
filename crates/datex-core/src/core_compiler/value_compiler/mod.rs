@@ -44,6 +44,7 @@ use crate::{
         SharedContainerOwnership, traits::SharedContainerCommon,
     },
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -74,24 +75,27 @@ impl From<InjectedValueValidationError> for ExecutionError {
 pub fn compile_value_container(
     value_container: &ValueContainer,
     compile_input: CompileInput,
+    cache: &mut SharedReferencesCache,
 ) -> DXBWithSharedValues {
-    CoreCompilationContext::new(compile_input)
+    CoreCompilationContext::new(compile_input, cache)
         .compile_to_dxb_with_shared_values(value_container)
 }
 
 pub fn compile_value(
     value: Value,
     compile_input: CompileInput,
+    cache: &mut SharedReferencesCache,
 ) -> DXBWithSharedValues {
-    compile_value_container(&ValueContainer::Local(value), compile_input)
+    compile_value_container(&ValueContainer::Local(value), compile_input, cache)
 }
 
 // TODO: add struct for panics
 pub fn compile_panic(
     panic_value: String,
     compile_input: CompileInput,
+    cache: &mut SharedReferencesCache,
 ) -> Vec<u8> {
-    CoreCompilationContext::new(compile_input)
+    CoreCompilationContext::new(compile_input, cache)
         .compile_to_dxb_with_shared_values(&ApplyWithArgs {
             callee: RegularInstruction::get_core_lib_value(
                 CoreLibId::Value(CoreLibValueId::Panic).into(),
@@ -207,17 +211,21 @@ mod tests {
     };
     use core::assert_matches;
     use log::info;
+    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+    use crate::runtime::Runtime;
 
     fn compile_value_assert_instructions(
         value: Value,
         expected_instructions: Vec<RegularInstruction>,
     ) {
+        let cache = &mut SharedReferencesCache::default();
         let compiled = compile_value(
             value,
             CompileInput {
                 pointer_lookup: &PointerAvailabilityLookup::default(),
                 receivers: &[],
             },
+            cache,
         );
         assert_instructions_equal!(&compiled.dxb, expected_instructions,);
     }

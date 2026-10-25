@@ -42,6 +42,7 @@ use datex_macros_internal::Datex;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::values::core_values::list::List;
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
@@ -623,9 +624,11 @@ impl ComHub {
             .collect::<Vec<ValueContainer>>();
 
         let pointer_lookup = PointerAvailabilityLookup::default();
+        let cache = &mut SharedReferencesCache::default();  // FIXME
         let dxb = compile_value(
             Value::from(hops_datex),
             CompileInput::new(&pointer_lookup, &[]),
+            cache,
         );
         // info!(
         //     "Trace data: {}",

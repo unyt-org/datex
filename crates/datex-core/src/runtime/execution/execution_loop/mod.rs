@@ -1309,11 +1309,14 @@ pub gen fn inner_execution_loop(
                                             &lookup,
                                             &receivers_list,
                                         );
+                                        
+                                        let mut cache = state.runtime.shared_references_cache_mut();
 
                                         compile_injected_values(
                                             exec_block_data,
                                             injected_values,
                                             compile_input,
+                                            cache.deref_mut(),
                                         ).map_err(|_e| ExecutionError::invalid_program(InvalidProgramError::ExpectedValue))?
                                     };
 

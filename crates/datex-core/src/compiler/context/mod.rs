@@ -16,6 +16,8 @@ use crate::compiler::ast_node_to_instructions::AstNodeToInstructions;
 use crate::compiler::error::CompilerError;
 use crate::compiler::precompiler::precompiled_ast::{AstMetadata, RichAst};
 use crate::compiler::compilation_result::CompilationResult;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::runtime::Runtime;
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext<'a> {
@@ -36,10 +38,11 @@ impl<'a> CompilationContext<'a> {
         execution_mode: ExecutionMode,
         input: CompileInput<'a>,
         scope: CompilationScope,
+        cache: &'a mut SharedReferencesCache,
     ) -> Self {
         CompilationContext {
             inserted_value_index: 0,
-            core_context: CoreCompilationContext::new(input),
+            core_context: CoreCompilationContext::new(input, cache),
             inserted_values,
             has_non_static_value: false,
             execution_mode, // FIXME: execution mode is already in scope, is it necessary to have it here as well?

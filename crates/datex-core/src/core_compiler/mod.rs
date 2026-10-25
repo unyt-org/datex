@@ -24,16 +24,19 @@ use crate::{
     values::core_values::endpoint::Endpoint,
 };
 pub use traits::*;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 /// Compiles a [DXBWithSharedValues] from the provided [PointerAvailabilityLookup], [Endpoint]s, and [InstructionInput]s.
 pub fn core_compile(
     pointer_availability_lookup: &PointerAvailabilityLookup,
     endpoints: &[Endpoint],
     instructions_input: Vec<InstructionInput>,
+    cache: &mut SharedReferencesCache,
 ) -> DXBWithSharedValues {
     let mut ctx = CoreCompilationContext::new_for_endpoints(
         pointer_availability_lookup,
         endpoints,
+        cache,
     );
 
     let dxb_gen =

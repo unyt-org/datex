@@ -124,8 +124,14 @@ impl RuntimeInternal {
                 Ok(value) => {
                     // info!("Sending result value {:?}", value);
                     if let Some(value) = &value {
-                        let res = compile_value_container(value, compile_input);
+                        let mut cache = self.shared_references_cache_mut();
+                        let res = compile_value_container(
+                            value,
+                            compile_input,
+                            &mut cache,
+                        );
                         drop(lookup);
+                        drop(cache);
 
                         self.clone()
                             .register_shared_containers_for_single_endpoint(
@@ -140,7 +146,8 @@ impl RuntimeInternal {
                 }
                 Err(e) => {
                     info!("Execution error (on {}): {}", self.endpoint(), e);
-                    compile_panic(e.to_string(), compile_input)
+                    let mut cache = self.shared_references_cache_mut();
+                    compile_panic(e.to_string(), compile_input, &mut cache)
                 }
             };
 

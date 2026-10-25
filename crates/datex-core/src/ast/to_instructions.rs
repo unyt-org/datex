@@ -49,6 +49,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::str::FromStr;
+use core::ops::DerefMut;
 use log::info;
 
 macro yield_unwrap($expr:expr) {
@@ -521,11 +522,13 @@ impl AstNodeToInstructions for Conditional {
             let input = compilation_context.core_context.input.clone();
 
             let condition_instructions = {
+                let mut tracking = compilation_context.core_context.shared_value_tracking.borrow_mut();
                 let mut inner_ctx = CompilationContext::new(
                     compilation_context.inserted_values.clone(),
                     compilation_context.execution_mode,
                     input.clone(),
                     compilation_context.scope.clone(),
+                    &mut tracking.cache
                 );
 
                 condition
@@ -538,11 +541,14 @@ impl AstNodeToInstructions for Conditional {
             };
 
             let then_instructions = {
+                let mut tracking = compilation_context.core_context.shared_value_tracking.borrow_mut();
+
                 let mut inner_ctx = CompilationContext::new(
                     compilation_context.inserted_values.clone(),
                     compilation_context.execution_mode,
                     input.clone(),
                     compilation_context.scope.clone(),
+                    &mut tracking.cache,
                 );
 
                 then_branch
@@ -556,11 +562,13 @@ impl AstNodeToInstructions for Conditional {
 
             let else_instructions = match else_branch {
                 Some(else_expr) => {
+                    let mut tracking = compilation_context.core_context.shared_value_tracking.borrow_mut();
                     let mut inner_ctx = CompilationContext::new(
                         compilation_context.inserted_values.clone(),
                         compilation_context.execution_mode,
                         input,
                         compilation_context.scope.clone(),
+                        &mut tracking.cache,
                     );
 
                     else_expr
