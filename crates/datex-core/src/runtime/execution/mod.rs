@@ -384,27 +384,44 @@ async fn try_call_method_async(
     }
     // call on owner endpoint
     else {
-        let mut instructions = vec![
-            RegularInstruction::call_method(
-                method.name().unwrap().clone(), // FIXME: don't use method name here
-                args.len() as u8,
-            )
-            .into(),
-        ];
-        instructions.extend(
-            args.into_iter()
-                .map(|v| InstructionInput::ValueContainer(v.value)),
-        );
-
-        let res = runtime
-            .execute_instructions_remote(vec![owner_endpoint], instructions)
-            .await?;
-
-        // FIXME: restore borrowed stack values across remote execution.
-        // For now, local borrows are not supported cross endpoint
-        Ok((res, vec![]))
+        try_call_method_on_owner(
+            owner_endpoint,
+            method.name().unwrap().clone(),
+            args.remove(0),
+            args,
+            runtime
+        ).await
     }
 }
+
+async fn try_call_method_on_owner(
+    owner_endpoint: Endpoint,
+    name: String,
+    callee: ApplyArgument,
+    mut args: Vec<ApplyArgument>,
+    runtime: &Runtime,
+) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+    let mut instructions = vec![
+        RegularInstruction::call_method(
+            name, // FIXME: don't use method name here
+            args.len() as u8,
+        )
+            .into(),
+    ];
+    instructions.extend(
+        args.into_iter()
+            .map(|v| InstructionInput::ValueContainer(v.value)),
+    );
+
+    let res = runtime
+        .execute_instructions_remote(vec![owner_endpoint], instructions)
+        .await?;
+
+    // FIXME: restore borrowed stack values across remote execution.
+    // For now, local borrows are not supported cross endpoint
+    Ok((res, vec![]))
+}
+
 
 async fn set_remote_endpoint_property(
     runtime: &Runtime,
