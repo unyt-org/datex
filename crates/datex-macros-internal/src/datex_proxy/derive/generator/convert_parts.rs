@@ -121,14 +121,14 @@ fn generate_into_map_parts_for_fields(
     match fields {
         Fields::Named(fields) => {
             let yields = fields.iter().map(|field| {
-                let field_name = &field.name;
+                let datex_field_name = field.datex_field_name();
                 let field_value_container = value_container_from_field(
                     field.normalized_ident(),
                     &field.field.attributes.field_mapping,
                 );
                 quote! {
                     yield (
-                        ValueContainer::from(#field_name),
+                        ValueContainer::from(#datex_field_name),
                         #field_value_container,
                     );
                 }

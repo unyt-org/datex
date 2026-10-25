@@ -78,7 +78,7 @@ fn generate_to_instructions_for_fields(
 fn generate_named_fields_to_instructions(fields: &[NamedField]) -> TokenStream {
     let field_instructions = fields.iter().map(|field| {
         let accessor = field.ident_accessor().to_token_stream();
-        let name = field.name.to_string();
+        let name = field.datex_field_name();
         let mapping = &field.field.attributes.field_mapping;
         let value_instructions = field_to_instructions(accessor, mapping);
 
