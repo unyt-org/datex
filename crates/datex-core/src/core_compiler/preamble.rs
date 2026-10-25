@@ -23,18 +23,21 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use binrw::{BinWrite, io::Write};
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::utils::goat_mut::GoatMut;
 
 #[derive(Debug)]
-struct PreambleContext {
+struct PreambleContext<'a> {
     self_referencing_containers: HashMap<SharedContainer, StackIndex>,
     known_container: HashSet<SharedContainer>,
     current_stack_index: StackIndex,
+    cache: &'a mut SharedReferencesCache
 }
 
 // var x = shared {a: {b: null}};
 // x.a.b = x; /// #0.a.b = x;
 
-impl ValueVisitor for PreambleContext {
+impl<'ctx> ValueVisitor for PreambleContext<'ctx> {
     fn visit_shared_container<'a>(
         &'a mut self,
         shared_container: &'a SharedContainer,
@@ -83,9 +86,13 @@ impl ValueVisitor for PreambleContext {
             }
         }
     }
+
+    fn try_get_cache(&mut self) -> GoatMut<SharedReferencesCache> {
+        GoatMut::Borrowed(&mut self.cache)
+    }
 }
 
-impl PreambleContext {
+impl PreambleContext<'_> {
     fn get_next_stack_index(&mut self) -> StackIndex {
         let stack_index = self.current_stack_index;
         self.current_stack_index = StackIndex(self.current_stack_index.0 + 1);
@@ -96,6 +103,7 @@ impl PreambleContext {
 pub(super) fn append_injected_values_preamble(
     collection: TrackedValueCollection, // top level shared container roots
     body: Vec<u8>,
+    cache: &mut SharedReferencesCache,
 ) -> (Vec<u8>, Vec<SharedContainer>) {
     // no injected values
     if !collection.has_tracked_values() {
@@ -118,6 +126,7 @@ pub(super) fn append_injected_values_preamble(
             self_referencing_containers: HashMap::new(),
             current_stack_index: StackIndex(0),
             known_container: HashSet::new(),
+            cache,
         };
 
         // loop through the tracked values in reverse order (as optimization)
@@ -250,7 +259,7 @@ pub(super) fn append_injected_values_preamble(
 }
 
 gen fn append_uninitialized_shared_container(
-    context: &mut PreambleContext,
+    context: &mut PreambleContext<'_>,
     container: &SharedContainer,
     metadata: &TrackedValueMetadata,
     statements_count: &mut u32,
@@ -307,7 +316,7 @@ gen fn append_uninitialized_shared_container(
 }
 
 gen fn append_self_referencing_shared_container_to_stack(
-    context: &mut PreambleContext,
+    context: &mut PreambleContext<'_>,
     container: &SharedContainer,
     statements_count: &mut u32,
     uninitialized_index: StackIndex,
@@ -325,7 +334,7 @@ gen fn append_self_referencing_shared_container_to_stack(
 }
 
 gen fn append_shared_container_to_stack(
-    context: &mut PreambleContext,
+    context: &mut PreambleContext<'_>,
     container: &SharedContainer,
     is_known: bool,
     statements_count: &mut u32,
@@ -340,7 +349,7 @@ gen fn append_shared_container_to_stack(
 }
 
 gen fn append_shared_container(
-    context: &mut PreambleContext,
+    context: &mut PreambleContext<'_>,
     container: &SharedContainer,
     is_known: bool,
 ) -> crate::instruction::BytecodeItem {
@@ -395,7 +404,7 @@ gen fn append_shared_container(
 
 /// Appends a move instruction to the preamble to move an owned shared containers
 gen fn append_move_with_value(
-    context: &mut PreambleContext,
+    context: &mut PreambleContext<'_>,
     container_mutability: SharedContainerMutability,
     previous_address: SelfOwnedPointerAddress,
     value_container: Option<&ValueContainer>,
@@ -443,7 +452,7 @@ gen fn append_referenced_shared_container(
 }
 
 gen fn append_referenced_shared_container_with_value(
-    context: &mut PreambleContext,
+    context: &mut PreambleContext<'_>,
     referenced_container: &ReferencedSharedContainer,
     unitialized: bool,
 ) -> crate::instruction::BytecodeItem {
@@ -526,11 +535,13 @@ mod tests {
             value_container::ValueContainer,
         },
     };
+    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     fn assert_preamble_instructions(
         tracked_values: Vec<(SharedContainer, TrackedValueMetadata)>,
         instructions: Vec<impl Into<InstructionTree<Instruction>>>,
     ) {
+        let cache = &mut SharedReferencesCache::default();
         // mock body
         let mut cursor = ByteCursor::new(vec![]);
         RegularInstruction::null().write(&mut cursor).unwrap();
@@ -547,7 +558,7 @@ mod tests {
             tracked_values,
         };
         let (bytes, _) =
-            append_injected_values_preamble(collection, cursor.into_inner());
+            append_injected_values_preamble(collection, cursor.into_inner(), cache);
 
         assert_instructions_equal!(&bytes, instructions);
     }

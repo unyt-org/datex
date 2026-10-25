@@ -14,6 +14,8 @@ use crate::{
 use binrw::io::Cursor;
 use crate::core_compiler::to_instructions::ToInstructions;
 use crate::core_compiler::value_visitor::{compile_instructions_to_dxb, ValueVisitor};
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::runtime::Runtime;
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 
@@ -95,18 +97,21 @@ pub struct CoreCompilationContext<'a> {
 /// This function is unsafe because it creates a CoreCompilationContext
 pub(crate) unsafe fn default_core_compilation_context<'a>()
 -> CoreCompilationContext<'a> {
-    CoreCompilationContext::new(unsafe { default_compile_input() })
+    let cache = Box::leak(Box::new(SharedReferencesCache::default()));
+    CoreCompilationContext::new(unsafe { default_compile_input() }, cache)
 }
 
 impl<'a> CoreCompilationContext<'a> {
     /// Create a new core compilation context with an initial byte input buffer
     pub fn new(
         input: CompileInput<'a>,
+        cache: &'a mut SharedReferencesCache,
     ) -> CoreCompilationContext<'a> {
         CoreCompilationContext {
             shared_value_tracking: RefCell::new(SharedValueTracking::new(
                 input.pointer_lookup,
                 input.receivers,
+                cache,
             )),
             input,
         }
@@ -116,9 +121,10 @@ impl<'a> CoreCompilationContext<'a> {
     pub fn new_for_endpoints(
         pointer_lookup: &'a PointerAvailabilityLookup,
         receivers: &'a [Endpoint],
+        cache: &'a mut SharedReferencesCache,
     ) -> CoreCompilationContext<'a> {
         let input = CompileInput::new(pointer_lookup, receivers);
-        CoreCompilationContext::new(input)
+        CoreCompilationContext::new(input, cache)
     }
 
     /// Compiles a [ToInstructions] value with shared value tracking and appends a preamble with the injected shared values.
@@ -136,9 +142,13 @@ impl<'a> CoreCompilationContext<'a> {
         self,
         compiled_body: Vec<u8>
     ) -> DXBWithSharedValues {
-        let tracked_values = self.shared_value_tracking.into_inner().into_tracked_values();
+        let (tracked_values, cache) = self.shared_value_tracking.into_inner().into_tracked_values_and_cache();
         let (combined_buffer, top_level_values) =
-            append_injected_values_preamble(tracked_values, compiled_body);
+            append_injected_values_preamble(
+                tracked_values,
+                compiled_body,
+                cache,
+            );
         // SAFETY: it is assumed that the tracked values from the shared value tracking were
         // moved inside the compilation and are no longer accessible from the outside
         unsafe {

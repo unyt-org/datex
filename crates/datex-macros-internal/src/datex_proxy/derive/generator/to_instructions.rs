@@ -26,13 +26,22 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
         SelfAccess::Borrowed,
         generate_to_instructions_for_fields,
     );
-    
+
     // add entity if entity type
     let body = if structure_data.attributes.type_kind.is_entity() {
-        let get_address = get_pointer_address(structure_data);
         quote! {
-            let address = PointerAddress::SelfOwned(#get_address);
-            yield RegularInstruction::EntityValue(address).into();
+            // try to resolve the entity type via visitor cache as shared container
+            let entity_shared_container = {
+                let mut cache_goat = visitor.try_get_cache();
+                let ty = Self::datex_type(&mut *cache_goat);
+                let entity_type = match ty {
+                    Type::Entity(entity_type) => entity_type,
+                    _ => unreachable!(),
+                };
+                entity_type.shared_container().clone()
+            };
+            let _ = visitor.visit_shared_container(&entity_shared_container);
+            yield RegularInstruction::EntityValue(entity_shared_container.pointer_address()).into();
             #body
         }
     } else {
@@ -43,7 +52,7 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
         impl #impl_generics ToInstructions for #ident #ty_generics #where_clause {
             fn to_bytecode_item<'a>(
                 &'a self,
-                ctx: &'a mut dyn ValueVisitor,
+                visitor: &'a mut dyn ValueVisitor,
             ) -> Box<dyn Iterator<Item = BytecodeItem> + 'a>
             {
                 Box::new(gen move {
@@ -146,7 +155,7 @@ fn field_to_instructions(
     match field_mapping {
         FieldMapping::Datex => {
             quote! {
-                for i in (#accessor).to_bytecode_item(ctx) {
+                for i in (#accessor).to_bytecode_item(visitor) {
                     yield i;
                 }
             }
@@ -156,7 +165,7 @@ fn field_to_instructions(
             // and this leads to lifetime issues if we don't collect the instructions first
             // but try to yield on the fly
             quote! {
-                let value = serde_to_value_container(&(#accessor)).to_bytecode_item(ctx).collect::<Vec<_>>();
+                let value = serde_to_value_container(&(#accessor)).to_bytecode_item(visitor).collect::<Vec<_>>();
                 for i in value {
                     yield i;
                 }

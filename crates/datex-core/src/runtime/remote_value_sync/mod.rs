@@ -161,11 +161,12 @@ impl RuntimeInternal {
             let lookup = self.pointer_availability_lookup();
             let endpoints = [owner.clone()];
             let input = CompileInput::new(lookup.deref(), &endpoints);
-
+            let mut cache = self.shared_references_cache_mut();
             compile_updates(
                 &SharedContainer::Referenced(container),
                 &[update.data()],
                 input,
+                &mut cache,
             )
         };
 
@@ -240,8 +241,9 @@ impl RuntimeInternal {
         let update_dxb = {
             let lookup = self.pointer_availability_lookup();
             let input = CompileInput::new(lookup.deref(), &receiver_endpoints);
+            let mut cache = self.shared_references_cache_mut();
 
-            compile_updates(&container, &[update.data()], input)
+            compile_updates(&container, &[update.data()], input, &mut cache)
         };
 
         let self_clone = self.clone();

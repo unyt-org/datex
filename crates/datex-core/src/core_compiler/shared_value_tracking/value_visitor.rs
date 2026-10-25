@@ -9,6 +9,8 @@ use crate::{
         traits::SharedContainerCommon,
     },
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::utils::goat_mut::GoatMut;
 
 impl<'ctx> ValueVisitor for SharedValueTracking<'ctx> {
     /// Registers a visited shared value in the shared value tracking
@@ -33,5 +35,9 @@ impl<'ctx> ValueVisitor for SharedValueTracking<'ctx> {
             }
             .into()
         })
+    }
+
+    fn try_get_cache(&mut self) -> GoatMut<SharedReferencesCache> {
+        GoatMut::Borrowed(&mut self.cache)
     }
 }

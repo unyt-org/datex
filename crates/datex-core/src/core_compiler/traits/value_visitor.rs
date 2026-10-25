@@ -7,12 +7,18 @@ use crate::{
     shared_values::SharedContainer,
 };
 use binrw::BinWrite;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::utils::goat_mut::GoatMut;
 
 pub trait ValueVisitor {
     fn visit_shared_container<'a>(
         &'a mut self,
         value_container: &'a SharedContainer,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a>;
+
+    fn try_get_cache(
+        &mut self,
+    ) -> GoatMut<SharedReferencesCache>;
 }
 
 /// Compiles a [ToInstructions] value using the visitor and returns the final byte buffer.

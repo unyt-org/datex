@@ -65,6 +65,7 @@ use crate::{
     },
 };
 use core::str::FromStr;
+use core::ops::DerefMut;
 use log::{debug, info};
 use precompiler::{
     options::PrecompilerOptions,
@@ -255,17 +256,20 @@ pub fn compile_script_or_return_static_value(
         runtime.clone(),
     )?;
     let lookup = runtime.pointer_availability_lookup();
+    let mut cache = runtime.shared_references_cache_mut();
     let compilation_context = CompilationContext::new(
         vec![],
         options.compile_scope.execution_mode,
         CompileInput::new(&lookup, &options.receivers),
         options.compile_scope,
+        cache.deref_mut()
     );
     let compilation_result = compilation_context
         .compile_ast_node_to_dxb_with_shared_values(
             &*ast.ast.data,
             &mut ast.metadata.borrow_mut(),
         )?;
+    drop(cache);
     if compilation_result.has_non_static_value {
         Ok((
             StaticValueOrDXB::DXB(compilation_result.dxb_with_shared_values),
@@ -423,18 +427,20 @@ pub fn compile_template(
 
     let lookup = runtime.pointer_availability_lookup();
     let input = CompileInput::new(&lookup, &options.receivers);
+    let mut cache = runtime.shared_references_cache_mut();
     let compilation_context = CompilationContext::new(
         inserted_values,
         options.compile_scope.execution_mode,
         input,
         options.compile_scope,
+        cache.deref_mut(),
     );
     let compile_start = TimingInstant::now();
 
     let res = compilation_context
         .compile_ast_with_metadata_to_dxb_with_shared_values(ast)
         .map_err(SpannedCompilerError::from);
-    
+
     debug!(
         " [compile_ast took {} ms]",
         compile_start.elapsed().as_millis()
@@ -527,11 +533,13 @@ pub fn compile_child_realm_instructions(
         child_scope.register_variable_slot(variable);
     }
 
+    let mut tracking = compilation_context.core_context.shared_value_tracking.borrow_mut();
     let execution_block_ctx = CompilationContext::new(
         vec![],
         ExecutionMode::Static,
         input,
         child_scope,
+        &mut tracking.cache,
     );
 
     // TODO: what to do with the shared values? [shared_values]
@@ -545,6 +553,8 @@ pub fn compile_child_realm_instructions(
         ..
     } = execution_block_ctx
         .compile_ast_node_to_dxb_with_shared_values(&*ast.data, metadata)?;
+
+    drop(tracking);
 
     // reset to current scope
     let external_parent_scope = child_scope
@@ -637,6 +647,7 @@ pub mod tests {
     };
     use alloc::format;
     use core::assert_matches;
+    use core::ops::DerefMut;
     use log::*;
 
     fn compile_unwrap(script: &str) -> Vec<u8> {
@@ -665,18 +676,21 @@ pub mod tests {
 
     fn get_compilation_result(script: &'_ str) -> CompilationResult {
         let mut options = CompileOptions::default();
+        let runtime = Runtime::stub();
         let ast = parse_datex_script_to_rich_ast_simple_error(
             script,
             &mut options,
-            Runtime::stub(),
+            runtime.clone(),
         )
         .unwrap();
         let input = unsafe { default_compile_input() };
+        let mut cache = runtime.shared_references_cache_mut();
         let mut compilation_context = CompilationContext::new(
             vec![],
             options.compile_scope.execution_mode,
             input,
             options.compile_scope,
+            cache.deref_mut(),
         );
         compilation_context
             .compile_ast_with_metadata_to_dxb_with_shared_values(ast)

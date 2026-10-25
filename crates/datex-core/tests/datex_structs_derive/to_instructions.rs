@@ -13,6 +13,7 @@ use datex_core::{
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     values::value::Value,
 };
+use datex_core::runtime::cache::shared_references_cache::SharedReferencesCache;
 use datex_macros_internal::Datex;
 #[derive(Datex, Debug)]
 #[datex(structural)]
@@ -21,9 +22,10 @@ struct ExampleStruct {
     b: String,
 }
 fn to_instructions<T: ToInstructions>(structure: &T) -> Vec<Instruction> {
+    let cache = &mut SharedReferencesCache::default();
     let pointer_lookup = PointerAvailabilityLookup::default();
     let mut context =
-        CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]));
+        CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]), cache);
     structure
         .to_instructions(context.shared_value_tracking.get_mut())
         .collect::<Vec<_>>()

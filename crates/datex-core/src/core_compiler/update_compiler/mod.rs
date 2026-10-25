@@ -23,6 +23,7 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 /// Compiles an update operation on a shared container into DXB
 /// e.g. [UpdateData::SetEntry] to $x.a = b;
@@ -30,8 +31,9 @@ pub fn compile_updates(
     container: &SharedContainer,
     updates: &[&UpdateData],
     compile_input: CompileInput,
+    cache: &mut SharedReferencesCache,
 ) -> DXBWithSharedValues {
-    CoreCompilationContext::new(compile_input)
+    CoreCompilationContext::new(compile_input, cache)
         .compile_to_dxb_with_shared_values(&(container, updates))
 }
 
@@ -233,9 +235,11 @@ mod tests {
         },
         values::{core_values::map::Map, value_container::ValueContainer},
     };
+    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     #[test]
     fn test_compile_update_set_entry() {
+        let cache = &mut SharedReferencesCache::default();
         let container = SharedContainer::new_owned_with_inferred_allowed_type(
             Map::from(vec![(
                 ValueContainer::from("test_key"),
@@ -256,7 +260,7 @@ mod tests {
 
         let compile_input = CompileInput::new(&lookup, &[]);
         let dxb_with_shared_values =
-            compile_updates(&container, &[&update_data], compile_input);
+            compile_updates(&container, &[&update_data], compile_input, cache);
 
         assert_instructions_equal!(
             &dxb_with_shared_values.dxb,
@@ -287,6 +291,7 @@ mod tests {
 
     #[test]
     fn test_compile_update_replace() {
+        let cache = &mut SharedReferencesCache::default();
         let container = SharedContainer::new_owned_with_inferred_allowed_type(
             ValueContainer::from(42u8),
             SharedContainerMutability::Mutable,
@@ -303,7 +308,7 @@ mod tests {
 
         let compile_input = CompileInput::new(&lookup, &[]);
         let dxb_with_shared_values =
-            compile_updates(&container, &[&update_data], compile_input);
+            compile_updates(&container, &[&update_data], compile_input, cache);
 
         assert_instructions_equal!(
             &dxb_with_shared_values.dxb,

@@ -21,6 +21,7 @@ impl ToInstructions for CoreValueWithClassification {
             let classification = &self.classification;
 
             if let Some(entity_type) = &classification.entity_type {
+                let _ = visitor.visit_shared_container(entity_type.shared_container());
                 yield RegularInstruction::EntityValue(
                     entity_type.pointer_address(),
                 )

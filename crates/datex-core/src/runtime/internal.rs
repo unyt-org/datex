@@ -574,6 +574,7 @@ impl RuntimeInternal {
             &self.pointer_availability_lookup(),
             &endpoints,
             instructions_input,
+            self.shared_references_cache_mut().deref_mut(),
         );
 
         let remote_execution_context = RemoteExecutionContext::new(
