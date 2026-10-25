@@ -10,6 +10,7 @@ use crate::datex_proxy::{
         SelfAccess, generate_struct_or_enum_variants_fields_mapping,
     },
 };
+use crate::datex_proxy::generator::helpers::get_pointer_address;
 
 /// Generates the implementation of the [ToInstructions] trait for the given structure data.
 /// Returns a [TokenStream] containing the generated implementation.
@@ -25,6 +26,18 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
         SelfAccess::Borrowed,
         generate_to_instructions_for_fields,
     );
+    
+    // add entity if entity type
+    let body = if structure_data.attributes.type_kind.is_entity() {
+        let get_address = get_pointer_address(structure_data);
+        quote! {
+            let address = PointerAddress::SelfOwned(#get_address);
+            yield RegularInstruction::EntityValue(address).into();
+            #body
+        }
+    } else {
+        body
+    };
 
     quote! {
         impl #impl_generics ToInstructions for #ident #ty_generics #where_clause {
