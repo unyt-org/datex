@@ -24,7 +24,7 @@ impl ToInstructions for CoreValueWithClassification {
 
             if let Some(entity_type) = &classification.entity_type {
                 yield RegularInstruction::EntityValue.into();
-                for item in visitor.visit_shared_container(entity_type.shared_container()) {
+                for item in visitor.visit_shared_container(entity_type.shared_container(), cache) {
                     yield item;
                 }
             }

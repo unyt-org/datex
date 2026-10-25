@@ -17,7 +17,7 @@ impl ToInstructions for ValueContainer {
         match self {
             ValueContainer::Local(value) => value.to_bytecode_items(visitor, cache),
             ValueContainer::Shared(shared) => {
-                visitor.visit_shared_container(shared)
+                visitor.visit_shared_container(shared, cache)
             }
         }
     }

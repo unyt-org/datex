@@ -26,9 +26,9 @@ fn to_instructions<T: ToInstructions>(structure: &T) -> Vec<Instruction> {
     let cache = &mut SharedReferencesCache::default();
     let pointer_lookup = PointerAvailabilityLookup::default();
     let mut context =
-        CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]), cache);
+        CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]));
     structure
-        .to_bytecode_items(context.shared_value_tracking.get_mut())
+        .to_bytecode_items(context.shared_value_tracking.get_mut(), cache)
         .map(|item| match item {
             BytecodeItem::Instruction(instruction) => instruction,
             _ => panic!("Expected instruction, got {:?}", item),

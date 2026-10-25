@@ -13,8 +13,8 @@ impl ToInstructions for SharedContainerContainingType {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
-        visitor.visit_shared_container(self.deref())
+        visitor.visit_shared_container(self.deref(), cache)
     }
 }
