@@ -97,21 +97,18 @@ pub struct CoreCompilationContext<'a> {
 /// This function is unsafe because it creates a CoreCompilationContext
 pub(crate) unsafe fn default_core_compilation_context<'a>()
 -> CoreCompilationContext<'a> {
-    let cache = Box::leak(Box::new(SharedReferencesCache::default()));
-    CoreCompilationContext::new(unsafe { default_compile_input() }, cache)
+    CoreCompilationContext::new(unsafe { default_compile_input() })
 }
 
 impl<'a> CoreCompilationContext<'a> {
     /// Create a new core compilation context with an initial byte input buffer
     pub fn new(
         input: CompileInput<'a>,
-        cache: &'a mut SharedReferencesCache,
     ) -> CoreCompilationContext<'a> {
         CoreCompilationContext {
             shared_value_tracking: RefCell::new(SharedValueTracking::new(
                 input.pointer_lookup,
                 input.receivers,
-                cache,
             )),
             input,
         }
@@ -121,18 +118,21 @@ impl<'a> CoreCompilationContext<'a> {
     pub fn new_for_endpoints(
         pointer_lookup: &'a PointerAvailabilityLookup,
         receivers: &'a [Endpoint],
-        cache: &'a mut SharedReferencesCache,
     ) -> CoreCompilationContext<'a> {
         let input = CompileInput::new(pointer_lookup, receivers);
-        CoreCompilationContext::new(input, cache)
+        CoreCompilationContext::new(input)
     }
 
     /// Compiles a [ToInstructions] value with shared value tracking and appends a preamble with the injected shared values.
     /// Returns the final byte buffer and the list of shared values that were moved or referenced during compilation
-    pub fn compile_to_dxb_with_shared_values(mut self, input: &impl ToInstructions) -> DXBWithSharedValues {
-        let compiled_body = compile_instructions_to_dxb(self.shared_value_tracking.get_mut(), input);
+    pub fn compile_to_dxb_with_shared_values(
+        mut self, 
+        input: &impl ToInstructions,
+        cache: &mut SharedReferencesCache
+    ) -> DXBWithSharedValues {
+        let compiled_body = compile_instructions_to_dxb(self.shared_value_tracking.get_mut(), cache, input);
 
-        self.append_preamble_to_dxb(compiled_body)
+        self.append_preamble_to_dxb(compiled_body, cache)
     }
     
     /// Appends a preamble with the injected shared values to the provided, already compiled body and returns a [DXBWithSharedValues] 
@@ -140,9 +140,10 @@ impl<'a> CoreCompilationContext<'a> {
     /// Note: This function should only be called with a body that results from a compilation that used the same shared value tracking as this context, otherwise the shared values may not match the body.
     pub fn append_preamble_to_dxb(
         self,
-        compiled_body: Vec<u8>
+        compiled_body: Vec<u8>,
+        cache: &mut SharedReferencesCache
     ) -> DXBWithSharedValues {
-        let (tracked_values, cache) = self.shared_value_tracking.into_inner().into_tracked_values_and_cache();
+        let tracked_values = self.shared_value_tracking.into_inner().into_tracked_values();
         let (combined_buffer, top_level_values) =
             append_injected_values_preamble(
                 tracked_values,

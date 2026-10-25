@@ -30,18 +30,19 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
     // add entity if entity type
     let body = if structure_data.attributes.type_kind.is_entity() {
         quote! {
+            yield RegularInstruction::EntityValue.into();
             // try to resolve the entity type via visitor cache as shared container
             let entity_shared_container = {
-                let mut cache_goat = visitor.try_get_cache();
-                let ty = Self::datex_type(&mut *cache_goat);
+                let ty = Self::datex_type(cache);
                 let entity_type = match ty {
                     Type::Entity(entity_type) => entity_type,
                     _ => unreachable!(),
                 };
-                entity_type.shared_container().clone()
+
+                for item in visitor.visit_shared_container(entity_type.shared_container()) {
+                    yield item;
+                }
             };
-            let _ = visitor.visit_shared_container(&entity_shared_container);
-            yield RegularInstruction::EntityValue(entity_shared_container.pointer_address()).into();
             #body
         }
     } else {
@@ -53,6 +54,7 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
             fn to_bytecode_items<'a>(
                 &'a self,
                 visitor: &'a mut dyn ValueVisitor,
+                cache: &'a mut SharedReferencesCache
             ) -> Box<dyn Iterator<Item = BytecodeItem> + 'a>
             {
                 Box::new(gen move {
@@ -155,7 +157,7 @@ fn field_to_instructions(
     match field_mapping {
         FieldMapping::Datex => {
             quote! {
-                for i in (#accessor).to_bytecode_items(visitor) {
+                for i in (#accessor).to_bytecode_items(visitor, cache) {
                     yield i;
                 }
             }
@@ -165,7 +167,7 @@ fn field_to_instructions(
             // and this leads to lifetime issues if we don't collect the instructions first
             // but try to yield on the fly
             quote! {
-                let value = serde_to_value_container(&(#accessor)).to_bytecode_items(visitor).collect::<Vec<_>>();
+                let value = serde_to_value_container(&(#accessor)).to_bytecode_items(visitor, cache).collect::<Vec<_>>();
                 for i in value {
                     yield i;
                 }

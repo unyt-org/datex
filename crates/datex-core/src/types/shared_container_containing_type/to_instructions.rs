@@ -7,11 +7,13 @@ use crate::{
     types::shared_container_containing_type::SharedContainerContainingType,
 };
 use core::ops::Deref;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for SharedContainerContainingType {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         visitor.visit_shared_container(self.deref())
     }

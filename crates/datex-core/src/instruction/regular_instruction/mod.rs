@@ -750,7 +750,7 @@ pub enum RegularInstruction {
     Callable(CallableData),
 
     #[magic(InstructionCode::ENTITY_VALUE)]
-    EntityValue(PointerAddress),
+    EntityValue,
     #[magic(InstructionCode::TYPE_EXPRESSION)]
     TypeExpression,
 
@@ -1020,8 +1020,8 @@ impl RegularInstruction {
             | RegularInstruction::SetStackValue(_) => {
                 NextExpectedInstructions::Regular(1)
             }
-            RegularInstruction::EntityValue(_) => {
-                NextExpectedInstructions::Regular(1)
+            RegularInstruction::EntityValue => {
+                NextExpectedInstructions::Regular(2)
             }
 
             RegularInstruction::TypeExpression => {
@@ -1068,6 +1068,10 @@ impl RegularInstruction {
                     data.body.injected_value_count,
                     data.signature.total_type_count(),
                 )
+            }
+
+            RegularInstruction::EntityTypeDefinition(_) => {
+                NextExpectedInstructions::Type(1)
             }
 
             _ => NextExpectedInstructions::None,
@@ -1229,6 +1233,13 @@ impl RegularInstruction {
                     address
                 )
             }
+            RegularInstruction::EntityTypeDefinition(data) => {
+                write!(
+                    string,
+                    "[name: {}]",
+                    &data.name.0,
+                )
+            }
             RegularInstruction::RequestRemoteSharedRefMut(address) => {
                 write!(
                     string,
@@ -1249,13 +1260,6 @@ impl RegularInstruction {
                     string,
                     "[id: {:4x}]",
                     &address.0
-                )
-            }
-            RegularInstruction::EntityValue(address) => {
-                write!(
-                    string,
-                    "[address: {}]",
-                    address
                 )
             }
             RegularInstruction::SharedRef(shared_ref) => {

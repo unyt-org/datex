@@ -13,6 +13,7 @@ use datex_core::{
     runtime::pointer_availability_lookup::PointerAvailabilityLookup,
     values::value::Value,
 };
+use datex_core::instruction::BytecodeItem;
 use datex_core::runtime::cache::shared_references_cache::SharedReferencesCache;
 use datex_macros_internal::Datex;
 #[derive(Datex, Debug)]
@@ -27,7 +28,11 @@ fn to_instructions<T: ToInstructions>(structure: &T) -> Vec<Instruction> {
     let mut context =
         CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]), cache);
     structure
-        .to_instructions(context.shared_value_tracking.get_mut())
+        .to_bytecode_items(context.shared_value_tracking.get_mut())
+        .map(|item| match item {
+            BytecodeItem::Instruction(instruction) => instruction,
+            _ => panic!("Expected instruction, got {:?}", item),
+        })
         .collect::<Vec<_>>()
 }
 

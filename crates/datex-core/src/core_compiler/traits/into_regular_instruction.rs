@@ -8,6 +8,7 @@ use crate::{
     instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 pub trait ToRegularInstruction {
     fn to_regular_instruction(&self) -> RegularInstruction;
@@ -16,10 +17,11 @@ impl<V> ToInstructions for V
 where
     V: ToRegularInstruction,
 {
-    fn to_bytecode_items<'a>(
-        &'a self,
-        _visitor: &'a mut dyn ValueVisitor,
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    fn to_bytecode_items(
+        &self,
+        _visitor: &mut dyn ValueVisitor,
+        cache: &mut SharedReferencesCache
+    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem>> {
         Box::new(core::iter::once(self.to_regular_instruction().into()))
     }
 }

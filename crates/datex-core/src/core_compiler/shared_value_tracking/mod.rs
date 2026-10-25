@@ -82,15 +82,13 @@ pub struct SharedValueTracking<'a> {
     pub current_stack_index: StackIndex,
     pub pointer_availability_lookup: &'a PointerAvailabilityLookup,
     pub receivers: &'a [Endpoint],
-    pub cache: &'a mut SharedReferencesCache,
 }
 
 /// # Safety: This function is unsafe because it leaks memory and returns a reference with a static lifetime. It should only be used in tests where the leaked memory is acceptable.
 pub(crate) unsafe fn default_tracking<'a>() -> SharedValueTracking<'a> {
     let lookup = Box::leak(Box::new(PointerAvailabilityLookup::default()));
     let receivers: &'a [Endpoint] = Box::leak(Box::new([]));
-    let cache = Box::leak(Box::new(SharedReferencesCache::default()));
-    SharedValueTracking::new(lookup, receivers, cache)
+    SharedValueTracking::new(lookup, receivers)
 }
 
 #[derive(Debug, Default)]
@@ -109,14 +107,12 @@ impl<'a> SharedValueTracking<'a> {
     pub fn new(
         pointer_availability_lookup: &'a PointerAvailabilityLookup,
         receivers: &'a [Endpoint],
-        cache: &'a mut SharedReferencesCache,
     ) -> SharedValueTracking<'a> {
         SharedValueTracking {
             tracked_values: IndexMap::default(),
             current_stack_index: StackIndex(0),
             pointer_availability_lookup,
             receivers,
-            cache
         }
     }
 
@@ -289,14 +285,11 @@ impl<'a> SharedValueTracking<'a> {
     }
 
     /// Extracts all registered owned and referenced shared values
-    pub fn into_tracked_values_and_cache(self) -> (TrackedValueCollection, &'a mut SharedReferencesCache) {
-        (
-            TrackedValueCollection {
-                tracked_values: self.tracked_values.into_iter().collect(),
-                root_count: self.current_stack_index.0 as usize,
-            },
-            self.cache
-        )
+    pub fn into_tracked_values(self) -> TrackedValueCollection {
+        TrackedValueCollection {
+            tracked_values: self.tracked_values.into_iter().collect(),
+            root_count: self.current_stack_index.0 as usize,
+        }
     }
 }
 

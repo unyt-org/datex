@@ -77,8 +77,8 @@ pub fn compile_value_container(
     compile_input: CompileInput,
     cache: &mut SharedReferencesCache,
 ) -> DXBWithSharedValues {
-    CoreCompilationContext::new(compile_input, cache)
-        .compile_to_dxb_with_shared_values(value_container)
+    CoreCompilationContext::new(compile_input)
+        .compile_to_dxb_with_shared_values(value_container, cache)
 }
 
 pub fn compile_value(
@@ -95,13 +95,13 @@ pub fn compile_panic(
     compile_input: CompileInput,
     cache: &mut SharedReferencesCache,
 ) -> Vec<u8> {
-    CoreCompilationContext::new(compile_input, cache)
+    CoreCompilationContext::new(compile_input)
         .compile_to_dxb_with_shared_values(&ApplyWithArgs {
             callee: RegularInstruction::get_core_lib_value(
                 CoreLibId::Value(CoreLibValueId::Panic).into(),
             ),
             args: vec![ValueContainer::Local(panic_value.into())],
-        })
+        }, cache)
         .dxb
 }
 
@@ -115,10 +115,12 @@ impl ToInstructions for ApplyWithArgs {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen {
             yield_all!(append_apply(
                 visitor,
+                cache,
                 self.callee.clone(),
                 self.args.clone()
             ));
@@ -128,12 +130,13 @@ impl ToInstructions for ApplyWithArgs {
 
 gen fn append_apply<'a>(
     visitor: &'a mut dyn ValueVisitor,
+    cache: &'a mut SharedReferencesCache,
     callee: RegularInstruction,
     args: Vec<ValueContainer>,
 ) -> crate::instruction::BytecodeItem {
     yield RegularInstruction::apply(args.len() as u8).into();
     for arg in args {
-        yield_all_collected!(arg.to_bytecode_items(visitor)); // FIXME: don't collect
+        yield_all_collected!(arg.to_bytecode_items(visitor, cache)); // FIXME: don't collect
     }
     yield callee.into();
     return;
@@ -310,9 +313,11 @@ mod tests {
 
         let shared_container = ValueContainer::Shared(owned_shared);
         let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
 
         let dxb = compile_instructions_to_dxb(
             context.shared_value_tracking.get_mut(),
+            cache,
             &shared_container,
         );
 
@@ -330,7 +335,7 @@ mod tests {
             }
         );
 
-        let dxb = context.append_preamble_to_dxb(dxb).dxb;
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
 
         assert_instructions_equal!(
             &dxb,
@@ -405,8 +410,10 @@ mod tests {
 
         let shared_container = ValueContainer::Shared(outer_shared);
         let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
         let dxb = compile_instructions_to_dxb(
             context.shared_value_tracking.get_mut(),
+            cache,
             &shared_container,
         );
 
@@ -443,7 +450,7 @@ mod tests {
             }
         );
 
-        let dxb = context.append_preamble_to_dxb(dxb).dxb;
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
 
         assert_instructions_equal!(
             &dxb,
@@ -526,8 +533,10 @@ mod tests {
 
         let shared_container = ValueContainer::Shared(outer_shared);
         let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
         let dxb = compile_instructions_to_dxb(
             context.shared_value_tracking.get_mut(),
+            cache,
             &shared_container,
         );
 
@@ -555,7 +564,7 @@ mod tests {
             }
         );
 
-        let dxb = context.append_preamble_to_dxb(dxb).dxb;
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
 
         assert_instructions_equal!(
             &dxb,
@@ -611,9 +620,11 @@ mod tests {
         };
         let shared_container = ValueContainer::Shared(reference.clone());
         let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
 
         let dxb = compile_instructions_to_dxb(
             context.shared_value_tracking.get_mut(),
+            cache,
             &shared_container,
         );
 
@@ -631,7 +642,7 @@ mod tests {
             }
         );
 
-        let dxb = context.append_preamble_to_dxb(dxb).dxb;
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
 
         assert_instructions_equal!(
             &dxb,
@@ -697,8 +708,10 @@ mod tests {
             .into(),
         );
         let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
         let dxb = compile_instructions_to_dxb(
             context.shared_value_tracking.get_mut(),
+            cache,
             &local,
         );
 
@@ -729,7 +742,7 @@ mod tests {
             }
         );
 
-        let dxb = context.append_preamble_to_dxb(dxb).dxb;
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
 
         assert_instructions_equal!(
             &dxb,
@@ -804,9 +817,11 @@ mod tests {
         };
 
         let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
         let shared_container = ValueContainer::Shared(shared);
         let dxb = compile_instructions_to_dxb(
             context.shared_value_tracking.get_mut(),
+            cache,
             &shared_container,
         );
 
@@ -824,7 +839,7 @@ mod tests {
             }
         );
 
-        let dxb = context.append_preamble_to_dxb(dxb).dxb;
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
 
         assert_instructions_equal!(
             &dxb,

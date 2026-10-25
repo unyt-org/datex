@@ -15,19 +15,16 @@ pub trait ValueVisitor {
         &'a mut self,
         value_container: &'a SharedContainer,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a>;
-
-    fn try_get_cache(
-        &mut self,
-    ) -> GoatMut<SharedReferencesCache>;
 }
 
 /// Compiles a [ToInstructions] value using the visitor and returns the final byte buffer.
 pub fn compile_instructions_to_dxb(
     visitor: &mut impl ValueVisitor,
+    cache: &mut SharedReferencesCache,
     input: &impl ToInstructions,
 ) -> Vec<u8> {
     let mut buffer = ByteCursor::new(Vec::new());
-    for instruction in input.to_bytecode_items(visitor) {
+    for instruction in input.to_bytecode_items(visitor, cache) {
         match &instruction {
             BytecodeItem::Instruction(item) => {
                 item.write(&mut buffer).unwrap();

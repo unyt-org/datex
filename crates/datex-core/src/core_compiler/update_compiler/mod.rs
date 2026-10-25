@@ -33,18 +33,19 @@ pub fn compile_updates(
     compile_input: CompileInput,
     cache: &mut SharedReferencesCache,
 ) -> DXBWithSharedValues {
-    CoreCompilationContext::new(compile_input, cache)
-        .compile_to_dxb_with_shared_values(&(container, updates))
+    CoreCompilationContext::new(compile_input)
+        .compile_to_dxb_with_shared_values(&(container, updates), cache)
 }
 
 impl ToInstructions for (&SharedContainer, &[&UpdateData]) {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         let (container, updates) = self;
         Box::new(gen move {
-            yield_all!(append_updates(visitor, container, updates));
+            yield_all!(append_updates(visitor, cache, container, updates));
         })
     }
 }
@@ -53,6 +54,7 @@ impl ToInstructions for (&SharedContainer, &[&UpdateData]) {
 /// The updates are appended as a single statement block, with the shared container being pushed to the stack first, followed by each update operation.
 gen fn append_updates<'a>(
     visitor: &mut dyn ValueVisitor,
+    cache: &mut SharedReferencesCache,
     container: &SharedContainer,
     updates: &[&UpdateData],
 ) -> crate::instruction::BytecodeItem {
@@ -69,31 +71,32 @@ gen fn append_updates<'a>(
 
     for update in updates {
         // TODO append update.path
-        yield_all!(append_update_operation(visitor, update.operation()));
+        yield_all!(append_update_operation(visitor, cache, update.operation()));
     }
 }
 
 /// Appends a single update operation on a shared container
 gen fn append_update_operation<'a>(
     visitor: &mut dyn ValueVisitor,
+    cache: &mut SharedReferencesCache,
     operation: &UpdateOperation,
 ) -> crate::instruction::BytecodeItem {
     match operation {
         UpdateOperation::SetEntry(data) => {
-            yield_all!(append_set_entry(visitor, data))
+            yield_all!(append_set_entry(visitor, cache, data))
         }
         UpdateOperation::AppendEntry(data) => {
-            yield_all!(append_append_entry(visitor, data))
+            yield_all!(append_append_entry(visitor, cache, data))
         }
         UpdateOperation::Replace(data) => {
-            yield_all!(append_replace(visitor, data))
+            yield_all!(append_replace(visitor, cache, data))
         }
         UpdateOperation::Clear => yield_all!(append_clear(visitor)),
         UpdateOperation::DeleteEntry(data) => {
-            yield_all!(append_delete_entry(visitor, data))
+            yield_all!(append_delete_entry(visitor, cache, data))
         }
         UpdateOperation::ListSplice(data) => {
-            yield_all!(append_list_splice(visitor, data))
+            yield_all!(append_list_splice(visitor, cache, data))
         }
         UpdateOperation::Increment(_data) => {
             todo!()
@@ -109,15 +112,17 @@ gen fn append_update_operation<'a>(
 /// Appends a set entry operation on a shared container
 gen fn append_set_entry<'a>(
     visitor: &mut dyn ValueVisitor,
+    cache: &mut SharedReferencesCache,
     set_entry_update_data: &SetEntryUpdateData,
 ) -> crate::instruction::BytecodeItem {
     // key
     yield_all!(append_set_property_value_key(
         visitor,
+        cache,
         &set_entry_update_data.key
     ));
     // value
-    yield_all!(set_entry_update_data.value.to_bytecode_items(visitor));
+    yield_all!(set_entry_update_data.value.to_bytecode_items(visitor, cache));
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
 
@@ -127,10 +132,11 @@ gen fn append_set_entry<'a>(
 /// Appends a replace operation on a shared container
 gen fn append_replace<'a>(
     visitor: &mut dyn ValueVisitor,
+    cache: &mut SharedReferencesCache,
     replace_update_data: &ReplaceUpdateData,
 ) -> crate::instruction::BytecodeItem {
     yield RegularInstruction::set_shared_container_value().into();
-    yield_all!(replace_update_data.value.to_bytecode_items(visitor));
+    yield_all!(replace_update_data.value.to_bytecode_items(visitor, cache));
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
     return;
@@ -139,10 +145,11 @@ gen fn append_replace<'a>(
 /// Appends an append entry operation on a shared container
 gen fn append_append_entry<'a>(
     visitor: &mut dyn ValueVisitor,
+    cache: &mut SharedReferencesCache,
     append_entry_update_data: &AppendEntryUpdateData,
 ) -> crate::instruction::BytecodeItem {
     yield RegularInstruction::append_entry().into();
-    yield_all!(append_entry_update_data.value.to_bytecode_items(visitor));
+    yield_all!(append_entry_update_data.value.to_bytecode_items(visitor, cache));
 
     // target
     yield RegularInstruction::borrow_stack_value(StackIndex(0)).into();
@@ -152,6 +159,7 @@ gen fn append_append_entry<'a>(
 /// Appends a list splice operation on a shared container
 gen fn append_list_splice<'a>(
     visitor: &mut dyn ValueVisitor,
+    cache: &mut SharedReferencesCache,
     list_splice_update_data: &ListSpliceUpdateData,
 ) -> crate::instruction::BytecodeItem {
     yield RegularInstruction::splice(
@@ -162,7 +170,7 @@ gen fn append_list_splice<'a>(
     .into();
 
     for item in &list_splice_update_data.items {
-        yield_all!(item.to_bytecode_items(visitor));
+        yield_all!(item.to_bytecode_items(visitor, cache));
     }
 
     // target
@@ -185,6 +193,7 @@ gen fn append_clear(
 /// Appends a delete entry operation on a shared container
 gen fn append_delete_entry(
     visitor: &mut dyn ValueVisitor,
+    cache: &mut SharedReferencesCache,
     _delete_entry_update_data: &DeleteEntryUpdateData,
 ) -> crate::instruction::BytecodeItem {
     todo!()
@@ -193,6 +202,7 @@ gen fn append_delete_entry(
 /// Appends a set property operation on a shared container, based on the provided value key.
 pub gen fn append_set_property_value_key<'a>(
     visitor: &mut dyn ValueVisitor,
+    cache: &mut SharedReferencesCache,
     value_key: &ValueContainer,
 ) -> crate::instruction::BytecodeItem {
     if let Some(string) = value_key.try_as_str() {
@@ -202,7 +212,7 @@ pub gen fn append_set_property_value_key<'a>(
         yield RegularInstruction::set_entry_index(*index).into();
     } else {
         yield RegularInstruction::set_entry_dynamic().into();
-        yield_all!(value_key.to_bytecode_items(visitor));
+        yield_all!(value_key.to_bytecode_items(visitor, cache));
     }
 
     return;

@@ -36,8 +36,4 @@ impl<'ctx> ValueVisitor for SharedValueTracking<'ctx> {
             .into()
         })
     }
-
-    fn try_get_cache(&mut self) -> GoatMut<SharedReferencesCache> {
-        GoatMut::Borrowed(&mut self.cache)
-    }
 }

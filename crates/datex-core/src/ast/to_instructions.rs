@@ -51,6 +51,7 @@ use crate::{
 use core::str::FromStr;
 use core::ops::DerefMut;
 use log::info;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 macro yield_unwrap($expr:expr) {
     match $expr {
@@ -63,6 +64,7 @@ impl AstNodeToInstructions for DatexExpression {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -73,6 +75,7 @@ impl AstNodeToInstructions for DatexExpression {
         Box::new(gen move {
             yield_all!(self.data.ast_node_to_instructions(
                 compilation_context,
+                cache,
                 ast_metadata,
                 ctx_metadata
             ));
@@ -83,6 +86,7 @@ impl AstNodeToInstructions for DatexExpressionData {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -97,41 +101,41 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
                 DatexExpressionData::TypedInteger(typed_integer) => {
                     yield_all_ok!(
-                        typed_integer.to_bytecode_items(compilation_context)
+                        typed_integer.to_bytecode_items(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Instant(instant) => {
                     yield_all_ok!(
-                        instant.to_bytecode_items(compilation_context)
+                        instant.to_bytecode_items(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Decimal(decimal) => {
                     yield_all_ok!(
-                        decimal.to_bytecode_items(compilation_context)
+                        decimal.to_bytecode_items(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::TypedDecimal(typed_decimal) => {
                     yield_all_ok!(
-                        typed_decimal.to_bytecode_items(compilation_context)
+                        typed_decimal.to_bytecode_items(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Text(text) => {
-                    yield_all_ok!(text.to_bytecode_items(compilation_context));
+                    yield_all_ok!(text.to_bytecode_items(compilation_context, cache));
                 }
 
                 DatexExpressionData::Boolean(boolean) => {
                     yield_all_ok!(
-                        boolean.to_bytecode_items(compilation_context)
+                        boolean.to_bytecode_items(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Endpoint(endpoint) => {
                     yield_all_ok!(
-                        endpoint.to_bytecode_items(compilation_context)
+                        endpoint.to_bytecode_items(compilation_context, cache)
                     );
                 }
 
@@ -142,6 +146,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::List(list) => {
                     yield_all!(list.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -150,6 +155,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::Map(map) => {
                     yield_all!(map.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -159,6 +165,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::UnaryOperation(unary_operation) => {
                     yield_all!(unary_operation.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -168,6 +175,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::BinaryOperation(binary_operation) => {
                     yield_all!(binary_operation.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -179,6 +187,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 ) => {
                     yield_all!(comparison_operation.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -188,6 +197,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::Apply(apply) => {
                     yield_all!(apply.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -199,6 +209,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 ) => {
                     yield_all!(interface_method_call.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -208,6 +219,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::PropertyAccess(property_access) => {
                     yield_all!(property_access.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -218,6 +230,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 ) => {
                     yield_all!(generic_instantiation.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -228,6 +241,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 ) => {
                     yield_all!(property_assignment.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -236,6 +250,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::RequestSharedRef(request_shared_ref) => {
                     yield_all!(request_shared_ref.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -244,6 +259,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::UnboxAssignment(unbox_assignment) => {
                     yield_all!(unbox_assignment.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -255,6 +271,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 ) => {
                     yield_all!(root_property_access.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -264,6 +281,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::DeriveRef(derive_ref) => {
                     yield_all!(derive_ref.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -273,6 +291,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::DeriveSharedRef(derive_shared_ref) => {
                     yield_all!(derive_shared_ref.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -282,6 +301,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::CreateShared(create_shared) => {
                     yield_all!(create_shared.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -291,6 +311,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                     yield Ok(RegularInstruction::TypeExpression.into());
                     yield_all!(type_expression.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -299,6 +320,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::Range(range_dec) => {
                     yield_all!(range_dec.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -307,6 +329,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::Unbox(unbox) => {
                     yield_all!(unbox.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -315,6 +338,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::Tag(tag_expression) => {
                     yield_all!(tag_expression.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -332,6 +356,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 ) => {
                     yield_all!(callable_declaration.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -340,6 +365,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::Conditional(conditional) => {
                     yield_all!(conditional.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -347,6 +373,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::RemoteExecution(remote_execution) => {
                     yield_all!(remote_execution.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -357,6 +384,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 ) => {
                     yield_all!(_variable_declaration.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -364,6 +392,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::Statements(statements) => {
                     yield_all!(statements.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -374,6 +403,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 ) => {
                     yield_all!(variable_assignment.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -382,6 +412,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::VariableAccess(variable_access) => {
                     yield_all!(variable_access.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -390,6 +421,7 @@ impl AstNodeToInstructions for DatexExpressionData {
                 DatexExpressionData::Placeholder(value_access_type) => {
                     yield_all!(value_access_type.ast_node_to_instructions(
                         compilation_context,
+                        cache,
                         ast_metadata,
                         ctx_metadata
                     ));
@@ -409,6 +441,7 @@ impl AstNodeToInstructions for ValueAccessType {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -435,17 +468,17 @@ impl AstNodeToInstructions for ValueAccessType {
                         }
                         ValueAccessType::MoveOrCopy => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_items(compilation_context)
+                                value.to_bytecode_items(compilation_context, cache)
                             );
                         }
                         ValueAccessType::Clone => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_items(compilation_context)
+                                value.to_bytecode_items(compilation_context, cache)
                             );
                         }
                         ValueAccessType::Borrow => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_items(compilation_context)
+                                value.to_bytecode_items(compilation_context, cache)
                             );
                         }
                     },
@@ -457,16 +490,16 @@ impl AstNodeToInstructions for ValueAccessType {
                                     .try_derive_mutable_reference()
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)
                                 );
-                                yield_all_ok_collected!(shared_container_mut_ref.to_bytecode_items(compilation_context));
+                                yield_all_ok_collected!(shared_container_mut_ref.to_bytecode_items(compilation_context, cache));
                             }
                             ValueAccessType::SharedRef => {
                                 let shared_container_immut_ref = shared_container.derive_immutable_reference();
-                                yield_all_ok_collected!(shared_container_immut_ref.to_bytecode_items(compilation_context));
+                                yield_all_ok_collected!(shared_container_immut_ref.to_bytecode_items(compilation_context, cache));
                             },
                             ValueAccessType::MoveOrCopy => {
                                 match shared_container {
                                     SharedContainer::Owned(shared_container) => {
-                                        yield_all_ok_collected!(shared_container.to_bytecode_items(compilation_context));
+                                        yield_all_ok_collected!(shared_container.to_bytecode_items(compilation_context, cache));
                                     }
                                     _ => return yield Err(CompilerError::InvalidConversionFromRefToOwnedValue),
                                 }
@@ -475,16 +508,16 @@ impl AstNodeToInstructions for ValueAccessType {
                                 let cloned = shared_container.inner().base_shared_container().value_container().clone();
                                 match cloned {
                                     ValueContainer::Local(value) => {
-                                        yield_all_ok_collected!(value.to_bytecode_items(compilation_context));
+                                        yield_all_ok_collected!(value.to_bytecode_items(compilation_context, cache));
                                     }
                                     ValueContainer::Shared(shared_container) => {
-                                        yield_all_ok_collected!(shared_container.to_bytecode_items(compilation_context));
+                                        yield_all_ok_collected!(shared_container.to_bytecode_items(compilation_context, cache));
                                     }
                                 }
                             },
                             ValueAccessType::Borrow => {
                                 let reference = shared_container.derive_reference_with_max_mutability();
-                                yield_all_ok_collected!(reference.to_bytecode_items(compilation_context));
+                                yield_all_ok_collected!(reference.to_bytecode_items(compilation_context, cache));
                             }
                         };
                     }
@@ -508,6 +541,7 @@ impl AstNodeToInstructions for Conditional {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         _ctx_metadata: CompileContextMetadata,
     ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a> {
@@ -522,18 +556,17 @@ impl AstNodeToInstructions for Conditional {
             let input = compilation_context.core_context.input.clone();
 
             let condition_instructions = {
-                let mut tracking = compilation_context.core_context.shared_value_tracking.borrow_mut();
                 let mut inner_ctx = CompilationContext::new(
                     compilation_context.inserted_values.clone(),
                     compilation_context.execution_mode,
                     input.clone(),
                     compilation_context.scope.clone(),
-                    &mut tracking.cache
                 );
 
                 condition
                     .ast_node_to_instructions(
                         &mut inner_ctx,
+                        cache,
                         ast_metadata,
                         CompileContextMetadata::default(),
                     )
@@ -541,19 +574,17 @@ impl AstNodeToInstructions for Conditional {
             };
 
             let then_instructions = {
-                let mut tracking = compilation_context.core_context.shared_value_tracking.borrow_mut();
-
                 let mut inner_ctx = CompilationContext::new(
                     compilation_context.inserted_values.clone(),
                     compilation_context.execution_mode,
                     input.clone(),
                     compilation_context.scope.clone(),
-                    &mut tracking.cache,
                 );
 
                 then_branch
                     .ast_node_to_instructions(
                         &mut inner_ctx,
+                        cache,
                         ast_metadata,
                         CompileContextMetadata::default(),
                     )
@@ -562,18 +593,17 @@ impl AstNodeToInstructions for Conditional {
 
             let else_instructions = match else_branch {
                 Some(else_expr) => {
-                    let mut tracking = compilation_context.core_context.shared_value_tracking.borrow_mut();
                     let mut inner_ctx = CompilationContext::new(
                         compilation_context.inserted_values.clone(),
                         compilation_context.execution_mode,
                         input,
                         compilation_context.scope.clone(),
-                        &mut tracking.cache,
                     );
 
                     else_expr
                         .ast_node_to_instructions(
                             &mut inner_ctx,
+                            cache,
                             ast_metadata,
                             CompileContextMetadata::default(),
                         )
@@ -620,6 +650,7 @@ impl AstNodeToInstructions for RemoteExecution {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -639,6 +670,7 @@ impl AstNodeToInstructions for RemoteExecution {
             let (instruction_block_data, new_scope) =
                 yield_unwrap!(compile_child_realm_instructions(
                     compilation_context,
+                    cache,
                     ast,
                     injected_variable_count.unwrap(), // must be set by precompiler
                     ast_metadata,
@@ -656,6 +688,7 @@ impl AstNodeToInstructions for RemoteExecution {
             // insert compiled caller expression
             yield_all!(caller.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -666,6 +699,7 @@ impl AstNodeToInstructions for VariableAccess {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -740,6 +774,7 @@ impl AstNodeToInstructions for VariableAssignment {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -794,6 +829,7 @@ impl AstNodeToInstructions for VariableAssignment {
                     // compile expression
                     yield_all!(expression.ast_node_to_instructions_inner(
                         compilation_context,
+                        cache,
                         ast_metadata
                     ));
                 }
@@ -830,6 +866,7 @@ impl AstNodeToInstructions for VariableAssignment {
                         // compile expression
                         yield_all!(expression.ast_node_to_instructions_inner(
                             compilation_context,
+                            cache,
                             ast_metadata
                         ));
 
@@ -851,6 +888,7 @@ impl AstNodeToInstructions for VariableDeclaration {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -875,6 +913,7 @@ impl AstNodeToInstructions for VariableDeclaration {
             // compile expression
             yield_all!(value.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
 
@@ -909,6 +948,7 @@ impl AstNodeToInstructions for Statements {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -929,6 +969,7 @@ impl AstNodeToInstructions for Statements {
             if unbounded.is_none() && statements.len() == 1 && !is_terminated {
                 yield_all!(statements[0].ast_node_to_instructions_inner(
                     compilation_context,
+                    cache,
                     ast_metadata
                 ));
             } else {
@@ -962,6 +1003,7 @@ impl AstNodeToInstructions for Statements {
                 for statement in statements {
                     yield_all!(statement.ast_node_to_instructions_inner(
                         compilation_context,
+                        cache,
                         ast_metadata
                     ));
                 }
@@ -995,6 +1037,7 @@ impl AstNodeToInstructions for CallableDeclaration {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1028,6 +1071,7 @@ impl AstNodeToInstructions for CallableDeclaration {
 
             let res = compile_child_realm_instructions(
                 compilation_context,
+                cache,
                 body,
                 injected_variable_count.unwrap(), // must be set by precompiler
                 ast_metadata,
@@ -1069,6 +1113,7 @@ impl AstNodeToInstructions for CallableDeclaration {
             for (_, param) in &signature.parameters {
                 yield_all!(param.ast_node_to_instructions_inner(
                     compilation_context,
+                    cache,
                     ast_metadata
                 ));
             }
@@ -1076,6 +1121,7 @@ impl AstNodeToInstructions for CallableDeclaration {
             if let Some((_, param)) = &signature.rest_parameter {
                 yield_all!(param.ast_node_to_instructions_inner(
                     compilation_context,
+                    cache,
                     ast_metadata
                 ));
             }
@@ -1083,6 +1129,7 @@ impl AstNodeToInstructions for CallableDeclaration {
             if let Some(ty) = &signature.return_type {
                 yield_all!(ty.ast_node_to_instructions_inner(
                     compilation_context,
+                    cache,
                     ast_metadata
                 ));
             }
@@ -1090,6 +1137,7 @@ impl AstNodeToInstructions for CallableDeclaration {
             if let Some(ty) = &signature.yeet_type {
                 yield_all!(ty.ast_node_to_instructions_inner(
                     compilation_context,
+                    cache,
                     ast_metadata
                 ));
             }
@@ -1101,6 +1149,7 @@ impl AstNodeToInstructions for RangeDeclaration {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1112,10 +1161,12 @@ impl AstNodeToInstructions for RangeDeclaration {
             yield Ok(RegularInstruction::range().into());
             yield_all!(self.start.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
             yield_all!(self.end.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1126,6 +1177,7 @@ impl AstNodeToInstructions for ComparisonOperation {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1141,10 +1193,12 @@ impl AstNodeToInstructions for ComparisonOperation {
             );
             yield_all!(self.left.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
             yield_all!(self.right.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1155,6 +1209,7 @@ impl AstNodeToInstructions for UnboxAssignment {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1186,6 +1241,7 @@ impl AstNodeToInstructions for UnboxAssignment {
             yield_all!(
                 self.assigned_expression.ast_node_to_instructions_inner(
                     compilation_context,
+                    cache,
                     ast_metadata
                 )
             );
@@ -1193,6 +1249,7 @@ impl AstNodeToInstructions for UnboxAssignment {
             // compile unbox expression
             yield_all!(self.unbox_expression.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1203,6 +1260,7 @@ impl AstNodeToInstructions for PropertyAssignment {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1241,6 +1299,7 @@ impl AstNodeToInstructions for PropertyAssignment {
                     yield Ok(RegularInstruction::set_entry_dynamic().into());
                     yield_all!(property.ast_node_to_instructions_inner(
                         compilation_context,
+                        cache,
                         ast_metadata
                     ));
                 }
@@ -1248,12 +1307,14 @@ impl AstNodeToInstructions for PropertyAssignment {
             // compile assigned expression
             yield_all!(assigned_expression.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
 
             // compile base expression
             yield_all!(base.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1264,6 +1325,7 @@ impl AstNodeToInstructions for UnaryOperation {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1277,6 +1339,7 @@ impl AstNodeToInstructions for UnaryOperation {
             yield Ok(RegularInstruction::unary_operation(self.operator).into());
             yield_all!(self.expression.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1287,6 +1350,7 @@ impl AstNodeToInstructions for Apply {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1308,12 +1372,14 @@ impl AstNodeToInstructions for Apply {
             for argument in &self.arguments {
                 yield_all!(argument.ast_node_to_instructions_inner(
                     compilation_context,
+                    cache,
                     ast_metadata
                 ));
             }
             // compile function expression
             yield_all!(self.base.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1324,6 +1390,7 @@ impl AstNodeToInstructions for InterfaceMethodCall {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1351,6 +1418,7 @@ impl AstNodeToInstructions for InterfaceMethodCall {
                     for argument in &self.arguments {
                         yield_all!(argument.ast_node_to_instructions_inner(
                             compilation_context,
+                            cache,
                             ast_metadata
                         ));
                     }
@@ -1384,6 +1452,7 @@ impl AstNodeToInstructions for InterfaceMethodCall {
                     for argument in &self.arguments {
                         yield_all!(argument.ast_node_to_instructions_inner(
                             compilation_context,
+                            cache,
                             ast_metadata
                         ));
                     }
@@ -1401,6 +1470,7 @@ impl AstNodeToInstructions for InterfaceMethodCall {
                     for argument in &self.arguments {
                         yield_all!(argument.ast_node_to_instructions_inner(
                             compilation_context,
+                            cache,
                             ast_metadata
                         ));
                     }
@@ -1410,6 +1480,7 @@ impl AstNodeToInstructions for InterfaceMethodCall {
             // compile target expression
             yield_all!(self.target.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1420,6 +1491,7 @@ impl AstNodeToInstructions for PropertyAccess {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1449,6 +1521,7 @@ impl AstNodeToInstructions for PropertyAccess {
                     yield Ok(RegularInstruction::get_entry_dynamic().into());
                     yield_all!(self.property.ast_node_to_instructions_inner(
                         compilation_context,
+                        cache,
                         ast_metadata
                     ));
                 }
@@ -1457,6 +1530,7 @@ impl AstNodeToInstructions for PropertyAccess {
             // compile base expression
             yield_all!(self.base.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1467,6 +1541,7 @@ impl AstNodeToInstructions for GenericInstantiation {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1485,6 +1560,7 @@ impl AstNodeToInstructions for RequestSharedRef {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1506,6 +1582,7 @@ impl AstNodeToInstructions for List {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1518,6 +1595,7 @@ impl AstNodeToInstructions for List {
             for item in &self.items {
                 yield_all!(item.ast_node_to_instructions_inner(
                     compilation_context,
+                    cache,
                     ast_metadata
                 ));
             }
@@ -1529,6 +1607,7 @@ impl AstNodeToInstructions for Map {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1562,6 +1641,7 @@ impl AstNodeToInstructions for Map {
                         yield Ok(RegularInstruction::key_value_dynamic().into());
                         yield_all!(key.ast_node_to_instructions_inner(
                             compilation_context,
+                            cache,
                             ast_metadata
                         ));
                     }
@@ -1570,6 +1650,7 @@ impl AstNodeToInstructions for Map {
                 // value
                 yield_all!(value.ast_node_to_instructions_inner(
                     compilation_context,
+                    cache,
                     ast_metadata
                 ));
             }
@@ -1581,6 +1662,7 @@ impl AstNodeToInstructions for TagExpression {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1597,6 +1679,7 @@ impl AstNodeToInstructions for TagExpression {
             if let Some(expression) = &self.expression {
                 yield_all!(expression.ast_node_to_instructions_inner(
                     compilation_context,
+                    cache,
                     ast_metadata
                 ));
             }
@@ -1607,6 +1690,7 @@ impl AstNodeToInstructions for RootPropertyAccess {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1634,6 +1718,7 @@ impl AstNodeToInstructions for Unbox {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1645,6 +1730,7 @@ impl AstNodeToInstructions for Unbox {
             yield Ok(RegularInstruction::unbox().into());
             yield_all!(self.expression.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1655,6 +1741,7 @@ impl AstNodeToInstructions for DeriveRef {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1669,6 +1756,7 @@ impl AstNodeToInstructions for DeriveRef {
 
             yield_all!(self.expression.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1679,6 +1767,7 @@ impl AstNodeToInstructions for CreateShared {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1700,6 +1789,7 @@ impl AstNodeToInstructions for CreateShared {
 
             yield_all!(self.expression.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1710,6 +1800,7 @@ impl AstNodeToInstructions for DeriveSharedRef {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1732,6 +1823,7 @@ impl AstNodeToInstructions for DeriveSharedRef {
 
             yield_all!(self.expression.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })
@@ -1742,6 +1834,7 @@ impl AstNodeToInstructions for BinaryOperation {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<
@@ -1754,10 +1847,12 @@ impl AstNodeToInstructions for BinaryOperation {
             yield Ok(RegularInstruction::binary_operation(self.operator).into());
             yield_all!(self.left.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
             yield_all!(self.right.ast_node_to_instructions_inner(
                 compilation_context,
+                cache,
                 ast_metadata
             ));
         })

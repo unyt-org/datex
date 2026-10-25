@@ -14,11 +14,13 @@ use crate::{
     prelude::*,
 };
 use binrw::BinWrite;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 pub trait AstNodeToInstructions {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>;
@@ -28,11 +30,13 @@ pub trait AstNodeToInstructions {
     fn ast_node_to_instructions_inner<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
     ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>
     {
         self.ast_node_to_instructions(
             compilation_context,
+            cache,
             ast_metadata,
             CompileContextMetadata::default(),
         )
@@ -42,6 +46,7 @@ pub trait AstNodeToInstructions {
     fn try_compile_to_dxb(
         &self,
         compilation_context: &mut CompilationContext,
+        cache: &mut SharedReferencesCache,
         ast_metadata: &mut AstMetadata,
     ) -> Result<Vec<u8>, CompilerError> {
         let mut buffer = ByteCursor::new(Vec::new());
@@ -52,6 +57,7 @@ pub trait AstNodeToInstructions {
 
         for item in self.ast_node_to_instructions(
             compilation_context,
+            cache,
             ast_metadata,
             CompileContextMetadata::outer(),
         ) {

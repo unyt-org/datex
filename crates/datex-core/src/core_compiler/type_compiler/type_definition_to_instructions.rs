@@ -37,16 +37,18 @@ use crate::{
     },
 };
 use core::ops::Deref;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for TypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             match self {
                 TypeDefinition::ImplMarkers(impl_type_def) => {
-                    yield_all!(impl_type_def.to_bytecode_items(visitor));
+                    yield_all!(impl_type_def.to_bytecode_items(visitor, cache));
                 }
                 TypeDefinition::Literal(literal_type_definition) => {
                     yield TypeInstruction::Literal(
@@ -55,44 +57,44 @@ impl ToInstructions for TypeDefinition {
                     .into();
                 }
                 TypeDefinition::List(list_type_definition) => {
-                    yield_all!(list_type_definition.to_bytecode_items(visitor));
+                    yield_all!(list_type_definition.to_bytecode_items(visitor, cache));
                 }
                 TypeDefinition::Map(map_type_definition) => {
-                    yield_all!(map_type_definition.to_bytecode_items(visitor));
+                    yield_all!(map_type_definition.to_bytecode_items(visitor, cache));
                 }
                 TypeDefinition::Range(range_type_definition) => {
-                    yield_all!(range_type_definition.to_bytecode_items(visitor));
+                    yield_all!(range_type_definition.to_bytecode_items(visitor, cache));
                 }
                 TypeDefinition::Collection(collection_type_definition) => {
                     yield_all!(
-                        collection_type_definition.to_bytecode_items(visitor)
+                        collection_type_definition.to_bytecode_items(visitor, cache)
                     );
                 }
                 TypeDefinition::Shared(shared_container_containing_type) => {
                     yield_all!(
                         shared_container_containing_type
-                            .to_bytecode_items(visitor)
+                            .to_bytecode_items(visitor, cache)
                     );
                 }
                 TypeDefinition::Box(nested) => {
                     yield TypeInstruction::Boxed.into();
-                    yield_all!(nested.deref().to_bytecode_items(visitor));
+                    yield_all!(nested.deref().to_bytecode_items(visitor, cache));
                 }
                 TypeDefinition::Callable(callable_type_definition) => {
                     yield_all!(
-                        callable_type_definition.to_bytecode_items(visitor)
+                        callable_type_definition.to_bytecode_items(visitor, cache)
                     );
                 }
                 TypeDefinition::Intersection(intersection_type_definition) => {
                     yield_all!(
-                        intersection_type_definition.to_bytecode_items(visitor)
+                        intersection_type_definition.to_bytecode_items(visitor, cache)
                     );
                 }
                 TypeDefinition::Union(union_type_definition) => {
-                    yield_all!(union_type_definition.to_bytecode_items(visitor));
+                    yield_all!(union_type_definition.to_bytecode_items(visitor, cache));
                 }
                 TypeDefinition::TaggedType(tagged_type_definition) => {
-                    yield_all!(tagged_type_definition.to_bytecode_items(visitor));
+                    yield_all!(tagged_type_definition.to_bytecode_items(visitor, cache));
                 }
                 TypeDefinition::CoreType(core_lib_type_id) => {
                     yield TypeInstruction::CoreType(*core_lib_type_id).into();
@@ -106,10 +108,11 @@ impl ToInstructions for TypeDefinitionWithMetadata {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen {
             yield TypeInstruction::DefinitionWithMetadata(self.metadata).into();
-            yield_all!(self.definition.to_bytecode_items(visitor))
+            yield_all!(self.definition.to_bytecode_items(visitor, cache))
         })
     }
 }
@@ -117,6 +120,7 @@ impl ToInstructions for ImplMarkers {
     fn to_bytecode_items<'a>(
         &'a self,
         _visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen {
             yield TypeInstruction::ImplMarkers(ImplMarkersData {
@@ -132,6 +136,7 @@ impl ToInstructions for ListTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::List(ListData {
@@ -139,7 +144,7 @@ impl ToInstructions for ListTypeDefinition {
             })
             .into();
             for ty in self.iter() {
-                yield_all!(ty.to_bytecode_items(visitor));
+                yield_all!(ty.to_bytecode_items(visitor, cache));
             }
         })
     }
@@ -149,6 +154,7 @@ impl ToInstructions for MapTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Map(MapData {
@@ -156,8 +162,8 @@ impl ToInstructions for MapTypeDefinition {
             })
             .into();
             for (key_ty, value_ty) in self.iter() {
-                yield_all!(key_ty.to_bytecode_items(visitor));
-                yield_all!(value_ty.to_bytecode_items(visitor));
+                yield_all!(key_ty.to_bytecode_items(visitor, cache));
+                yield_all!(value_ty.to_bytecode_items(visitor, cache));
             }
         })
     }
@@ -167,11 +173,12 @@ impl ToInstructions for RangeTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Range.into();
-            yield_all!(self.start.deref().to_bytecode_items(visitor));
-            yield_all!(self.end.deref().to_bytecode_items(visitor));
+            yield_all!(self.start.deref().to_bytecode_items(visitor, cache));
+            yield_all!(self.end.deref().to_bytecode_items(visitor, cache));
         })
     }
 }
@@ -180,20 +187,21 @@ impl ToInstructions for CollectionTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             match self {
                 CollectionTypeDefinition::List(list) => {
-                    yield_all!(list.to_bytecode_items(visitor));
+                    yield_all!(list.to_bytecode_items(visitor, cache));
                 }
                 CollectionTypeDefinition::Map(map) => {
-                    yield_all!(map.to_bytecode_items(visitor));
+                    yield_all!(map.to_bytecode_items(visitor, cache));
                 }
                 CollectionTypeDefinition::ListSlice(list) => {
-                    yield_all!(list.to_bytecode_items(visitor));
+                    yield_all!(list.to_bytecode_items(visitor, cache));
                 }
                 CollectionTypeDefinition::Range(range) => {
-                    yield_all!(range.to_bytecode_items(visitor));
+                    yield_all!(range.to_bytecode_items(visitor, cache));
                 }
             }
         })
@@ -204,10 +212,11 @@ impl ToInstructions for ListCollectionTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen {
             yield TypeInstruction::ListCollection.into();
-            yield_all!(self.0.deref().to_bytecode_items(visitor))
+            yield_all!(self.0.deref().to_bytecode_items(visitor, cache))
         })
     }
 }
@@ -215,13 +224,14 @@ impl ToInstructions for MapCollectionTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::MapCollection.into();
             for instruction in self
                 .key_type
                 .deref()
-                .to_bytecode_items(visitor)
+                .to_bytecode_items(visitor, cache)
                 .collect::<Vec<_>>()
             {
                 yield instruction;
@@ -229,7 +239,7 @@ impl ToInstructions for MapCollectionTypeDefinition {
             for instruction in self
                 .value_type
                 .deref()
-                .to_bytecode_items(visitor)
+                .to_bytecode_items(visitor, cache)
                 .collect::<Vec<_>>()
             {
                 yield instruction;
@@ -242,6 +252,7 @@ impl ToInstructions for ListSliceCollectionTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::ListSliceCollection(
@@ -253,7 +264,7 @@ impl ToInstructions for ListSliceCollectionTypeDefinition {
             for instruction in self
                 .item_type
                 .deref()
-                .to_bytecode_items(visitor)
+                .to_bytecode_items(visitor, cache)
                 .collect::<Vec<_>>()
             {
                 yield instruction;
@@ -266,6 +277,7 @@ impl ToInstructions for IntersectionTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Intersection(IntersectionData {
@@ -274,7 +286,7 @@ impl ToInstructions for IntersectionTypeDefinition {
             .into();
             for ty in self.iter() {
                 for instruction in
-                    ty.to_bytecode_items(visitor).collect::<Vec<_>>()
+                    ty.to_bytecode_items(visitor, cache).collect::<Vec<_>>()
                 {
                     yield instruction;
                 }
@@ -287,6 +299,7 @@ impl ToInstructions for CallableTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Callable(CallableSignatureData {
@@ -313,7 +326,7 @@ impl ToInstructions for CallableTypeDefinition {
             .into();
             for (_, ty) in &self.parameters {
                 for instruction in
-                    ty.to_bytecode_items(visitor).collect::<Vec<_>>()
+                    ty.to_bytecode_items(visitor, cache).collect::<Vec<_>>()
                 {
                     yield instruction;
                 }
@@ -321,7 +334,7 @@ impl ToInstructions for CallableTypeDefinition {
             if let Some((_, rest_type)) = &self.rest_parameter {
                 for instruction in rest_type
                     .deref()
-                    .to_bytecode_items(visitor)
+                    .to_bytecode_items(visitor, cache)
                     .collect::<Vec<_>>()
                 {
                     yield instruction;
@@ -330,7 +343,7 @@ impl ToInstructions for CallableTypeDefinition {
             if let Some(return_type) = &self.return_type {
                 for instruction in return_type
                     .deref()
-                    .to_bytecode_items(visitor)
+                    .to_bytecode_items(visitor, cache)
                     .collect::<Vec<_>>()
                 {
                     yield instruction;
@@ -339,7 +352,7 @@ impl ToInstructions for CallableTypeDefinition {
             if let Some(yeet_type) = &self.yeet_type {
                 for instruction in yeet_type
                     .deref()
-                    .to_bytecode_items(visitor)
+                    .to_bytecode_items(visitor, cache)
                     .collect::<Vec<_>>()
                 {
                     yield instruction;
@@ -353,6 +366,7 @@ impl ToInstructions for UnionTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::Union(UnionData {
@@ -361,7 +375,7 @@ impl ToInstructions for UnionTypeDefinition {
             .into();
             for ty in self.iter() {
                 for instruction in
-                    ty.to_bytecode_items(visitor).collect::<Vec<_>>()
+                    ty.to_bytecode_items(visitor, cache).collect::<Vec<_>>()
                 {
                     yield instruction;
                 }
@@ -374,6 +388,7 @@ impl ToInstructions for TaggedTypeDefinition {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             yield TypeInstruction::TaggedType(TaggedTypeData::new(
@@ -383,7 +398,7 @@ impl ToInstructions for TaggedTypeDefinition {
             .into();
             if let Some(ty) = &self.ty {
                 for instruction in
-                    ty.deref().to_bytecode_items(visitor).collect::<Vec<_>>()
+                    ty.deref().to_bytecode_items(visitor, cache).collect::<Vec<_>>()
                 {
                     yield instruction;
                 }

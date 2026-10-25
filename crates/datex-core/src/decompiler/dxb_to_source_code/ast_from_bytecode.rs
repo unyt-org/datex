@@ -400,12 +400,13 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::SetSharedContainerValue
                         | RegularInstruction::Unbox
                         | RegularInstruction::SharedRefWithValue(_)
-                        | RegularInstruction::EntityValue(_)
+                        | RegularInstruction::EntityValue
                         | RegularInstruction::Increment
                         | RegularInstruction::Decrement
                         | RegularInstruction::MoveWithValue(_)
                         | RegularInstruction::RemoteExecution(_)
                         | RegularInstruction::Callable(_)
+                        | RegularInstruction::EntityTypeDefinition(_)
                         | RegularInstruction::CallableDeclaration(_)
                         | RegularInstruction::TypeExpression => {
                             unreachable!()
@@ -708,6 +709,10 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
+                            RegularInstruction::EntityTypeDefinition(data) => {
+                                todo!()
+                            }
+
                             RegularInstruction::CallableDeclaration(callable_declaration) => {
                                 let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
                                 let signature = resolve_signature(types, callable_declaration.signature);
@@ -727,11 +732,12 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::EntityValue(address) => {
+                            RegularInstruction::EntityValue => {
+                                let shared_container = collected_results.try_pop_value();
                                 let expr = collected_results.pop_value();
                                 DatexExpressionData::EntityValue(EntityValueExpression {
-                                    entity_name: address.to_string(), // TODO: resolve human readable name?
-                                    entity_address: Some(address),
+                                    entity_name: "TODO".to_string(), // TODO: resolve name
+                                    entity_address: None,
                                     value: expr,
                                 }).with_default_span().into()
                             }

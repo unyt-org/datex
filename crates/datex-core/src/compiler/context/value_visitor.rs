@@ -18,10 +18,4 @@ impl<'ctx> ValueVisitor for CompilationContext<'ctx> {
             .get_mut()
             .visit_shared_container(shared_container)
     }
-
-    fn try_get_cache(&mut self) -> GoatMut<SharedReferencesCache> {
-        GoatMut::map(GoatMut::Ref(self.core_context.shared_value_tracking.borrow_mut()), |tracking| {
-            tracking.cache
-        })
-    }
 }
