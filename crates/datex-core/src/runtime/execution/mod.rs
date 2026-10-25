@@ -312,8 +312,8 @@ pub async fn execute_dxb(
                     // FIXME: only temp test, method should always be declared in the type
                     Err(_) => {
                         let owner = callee.value.owner();
-                        // prepend callee to args
-                        args.insert(0, callee);
+                        // append callee to args
+                        args.push(callee);
 
                         interrupt_provider.provide_result(
                             InterruptResult::ResolvedValueAndBorrowedArgs(
@@ -392,13 +392,13 @@ async fn try_call_method_async(
 ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
     let owner_endpoint = callee.value.owner();
 
-    // prepend callee to args
-    args.insert(0, callee);
-
     // call locally
     if !method.call_on_owner
         || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
     {
+        // prepend callee to args
+        args.insert(0, callee);
+
         let res = method
             .callable
             .try_apply_async_checked(runtime, args)
@@ -407,6 +407,8 @@ async fn try_call_method_async(
     }
     // call on owner endpoint
     else {
+        // append callee to args
+        args.push(callee);
         try_call_method_on_owner(
             owner_endpoint,
             method.name().unwrap().clone(),
