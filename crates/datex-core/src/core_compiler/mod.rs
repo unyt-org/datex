@@ -36,7 +36,6 @@ pub fn core_compile(
     let mut ctx = CoreCompilationContext::new_for_endpoints(
         pointer_availability_lookup,
         endpoints,
-        cache,
     );
 
     let dxb_gen =
@@ -48,7 +47,8 @@ pub fn core_compile(
                     }
                     InstructionInput::ValueContainer(value_container) => {
                         yield_all_collected!(value_container.to_bytecode_items(
-                            ctx.shared_value_tracking.get_mut()
+                            ctx.shared_value_tracking.get_mut(),
+                            cache
                         ))
                     }
                 }
@@ -57,5 +57,5 @@ pub fn core_compile(
 
     let dxb = compile_instruction_iterator_to_dxb(dxb_gen);
 
-    ctx.append_preamble_to_dxb(dxb)
+    ctx.append_preamble_to_dxb(dxb, cache)
 }

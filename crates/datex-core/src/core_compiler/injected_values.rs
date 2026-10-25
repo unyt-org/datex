@@ -53,10 +53,10 @@ pub fn compile_injected_values(
         let DXBWithSharedValues {
             dxb: preambles_dxb,
             shared_values,
-        } = CoreCompilationContext::new(compile_input, cache)
+        } = CoreCompilationContext::new(compile_input)
             .compile_to_dxb_with_shared_values(&InjectedValues {
                 values: injected_values,
-            });
+            }, cache);
 
         // prepend statements block
         let mut cursor = ByteCursor::new(Vec::new());
@@ -81,6 +81,7 @@ impl ToInstructions for InjectedValues {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             if self.values.is_empty() {
@@ -89,7 +90,7 @@ impl ToInstructions for InjectedValues {
             yield RegularInstruction::list(self.values.len() as u32).into();
 
             for value_container in &self.values {
-                yield_all!(value_container.to_bytecode_items(visitor));
+                yield_all!(value_container.to_bytecode_items(visitor, cache));
             }
         })
     }

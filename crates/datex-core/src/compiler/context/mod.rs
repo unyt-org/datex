@@ -38,11 +38,10 @@ impl<'a> CompilationContext<'a> {
         execution_mode: ExecutionMode,
         input: CompileInput<'a>,
         scope: CompilationScope,
-        cache: &'a mut SharedReferencesCache,
     ) -> Self {
         CompilationContext {
             inserted_value_index: 0,
-            core_context: CoreCompilationContext::new(input, cache),
+            core_context: CoreCompilationContext::new(input),
             inserted_values,
             has_non_static_value: false,
             execution_mode, // FIXME: execution mode is already in scope, is it necessary to have it here as well?
@@ -52,8 +51,12 @@ impl<'a> CompilationContext<'a> {
 
     /// Compiles a [ToInstructions] value with shared value tracking and appends a preamble with the injected shared values.
     /// Returns the final byte buffer and the list of shared values that were moved or referenced during compilation
-    pub fn compile_to_dxb_with_shared_values(self, input: &impl ToInstructions) -> DXBWithSharedValues {
-        self.core_context.compile_to_dxb_with_shared_values(input)
+    pub fn compile_to_dxb_with_shared_values(
+        self, 
+        input: &impl ToInstructions,
+        cache: &mut SharedReferencesCache,
+    ) -> DXBWithSharedValues {
+        self.core_context.compile_to_dxb_with_shared_values(input, cache)
     }
 
     /// Compiles an AST node that implements [AstNodeToInstructions] with shared value tracking and appends a preamble with the injected shared values.
@@ -61,13 +64,15 @@ impl<'a> CompilationContext<'a> {
         mut self,
         ast_node: &impl AstNodeToInstructions,
         metadata: &mut AstMetadata,
+        cache: &mut SharedReferencesCache,
     ) -> Result<CompilationResult, CompilerError> {
         let dxb = ast_node.try_compile_to_dxb(
             &mut self,
+            cache,
             metadata,
         )?;
         Ok(CompilationResult {
-            dxb_with_shared_values: self.core_context.append_preamble_to_dxb(dxb),
+            dxb_with_shared_values: self.core_context.append_preamble_to_dxb(dxb, cache),
             scope: self.scope,
             has_non_static_value: self.has_non_static_value,
         })
@@ -77,10 +82,12 @@ impl<'a> CompilationContext<'a> {
     pub fn compile_ast_with_metadata_to_dxb_with_shared_values(
         self,
         rich_ast: RichAst,
+        cache: &mut SharedReferencesCache,
     ) -> Result<CompilationResult, CompilerError> {
         self.compile_ast_node_to_dxb_with_shared_values(
             &*rich_ast.ast.data,
             &mut rich_ast.metadata.borrow_mut(),
+            cache,
         )
     }
 

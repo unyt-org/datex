@@ -5,6 +5,7 @@ use crate::{
     instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl<K> ToInstructions for Option<K>
 where
@@ -12,13 +13,14 @@ where
 {
     fn to_bytecode_items<'a>(
         &'a self,
-        _ctx: &'a mut dyn ValueVisitor,
+        visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             match self {
                 None => yield RegularInstruction::Null.into(),
                 Some(value) => {
-                    for instruction in value.to_bytecode_items(_ctx) {
+                    for instruction in value.to_bytecode_items(visitor, cache) {
                         yield instruction;
                     }
                 }

@@ -17,11 +17,13 @@ use crate::{
     types::literal_type_definition::LiteralTypeDefinition,
 };
 use core::ops::Deref;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl AstNodeToInstructions for TypeExpression {
     fn ast_node_to_instructions<'a>(
         &'a self,
         compilation_context: &'a mut CompilationContext,
+        cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         ctx_metadata: CompileContextMetadata,
     ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>
@@ -54,12 +56,14 @@ impl AstNodeToInstructions for TypeExpression {
                     yield_all!(
                         range.start.deref().ast_node_to_instructions_inner(
                             compilation_context,
+                            cache,
                             ast_metadata
                         )
                     );
                     yield_all!(
                         range.end.deref().ast_node_to_instructions_inner(
                             compilation_context,
+                            cache,
                             ast_metadata
                         )
                     );

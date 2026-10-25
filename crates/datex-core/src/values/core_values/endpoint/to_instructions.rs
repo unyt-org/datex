@@ -6,11 +6,13 @@ use crate::{
     prelude::*,
     values::core_values::endpoint::Endpoint,
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for Endpoint {
     fn to_bytecode_items<'a>(
         &'a self,
         _ctx: &'a mut dyn ValueVisitor,
+        _cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(core::iter::once(
             RegularInstruction::endpoint(self.clone()).into(),

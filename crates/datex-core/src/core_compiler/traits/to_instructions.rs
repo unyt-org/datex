@@ -1,35 +1,20 @@
 use crate::{
     core_compiler::value_visitor::ValueVisitor,
-    instruction::{BytecodeItem, Instruction},
+    instruction::{BytecodeItem},
     prelude::*,
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 pub trait ToInstructions {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a>;
-
-    #[deprecated(
-        note = "Use to_bytecode_items instead. This will panic, if the item is not an instruction (such as if else)"
-    )]
-    fn to_instructions<'a>(
-        &'a self,
-        visitor: &'a mut dyn ValueVisitor,
-    ) -> Box<dyn Iterator<Item = Instruction> + 'a> {
-        Box::new(gen move {
-            for item in self.to_bytecode_items(visitor) {
-                match item {
-                    BytecodeItem::Instruction(instruction) => yield instruction,
-                    _ => unreachable!(),
-                }
-            }
-        })
-    }
+        cache: &'a mut SharedReferencesCache,
+    ) -> Box<dyn Iterator<Item = BytecodeItem> + 'a>;
 }
 
 /// A macro to yield instructions from a value that implements `ToInstructions`.
-/// This expands to a loop that iterates over the instructions produced by the `to_instructions` method of the value, yielding each instruction to the caller.
+/// This expands to a loop that iterates over the instructions produced by the `to_bytecode_items` method of the value, yielding each instruction to the caller.
 pub macro yield_all($iterator:expr) {
     for instruction in $iterator {
         yield instruction;
@@ -45,7 +30,7 @@ pub macro yield_all_collected($iter:expr) {{
 }}
 
 /// A macro to yield `Ok` instructions from a value that implements `ToInstructions`.
-/// This expands to a loop that iterates over the instructions produced by the `to_instructions` method of the value, yielding each instruction wrapped in `Ok` to the caller.
+/// This expands to a loop that iterates over the instructions produced by the `to_bytecode_items` method of the value, yielding each instruction wrapped in `Ok` to the caller.
 pub macro yield_all_ok($iterator:expr) {
     for instruction in $iterator {
         yield Ok(instruction);

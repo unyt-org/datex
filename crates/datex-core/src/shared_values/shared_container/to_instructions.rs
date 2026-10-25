@@ -6,11 +6,13 @@ use crate::{
     prelude::*,
     shared_values::SharedContainer,
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for SharedContainer {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         visitor.visit_shared_container(self)
     }

@@ -1,4 +1,4 @@
-use core::{cell::RefCell, ops::Deref};
+use core::{ops::Deref};
 
 use crate::{
     collections::HashMap,
@@ -24,20 +24,18 @@ use crate::{
 };
 use binrw::{BinWrite, io::Write};
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-use crate::utils::goat_mut::GoatMut;
 
 #[derive(Debug)]
-struct PreambleContext<'a> {
+struct PreambleContext {
     self_referencing_containers: HashMap<SharedContainer, StackIndex>,
     known_container: HashSet<SharedContainer>,
     current_stack_index: StackIndex,
-    cache: &'a mut SharedReferencesCache
 }
 
 // var x = shared {a: {b: null}};
 // x.a.b = x; /// #0.a.b = x;
 
-impl<'ctx> ValueVisitor for PreambleContext<'ctx> {
+impl ValueVisitor for PreambleContext {
     fn visit_shared_container<'a>(
         &'a mut self,
         shared_container: &'a SharedContainer,
@@ -49,6 +47,7 @@ impl<'ctx> ValueVisitor for PreambleContext<'ctx> {
                 // TODO Make to yield
                 Box::new(append_shared_container(
                     self,
+                    cache,
                     shared_container,
                     self.known_container.contains(shared_container),
                 ))
@@ -86,13 +85,9 @@ impl<'ctx> ValueVisitor for PreambleContext<'ctx> {
             }
         }
     }
-
-    fn try_get_cache(&mut self) -> GoatMut<SharedReferencesCache> {
-        GoatMut::Borrowed(&mut self.cache)
-    }
 }
 
-impl PreambleContext<'_> {
+impl PreambleContext {
     fn get_next_stack_index(&mut self) -> StackIndex {
         let stack_index = self.current_stack_index;
         self.current_stack_index = StackIndex(self.current_stack_index.0 + 1);
@@ -126,7 +121,6 @@ pub(super) fn append_injected_values_preamble(
             self_referencing_containers: HashMap::new(),
             current_stack_index: StackIndex(0),
             known_container: HashSet::new(),
-            cache,
         };
 
         // loop through the tracked values in reverse order (as optimization)
@@ -135,6 +129,7 @@ pub(super) fn append_injected_values_preamble(
                 let new_index = context.get_next_stack_index();
                 for instruction in append_uninitialized_shared_container(
                     context,
+                    cache,
                     tracked_value,
                     metadata,
                     inner_statement_count,
@@ -168,6 +163,7 @@ pub(super) fn append_injected_values_preamble(
                     for instruction in
                         append_self_referencing_shared_container_to_stack(
                             context,
+                            cache,
                             &tracked_value,
                             inner_statement_count,
                             uninitialized_index,
@@ -186,6 +182,7 @@ pub(super) fn append_injected_values_preamble(
                     let index = context.get_next_stack_index();
                     for instruction in append_shared_container_to_stack(
                         context,
+                        cache,
                         &tracked_value,
                         is_known,
                         inner_statement_count,
@@ -259,7 +256,8 @@ pub(super) fn append_injected_values_preamble(
 }
 
 gen fn append_uninitialized_shared_container(
-    context: &mut PreambleContext<'_>,
+    context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
     container: &SharedContainer,
     metadata: &TrackedValueMetadata,
     statements_count: &mut u32,
@@ -272,6 +270,7 @@ gen fn append_uninitialized_shared_container(
         SharedContainer::Owned(owned_container) => {
             for instruction in append_move_with_value(
                 context,
+                cache,
                 owned_container.container_mutability(),
                 owned_container.pointer_address().clone(),
                 None,
@@ -283,6 +282,7 @@ gen fn append_uninitialized_shared_container(
             if referenced_container.treat_as_move() {
                 for instruction in append_move_with_value(
                     context,
+                    cache,
                     referenced_container.container_mutability(),
                     match referenced_container.pointer_address() {
                         PointerAddress::SelfOwned(address) => address.clone(),
@@ -297,6 +297,7 @@ gen fn append_uninitialized_shared_container(
             } else if !metadata.is_known() {
                 for instruction in append_referenced_shared_container_with_value(
                     context,
+                    cache,
                     referenced_container,
                     true,
                 ) {
@@ -316,7 +317,8 @@ gen fn append_uninitialized_shared_container(
 }
 
 gen fn append_self_referencing_shared_container_to_stack(
-    context: &mut PreambleContext<'_>,
+    context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
     container: &SharedContainer,
     statements_count: &mut u32,
     uninitialized_index: StackIndex,
@@ -327,14 +329,15 @@ gen fn append_self_referencing_shared_container_to_stack(
         container
             .value_container()
             .deref()
-            .to_bytecode_items(context)
+            .to_bytecode_items(context, cache)
     );
     yield RegularInstruction::borrow_stack_value(uninitialized_index).into();
     return;
 }
 
 gen fn append_shared_container_to_stack(
-    context: &mut PreambleContext<'_>,
+    context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
     container: &SharedContainer,
     is_known: bool,
     statements_count: &mut u32,
@@ -343,13 +346,14 @@ gen fn append_shared_container_to_stack(
 
     // append push to stack
     yield RegularInstruction::push_to_stack().into();
-    for instruction in append_shared_container(context, container, is_known) {
+    for instruction in append_shared_container(context, cache, container, is_known) {
         yield instruction;
     }
 }
 
 gen fn append_shared_container(
-    context: &mut PreambleContext<'_>,
+    context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
     container: &SharedContainer,
     is_known: bool,
 ) -> crate::instruction::BytecodeItem {
@@ -358,6 +362,7 @@ gen fn append_shared_container(
             let value_container = owned_container.value_container();
             for instruction in append_move_with_value(
                 context,
+                cache,
                 owned_container.container_mutability(),
                 owned_container.pointer_address().clone(),
                 Some(value_container.deref()),
@@ -372,6 +377,7 @@ gen fn append_shared_container(
                 let value_container = referenced_container.value_container();
                 for instruction in append_move_with_value(
                     context,
+                    cache,
                     referenced_container.container_mutability(),
                     match referenced_container.pointer_address() {
                         PointerAddress::SelfOwned(address) => address.clone(),
@@ -386,6 +392,7 @@ gen fn append_shared_container(
             } else if !is_known {
                 for instruction in append_referenced_shared_container_with_value(
                     context,
+                    cache,
                     referenced_container,
                     false,
                 ) {
@@ -404,7 +411,8 @@ gen fn append_shared_container(
 
 /// Appends a move instruction to the preamble to move an owned shared containers
 gen fn append_move_with_value(
-    context: &mut PreambleContext<'_>,
+    context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
     container_mutability: SharedContainerMutability,
     previous_address: SelfOwnedPointerAddress,
     value_container: Option<&ValueContainer>,
@@ -416,7 +424,7 @@ gen fn append_move_with_value(
     .into();
 
     if let Some(value_container) = value_container {
-        yield_all!(value_container.to_bytecode_items(context));
+        yield_all!(value_container.to_bytecode_items(context, cache));
     } else {
         yield RegularInstruction::Uninitialized.into();
     }
@@ -452,10 +460,11 @@ gen fn append_referenced_shared_container(
 }
 
 gen fn append_referenced_shared_container_with_value(
-    context: &mut PreambleContext<'_>,
+    context: &mut PreambleContext,
+    cache: &mut SharedReferencesCache,
     referenced_container: &ReferencedSharedContainer,
     unitialized: bool,
-) -> crate::instruction::BytecodeItem {
+) -> BytecodeItem {
     match referenced_container.pointer_address() {
         // insert with value for self owned references
         PointerAddress::SelfOwned(pointer_address) => {
@@ -476,7 +485,7 @@ gen fn append_referenced_shared_container_with_value(
                     referenced_container
                         .value_container()
                         .deref()
-                        .to_bytecode_items(context)
+                        .to_bytecode_items(context, cache)
                 );
             }
         }

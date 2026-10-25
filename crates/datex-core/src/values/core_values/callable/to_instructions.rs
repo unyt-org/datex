@@ -14,10 +14,13 @@ use crate::{
     values::core_values::callable::{Callable, CallableBody},
 };
 use core::ops::Deref;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+
 impl ToInstructions for Callable {
     fn to_bytecode_items<'a>(
         &'a self,
-        ctx: &'a mut dyn ValueVisitor,
+        visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             let (body, injected_values) = match &self.body {
@@ -73,31 +76,31 @@ impl ToInstructions for Callable {
 
             // add parameter types
             for (_, param) in &self.signature.parameters {
-                for instruction in param.to_bytecode_items(ctx) {
+                for instruction in param.to_bytecode_items(visitor, cache) {
                     yield instruction;
                 }
             }
             // add rest parameter type
             if let Some((_, param)) = &self.signature.rest_parameter {
-                for instruction in param.deref().to_bytecode_items(ctx) {
+                for instruction in param.deref().to_bytecode_items(visitor, cache) {
                     yield instruction;
                 }
             }
             // add return type
             if let Some(ty) = &self.signature.return_type {
-                for instruction in ty.deref().to_bytecode_items(ctx) {
+                for instruction in ty.deref().to_bytecode_items(visitor, cache) {
                     yield instruction;
                 }
             }
             // add yield type
             if let Some(ty) = &self.signature.yeet_type {
-                for instruction in ty.deref().to_bytecode_items(ctx) {
+                for instruction in ty.deref().to_bytecode_items(visitor, cache) {
                     yield instruction;
                 }
             }
 
             for value in injected_values {
-                let instructions: Vec<_> = value.to_bytecode_items(ctx).collect();
+                let instructions: Vec<_> = value.to_bytecode_items(visitor, cache).collect();
 
                 for instruction in instructions {
                     yield instruction;

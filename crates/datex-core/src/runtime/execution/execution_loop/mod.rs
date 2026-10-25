@@ -128,6 +128,7 @@ use crate::{
     },
 };
 use collected_execution_result::CollectedExecutionResult;
+use crate::types::entities::entity_type_definition::EntityTypeDefinition;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -493,12 +494,13 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::Decrement |
                             RegularInstruction::SetSharedContainerValue |
                             RegularInstruction::Unbox |
-                            RegularInstruction::EntityValue(_) |
+                            RegularInstruction::EntityValue |
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::MoveWithValue(_) |
                             RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::CallableDeclaration(_) |
                             RegularInstruction::Callable(_) |
+                            RegularInstruction::EntityTypeDefinition(_) |
                             RegularInstruction::BoxedValue |
                             RegularInstruction::TypeExpression => {
                                 // Note: If we reach this unreachable statement, we most probably forget to add a match
@@ -804,6 +806,18 @@ pub gen fn inner_execution_loop(
                                         .into()
                                 }
 
+                                RegularInstruction::EntityTypeDefinition(data) => {
+                                    let definition = collected_results.pop_type_definition();
+                                    // TODO: missing fields
+                                    ValueContainer::from(CoreValue::EntityTypeDefinition(EntityTypeDefinition {
+                                        definition,
+                                        name: data.name.0,
+                                        allowed_variants: vec![],
+                                        impls: vec![],
+                                        deserialize_from_dif: None,
+                                    })).into()
+                                }
+
                                 RegularInstruction::Matches => {
                                     let _target = collected_results
                                         .try_pop_runtime_value()?;
@@ -876,17 +890,19 @@ pub gen fn inner_execution_loop(
                                     let value_container = expression.into_value_container(&mut state)?;
                                     ValueContainer::from(Value::boxed(value_container)).into()
                                 }
-                                RegularInstruction::EntityValue(address) => {
+                                RegularInstruction::EntityValue => {
+                                    let entity_container = collected_results
+                                        .try_pop_value_container(&mut state)?;
+                                    let entity_container = match entity_container {
+                                        ValueContainer::Shared(shared) => shared,
+                                        _ => return yield Err(ExecutionError::ExpectedSharedValue)
+                                    };
+                                    
                                     let mut value_container = collected_results
                                         .try_pop_value_container(&mut state)?;
-
-                                    let container = resolve_cache_value(
-                                        &mut state,
-                                        &address,
-                                        SharedContainerOwnership::Owned,
-                                    )?;
+                                    
                                     // try to convert to EntityType
-                                    let entity_type = EntityType::try_from(container)
+                                    let entity_type = EntityType::try_from(entity_container)
                                         .map_err(|_| ExecutionError::invalid_program(InvalidProgramError::InvalidType))?;
 
                                     match &mut value_container {
@@ -1309,7 +1325,7 @@ pub gen fn inner_execution_loop(
                                             &lookup,
                                             &receivers_list,
                                         );
-                                        
+
                                         let mut cache = state.runtime.shared_references_cache_mut();
 
                                         compile_injected_values(

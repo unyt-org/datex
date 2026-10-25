@@ -11,21 +11,22 @@ use crate::{
         value::value_classification::ValueTag,
     },
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for CoreValueWithClassification {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             let classification = &self.classification;
 
             if let Some(entity_type) = &classification.entity_type {
-                let _ = visitor.visit_shared_container(entity_type.shared_container());
-                yield RegularInstruction::EntityValue(
-                    entity_type.pointer_address(),
-                )
-                .into()
+                yield RegularInstruction::EntityValue.into();
+                for item in visitor.visit_shared_container(entity_type.shared_container()) {
+                    yield item;
+                }
             }
 
             for _impl_address in &classification.impls {
@@ -43,7 +44,7 @@ impl ToInstructions for CoreValueWithClassification {
                 };
             }
 
-            yield_all!(self.inner.to_bytecode_items(visitor));
+            yield_all!(self.inner.to_bytecode_items(visitor, cache));
         })
     }
 }

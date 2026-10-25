@@ -6,6 +6,7 @@ use crate::{
     prelude::*,
     values::core_values::native::DatexNativeBase,
 };
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl<K> ToInstructions for Vec<K>
 where
@@ -13,12 +14,13 @@ where
 {
     fn to_bytecode_items<'a>(
         &'a self,
-        ctx: &'a mut dyn ValueVisitor,
+        visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             yield RegularInstruction::list(self.len() as u32).into();
             for item in self.iter() {
-                for instruction in item.to_bytecode_items(ctx) {
+                for instruction in item.to_bytecode_items(visitor, cache) {
                     yield instruction;
                 }
             }
