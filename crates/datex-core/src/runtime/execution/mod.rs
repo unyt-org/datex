@@ -294,7 +294,7 @@ pub async fn execute_dxb(
                 let val = callee.value.collapsed_value();
                 let entity_type = try_get_entity_type(val, &runtime)?;
                 let method = try_get_method_data(&entity_type, method_name.clone());
-                
+
                 match method {
                     Ok(method) => {
                         interrupt_provider.provide_result(
@@ -311,12 +311,15 @@ pub async fn execute_dxb(
                     }
                     // FIXME: only temp test, method should always be declared in the type
                     Err(_) => {
+                        let owner = callee.value.owner();
+                        // prepend callee to args
+                        args.insert(0, callee);
+
                         interrupt_provider.provide_result(
                             InterruptResult::ResolvedValueAndBorrowedArgs(
                                 try_call_method_on_owner(
-                                    callee.value.owner(),
+                                    owner,
                                     method_name,
-                                    args.remove(0),
                                     args,
                                     &runtime
                                 ).await?
@@ -325,7 +328,7 @@ pub async fn execute_dxb(
                     }
                 }
 
-                
+
             }
         }
     }
@@ -407,7 +410,6 @@ async fn try_call_method_async(
         try_call_method_on_owner(
             owner_endpoint,
             method.name().unwrap().clone(),
-            args.remove(0),
             args,
             runtime
         ).await
@@ -417,14 +419,13 @@ async fn try_call_method_async(
 async fn try_call_method_on_owner(
     owner_endpoint: Endpoint,
     name: String,
-    callee: ApplyArgument,
-    mut args: Vec<ApplyArgument>,
+    args: Vec<ApplyArgument>,
     runtime: &Runtime,
 ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
     let mut instructions = vec![
         RegularInstruction::call_method(
             name, // FIXME: don't use method name here
-            args.len() as u8,
+            args.len() as u8 - 1,
         )
             .into(),
     ];
