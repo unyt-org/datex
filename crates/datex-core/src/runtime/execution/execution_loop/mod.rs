@@ -891,16 +891,16 @@ pub gen fn inner_execution_loop(
                                     ValueContainer::from(Value::boxed(value_container)).into()
                                 }
                                 RegularInstruction::EntityValue => {
+                                    let mut value_container = collected_results
+                                        .try_pop_value_container(&mut state)?;
+
                                     let entity_container = collected_results
                                         .try_pop_value_container(&mut state)?;
                                     let entity_container = match entity_container {
                                         ValueContainer::Shared(shared) => shared,
                                         _ => return yield Err(ExecutionError::ExpectedSharedValue)
                                     };
-                                    
-                                    let mut value_container = collected_results
-                                        .try_pop_value_container(&mut state)?;
-                                    
+
                                     // try to convert to EntityType
                                     let entity_type = EntityType::try_from(entity_container)
                                         .map_err(|_| ExecutionError::invalid_program(InvalidProgramError::InvalidType))?;

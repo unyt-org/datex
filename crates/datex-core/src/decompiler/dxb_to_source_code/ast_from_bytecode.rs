@@ -733,8 +733,8 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::EntityValue => {
-                                let shared_container = collected_results.try_pop_value();
                                 let expr = collected_results.pop_value();
+                                let shared_container = collected_results.pop_value();
                                 DatexExpressionData::EntityValue(EntityValueExpression {
                                     entity_name: "TODO".to_string(), // TODO: resolve name
                                     entity_address: None,
