@@ -289,23 +289,43 @@ pub async fn execute_dxb(
             ExternalExecutionInterrupt::CallMethod(
                 callee,
                 method_name,
-                args,
+                mut args,
             ) => {
                 let val = callee.value.collapsed_value();
                 let entity_type = try_get_entity_type(val, &runtime)?;
-                let method = try_get_method_data(&entity_type, method_name)?;
-
-                interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValueAndBorrowedArgs(
-                        try_call_method_async(
-                            callee,
-                            method.deref(),
-                            args,
-                            &runtime,
+                let method = try_get_method_data(&entity_type, method_name.clone());
+                
+                match method {
+                    Ok(method) => {
+                        interrupt_provider.provide_result(
+                            InterruptResult::ResolvedValueAndBorrowedArgs(
+                                try_call_method_async(
+                                    callee,
+                                    method.deref(),
+                                    args,
+                                    &runtime,
+                                )
+                                    .await?,
+                            ),
                         )
-                        .await?,
-                    ),
-                )
+                    }
+                    // FIXME: only temp test, method should always be declared in the type
+                    Err(_) => {
+                        interrupt_provider.provide_result(
+                            InterruptResult::ResolvedValueAndBorrowedArgs(
+                                try_call_method_on_owner(
+                                    callee.value.owner(),
+                                    method_name,
+                                    args.remove(0),
+                                    args,
+                                    &runtime
+                                ).await?
+                            ),
+                        )
+                    }
+                }
+
+                
             }
         }
     }
