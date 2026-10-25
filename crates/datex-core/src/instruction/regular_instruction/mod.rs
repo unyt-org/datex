@@ -1240,6 +1240,13 @@ impl RegularInstruction {
                     &address.0
                 )
             }
+            RegularInstruction::EntityValue(address) => {
+                write!(
+                    string,
+                    "[address: {}]",
+                    address
+                )
+            }
             RegularInstruction::SharedRef(shared_ref) => {
                 write!(
                     string,
