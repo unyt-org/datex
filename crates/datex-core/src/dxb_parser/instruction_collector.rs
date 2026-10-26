@@ -426,17 +426,17 @@ impl<T> InstructionCollector<T> {
         self.root_result.take()
     }
 
-    /// Processes a regular instruction with default behavior for recursive instructions that need to
+    /// Processes an instruction with default behavior for recursive instructions that need to
     /// collect more results.
-    /// Returns Some(regular_instruction) if the instruction was not handled and should be processed by the caller.
-    pub fn default_regular_instruction_collection(
+    /// Returns Some(instruction) if the instruction was not handled (has no child instructions) and should be directly processed by the caller.
+    pub fn default_instruction_collection(
         &mut self,
-        regular_instruction: RegularInstruction,
+        instruction: Instruction,
         statement_result_collection_strategy: StatementResultCollectionStrategy,
         current_stack_index: StackIndex,
-    ) -> Option<RegularInstruction> {
+    ) -> Option<Instruction> {
         let next_expected_instructions =
-            regular_instruction.get_next_expected_instructions();
+            instruction.get_next_expected_instructions();
 
         match next_expected_instructions {
             NextExpectedInstructions::Regular(regular_count) => {
@@ -445,12 +445,12 @@ impl<T> InstructionCollector<T> {
                     statement_result_collection_strategy,
                     StatementResultCollectionStrategy::Last
                 ) && matches!(
-                    regular_instruction,
-                    RegularInstruction::Statements(_)
-                        | RegularInstruction::ShortStatements(_)
+                    instruction,
+                    Instruction::Regular(RegularInstruction::Statements(_))
+                        | Instruction::Regular(RegularInstruction::ShortStatements(_))
                 ) {
                     self.collect_last(
-                        Instruction::Regular(regular_instruction),
+                        instruction,
                         regular_count,
                         current_stack_index,
                     );
@@ -458,7 +458,7 @@ impl<T> InstructionCollector<T> {
                 // normal collect
                 else {
                     self.collect_full(
-                        Instruction::Regular(regular_instruction),
+                        instruction,
                         regular_count,
                     );
                 }
@@ -466,7 +466,7 @@ impl<T> InstructionCollector<T> {
             }
             NextExpectedInstructions::Type(type_count) => {
                 self.collect_full(
-                    Instruction::Regular(regular_instruction),
+                    instruction,
                     type_count,
                 );
                 None
@@ -477,7 +477,7 @@ impl<T> InstructionCollector<T> {
             ) => {
                 let total_count = regular_count + type_count;
                 self.collect_full(
-                    Instruction::Regular(regular_instruction),
+                    instruction,
                     total_count,
                 );
                 None
@@ -485,13 +485,11 @@ impl<T> InstructionCollector<T> {
             NextExpectedInstructions::UnboundedStart => {
                 match statement_result_collection_strategy {
                     StatementResultCollectionStrategy::Full => {
-                        self.collect_full_unbounded(Instruction::Regular(
-                            regular_instruction,
-                        ));
+                        self.collect_full_unbounded(instruction);
                     }
                     StatementResultCollectionStrategy::Last => {
                         self.collect_last_unbounded(
-                            Instruction::Regular(regular_instruction),
+                            instruction,
                             current_stack_index,
                         );
                     }
@@ -499,47 +497,11 @@ impl<T> InstructionCollector<T> {
                 None
             }
             NextExpectedInstructions::UnboundedEnd => {
-                self.collect_full(Instruction::Regular(regular_instruction), 0);
+                self.collect_full(instruction, 0);
                 None
             }
 
-            NextExpectedInstructions::None => Some(regular_instruction),
-        }
-    }
-
-    /// Processes a type instruction with default behavior for recursive instructions that need to
-    /// collect more results.
-    /// Returns Some(type_instruction) if the instruction was not handled and should be processed by the caller.
-    pub fn default_type_instruction_collection(
-        &mut self,
-        type_instruction: TypeInstruction,
-    ) -> Option<TypeInstruction> {
-        let next_expected_instructions =
-            type_instruction.get_next_expected_instructions();
-
-        match next_expected_instructions {
-            NextExpectedInstructions::Type(type_count) => {
-                self.collect_full(
-                    Instruction::Type(type_instruction),
-                    type_count,
-                );
-                None
-            }
-            
-            NextExpectedInstructions::Regular(count) => {
-                self.collect_full(
-                    Instruction::Type(type_instruction),
-                    count,
-                );
-                None
-            }
-
-            // currently not used for type instructions
-            NextExpectedInstructions::RegularAndType(..)
-            | NextExpectedInstructions::UnboundedStart
-            | NextExpectedInstructions::UnboundedEnd => unreachable!(),
-
-            NextExpectedInstructions::None => Some(type_instruction),
+            NextExpectedInstructions::None => Some(instruction),
         }
     }
 }

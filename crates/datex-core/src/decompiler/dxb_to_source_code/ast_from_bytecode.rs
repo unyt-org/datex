@@ -143,11 +143,15 @@ pub fn ast_from_bytecode(
             // handle regular instructions
             Instruction::Regular(regular_instruction) => {
                 let regular_instruction = collector
-                    .default_regular_instruction_collection(
-                        regular_instruction,
+                    .default_instruction_collection(
+                        Instruction::Regular(regular_instruction),
                         StatementResultCollectionStrategy::Full,
                         next_stack_index,
-                    );
+                    )
+                    .map(|instruction| match instruction {
+                        Instruction::Regular(regular) => regular,
+                        _ => unreachable!()
+                    });
 
                 let expr = regular_instruction.map(|regular_instruction|
                     Result::<DatexExpression, DXBParserError>::Ok(match regular_instruction {
@@ -427,7 +431,15 @@ pub fn ast_from_bytecode(
             }
             Instruction::Type(type_instruction) => {
                 let type_instruction = collector
-                    .default_type_instruction_collection(type_instruction);
+                    .default_instruction_collection(
+                        Instruction::Type(type_instruction),
+                        StatementResultCollectionStrategy::Full,
+                        next_stack_index,
+                    )
+                    .map(|instruction| match instruction {
+                        Instruction::Type(ty) => ty,
+                        _ => unreachable!()
+                    });
 
                 let type_expression: Option<TypeExpression> = type_instruction
                     .map(|type_instruction| {

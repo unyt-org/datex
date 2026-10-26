@@ -220,11 +220,15 @@ pub gen fn inner_execution_loop(
             // handle regular instructions
             Instruction::Regular(regular_instruction) => {
                 let regular_instruction = collector
-                    .default_regular_instruction_collection(
-                        regular_instruction,
+                    .default_instruction_collection(
+                        Instruction::Regular(regular_instruction),
                         StatementResultCollectionStrategy::Last,
                         state.stack.current_index(),
-                    );
+                    )
+                    .map(|instruction| match instruction {
+                        Instruction::Regular(regular) => regular,
+                        _ => unreachable!()
+                    });
 
                 let expr: Option<Option<RuntimeValue>> = if let Some(
                     regular_instruction,
@@ -532,7 +536,15 @@ pub gen fn inner_execution_loop(
             }
             Instruction::Type(type_instruction) => {
                 let type_instruction = collector
-                    .default_type_instruction_collection(type_instruction);
+                    .default_instruction_collection(
+                        Instruction::Type(type_instruction),
+                        StatementResultCollectionStrategy::Last,
+                        state.stack.current_index(),
+                    )
+                    .map(|instruction| match instruction {
+                        Instruction::Type(ty) => ty,
+                        _ => unreachable!()
+                    });
 
                 if let Some(type_instruction) = type_instruction {
                     Some(match type_instruction {
