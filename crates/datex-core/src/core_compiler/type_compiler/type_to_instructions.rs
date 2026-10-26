@@ -17,7 +17,7 @@ impl ToInstructions for Type {
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             match self {
-                Type::Entity(entity_type) => todo!(),
+                Type::Entity(entity_type) =>yield_all!(entity_type.to_bytecode_items(visitor, cache)),
                 Type::Definition(def) => {
                     yield_all!(def.to_bytecode_items(visitor, cache));
                 }

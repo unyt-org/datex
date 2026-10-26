@@ -23,7 +23,7 @@ impl InternalMutabilityUpdateHandler for Value {
         match self {
             Value::Core(core) => core.set_update_callback_data(observe_data),
             Value::Native(_native) => {
-                todo!()
+                // todo!()
             }
         }
     }

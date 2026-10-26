@@ -192,6 +192,7 @@ mod tests {
     #[ignore]
     #[test]
     fn instruction_code_values() {
+        flexi_logger::init();
         // print a list of all instruction codes and their values for debugging purposes
         for code in InstructionCode::iter() {
             info!("{:?} = {:2X}", code, code as u8);

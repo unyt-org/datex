@@ -46,6 +46,7 @@ use binrw::{
     io::{Read, Seek},
 };
 use core::fmt::{Display, Write as FmtWrite};
+use log::info;
 use datex_macros_internal::Instruction;
 
 impl RegularInstruction {

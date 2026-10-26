@@ -298,7 +298,7 @@ impl RegularInstruction {
             NestedInstructionResolutionStrategy::ResolveNestedScopesFlat
             | NestedInstructionResolutionStrategy::ResolveNestedScopesTree => {
                 let body = self.inner_instructions();
-                if body.is_none() {
+                if body.is_none() || body.unwrap().is_empty() {
                     return Ok(self);
                 }
                 let body = body.unwrap();

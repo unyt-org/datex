@@ -214,8 +214,13 @@ mod tests {
     };
     use core::assert_matches;
     use log::info;
+    use crate::dxb_parser::body::InstructionWithSpan;
+    use crate::instruction::instruction_data::{CallableData, CallableDataBody, CallableDataBodyDebugTree, CallableDataDebugTree, CallableSignatureData};
     use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
     use crate::runtime::Runtime;
+    use crate::types::type_definition::callable::{CallableKind, CallableTypeDefinition};
+    use crate::values::core_values::callable::{Callable, CallableBody};
+    use crate::values::core_values::endpoint::Endpoint;
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -887,6 +892,58 @@ mod tests {
                     RegularInstruction::TakeStackValue(StackIndex(0)),
                 )
             ),)
+        );
+    }
+
+    #[test]
+    fn callable() {
+        let callable = Callable {
+            name: Some("example".to_string()),
+            signature: CallableTypeDefinition {
+                kind: CallableKind::Function,
+                requires_async: false,
+                parameters: vec![],
+                rest_parameter: None,
+                return_type: None,
+                yeet_type: None,
+            },
+            body: CallableBody::Hidden,
+            creator: Endpoint::LOCAL,
+        };
+
+        let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
+        let callable_container = ValueContainer::from(callable);
+        let dxb = compile_instructions_to_dxb(
+            context.shared_value_tracking.get_mut(),
+            cache,
+            &callable_container,
+        );
+
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
+        
+        assert_instructions_equal!(
+            &dxb,
+            (
+                RegularInstruction::Callable(CallableData {
+                    signature: CallableSignatureData {
+                        name: ShortTextData("example".to_string()),
+                        kind: CallableKind::Function,
+                        parameter_count: 0,
+                        requires_async: false,
+                        has_rest_parameter: false,
+                        has_return_type: false,
+                        has_yeet_type: false,
+                        parameter_names: vec![],
+                        rest_parameter_name: None,
+                    },
+                    body: CallableDataBody {
+                        length: 0,
+                        injected_value_count: 0,
+                        body: vec![]
+                    },
+                }),
+            )
         );
     }
 }
