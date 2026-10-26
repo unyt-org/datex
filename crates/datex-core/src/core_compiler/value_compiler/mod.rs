@@ -164,6 +164,7 @@ pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
 #[cfg(feature = "disassembler")]
 mod tests {
     use crate::{
+        instruction::Instruction,
         core_compiler::{
             core_compilation_context::{
                 CompileInput, CoreCompilationContext,
@@ -214,13 +215,17 @@ mod tests {
     };
     use core::assert_matches;
     use log::info;
+    use crate::disassembler::assertions::instructions_with_span;
     use crate::dxb_parser::body::InstructionWithSpan;
-    use crate::instruction::instruction_data::{CallableData, CallableDataBody, CallableDataBodyDebugTree, CallableDataDebugTree, CallableSignatureData};
+    use crate::instruction::instruction_data::{CallableData, CallableDataBody, CallableDataBodyDebugFlat, CallableDataBodyDebugTree, CallableDataDebugFlat, CallableDataDebugTree, CallableSignatureData};
+    use crate::instruction::type_instruction::TypeInstruction;
     use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
     use crate::runtime::Runtime;
     use crate::types::type_definition::callable::{CallableKind, CallableTypeDefinition};
     use crate::values::core_values::callable::{Callable, CallableBody};
     use crate::values::core_values::endpoint::Endpoint;
+    use crate::prelude::*;
+    use crate::types::type_definition_with_metadata::TypeMetadata;
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -921,7 +926,7 @@ mod tests {
         );
 
         let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
-        
+
         assert_instructions_equal!(
             &dxb,
             (
@@ -943,6 +948,101 @@ mod tests {
                         body: vec![]
                     },
                 }),
+            )
+        );
+    }
+
+    #[test]
+    fn callable_with_params_and_return_type() {
+        let callable = Callable {
+            name: Some("example".to_string()),
+            signature: CallableTypeDefinition {
+                kind: CallableKind::Function,
+                requires_async: false,
+                parameters: vec![
+                    (
+                        Some("x".to_string()),
+                        Type::core(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Integer,
+                        ))
+                    ),
+                    (
+                        Some("y".to_string()),
+                        Type::core(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Text,
+                        ))
+                    ),
+                ],
+                rest_parameter: None,
+                return_type: Some(Box::new(
+                    Type::core(
+                        CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean),
+                    )
+                )),
+                yeet_type: None,
+            },
+            body: CallableBody::Hidden,
+            creator: Endpoint::LOCAL,
+        };
+
+        let mut context = core_compilation_context();
+        let cache = &mut SharedReferencesCache::default();
+        let callable_container = ValueContainer::from(callable);
+        let dxb = compile_instructions_to_dxb(
+            context.shared_value_tracking.get_mut(),
+            cache,
+            &callable_container,
+        );
+
+        let dxb = context.append_preamble_to_dxb(dxb, cache).dxb;
+
+        assert_instructions_equal!(
+            &dxb,
+            (
+                RegularInstruction::Callable(CallableData {
+                    signature: CallableSignatureData {
+                        name: ShortTextData("example".to_string()),
+                        kind: CallableKind::Function,
+                        parameter_count: 2,
+                        requires_async: false,
+                        has_rest_parameter: false,
+                        has_return_type: true,
+                        has_yeet_type: false,
+                        parameter_names: vec![
+                            ShortTextData("x".to_string()),
+                            ShortTextData("y".to_string()),
+                        ],
+                        rest_parameter_name: None,
+                    },
+                    body: CallableDataBody {
+                        length: 0,
+                        injected_value_count: 0,
+                        body: vec![]
+                    },
+                    // body: CallableDataBodyDebugFlat {
+                    //     injected_value_count: 0,
+                    //     length: 100,
+                    //     body: instructions_with_span!(
+                    //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                    //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())),
+                    // 
+                    //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                    //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Text.into())),
+                    // 
+                    //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                    //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Boolean.into())),
+                    //     ),
+                    // }
+                }).with_children(instructions!(
+                    Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                    Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())),
+            
+                    Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                    Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Text.into())),
+            
+                    Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                    Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Boolean.into())),
+                ))
             )
         );
     }

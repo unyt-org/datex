@@ -4,7 +4,7 @@ use crate::instruction::BytecodeItem;
 use crate::instruction::type_instruction::TypeInstruction;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::types::entity_type::EntityType;
-use crate::types::r#type::Type;
+use crate::prelude::*;
 
 impl ToInstructions for EntityType {
     fn to_bytecode_items<'a>(
