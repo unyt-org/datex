@@ -480,6 +480,7 @@ pub fn ast_from_bytecode(
                             | TypeInstruction::ListSliceCollection(_)
                             | TypeInstruction::ListCollection
                             | TypeInstruction::MapCollection
+                            | TypeInstruction::EntityType
                             | TypeInstruction::Range
                             | TypeInstruction::ImplMarkers(_)
                             | TypeInstruction::Callable(_)

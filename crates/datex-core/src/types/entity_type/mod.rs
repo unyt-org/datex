@@ -2,6 +2,7 @@ pub mod serde_dif;
 #[cfg(feature = "ast")]
 mod to_type_expression_data;
 mod value_access;
+pub mod to_instructions;
 
 use crate::{
     prelude::*,

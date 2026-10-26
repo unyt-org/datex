@@ -107,6 +107,8 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, ops::DerefMut};
+use log::info;
+
 mod collected_execution_result;
 use crate::{
     instruction::instruction_data::{
@@ -620,6 +622,7 @@ pub gen fn inner_execution_loop(
                         | TypeInstruction::Boxed
                         | TypeInstruction::Union(_)
                         | TypeInstruction::Callable(_)
+                        | TypeInstruction::EntityType
                         | TypeInstruction::Map(_)
                         | TypeInstruction::DefinitionWithMetadata(_)
                         | TypeInstruction::Range
@@ -1627,6 +1630,15 @@ pub gen fn inner_execution_loop(
                                         );
                                         TypeDefinition::Callable(callable_type).into()
                                     }
+                                    TypeInstruction::EntityType => {
+                                        let shared_container = collected_results.try_pop_value_container(&mut state)?;
+                                        let shared_container = match shared_container {
+                                            ValueContainer::Shared(shared) => shared,
+                                            _ => return yield Err(ExecutionError::ExpectedSharedValue),
+                                        };
+                                        let entity_type = EntityType::try_from(shared_container).map_err(|_| ExecutionError::InvalidSharedValueType)?;
+                                        Type::Entity(entity_type).into()
+                                    },
                                     e => todo!(
                                         "Unhandled collected type instruction: {:?}",
                                         e

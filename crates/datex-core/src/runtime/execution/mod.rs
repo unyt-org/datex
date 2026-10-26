@@ -38,6 +38,7 @@ use core::{
     result::Result,
     unreachable,
 };
+use log::info;
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
@@ -311,6 +312,7 @@ pub async fn execute_dxb(
                     }
                     // FIXME: only temp test, method should always be declared in the type
                     Err(_) => {
+                        info!("fallback to remote call for method: {}", method_name);
                         let owner = callee.value.owner();
                         // append callee to args
                         args.push(callee);
@@ -356,6 +358,7 @@ fn try_get_method_data(
     entity_type: &EntityType,
     method_name: String,
 ) -> Result<Ref<'_, EntityImplMethod>, ExecutionError> {
+    info!("try get method data for method: {:#?} on entity type: {:#?}", method_name, entity_type);
     Ref::filter_map(entity_type.entity_definition(), |def| {
         def.try_get_method(&method_name)
     })
@@ -391,6 +394,8 @@ async fn try_call_method_async(
     runtime: &Runtime,
 ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
     let owner_endpoint = callee.value.owner();
+
+    info!("OWNER ENDPOINT: {}, runtime: {}", owner_endpoint, runtime.endpoint());
 
     // call locally
     if !method.call_on_owner

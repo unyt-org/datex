@@ -525,10 +525,17 @@ impl<T> InstructionCollector<T> {
                 );
                 None
             }
+            
+            NextExpectedInstructions::Regular(count) => {
+                self.collect_full(
+                    Instruction::Type(type_instruction),
+                    count,
+                );
+                None
+            }
 
             // currently not used for type instructions
-            NextExpectedInstructions::Regular(_)
-            | NextExpectedInstructions::RegularAndType(..)
+            NextExpectedInstructions::RegularAndType(..)
             | NextExpectedInstructions::UnboundedStart
             | NextExpectedInstructions::UnboundedEnd => unreachable!(),
 
