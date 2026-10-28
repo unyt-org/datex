@@ -10,7 +10,7 @@ use crate::{
         get_datex_core_crate_name_with_options, get_project_relative_file_path,
     },
 };
-use crate::datex_proxy::generator::helpers::get_pointer_address;
+use crate::datex_proxy::helpers::get_pointer_address_for_struct;
 
 pub fn generate_core_lib_type_id(
     structure_data: &StructureData,
@@ -228,7 +228,7 @@ fn generate_type(structure_data: &StructureData) -> TokenStream {
             )
         }
     } else {
-        let ptr_address_init = get_pointer_address(structure_data);
+        let ptr_address_init = get_pointer_address_for_struct(structure_data);
         
         let name = structure_data
             .attributes

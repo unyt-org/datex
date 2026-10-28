@@ -5,6 +5,7 @@ use crate::{
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 use syn::{parse::Parse, FnArg, Item, ItemMod, LitStr};
+use crate::datex_proxy::helpers::get_pointer_address_for_fn;
 
 struct ModuleAttributes {
     name: Option<String>,
@@ -59,15 +60,16 @@ pub fn generate_mod_glue_code(
         .unwrap_or_else(|| item.ident.to_string());
 
     let vis = &item.vis;
-    let ident = &item.ident;
+    let mod_ident = &item.ident;
+    let mod_name = mod_ident.to_string();
 
     // map items to their token streams
     let datex_items: Vec<TokenStream> =
-        items.iter_mut().filter_map(map_to_datex_item).collect();
+        items.iter_mut().filter_map(|item| map_to_datex_item(item, &mod_name)).collect();
     let prelude = derive_datex_prelude(false);
     quote! {
         #(#attrs)*
-        #vis mod #ident {
+        #vis mod #mod_ident {
             #prelude
 
             #(#items)*
@@ -84,7 +86,10 @@ pub fn generate_mod_glue_code(
     }
 }
 
-fn map_to_datex_item(item: &mut Item) -> Option<TokenStream> {
+fn map_to_datex_item(
+    item: &mut Item,
+    mod_name: &str,
+) -> Option<TokenStream> {
     match item {
         // only register pub functions
         Item::Fn(item_fn)
@@ -93,10 +98,23 @@ fn map_to_datex_item(item: &mut Item) -> Option<TokenStream> {
             let mapped = generate_native_callable_from_fn(item_fn);
             let name = item_fn.sig.ident.to_string();
 
+            let ptr_address_init = get_pointer_address_for_fn(mod_name, &name);
+
             Some(quote! {
                 (
                     #name.into(),
-                    #mapped.into(),
+                    ValueContainer::Shared(
+                        /// SAFETY: The pointer address is generated at compile time and should be unique for each function.
+                        OwnedSharedContainer::from(unsafe {
+                            SelfOwnedSharedContainer::new_with_address(
+                                BaseSharedValueContainer::new_with_inferred_allowed_type(
+                                    #mapped,
+                                    SharedContainerMutability::Immutable,
+                                ),
+                                #ptr_address_init,
+                            )
+                        }).into()
+                    )
                 )
             })
         }

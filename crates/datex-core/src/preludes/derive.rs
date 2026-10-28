@@ -96,6 +96,10 @@ macro_rules! derive_prelude {
                     BorrowedValueContainer, BorrowedValueContainerMut,
                 },
             },
+            shared_values::{
+                SelfOwnedSharedContainer, base_shared_value_container::BaseSharedValueContainer,
+                SharedContainerMutability, OwnedSharedContainer,
+            },
         };
     };
 }
