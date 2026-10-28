@@ -3,6 +3,7 @@ mod impls;
 mod module;
 mod native_callable;
 mod fns;
+pub mod helpers;
 
 pub use derive::*;
 pub use impls::*;

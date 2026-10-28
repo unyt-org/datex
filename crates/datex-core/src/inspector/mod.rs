@@ -1,3 +1,6 @@
+#[cfg(test)]
+pub mod test;
+
 use crate::{
     prelude::*, runtime::Runtime, traits::get_datex_type::GetDatexType,
     values::value_container::ValueContainer,
@@ -35,9 +38,9 @@ mod datex_inspector {
         Inspector { name }.shared_ref(runtime)
     }
 
-    pub async fn async_test(a: String) -> String {
-        format!("a = {}", a)
-    }
+    // pub async fn async_test(a: String) -> String {
+    //     format!("a = {}", a)
+    // }
 }
 
 /// Registers the `inspector` namespace in the runtime, allowing users to create Inspector instances.

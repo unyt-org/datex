@@ -10,7 +10,6 @@ use crate::datex_proxy::{
         SelfAccess, generate_struct_or_enum_variants_fields_mapping,
     },
 };
-use crate::datex_proxy::generator::helpers::get_pointer_address;
 
 /// Generates the implementation of the [ToInstructions] trait for the given structure data.
 /// Returns a [TokenStream] containing the generated implementation.

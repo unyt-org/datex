@@ -370,3 +370,9 @@ impl ValueEq for OwnedSharedContainer {
             .value_eq(other.inner().base_shared_container().value_container())
     }
 }
+
+impl From<SelfOwnedSharedContainer> for OwnedSharedContainer {
+    fn from(container: SelfOwnedSharedContainer) -> Self {
+        OwnedSharedContainer::new_from_self_owned_container(container)
+    }
+}
