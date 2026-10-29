@@ -47,7 +47,7 @@ fn generate_classification_methods(
     // If the type is an entity, generate the entity_type and entity_type_address methods
     let pointer_address_init = if structure_data.attributes.type_kind.is_entity() {
         let pointer_address_init = get_pointer_address_for_struct(structure_data);
-        quote! { Some(PointerAddress::SelfOwned(#pointer_address_init))}
+        quote! { Some(#pointer_address_init)}
     }
     else {
         quote! { None }

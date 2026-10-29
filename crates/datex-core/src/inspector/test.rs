@@ -45,7 +45,6 @@ pub async fn inspector_instantiation() {
                         Type::Entity(entity_type) => entity_type,
                         _ => panic!("Expected an entity type"),
                     };
-                    // FIXME: same entity type cross endpoint
                     assert_eq!(inner_value_container.entity_type(cache.deref_mut()).unwrap(), inspector_entity_type);
 
                     // property name should be accessible and correct

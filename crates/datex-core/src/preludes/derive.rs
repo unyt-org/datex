@@ -31,10 +31,6 @@ macro_rules! derive_prelude {
             serde_compat::{
                 serde_to_value_container, try_serde_from_value_container,
             },
-            shared_values::{
-                PointerAddress, SelfOwnedPointerAddress,
-                errors::{AccessError, KeyNotFoundError},
-            },
             traits::{
                 classification::Classification,
                 convert_parts::{
@@ -97,6 +93,8 @@ macro_rules! derive_prelude {
                 },
             },
             shared_values::{
+                PointerAddress, SelfOwnedPointerAddress, RemotePointerAddress,
+                errors::{AccessError, KeyNotFoundError},
                 SelfOwnedSharedContainer, base_shared_value_container::BaseSharedValueContainer,
                 SharedContainerMutability, OwnedSharedContainer,
             },

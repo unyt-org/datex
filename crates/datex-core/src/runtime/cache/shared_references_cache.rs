@@ -23,6 +23,8 @@ use crate::traits::convert_value::ConvertValue;
 use crate::types::entities::entity_type_definition::dyn_deserialize::{de_as, DeFn};
 use crate::types::type_definition::TypeDefinition;
 use crate::prelude::*;
+use crate::shared_values::base_shared_value_container::BaseSharedValueContainer;
+use crate::shared_values::ReferenceMutability;
 
 pub enum SharedTypeReservation {
     Existing(EntityType),
@@ -231,7 +233,7 @@ impl SharedReferencesCache {
     /// The caller must ensure that the address is unique.
     pub unsafe fn init_entity_type<T>(
         &mut self,
-        address: SelfOwnedPointerAddress,
+        address: PointerAddress,
         generate: impl FnOnce(&mut Self) -> (String, TypeDefinition),
     ) -> EntityType
     where
@@ -274,10 +276,10 @@ impl SharedReferencesCache {
     /// The caller must ensure that the address is unique.
     pub unsafe fn reserve_shared_type(
         &mut self,
-        address: SelfOwnedPointerAddress,
+        address: PointerAddress,
     ) -> SharedTypeReservation {
         if let Some(existing) = self
-            .get_owned_reference(&PointerAddress::SelfOwned(address.clone()))
+            .get_owned_reference(&address)
         {
             return SharedTypeReservation::Existing(unsafe {
                 EntityType::new_unchecked(SharedContainer::Referenced(
@@ -285,12 +287,35 @@ impl SharedReferencesCache {
                 ))
             });
         }
-        let shared_container = unsafe {
-            SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
-                CoreValue::Uninitialized,
-                SharedContainerMutability::Immutable,
-                address.clone(),
-            )
+        let shared_container = match address {
+            PointerAddress::SelfOwned(self_owned_address) => {
+                unsafe {
+                    SharedContainer::new_owned_with_inferred_allowed_type_unsafe(
+                        CoreValue::Uninitialized,
+                        SharedContainerMutability::Immutable,
+                        self_owned_address,
+                    )
+                }
+            }
+            // used for builtin type references only
+            PointerAddress::Remote(remote_address) => {
+                // assert that this is actually a builtin address
+                assert!(
+                    remote_address.is_builtin(),
+                    "Only builtin addresses can be used for remote shared containers, but got: {}",
+                    remote_address
+                );
+                SharedContainer::Referenced(unsafe {
+                    ReferencedSharedContainer::try_new_remote_from_base_container(
+                        BaseSharedValueContainer::new_with_inferred_allowed_type(
+                            CoreValue::Uninitialized,
+                            SharedContainerMutability::Immutable,
+                        ),
+                        remote_address,
+                        ReferenceMutability::Immutable,
+                    )
+                }.unwrap())
+            }
         };
         self.register_owned_shared_container(
             &shared_container.derive_immutable_reference(),
@@ -307,11 +332,11 @@ impl SharedReferencesCache {
     /// the reserved shared container. It will panic if the type is not in the cache or if it is already initialized.
     pub fn finish_shared_type(
         &mut self,
-        address: SelfOwnedPointerAddress,
+        address: PointerAddress,
         definition: EntityTypeDefinition,
     ) {
         let ty = self
-            .get_owned_reference(&PointerAddress::SelfOwned(address.clone()))
+            .get_owned_reference(&address)
             .unwrap_or_else(|| panic!("Type is not in cache: {}", address));
         if !ty.value_container().is_uninitialized() {
             panic!("Type is already initialized: {}", address);

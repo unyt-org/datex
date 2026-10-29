@@ -14,7 +14,7 @@ mod datex_inspector {
     use crate::shared_wrappers::shared::shared_ref::SharedRef;
 
     #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
-    #[datex(no_deserialize)]
+    #[datex(no_deserialize, builtin = 0x000001)]
     pub struct Inspector {
         // TODO: #[datex(readonly)]
         pub name: String, // TODO: distinguish between pub and private entity properties
@@ -27,12 +27,13 @@ mod datex_inspector {
         }
 
         // // TODO
-        // pub fn method_for_shared_instance(self: Shared<Self>) -> String {
+        // pub fn method_for_shared_instance(self: SharedRef<Self>) -> String {
         //     self.borrow().name.clone()
         // }
     }
 
     /// Creates a new [Inspector] instance.
+    /// TODO: this should return a unique temporary reference &mut Inspector that can be used by the caller.
     #[datex]
     pub fn create(name: String, #[runtime] runtime: &Runtime) -> SharedRef<Inspector> {
         Inspector { name }.shared_ref(runtime)

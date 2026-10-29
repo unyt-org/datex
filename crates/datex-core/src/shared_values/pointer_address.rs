@@ -17,6 +17,29 @@ pub struct SelfOwnedPointerAddress(pub [u8; 5]);
 pub struct RemotePointerAddress(pub [u8; 26]);
 
 impl RemotePointerAddress {
+    /// A built-in pointer address used for internal DATEX runtime pointers.
+    /// The origin endpoint is the @@any endpoint
+    pub fn builtin(
+        address: [u8; 5]
+    ) -> Self {
+        let temp_self_owned_address = SelfOwnedPointerAddress::new(address);
+        let any_endpoint = Endpoint::ANY;
+        Self::for_endpoint(&any_endpoint, &temp_self_owned_address)
+    }
+    
+    /// A built-in pointer address used for internal DATEX runtime pointers.
+    /// The origin endpoint is the @@any endpoint
+    pub fn builtin_u32(
+        address: u32
+    ) -> Self {
+        let address_bytes = address.to_le_bytes();
+        let mut address_array = [0u8; 5];
+        address_array[..4].copy_from_slice(&address_bytes);
+        address_array[4] = 255; // Remaining byte set to 255 (TODO)
+        Self::builtin(address_array)
+    }
+    
+    /// Returns a [RemotePointerAddress] for the given endpoint and self-owned pointer address.
     pub fn for_endpoint(
         endpoint: &Endpoint,
         self_owned_pointer_address: &SelfOwnedPointerAddress,
@@ -41,6 +64,11 @@ impl RemotePointerAddress {
         Endpoint::from_slice(endpoint).unwrap()
     }
 
+    /// Returns true if the remote pointer address is a builtin address (origin endpoint is @@any)
+    pub fn is_builtin(&self) -> bool {
+        self.endpoint() == Endpoint::ANY
+    }
+    
     /// Normalizes the pointer address to a self-owned address if it is a
     /// remote address with the same endpoint as the provided local endpoint.
     pub fn normalize_for_local(
