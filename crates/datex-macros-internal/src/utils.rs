@@ -32,10 +32,17 @@ pub fn get_datex_core_crate_name() -> Path {
         Err(_) =>
         // TODO: decide which namespace to use, for now, fall back to datex-embedded
         {
+            let base_crate = if let Ok(FoundCrate::Name(name)) = crate_name("datex") {
+                name
+            } else if let Ok(FoundCrate::Name(name)) = crate_name("datex-embedded") {
+                name
+            } else {
+                panic!("Neither datex-core, datex, nor datex-embedded could be found in the current context. Please ensure that at least one of these crates is included as a dependency.");
+            };
             return Path {
                 leading_colon: None,
                 segments: Punctuated::from_iter([
-                    PathSegment::from(format_ident!("datex_embedded")),
+                    PathSegment::from(format_ident!("{}", base_crate)),
                     PathSegment::from(format_ident!("core")),
                 ]),
             };

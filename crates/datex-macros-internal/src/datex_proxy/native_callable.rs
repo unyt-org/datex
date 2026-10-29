@@ -305,7 +305,7 @@ pub fn generate_native_callable(
         quote! {
             CallableBody::native_async(move |mut vals, mut runtime| {
                 let runtime = runtime.clone();
-                alloc::boxed::Box::pin(async move {Ok(#method_call_conversion)})
+                Box::pin(async move {Ok(#method_call_conversion)})
             })
         }
     } else {
