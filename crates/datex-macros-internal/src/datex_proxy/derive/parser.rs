@@ -5,6 +5,7 @@ use crate::datex_proxy::data::{
 };
 use proc_macro2::Span;
 use std::{env, path::PathBuf, str::FromStr};
+use quote::ToTokens;
 use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token,
     punctuated::Punctuated,
@@ -156,6 +157,7 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
     let mut export = false;
     let mut no_deserialize = false;
     let mut type_kind = TypeKind::Entity;
+    let mut builtin_address: Option<u32> = None;
 
     for attr in attrs {
         if !attr.path().is_ident("datex") {
@@ -206,6 +208,16 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
                     datex_name =
                         Some(parse_string_attribute(&name_value, "name"));
                 }
+                // builtin = 0x000001
+                Meta::NameValue(name_value)
+                    if name_value.path.is_ident("builtin") =>
+                {
+                    if builtin_address.is_some() {
+                        panic!("datex(builtin = ...) must only be specified once");
+                    }
+                    let address = parse_hex_literal_to_u32(&name_value.value.to_token_stream().to_string());
+                    builtin_address = Some(address);
+                }
                 meta => {
                     panic!("Invalid #[datex(...)] attribute: {meta:?}")
                 }
@@ -219,6 +231,7 @@ fn parse_structure_attributes(attrs: &[Attribute]) -> StructureAttributes {
         datex_name,
         type_kind,
         export,
+        builtin_address,
         docs: parse_doc_comments(attrs),
     }
 }
@@ -339,6 +352,14 @@ fn parse_string_attribute(
         },
         _ => panic!("datex({attribute_name} = ...) must be a string literal"),
     }
+}
+
+// parses e.g. 0x000001 into a u32
+fn parse_hex_literal_to_u32(literal: &str) -> u32 {
+    let literal = literal.trim_start_matches("0x");
+    u32::from_str_radix(literal, 16).unwrap_or_else(|_| {
+        panic!("Invalid hexadecimal literal: {}", literal)
+    })
 }
 
 fn parse_doc_comments(attrs: &[Attribute]) -> Option<String> {

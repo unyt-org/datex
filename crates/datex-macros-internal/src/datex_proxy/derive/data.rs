@@ -62,6 +62,9 @@ pub struct StructureAttributes {
     /// `#[datex(export)]`
     pub export: bool,
     pub docs: Option<String>,
+
+    /// An optional builtin address that should only be used for DATEX core pointers.
+    pub builtin_address: Option<u32>,
 }
 
 pub trait CommonFieldAttributes {
