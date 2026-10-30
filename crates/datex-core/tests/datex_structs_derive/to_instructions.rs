@@ -44,7 +44,7 @@ fn example_struct_to_instructions() {
     };
     assert_instruction_lists_eq!(
         to_instructions(&structure),
-        (RegularInstruction::map(2).with_children(instructions!(
+        (RegularInstruction::map(2, true).with_children(instructions!(
             // a
             RegularInstruction::key_value_short_text("a".to_string()),
             RegularInstruction::uint8(42),
@@ -70,7 +70,7 @@ fn struct_with_value_to_instructions() {
     };
     assert_instruction_lists_eq!(
         to_instructions(&structure),
-        (RegularInstruction::map(2).with_children(instructions!(
+        (RegularInstruction::map(2, true).with_children(instructions!(
             // a
             RegularInstruction::key_value_short_text("a".to_string()),
             RegularInstruction::uint8(42),
@@ -110,7 +110,7 @@ fn example_enum_variant_2_to_instructions() {
         to_instructions(&variant2),
         (RegularInstruction::tagged_value("Variant2".to_string(), false)
             .with_children(instructions!(
-                RegularInstruction::map(2).with_children(instructions!(
+                RegularInstruction::map(2, true).with_children(instructions!(
                     // x
                     RegularInstruction::key_value_short_text("x".to_string()),
                     RegularInstruction::uint8(42),

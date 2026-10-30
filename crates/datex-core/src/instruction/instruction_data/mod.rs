@@ -403,12 +403,18 @@ pub struct ListData {
 #[brw(little)]
 pub struct ShortMapData {
     pub element_count: u8,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub allow_only_text_keys: bool,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct MapData {
     pub element_count: u32,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub allow_only_text_keys: bool,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

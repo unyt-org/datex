@@ -837,7 +837,8 @@ mod tests {
                             ),
                             RegularInstruction::SetSharedContainerValue.with_children(instructions!(
                                 RegularInstruction::ShortMap(ShortMapData {
-                                    element_count: 1
+                                    element_count: 1,
+                                    allow_only_text_keys: false,
                                 })
                                 .with_children(instructions!(
                                     RegularInstruction::KeyValueShortText(
@@ -845,7 +846,7 @@ mod tests {
                                     )
                                     .with_children(instructions!(
                                         RegularInstruction::ShortMap(
-                                            ShortMapData { element_count: 1 }
+                                            ShortMapData { element_count: 1, allow_only_text_keys: false, }
                                         )
                                         .with_children(instructions!(
                                             RegularInstruction::KeyValueShortText(
@@ -1012,7 +1013,7 @@ mod tests {
                             RegularInstruction::SetSharedContainerValue.with_children(
                                 instructions!(
                                     RegularInstruction::ShortMap(
-                                        ShortMapData { element_count: 1 }
+                                        ShortMapData { element_count: 1, allow_only_text_keys: false }
                                     )
                                     .with_children(instructions!(
                                         RegularInstruction::KeyValueShortText(

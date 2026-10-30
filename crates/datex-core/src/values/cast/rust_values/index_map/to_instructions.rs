@@ -19,7 +19,7 @@ where
         cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
-            yield RegularInstruction::map(self.len() as u32).into();
+            yield RegularInstruction::map(self.len() as u32, false).into();
 
             for (key, value) in self.iter() {
                 yield RegularInstruction::key_value_dynamic().into();

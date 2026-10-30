@@ -130,6 +130,7 @@ use crate::{
     },
 };
 use collected_execution_result::CollectedExecutionResult;
+use crate::instruction::instruction_data::ShortMapData;
 use crate::types::entities::entity_type_definition::EntityTypeDefinition;
 
 /// Main execution loop that drives the execution of the DXB body
@@ -680,13 +681,14 @@ pub gen fn inner_execution_loop(
                                     )
                                         .into()
                                 }
-                                RegularInstruction::Map(_)
-                                | RegularInstruction::ShortMap(_) => {
+                                RegularInstruction::Map(MapData {allow_only_text_keys, ..})
+                                | RegularInstruction::ShortMap(ShortMapData {allow_only_text_keys, ..}) => {
                                     let entries = collected_results.try_collect_key_value_pair()?;
                                     RuntimeValue::ValueContainer(
-                                        ValueContainer::from(Map::from(
+                                        ValueContainer::from(Map::try_new(
                                             entries,
-                                        )),
+                                            allow_only_text_keys,
+                                        ).map_err(|e| ExecutionError::InvalidTypeCast)?),
                                     )
                                         .into()
                                 }
@@ -1587,7 +1589,7 @@ pub gen fn inner_execution_loop(
                                         let definition = collected_results.pop_type_definition();
                                         Type::Definition(TypeDefinitionWithMetadata::new(definition, metadata)).into()
                                     }
-                                    TypeInstruction::Map(MapData { element_count}) => {
+                                    TypeInstruction::Map(MapData { element_count, ..}) => {
                                         let mut map_entries = Vec::with_capacity(element_count as usize);
                                         for _ in 0..element_count {
                                             let value_type = collected_results.pop_type();

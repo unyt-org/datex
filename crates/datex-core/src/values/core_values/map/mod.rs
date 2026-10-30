@@ -61,6 +61,15 @@ pub enum MapEntries {
     Structural(Vec<(ValueContainer, ValueContainer)>),
 }
 
+impl MapEntries {
+    fn has_only_text_keys(&self) -> bool {
+        match self {
+            MapEntries::Dynamic(map) => map.keys().all(|k| k.try_as_str().is_some()),
+            MapEntries::Structural(vec) => vec.iter().all(|(k, _)| k.try_as_str().is_some()),
+        }
+    }
+}
+
 impl Eq for MapEntries {}
 impl PartialEq for MapEntries {
     fn eq(&self, other: &Self) -> bool {
@@ -100,6 +109,7 @@ impl From<MapEntries> for Map {
         Map {
             entries,
             update_callback_data: None,
+            allow_only_text_keys: false,
         }
     }
 }
@@ -108,6 +118,9 @@ impl From<MapEntries> for Map {
 pub struct Map {
     entries: MapEntries,
     update_callback_data: Option<UpdateCallbackData>,
+    /// Guarantees that all keys are text values.
+    /// If false, the map may contain non-text keys.
+    allow_only_text_keys: bool,
 }
 
 impl Clone for Map {
@@ -115,6 +128,7 @@ impl Clone for Map {
         Map {
             entries: self.entries.clone(),
             update_callback_data: None,
+            allow_only_text_keys: self.allow_only_text_keys,
         }
     }
 }
@@ -156,6 +170,21 @@ impl Default for Map {
 }
 
 impl Map {
+    pub fn try_new(entries: impl Into<MapEntries>, allow_only_text_keys: bool) -> Result<Self, UnexpectedPropertyError> {
+        let entries = entries.into();
+        if allow_only_text_keys && !entries.has_only_text_keys() {
+            return Err(UnexpectedPropertyError {
+                key: "Non-text key found".to_string(),
+            });
+        }
+
+        Ok(Map {
+            entries,
+            update_callback_data: None,
+            allow_only_text_keys,
+        })
+    }
+
     pub fn new_structural(entries: Vec<(ValueContainer, ValueContainer)>) -> Self {
         MapEntries::Structural(entries).into()
     }
@@ -484,6 +513,13 @@ impl From<Vec<(ValueContainer, ValueContainer)>> for Map {
     /// Create a dynamic map from a vector of value containers.
     fn from(vec: Vec<(ValueContainer, ValueContainer)>) -> Self {
         Map::new_dynamic(vec.into_iter().collect())
+    }
+}
+
+impl From<Vec<(ValueContainer, ValueContainer)>> for MapEntries {
+    /// Create a dynamic map from a vector of value containers.
+    fn from(vec: Vec<(ValueContainer, ValueContainer)>) -> Self {
+        MapEntries::Dynamic(vec.into_iter().collect())
     }
 }
 
