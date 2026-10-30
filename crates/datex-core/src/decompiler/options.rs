@@ -100,7 +100,6 @@ pub struct FormattingOptions {
     pub mode: FormattingMode,
     pub json_compat: bool,
     pub colorized: bool,
-    pub add_variant_suffix: bool,
 }
 
 impl FormattingOptions {
