@@ -98,6 +98,7 @@ macro_rules! derive_prelude {
                 SelfOwnedSharedContainer, base_shared_value_container::BaseSharedValueContainer,
                 SharedContainerMutability, OwnedSharedContainer,
             },
+            datex_registry::{DATEX_TYPE_REGISTRATIONS, DATEX_IMPL_REGISTRATIONS, DATEX_MODULE_REGISTRATIONS},
         };
     };
 }

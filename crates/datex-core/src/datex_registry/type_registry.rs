@@ -4,6 +4,7 @@ use crate::{
     traits::get_datex_type::GetDatexType, types::r#type::Type,
 };
 use core::fmt::Debug;
+use linkme::distributed_slice;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DatexTypeMetadata {
@@ -72,12 +73,13 @@ impl DatexTypeRegistration {
     }
 }
 
-inventory::collect!(DatexTypeRegistration);
+#[distributed_slice]
+pub static DATEX_TYPE_REGISTRATIONS: [DatexTypeRegistration];
 
 /// Returns an iterator over all registered Datex types.
 pub fn all_datex_type_registrations()
 -> impl Iterator<Item = &'static DatexTypeRegistration> {
-    inventory::iter::<DatexTypeRegistration>.into_iter()
+    DATEX_TYPE_REGISTRATIONS.into_iter()
 }
 
 /// Returns a vector of all Datex types resolved using the provided memory.

@@ -1,3 +1,4 @@
+use linkme::distributed_slice;
 use crate::{
     prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
     values::core_values::map::Map,
@@ -9,12 +10,13 @@ pub struct DatexModuleRegistration {
     pub create_module: fn(memory: &mut SharedReferencesCache) -> Map,
 }
 
-inventory::collect!(DatexModuleRegistration);
+#[distributed_slice]
+pub static DATEX_MODULE_REGISTRATIONS: [DatexModuleRegistration];
 
 /// Returns an iterator over all registered Datex modules.
 pub fn all_datex_module_registrations()
 -> impl Iterator<Item = &'static DatexModuleRegistration> {
-    inventory::iter::<DatexModuleRegistration>.into_iter()
+    DATEX_MODULE_REGISTRATIONS.into_iter()
 }
 
 pub fn get_all_modules(
