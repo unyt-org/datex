@@ -87,7 +87,7 @@ pub mod inspector;
 pub mod serde_compat;
 pub mod shared_wrappers;
 
-pub use inventory;
+pub use linkme;
 
 pub use serde;
 

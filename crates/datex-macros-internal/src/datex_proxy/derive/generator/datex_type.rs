@@ -103,17 +103,16 @@ fn generate_type_registration(structure_data: &StructureData) -> TokenStream {
     };
 
     quote! {
-        #datex_core_crate_name::inventory::submit! {
-            #datex_core_crate_name::datex_registry::DatexTypeRegistration::new_with_cache::<#ident>(
-                #datex_core_crate_name::datex_registry::DatexTypeMetadata {
-                    name: #datex_name,
-                    rust_ident: stringify!(#ident),
-                    docs: #docs,
-                    export: true, // FIXME
-                    namespace: #namespace,
-                }
-            )
-        }
+        #[#datex_core_crate_name::linkme::distributed_slice(DATEX_TYPE_REGISTRATIONS)]
+        static DATEX_TYPE_REGISTRATION: #datex_core_crate_name::datex_registry::DatexTypeRegistration = #datex_core_crate_name::datex_registry::DatexTypeRegistration::new_with_cache::<#ident>(
+            #datex_core_crate_name::datex_registry::DatexTypeMetadata {
+                name: #datex_name,
+                rust_ident: stringify!(#ident),
+                docs: #docs,
+                export: true, // FIXME
+                namespace: #namespace,
+            }
+        );
     }
 }
 

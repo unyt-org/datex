@@ -1,5 +1,5 @@
 use core::any::TypeId;
-
+use linkme::distributed_slice;
 use crate::{
     prelude::*, runtime::cache::shared_references_cache::SharedReferencesCache,
     types::entities::entity_impls::EntityImpl,
@@ -13,12 +13,13 @@ pub struct DatexImplRegistration {
     pub owner_type_id: fn() -> TypeId,
 }
 
-inventory::collect!(DatexImplRegistration);
+#[distributed_slice]
+pub static DATEX_IMPL_REGISTRATIONS: [DatexImplRegistration];
 
 /// Returns an iterator over all registered Datex types.
 pub fn all_datex_impl_registrations()
 -> impl Iterator<Item = &'static DatexImplRegistration> {
-    inventory::iter::<DatexImplRegistration>.into_iter()
+    DATEX_IMPL_REGISTRATIONS.into_iter()
 }
 
 pub fn get_impls(
