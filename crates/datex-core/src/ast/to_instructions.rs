@@ -1616,7 +1616,12 @@ impl AstNodeToInstructions for Map {
             > + 'a,
     > {
         Box::new(gen move {
-            yield Ok(RegularInstruction::map(self.entries.len() as u32).into());
+            
+            let has_only_text_keys = self.entries.iter().all(|(key, _)| {
+                matches!(&*key.data, DatexExpressionData::Text(_))
+            });
+            
+            yield Ok(RegularInstruction::map(self.entries.len() as u32, has_only_text_keys).into());
             for (key, value) in &self.entries {
                 match &*key.data {
                     // text -> insert key string

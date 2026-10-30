@@ -88,6 +88,7 @@ pub mod serde_compat;
 pub mod shared_wrappers;
 
 pub use linkme;
+pub use inventory;
 
 pub use serde;
 

@@ -159,6 +159,7 @@ impl ToInstructions for MapTypeDefinition {
         Box::new(gen move {
             yield TypeInstruction::Map(MapData {
                 element_count: self.len() as u32,
+                allow_only_text_keys: false,
             })
             .into();
             for (key_ty, value_ty) in self.iter() {

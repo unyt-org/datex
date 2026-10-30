@@ -112,7 +112,7 @@ fn generate_named_fields_to_instructions(fields: &[NamedField]) -> TokenStream {
 
     let field_count = fields.len() as u32;
     quote! {
-        yield RegularInstruction::map(#field_count).into();
+        yield RegularInstruction::map(#field_count, true).into();
         #(
             #field_instructions
         )*

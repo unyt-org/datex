@@ -73,15 +73,17 @@ pub fn generate_mod_glue_code(
             #prelude
 
             #(#items)*
-
-            #[#datex_core_crate_name::linkme::distributed_slice(DATEX_MODULE_REGISTRATIONS)]
-            static DATE_MODULE_REGISTRATION: #datex_core_crate_name::datex_registry::DatexModuleRegistration =
+            
+            #datex_core_crate_name::datex_registry::registry_register!(
+                #datex_core_crate_name::datex_registry::DatexModuleRegistration,
+                DATEX_MODULE_REGISTRATIONS,
                 #datex_core_crate_name::datex_registry::DatexModuleRegistration {
                     name: #datex_module_name,
                     create_module: |cache| #datex_core_crate_name::values::core_values::map::Map::new_structural(
                         vec![#(#datex_items),*],
                     ),
-                };
+                }
+            );
         }
     }
 }

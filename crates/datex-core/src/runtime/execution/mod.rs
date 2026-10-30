@@ -358,7 +358,6 @@ fn try_get_method_data(
     entity_type: &EntityType,
     method_name: String,
 ) -> Result<Ref<'_, EntityImplMethod>, ExecutionError> {
-    info!("try get method data for method: {:#?} on entity type: {:#?}", method_name, entity_type);
     Ref::filter_map(entity_type.entity_definition(), |def| {
         def.try_get_method(&method_name)
     })

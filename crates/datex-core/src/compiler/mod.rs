@@ -1225,6 +1225,7 @@ pub mod tests {
         let expected = vec![
             InstructionCode::SHORT_MAP.into(),
             1, // length
+            1,
             InstructionCode::KEY_VALUE_SHORT_TEXT.into(),
             3, // length of "key"
             b'k',
@@ -1244,6 +1245,7 @@ pub mod tests {
         let expected = vec![
             InstructionCode::SHORT_MAP.into(),
             1, // length
+            0,
             InstructionCode::KEY_VALUE_DYNAMIC.into(),
             InstructionCode::UINT_8.into(),
             10,
@@ -1262,6 +1264,7 @@ pub mod tests {
         let mut expected: Vec<u8> = vec![
             InstructionCode::SHORT_MAP.into(),
             1, // length
+            1,
             InstructionCode::KEY_VALUE_DYNAMIC.into(),
             InstructionCode::TEXT.into(),
         ];
@@ -1279,6 +1282,7 @@ pub mod tests {
         let expected = [
             InstructionCode::SHORT_MAP.into(),
             1, // length
+            0,
             InstructionCode::KEY_VALUE_DYNAMIC.into(),
             InstructionCode::ADD.into(),
             InstructionCode::UINT_8.into(),
@@ -1299,6 +1303,7 @@ pub mod tests {
         let expected = vec![
             InstructionCode::SHORT_MAP.into(),
             3, // length
+            0,
             InstructionCode::KEY_VALUE_SHORT_TEXT.into(),
             3, // length of "key"
             b'k',
@@ -1331,6 +1336,7 @@ pub mod tests {
         let expected: Vec<u8> = vec![
             InstructionCode::SHORT_MAP.into(),
             0, // length
+            1,
         ];
         assert_eq!(result, expected);
     }
@@ -1359,7 +1365,7 @@ pub mod tests {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::ShortMap(ShortMapData { element_count: 1 }),
+                RegularInstruction::ShortMap(ShortMapData { element_count: 1, allow_only_text_keys: true }),
                 RegularInstruction::KeyValueShortText(ShortTextData(
                     "a".to_string()
                 )),

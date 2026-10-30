@@ -48,24 +48,35 @@ impl SerializeWithSerdeContext for Map {
     where
         S: Serializer,
     {
-        match &self.entries {
-            MapEntries::Structural(entries) => {
-                entries.serialize_with_ctx(ctx, serializer)
-            }
-
-            MapEntries::Dynamic(entries) => {
-                let mut seq = serializer.serialize_seq(Some(entries.len()))?;
-
-                for (key, value) in entries {
-                    let entry = (key.clone(), value.clone());
-
-                    seq.serialize_element(&ValueWithSerdeContext::new(
-                        &entry, ctx,
-                    ))?;
+        if self.allow_only_text_keys {
+            let mut map = serializer.serialize_map(Some(self.size()))?;
+            for (key, value) in self.iter() {
+                if let Some(key_str) = key.try_as_str() {
+                    map.serialize_entry(
+                        key_str,
+                        &ValueWithSerdeContext::new(value, ctx),
+                    )?;
+                } else {
+                    return Err(serde::ser::Error::custom(
+                        "Map contains non-text key",
+                    ));
                 }
-
-                seq.end()
             }
+            map.end()
+        }
+
+        else {
+            let mut seq = serializer.serialize_seq(Some(self.size()))?;
+
+            for (key, value) in self.iter() {
+                let entry = (key.clone(), value.clone());
+
+                seq.serialize_element(&ValueWithSerdeContext::new(
+                    &entry, ctx,
+                ))?;
+            }
+
+            seq.end()
         }
     }
 }
@@ -103,7 +114,10 @@ impl<'de, 'a, 'ctx> Visitor<'de> for DeserializeSerdeContext<'a, 'ctx, Map> {
             entries.push((ValueContainer::from(key), value));
         }
 
-        Ok(MapEntries::Structural(entries).into())
+        Ok(Map::try_new(
+            MapEntries::Dynamic(IndexMap::from_iter(entries)),
+            true,
+        ).unwrap())
     }
 
     fn visit_seq<A>(self, mut seq: A) -> Result<Map, A::Error>

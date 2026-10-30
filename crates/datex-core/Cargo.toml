@@ -167,6 +167,7 @@ twox-hash = { version = "2.1.3", default-features = false, features = [
 ] }
 seq-macro = "0.3.6"
 linkme = "0.3.37"
+inventory = "0.3.25"
 
 ### dev dependencies (for benchmarks and tests)
 [dev-dependencies]

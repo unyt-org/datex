@@ -16,7 +16,7 @@ impl ToInstructions for Map {
         cache: &'a mut SharedReferencesCache
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
-            yield RegularInstruction::map(self.size() as u32).into();
+            yield RegularInstruction::map(self.size() as u32, self.allow_only_text_keys).into();
 
             for (key, value) in self.iter() {
                 match key.try_as_str() {

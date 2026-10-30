@@ -3,12 +3,12 @@
 ## Value Containers
 
 ```ts
-type DIFValueContainer = DISharedValue | DIFValue
+type DIFValueContainer = DIFSharedValue | DIFValue
 
 type DIFPointerAddressWithOwnership = string; // e.g. "'mut$12345"
 type DIFPointerAddress = string; // e.g. "$12345"
 
-type DISharedValue = { _: DIFPointerAddressWithOwnership }
+type DIFSharedValue = { _: DIFPointerAddressWithOwnership }
 ```
 
 ## Values

@@ -62,16 +62,19 @@ pub fn generate_impl_glue_code(
         const _: () = {
             #prelude
 
-            #[#datex_core_crate_name::linkme::distributed_slice(DATEX_IMPL_REGISTRATIONS)]
-            static DATEX_IMPL_REGISTRATION: #datex_core_crate_name::datex_registry::DatexImplRegistration = #datex_core_crate_name::datex_registry::DatexImplRegistration {
-                namespace: #namespace,
-                name: #name,
-                create_impl: |cache| EntityImpl {
-                    methods: vec![#(#methods),*],
-                    static_methods: vec![#(#static_methods),*],
-                },
-                owner_type_id: || { ::core::any::TypeId::of::<#self_ty>()},
-            };
+            #datex_core_crate_name::datex_registry::registry_register!(
+                #datex_core_crate_name::datex_registry::DatexImplRegistration,
+                DATEX_IMPL_REGISTRATIONS,
+                #datex_core_crate_name::datex_registry::DatexImplRegistration {
+                    namespace: #namespace,
+                    name: #name,
+                    create_impl: |cache| EntityImpl {
+                        methods: vec![#(#methods),*],
+                        static_methods: vec![#(#static_methods),*],
+                    },
+                    owner_type_id: || { ::core::any::TypeId::of::<#self_ty>()},
+                }
+            );
         };
     }
 }

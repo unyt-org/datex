@@ -167,24 +167,26 @@ impl RegularInstruction {
     }
 
     /// Creates a map instruction, choosing between the short and default variant based on the count of elements.
-    pub fn map(count: u32) -> Self {
+    pub fn map(count: u32, allow_only_text_keys: bool) -> Self {
         match count {
-            0..=255 => Self::map_short(count as u8),
-            _ => Self::map_default(count),
+            0..=255 => Self::map_short(count as u8, allow_only_text_keys),
+            _ => Self::map_default(count, allow_only_text_keys),
         }
     }
 
     /// Creates a map instruction with the default variant, regardless of the count of elements.
-    pub fn map_default(count: u32) -> Self {
+    pub fn map_default(count: u32, allow_only_text_keys: bool) -> Self {
         RegularInstruction::Map(MapData {
             element_count: count,
+            allow_only_text_keys,
         })
     }
 
     /// Creates a map instruction with the short variant, regardless of the count of elements.
-    pub fn map_short(count: u8) -> Self {
+    pub fn map_short(count: u8, allow_only_text_keys: bool) -> Self {
         RegularInstruction::ShortMap(ShortMapData {
             element_count: count,
+            allow_only_text_keys,
         })
     }
 
