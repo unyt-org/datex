@@ -31,7 +31,8 @@ impl SerializeWithSerdeContext for CoreValueWithClassification {
 
         // if tag, serialize as a map with "t" and "v" keys
         if let Some(tag) = &classification.tag {
-            let mut map = serializer.serialize_map(Some(2))?;
+            let mut map = serializer.serialize_map(Some(3))?;
+            map.serialize_entry("_", "t")?;
             map.serialize_entry("t", tag)?;
             map.serialize_entry(
                 "v",
@@ -181,7 +182,7 @@ impl<'de, 'a, 'ctx> Visitor<'de>
             self.cast::<CoreValue>().visit_str(v)?,
         ))
     }
-    
+
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
     where
         E: Error,

@@ -33,7 +33,7 @@ use crate::{
     },
     libs::core::core_lib_id::CoreLibIdIndex,
     values::core_values::{
-        boolean::Boolean, callable::Callable, endpoint::Endpoint,
+        boolean::Boolean, callable::Callable, endpoint::Endpoint, text::Text,
     },
 };
 use core::{fmt, str::FromStr};
@@ -42,7 +42,6 @@ use serde::{
     de::{DeserializeSeed, SeqAccess, Visitor},
 };
 use serde_with::__private__::DeError;
-use crate::values::core_values::text::Text;
 
 impl SerializeWithSerdeContext for CoreValue {
     fn serialize_with_ctx<S: Serializer>(
@@ -759,6 +758,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
     {
         match self.core_lib_id {
             CoreLibTypeId::Base(CoreLibBaseTypeId::Null) => Ok(CoreValue::Null),
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Unit) => Ok(CoreValue::Null),
             other => Err(E::custom(format!(
                 "expected CoreValue of type Unit, got {other}"
             ))),
