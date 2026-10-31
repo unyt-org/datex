@@ -42,16 +42,15 @@ use crate::{
         regular_instruction::RegularInstruction,
     },
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
         traits::SharedContainerCommon,
     },
     values::value_container::ValueContainer,
 };
-use core::str::FromStr;
-use core::ops::DerefMut;
+use core::{ops::DerefMut, str::FromStr};
 use log::info;
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 macro yield_unwrap($expr:expr) {
     match $expr {
@@ -101,7 +100,8 @@ impl AstNodeToInstructions for DatexExpressionData {
                 }
                 DatexExpressionData::TypedInteger(typed_integer) => {
                     yield_all_ok!(
-                        typed_integer.to_bytecode_items(compilation_context, cache)
+                        typed_integer
+                            .to_bytecode_items(compilation_context, cache)
                     );
                 }
 
@@ -119,12 +119,15 @@ impl AstNodeToInstructions for DatexExpressionData {
 
                 DatexExpressionData::TypedDecimal(typed_decimal) => {
                     yield_all_ok!(
-                        typed_decimal.to_bytecode_items(compilation_context, cache)
+                        typed_decimal
+                            .to_bytecode_items(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Text(text) => {
-                    yield_all_ok!(text.to_bytecode_items(compilation_context, cache));
+                    yield_all_ok!(
+                        text.to_bytecode_items(compilation_context, cache)
+                    );
                 }
 
                 DatexExpressionData::Boolean(boolean) => {
@@ -468,17 +471,26 @@ impl AstNodeToInstructions for ValueAccessType {
                         }
                         ValueAccessType::MoveOrCopy => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_items(compilation_context, cache)
+                                value.to_bytecode_items(
+                                    compilation_context,
+                                    cache
+                                )
                             );
                         }
                         ValueAccessType::Clone => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_items(compilation_context, cache)
+                                value.to_bytecode_items(
+                                    compilation_context,
+                                    cache
+                                )
                             );
                         }
                         ValueAccessType::Borrow => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_items(compilation_context, cache)
+                                value.to_bytecode_items(
+                                    compilation_context,
+                                    cache
+                                )
                             );
                         }
                     },
@@ -544,7 +556,8 @@ impl AstNodeToInstructions for Conditional {
         cache: &'a mut SharedReferencesCache,
         ast_metadata: &'a mut AstMetadata,
         _ctx_metadata: CompileContextMetadata,
-    ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a> {
+    ) -> Box<dyn Iterator<Item = Result<BytecodeItem, CompilerError>> + 'a>
+    {
         Box::new(gen move {
             let Conditional {
                 condition,
@@ -1616,12 +1629,15 @@ impl AstNodeToInstructions for Map {
             > + 'a,
     > {
         Box::new(gen move {
-            
             let has_only_text_keys = self.entries.iter().all(|(key, _)| {
                 matches!(&*key.data, DatexExpressionData::Text(_))
             });
-            
-            yield Ok(RegularInstruction::map(self.entries.len() as u32, has_only_text_keys).into());
+
+            yield Ok(RegularInstruction::map(
+                self.entries.len() as u32,
+                has_only_text_keys,
+            )
+            .into());
             for (key, value) in &self.entries {
                 match &*key.data {
                     // text -> insert key string
@@ -1676,7 +1692,7 @@ impl AstNodeToInstructions for TagExpression {
             > + 'a,
     > {
         Box::new(gen move {
-            yield Ok(RegularInstruction::tagged_value(
+            yield Ok(RegularInstruction::classified_value(
                 self.tag.clone(),
                 self.expression.is_none(),
             )

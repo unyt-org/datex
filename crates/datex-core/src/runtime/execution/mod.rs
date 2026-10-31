@@ -805,7 +805,7 @@ mod tests {
             assert_eq!(
                 value.classification,
                 ValueClassification::new_with_tag(ValueTag {
-                    tag: "Example".to_string(),
+                    name: "Example".to_string(),
                     is_empty: true
                 })
             )
@@ -829,7 +829,7 @@ mod tests {
             assert_eq!(
                 value.classification,
                 ValueClassification::new_with_tag(ValueTag {
-                    tag: "Example".to_string(),
+                    name: "Example".to_string(),
                     is_empty: false
                 })
             )

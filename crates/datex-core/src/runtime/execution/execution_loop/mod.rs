@@ -24,11 +24,11 @@ use crate::{
     instruction::{
         Instruction, NestedInstructionResolutionStrategy,
         instruction_data::{
-            ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, InstantData, IntersectionData, JumpData,
-            ListSliceCollectionData, MapData, ShortStatementsData,
-            ShortTextData, StatementsData, TaggedTypeData, TaggedValue,
-            TextData, UnboundedStatementsData, UnionData,
+            ApplyData, ClassifiedValueData, Float32Data, Float64Data,
+            FloatAsInt16Data, FloatAsInt32Data, InstantData, IntersectionData,
+            JumpData, ListSliceCollectionData, MapData, ShortStatementsData,
+            ShortTextData, StatementsData, TaggedTypeData, TextData,
+            UnboundedStatementsData, UnionData,
         },
         regular_instruction::RegularInstruction,
         type_instruction::TypeInstruction,
@@ -100,9 +100,7 @@ use crate::{
             map::Map,
         },
         value::Value,
-        value_container::{
-            ValueContainer, error::ValueError,
-        },
+        value_container::{ValueContainer, error::ValueError},
     },
 };
 use alloc::rc::Rc;
@@ -112,11 +110,12 @@ use log::info;
 mod collected_execution_result;
 use crate::{
     instruction::instruction_data::{
-        CallMethodData, CallableSignatureData, ImplMarkersData,
+        CallMethodData, CallableSignatureData, ImplMarkersData, ShortMapData,
     },
     runtime::execution::macros::interrupt_with_borrowed_args_and_maybe_result,
     traits::apply::{ApplyArgument, into_apply_arguments_with_stack_indices},
     types::{
+        entities::entity_type_definition::EntityTypeDefinition,
         entity_type::EntityType,
         type_definition::callable::CallableTypeDefinition,
     },
@@ -130,8 +129,6 @@ use crate::{
     },
 };
 use collected_execution_result::CollectedExecutionResult;
-use crate::instruction::instruction_data::ShortMapData;
-use crate::types::entities::entity_type_definition::EntityTypeDefinition;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -228,7 +225,7 @@ pub gen fn inner_execution_loop(
                     )
                     .map(|instruction| match instruction {
                         Instruction::Regular(regular) => regular,
-                        _ => unreachable!()
+                        _ => unreachable!(),
                     });
 
                 let expr: Option<Option<RuntimeValue>> = if let Some(
@@ -438,13 +435,23 @@ pub gen fn inner_execution_loop(
                                 Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container)))
                             }
 
-                            RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
+                            RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                                tag_is_empty: true,
+                                tag: Some(tag),
+                                is_entity: false,
+                                impls,
+                                ..
+                            }) => {
+                                
                                 Some(RuntimeValue::ValueContainer(
-                                    ValueContainer::Local(Value::core_with_classification(CoreValue::Null, ValueClassification::new_with_tag(ValueTag {
-                                        tag,
+                                    ValueContainer::Local(Value::core_with_classification(CoreValue::Null, ValueClassification {
+                                    tag: Some(ValueTag {
+                                        name: tag.0,
                                         is_empty: true,
-                                    })))
-                                ))
+                                    }),
+                                    impls,
+                                    entity_type: None
+                                }))))
                             }
 
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
@@ -457,7 +464,7 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::ShortList(_) |
                             RegularInstruction::Map(_) |
                             RegularInstruction::ShortMap(_) |
-                            RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. }) |
+                            RegularInstruction::ClassifiedValue(_) |
                             RegularInstruction::KeyValueDynamic |
                             RegularInstruction::KeyValueShortText(_) |
                             RegularInstruction::Add |
@@ -501,7 +508,6 @@ pub gen fn inner_execution_loop(
                             RegularInstruction::Decrement |
                             RegularInstruction::SetSharedContainerValue |
                             RegularInstruction::Unbox |
-                            RegularInstruction::EntityValue |
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::MoveWithValue(_) |
                             RegularInstruction::SharedRefWithValue(_) |
@@ -544,7 +550,7 @@ pub gen fn inner_execution_loop(
                     )
                     .map(|instruction| match instruction {
                         Instruction::Type(ty) => ty,
-                        _ => unreachable!()
+                        _ => unreachable!(),
                     });
 
                 if let Some(type_instruction) = type_instruction {
@@ -713,16 +719,42 @@ pub gen fn inner_execution_loop(
                                     )
                                 }
 
-                                RegularInstruction::TaggedValue(TaggedValue {
-                                    tag: ShortTextData(tag),
-                                    is_empty
+                                RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                                    tag,
+                                    impls,
+                                    is_entity,
+                                    ..
                                 }) => {
-                                    assert!(!is_empty);
-                                    let value_container = collected_results.try_pop_value_container(&mut state)?;
-                                    create_tagged_value_container(
+                                    let mut value_container = collected_results.try_pop_value_container(&mut state)?;
+                                    let entity_type = if is_entity {
+                                        let entity_container: ValueContainer = collected_results
+                                        .try_pop_value_container(&mut state)?;
+                                        let entity_container = match entity_container {
+                                            ValueContainer::Shared(shared) => shared,
+                                            _ => return yield Err(ExecutionError::ExpectedSharedValue)
+                                        };
+
+                                        // try to convert to EntityType
+                                        Some(EntityType::try_from(entity_container)
+                                            .map_err(|_| ExecutionError::invalid_program(InvalidProgramError::InvalidType))?)
+                                    } else {
+                                        None
+                                    };
+                                    let  classification = ValueClassification {
+                                        entity_type,
+                                        impls,
+                                        tag:tag.map(|t| ValueTag::from(t.0)),
+                                    };
+
+                                    match &mut value_container {
+                                        ValueContainer::Local(Value::Core(value)) => {
+                                            value.classification = classification;
+                                        }
+                                        _ => return yield Err(ExecutionError::invalid_program(InvalidProgramError::InvalidType)),
+                                    }
+                                   RuntimeValue::ValueContainer(
                                         value_container,
-                                        tag,
-                                    )?.into()
+                                    ).into()
                                 }
 
                                 RegularInstruction::Add
@@ -906,32 +938,6 @@ pub gen fn inner_execution_loop(
                                     let expression = collected_results.try_pop_runtime_value()?;
                                     let value_container = expression.into_value_container(&mut state)?;
                                     ValueContainer::from(Value::boxed(value_container)).into()
-                                }
-                                RegularInstruction::EntityValue => {
-                                    let mut value_container = collected_results
-                                        .try_pop_value_container(&mut state)?;
-
-                                    let entity_container = collected_results
-                                        .try_pop_value_container(&mut state)?;
-                                    let entity_container = match entity_container {
-                                        ValueContainer::Shared(shared) => shared,
-                                        _ => return yield Err(ExecutionError::ExpectedSharedValue)
-                                    };
-
-                                    // try to convert to EntityType
-                                    let entity_type = EntityType::try_from(entity_container)
-                                        .map_err(|_| ExecutionError::invalid_program(InvalidProgramError::InvalidType))?;
-
-                                    match &mut value_container {
-                                        ValueContainer::Local(Value::Core(value)) => {
-                                            value.classification = ValueClassification::new_with_entity(entity_type);
-                                        }
-                                        _ => return yield Err(ExecutionError::invalid_program(InvalidProgramError::InvalidType)),
-                                    }
-                                    RuntimeValue::ValueContainer(
-                                        value_container,
-                                    )
-                                        .into()
                                 }
 
                                 // type(...)

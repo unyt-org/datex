@@ -94,7 +94,7 @@ impl CoreValueWithClassification {
             types.push(Type::Entity(entity_type.clone()));
         }
 
-        if let Some(ValueTag { tag, is_empty }) = &self.classification.tag {
+        if let Some(ValueTag { name: tag, is_empty }) = &self.classification.tag {
             types.push(
                 TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: tag.clone(),

@@ -29,7 +29,7 @@ impl UnresolvedValueClassification {
     /// Returns the tag string if it exists, otherwise returns None.
     pub fn tag_str(&self) -> Option<&str> {
         match &self.tag {
-            Some(value_tag) => Some(&value_tag.tag),
+            Some(value_tag) => Some(&value_tag.name),
             None => None,
         }
     }

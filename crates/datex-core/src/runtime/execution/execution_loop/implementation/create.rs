@@ -30,7 +30,7 @@ pub fn create_tagged_value_container(
             // add tag type to the value
             value.classification =
                 ValueClassification::new_with_tag(ValueTag {
-                    tag,
+                    name: tag,
                     is_empty: false,
                 });
             Ok(ValueContainer::Local(Value::Core(value)))
