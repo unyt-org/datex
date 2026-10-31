@@ -38,13 +38,15 @@ use crate::{
         value_id::CoreLibValueId,
     },
     prelude::*,
-    runtime::execution::ExecutionError,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        execution::ExecutionError,
+    },
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainer,
         SharedContainerOwnership, traits::SharedContainerCommon,
     },
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedValueValidationError {
@@ -96,12 +98,15 @@ pub fn compile_panic(
     cache: &mut SharedReferencesCache,
 ) -> Vec<u8> {
     CoreCompilationContext::new(compile_input)
-        .compile_to_dxb_with_shared_values(&ApplyWithArgs {
-            callee: RegularInstruction::get_core_lib_value(
-                CoreLibId::Value(CoreLibValueId::Panic).into(),
-            ),
-            args: vec![ValueContainer::Local(panic_value.into())],
-        }, cache)
+        .compile_to_dxb_with_shared_values(
+            &ApplyWithArgs {
+                callee: RegularInstruction::get_core_lib_value(
+                    CoreLibId::Value(CoreLibValueId::Panic).into(),
+                ),
+                args: vec![ValueContainer::Local(panic_value.into())],
+            },
+            cache,
+        )
         .dxb
 }
 
@@ -115,7 +120,7 @@ impl ToInstructions for ApplyWithArgs {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen {
             yield_all!(append_apply(
@@ -164,7 +169,6 @@ pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
 #[cfg(feature = "disassembler")]
 mod tests {
     use crate::{
-        instruction::Instruction,
         core_compiler::{
             core_compilation_context::{
                 CompileInput, CoreCompilationContext,
@@ -176,20 +180,29 @@ mod tests {
             value_visitor::{ValueVisitor, compile_instructions_to_dxb},
         },
         disassembler::{
-            assertions::{assert_instructions_equal, instructions},
+            assertions::{
+                assert_instructions_equal, instructions, instructions_with_span,
+            },
             print_disassembled,
         },
+        dxb_parser::body::InstructionWithSpan,
         global::stack_index::StackIndex,
         instruction::{
+            Instruction,
             instruction_data::{
-                Int32Data, MoveWithValue, SharedRefWithValue, ShortListData,
+                CallableData, CallableDataBody, CallableDataBodyDebugFlat,
+                CallableDataBodyDebugTree, CallableDataDebugFlat,
+                CallableDataDebugTree, CallableSignatureData, Int32Data,
+                MoveWithValue, SharedRefWithValue, ShortListData,
                 ShortTextData, TaggedValue,
             },
             regular_instruction::RegularInstruction,
+            type_instruction::TypeInstruction,
         },
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
         runtime::{
+            Runtime, cache::shared_references_cache::SharedReferencesCache,
             pointer_address_provider::SelfOwnedPointerAddressProvider,
             pointer_availability_lookup::PointerAvailabilityLookup,
         },
@@ -200,12 +213,19 @@ mod tests {
         types::{
             r#type::Type,
             type_definition::{
-                TypeDefinition, tagged_type::TaggedTypeDefinition,
+                TypeDefinition,
+                callable::{CallableKind, CallableTypeDefinition},
+                tagged_type::TaggedTypeDefinition,
             },
+            type_definition_with_metadata::TypeMetadata,
         },
         values::{
             core_value::CoreValue,
-            core_values::list::List,
+            core_values::{
+                callable::{Callable, CallableBody},
+                endpoint::Endpoint,
+                list::List,
+            },
             value::{
                 Value,
                 value_classification::{ValueClassification, ValueTag},
@@ -215,17 +235,6 @@ mod tests {
     };
     use core::assert_matches;
     use log::info;
-    use crate::disassembler::assertions::instructions_with_span;
-    use crate::dxb_parser::body::InstructionWithSpan;
-    use crate::instruction::instruction_data::{CallableData, CallableDataBody, CallableDataBodyDebugFlat, CallableDataBodyDebugTree, CallableDataDebugFlat, CallableDataDebugTree, CallableSignatureData};
-    use crate::instruction::type_instruction::TypeInstruction;
-    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
-    use crate::runtime::Runtime;
-    use crate::types::type_definition::callable::{CallableKind, CallableTypeDefinition};
-    use crate::values::core_values::callable::{Callable, CallableBody};
-    use crate::values::core_values::endpoint::Endpoint;
-    use crate::prelude::*;
-    use crate::types::type_definition_with_metadata::TypeMetadata;
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -248,7 +257,7 @@ mod tests {
         let value = Value::core_with_classification(
             CoreValue::Null,
             ValueClassification::new_with_tag(ValueTag {
-                tag: "Example".to_string(),
+                name: "Example".to_string(),
                 is_empty: true,
             }),
         );
@@ -267,7 +276,7 @@ mod tests {
         let value = Value::core_with_classification(
             CoreValue::Null,
             ValueClassification::new_with_tag(ValueTag {
-                tag: "Example".to_string(),
+                name: "Example".to_string(),
                 is_empty: false,
             }),
         );
@@ -929,26 +938,24 @@ mod tests {
 
         assert_instructions_equal!(
             &dxb,
-            (
-                RegularInstruction::Callable(CallableData {
-                    signature: CallableSignatureData {
-                        name: ShortTextData("example".to_string()),
-                        kind: CallableKind::Function,
-                        parameter_count: 0,
-                        requires_async: false,
-                        has_rest_parameter: false,
-                        has_return_type: false,
-                        has_yeet_type: false,
-                        parameter_names: vec![],
-                        rest_parameter_name: None,
-                    },
-                    body: CallableDataBody {
-                        length: 0,
-                        injected_value_count: 0,
-                        body: vec![]
-                    },
-                }),
-            )
+            (RegularInstruction::Callable(CallableData {
+                signature: CallableSignatureData {
+                    name: ShortTextData("example".to_string()),
+                    kind: CallableKind::Function,
+                    parameter_count: 0,
+                    requires_async: false,
+                    has_rest_parameter: false,
+                    has_return_type: false,
+                    has_yeet_type: false,
+                    parameter_names: vec![],
+                    rest_parameter_name: None,
+                },
+                body: CallableDataBody {
+                    length: 0,
+                    injected_value_count: 0,
+                    body: vec![]
+                },
+            }),)
         );
     }
 
@@ -964,21 +971,19 @@ mod tests {
                         Some("x".to_string()),
                         Type::core(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Integer,
-                        ))
+                        )),
                     ),
                     (
                         Some("y".to_string()),
                         Type::core(CoreLibTypeId::Base(
                             CoreLibBaseTypeId::Text,
-                        ))
+                        )),
                     ),
                 ],
                 rest_parameter: None,
-                return_type: Some(Box::new(
-                    Type::core(
-                        CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean),
-                    )
-                )),
+                return_type: Some(Box::new(Type::core(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Boolean,
+                )))),
                 yeet_type: None,
             },
             body: CallableBody::Hidden,
@@ -998,52 +1003,61 @@ mod tests {
 
         assert_instructions_equal!(
             &dxb,
-            (
-                RegularInstruction::Callable(CallableData {
-                    signature: CallableSignatureData {
-                        name: ShortTextData("example".to_string()),
-                        kind: CallableKind::Function,
-                        parameter_count: 2,
-                        requires_async: false,
-                        has_rest_parameter: false,
-                        has_return_type: true,
-                        has_yeet_type: false,
-                        parameter_names: vec![
-                            ShortTextData("x".to_string()),
-                            ShortTextData("y".to_string()),
-                        ],
-                        rest_parameter_name: None,
-                    },
-                    body: CallableDataBody {
-                        length: 0,
-                        injected_value_count: 0,
-                        body: vec![]
-                    },
-                    // body: CallableDataBodyDebugFlat {
-                    //     injected_value_count: 0,
-                    //     length: 100,
-                    //     body: instructions_with_span!(
-                    //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
-                    //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())),
-                    // 
-                    //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
-                    //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Text.into())),
-                    // 
-                    //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
-                    //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Boolean.into())),
-                    //     ),
-                    // }
-                }).with_children(instructions!(
-                    Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
-                    Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())),
-            
-                    Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
-                    Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Text.into())),
-            
-                    Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
-                    Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Boolean.into())),
-                ))
-            )
+            (RegularInstruction::Callable(CallableData {
+                signature: CallableSignatureData {
+                    name: ShortTextData("example".to_string()),
+                    kind: CallableKind::Function,
+                    parameter_count: 2,
+                    requires_async: false,
+                    has_rest_parameter: false,
+                    has_return_type: true,
+                    has_yeet_type: false,
+                    parameter_names: vec![
+                        ShortTextData("x".to_string()),
+                        ShortTextData("y".to_string()),
+                    ],
+                    rest_parameter_name: None,
+                },
+                body: CallableDataBody {
+                    length: 0,
+                    injected_value_count: 0,
+                    body: vec![]
+                },
+                // body: CallableDataBodyDebugFlat {
+                //     injected_value_count: 0,
+                //     length: 100,
+                //     body: instructions_with_span!(
+                //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Integer.into())),
+                //
+                //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Text.into())),
+                //
+                //         Instruction::Type(TypeInstruction::DefinitionWithMetadata(TypeMetadata::default())),
+                //         Instruction::Type(TypeInstruction::CoreType(CoreLibBaseTypeId::Boolean.into())),
+                //     ),
+                // }
+            })
+            .with_children(instructions!(
+                Instruction::Type(TypeInstruction::DefinitionWithMetadata(
+                    TypeMetadata::default()
+                )),
+                Instruction::Type(TypeInstruction::CoreType(
+                    CoreLibBaseTypeId::Integer.into()
+                )),
+                Instruction::Type(TypeInstruction::DefinitionWithMetadata(
+                    TypeMetadata::default()
+                )),
+                Instruction::Type(TypeInstruction::CoreType(
+                    CoreLibBaseTypeId::Text.into()
+                )),
+                Instruction::Type(TypeInstruction::DefinitionWithMetadata(
+                    TypeMetadata::default()
+                )),
+                Instruction::Type(TypeInstruction::CoreType(
+                    CoreLibBaseTypeId::Boolean.into()
+                )),
+            )))
         );
     }
 }

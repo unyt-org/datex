@@ -6,44 +6,39 @@ use crate::{
     },
     instruction::{Instruction, regular_instruction::RegularInstruction},
     prelude::*,
+    runtime::cache::shared_references_cache::SharedReferencesCache,
     values::{
         core_value_with_classification::CoreValueWithClassification,
         value::value_classification::ValueTag,
     },
 };
-use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for CoreValueWithClassification {
     fn to_bytecode_items<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
-        cache: &'a mut SharedReferencesCache
+        cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
             let classification = &self.classification;
 
+            yield RegularInstruction::classified_value(&classification).into();
             if let Some(entity_type) = &classification.entity_type {
-                yield RegularInstruction::EntityValue.into();
-                for item in visitor.visit_shared_container(entity_type.shared_container(), cache) {
+                for item in visitor.visit_shared_container(
+                    entity_type.shared_container(),
+                    cache,
+                ) {
                     yield item;
                 }
             }
 
-            for _impl_address in &classification.impls {
-                todo!(
-                    "Compiling values with Impls classification is not yet implemented"
-                )
+            // in case of tag
+            if let Some(tag) = &classification.tag
+                && tag.is_empty
+            {
+                // skip processing if empty tag, as no value expepcted
+                return;
             }
-
-            if let Some(ValueTag { tag, is_empty }) = &classification.tag {
-                yield RegularInstruction::tagged_value(tag.clone(), *is_empty)
-                    .into();
-                if *is_empty {
-                    // early return, don't append null value; TODO: assert that value is actually null?
-                    return;
-                };
-            }
-
             yield_all!(self.inner.to_bytecode_items(visitor, cache));
         })
     }

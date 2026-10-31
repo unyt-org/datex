@@ -176,6 +176,8 @@ pub enum InstructionCode {
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key
 
     REMOTE_EXECUTION, // ::
+
+    CLASSIFIED_VALUE,
 }
 impl InstructionCode {
     pub const fn as_u8(&self) -> u8 {

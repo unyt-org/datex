@@ -7,14 +7,15 @@ use datex_core::{
         assert_instruction_lists_eq, assert_instructions_equal, instructions,
     },
     instruction::{
-        Instruction, instruction_data::TaggedValue,
+        BytecodeItem, Instruction, instruction_data::TaggedValue,
         regular_instruction::RegularInstruction,
     },
-    runtime::pointer_availability_lookup::PointerAvailabilityLookup,
+    runtime::{
+        cache::shared_references_cache::SharedReferencesCache,
+        pointer_availability_lookup::PointerAvailabilityLookup,
+    },
     values::value::Value,
 };
-use datex_core::instruction::BytecodeItem;
-use datex_core::runtime::cache::shared_references_cache::SharedReferencesCache;
 use datex_macros_internal::Datex;
 #[derive(Datex, Debug)]
 #[datex(structural)]
@@ -95,7 +96,7 @@ fn example_enum_variant_1_to_instructions() {
     let variant1 = ExampleEnum::Variant1(42);
     assert_instruction_lists_eq!(
         to_instructions(&variant1),
-        (RegularInstruction::tagged_value("Variant1".to_string(), false)
+        (RegularInstruction::classified_value("Variant1".to_string(), false)
             .with_children(instructions!(RegularInstruction::uint8(42),)))
     );
 }
@@ -108,7 +109,7 @@ fn example_enum_variant_2_to_instructions() {
     };
     assert_instruction_lists_eq!(
         to_instructions(&variant2),
-        (RegularInstruction::tagged_value("Variant2".to_string(), false)
+        (RegularInstruction::classified_value("Variant2".to_string(), false)
             .with_children(instructions!(
                 RegularInstruction::map(2, true).with_children(instructions!(
                     // x
@@ -127,7 +128,7 @@ fn example_enum_variant_3_to_instructions() {
     let variant3 = ExampleEnum::Variant3(42, "Test".to_string());
     assert_instruction_lists_eq!(
         to_instructions(&variant3),
-        (RegularInstruction::tagged_value("Variant3".to_string(), false)
+        (RegularInstruction::classified_value("Variant3".to_string(), false)
             .with_children(instructions!(
                 RegularInstruction::list_with_children(instructions!(
                     RegularInstruction::uint8(42),
@@ -142,7 +143,7 @@ fn example_enum_variant_4_to_instructions() {
     let variant4 = ExampleEnum::Variant4;
     assert_instruction_lists_eq!(
         to_instructions(&variant4),
-        vec![RegularInstruction::tagged_value(
+        vec![RegularInstruction::classified_value(
             "Variant4".to_string(),
             true
         )]

@@ -144,7 +144,7 @@ impl Serialize for ValueTag {
         } else {
             Some(1)
         })?;
-        seq.serialize_element(&self.tag)?;
+        seq.serialize_element(&self.name)?;
         if self.is_empty {
             seq.serialize_element(&true)?;
         }
@@ -183,7 +183,7 @@ impl<'de, 'a, 'ctx> Visitor<'de> for ValueTagVisitor {
         let is_empty: Option<bool> = seq.next_element()?;
 
         Ok(ValueTag {
-            tag,
+            name: tag,
             is_empty: is_empty.unwrap_or(false),
         })
     }

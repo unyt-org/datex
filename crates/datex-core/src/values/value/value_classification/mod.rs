@@ -7,7 +7,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct ValueTag {
-    pub tag: String,
+    pub name: String,
     /// if set to true, the inner value is expected to be null but treated as non-existing (#Example instead of #Example(null))
     pub is_empty: bool,
 }
@@ -15,7 +15,7 @@ pub struct ValueTag {
 impl From<String> for ValueTag {
     fn from(tag: String) -> Self {
         ValueTag {
-            tag,
+            name: tag,
             is_empty: false,
         }
     }
@@ -24,7 +24,7 @@ impl From<String> for ValueTag {
 impl From<&str> for ValueTag {
     fn from(tag: &str) -> Self {
         ValueTag {
-            tag: tag.to_string(),
+            name: tag.to_string(),
             is_empty: false,
         }
     }
@@ -95,7 +95,7 @@ impl ValueClassification {
     /// Returns the tag string if it exists, otherwise returns None.
     pub fn tag_str(&self) -> Option<&str> {
         match &self.tag {
-            Some(value_tag) => Some(&value_tag.tag),
+            Some(value_tag) => Some(&value_tag.name),
             None => None,
         }
     }

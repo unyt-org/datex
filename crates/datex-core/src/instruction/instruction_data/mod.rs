@@ -176,15 +176,6 @@ impl ReadEndian for ShortTextData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct TaggedValue {
-    pub(crate) tag: ShortTextData,
-    #[br(map = |x: u8| x != 0)]
-    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
-    pub(crate) is_empty: bool,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
 pub struct CallableSignatureData {
     pub name: ShortTextData, // empty string if anonymous
     pub kind: CallableKind,
@@ -258,6 +249,26 @@ pub struct CallableDeclarationData {
 #[brw(little)]
 pub struct EntityTypeDefinitionData {
     pub name: ShortTextData,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ClassifiedValueData {
+    // tag
+    pub(crate) tag: Option<ShortTextData>,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub(crate) tag_is_empty: bool,
+
+    // entity
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub(crate) is_entity: bool,
+
+    // impls
+    pub impl_count: u32,
+    #[br(count = impl_count)]
+    pub(crate) impls: Vec<PointerAddress>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

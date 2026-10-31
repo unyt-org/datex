@@ -18,13 +18,13 @@ use crate::{
         NextExpectedInstructions,
         instruction_codes::InstructionCode,
         instruction_data::{
-            ApplyData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, InstantData, InstructionBlockData, Int8Data,
-            Int16Data, Int32Data, Int64Data, Int128Data, JumpData,
-            JumpWithValueData, ListData, MapData, MoveWithValue, SharedRef,
-            SharedRefWithValue, ShortListData, ShortMapData,
-            ShortStatementsData, ShortTextData, SpliceData, StatementsData,
-            TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
+            ApplyData, ClassifiedValueData, Float32Data, Float64Data,
+            FloatAsInt16Data, FloatAsInt32Data, InstantData,
+            InstructionBlockData, Int8Data, Int16Data, Int32Data, Int64Data,
+            Int128Data, JumpData, JumpWithValueData, ListData, MapData,
+            MoveWithValue, SharedRef, SharedRefWithValue, ShortListData,
+            ShortMapData, ShortStatementsData, ShortTextData, SpliceData,
+            StatementsData, TextData, UInt8Data, UInt16Data, UInt32Data,
             UInt64Data, UInt128Data, UnboundedStatementsData,
         },
     },
@@ -34,11 +34,14 @@ use crate::{
         PointerAddress, ReferenceMutability, RemotePointerAddress,
         SelfOwnedPointerAddress,
     },
-    values::core_values::{
-        decimal::{Decimal, typed_decimal::TypedDecimal},
-        endpoint::Endpoint,
-        instant::Instant,
-        integer::Integer,
+    values::{
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            instant::Instant,
+            integer::Integer,
+        },
+        value::value_classification::ValueClassification,
     },
 };
 use binrw::{
@@ -46,8 +49,8 @@ use binrw::{
     io::{Read, Seek},
 };
 use core::fmt::{Display, Write as FmtWrite};
-use log::info;
 use datex_macros_internal::Instruction;
+use log::info;
 
 impl RegularInstruction {
     pub fn int8(value: i8) -> Self {
@@ -111,11 +114,9 @@ impl RegularInstruction {
         RegularInstruction::Instant(InstantData(value))
     }
 
-    pub fn entity_type_definition(
-        name: String,
-    ) -> Self {
+    pub fn entity_type_definition(name: String) -> Self {
         RegularInstruction::EntityTypeDefinition(EntityTypeDefinitionData {
-            name: ShortTextData(name)
+            name: ShortTextData(name),
         })
     }
 
@@ -137,10 +138,21 @@ impl RegularInstruction {
         RegularInstruction::ShortText(ShortTextData(value))
     }
 
-    pub fn tagged_value(tag: String, is_empty: bool) -> Self {
-        RegularInstruction::TaggedValue(TaggedValue {
-            tag: ShortTextData(tag),
-            is_empty,
+    // Creates a tagged value without
+    pub fn classified_value(classification: &ValueClassification) -> Self {
+        RegularInstruction::ClassifiedValue(ClassifiedValueData {
+            tag: classification
+                .tag
+                .as_ref()
+                .map(|tag| ShortTextData(tag.name.clone())),
+            tag_is_empty: classification
+                .tag
+                .as_ref()
+                .map(|tag| tag.is_empty)
+                .unwrap_or(true),
+            is_entity: classification.entity_type.is_some(),
+            impl_count: classification.impls.len() as u32,
+            impls: classification.impls,
         })
     }
 
@@ -630,9 +642,6 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::KEY_VALUE_SHORT_TEXT)]
     KeyValueShortText(ShortTextData),
 
-    #[magic(InstructionCode::TAGGED_VALUE)]
-    TaggedValue(TaggedValue),
-
     // binary operator
     #[magic(InstructionCode::ADD)]
     Add,
@@ -752,10 +761,11 @@ pub enum RegularInstruction {
     #[magic(InstructionCode::CALLABLE)]
     Callable(CallableData),
 
-    #[magic(InstructionCode::ENTITY_VALUE)]
-    EntityValue,
     #[magic(InstructionCode::TYPE_EXPRESSION)]
     TypeExpression,
+
+    #[magic(InstructionCode::CLASSIFIED_VALUE)]
+    ClassifiedValue(ClassifiedValueData),
 
     // modification instructions: will later be mapped to trait impls
     // UpdateOperation::Replace
@@ -1023,9 +1033,6 @@ impl RegularInstruction {
             | RegularInstruction::SetStackValue(_) => {
                 NextExpectedInstructions::Regular(1)
             }
-            RegularInstruction::EntityValue => {
-                NextExpectedInstructions::Regular(2)
-            }
 
             RegularInstruction::TypeExpression => {
                 NextExpectedInstructions::Type(1)
@@ -1035,13 +1042,19 @@ impl RegularInstruction {
                 NextExpectedInstructions::Regular(1)
             }
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
-            RegularInstruction::TaggedValue(TaggedValue {
-                is_empty, ..
-            }) => {
-                if *is_empty {
-                    NextExpectedInstructions::None
+            RegularInstruction::ClassifiedValue(classified_value) => {
+                if classified_value.tag_is_empty {
+                    if classified_value.is_entity {
+                        NextExpectedInstructions::Regular(1)
+                    } else {
+                        NextExpectedInstructions::None
+                    }
                 } else {
-                    NextExpectedInstructions::Regular(1)
+                    if classified_value.is_entity {
+                        NextExpectedInstructions::Regular(2)
+                    } else {
+                        NextExpectedInstructions::Regular(1)
+                    }
                 }
             }
 
@@ -1401,11 +1414,16 @@ impl RegularInstruction {
     }
 }
 
-use crate::instruction::instruction_data::{CallMethodData, CallableData, CallableDeclarationData, EntityTypeDefinitionData};
+use crate::{
+    instruction::instruction_data::{
+        CallMethodData, CallableData, CallableDeclarationData,
+        EntityTypeDefinitionData,
+    },
+    types::entities::entity_impls::EntityImpl,
+};
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
 #[cfg(feature = "disassembler")]
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-use crate::types::entities::entity_impls::EntityImpl;
 
 #[cfg(feature = "disassembler")]
 impl Serialize for RegularInstruction {
