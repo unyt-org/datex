@@ -149,7 +149,7 @@ fn enum_unit_roundtrip() {
     let serialized = serialize_to_json_value_default_ctx(&variant);
     let json_value = serde_json::json!({
         "_": "t",
-        "t": ["Unit"],
+        "t": ["Unit", true],
         "v": null
     });
     println!("json_value: {json_value:#}");

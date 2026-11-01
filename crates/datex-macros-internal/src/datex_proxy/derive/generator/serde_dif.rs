@@ -312,6 +312,8 @@ fn generate_dif_serialize_for_fields(
         Fields::Transparent(_) => unreachable!(),
     };
 
+    let empty_tag_value = matches!(fields, Fields::Unit);
+
     match tag {
         Some(tag) => quote! {{
             use serde::ser::SerializeMap;
@@ -333,7 +335,10 @@ fn generate_dif_serialize_for_fields(
                 {
                     let mut map = serializer.serialize_map(Some(3))?;
                     map.serialize_entry("_", "t")?;
-                    map.serialize_entry("t", &ValueTag::from(self.tag))?;
+                    map.serialize_entry("t", &ValueTag {
+                        name: self.tag.to_string(),
+                        is_empty: #empty_tag_value,
+                    })?;
                     map.serialize_entry("v", self.value)?;
                     map.end()
                 }
