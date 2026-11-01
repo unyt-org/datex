@@ -57,6 +57,7 @@ use crate::{
 use alloc::format;
 use core::cell::RefCell;
 use crate::instruction::instruction_data::ClassifiedValueData;
+use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -1109,8 +1110,9 @@ pub fn ast_from_bytecode(
                             }
                         },
 
-                        Instruction::Type(_data) => {
-                            todo!("#656 Undescribed by author.")
+                        Instruction::Type(type_instruction) => {
+                            DatexExpressionData::TypeExpression(TypeExpression::new(TypeExpressionData::GetCoreLibType(CoreLibBaseTypeId::Never.into()), Default::default()))
+                                .with_default_span().into()
                         }
                     };
                     collector.push_result(expr);
