@@ -16,11 +16,11 @@ use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 // }
 
 impl ToInstructions for Duration {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         _ctx: &'a mut dyn ValueVisitor,
         _cache: &'a mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move { todo!() })
     }
 }

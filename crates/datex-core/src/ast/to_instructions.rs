@@ -97,54 +97,54 @@ impl AstNodeToInstructions for DatexExpressionData {
         Box::new(gen move {
             match self {
                 DatexExpressionData::Integer(integer) => {
-                    yield Ok(RegularInstruction::Integer(integer.clone()).into())
+                    yield Ok(BytecodeItem::from(RegularInstruction::Integer(integer.clone())))
                 }
                 DatexExpressionData::TypedInteger(typed_integer) => {
                     yield_all_ok!(
                         typed_integer
-                            .to_bytecode_items(compilation_context, cache)
+                            .to_instructions(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Instant(instant) => {
                     yield_all_ok!(
-                        instant.to_bytecode_items(compilation_context, cache)
+                        instant.to_instructions(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Decimal(decimal) => {
                     yield_all_ok!(
-                        decimal.to_bytecode_items(compilation_context, cache)
+                        decimal.to_instructions(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::TypedDecimal(typed_decimal) => {
                     yield_all_ok!(
                         typed_decimal
-                            .to_bytecode_items(compilation_context, cache)
+                            .to_instructions(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Text(text) => {
                     yield_all_ok!(
-                        text.to_bytecode_items(compilation_context, cache)
+                        text.to_instructions(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Boolean(boolean) => {
                     yield_all_ok!(
-                        boolean.to_bytecode_items(compilation_context, cache)
+                        boolean.to_instructions(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Endpoint(endpoint) => {
                     yield_all_ok!(
-                        endpoint.to_bytecode_items(compilation_context, cache)
+                        endpoint.to_instructions(compilation_context, cache)
                     );
                 }
 
                 DatexExpressionData::Null => {
-                    yield Ok(RegularInstruction::null().into());
+                    yield Ok(BytecodeItem::from(RegularInstruction::null()));
                 }
 
                 DatexExpressionData::List(list) => {
@@ -472,7 +472,7 @@ impl AstNodeToInstructions for ValueAccessType {
                         }
                         ValueAccessType::MoveOrCopy => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_items(
+                                value.to_instructions(
                                     compilation_context,
                                     cache
                                 )
@@ -480,7 +480,7 @@ impl AstNodeToInstructions for ValueAccessType {
                         }
                         ValueAccessType::Clone => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_items(
+                                value.to_instructions(
                                     compilation_context,
                                     cache
                                 )
@@ -488,7 +488,7 @@ impl AstNodeToInstructions for ValueAccessType {
                         }
                         ValueAccessType::Borrow => {
                             yield_all_ok_collected!(
-                                value.to_bytecode_items(
+                                value.to_instructions(
                                     compilation_context,
                                     cache
                                 )
@@ -503,16 +503,16 @@ impl AstNodeToInstructions for ValueAccessType {
                                     .try_derive_mutable_reference()
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)
                                 );
-                                yield_all_ok_collected!(shared_container_mut_ref.to_bytecode_items(compilation_context, cache));
+                                yield_all_ok_collected!(shared_container_mut_ref.to_instructions(compilation_context, cache));
                             }
                             ValueAccessType::SharedRef => {
                                 let shared_container_immut_ref = shared_container.derive_immutable_reference();
-                                yield_all_ok_collected!(shared_container_immut_ref.to_bytecode_items(compilation_context, cache));
+                                yield_all_ok_collected!(shared_container_immut_ref.to_instructions(compilation_context, cache));
                             },
                             ValueAccessType::MoveOrCopy => {
                                 match shared_container {
                                     SharedContainer::Owned(shared_container) => {
-                                        yield_all_ok_collected!(shared_container.to_bytecode_items(compilation_context, cache));
+                                        yield_all_ok_collected!(shared_container.to_instructions(compilation_context, cache));
                                     }
                                     _ => return yield Err(CompilerError::InvalidConversionFromRefToOwnedValue),
                                 }
@@ -521,16 +521,16 @@ impl AstNodeToInstructions for ValueAccessType {
                                 let cloned = shared_container.inner().base_shared_container().value_container().clone();
                                 match cloned {
                                     ValueContainer::Local(value) => {
-                                        yield_all_ok_collected!(value.to_bytecode_items(compilation_context, cache));
+                                        yield_all_ok_collected!(value.to_instructions(compilation_context, cache));
                                     }
                                     ValueContainer::Shared(shared_container) => {
-                                        yield_all_ok_collected!(shared_container.to_bytecode_items(compilation_context, cache));
+                                        yield_all_ok_collected!(shared_container.to_instructions(compilation_context, cache));
                                     }
                                 }
                             },
                             ValueAccessType::Borrow => {
                                 let reference = shared_container.derive_reference_with_max_mutability();
-                                yield_all_ok_collected!(reference.to_bytecode_items(compilation_context, cache));
+                                yield_all_ok_collected!(reference.to_instructions(compilation_context, cache));
                             }
                         };
                     }

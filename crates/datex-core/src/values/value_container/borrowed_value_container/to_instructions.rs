@@ -9,17 +9,17 @@ use crate::{
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for BorrowedValueContainer<'_> {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         match self {
             BorrowedValueContainer::Local(value) => {
-                value.to_bytecode_items(visitor, cache)
+                value.to_instructions(visitor, cache)
             }
             BorrowedValueContainer::Shared(shared_container) => {
-                shared_container.to_bytecode_items(visitor, cache)
+                shared_container.to_instructions(visitor, cache)
             }
         }
     }

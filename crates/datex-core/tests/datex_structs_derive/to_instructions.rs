@@ -29,18 +29,14 @@ struct ExampleStruct {
 }
 
 /// Converts a structure that implements `ToInstructions` into a vector of `Instruction`s.
-/// Skips the preamble, just directly calls `to_bytecode_items`.
+/// Skips the preamble, just directly calls `to_instructions`.
 fn to_instructions<T: ToInstructions>(structure: &T) -> Vec<Instruction> {
     let cache = &mut SharedReferencesCache::default();
     let pointer_lookup = PointerAvailabilityLookup::default();
     let mut context =
         CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]));
     structure
-        .to_bytecode_items(context.shared_value_tracking.get_mut(), cache)
-        .map(|item| match item {
-            BytecodeItem::Instruction(instruction) => instruction,
-            _ => panic!("Expected instruction, got {:?}", item),
-        })
+        .to_instructions(context.shared_value_tracking.get_mut(), cache)
         .collect::<Vec<_>>()
 }
 
@@ -187,7 +183,7 @@ fn entity_struct_to_instructions() {
     assert_instruction_lists_eq!(
         to_instructions_with_preamble(&structure),
         (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_entity())
-            .with_children(instructions!(            
+            .with_children(instructions!(
                 RegularInstruction::map(2, true).with_children(instructions!(
                     // a
                     RegularInstruction::key_value_short_text("a".to_string()),

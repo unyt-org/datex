@@ -9,11 +9,11 @@ use crate::instruction::regular_instruction::RegularInstruction;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for EntityTypeDefinition {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield RegularInstruction::entity_type_definition(
                 self.name.to_string(),
@@ -21,7 +21,7 @@ impl ToInstructions for EntityTypeDefinition {
 
             // TODO: compile local impls etc...
 
-            for item in self.definition.to_bytecode_items(visitor, cache) {
+            for item in self.definition.to_instructions(visitor, cache) {
                 yield item;
             }
         })

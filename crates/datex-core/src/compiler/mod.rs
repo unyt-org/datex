@@ -1346,6 +1346,7 @@ pub mod tests {
         assert_instructions_equal!(
             &result,
             (RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                has_tag: true,
                 tag: Some(ShortTextData("Example".to_string())),
                 tag_value_is_empty: true,
                 impl_count: 0,
@@ -1363,6 +1364,7 @@ pub mod tests {
             &result,
             (
                 RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    has_tag: true,
                     tag: Some(ShortTextData("Example".to_string())),
                     tag_value_is_empty: false,
                     impl_count: 0,
@@ -1386,6 +1388,7 @@ pub mod tests {
             &result,
             (
                 RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    has_tag: true,
                     tag: Some(ShortTextData("Example".to_string())),
                     tag_value_is_empty: false,
                     impl_count: 0,
@@ -1407,6 +1410,7 @@ pub mod tests {
             &result,
             (
                 RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    has_tag: true,
                     tag: Some(ShortTextData("Example".to_string())),
                     tag_value_is_empty: false,
                     impl_count: 0,

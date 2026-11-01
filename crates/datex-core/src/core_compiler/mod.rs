@@ -43,10 +43,10 @@ pub fn core_compile(
             for input in instructions_input {
                 match input {
                     InstructionInput::Instruction(instruction) => {
-                        yield BytecodeItem::Instruction(instruction)
+                        yield instruction;
                     }
                     InstructionInput::ValueContainer(value_container) => {
-                        yield_all_collected!(value_container.to_bytecode_items(
+                        yield_all_collected!(value_container.to_instructions(
                             ctx.shared_value_tracking.get_mut(),
                             cache
                         ))

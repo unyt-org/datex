@@ -17,11 +17,11 @@ impl<V> ToInstructions for V
 where
     V: ToRegularInstruction,
 {
-    fn to_bytecode_items(
+    fn to_instructions(
         &self,
         _visitor: &mut dyn ValueVisitor,
         cache: &mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem>> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction>> {
         Box::new(core::iter::once(self.to_regular_instruction().into()))
     }
 }

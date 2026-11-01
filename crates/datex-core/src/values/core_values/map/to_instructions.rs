@@ -10,11 +10,11 @@ use crate::{
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for Map {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield RegularInstruction::map(self.size() as u32, self.allow_only_text_keys).into();
 
@@ -37,11 +37,11 @@ impl ToInstructions for Map {
                     // other -> insert key as dynamic
                     None => {
                         yield RegularInstruction::key_value_dynamic().into();
-                        yield_all_collected!(key.to_bytecode_items(visitor, cache));
+                        yield_all_collected!(key.to_instructions(visitor, cache));
                     }
                 }
 
-                yield_all!(value.to_bytecode_items(visitor, cache));
+                yield_all!(value.to_instructions(visitor, cache));
             }
         })
     }

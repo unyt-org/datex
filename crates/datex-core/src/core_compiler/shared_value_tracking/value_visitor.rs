@@ -18,7 +18,7 @@ impl<'ctx> ValueVisitor for SharedValueTracking<'ctx> {
         &'a mut self,
         shared_container: &'a SharedContainer,
         cache: &'a mut SharedReferencesCache,
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         let ownership = shared_container.ownership();
         let index = self.register_shared_value(shared_container);
 
