@@ -15,11 +15,22 @@ use datex_core::{
         pointer_availability_lookup::PointerAvailabilityLookup,
     },
     values::value::Value,
+    traits::get_datex_type::GetDatexType
 };
 use datex_core::core_compiler::value_compiler::compile_value;
-use datex_core::disassembler::disassemble_body;
-use datex_core::instruction::instruction_data::ClassifiedValueData;
+use datex_core::disassembler::{disassemble_body, disassemble_instruction_tree_to_string};
+use datex_core::disassembler::options::DisassemblerOptions;
+use datex_core::global::stack_index::StackIndex;
+use datex_core::instruction::instruction_data::{ClassifiedValueData, MapData, MoveWithValue};
 use datex_core::instruction::NestedInstructionResolutionStrategy;
+use datex_core::instruction::type_instruction::TypeInstruction;
+use datex_core::libs::core::type_id::CoreLibVariantTypeId;
+use datex_core::shared_values::{PointerAddress, SelfOwnedPointerAddress, SharedContainerMutability};
+use datex_core::types::literal_type_definition::LiteralTypeDefinition;
+use datex_core::types::r#type::Type;
+use datex_core::types::type_definition_with_metadata::TypeMetadata;
+use datex_core::values::core_values::integer::typed_integer::IntegerTypeVariant;
+use datex_core::values::core_values::text::Text;
 use datex_macros_internal::Datex;
 #[derive(Datex, Debug)]
 #[datex(structural)]
@@ -48,6 +59,7 @@ fn to_instructions_with_preamble<T: ToInstructions>(structure: &T) -> Vec<Instru
     let dxb = CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]))
         .compile_to_dxb_with_shared_values(structure, cache)
         .dxb;
+
     disassemble_body(&dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesTree)
         .0
         .flatten()
@@ -171,27 +183,59 @@ fn example_enum_variant_4_to_instructions() {
 #[derive(Datex, Debug)]
 struct EntityStruct {
     a: u8,
-    b: String,
 }
 
 #[test]
 fn entity_struct_to_instructions() {
     let structure = EntityStruct {
         a: 42u8,
-        b: "Test".to_string(),
     };
+
+    let struct_type_address = match EntityStruct::datex_type(&mut SharedReferencesCache::default()){
+        Type::Entity(ty) => match ty.shared_container().pointer_address() {
+            PointerAddress::SelfOwned(address) => address,
+            _ => unreachable!()
+        }
+        _ => unreachable!()
+    };
+
     assert_instruction_lists_eq!(
         to_instructions_with_preamble(&structure),
-        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_entity())
-            .with_children(instructions!(
-                RegularInstruction::map(2, true).with_children(instructions!(
-                    // a
-                    RegularInstruction::key_value_short_text("a".to_string()),
-                    RegularInstruction::uint8(42),
-                    // b
-                    RegularInstruction::key_value_short_text("b".to_string()),
-                    RegularInstruction::text("Test".to_string()),
-                ))
-            )))
+        (
+            RegularInstruction::statements_with_children(false, instructions!(
+                RegularInstruction::push_list_to_stack()
+                    .with_children(instructions!(
+                        RegularInstruction::statements_with_children(false, instructions!(
+                            RegularInstruction::push_to_stack().with_children(instructions!(
+                                RegularInstruction::move_with_value(MoveWithValue {
+                                    mutability: SharedContainerMutability::Immutable,
+                                    previous_address: struct_type_address,
+                                }),
+                                RegularInstruction::entity_type_definition("EntityStruct".to_string()),
+                                TypeInstruction::Map(MapData {
+                                    element_count: 1,
+                                    allow_only_text_keys: false,
+                                }),
+                                TypeInstruction::DefinitionWithMetadata(TypeMetadata::default()),
+                                TypeInstruction::Literal(LiteralTypeDefinition::Text(Text::new("a"))),
+                                TypeInstruction::DefinitionWithMetadata(TypeMetadata::default()),
+                                TypeInstruction::CoreType(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8).into()),
+                            )),
+                            RegularInstruction::list_with_children(instructions!(
+                                RegularInstruction::take_stack_value(StackIndex(0))
+                            )),
+                        ))
+                    )),
+                RegularInstruction::ClassifiedValue(ClassifiedValueData::new_entity())
+                    .with_children(instructions!(
+                        RegularInstruction::take_stack_value(StackIndex(0)),
+                        RegularInstruction::map(1, true).with_children(instructions!(
+                            // a
+                            RegularInstruction::key_value_short_text("a".to_string()),
+                            RegularInstruction::uint8(42),
+                        ))
+                    ))
+            ))
+        )
     );
 }

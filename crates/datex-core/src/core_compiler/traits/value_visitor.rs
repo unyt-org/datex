@@ -24,11 +24,7 @@ pub fn compile_instructions_to_dxb(
     cache: &mut SharedReferencesCache,
     input: &impl ToInstructions,
 ) -> Vec<u8> {
-    let mut buffer = ByteCursor::new(Vec::new());
-    for instruction in input.to_instructions(visitor, cache) {
-        instruction.write(&mut buffer).unwrap();
-    }
-    buffer.into_inner()
+    compile_instruction_iterator_to_dxb(input.to_instructions(visitor, cache))
 }
 
 /// Compiles an iterator of [Instruction]s and returns the final byte buffer.

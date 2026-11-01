@@ -1210,10 +1210,10 @@ impl RegularInstruction {
                 write!(string, "{}", data.element_count)
             }
             RegularInstruction::Map(data) => {
-                write!(string, "{}", data.element_count)
+                write!(string, "[count: {}, allow_only_text_keys: {}]", data.element_count, data.allow_only_text_keys)
             }
             RegularInstruction::ShortMap(data) => {
-                write!(string, "{}", data.element_count)
+                write!(string, "[count: {}, allow_only_text_keys: {}]", data.element_count, data.allow_only_text_keys)
             }
             RegularInstruction::KeyValueShortText(data) => {
                 write!(string, "{}", data.0)

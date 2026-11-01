@@ -12,6 +12,7 @@ use crate::{
     prelude::*,
 };
 use core::slice::Iter;
+use crate::core_compiler::value_visitor::compile_instruction_iterator_to_dxb;
 
 pub macro assert_instructions_equal {
     ($dxb:expr, ($($expr:expr),* $(,)?)) => {{
@@ -47,15 +48,21 @@ pub macro assert_instruction_lists_eq {
         use $crate::disassembler::assertions::assert_instruction_lists_eq;
 
         let output_instructions = $output;
+        let output_dxb = compile_instruction_iterator_to_dxb(
+            output_instructions.iter().cloned(),
+        );
         let expected_instructions = InstructionTree::<Instruction>::from(vec![$($expected),*]).flatten_instructions();
-        assert_instruction_lists_eq(output_instructions, expected_instructions, &[]);
+        assert_instruction_lists_eq(output_instructions, expected_instructions, &output_dxb);
     }},
     ($output:expr, $vec:expr $(,)?) => {{
         use $crate::disassembler::assertions::assert_instruction_lists_eq;
 
         let output_instructions = $output;
+        let output_dxb = compile_instruction_iterator_to_dxb(
+            output_instructions.iter().cloned(),
+        );
         let expected_instructions = InstructionTree::<Instruction>::from($vec.into_iter().map(|i| i.into()).collect::<Vec<_>>()).flatten_instructions();
-        assert_instruction_lists_eq(output_instructions, expected_instructions, &[]);
+        assert_instruction_lists_eq(output_instructions, expected_instructions, &output_dxb);
     }}
 }
 
@@ -63,7 +70,7 @@ pub fn assert_instruction_lists_eq(
     output_instructions: Vec<Instruction>,
     expected_instructions: Vec<Instruction>,
     output_dxb: &[u8],
-) {
+) {    
     if output_instructions != expected_instructions {
         let (expected_tree, expected_err) = get_instruction_tree_from_list(
             expected_instructions
