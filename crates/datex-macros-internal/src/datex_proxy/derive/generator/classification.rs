@@ -99,7 +99,7 @@ fn generate_enum_tags(
         quote! {
             Some(
                 ValueTag {
-                    tag: #variant_name.to_string(),
+                    name: #variant_name.to_string(),
                     is_empty: #is_empty,
                 }
             )

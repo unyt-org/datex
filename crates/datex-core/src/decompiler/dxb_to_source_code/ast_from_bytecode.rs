@@ -43,7 +43,7 @@ use crate::{
     instruction::{
         NestedInstructionResolutionStrategy,
         instruction_data::{
-            CallableSignatureData, ShortTextData, TaggedValue,
+            CallableSignatureData, ShortTextData,
             UnboundedStatementsData,
         },
         regular_instruction::RegularInstruction,
@@ -56,6 +56,7 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
+use crate::instruction::instruction_data::ClassifiedValueData;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -341,9 +342,18 @@ pub fn ast_from_bytecode(
                             })
                         }
 
-                        RegularInstruction::TaggedValue(TaggedValue { is_empty: true, tag: ShortTextData(tag) }) => {
+                        RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                            has_tag: true,
+                            tag_value_is_empty: true,
+                            tag,
+                            is_entity: false,
+                            impl_count,
+                            impls,
+                        }) => {
                             DatexExpressionData::Tag(TagExpression {
-                                tag,
+                                tag: tag
+                                    .expect("has_tag is true, so tag must be Some")
+                                    .0,
                                 expression: None,
                             })
                         }
@@ -369,7 +379,6 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::UnaryPlus
                         | RegularInstruction::BitwiseNot
                         | RegularInstruction::BoxedValue
-                        | RegularInstruction::TaggedValue(TaggedValue { is_empty: false, .. })
                         | RegularInstruction::Apply(_)
                         | RegularInstruction::CallMethod(_)
                         | RegularInstruction::GetEntryText(_)
@@ -404,12 +413,12 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::SetSharedContainerValue
                         | RegularInstruction::Unbox
                         | RegularInstruction::SharedRefWithValue(_)
-                        | RegularInstruction::EntityValue
                         | RegularInstruction::Increment
                         | RegularInstruction::Decrement
                         | RegularInstruction::MoveWithValue(_)
                         | RegularInstruction::RemoteExecution(_)
                         | RegularInstruction::Callable(_)
+                        | RegularInstruction::ClassifiedValue(_)
                         | RegularInstruction::EntityTypeDefinition(_)
                         | RegularInstruction::CallableDeclaration(_)
                         | RegularInstruction::TypeExpression => {
@@ -745,15 +754,37 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::EntityValue => {
-                                let expr = collected_results.pop_value();
-                                let shared_container = collected_results.pop_value();
-                                DatexExpressionData::EntityValue(EntityValueExpression {
-                                    entity_name: "TODO".to_string(), // TODO: resolve name
-                                    entity_address: None,
-                                    value: expr,
-                                }).with_default_span().into()
+                            RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                                tag,
+                                impls,
+                                is_entity,
+                                ..
+                            }) => {
+                                // TODO: handle impls
+                                let value_expression = collected_results.pop_value();
+                                let inner_expression = if let Some(tag) = tag {
+                                    DatexExpressionData::Tag(TagExpression {
+                                        tag: tag.0,
+                                        expression: Some(value_expression),
+                                    })
+                                        .with_default_span()
+                                } else {
+                                    value_expression
+                                };
+
+                                if is_entity {
+                                    let shared_container = collected_results.pop_value();
+
+                                    DatexExpressionData::EntityValue(EntityValueExpression {
+                                        entity_name: "TODO".to_string(), // TODO: resolve name
+                                        entity_address: None,
+                                        value: inner_expression,
+                                    }).with_default_span().into()
+                                } else {
+                                    inner_expression.into()
+                                }
                             }
+
                             RegularInstruction::UnboundedStatementsEnd(
                                 UnboundedStatementsData { terminated },
                             ) => {
@@ -825,21 +856,6 @@ pub fn ast_from_bytecode(
                                         expression: (expr),
                                     },
                                 )
-                                    .with_default_span()
-                                    .into()
-                            }
-
-                            RegularInstruction::TaggedValue(TaggedValue {
-                                                                tag: ShortTextData(tag),
-                                                                is_empty
-                                                            }) => {
-                                assert!(!is_empty);
-                                let expression = Some(collected_results.pop_value());
-
-                                DatexExpressionData::Tag(TagExpression {
-                                    tag,
-                                    expression,
-                                })
                                     .with_default_span()
                                     .into()
                             }

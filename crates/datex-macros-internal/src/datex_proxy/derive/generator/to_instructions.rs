@@ -10,6 +10,7 @@ use crate::datex_proxy::{
         SelfAccess, generate_struct_or_enum_variants_fields_mapping,
     },
 };
+use crate::datex_proxy::data::Structure;
 
 /// Generates the implementation of the [ToInstructions] trait for the given structure data.
 /// Returns a [TokenStream] containing the generated implementation.
@@ -26,10 +27,16 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
         generate_to_instructions_for_fields,
     );
 
+    let value_tag = generate_struct_or_enum_variants_fields_mapping(
+        &structure_data.structure,
+        SelfAccess::Borrowed,
+        generate_value_tag_for_fields,
+    );
+
+
     // add entity if entity type
     let body = if structure_data.attributes.type_kind.is_entity() {
         quote! {
-            yield RegularInstruction::EntityValue.into();
             // try to resolve the entity type via visitor cache as shared container
             let ty = Self::datex_type(cache);
             let entity_type = match ty {
@@ -37,13 +44,30 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
                 _ => unreachable!(),
             };
 
+            yield RegularInstruction::classified_value(
+                &ValueClassification {
+                    entity_type: Some(entity_type.clone()),
+                    impls: vec![],
+                    tag: #value_tag
+                }
+            ).into();
+
             // FIXME: no collect
             for item in visitor.visit_shared_container(entity_type.shared_container(), cache).collect::<Vec<_>>() {
                 yield item;
             }
             #body
         }
-    } else {
+    }
+    else if matches!(structure_data.structure, Structure::Enum(_)) {
+        quote! {
+            yield RegularInstruction::classified_value(
+                &ValueClassification::new_with_maybe_tag(#value_tag)
+            ).into();
+            #body
+        }
+    }
+    else {
         body
     };
 
@@ -63,21 +87,34 @@ pub fn generate_to_instructions(structure_data: &StructureData) -> TokenStream {
     }
 }
 
+/// Generates the optional ValueTag if the structure is an enum, otherwise returns default values (no tag)
+fn generate_value_tag_for_fields(
+    fields: &Fields,
+    tag: Option<&String>,
+) -> TokenStream {
+    if let Some(tag) = tag {
+        let is_empty = matches!(fields, Fields::Unit);
+        quote! {
+            Some(
+                ValueTag {
+                    name: #tag.to_string(),
+                    is_empty: #is_empty,
+                }
+            )
+        }
+    } else {
+        quote! {
+            None
+        }
+    }
+}
+
 /// Generates the instructions for the given fields, handling different field types.
 fn generate_to_instructions_for_fields(
     fields: &Fields,
     tag: Option<&String>,
 ) -> TokenStream {
-    let tag = if let Some(tag) = tag {
-        let is_empty = matches!(fields, Fields::Unit);
-        quote! {
-            yield RegularInstruction::tagged_value(#tag.to_string(), #is_empty).into();
-        }
-    } else {
-        quote! {}
-    };
-
-    let fields = match fields {
+    match fields {
         Fields::Unit => {
             quote! {}
         }
@@ -88,12 +125,7 @@ fn generate_to_instructions_for_fields(
         Fields::Transparent(field) => {
             generate_transparent_field_to_instructions(field)
         }
-    };
-
-    quote! {{
-        #tag
-        #fields
-    }}
+    }
 }
 
 /// Generates the instructions for named fields within a struct.

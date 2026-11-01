@@ -141,18 +141,19 @@ impl RegularInstruction {
     // Creates a tagged value without
     pub fn classified_value(classification: &ValueClassification) -> Self {
         RegularInstruction::ClassifiedValue(ClassifiedValueData {
+            has_tag: classification.tag.is_some(),
             tag: classification
                 .tag
                 .as_ref()
                 .map(|tag| ShortTextData(tag.name.clone())),
-            tag_is_empty: classification
+            tag_value_is_empty: classification
                 .tag
                 .as_ref()
                 .map(|tag| tag.is_empty)
-                .unwrap_or(true),
+                .unwrap_or(false),
             is_entity: classification.entity_type.is_some(),
             impl_count: classification.impls.len() as u32,
-            impls: classification.impls,
+            impls: classification.impls.clone(),
         })
     }
 
@@ -1043,7 +1044,7 @@ impl RegularInstruction {
             }
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
             RegularInstruction::ClassifiedValue(classified_value) => {
-                if classified_value.tag_is_empty {
+                if classified_value.tag_value_is_empty {
                     if classified_value.is_entity {
                         NextExpectedInstructions::Regular(1)
                     } else {
@@ -1344,11 +1345,14 @@ impl RegularInstruction {
                 write!(string, "{}", short_text_data.0)
             }
 
-            RegularInstruction::TaggedValue(tagged_value) => {
+            RegularInstruction::ClassifiedValue(classified_value) => {
                 write!(
                     string,
-                    "[tag: {}, is_empty: {}]",
-                    tagged_value.tag.0, tagged_value.is_empty
+                    "[tag: {}, tag_is_empty: {}, impls: {:?}, is_entity: {}]",
+                    classified_value.tag.as_ref().map(|tag| tag.0.as_str()).unwrap_or_else(|| "<none>"),
+                    classified_value.tag_value_is_empty,
+                    classified_value.impls,
+                    classified_value.is_entity
                 )
             }
             #[cfg(feature = "disassembler")]

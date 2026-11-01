@@ -609,9 +609,7 @@ pub mod tests {
         values::value_container::ValueContainer,
     };
 
-    use crate::instruction::instruction_data::{
-        CallableDeclarationDataDebugTree, InstructionBlockDataDebugFlat,
-    };
+    use crate::instruction::instruction_data::{CallableDeclarationDataDebugTree, ClassifiedValueData, InstructionBlockDataDebugFlat};
 
     use crate::{
         compiler::{
@@ -636,7 +634,7 @@ pub mod tests {
             instruction_data::{
                 InstructionBlockData, InstructionBlockDataDebugTree, ListData,
                 MapData, ShortListData, ShortMapData, ShortTextData,
-                StatementsData, TaggedValue, UInt8Data,
+                StatementsData, UInt8Data,
             },
         },
         libs::core::{
@@ -1347,9 +1345,12 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_instructions_equal!(
             &result,
-            (RegularInstruction::TaggedValue(TaggedValue {
-                tag: ShortTextData("Example".to_string()),
-                is_empty: true,
+            (RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                tag: Some(ShortTextData("Example".to_string())),
+                tag_value_is_empty: true,
+                impl_count: 0,
+                impls: vec![],
+                is_entity: false,
             }))
         )
     }
@@ -1361,9 +1362,12 @@ pub mod tests {
         assert_instructions_equal!(
             &result,
             (
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData("Example".to_string()),
-                    is_empty: false,
+                RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    tag: Some(ShortTextData("Example".to_string())),
+                    tag_value_is_empty: false,
+                    impl_count: 0,
+                    impls: vec![],
+                    is_entity: false,
                 }),
                 RegularInstruction::ShortMap(ShortMapData { element_count: 1, allow_only_text_keys: true }),
                 RegularInstruction::KeyValueShortText(ShortTextData(
@@ -1381,9 +1385,12 @@ pub mod tests {
         assert_instructions_equal!(
             &result,
             (
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData("Example".to_string()),
-                    is_empty: false,
+                RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    tag: Some(ShortTextData("Example".to_string())),
+                    tag_value_is_empty: false,
+                    impl_count: 0,
+                    impls: vec![],
+                    is_entity: false,
                 }),
                 RegularInstruction::ShortText(ShortTextData(
                     "test".to_string()
@@ -1399,9 +1406,12 @@ pub mod tests {
         assert_instructions_equal!(
             &result,
             (
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData("Example".to_string()),
-                    is_empty: false,
+                RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    tag: Some(ShortTextData("Example".to_string())),
+                    tag_value_is_empty: false,
+                    impl_count: 0,
+                    impls: vec![],
+                    is_entity: false,
                 }),
                 RegularInstruction::Null,
             )
