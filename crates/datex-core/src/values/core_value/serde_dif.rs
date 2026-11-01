@@ -97,40 +97,15 @@ impl SerializeWithSerdeContext for CoreValue {
             }
 
             // Complex core values, that can contain nested values
-            CoreValue::List(l) => ctx.serialize_value_with_context(
-                l,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Range(range) => ctx.serialize_value_with_context(
-                range,
-                core_lib_type,
-                serializer,
-                false,
-            ),
+            CoreValue::List(l) => l.serialize_with_ctx(ctx, serializer),
+            CoreValue::Range(range) => range.serialize_with_ctx(ctx, serializer),
 
-            CoreValue::Map(map) => ctx.serialize_value_with_context(
-                map,
-                core_lib_type,
-                serializer,
-                false,
-            ),
-            CoreValue::Type(ty) => ctx.serialize_value_with_context(
-                ty,
-                core_lib_type,
-                serializer,
-                false,
-            ),
+            CoreValue::Map(map) => map.serialize_with_ctx(ctx, serializer),
+            CoreValue::Type(ty) => ty.serialize_with_ctx(ctx, serializer),
             CoreValue::EntityTypeDefinition(_entity_type_definition) => {
                 todo!()
             }
-            CoreValue::Callable(callable) => ctx.serialize_value_with_context(
-                callable,
-                core_lib_type,
-                serializer,
-                false,
-            ),
+            CoreValue::Callable(callable) => callable.serialize_with_ctx(ctx, serializer),
             CoreValue::Box(inner) => inner.serialize_with_ctx(ctx, serializer),
             CoreValue::Uninitialized => panic!("Uninitialized value"),
         }

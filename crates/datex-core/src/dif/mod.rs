@@ -8,3 +8,4 @@ pub mod pointer_address;
 pub mod serde_context;
 pub mod serialize_with_serde_context;
 pub mod value_with_serde_context;
+pub mod dif_vec;

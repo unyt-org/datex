@@ -31,6 +31,8 @@ macro_rules! impl_integer_core_value_conversions {
                 fn try_from_value(value: Value) -> Result<Self, Value> {
                     match value {
                         Value::Core(CoreValueWithClassification {inner: CoreValue::TypedInteger(TypedInteger::$variant(v)), ..}) => Ok(v),
+                        // FIXME: this is currently only necessary to auto cast f64 from JS to the correct integers
+                        Value::Core(CoreValueWithClassification {inner: CoreValue::TypedDecimal(decimal), ..}) if let Some(integer) = decimal.as_integer() => Ok(integer as $ty),
                         Value::Native(native) => native.try_into_value().map_err(Value::Native),
                         _ => Err(value),
                     }

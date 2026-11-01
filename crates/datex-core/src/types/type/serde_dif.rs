@@ -18,11 +18,49 @@ use crate::{
     },
 };
 use core::ops::Deref;
+use erased_serde::__private::serde::ser::SerializeTuple;
 use num::ToPrimitive;
 use serde::{
     Serializer,
     de::{IntoDeserializer, Visitor},
 };
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::libs::core::type_id::CoreLibBaseTypeId;
+
+struct InnerType<'a>(&'a Type);
+
+
+impl SerializeWithSerdeContext for InnerType<'_> {
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self.0 {
+            Type::Definition(type_definition) => match type_definition
+                .definition
+            {
+                TypeDefinition::CoreType(_core)
+                if type_definition.metadata == TypeMetadata::default() =>
+                    {
+                        type_definition
+                            .definition
+                            .serialize_with_ctx(ctx, serializer)
+                    }
+                _ => type_definition.serialize_with_ctx(ctx, serializer),
+            },
+            Type::Entity(shared_container_containing_nominal_type) => {
+                shared_container_containing_nominal_type
+                    .deref()
+                    .serialize_with_ctx(ctx, serializer)
+            }
+        }
+    }
+}
+
 
 impl SerializeWithSerdeContext for Type {
     fn serialize_with_ctx<S>(
@@ -33,25 +71,10 @@ impl SerializeWithSerdeContext for Type {
     where
         S: Serializer,
     {
-        match self {
-            Type::Definition(type_definition) => match type_definition
-                .definition
-            {
-                TypeDefinition::CoreType(_core)
-                    if type_definition.metadata == TypeMetadata::default() =>
-                {
-                    type_definition
-                        .definition
-                        .serialize_with_ctx(ctx, serializer)
-                }
-                _ => type_definition.serialize_with_ctx(ctx, serializer),
-            },
-            Type::Entity(shared_container_containing_nominal_type) => {
-                shared_container_containing_nominal_type
-                    .deref()
-                    .serialize_with_ctx(ctx, serializer)
-            }
-        }
+        let mut tuple = serializer.serialize_tuple(2)?;
+        tuple.serialize_element(&CoreLibIdIndex::from(CoreLibBaseTypeId::Type).to_u16())?;;
+        tuple.serialize_element(&ValueWithSerdeContext::new(&InnerType(self), ctx))?;
+        tuple.end()
     }
 }
 

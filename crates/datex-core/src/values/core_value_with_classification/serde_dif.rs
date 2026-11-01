@@ -20,6 +20,27 @@ use serde::{
     de::{Error, MapAccess, Visitor},
     ser::SerializeMap,
 };
+use crate::values::core_values::callable::CoreStub;
+use crate::values::value::value_classification::unresolved_value_classification::UnresolvedValueClassification;
+
+
+struct TaggedCoreValue<'a> {
+    core_value: &'a CoreValue,
+    tag: &'a ValueTag
+}
+
+impl SerializeWithSerdeContext for TaggedCoreValue<'_> {
+    fn serialize_with_ctx<S: Serializer>(&self, ctx: &SerdeContext<'_>, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(Some(3))?;
+        map.serialize_entry("_", "t")?;
+        map.serialize_entry("t", self.tag)?;
+        map.serialize_entry(
+            "v",
+            &ValueWithSerdeContext::new(self.core_value, ctx),
+        )?;
+        map.end()
+    }
+}
 
 impl SerializeWithSerdeContext for CoreValueWithClassification {
     fn serialize_with_ctx<S: Serializer>(
@@ -29,16 +50,32 @@ impl SerializeWithSerdeContext for CoreValueWithClassification {
     ) -> Result<S::Ok, S::Error> {
         let classification = &self.classification;
 
-        // if tag, serialize as a map with "t" and "v" keys
-        if let Some(tag) = &classification.tag {
+        // if classification, add "c" layer with classification data and inner value
+        if !classification.impls.is_empty() || classification.entity_type.is_some() {
             let mut map = serializer.serialize_map(Some(3))?;
-            map.serialize_entry("_", "t")?;
-            map.serialize_entry("t", tag)?;
-            map.serialize_entry(
-                "v",
-                &ValueWithSerdeContext::new(&self.inner, ctx),
-            )?;
+            map.serialize_entry("_", "c")?;
+            map.serialize_entry("c", &UnresolvedValueClassification::from(classification.clone()))?;
+
+            if let Some(tag) = &classification.tag {
+                map.serialize_entry(
+                    "v",
+                    &ValueWithSerdeContext::new(&TaggedCoreValue {core_value: &self.inner, tag}, ctx),
+                )?;
+            }
+            // if no tag, just serialize the inner value with the context
+            else {
+                map.serialize_entry(
+                    "v",
+                    &ValueWithSerdeContext::new(&self.inner, ctx),
+                )?;
+            }
+
             map.end()
+        }
+
+        // if tag, serialize as a map with "t" and "v" keys
+        else if let Some(tag) = &classification.tag {
+            ValueWithSerdeContext::new(&TaggedCoreValue {core_value: &self.inner, tag}, ctx).serialize(serializer)
         }
         // if no tag, just serialize the inner value with the context
         else {
@@ -221,6 +258,7 @@ impl<'de, 'a, 'ctx> Visitor<'de>
     {
         let mut core_value: Option<CoreValue> = None;
         let mut tag: Option<ValueTag> = None;
+        // TODO: classification
 
         while let Some(field) = map.next_key::<String>()? {
             match field.as_str() {

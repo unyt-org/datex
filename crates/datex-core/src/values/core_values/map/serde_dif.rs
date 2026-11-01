@@ -14,11 +14,58 @@ use crate::{
 };
 use core::fmt;
 use indexmap::IndexMap;
+use num_traits::ToPrimitive;
 use serde::{
     Deserializer, Serializer,
     de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
+use crate::libs::core::type_id::CoreLibBaseTypeId;
+
+pub struct InnerMap<'a>(&'a Map);
+
+impl SerializeWithSerdeContext for InnerMap<'_> {
+    fn serialize_with_ctx<S>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.0.allow_only_text_keys {
+            let mut map = serializer.serialize_map(Some(self.0.size()))?;
+            for (key, value) in self.0.iter() {
+                if let Some(key_str) = key.try_as_str() {
+                    map.serialize_entry(
+                        key_str,
+                        &ValueWithSerdeContext::new(value, ctx),
+                    )?;
+                } else {
+                    return Err(serde::ser::Error::custom(
+                        "Map contains non-text key",
+                    ));
+                }
+            }
+            map.end()
+        }
+
+        else {
+            let mut seq = serializer.serialize_seq(Some(self.0.size()))?;
+
+            for (key, value) in self.0.iter() {
+                let entry = (key.clone(), value.clone());
+
+                seq.serialize_element(&ValueWithSerdeContext::new(
+                    &entry, ctx,
+                ))?;
+            }
+
+            seq.end()
+        }
+    }
+}
 
 impl SerializeWithSerdeContext for (ValueContainer, ValueContainer) {
     fn serialize_with_ctx<S>(
@@ -48,36 +95,10 @@ impl SerializeWithSerdeContext for Map {
     where
         S: Serializer,
     {
-        if self.allow_only_text_keys {
-            let mut map = serializer.serialize_map(Some(self.size()))?;
-            for (key, value) in self.iter() {
-                if let Some(key_str) = key.try_as_str() {
-                    map.serialize_entry(
-                        key_str,
-                        &ValueWithSerdeContext::new(value, ctx),
-                    )?;
-                } else {
-                    return Err(serde::ser::Error::custom(
-                        "Map contains non-text key",
-                    ));
-                }
-            }
-            map.end()
-        }
-
-        else {
-            let mut seq = serializer.serialize_seq(Some(self.size()))?;
-
-            for (key, value) in self.iter() {
-                let entry = (key.clone(), value.clone());
-
-                seq.serialize_element(&ValueWithSerdeContext::new(
-                    &entry, ctx,
-                ))?;
-            }
-
-            seq.end()
-        }
+        let mut tuple = serializer.serialize_tuple(2)?;
+        tuple.serialize_element(&CoreLibIdIndex::from(CoreLibBaseTypeId::Map).to_u16())?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(&InnerMap(self), ctx))?;
+        tuple.end()
     }
 }
 
