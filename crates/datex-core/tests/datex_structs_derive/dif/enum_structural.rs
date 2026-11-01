@@ -48,7 +48,7 @@ fn enum_struct_to_dif() {
     let serialized = serialize_to_json_value_default_ctx(&variant);
     let json_value = serde_json::json!({
         "_": "t",
-        "t": "Struct",
+        "t": ["Struct"],
         "v": {
             "x": "test",
             "y": [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16)), 24]
@@ -62,7 +62,7 @@ fn enum_struct_to_dif() {
 fn enum_struct_from_dif() {
     let json_value = serde_json::json!({
         "_": "t",
-        "t": "Struct",
+        "t": ["Struct"],
         "v": {
             "x": "test",
             "y": [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16)), 24]
@@ -89,7 +89,7 @@ fn enum_struct_roundtrip() {
     let serialized = serialize_to_json_value_default_ctx(&variant);
     let json_value = serde_json::json!({
         "_": "t",
-        "t": "Struct",
+        "t": ["Struct"],
         "v": {
             "x": "test",
             "y": [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16)), 24]
@@ -110,7 +110,7 @@ fn enum_tuple_single_roundtrip() {
     let serialized = serialize_to_json_value_default_ctx(&variant);
     let json_value = serde_json::json!({
         "_": "t",
-        "t": "TupleSingle",
+        "t": ["TupleSingle"],
         "v": [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"]
     });
     println!("json_value: {json_value:#}");
@@ -128,7 +128,7 @@ fn enum_tuple_multiple_roundtrip() {
     let serialized = serialize_to_json_value_default_ctx(&variant);
     let json_value = serde_json::json!({
         "_": "t",
-        "t": "TupleMultiple",
+        "t": ["TupleMultiple"],
         "v": [
             [CoreLibIdIndex::from(CoreLibBaseTypeId::Endpoint), "@jonas"], 
             [CoreLibIdIndex::from(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)), 42]
@@ -149,7 +149,7 @@ fn enum_unit_roundtrip() {
     let serialized = serialize_to_json_value_default_ctx(&variant);
     let json_value = serde_json::json!({
         "_": "t",
-        "t": "Unit",
+        "t": ["Unit"],
         "v": null
     });
     println!("json_value: {json_value:#}");

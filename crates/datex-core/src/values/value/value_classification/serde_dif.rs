@@ -16,6 +16,7 @@ use serde::{
     de::{SeqAccess, Visitor},
     ser::SerializeSeq,
 };
+use serde::ser::SerializeTuple;
 use crate::values::value::value_classification::unresolved_value_classification::UnresolvedValueClassification;
 
 /// Serialization for [ValueClassification].
@@ -139,16 +140,16 @@ impl Serialize for ValueTag {
     where
         S: Serializer,
     {
-        let mut seq = serializer.serialize_seq(if self.is_empty {
-            Some(2)
+        let mut tuple = serializer.serialize_tuple(if self.is_empty {
+            2
         } else {
-            Some(1)
+            1
         })?;
-        seq.serialize_element(&self.name)?;
+        tuple.serialize_element(&self.name)?;
         if self.is_empty {
-            seq.serialize_element(&true)?;
+            tuple.serialize_element(&true)?;
         }
-        seq.end()
+        tuple.end()
     }
 }
 

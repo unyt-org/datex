@@ -162,7 +162,7 @@ fn generate_dif_serialize_for_fields(
                 let value = #value;
                 let mut map = serializer.serialize_map(Some(3))?;
                 map.serialize_entry("_", "t")?;
-                map.serialize_entry("t", #tag)?;
+                map.serialize_entry("t", &ValueTag::from(#tag))?;
                 map.serialize_entry("v", &value)?;
                 map.end()
             },
@@ -333,7 +333,7 @@ fn generate_dif_serialize_for_fields(
                 {
                     let mut map = serializer.serialize_map(Some(3))?;
                     map.serialize_entry("_", "t")?;
-                    map.serialize_entry("t", self.tag)?;
+                    map.serialize_entry("t", &ValueTag::from(self.tag))?;
                     map.serialize_entry("v", self.value)?;
                     map.end()
                 }
@@ -462,7 +462,7 @@ fn generate_dif_deserialize_for_enum(
             fn visit_map<_MapAccess>(self, mut map: _MapAccess) -> Result<Self::Value, _MapAccess::Error> where _MapAccess: MapAccess<'de> {
                 // expect "t" and "v" keys
                 // tag is the value of "t"
-                let tag: String = if let Some(key) = map.next_key::<String>()? {
+                let tag: ValueTag = if let Some(key) = map.next_key::<String>()? {
                     // if is "_" key, skip it (but expect value to be "t")
                     if key == "_" {
                         let _: String = map.next_value()?;
@@ -487,10 +487,10 @@ fn generate_dif_deserialize_for_enum(
                 };
                 if let Some(key) = map.next_key::<String>()? {
                     if key == "v" {
-                        match tag.as_str() {
+                        match tag.name.as_str() {
                             #(#variants_construct),*
                             _ => {
-                                return Err(_MapAccess::Error::custom(format!("Unknown variant tag: {}", tag)));
+                                return Err(_MapAccess::Error::custom(format!("Unknown variant tag: {}", tag.name)));
                             }
                         }
                     } else {
