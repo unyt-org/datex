@@ -144,9 +144,6 @@ impl TypeInstruction {
             TypeInstruction::TaggedType(data) => {
                 write!(string, "[tag: {}]", data.tag.0)
             }
-            TypeInstruction::Map(data) => {
-                write!(string, "[{} entries]", data.element_count)
-            }
             TypeInstruction::Union(data) => {
                 write!(string, "[{} elements]", data.element_count)
             }
@@ -161,6 +158,9 @@ impl TypeInstruction {
             }
             TypeInstruction::Boxed => {
                 write!(string, "[boxed]")
+            }
+            TypeInstruction::Map(data) => {
+                write!(string, "[count: {}, allow_only_text_keys: {}]", data.element_count, data.allow_only_text_keys)
             }
             _ => {
                 // no custom disassembly

@@ -522,8 +522,6 @@ fn disassemble_body_inner(
         let next = iterator.next();
         match next {
             Some(instruction) => {
-                println!("Next instruction_result {:?}", instruction);
-
                 match instruction {
                     Err(e) => {
                         return Some(e);

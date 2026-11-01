@@ -323,7 +323,7 @@ pub gen fn iterate_instructions_with_seek(
             },
             Err(error) => return yield Err(error),
         };
-
+        
         yield Ok(instruction);
     }
 }
