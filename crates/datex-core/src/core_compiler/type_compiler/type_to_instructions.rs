@@ -10,16 +10,16 @@ use crate::{
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for Type {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             match self {
-                Type::Entity(entity_type) =>yield_all!(entity_type.to_bytecode_items(visitor, cache)),
+                Type::Entity(entity_type) =>yield_all!(entity_type.to_instructions(visitor, cache)),
                 Type::Definition(def) => {
-                    yield_all!(def.to_bytecode_items(visitor, cache));
+                    yield_all!(def.to_instructions(visitor, cache));
                 }
             }
         })

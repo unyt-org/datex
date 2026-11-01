@@ -12,7 +12,7 @@ impl<'ctx> ValueVisitor for CompilationContext<'ctx> {
         &'a mut self,
         shared_container: &'a SharedContainer,
         cache: &'a mut SharedReferencesCache,
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         // Delegate the visit to the shared value tracking system
         self.core_context
             .shared_value_tracking

@@ -78,11 +78,11 @@ pub fn compile_injected_values(
 /// # Safety
 /// The caller must ensure that minimum a single injected value is provided, as this function assumes that the injected values are not empty
 impl ToInstructions for InjectedValues {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             if self.values.is_empty() {
                 unreachable!(); // injected values should not be empty, this function should only be called if there are injected values
@@ -90,7 +90,7 @@ impl ToInstructions for InjectedValues {
             yield RegularInstruction::list(self.values.len() as u32).into();
 
             for value_container in &self.values {
-                yield_all!(value_container.to_bytecode_items(visitor, cache));
+                yield_all!(value_container.to_instructions(visitor, cache));
             }
         })
     }

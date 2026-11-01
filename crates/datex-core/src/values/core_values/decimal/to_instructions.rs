@@ -9,11 +9,11 @@ use crate::{
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for Decimal {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         _ctx: &'a mut dyn ValueVisitor,
         _cache: &'a mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             match &self {
                 Decimal::Finite(big_decimal) if big_decimal.is_integer() => {

@@ -12,15 +12,15 @@ impl<K> ToInstructions for Vec<K>
 where
     K: DatexNativeBase,
 {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache,
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield RegularInstruction::list(self.len() as u32).into();
             for item in self.iter() {
-                for instruction in item.to_bytecode_items(visitor, cache) {
+                for instruction in item.to_instructions(visitor, cache) {
                     yield instruction;
                 }
             }

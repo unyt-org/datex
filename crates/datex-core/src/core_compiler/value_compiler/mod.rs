@@ -117,11 +117,11 @@ pub struct ApplyWithArgs {
 }
 
 impl ToInstructions for ApplyWithArgs {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache,
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen {
             yield_all!(append_apply(
                 visitor,
@@ -138,10 +138,10 @@ gen fn append_apply<'a>(
     cache: &'a mut SharedReferencesCache,
     callee: RegularInstruction,
     args: Vec<ValueContainer>,
-) -> crate::instruction::BytecodeItem {
+) -> crate::instruction::Instruction {
     yield RegularInstruction::apply(args.len() as u8).into();
     for arg in args {
-        yield_all_collected!(arg.to_bytecode_items(visitor, cache)); // FIXME: don't collect
+        yield_all_collected!(arg.to_instructions(visitor, cache)); // FIXME: don't collect
     }
     yield callee.into();
     return;
@@ -266,6 +266,7 @@ mod tests {
         compile_value_assert_instructions(
             value,
             vec![RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                has_tag: true,
                 tag: Some(ShortTextData("Example".to_string())),
                 tag_value_is_empty: true,
                 impl_count: 0,
@@ -289,6 +290,7 @@ mod tests {
             value,
             vec![
                 RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    has_tag: true,
                     tag: Some(ShortTextData("Example".to_string())),
                     tag_value_is_empty: false,
                     impl_count: 0,

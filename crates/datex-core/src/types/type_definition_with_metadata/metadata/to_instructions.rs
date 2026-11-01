@@ -9,11 +9,11 @@ use crate::{
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for TypeMetadata {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         todo!()
     }
 }

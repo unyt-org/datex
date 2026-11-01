@@ -11,15 +11,15 @@ use core::ops::Deref;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 impl ToInstructions for Range {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield RegularInstruction::range().into();
-            yield_all!(self.start.deref().to_bytecode_items(visitor, cache));
-            yield_all!(self.end.deref().to_bytecode_items(visitor, cache));
+            yield_all!(self.start.deref().to_instructions(visitor, cache));
+            yield_all!(self.end.deref().to_instructions(visitor, cache));
         })
     }
 }

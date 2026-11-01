@@ -14,15 +14,15 @@ use crate::{
 };
 
 impl ToInstructions for CoreValueWithClassification {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache,
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             // no special classification, just yield the inner value's instructions
             if self.classification.is_unclassified() {
-                yield_all!(self.inner.to_bytecode_items(visitor, cache));
+                yield_all!(self.inner.to_instructions(visitor, cache));
                 return;
             }
 
@@ -45,7 +45,7 @@ impl ToInstructions for CoreValueWithClassification {
                 // skip processing if empty tag, as no value expected
                 return;
             }
-            yield_all!(self.inner.to_bytecode_items(visitor, cache));
+            yield_all!(self.inner.to_instructions(visitor, cache));
         })
     }
 }

@@ -12,14 +12,14 @@ impl<V> ToInstructions for Box<V>
 where
     V: ToInstructions + ?Sized,
 {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             yield RegularInstruction::boxed_value().into();
-            yield_all!(self.as_ref().to_bytecode_items(visitor, cache))
+            yield_all!(self.as_ref().to_instructions(visitor, cache))
         })
     }
 }

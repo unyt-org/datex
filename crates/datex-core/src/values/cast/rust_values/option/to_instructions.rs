@@ -11,16 +11,16 @@ impl<K> ToInstructions for Option<K>
 where
     K: ToInstructions,
 {
-    fn to_bytecode_items<'a>(
+    fn to_instructions<'a>(
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache
-    ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
         Box::new(gen move {
             match self {
                 None => yield RegularInstruction::Null.into(),
                 Some(value) => {
-                    for instruction in value.to_bytecode_items(visitor, cache) {
+                    for instruction in value.to_instructions(visitor, cache) {
                         yield instruction;
                     }
                 }
