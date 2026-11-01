@@ -436,7 +436,7 @@ pub gen fn inner_execution_loop(
                             }
 
                             RegularInstruction::ClassifiedValue(ClassifiedValueData {
-                                tag_is_empty: true,
+                                tag_value_is_empty: true,
                                 tag: Some(tag),
                                 is_entity: false,
                                 impls,
@@ -721,11 +721,21 @@ pub gen fn inner_execution_loop(
 
                                 RegularInstruction::ClassifiedValue(ClassifiedValueData {
                                     tag,
+                                    tag_value_is_empty,
                                     impls,
                                     is_entity,
                                     ..
                                 }) => {
-                                    let mut value_container = collected_results.try_pop_value_container(&mut state)?;
+                                    let mut value_container = if tag_value_is_empty {
+                                        if tag.is_none() {
+                                            // invalid state, when tag_value_is_empty, tag must exist
+                                            return yield Err(ExecutionError::InvalidProgram(Box::new(InvalidProgramError::InvalidInstructionFormat)));
+                                        }
+                                        ValueContainer::Local(Value::null())
+                                    } else {
+                                        collected_results.try_pop_value_container(&mut state)?
+                                    };
+
                                     let entity_type = if is_entity {
                                         let entity_container: ValueContainer = collected_results
                                         .try_pop_value_container(&mut state)?;
@@ -740,7 +750,7 @@ pub gen fn inner_execution_loop(
                                     } else {
                                         None
                                     };
-                                    let  classification = ValueClassification {
+                                    let classification = ValueClassification {
                                         entity_type,
                                         impls,
                                         tag:tag.map(|t| ValueTag::from(t.0)),

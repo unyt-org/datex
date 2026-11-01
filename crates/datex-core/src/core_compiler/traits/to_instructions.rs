@@ -3,6 +3,7 @@ use crate::{
     instruction::{BytecodeItem},
     prelude::*,
 };
+use crate::instruction::Instruction;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 pub trait ToInstructions {
@@ -10,7 +11,7 @@ pub trait ToInstructions {
         &'a self,
         visitor: &'a mut dyn ValueVisitor,
         cache: &'a mut SharedReferencesCache,
-    ) -> Box<dyn Iterator<Item = BytecodeItem> + 'a>;
+    ) -> Box<dyn Iterator<Item = Instruction> + 'a>;
 }
 
 /// A macro to yield instructions from a value that implements `ToInstructions`.

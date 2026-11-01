@@ -51,6 +51,7 @@ use crate::{
 };
 use core::{ops::DerefMut, str::FromStr};
 use log::info;
+use crate::values::value::value_classification::{ValueClassification, ValueTag};
 
 macro yield_unwrap($expr:expr) {
     match $expr {
@@ -1693,8 +1694,10 @@ impl AstNodeToInstructions for TagExpression {
     > {
         Box::new(gen move {
             yield Ok(RegularInstruction::classified_value(
-                self.tag.clone(),
-                self.expression.is_none(),
+                &ValueClassification::new_with_tag(ValueTag {
+                    name: self.tag.clone(),
+                    is_empty: self.expression.is_none(),
+                }),
             )
             .into());
             if let Some(expression) = &self.expression {

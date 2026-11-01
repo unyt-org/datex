@@ -1,5 +1,5 @@
 use core::ops::DerefMut;
-use std::ops::Deref;
+use core::ops::Deref;
 use crate::inspector::datex_inspector::Inspector;
 use crate::runtime::execution::context::ExecutionContext;
 use crate::runtime::test_utils::use_mock_setup_with_two_connected_runtimes;

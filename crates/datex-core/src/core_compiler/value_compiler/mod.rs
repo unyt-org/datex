@@ -194,7 +194,7 @@ mod tests {
                 CallableDataBodyDebugTree, CallableDataDebugFlat,
                 CallableDataDebugTree, CallableSignatureData, Int32Data,
                 MoveWithValue, SharedRefWithValue, ShortListData,
-                ShortTextData, TaggedValue,
+                ShortTextData,
             },
             regular_instruction::RegularInstruction,
             type_instruction::TypeInstruction,
@@ -235,6 +235,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::info;
+    use crate::instruction::instruction_data::ClassifiedValueData;
 
     fn compile_value_assert_instructions(
         value: Value,
@@ -264,9 +265,12 @@ mod tests {
 
         compile_value_assert_instructions(
             value,
-            vec![RegularInstruction::TaggedValue(TaggedValue {
-                tag: ShortTextData("Example".to_string()),
-                is_empty: true,
+            vec![RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                tag: Some(ShortTextData("Example".to_string())),
+                tag_value_is_empty: true,
+                impl_count: 0,
+                impls: vec![],
+                is_entity: false,
             })],
         );
     }
@@ -284,9 +288,12 @@ mod tests {
         compile_value_assert_instructions(
             value,
             vec![
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData("Example".to_string()),
-                    is_empty: false,
+                RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                    tag: Some(ShortTextData("Example".to_string())),
+                    tag_value_is_empty: false,
+                    impl_count: 0,
+                    impls: vec![],
+                    is_entity: false,
                 }),
                 RegularInstruction::Null,
             ],

@@ -38,12 +38,21 @@ pub enum DXBParserError {
     FromUtf8Error(FromUtf8Error),
     NotInUnboundedRegularScopeError,
     InvalidCoreLibId(CoreLibIdIndex),
+    InvalidProgram,
 }
 
 // custom impl required because binrw::Error does not implement PartialEq
 impl PartialEq for DXBParserError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (
+                DXBParserError::InvalidProgram,
+                DXBParserError::InvalidProgram,
+            ) => true,
+            (
+                DXBParserError::InvalidCoreLibId(a),
+                DXBParserError::InvalidCoreLibId(b),
+            ) => a == b,
             (
                 DXBParserError::InvalidEndpoint(a),
                 DXBParserError::InvalidEndpoint(b),
@@ -152,6 +161,9 @@ impl Display for DXBParserError {
             }
             DXBParserError::InvalidCoreLibId(id) => {
                 core::write!(f, "Invalid Core Lib Id: {}", id.0)
+            }
+            DXBParserError::InvalidProgram => {
+                core::write!(f, "Invalid program")
             }
         }
     }
@@ -302,7 +314,7 @@ pub gen fn iterate_instructions_with_seek(
                 }
             }
         };
-        
+
         let instruction = match instruction_result {
             Ok(instruction) => InstructionWithSpan {
                 instruction,

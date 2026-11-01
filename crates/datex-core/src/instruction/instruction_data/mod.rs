@@ -255,10 +255,14 @@ pub struct EntityTypeDefinitionData {
 #[brw(little)]
 pub struct ClassifiedValueData {
     // tag
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
+    pub has_tag: bool,
+    #[br(if(has_tag))]
     pub(crate) tag: Option<ShortTextData>,
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
-    pub(crate) tag_is_empty: bool,
+    pub(crate) tag_value_is_empty: bool,
 
     // entity
     #[br(map = |x: u8| x != 0)]
@@ -270,6 +274,31 @@ pub struct ClassifiedValueData {
     #[br(count = impl_count)]
     pub(crate) impls: Vec<PointerAddress>,
 }
+
+impl ClassifiedValueData {
+    pub fn new_tagged(tag: String, tag_value_is_empty: bool) -> Self {
+        Self {
+            has_tag: true,
+            tag: Some(ShortTextData(tag)),
+            tag_value_is_empty,
+            is_entity: false,
+            impl_count: 0,
+            impls: Vec::new(),
+        }
+    }
+    
+    pub fn new_entity() -> Self {
+        Self {
+            has_tag: false,
+            tag: None,
+            tag_value_is_empty: false,
+            is_entity: true,
+            impl_count: 0,
+            impls: Vec::new(),
+        }
+    }
+}
+
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

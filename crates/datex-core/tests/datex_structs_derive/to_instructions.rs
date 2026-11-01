@@ -7,7 +7,7 @@ use datex_core::{
         assert_instruction_lists_eq, assert_instructions_equal, instructions,
     },
     instruction::{
-        BytecodeItem, Instruction, instruction_data::TaggedValue,
+        BytecodeItem, Instruction,
         regular_instruction::RegularInstruction,
     },
     runtime::{
@@ -16,6 +16,10 @@ use datex_core::{
     },
     values::value::Value,
 };
+use datex_core::core_compiler::value_compiler::compile_value;
+use datex_core::disassembler::disassemble_body;
+use datex_core::instruction::instruction_data::ClassifiedValueData;
+use datex_core::instruction::NestedInstructionResolutionStrategy;
 use datex_macros_internal::Datex;
 #[derive(Datex, Debug)]
 #[datex(structural)]
@@ -23,6 +27,9 @@ struct ExampleStruct {
     a: u8,
     b: String,
 }
+
+/// Converts a structure that implements `ToInstructions` into a vector of `Instruction`s.
+/// Skips the preamble, just directly calls `to_bytecode_items`.
 fn to_instructions<T: ToInstructions>(structure: &T) -> Vec<Instruction> {
     let cache = &mut SharedReferencesCache::default();
     let pointer_lookup = PointerAvailabilityLookup::default();
@@ -34,6 +41,22 @@ fn to_instructions<T: ToInstructions>(structure: &T) -> Vec<Instruction> {
             BytecodeItem::Instruction(instruction) => instruction,
             _ => panic!("Expected instruction, got {:?}", item),
         })
+        .collect::<Vec<_>>()
+}
+
+/// Converts a structure that implements `ToInstructions` into a vector of `Instruction`s.
+/// Includes the preamble.
+fn to_instructions_with_preamble<T: ToInstructions>(structure: &T) -> Vec<Instruction> {
+    let cache = &mut SharedReferencesCache::default();
+    let pointer_lookup = PointerAvailabilityLookup::default();
+    let dxb = CoreCompilationContext::new(CompileInput::new(&pointer_lookup, &[]))
+        .compile_to_dxb_with_shared_values(structure, cache)
+        .dxb;
+    disassemble_body(&dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesTree)
+        .0
+        .flatten()
+        .into_iter()
+        .map(|item| item.instruction)
         .collect::<Vec<_>>()
 }
 
@@ -96,7 +119,7 @@ fn example_enum_variant_1_to_instructions() {
     let variant1 = ExampleEnum::Variant1(42);
     assert_instruction_lists_eq!(
         to_instructions(&variant1),
-        (RegularInstruction::classified_value("Variant1".to_string(), false)
+        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged("Variant1".to_string(), false))
             .with_children(instructions!(RegularInstruction::uint8(42),)))
     );
 }
@@ -109,7 +132,7 @@ fn example_enum_variant_2_to_instructions() {
     };
     assert_instruction_lists_eq!(
         to_instructions(&variant2),
-        (RegularInstruction::classified_value("Variant2".to_string(), false)
+        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged("Variant2".to_string(), false))
             .with_children(instructions!(
                 RegularInstruction::map(2, true).with_children(instructions!(
                     // x
@@ -128,7 +151,7 @@ fn example_enum_variant_3_to_instructions() {
     let variant3 = ExampleEnum::Variant3(42, "Test".to_string());
     assert_instruction_lists_eq!(
         to_instructions(&variant3),
-        (RegularInstruction::classified_value("Variant3".to_string(), false)
+        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged("Variant3".to_string(), false))
             .with_children(instructions!(
                 RegularInstruction::list_with_children(instructions!(
                     RegularInstruction::uint8(42),
@@ -143,9 +166,36 @@ fn example_enum_variant_4_to_instructions() {
     let variant4 = ExampleEnum::Variant4;
     assert_instruction_lists_eq!(
         to_instructions(&variant4),
-        vec![RegularInstruction::classified_value(
-            "Variant4".to_string(),
-            true
-        )]
+        vec![RegularInstruction::ClassifiedValue(ClassifiedValueData::new_tagged("Variant4".to_string(), true))]
+    );
+}
+
+
+
+#[derive(Datex, Debug)]
+struct EntityStruct {
+    a: u8,
+    b: String,
+}
+
+#[test]
+fn entity_struct_to_instructions() {
+    let structure = EntityStruct {
+        a: 42u8,
+        b: "Test".to_string(),
+    };
+    assert_instruction_lists_eq!(
+        to_instructions_with_preamble(&structure),
+        (RegularInstruction::ClassifiedValue(ClassifiedValueData::new_entity())
+            .with_children(instructions!(            
+                RegularInstruction::map(2, true).with_children(instructions!(
+                    // a
+                    RegularInstruction::key_value_short_text("a".to_string()),
+                    RegularInstruction::uint8(42),
+                    // b
+                    RegularInstruction::key_value_short_text("b".to_string()),
+                    RegularInstruction::text("Test".to_string()),
+                ))
+            )))
     );
 }

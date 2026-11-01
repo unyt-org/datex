@@ -20,9 +20,15 @@ impl ToInstructions for CoreValueWithClassification {
         cache: &'a mut SharedReferencesCache,
     ) -> Box<dyn Iterator<Item = crate::instruction::BytecodeItem> + 'a> {
         Box::new(gen move {
+            // no special classification, just yield the inner value's instructions
+            if self.classification.is_unclassified() {
+                yield_all!(self.inner.to_bytecode_items(visitor, cache));
+                return;
+            }
+
             let classification = &self.classification;
 
-            yield RegularInstruction::classified_value(&classification).into();
+            yield RegularInstruction::classified_value(classification).into();
             if let Some(entity_type) = &classification.entity_type {
                 for item in visitor.visit_shared_container(
                     entity_type.shared_container(),
@@ -36,7 +42,7 @@ impl ToInstructions for CoreValueWithClassification {
             if let Some(tag) = &classification.tag
                 && tag.is_empty
             {
-                // skip processing if empty tag, as no value expepcted
+                // skip processing if empty tag, as no value expected
                 return;
             }
             yield_all!(self.inner.to_bytecode_items(visitor, cache));
