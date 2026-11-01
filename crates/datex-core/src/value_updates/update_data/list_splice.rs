@@ -13,6 +13,7 @@ use serde::{
     de::{self, Visitor},
     ser::SerializeSeq,
 };
+use crate::dif::dif_vec::DIFVec;
 
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct ListSpliceUpdateData {
@@ -43,7 +44,7 @@ impl<'ctx> SerdeContext<'ctx> {
         seq.serialize_element(&value.start)?;
         seq.serialize_element(&value.delete_count)?;
 
-        seq.serialize_element(&ValueWithSerdeContext::new(&value.items, self))?;
+        seq.serialize_element(&ValueWithSerdeContext::new(&DIFVec(&value.items), self))?;
 
         Ok(())
     }

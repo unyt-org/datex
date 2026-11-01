@@ -18,6 +18,7 @@ use serde::{
     de::{MapAccess, Visitor},
     ser::{SerializeMap, SerializeSeq, SerializeTuple},
 };
+use crate::dif::dif_vec::DIFVec;
 
 impl SerializeWithSerdeContext for CallableTypeDefinition {
     fn serialize_with_ctx<S: Serializer>(
@@ -34,7 +35,7 @@ impl SerializeWithSerdeContext for CallableTypeDefinition {
 
         obj.serialize_key("parameters")?;
         obj.serialize_value(&ValueWithSerdeContext::new(
-            &self.parameters,
+            &DIFVec(&self.parameters),
             ctx,
         ))?;
         obj.serialize_key("rest_parameter")?;

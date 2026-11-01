@@ -9,36 +9,54 @@ use crate::{
     values::core_values::callable::Callable,
 };
 use core::fmt;
+use num_traits::ToPrimitive;
 use serde::{
     Deserializer, Serializer,
     de::{SeqAccess, Visitor},
     ser::SerializeTuple,
 };
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
+use crate::libs::core::type_id::CoreLibBaseTypeId;
 
-impl SerializeWithSerdeContext for Callable {
+struct InnerCallable<'a>(&'a Callable);
+
+impl SerializeWithSerdeContext for InnerCallable<'_> {
     fn serialize_with_ctx<S: Serializer>(
         &self,
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        // put callable into cache
+         // put callable into cache
         let hash = ctx
             .shared_container_cache
             .borrow_mut()
-            .store_callable(self.clone());
+            .store_callable(self.0.clone());
         let mut data = serializer.serialize_tuple(3)?;
 
         // store hash
         data.serialize_element(&hash.to_string())?;
 
         // store name
-        data.serialize_element(&self.name)?;
+        data.serialize_element(&self.0.name)?;
 
         // async bool
-        data.serialize_element(&self.signature.requires_async)?;
+        data.serialize_element(&self.0.signature.requires_async)?;
 
         data.end()
         // todo: also store function signature information
+    }
+}
+impl SerializeWithSerdeContext for Callable {
+    fn serialize_with_ctx<S: Serializer>(
+        &self,
+        ctx: &SerdeContext<'_>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let mut tuple = serializer.serialize_tuple(2)?;
+        tuple.serialize_element(&CoreLibIdIndex::from(CoreLibBaseTypeId::Callable).to_u16())?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(&InnerCallable(self), ctx))?;
+        tuple.end()
     }
 }
 

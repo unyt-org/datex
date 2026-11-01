@@ -1,3 +1,5 @@
+use erased_serde::__private::serde::ser::SerializeTuple;
+use num_traits::ToPrimitive;
 use crate::{
     dif::{
         deserialize_serde_context::{DeserializeSerdeContext, ErasedSeed},
@@ -13,8 +15,11 @@ use crate::{
 };
 use serde::{
     de::{SeqAccess, Visitor},
-    ser::SerializeSeq,
 };
+use crate::dif::dif_vec::DIFVec;
+use crate::dif::value_with_serde_context::ValueWithSerdeContext;
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
+use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
     fn serialize_with_ctx<S: serde::Serializer>(
@@ -22,11 +27,11 @@ impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
         ctx: &SerdeContext<'_>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(self.len()))?;
-        for value in self {
-            seq.serialize_element(&*value.with_ctx(ctx))?;
-        }
-        seq.end()
+        // [CoreLibBaseTypeId::List, list]
+        let mut tuple = serializer.serialize_tuple(2)?;
+        tuple.serialize_element(&CoreLibIdIndex::from(CoreLibBaseTypeId::List).to_u16())?;
+        tuple.serialize_element(&ValueWithSerdeContext::new(&DIFVec(self), ctx))?;
+        tuple.end()
     }
 }
 
