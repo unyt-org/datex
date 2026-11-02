@@ -61,6 +61,8 @@ pub mod get_datex_type;
 #[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
+pub mod method_calls;
+
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {
     Local(Value),

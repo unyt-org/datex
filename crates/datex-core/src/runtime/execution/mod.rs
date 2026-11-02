@@ -140,19 +140,14 @@ pub fn execute_dxb_sync(
                 method_name,
                 args,
             ) => {
-                let val = callee.value.collapsed_value();
-                let entity_type = try_get_entity_type(val, &runtime)?;
-                let method = try_get_method_data(&entity_type, method_name)?;
-
+                let res = callee.try_call_method_sync(
+                    &method_name,
+                    args,
+                    &runtime,
+                )?;
+                
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValueAndBorrowedArgs(
-                        try_call_method_sync(
-                            callee,
-                            method.deref(),
-                            args,
-                            &runtime,
-                        )?,
-                    ),
+                    InterruptResult::ResolvedValueAndBorrowedArgs(res),
                 )
             }
             _ => return Err(ExecutionError::RequiresAsyncExecution),
@@ -290,165 +285,23 @@ pub async fn execute_dxb(
             ExternalExecutionInterrupt::CallMethod(
                 callee,
                 method_name,
-                mut args,
+                args,
             ) => {
-                let val = callee.value.collapsed_value();
-                let entity_type = try_get_entity_type(val, &runtime)?;
-                let method = try_get_method_data(&entity_type, method_name.clone());
-
-                match method {
-                    Ok(method) => {
-                        interrupt_provider.provide_result(
-                            InterruptResult::ResolvedValueAndBorrowedArgs(
-                                try_call_method_async(
-                                    callee,
-                                    method.deref(),
-                                    args,
-                                    &runtime,
-                                )
-                                    .await?,
-                            ),
-                        )
-                    }
-                    // FIXME: only temp test, method should always be declared in the type
-                    Err(_) => {
-                        info!("fallback to remote call for method: {}", method_name);
-                        let owner = callee.value.owner();
-                        // append callee to args
-                        args.push(callee);
-
-                        interrupt_provider.provide_result(
-                            InterruptResult::ResolvedValueAndBorrowedArgs(
-                                try_call_method_on_owner(
-                                    owner,
-                                    method_name,
-                                    args,
-                                    &runtime
-                                ).await?
-                            ),
-                        )
-                    }
-                }
-
-
+                let res = callee.try_call_method_async(
+                    &method_name,
+                    args,
+                    &runtime,
+                ).await?;
+                
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValueAndBorrowedArgs(res),
+                )
             }
         }
     }
 
     unreachable!("Execution loop should always return a result");
 }
-
-/// Tries to get the entity type of the [CollapsedContainerValue]. If the value is not an entity, returns an error.
-fn try_get_entity_type(
-    value: CollapsedContainerValue,
-    runtime: &Runtime,
-) -> Result<EntityType, ExecutionError> {
-    if let Some(entity_type) = value
-        .borrow()
-        .deref()
-        .entity_type(runtime.shared_references_cache_mut().deref_mut())
-    {
-        Ok(entity_type)
-    } else {
-        Err(ExecutionError::ExpectedEntityValue)
-    }
-}
-
-fn try_get_method_data(
-    entity_type: &EntityType,
-    method_name: String,
-) -> Result<Ref<'_, EntityImplMethod>, ExecutionError> {
-    Ref::filter_map(entity_type.entity_definition(), |def| {
-        def.try_get_method(&method_name)
-    })
-    .map_err(|_| ExecutionError::MethodNotFound(method_name))
-}
-
-fn try_call_method_sync(
-    callee: ApplyArgument,
-    method: &EntityImplMethod,
-    mut args: Vec<ApplyArgument>,
-    runtime: &Runtime,
-) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
-    let owner_endpoint = callee.value.owner();
-
-    // prepend callee to args
-    args.insert(0, callee);
-
-    // only local calls supported for sync execution
-    if !method.call_on_owner
-        || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
-    {
-        let res = method.callable.try_apply_sync_checked(runtime, args)?;
-        Ok(res)
-    } else {
-        Err(ExecutionError::RequiresAsyncExecution)
-    }
-}
-
-async fn try_call_method_async(
-    callee: ApplyArgument,
-    method: &EntityImplMethod,
-    mut args: Vec<ApplyArgument>,
-    runtime: &Runtime,
-) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
-    let owner_endpoint = callee.value.owner();
-
-    info!("OWNER ENDPOINT: {}, runtime: {}", owner_endpoint, runtime.endpoint());
-
-    // call locally
-    if !method.call_on_owner
-        || owner_endpoint.is_local_or_equals_endpoint(runtime.endpoint())
-    {
-        // prepend callee to args
-        args.insert(0, callee);
-
-        let res = method
-            .callable
-            .try_apply_async_checked(runtime, args)
-            .await?;
-        Ok(res)
-    }
-    // call on owner endpoint
-    else {
-        // append callee to args
-        args.push(callee);
-        try_call_method_on_owner(
-            owner_endpoint,
-            method.name().unwrap().clone(),
-            args,
-            runtime
-        ).await
-    }
-}
-
-async fn try_call_method_on_owner(
-    owner_endpoint: Endpoint,
-    name: String,
-    args: Vec<ApplyArgument>,
-    runtime: &Runtime,
-) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
-    let mut instructions = vec![
-        RegularInstruction::call_method(
-            name, // FIXME: don't use method name here
-            args.len() as u8 - 1,
-        )
-            .into(),
-    ];
-    instructions.extend(
-        args.into_iter()
-            .map(|v| InstructionInput::ValueContainer(v.value)),
-    );
-
-    let res = runtime
-        .execute_instructions_remote(vec![owner_endpoint], instructions)
-        .await?;
-
-    // FIXME: restore borrowed stack values across remote execution.
-    // For now, local borrows are not supported cross endpoint
-    Ok((res, vec![]))
-}
-
 
 async fn set_remote_endpoint_property(
     runtime: &Runtime,

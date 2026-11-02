@@ -33,6 +33,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
+use crate::runtime::execution::ExecutionError;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
@@ -95,9 +96,9 @@ impl DIFInterface {
         &self,
         runtime: &Runtime,
         callee: ValueContainer,
-        value: Vec<ApplyArgument>,
+        args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
-        callee.try_apply_sync_checked(runtime, value)
+        callee.try_apply_sync_checked(runtime, args)
     }
 
     /// Executes an async apply operation, applying the `value` to the `callee`.
@@ -105,9 +106,41 @@ impl DIFInterface {
         &self,
         runtime: &Runtime,
         callee: ValueContainer,
-        value: Vec<ApplyArgument>,
+        args: Vec<ApplyArgument>,
     ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ApplyError> {
-        callee.try_apply_async_checked(runtime, value).await
+        callee.try_apply_async_checked(runtime, args).await
+    }
+    
+    /// Calls async method on a value
+    pub fn call_method_sync(
+        &self,
+        runtime: &Runtime,
+        callee: ValueContainer,
+        method: String,
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+        let callee_arg = ApplyArgument::from(callee);
+        callee_arg.try_call_method_sync(
+            &method,
+            args,
+            &runtime,
+        )
+    }
+
+    /// Calls an async method on a value
+    pub async fn call_method_async(
+        &self,
+        runtime: &Runtime,
+        callee: ValueContainer,
+        method: String,
+        args: Vec<ApplyArgument>,
+    ) -> Result<(Option<ValueContainer>, Vec<ValueContainer>), ExecutionError> {
+        let callee_arg = ApplyArgument::from(callee);
+        callee_arg.try_call_method_async(
+            &method,
+            args,
+            &runtime,
+        ).await
     }
 
     /// Creates a new owned local pointer and stores it in memory.
