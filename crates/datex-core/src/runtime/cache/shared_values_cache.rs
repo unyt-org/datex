@@ -16,6 +16,9 @@ use core::{
     fmt::Display,
     hash::{Hash, Hasher},
 };
+use log::info;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::values::value_container::ValueContainer;
 
 /// Cache layer that stores references or owned and referenced shared containers
 #[derive(Debug, Default)]
@@ -173,6 +176,7 @@ impl SharedValuesCache {
         &self,
         pointer_address: &PointerAddress,
     ) -> Result<&SharedContainer, ValueNotFoundInCacheError> {
+        info!("current cache: {}", self);
         self.values
             .get(pointer_address)
             .ok_or(ValueNotFoundInCacheError(pointer_address.clone()))
@@ -254,5 +258,27 @@ impl SharedValuesCache {
         self.values
             .get(pointer_address)
             .is_some_and(|container| container.ownership() >= ownership)
+    }
+}
+
+
+#[cfg(feature = "decompiler")]
+impl Display for SharedValuesCache {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        use crate::decompiler::{ast_to_source_code::value_to_source_code, *};
+
+        writeln!(f, "Values:")?;
+        for (address, value) in &self.values {
+            writeln!(
+                f,
+                "  {}: {}",
+                address,
+                value_to_source_code(
+                    &ValueContainer::Shared(value.clone_with_move_indicator_if_owned()),
+                    DecompileOptions::default()
+                )
+            )?;
+        }
+        Ok(())
     }
 }

@@ -1,3 +1,5 @@
+pub mod serde_dif;
+
 use crate::{
     prelude::*, types::type_definition::callable::CallableTypeDefinition,
     values::core_values::callable::Callable,

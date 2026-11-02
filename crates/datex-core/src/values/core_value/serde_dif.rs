@@ -102,9 +102,7 @@ impl SerializeWithSerdeContext for CoreValue {
 
             CoreValue::Map(map) => map.serialize_with_ctx(ctx, serializer),
             CoreValue::Type(ty) => ty.serialize_with_ctx(ctx, serializer),
-            CoreValue::EntityTypeDefinition(_entity_type_definition) => {
-                todo!()
-            }
+            CoreValue::EntityTypeDefinition(entity_type_definition) => entity_type_definition.serialize_with_ctx(ctx, serializer),
             CoreValue::Callable(callable) => callable.serialize_with_ctx(ctx, serializer),
             CoreValue::Box(inner) => inner.serialize_with_ctx(ctx, serializer),
             CoreValue::Uninitialized => panic!("Uninitialized value"),
@@ -799,13 +797,15 @@ mod tests {
     use serde::de::DeserializeSeed;
     use serde_json::json;
     use test_case::test_case;
+    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     fn deserialize_value(
         core_lib_id: CoreLibTypeId,
         value: serde_json::Value,
     ) -> Result<CoreValue, serde_json::Error> {
-        let cache = RefCell::new(SharedValuesCache::default());
-        let context = SerdeContext::new(&cache);
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
+        let context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
         let mut deserialize_ctx = DeserializeSerdeContext::new(&context);
 
         CoreValueVisitor {

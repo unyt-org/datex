@@ -368,13 +368,15 @@ mod tests {
     };
     use core::{cell::RefCell, str::FromStr};
     use test_case::test_case;
+    use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
     #[test]
     fn endpoint_serialization() {
         let endpoint = Endpoint::from_str("@jonas").unwrap();
         let value = Value::new(CoreValue::Endpoint(endpoint.clone()));
-        let cache = RefCell::new(SharedValuesCache::default());
-        let mut context = SerdeContext::new(&cache);
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
+        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
         let serialized = context.serialize_to_json(&value);
         assert_eq!(
             serialized,
@@ -390,8 +392,9 @@ mod tests {
 
     #[test]
     fn serialize_map() {
-        let cache = RefCell::new(SharedValuesCache::default());
-        let mut context = SerdeContext::new(&cache);
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
+        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         // { endpoint: "@jonas" } -> [<map-idx>, ["endpoint", [<endpoint-idx>, "@jonas"] ]]
         let value = Value::from(CoreValue::Map(
@@ -419,8 +422,9 @@ mod tests {
 
     #[test]
     fn default_representation() {
-        let cache = RefCell::new(SharedValuesCache::default());
-        let mut context = SerdeContext::new(&cache);
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
+        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         // text
         let value = Value::from(CoreValue::Text("Hello, world!".into()));
@@ -442,8 +446,9 @@ mod tests {
 
     #[test]
     fn non_default_representation() {
-        let cache = RefCell::new(SharedValuesCache::default());
-        let mut context = SerdeContext::new(&cache);
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
+        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         // f32
         let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F32(
@@ -555,8 +560,9 @@ mod tests {
         CoreValue::Instant(Instant::now()) ; "instant"
     )]
     fn roundtrip_no_custom_type(value: CoreValue) {
-        let cache = RefCell::new(SharedValuesCache::default());
-        let mut context = SerdeContext::new(&cache);
+        let shared_values_cache = RefCell::new(SharedValuesCache::default());
+        let shared_references_cache = RefCell::new(SharedReferencesCache::default());
+        let mut context = SerdeContext::new(&shared_values_cache, &shared_references_cache);
 
         let value = Value::from(value);
         let serialized = context.serialize_to_json(&value);

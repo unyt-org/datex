@@ -54,7 +54,7 @@ impl SerializeWithSerdeContext for CoreValueWithClassification {
         if !classification.impls.is_empty() || classification.entity_type.is_some() {
             let mut map = serializer.serialize_map(Some(3))?;
             map.serialize_entry("_", "c")?;
-            map.serialize_entry("c", &UnresolvedValueClassification::from(classification.clone()))?;
+            map.serialize_entry("c", &ValueWithSerdeContext::new(classification, ctx))?;
 
             if let Some(tag) = &classification.tag {
                 map.serialize_entry(

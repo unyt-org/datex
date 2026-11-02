@@ -9,6 +9,7 @@ use crate::{
 };
 mod to_instructions;
 pub mod dyn_deserialize;
+pub mod serde_dif;
 
 use core::fmt::Display;
 use crate::types::entities::entity_type_definition::dyn_deserialize::DeFn;
@@ -17,8 +18,8 @@ use crate::types::entities::entity_type_definition::dyn_deserialize::DeFn;
 /// which describes a nominal type identified by a unique pointer id.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct EntityTypeDefinition {
-    pub(crate) definition: TypeDefinition,
     pub(crate) name: String,
+    pub(crate) definition: TypeDefinition,
     pub(crate) allowed_variants: Vec<String>,
     pub(crate) impls: Vec<EntityImpl>,
     // TODO: dif feature flag?
