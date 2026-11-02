@@ -828,26 +828,31 @@ pub gen fn inner_execution_loop(
                                     })
                                         .into()
                                 }
-                                RegularInstruction::Callable(callable_declaration) => {
+                                RegularInstruction::Callable(callable_data) => {
 
                                     // indicates a native callable declaration which cannot be transferred
-                                    let has_native_impl = callable_declaration.body.length == 0;
+                                    let has_native_impl = callable_data.body.length == 0;
 
                                     let injected_values = collected_results
-                                        .pop_values(callable_declaration.body.injected_value_count)
+                                        .pop_values(callable_data.body.injected_value_count)
                                         .into_iter()
                                         .flatten()
                                         .map(|runtime_value| runtime_value.into_value_container(&mut state))
                                         .collect::<Result<Vec<_>, ExecutionError>>()?;
 
-                                    let types = collected_results.pop_types(callable_declaration.signature.total_type_count());
-                                    let signature = resolve_callable_type_definition(types, &callable_declaration.signature);
+                                    let types = collected_results.pop_types(callable_data.signature.total_type_count());
+                                    let mut signature = resolve_callable_type_definition(types, &callable_data.signature);
+
+                                    // assuming that a callable value with native impl must be a remote callable at this point, so it is async
+                                    if has_native_impl {
+                                        signature.requires_async = true;
+                                    }
 
                                     ValueContainer::from(Callable {
-                                        name: if callable_declaration.signature.name.0.is_empty() {
+                                        name: if callable_data.signature.name.0.is_empty() {
                                             None
                                         } else {
-                                            Some(callable_declaration.signature.name.0)
+                                            Some(callable_data.signature.name.0)
                                         },
                                         signature,
                                         body: if has_native_impl {
@@ -855,9 +860,9 @@ pub gen fn inner_execution_loop(
                                             }
                                             else {
                                                 CallableBody::DatexBytecode(DatexBytecodeCallable {
-                                                    requires_async: callable_declaration.signature.requires_async,
+                                                    requires_async: callable_data.signature.requires_async,
                                                     injected_values,
-                                                    body: callable_declaration.body.body,
+                                                    body: callable_data.body.body,
                                                 })
                                             },
                                         creator: state.caller_metadata.endpoint.clone(),
