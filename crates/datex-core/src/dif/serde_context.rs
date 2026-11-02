@@ -7,18 +7,22 @@ use crate::dif::deserialize_with_serde_context::DeserializeWithSerdeContext;
 use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
 #[cfg(test)]
 use crate::prelude::*;
+use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 
 #[derive(Debug)]
 pub struct SerdeContext<'ctx> {
     pub shared_container_cache: &'ctx RefCell<SharedValuesCache>,
+    pub shared_references_cache: &'ctx RefCell<SharedReferencesCache>,
 }
 
 impl<'ctx> SerdeContext<'ctx> {
     pub fn new(
         shared_container_cache: &'ctx RefCell<SharedValuesCache>,
+        shared_references_cache: &'ctx RefCell<SharedReferencesCache>,
     ) -> Self {
         Self {
             shared_container_cache,
+            shared_references_cache,
         }
     }
 

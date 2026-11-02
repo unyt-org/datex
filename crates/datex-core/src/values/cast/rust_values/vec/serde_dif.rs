@@ -35,6 +35,7 @@ impl<T: SerializeWithSerdeContextDyn> SerializeWithSerdeContext for Vec<T> {
     }
 }
 
+// FIXME: deserialize list
 impl<'de, T: DeserializeWithSerdeContextDyn> DeserializeWithSerdeContext<'de>
     for Vec<T>
 {

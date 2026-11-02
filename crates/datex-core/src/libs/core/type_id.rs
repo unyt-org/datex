@@ -66,6 +66,8 @@ pub enum CoreLibBaseTypeId {
     Type, // #core.Type
     #[strum(serialize = "Container")]
     Box, // #core.Container
+    #[strum(serialize = "EntityDefinition")]
+    EntityTypeDefinition
 }
 
 impl CoreLibBaseTypeId {
