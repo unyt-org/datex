@@ -15,6 +15,8 @@ mod datex_inspector {
 
     #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
     #[datex(no_deserialize, builtin = 0x000001)]
+    /// The Inspector is a built-in debug helper that provides access to the DATEX runtime and its properties.
+    /// It is currently publicly accessible, but will be restricted with permission rules in the future.
     pub struct Inspector {
         // TODO: #[datex(readonly)]
         pub name: String, // TODO: distinguish between pub and private entity properties
@@ -26,6 +28,9 @@ mod datex_inspector {
             self.name.clone()
         }
 
+        pub fn try_reboot_endpoint(&self) {
+            panic!("try_reboot_endpoint is not implemented yet");
+        }
         // // TODO
         // pub fn method_for_shared_instance(self: SharedRef<Self>) -> String {
         //     self.borrow().name.clone()
