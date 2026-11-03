@@ -25,6 +25,14 @@ impl EntityImpl {
         }
     }
 
+    pub fn methods(&self) -> &Vec<EntityImplMethod> {
+        &self.methods
+    }
+
+    pub fn static_methods(&self) -> &Vec<Callable> {
+        &self.static_methods
+    }
+
     /// Returns a reference to the method for the given method name, if it exists in this implementation.
     pub fn try_get_method(
         &self,
