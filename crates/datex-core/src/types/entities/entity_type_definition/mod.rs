@@ -83,6 +83,13 @@ impl EntityTypeDefinition {
         self.deserialize_from_dif.as_ref()
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn allowed_variants(&self) -> &[String] {
+        &self.allowed_variants
+    }
+
     /// Returns a reference to the method for the given method name, if it exists in this implementation.
     pub fn try_get_method(
         &self,
