@@ -21,6 +21,8 @@ impl Hash for BorrowedCoreValue<'_> {
             BorrowedCoreValue::Range(r) => r.hash(state),
             BorrowedCoreValue::Box(b) => b.hash(state),
             BorrowedCoreValue::Instant(i) => i.hash(state),
+            BorrowedCoreValue::Sender(s) => s.hash(state),
+            BorrowedCoreValue::Receiver(r) => r.hash(state),
         }
     }
 }

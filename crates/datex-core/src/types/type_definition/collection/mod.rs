@@ -9,6 +9,9 @@ use crate::types::type_definition::{
     range::RangeTypeDefinition,
 };
 use core::fmt::Display;
+use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
+use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
+
 pub mod serde_dif;
 // TODO #377: Rename to Generic type definition?
 #[derive(Debug, Clone, PartialEq, Hash, Eq, AsRefStr)]
@@ -23,6 +26,11 @@ pub enum CollectionTypeDefinition {
     // e.g. {string: integer}
     Map(MapCollectionTypeDefinition),
     Range(RangeTypeDefinition),
+
+    // Sender<T>
+    Sender(SenderTypeDefinition),
+    // Receiver<T>
+    Receiver(ReceiverTypeDefinition),
 }
 
 impl Display for CollectionTypeDefinition {
@@ -36,6 +44,8 @@ impl Display for CollectionTypeDefinition {
             CollectionTypeDefinition::Range(range) => {
                 core::write!(f, "{}", range)
             }
+            CollectionTypeDefinition::Sender(ty) => core::write!(f, "{}", ty),
+            CollectionTypeDefinition::Receiver(ty) => core::write!(f, "{}", ty),
         }
     }
 }

@@ -144,6 +144,10 @@ pub enum DatexExpressionData {
     List(List),
     /// Map, e.g {"xy": 2, (3): 4, xy: "xy"}
     Map(Map),
+
+    Sender,
+    Receiver,
+    
     /// One or more statements, e.g (1; 2; 3)
     Statements(Statements),
     /// reference access to shared value, e.g. '$ABC / 'mut $ABC

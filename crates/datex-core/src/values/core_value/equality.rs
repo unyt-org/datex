@@ -63,6 +63,9 @@ impl StructuralEq for CoreValue {
             (CoreValue::Range(a), CoreValue::Range(b)) => {
                 a.start.structural_eq(&b.start) && a.end.structural_eq(&b.end)
             }
+
+            (CoreValue::Sender(s), CoreValue::Sender(t)) => s.structural_eq(t),
+            (CoreValue::Receiver(r), CoreValue::Receiver(t)) => r.structural_eq(t),
             _ => false,
         }
     }
@@ -136,6 +139,8 @@ impl CoreValue {
             CoreValue::Uninitialized => todo!(),
             CoreValue::EntityTypeDefinition(_entity_type_definition) => todo!(),
             CoreValue::Box(value_container) => value_container.dyn_eq(native), // FIXME
+            CoreValue::Sender(sender) => sender.dyn_eq(native),
+            CoreValue::Receiver(receiver) => receiver.dyn_eq(native),
         }
     }
 }

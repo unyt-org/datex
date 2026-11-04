@@ -76,6 +76,12 @@ impl ToInstructions for CoreValue {
                 CoreValue::Instant(instant) => {
                     yield_all!(instant.to_instructions(visitor, cache));
                 }
+                CoreValue::Sender(sender) => {
+                    yield_all!(sender.to_instructions(visitor, cache));
+                }
+                CoreValue::Receiver(receiver) => {
+                    yield_all!(receiver.to_instructions(visitor, cache));
+                }
             }
         })
     }

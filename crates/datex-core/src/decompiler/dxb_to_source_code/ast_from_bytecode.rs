@@ -226,6 +226,12 @@ pub fn ast_from_bytecode(
                         RegularInstruction::Range => {
                             unreachable!("decompiler ast from bytcode ranges not implemented");
                         }
+                        RegularInstruction::Sender => {
+                            DatexExpressionData::Sender
+                        }
+                        RegularInstruction::Receiver => {
+                            DatexExpressionData::Receiver
+                        }
                         RegularInstruction::Endpoint(endpoint) => {
                             DatexExpressionData::Endpoint(endpoint)
                         }

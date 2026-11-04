@@ -105,6 +105,8 @@ impl SerializeWithSerdeContext for CoreValue {
             CoreValue::EntityTypeDefinition(entity_type_definition) => entity_type_definition.serialize_with_ctx(ctx, serializer),
             CoreValue::Callable(callable) => callable.serialize_with_ctx(ctx, serializer),
             CoreValue::Box(inner) => inner.serialize_with_ctx(ctx, serializer),
+            CoreValue::Sender(sender) => sender.serialize_with_ctx(ctx, serializer),
+            CoreValue::Receiver(receiver) => receiver.serialize_with_ctx(ctx, serializer),
             CoreValue::Uninitialized => panic!("Uninitialized value"),
         }
     }

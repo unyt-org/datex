@@ -807,6 +807,12 @@ pub enum RegularInstruction {
     SetEntryIndex(UInt32Data),
     #[magic(InstructionCode::SET_ENTRY_DYNAMIC)]
     SetEntryDynamic,
+    
+    #[magic(InstructionCode::SENDER)]
+    Sender,
+    
+    #[magic(InstructionCode::RECEIVER)]
+    Receiver,
 
     /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
     /// This variant is only used by the disassembler
@@ -976,6 +982,9 @@ impl RegularInstruction {
             } // value to set property on + property key + new value
 
             RegularInstruction::Unbox => NextExpectedInstructions::Regular(1), // value to unbox
+            
+            RegularInstruction::Sender => NextExpectedInstructions::None,
+            RegularInstruction::Receiver => NextExpectedInstructions::None,
 
             RegularInstruction::AppendEntry => {
                 NextExpectedInstructions::Regular(2)
