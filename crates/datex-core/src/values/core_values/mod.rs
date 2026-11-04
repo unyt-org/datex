@@ -13,3 +13,4 @@ pub mod range;
 pub mod text;
 pub mod sender;
 pub mod receiver;
+pub mod channel;

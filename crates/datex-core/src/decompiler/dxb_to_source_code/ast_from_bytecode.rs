@@ -508,6 +508,8 @@ pub fn ast_from_bytecode(
                             | TypeInstruction::ListSliceCollection(_)
                             | TypeInstruction::ListCollection
                             | TypeInstruction::MapCollection
+                            | TypeInstruction::Sender
+                            | TypeInstruction::Receiver
                             | TypeInstruction::EntityType
                             | TypeInstruction::Range
                             | TypeInstruction::ImplMarkers(_)

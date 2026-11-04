@@ -53,10 +53,14 @@ pub enum TypeInstruction {
     ListCollection,
     #[brw(magic = 0xEu8)]
     Boxed,
-    #[brw(magic = 0xFFu8)]
+    #[brw(magic = 0xFu8)]
     Callable(CallableSignatureData),
-    #[brw(magic = 0xFFu8)]
+    #[brw(magic = 0x01u8)]
     EntityType,
+    #[brw(magic = 0x02u8)]
+    Sender,
+    #[brw(magic = 0x03u8)]
+    Receiver,
 }
 
 /// Serializes TypeInstruction to tuple (instruction code as string, optional metadata as string)
@@ -118,6 +122,8 @@ impl TypeInstruction {
             }
             TypeInstruction::Range => NextExpectedInstructions::Type(2),
             TypeInstruction::EntityType => NextExpectedInstructions::Regular(1),
+            TypeInstruction::Sender => NextExpectedInstructions::Type(1),
+            TypeInstruction::Receiver => NextExpectedInstructions::Type(1),
             _ => NextExpectedInstructions::None,
         }
     }

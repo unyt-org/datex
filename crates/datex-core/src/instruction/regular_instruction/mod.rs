@@ -807,10 +807,10 @@ pub enum RegularInstruction {
     SetEntryIndex(UInt32Data),
     #[magic(InstructionCode::SET_ENTRY_DYNAMIC)]
     SetEntryDynamic,
-    
+
     #[magic(InstructionCode::SENDER)]
     Sender,
-    
+
     #[magic(InstructionCode::RECEIVER)]
     Receiver,
 
@@ -982,8 +982,8 @@ impl RegularInstruction {
             } // value to set property on + property key + new value
 
             RegularInstruction::Unbox => NextExpectedInstructions::Regular(1), // value to unbox
-            
-            RegularInstruction::Sender => NextExpectedInstructions::None,
+
+            RegularInstruction::Sender => NextExpectedInstructions::Regular(1), // contains a shared reference to the receiver
             RegularInstruction::Receiver => NextExpectedInstructions::None,
 
             RegularInstruction::AppendEntry => {
