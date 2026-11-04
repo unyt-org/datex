@@ -1,4 +1,4 @@
-use std::ops::DerefMut;
+use core::ops::DerefMut;
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use crate::dif::serde_context::SerdeContext;

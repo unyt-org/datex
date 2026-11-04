@@ -1,7 +1,6 @@
-use erased_serde::__private::serde::ser::SerializeTuple;
 use num_traits::ToPrimitive;
 use serde::de::Visitor;
-use serde::ser::SerializeSeq;
+use serde::ser::{SerializeSeq, SerializeTuple};
 use serde::Serializer;
 use crate::dif::deserialize_serde_context::DeserializeSerdeContext;
 use crate::dif::deserialize_with_serde_context::{DeserializeWithSerdeContext};
@@ -14,6 +13,7 @@ use crate::libs::core::type_id::CoreLibBaseTypeId;
 use crate::types::entities::entity_impls::EntityImpl;
 use crate::types::entities::entity_type_definition::EntityTypeDefinition;
 use crate::types::type_definition::TypeDefinition;
+use crate::prelude::*;
 
 pub struct InnerEntityTypeDefinition<'a>(&'a EntityTypeDefinition);
 

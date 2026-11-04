@@ -9,6 +9,7 @@ use crate::dif::serialize_with_serde_context::SerializeWithSerdeContext;
 use crate::dif::value_with_serde_context::ValueWithSerdeContext;
 use crate::types::entities::entity_impls::{EntityImpl, EntityImplMethod};
 use crate::values::core_values::callable::Callable;
+use crate::prelude::*;
 
 impl SerializeWithSerdeContext for EntityImpl {
     fn serialize_with_ctx<S: Serializer>(&self, ctx: &SerdeContext<'_>, serializer: S) -> Result<S::Ok, S::Error> {

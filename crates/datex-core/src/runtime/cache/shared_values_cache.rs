@@ -176,7 +176,6 @@ impl SharedValuesCache {
         &self,
         pointer_address: &PointerAddress,
     ) -> Result<&SharedContainer, ValueNotFoundInCacheError> {
-        info!("current cache: {}", self);
         self.values
             .get(pointer_address)
             .ok_or(ValueNotFoundInCacheError(pointer_address.clone()))
