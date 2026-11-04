@@ -6,7 +6,7 @@ use crate::{
     prelude::*,
     values::core_values::native::DatexNativeBase,
 };
-use crate::core_compiler::to_instructions::yield_all;
+use crate::core_compiler::to_instructions::{yield_all, yield_all_collected};
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
 use crate::values::core_values::sender::Sender;
 
@@ -27,7 +27,8 @@ where
                     panic!("Local sender cannot be converted to instructions")
                 }
                 Sender::RemoteReceiver { receiver } => {
-                    yield_all!(receiver.to_instructions(visitor, cache));
+                    // TODO: handle what happens when the receiver was dropped here - an unlinked sender must still be able to exist
+                    yield_all_collected!(receiver.upgrade().unwrap().to_instructions(visitor, cache));
                 }
             }
         })
