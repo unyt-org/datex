@@ -38,6 +38,8 @@ use crate::{
 };
 use core::ops::Deref;
 use crate::runtime::cache::shared_references_cache::SharedReferencesCache;
+use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
+use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
 
 impl ToInstructions for TypeDefinition {
     fn to_instructions<'a>(
@@ -183,6 +185,34 @@ impl ToInstructions for RangeTypeDefinition {
         })
     }
 }
+
+impl ToInstructions for SenderTypeDefinition {
+    fn to_instructions<'a>(
+        &'a self,
+        visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
+        Box::new(gen move {
+            yield TypeInstruction::Sender.into();
+            yield_all!(self.0.deref().to_instructions(visitor, cache));
+        })
+    }
+}
+
+impl ToInstructions for ReceiverTypeDefinition {
+    fn to_instructions<'a>(
+        &'a self,
+        visitor: &'a mut dyn ValueVisitor,
+        cache: &'a mut SharedReferencesCache
+    ) -> Box<dyn Iterator<Item = crate::instruction::Instruction> + 'a> {
+        Box::new(gen move {
+            yield TypeInstruction::Receiver.into();
+            yield_all!(self.0.deref().to_instructions(visitor, cache));
+        })
+    }
+}
+
+
 
 impl ToInstructions for CollectionTypeDefinition {
     fn to_instructions<'a>(

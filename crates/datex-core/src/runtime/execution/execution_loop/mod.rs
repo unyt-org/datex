@@ -129,6 +129,10 @@ use crate::{
     },
 };
 use collected_execution_result::CollectedExecutionResult;
+use crate::types::type_definition::collection::type_definition::receiver::ReceiverTypeDefinition;
+use crate::types::type_definition::collection::type_definition::sender::SenderTypeDefinition;
+use crate::values::core_values::receiver::{Receiver, ValueContainerReceiver};
+use crate::values::core_values::sender::Sender;
 
 /// Main execution loop that drives the execution of the DXB body
 /// The interrupt_provider is used to provide results for synchronous or asynchronous I/O operations
@@ -244,291 +248,294 @@ pub gen fn inner_execution_loop(
                             ExecutionError,
                         > = try {
                             match regular_instruction {
-                            // Handled above
-                            RegularInstruction::Jump(_) => unreachable!(),
-                            // boolean
-                            RegularInstruction::True => Some(ValueContainer::from(true).into()),
-                            RegularInstruction::False => Some(ValueContainer::from(false).into()),
+                                // Handled above
+                                RegularInstruction::Jump(_) => unreachable!(),
+                                // boolean
+                                RegularInstruction::True => Some(ValueContainer::from(true).into()),
+                                RegularInstruction::False => Some(ValueContainer::from(false).into()),
 
-                            // integers
-                            RegularInstruction::Int8(integer) => {
-                                Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
-                            }
-                            RegularInstruction::Int16(integer) => {
-                                Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
-                            }
-                            RegularInstruction::Int32(integer) => {
-                                Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
-                            }
-                            RegularInstruction::Int64(integer) => {
-                                Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
-                            }
-                            RegularInstruction::Int128(integer) => {
-                                Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
-                            }
+                                RegularInstruction::Receiver => Some(ValueContainer::from(ValueContainerReceiver::new_with_remote_sender()).into()),
 
-                            // unsigned integers
-                            RegularInstruction::UInt8(integer) => {
-                                Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
-                            }
-                            RegularInstruction::UInt16(integer) => {
-                                Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
-                            }
-                            RegularInstruction::UInt32(integer) => {
-                                Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
-                            }
-                            RegularInstruction::UInt64(integer) => {
-                                Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
-                            }
-                            RegularInstruction::UInt128(integer) => {
-                                Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
-                            }
+                                // integers
+                                RegularInstruction::Int8(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
+                                }
+                                RegularInstruction::Int16(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
+                                }
+                                RegularInstruction::Int32(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
+                                }
+                                RegularInstruction::Int64(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
+                                }
+                                RegularInstruction::Int128(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
+                                }
 
-                            // big integers
-                            RegularInstruction::BigInteger(integer) => {
-                                Some(ValueContainer::from(TypedInteger::IBig(integer)).into())
-                            }
+                                // unsigned integers
+                                RegularInstruction::UInt8(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
+                                }
+                                RegularInstruction::UInt16(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
+                                }
+                                RegularInstruction::UInt32(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
+                                }
+                                RegularInstruction::UInt64(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
+                                }
+                                RegularInstruction::UInt128(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::from(integer.0)).into())
+                                }
 
-                            // default integer
-                            RegularInstruction::Integer(integer) => {
-                                Some(ValueContainer::from(integer).into())
-                            }
+                                // big integers
+                                RegularInstruction::BigInteger(integer) => {
+                                    Some(ValueContainer::from(TypedInteger::IBig(integer)).into())
+                                }
 
-                            // specific floats
-                            RegularInstruction::DecimalF32(Float32Data(f32)) => {
-                                Some(ValueContainer::from(TypedDecimal::from(f32)).into())
-                            }
-                            RegularInstruction::DecimalF64(Float64Data(f64)) => {
-                                Some(ValueContainer::from(TypedDecimal::from(f64)).into())
-                            }
-                            // big decimal
-                            RegularInstruction::BigDecimal(big_decimal) => {
-                                Some(ValueContainer::from(TypedDecimal::Decimal(big_decimal)).into())
-                            }
+                                // default integer
+                                RegularInstruction::Integer(integer) => {
+                                    Some(ValueContainer::from(integer).into())
+                                }
 
-                            // default decimals
-                            RegularInstruction::DecimalAsInt16(FloatAsInt16Data(i16)) => {
-                                Some(ValueContainer::from(Decimal::from(i16 as f32)).into())
-                            }
-                            RegularInstruction::DecimalAsInt32(FloatAsInt32Data(i32)) => {
-                                Some(ValueContainer::from(Decimal::from(i32 as f32)).into())
-                            }
-                            RegularInstruction::Decimal(big_decimal) => {
-                                Some(ValueContainer::from(big_decimal).into())
-                            }
+                                // specific floats
+                                RegularInstruction::DecimalF32(Float32Data(f32)) => {
+                                    Some(ValueContainer::from(TypedDecimal::from(f32)).into())
+                                }
+                                RegularInstruction::DecimalF64(Float64Data(f64)) => {
+                                    Some(ValueContainer::from(TypedDecimal::from(f64)).into())
+                                }
+                                // big decimal
+                                RegularInstruction::BigDecimal(big_decimal) => {
+                                    Some(ValueContainer::from(TypedDecimal::Decimal(big_decimal)).into())
+                                }
 
-                            // endpoint
-                            RegularInstruction::Endpoint(endpoint) => Some(ValueContainer::from(endpoint).into()),
+                                // default decimals
+                                RegularInstruction::DecimalAsInt16(FloatAsInt16Data(i16)) => {
+                                    Some(ValueContainer::from(Decimal::from(i16 as f32)).into())
+                                }
+                                RegularInstruction::DecimalAsInt32(FloatAsInt32Data(i32)) => {
+                                    Some(ValueContainer::from(Decimal::from(i32 as f32)).into())
+                                }
+                                RegularInstruction::Decimal(big_decimal) => {
+                                    Some(ValueContainer::from(big_decimal).into())
+                                }
 
-                            // instant (datetime), stored as i128, convert to Integer
-                            RegularInstruction::Instant(InstantData(timestamp)) => {
-                                Some(ValueContainer::from(Integer::new(timestamp)).into())
-                            }
+                                // endpoint
+                                RegularInstruction::Endpoint(endpoint) => Some(ValueContainer::from(endpoint).into()),
 
-                            // null
-                            RegularInstruction::Null => Some(ValueContainer::from(Value::null()).into()),
+                                // instant (datetime), stored as i128, convert to Integer
+                                RegularInstruction::Instant(InstantData(timestamp)) => {
+                                    Some(ValueContainer::from(Integer::new(timestamp)).into())
+                                }
 
-                            RegularInstruction::Uninitialized => Some(ValueContainer::from(Value::uninitialized()).into()),
+                                // null
+                                RegularInstruction::Null => Some(ValueContainer::from(Value::null()).into()),
 
-                            // text
-                            RegularInstruction::ShortText(ShortTextData(text)) => {
-                                Some(ValueContainer::from(text).into())
-                            }
-                            RegularInstruction::Text(TextData(text)) => Some(ValueContainer::from(text).into()),
+                                RegularInstruction::Uninitialized => Some(ValueContainer::from(Value::uninitialized()).into()),
 
-                            RegularInstruction::RequestRemoteSharedRef(address) => Some(interrupt_with_value!(
-                                    interrupt_provider,
-                                    ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, ReferenceMutability::Immutable)
-                                    )
-                                ).into()),
+                                // text
+                                RegularInstruction::ShortText(ShortTextData(text)) => {
+                                    Some(ValueContainer::from(text).into())
+                                }
+                                RegularInstruction::Text(TextData(text)) => Some(ValueContainer::from(text).into()),
 
-                            RegularInstruction::RequestRemoteSharedRefMut(address) => Some(interrupt_with_value!(
-                                    interrupt_provider,
-                                    ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, ReferenceMutability::Mutable)
-                                    )
-                                ).into()),
-
-                            RegularInstruction::GetLocalSharedRef(address) => {
-                                let val = interrupt_with_maybe_value!(
-                                    interrupt_provider,
-                                    ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::GetReferenceToLocalPointer(
-                                            address
+                                RegularInstruction::RequestRemoteSharedRef(address) => Some(interrupt_with_value!(
+                                        interrupt_provider,
+                                        ExecutionInterrupt::External(
+                                            ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, ReferenceMutability::Immutable)
                                         )
-                                    )
-                                );
-                                if let Some(val) = val {
-                                    Some(val.into())
-                                } else {
-                                    return yield Err(ExecutionError::ReferenceNotFound);
-                                }
-                            }
+                                    ).into()),
 
-                            RegularInstruction::GetCoreLibValue(id) => {
-                                Some(interrupt_with_value!(
-                                    interrupt_provider,
-                                    ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::GetCoreLibValue(
-                                            id.try_into().map_err(|_| ExecutionError::invalid_program(InvalidProgramError::InvalidCoreLibId(id)))?
+                                RegularInstruction::RequestRemoteSharedRefMut(address) => Some(interrupt_with_value!(
+                                        interrupt_provider,
+                                        ExecutionInterrupt::External(
+                                            ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, ReferenceMutability::Mutable)
                                         )
-                                    )
-                                ).into())
-                            }
+                                    ).into()),
 
-                            RegularInstruction::GetRootProperty(stack_index) => {
-                                Some(RuntimeValue::ValueContainer(get_root_property(
-                                    &state,
-                                    stack_index,
-                                )?))
-                            }
-
-                            RegularInstruction::BorrowStackValue(index) => {
-                                Some(RuntimeValue::StackValue(index))
-                            }
-
-                            RegularInstruction::GetStackValueSharedRef(index) => {
-                                let value = state.stack.get_stack_value(index)?;
-                                match value {
-                                    ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
-                                        ValueContainer::Shared(SharedContainer::Referenced(container.derive_immutable_reference()))
-                                    )),
-                                    _ => return yield Err(ExecutionError::ExpectedSharedValue)
+                                RegularInstruction::GetLocalSharedRef(address) => {
+                                    let val = interrupt_with_maybe_value!(
+                                        interrupt_provider,
+                                        ExecutionInterrupt::External(
+                                            ExternalExecutionInterrupt::GetReferenceToLocalPointer(
+                                                address
+                                            )
+                                        )
+                                    );
+                                    if let Some(val) = val {
+                                        Some(val.into())
+                                    } else {
+                                        return yield Err(ExecutionError::ReferenceNotFound);
+                                    }
                                 }
-                            }
-                            RegularInstruction::GetStackValueSharedRefMut(index) => {
-                                let value = state.stack.get_stack_value(index)?;
-                                match value {
-                                    ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
-                                        ValueContainer::Shared(SharedContainer::Referenced(
-                                            container
-                                                .try_derive_mutable_reference()
-                                                .map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)?
-                                        ))
-                                    )),
-                                    _ => return yield Err(ExecutionError::ExpectedSharedValue)
+
+                                RegularInstruction::GetCoreLibValue(id) => {
+                                    Some(interrupt_with_value!(
+                                        interrupt_provider,
+                                        ExecutionInterrupt::External(
+                                            ExternalExecutionInterrupt::GetCoreLibValue(
+                                                id.try_into().map_err(|_| ExecutionError::invalid_program(InvalidProgramError::InvalidCoreLibId(id)))?
+                                            )
+                                        )
+                                    ).into())
                                 }
-                            }
 
-                            RegularInstruction::CloneStackValue(index) => {
-                                let value = state.stack.get_stack_value(index)?;
-                                Some(RuntimeValue::ValueContainer(
-                                    value.get_cloned()
-                                ))
-                            }
+                                RegularInstruction::GetRootProperty(stack_index) => {
+                                    Some(RuntimeValue::ValueContainer(get_root_property(
+                                        &state,
+                                        stack_index,
+                                    )?))
+                                }
 
-                            RegularInstruction::TakeStackValue(index) => {
-                                Some(RuntimeValue::ValueContainer(
-                                    state.stack.take_stack_value(index)?
-                                ))
-                            }
+                                RegularInstruction::BorrowStackValue(index) => {
+                                    Some(RuntimeValue::StackValue(index))
+                                }
 
-                            RegularInstruction::SharedRef(shared_ref) => {
-                                let address = state.normalize_pointer_address(&shared_ref.address);
-                                // shared ref without value, assumes value already known, otherwise request (todo)
-                                let container = resolve_cache_value(
-                                    &mut state,
-                                    &address,
-                                    SharedContainerOwnership::Referenced(shared_ref.ref_mutability),
-                                )?;
-                                Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container)))
-                            }
+                                RegularInstruction::GetStackValueSharedRef(index) => {
+                                    let value = state.stack.get_stack_value(index)?;
+                                    match value {
+                                        ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
+                                            ValueContainer::Shared(SharedContainer::Referenced(container.derive_immutable_reference()))
+                                        )),
+                                        _ => return yield Err(ExecutionError::ExpectedSharedValue)
+                                    }
+                                }
+                                RegularInstruction::GetStackValueSharedRefMut(index) => {
+                                    let value = state.stack.get_stack_value(index)?;
+                                    match value {
+                                        ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
+                                            ValueContainer::Shared(SharedContainer::Referenced(
+                                                container
+                                                    .try_derive_mutable_reference()
+                                                    .map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)?
+                                            ))
+                                        )),
+                                        _ => return yield Err(ExecutionError::ExpectedSharedValue)
+                                    }
+                                }
 
-                            RegularInstruction::ClassifiedValue(ClassifiedValueData {
-                                tag_value_is_empty: true,
-                                tag: Some(tag),
-                                is_entity: false,
-                                impls,
-                                ..
-                            }) => {
-                                
-                                Some(RuntimeValue::ValueContainer(
-                                    ValueContainer::Local(Value::core_with_classification(CoreValue::Null, ValueClassification {
-                                    tag: Some(ValueTag {
-                                        name: tag.0,
-                                        is_empty: true,
-                                    }),
+                                RegularInstruction::CloneStackValue(index) => {
+                                    let value = state.stack.get_stack_value(index)?;
+                                    Some(RuntimeValue::ValueContainer(
+                                        value.get_cloned()
+                                    ))
+                                }
+
+                                RegularInstruction::TakeStackValue(index) => {
+                                    Some(RuntimeValue::ValueContainer(
+                                        state.stack.take_stack_value(index)?
+                                    ))
+                                }
+
+                                RegularInstruction::SharedRef(shared_ref) => {
+                                    let address = state.normalize_pointer_address(&shared_ref.address);
+                                    // shared ref without value, assumes value already known, otherwise request (todo)
+                                    let container = resolve_cache_value(
+                                        &mut state,
+                                        &address,
+                                        SharedContainerOwnership::Referenced(shared_ref.ref_mutability),
+                                    )?;
+                                    Some(RuntimeValue::ValueContainer(ValueContainer::Shared(container)))
+                                }
+
+                                RegularInstruction::ClassifiedValue(ClassifiedValueData {
+                                    tag_value_is_empty: true,
+                                    tag: Some(tag),
+                                    is_entity: false,
                                     impls,
-                                    entity_type: None
-                                }))))
-                            }
+                                    ..
+                                }) => {
 
-                            // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                            RegularInstruction::Statements(_) |
-                            RegularInstruction::ShortStatements(_) |
-                            RegularInstruction::UnboundedStatements |
-                            RegularInstruction::UnboundedStatementsEnd(_) |
-                            RegularInstruction::List(_) |
-                            RegularInstruction::Range |
-                            RegularInstruction::ShortList(_) |
-                            RegularInstruction::Map(_) |
-                            RegularInstruction::ShortMap(_) |
-                            RegularInstruction::ClassifiedValue(_) |
-                            RegularInstruction::KeyValueDynamic |
-                            RegularInstruction::KeyValueShortText(_) |
-                            RegularInstruction::Add |
-                            RegularInstruction::Subtract |
-                            RegularInstruction::Multiply |
-                            RegularInstruction::Divide |
-                            RegularInstruction::UnaryMinus |
-                            RegularInstruction::UnaryPlus |
-                            RegularInstruction::BitwiseNot |
-                            RegularInstruction::Apply(_) |
-                            RegularInstruction::CallMethod(_) |
-                            RegularInstruction::GetEntryText(_) |
-                            RegularInstruction::GetEntryIndex(_) |
-                            RegularInstruction::GetEntryDynamic |
-                            RegularInstruction::TakeEntryText(_) |
-                            RegularInstruction::TakeEntryIndex(_) |
-                            RegularInstruction::TakeEntryDynamic |
-                            RegularInstruction::SetEntryText(_) |
-                            RegularInstruction::SetEntryIndex(_) |
-                            RegularInstruction::SetEntryDynamic |
-                            RegularInstruction::Is |
-                            RegularInstruction::JumpIfFalse(_) |
-                            RegularInstruction::JumpWithValue(_) |
-                            RegularInstruction::Matches |
-                            RegularInstruction::StructuralEqual |
-                            RegularInstruction::Equal |
-                            RegularInstruction::NotStructuralEqual |
-                            RegularInstruction::NotEqual |
-                            RegularInstruction::DeriveSharedReference |
-                            RegularInstruction::DeriveSharedReferenceMut |
-                            RegularInstruction::CreateShared |
-                            RegularInstruction::CreateSharedMut |
-                            RegularInstruction::PushToStack |
-                            RegularInstruction::PushListToStack |
-                            RegularInstruction::SetStackValue(_) |
-                            RegularInstruction::Splice(_) |
-                            RegularInstruction::SpliceDynamic |
-                            RegularInstruction::AppendEntry |
-                            RegularInstruction::Clear |
-                            RegularInstruction::Increment |
-                            RegularInstruction::Decrement |
-                            RegularInstruction::SetSharedContainerValue |
-                            RegularInstruction::Unbox |
-                            RegularInstruction::RemoteExecution(_) |
-                            RegularInstruction::MoveWithValue(_) |
-                            RegularInstruction::SharedRefWithValue(_) |
-                            RegularInstruction::CallableDeclaration(_) |
-                            RegularInstruction::Callable(_) |
-                            RegularInstruction::EntityTypeDefinition(_) |
-                            RegularInstruction::BoxedValue |
-                            RegularInstruction::TypeExpression => {
-                                // Note: If we reach this unreachable statement, we most probably forget to add a match
-                                // arm to [RegularInstruction::get_next_expected_instructions](datex_core::global::regular_instructions)
-                                unreachable!()
-                            },
-                            #[cfg(feature = "disassembler")]
-                            RegularInstruction::_RemoteExecutionDebugFlat(_) |
-                            RegularInstruction::_RemoteExecutionDebugTree(_) |
-                            RegularInstruction::_CallableDeclarationDebugFlat(_) |
-                            RegularInstruction::_CallableDeclarationDebugTree(_) |
-                            RegularInstruction::_CallableDebugFlat(_) |
-                            RegularInstruction::_CallableDebugTree(_)
-                            => unreachable!(),
-                        }
+                                    Some(RuntimeValue::ValueContainer(
+                                        ValueContainer::Local(Value::core_with_classification(CoreValue::Null, ValueClassification {
+                                        tag: Some(ValueTag {
+                                            name: tag.0,
+                                            is_empty: true,
+                                        }),
+                                        impls,
+                                        entity_type: None
+                                    }))))
+                                }
+
+                                // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
+                                RegularInstruction::Statements(_) |
+                                RegularInstruction::ShortStatements(_) |
+                                RegularInstruction::UnboundedStatements |
+                                RegularInstruction::UnboundedStatementsEnd(_) |
+                                RegularInstruction::List(_) |
+                                RegularInstruction::Range |
+                                RegularInstruction::ShortList(_) |
+                                RegularInstruction::Map(_) |
+                                RegularInstruction::ShortMap(_) |
+                                RegularInstruction::ClassifiedValue(_) |
+                                RegularInstruction::KeyValueDynamic |
+                                RegularInstruction::KeyValueShortText(_) |
+                                RegularInstruction::Add |
+                                RegularInstruction::Subtract |
+                                RegularInstruction::Multiply |
+                                RegularInstruction::Divide |
+                                RegularInstruction::UnaryMinus |
+                                RegularInstruction::UnaryPlus |
+                                RegularInstruction::BitwiseNot |
+                                RegularInstruction::Apply(_) |
+                                RegularInstruction::CallMethod(_) |
+                                RegularInstruction::GetEntryText(_) |
+                                RegularInstruction::GetEntryIndex(_) |
+                                RegularInstruction::GetEntryDynamic |
+                                RegularInstruction::TakeEntryText(_) |
+                                RegularInstruction::TakeEntryIndex(_) |
+                                RegularInstruction::TakeEntryDynamic |
+                                RegularInstruction::SetEntryText(_) |
+                                RegularInstruction::SetEntryIndex(_) |
+                                RegularInstruction::SetEntryDynamic |
+                                RegularInstruction::Is |
+                                RegularInstruction::Sender |
+                                RegularInstruction::JumpIfFalse(_) |
+                                RegularInstruction::JumpWithValue(_) |
+                                RegularInstruction::Matches |
+                                RegularInstruction::StructuralEqual |
+                                RegularInstruction::Equal |
+                                RegularInstruction::NotStructuralEqual |
+                                RegularInstruction::NotEqual |
+                                RegularInstruction::DeriveSharedReference |
+                                RegularInstruction::DeriveSharedReferenceMut |
+                                RegularInstruction::CreateShared |
+                                RegularInstruction::CreateSharedMut |
+                                RegularInstruction::PushToStack |
+                                RegularInstruction::PushListToStack |
+                                RegularInstruction::SetStackValue(_) |
+                                RegularInstruction::Splice(_) |
+                                RegularInstruction::SpliceDynamic |
+                                RegularInstruction::AppendEntry |
+                                RegularInstruction::Clear |
+                                RegularInstruction::Increment |
+                                RegularInstruction::Decrement |
+                                RegularInstruction::SetSharedContainerValue |
+                                RegularInstruction::Unbox |
+                                RegularInstruction::RemoteExecution(_) |
+                                RegularInstruction::MoveWithValue(_) |
+                                RegularInstruction::SharedRefWithValue(_) |
+                                RegularInstruction::CallableDeclaration(_) |
+                                RegularInstruction::Callable(_) |
+                                RegularInstruction::EntityTypeDefinition(_) |
+                                RegularInstruction::BoxedValue |
+                                RegularInstruction::TypeExpression => {
+                                    // Note: If we reach this unreachable statement, we most probably forget to add a match
+                                    // arm to [RegularInstruction::get_next_expected_instructions](datex_core::global::regular_instructions)
+                                    unreachable!()
+                                },
+                                #[cfg(feature = "disassembler")]
+                                RegularInstruction::_RemoteExecutionDebugFlat(_) |
+                                RegularInstruction::_RemoteExecutionDebugTree(_) |
+                                RegularInstruction::_CallableDeclarationDebugFlat(_) |
+                                RegularInstruction::_CallableDeclarationDebugTree(_) |
+                                RegularInstruction::_CallableDebugFlat(_) |
+                                RegularInstruction::_CallableDebugTree(_)
+                                => unreachable!(),
+                            }
                         };
                         Some(match regular_result {
                             Ok(value) => value,
@@ -642,6 +649,8 @@ pub gen fn inner_execution_loop(
                         | TypeInstruction::Union(_)
                         | TypeInstruction::Callable(_)
                         | TypeInstruction::EntityType
+                        | TypeInstruction::Sender
+                        | TypeInstruction::Receiver
                         | TypeInstruction::Map(_)
                         | TypeInstruction::DefinitionWithMetadata(_)
                         | TypeInstruction::Range
@@ -677,6 +686,20 @@ pub gen fn inner_execution_loop(
                             Instruction::Regular(
                                 regular_instruction,
                             ) => match regular_instruction {
+
+                                RegularInstruction::Sender => {
+                                    let receiver_shared_container = collected_results.try_pop_value_container(&mut state)?;
+                                    let receiver_shared_container = match receiver_shared_container {
+                                        ValueContainer::Shared(shared) => shared,
+                                        _ => return yield Err(ExecutionError::ExpectedSharedValue),
+                                    };
+
+                                    RuntimeValue::ValueContainer(
+                                        ValueContainer::from(Sender::try_from(receiver_shared_container).map_err(|_| ExecutionError::InvalidSharedValueType)?)
+                                    ).into()
+                                }
+
+
                                 RegularInstruction::List(_)
                                 | RegularInstruction::ShortList(_) => {
                                     let elements = collected_results.try_collect_value_containers(&mut state)?;
@@ -1652,6 +1675,18 @@ pub gen fn inner_execution_loop(
                                         let ty = collected_results.pop_type();
                                         TypeDefinition::Collection(CollectionTypeDefinition::List(
                                             ListCollectionTypeDefinition::new(ty)
+                                        )).into()
+                                    }
+                                    TypeInstruction::Sender => {
+                                        let ty = collected_results.pop_type();
+                                        TypeDefinition::Collection(CollectionTypeDefinition::Sender(
+                                            SenderTypeDefinition::new(ty)
+                                        )).into()
+                                    }
+                                    TypeInstruction::Receiver => {
+                                        let ty = collected_results.pop_type();
+                                        TypeDefinition::Collection(CollectionTypeDefinition::Receiver(
+                                            ReceiverTypeDefinition::new(ty)
                                         )).into()
                                     }
                                     TypeInstruction::Boxed => {
