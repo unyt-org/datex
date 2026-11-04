@@ -1,10 +1,12 @@
 use crate::channel::mpsc;
 use crate::channel::mpsc::create_unbounded_channel;
 use crate::runtime::Runtime;
-use crate::shared_values::{SharedContainer, SharedContainerMutability};
+use crate::shared_values::{ReferencedSharedContainer, SharedContainer, SharedContainerMutability};
 use crate::shared_values::traits::SharedContainerCommon;
+use crate::shared_values::weak_shared_container::WeakSharedContainer;
 use crate::shared_wrappers::shared::shared_ref::SharedRef;
 use crate::shared_wrappers::shared::to_shared::ToShared;
+use crate::traits::convert_value_container::ConvertValueContainer;
 use crate::traits::get_datex_type::GetDatexType;
 use crate::types::entity_type::EntityType;
 use crate::values::core_values::native::{DatexNative, DatexNativeBase};
@@ -34,7 +36,7 @@ pub enum Sender<T> {
         sender: mpsc::UnboundedSender<T>,
     },
     RemoteReceiver {
-        receiver: SharedContainer,
+        receiver: WeakSharedContainer,
     },
 }
 
@@ -43,12 +45,7 @@ impl<T> Sender<T> {
         let (sender, receiver) = create_unbounded_channel();
         (Sender::LocalReceiver { sender }, receiver)
     }
-    
-    /// ### Safety
-    /// The caller must ensure that the [`SharedContainer`] contains a [Receiver<T>]. 
-    pub unsafe fn new_with_remote_receiver(receiver: SharedContainer) -> Self {
-        Sender::RemoteReceiver { receiver }
-    }
+
 
     /// Sends a value through the sender. Returns an error if the receiver has been dropped.
     pub async fn send(&mut self, value: T) -> Result<(), ()> {
@@ -60,19 +57,19 @@ impl<T> Sender<T> {
 }
 
 
-impl TryFrom<SharedContainer> for Sender<ValueContainer> {
+impl<T: DatexNativeBase + 'static> TryFrom<&ReferencedSharedContainer> for Sender<T> {
     type Error = ();
-    fn try_from(value: SharedContainer) -> Result<Self, Self::Error> {
+    fn try_from(value: &ReferencedSharedContainer) -> Result<Self, Self::Error> {
         if value.container_mutability() == SharedContainerMutability::Immutable
         {
             // check if the contained value is a receiver
             let is_receiver = {
-                let val = value.collapsed_value();
-                val.borrow().try_as::<Receiver<ValueContainer>>().is_some()
+                let val = value.value_container();
+                val.try_as::<Receiver<T>>().is_some()
             };
 
             if is_receiver {
-                Ok(Sender::RemoteReceiver { receiver: value })
+                Ok(Sender::RemoteReceiver { receiver: value.downgrade() })
             } else {
                 Err(())
             }

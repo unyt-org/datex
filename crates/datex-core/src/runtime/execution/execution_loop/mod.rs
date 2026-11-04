@@ -695,7 +695,7 @@ pub gen fn inner_execution_loop(
                                     };
 
                                     RuntimeValue::ValueContainer(
-                                        ValueContainer::from(Sender::try_from(receiver_shared_container).map_err(|_| ExecutionError::InvalidSharedValueType)?)
+                                        ValueContainer::from(Sender::<ValueContainer>::try_from(&receiver_shared_container.derive_reference_with_max_mutability()).map_err(|_| ExecutionError::InvalidSharedValueType)?)
                                     ).into()
                                 }
 

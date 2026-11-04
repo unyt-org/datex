@@ -12,6 +12,8 @@ mod datex_inspector {
     use super::*;
     use crate::shared_wrappers::shared::{to_shared::ToShared};
     use crate::shared_wrappers::shared::shared_ref::SharedRef;
+    use crate::values::core_values::channel::create_channel;
+    use crate::values::core_values::receiver::Receiver;
 
     #[derive(Datex, Debug, Clone, PartialEq, Eq, Hash)]
     #[datex(no_deserialize, builtin = 0x000001)]
@@ -26,6 +28,11 @@ mod datex_inspector {
     impl Inspector {
         pub fn name(&self) -> String {
             self.name.clone()
+        }
+
+        pub fn logs(&self, #[runtime] runtime: &Runtime) -> SharedRef<Receiver<String>> {
+            let (sender, receiver) = create_channel(runtime);
+            receiver
         }
 
         pub fn try_reboot_endpoint(&self) {

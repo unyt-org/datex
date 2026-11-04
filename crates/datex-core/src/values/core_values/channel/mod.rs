@@ -12,7 +12,7 @@ use crate::values::core_values::sender::Sender;
 pub fn create_channel<T: DatexNative + GetDatexType>(runtime: &Runtime) -> (Sender<T>, SharedRef<Receiver<T>>) {
     let receiver_ref = Receiver::<T>::new_with_remote_sender().shared_ref(runtime);
     (
-        Sender::RemoteReceiver { receiver: SharedContainer::Referenced(receiver_ref.container().clone()) },
+        Sender::try_from(receiver_ref.container()).unwrap(), // Safe because receiver_ref contains Receiver<T>
         receiver_ref
     )
 }

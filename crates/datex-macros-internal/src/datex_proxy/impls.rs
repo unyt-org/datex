@@ -57,7 +57,7 @@ pub fn generate_impl_glue_code(
     let prelude = derive_datex_prelude(false);
 
     quote! {
-        #input
+        #item
 
         const _: () = {
             #prelude
