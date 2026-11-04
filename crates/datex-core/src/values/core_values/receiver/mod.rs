@@ -8,6 +8,7 @@ mod get_core_lib_type_id;
 mod get_datex_type;
 mod iter_parts;
 mod serde_dif;
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod to_instructions;
 mod update_handler;

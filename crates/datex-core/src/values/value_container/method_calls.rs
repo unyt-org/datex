@@ -13,6 +13,7 @@ use crate::types::entities::entity_impls::EntityImplMethod;
 use crate::types::entity_type::EntityType;
 use crate::values::core_values::endpoint::Endpoint;
 use crate::values::value_container::ValueContainer;
+use crate::prelude::*;
 
 // TODO: move somewhere else, this is an impl of ApplyArgument
 impl ApplyArgument {

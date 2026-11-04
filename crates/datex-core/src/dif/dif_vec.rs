@@ -1,9 +1,10 @@
-use erased_serde::__private::serde::de::{SeqAccess, Visitor};
-use erased_serde::__private::serde::ser::SerializeSeq;
+use serde::de::{SeqAccess, Visitor};
+use serde::ser::SerializeSeq;
 use crate::dif::deserialize_serde_context::{DeserializeSerdeContext, ErasedSeed};
 use crate::dif::deserialize_with_serde_context::{DeserializeWithSerdeContext, DeserializeWithSerdeContextDyn};
 use crate::dif::serde_context::SerdeContext;
 use crate::dif::serialize_with_serde_context::{SerializeWithSerdeContext, SerializeWithSerdeContextDyn};
+use crate::prelude::*;
 
 pub struct DIFVec<'a, T>(pub &'a [T]);
 

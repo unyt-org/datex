@@ -16,3 +16,17 @@ pub fn create_channel<T: DatexNative + GetDatexType>(runtime: &Runtime) -> (Send
         receiver_ref
     )
 }
+
+
+#[cfg(test)]
+mod tests {
+    use crate::runtime::Runtime;
+
+    use super::*;
+
+    #[test]
+    fn test_create_channel() {
+        let runtime = Runtime::stub();
+        let (sender, receiver_ref) = create_channel::<i32>(&runtime);
+    }
+}

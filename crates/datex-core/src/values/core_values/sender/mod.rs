@@ -26,6 +26,7 @@ mod iter_parts;
 mod serde_dif;
 mod value_access;
 mod to_instructions;
+#[cfg(feature = "ast")]
 mod to_datex_expression_data;
 mod update_handler;
 mod equality;
@@ -46,6 +47,14 @@ impl<T> Sender<T> {
         (Sender::LocalReceiver { sender }, receiver)
     }
 
+    /// Creates a new Sender that sends to a remote receiver.
+    /// The receiver is expected to be a SharedContainer that contains a Receiver<T>.
+    /// # Safety
+    /// The caller must ensure that the receiver is a valid SharedContainer that contains a Receiver<T>.
+    pub unsafe fn new_with_remote_receiver(receiver: &ReferencedSharedContainer) -> Self {
+        Sender::RemoteReceiver { receiver: receiver.downgrade() }
+    }
+
 
     /// Sends a value through the sender. Returns an error if the receiver has been dropped.
     pub async fn send(&mut self, value: T) -> Result<(), ()> {
@@ -60,19 +69,16 @@ impl<T> Sender<T> {
 impl<T: DatexNativeBase + 'static> TryFrom<&ReferencedSharedContainer> for Sender<T> {
     type Error = ();
     fn try_from(value: &ReferencedSharedContainer) -> Result<Self, Self::Error> {
-        if value.container_mutability() == SharedContainerMutability::Immutable
-        {
-            // check if the contained value is a receiver
-            let is_receiver = {
-                let val = value.value_container();
-                val.try_as::<Receiver<T>>().is_some()
-            };
+        // TODO: also check if immutable, but currently not supported by SharedRef
 
-            if is_receiver {
-                Ok(Sender::RemoteReceiver { receiver: value.downgrade() })
-            } else {
-                Err(())
-            }
+        // check if the contained value is a receiver
+        let is_receiver = {
+            let val = value.value_container();
+            val.try_as::<Receiver<T>>().is_some()
+        };
+
+        if is_receiver {
+            Ok(Sender::RemoteReceiver { receiver: value.downgrade() })
         } else {
             Err(())
         }
